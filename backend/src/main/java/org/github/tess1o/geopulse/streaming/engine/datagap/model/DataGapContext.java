@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.model;
 
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
@@ -6,7 +6,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.UserState;
 
 import java.time.Duration;
 
-record DataGapContext(
+public record DataGapContext(
         GPSPoint lastPoint,
         GPSPoint currentPoint,
         UserState userState,

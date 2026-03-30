@@ -35,6 +35,14 @@ public class TimelineDataGapRepository implements PanacheRepositoryBase<Timeline
         return find("user.id = ?1 ORDER BY endTime DESC", userId).firstResultOptional();
     }
 
+    public Optional<TimelineDataGapEntity> findByIdAndUserId(Long gapId, UUID userId) {
+        return find("id = ?1 and user.id = ?2", gapId, userId).firstResultOptional();
+    }
+
+    public List<TimelineDataGapEntity> findByUserId(UUID userId) {
+        return find("user.id = ?1 order by startTime", userId).list();
+    }
+
     /**
      * Find data gaps with boundary expansion - includes gaps that start before range but extend into it.
      *

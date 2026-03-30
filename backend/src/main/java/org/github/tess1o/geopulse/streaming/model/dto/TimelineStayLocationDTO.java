@@ -28,6 +28,12 @@ public class TimelineStayLocationDTO implements GpsPoint {
     private String country;
 
     /**
+     * Manual Data Gap -> Stay override ID that currently maps to this stay.
+     * Null means this stay is fully automatic.
+     */
+    private Long dataGapOverrideId;
+
+    /**
      * Duration of stay in seconds
      */
     private long stayDuration;

@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.datagap.rules.*;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;

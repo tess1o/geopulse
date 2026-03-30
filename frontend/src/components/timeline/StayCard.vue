@@ -22,6 +22,7 @@
         <span class="location-name">
           {{ stayItem.locationName }}
         </span>
+        <span v-if="canResetDataGapOverride" class="manual-gap-indicator">(Manual)</span>
         <button
           v-if="canRenameStay"
           class="location-edit-icon-btn"
@@ -30,6 +31,15 @@
           @click.stop="handleRenameStay"
         >
           <i class="pi pi-pencil"></i>
+        </button>
+        <button
+          v-if="canResetDataGapOverride"
+          class="location-reset-icon-btn"
+          aria-label="Reset data gap override"
+          title="Reset to automatic data gap"
+          @click.stop="handleResetDataGapOverride"
+        >
+          <i class="pi pi-refresh"></i>
         </button>
       </div>
     </template>
@@ -78,7 +88,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override'])
 
 const contextMenu = ref(null)
 
@@ -103,6 +113,16 @@ const contextMenuItems = computed(() => {
       icon: 'pi pi-pencil',
       command: () => {
         handleRenameStay()
+      }
+    })
+  }
+
+  if (canResetDataGapOverride.value) {
+    items.push({
+      label: 'Reset to automatic data gap',
+      icon: 'pi pi-refresh',
+      command: () => {
+        handleResetDataGapOverride()
       }
     })
   }
@@ -157,6 +177,10 @@ const canRenameStay = computed(() => {
   return Boolean(props.stayItem.favoriteId || props.stayItem.geocodingId)
 })
 
+const canResetDataGapOverride = computed(() => {
+  return Boolean(props.stayItem.dataGapOverrideId)
+})
+
 const handleClick = () => {
   emit('click', props.stayItem)
 }
@@ -168,6 +192,11 @@ const handlePhotoShowOnMap = (photo) => {
 const handleRenameStay = () => {
   if (!canRenameStay.value) return
   emit('rename-stay', props.stayItem)
+}
+
+const handleResetDataGapOverride = () => {
+  if (!canResetDataGapOverride.value) return
+  emit('reset-data-gap-override', props.stayItem)
 }
 
 const showContextMenu = (event) => {
@@ -311,6 +340,27 @@ const formattedTimestamp = computed(() => {
 
 .location-edit-icon-btn i {
   font-size: 0.85rem;
+}
+
+.location-reset-icon-btn {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gp-warning);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.location-reset-icon-btn i {
+  font-size: 0.85rem;
+}
+
+.manual-gap-indicator {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--gp-warning);
+  font-weight: 700;
 }
 
 .stay-content {

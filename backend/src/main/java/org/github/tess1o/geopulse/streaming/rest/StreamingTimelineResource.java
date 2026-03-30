@@ -10,14 +10,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayConversionPreviewDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
@@ -27,6 +31,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -65,6 +70,12 @@ public class StreamingTimelineResource {
 
     @Inject
     TripMovementTypeOverrideService tripMovementTypeOverrideService;
+
+    @Inject
+    DataGapStayOverrideService dataGapStayOverrideService;
+
+    @Inject
+    StreamingTimelineGenerationService timelineGenerationService;
 
     @Inject
     MultiUserTimelineService multiUserTimelineService;
@@ -275,6 +286,86 @@ public class StreamingTimelineResource {
             log.error("Failed to reset movement type for trip {} and user {}", tripId, userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to reset movement type: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/data-gaps/{gapId}/stay-conversion-preview")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getDataGapStayConversionPreview(@PathParam("gapId") Long gapId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            Optional<DataGapStayConversionPreviewDTO> preview =
+                    dataGapStayOverrideService.previewLatestPointConversion(userId, gapId);
+            if (preview.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Data gap not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(preview.get())).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to build Data Gap -> Stay conversion preview for gap {} and user {}", gapId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to build conversion preview: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/data-gaps/{gapId}/stay-conversion")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response convertDataGapToStay(@PathParam("gapId") Long gapId, DataGapStayOverrideRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = dataGapStayOverrideService.convertGapToStay(userId, gapId, request);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Data gap not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to convert data gap {} to stay for user {}", gapId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to convert data gap to stay: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/data-gap-overrides/{overrideId}/stay-conversion")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response resetDataGapStayOverride(@PathParam("overrideId") Long overrideId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = dataGapStayOverrideService.removeManualOverride(userId, overrideId);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Data gap override not found or access denied"))
+                        .build();
+            }
+
+            if (result.get().regenerationStartTime() != null) {
+                timelineGenerationService.generateTimelineFromTimestamp(userId, result.get().regenerationStartTime());
+            }
+
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (Exception e) {
+            log.error("Failed to reset Data Gap -> Stay override {} for user {}", overrideId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to reset data gap stay override: " + e.getMessage()))
                     .build();
         }
     }

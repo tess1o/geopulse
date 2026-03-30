@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.rules;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,7 +23,7 @@ public class DataGapRuleRegistry {
     }
 
     @PostConstruct
-    void initialize() {
+    public void initialize() {
         List<DataGapRule> rules = StreamSupport.stream(discoveredRules.spliterator(), false).toList();
         orderedRules = sortAndValidate(rules);
 
@@ -37,7 +37,7 @@ public class DataGapRuleRegistry {
         return orderedRules;
     }
 
-    static List<DataGapRule> sortAndValidate(List<DataGapRule> discoveredRules) {
+    public static List<DataGapRule> sortAndValidate(List<DataGapRule> discoveredRules) {
         List<DataGapRule> sortedRules = discoveredRules.stream()
                 .sorted(java.util.Comparator.comparingInt(DataGapRule::order))
                 .toList();

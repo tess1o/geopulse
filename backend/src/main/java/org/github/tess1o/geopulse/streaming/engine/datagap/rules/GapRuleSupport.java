@@ -1,9 +1,10 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.rules;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;

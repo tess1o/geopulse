@@ -61,6 +61,8 @@
             @timeline-item-click="handleTimelineItemClick"
             @tag-clicked="handleTagClicked"
             @rename-stay="handleRenameStay"
+            @timeline-refresh-requested="handleTimelineRefreshRequested"
+            @reset-data-gap-override="handleResetDataGapOverride"
             @photo-show-on-map="handleTimelinePhotoShowOnMap"
         />
           </div>
@@ -512,6 +514,55 @@ const handleTagClicked = (tag) => {
     summary: `Viewing ${tag.tagName}`,
     detail: `Timeline updated to show ${tag.tagName} period`,
     life: 3000
+  })
+}
+
+const reloadCurrentRange = async () => {
+  if (!dateRange.value || dateRange.value.length !== 2) {
+    return
+  }
+
+  const [startDate, endDate] = dateRange.value
+  const normalizedStart = new Date(startDate).toISOString()
+  const normalizedEnd = new Date(endDate).toISOString()
+  const rangeKey = `${normalizedStart}-${normalizedEnd}`
+  await executeFetchForRange(startDate, endDate, rangeKey)
+}
+
+const handleTimelineRefreshRequested = async () => {
+  await reloadCurrentRange()
+}
+
+const handleResetDataGapOverride = (stayItem) => {
+  const overrideId = stayItem?.dataGapOverrideId
+  if (!overrideId) {
+    return
+  }
+
+  confirm.require({
+    header: 'Reset Manual Stay Override',
+    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await timelineStore.resetDataGapStayOverride(overrideId)
+        await reloadCurrentRange()
+        toast.add({
+          severity: 'success',
+          summary: 'Override Reset',
+          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          life: 3000
+        })
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
+        toast.add({
+          severity: 'error',
+          summary: 'Reset Failed',
+          detail: errorMessage,
+          life: 5000
+        })
+      }
+    }
   })
 }
 

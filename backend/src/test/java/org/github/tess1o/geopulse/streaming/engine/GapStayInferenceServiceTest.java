@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.GapStayInferencePlan;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;

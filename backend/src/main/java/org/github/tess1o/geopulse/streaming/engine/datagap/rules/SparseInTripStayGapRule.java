@@ -1,9 +1,12 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.rules;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -15,16 +18,27 @@ import java.util.List;
 
 @Slf4j
 @ApplicationScoped
-class SparseInTripStayGapRule implements DataGapRule {
-    private static final Duration MIN_GAP_DURATION_FLOOR = Duration.ofHours(3);
-    private static final double MIN_BOUNDARY_DISTANCE_METERS = 150.0;
-    private static final double MAX_BOUNDARY_DISTANCE_METERS = 800.0;
-    private static final double MAX_IMPLIED_SPEED_KMH = 1.0;
+public class SparseInTripStayGapRule implements DataGapRule {
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.min_gap_duration_floor_hours",
+            defaultValue = "3")
+    long minGapDurationFloorHours;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.min_boundary_distance_meters",
+            defaultValue = "150.0")
+    double minBoundaryDistanceMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.max_boundary_distance_meters",
+            defaultValue = "800.0")
+    double maxBoundaryDistanceMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.max_implied_speed_kmh",
+            defaultValue = "1.0")
+    double maxImpliedSpeedKmh;
 
     private final TimelineEventFinalizationService finalizationService;
 
     @Inject
-    SparseInTripStayGapRule(TimelineEventFinalizationService finalizationService) {
+    public SparseInTripStayGapRule(TimelineEventFinalizationService finalizationService) {
         this.finalizationService = finalizationService;
     }
 
@@ -78,14 +92,14 @@ class SparseInTripStayGapRule implements DataGapRule {
         }
 
         double boundaryDistanceMeters = context.lastPoint().distanceTo(context.currentPoint());
-        if (boundaryDistanceMeters < MIN_BOUNDARY_DISTANCE_METERS) {
+        if (boundaryDistanceMeters < minBoundaryDistanceMeters) {
             log.debug("Sparse IN_TRIP stay inference skipped - distance {}m below minimum {}m",
-                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", MIN_BOUNDARY_DISTANCE_METERS));
+                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", minBoundaryDistanceMeters));
             return false;
         }
-        if (boundaryDistanceMeters > MAX_BOUNDARY_DISTANCE_METERS) {
+        if (boundaryDistanceMeters > maxBoundaryDistanceMeters) {
             log.debug("Sparse IN_TRIP stay inference skipped - distance {}m exceeds maximum {}m",
-                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", MAX_BOUNDARY_DISTANCE_METERS));
+                    String.format("%.1f", boundaryDistanceMeters), String.format("%.1f", maxBoundaryDistanceMeters));
             return false;
         }
 
@@ -95,9 +109,9 @@ class SparseInTripStayGapRule implements DataGapRule {
         }
 
         double impliedSpeedKmh = (boundaryDistanceMeters / 1000.0) / gapHours;
-        if (impliedSpeedKmh > MAX_IMPLIED_SPEED_KMH) {
+        if (impliedSpeedKmh > maxImpliedSpeedKmh) {
             log.debug("Sparse IN_TRIP stay inference skipped - implied speed {}km/h exceeds maximum {}km/h",
-                    String.format("%.3f", impliedSpeedKmh), String.format("%.1f", MAX_IMPLIED_SPEED_KMH));
+                    String.format("%.3f", impliedSpeedKmh), String.format("%.1f", maxImpliedSpeedKmh));
             return false;
         }
 
@@ -113,9 +127,10 @@ class SparseInTripStayGapRule implements DataGapRule {
         Duration configuredGapThreshold = dataGapThresholdSeconds != null && dataGapThresholdSeconds > 0
                 ? Duration.ofSeconds(dataGapThresholdSeconds)
                 : Duration.ZERO;
-        return configuredGapThreshold.compareTo(MIN_GAP_DURATION_FLOOR) > 0
+        Duration minGapDurationFloor = Duration.ofHours(Math.max(0L, minGapDurationFloorHours));
+        return configuredGapThreshold.compareTo(minGapDurationFloor) > 0
                 ? configuredGapThreshold
-                : MIN_GAP_DURATION_FLOOR;
+                : minGapDurationFloor;
     }
 
     private Trip finalizeTripBeforeGap(UserState userState, TimelineConfig config) {

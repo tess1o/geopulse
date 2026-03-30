@@ -226,6 +226,19 @@ Controls whether to infer continuous stays during data gaps when GPS resumes at 
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_ENABLED`       | `false` | Enable stay inference during gaps (e.g., overnight at home)                          |
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_MAX_GAP_HOURS` | `24`    | Maximum gap duration (hours) for stay inference. Longer gaps create normal data gaps |
 
+#### Gap Stay Inference Advanced Heuristics (Environment-Only)
+
+These settings are global-only and are **not** exposed in Timeline Preferences UI.
+
+| Property                                                                                 | Default | Description                                                                                           |
+|------------------------------------------------------------------------------------------|---------|-------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_IN_TRIP_LOCAL_EXCURSION_MAX_DURATION_MINUTES`    | `30`    | Maximum pending `IN_TRIP` duration still eligible for local-excursion stay inference                 |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER`       | `2.0`   | Multiplier for allowed spread around trip tail relative to configured stay radius                    |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MIN_GAP_DURATION_FLOOR_HOURS`     | `3`     | Minimum floor for sparse `IN_TRIP` gap stay inference, before data-gap threshold comparison          |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MIN_BOUNDARY_DISTANCE_METERS`      | `150.0` | Minimum distance between gap boundary points for sparse `IN_TRIP` stay inference                     |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MAX_BOUNDARY_DISTANCE_METERS`      | `800.0` | Maximum distance between gap boundary points for sparse `IN_TRIP` stay inference                     |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MAX_IMPLIED_SPEED_KMH`             | `1.0`   | Maximum implied speed across the gap boundary points for sparse `IN_TRIP` stay inference             |
+
 **How it works:**
 When enabled and GPS resumes within the stay radius of the previous location, extends the stay across the gap instead of
 creating a data gap. Useful for overnight stays at home when GPS tracking stops.
@@ -270,9 +283,26 @@ using intelligent heuristics.
 2. Long distance → Trip inference (if enabled)
 3. Neither applies → Normal data gap
 
+### Manual Data Gap -> Stay Override Matching (Environment-Only)
+
+These settings control how manual Data Gap -> Stay overrides are matched and reapplied after timeline rebuild/import.
+They are currently configurable only via environment variables.
+
+| Property                                                                          | Default | Description                                                                                      |
+|-----------------------------------------------------------------------------------|---------|--------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_TIMESTAMP_DELTA_SECONDS`  | `2700`  | Maximum allowed timestamp drift (seconds) between source gap and regenerated candidate gap      |
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_BOUNDARY_DISTANCE_METERS` | `350.0` | Maximum boundary-point distance (meters) for candidate gap matching                             |
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MIN_DURATION_RATIO`           | `0.6`   | Minimum allowed ratio `candidateDuration / sourceDuration`                                      |
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_MATCHING_MAX_DURATION_RATIO`           | `1.8`   | Maximum allowed ratio `candidateDuration / sourceDuration`                                      |
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_ADJACENT_TOLERANCE_SECONDS`            | `120`   | Time adjacency tolerance (seconds) used when merging converted gaps with previous/next stays    |
+| `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_LOCATION_MATCH_MAX_DISTANCE_METERS`    | `80.0`  | Spatial fallback threshold (meters) for same-location checks when stable IDs are not available  |
+
 :::info User Preference Override
-These gap inference settings can be overridden per-user through the Timeline Preferences interface. Environment
-variables set the default values for new users.
+Base gap inference toggles and limits (`...GAP_STAY_INFERENCE_ENABLED`, `...GAP_STAY_INFERENCE_MAX_GAP_HOURS`,
+`...GAP_TRIP_INFERENCE_*`) can be overridden per-user through Timeline Preferences.
+Environment variables set defaults for new users.
+
+Advanced sparse/local heuristics and manual Data Gap -> Stay override matching settings above are environment-only.
 :::
 
 ## Kubernetes / Helm Configuration

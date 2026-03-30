@@ -1,8 +1,10 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.rules;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
@@ -14,12 +16,12 @@ import java.util.List;
 
 @Slf4j
 @ApplicationScoped
-class GapTripInferenceRule implements DataGapRule {
+public class GapTripInferenceRule implements DataGapRule {
     private final TimelineEventFinalizationService finalizationService;
     private final TravelClassification travelClassification;
 
     @Inject
-    GapTripInferenceRule(TimelineEventFinalizationService finalizationService,
+    public GapTripInferenceRule(TimelineEventFinalizationService finalizationService,
                          TravelClassification travelClassification) {
         this.finalizationService = finalizationService;
         this.travelClassification = travelClassification;

@@ -1,9 +1,13 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.rules;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.GapStayInferenceService;
+import org.github.tess1o.geopulse.streaming.engine.TimelineEventFinalizationService;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.GapStayInferencePlan;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -14,12 +18,12 @@ import java.util.List;
 
 @Slf4j
 @ApplicationScoped
-class GapStayInferenceRule implements DataGapRule {
+public class GapStayInferenceRule implements DataGapRule {
     private final GapStayInferenceService gapStayInferenceService;
     private final TimelineEventFinalizationService finalizationService;
 
     @Inject
-    GapStayInferenceRule(GapStayInferenceService gapStayInferenceService,
+    public GapStayInferenceRule(GapStayInferenceService gapStayInferenceService,
                          TimelineEventFinalizationService finalizationService) {
         this.gapStayInferenceService = gapStayInferenceService;
         this.finalizationService = finalizationService;

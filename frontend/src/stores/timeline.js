@@ -228,6 +228,33 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        async getDataGapStayConversionPreview(gapId) {
+            try {
+                const response = await apiService.get(`/streaming-timeline/data-gaps/${gapId}/stay-conversion-preview`)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async convertDataGapToStay(gapId, payload = {}) {
+            try {
+                const response = await apiService.put(`/streaming-timeline/data-gaps/${gapId}/stay-conversion`, payload)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async resetDataGapStayOverride(overrideId) {
+            try {
+                const response = await apiService.delete(`/streaming-timeline/data-gap-overrides/${overrideId}/stay-conversion`)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
         applyTripMovementUpdate(updatedTrip) {
             if (!this.timelineData || !updatedTrip?.tripId) return
             const index = this.timelineData.findIndex(

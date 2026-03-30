@@ -26,6 +26,15 @@
           <span class="detail-value">{{ formatDuration(dataGapItem.durationSeconds) }}</span>
         </p>
 
+        <button
+          v-if="dataGapItem.id && !dataGapItem.ongoing"
+          class="convert-gap-btn"
+          title="Convert this data gap to a stay"
+          @click.stop="handleConvertToStay"
+        >
+          Convert to stay
+        </button>
+
         <!-- Help section for gap configuration guidance -->
         <DataGapHelpSection :duration-seconds="dataGapItem.durationSeconds" />
       </div>
@@ -46,12 +55,16 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'convert-to-stay'])
 
 const timezone = useTimezone()
 
 const handleClick = () => {
   emit('click', props.dataGapItem)
+}
+
+const handleConvertToStay = () => {
+  emit('convert-to-stay', props.dataGapItem)
 }
 
 const formattedStartTime = computed(() => {
@@ -143,6 +156,18 @@ const formattedEndTime = computed(() => {
 .gap-detail .detail-value {
   font-weight: 700;
   color: var(--gp-warning);
+}
+
+.convert-gap-btn {
+  margin-top: var(--gp-spacing-xs);
+  border: none;
+  background: transparent;
+  color: var(--gp-warning);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
 }
 
 /* Dark mode adjustments */

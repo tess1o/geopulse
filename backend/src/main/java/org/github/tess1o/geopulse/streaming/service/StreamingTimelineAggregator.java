@@ -4,11 +4,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.ai.model.*;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
@@ -32,7 +34,13 @@ public class StreamingTimelineAggregator {
     TimelineDataGapRepository timelineDataGapRepository;
 
     @Inject
+    TimelineDataGapStayOverrideRepository dataGapStayOverrideRepository;
+
+    @Inject
     StreamingTimelineConverter converter;
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
 
     public MovementTimelineDTO getTimelineFromDb(UUID userId, Instant startTime, Instant endTime) {
         return getExistingTimelineEvents(userId, startTime, endTime);
@@ -164,6 +172,7 @@ public class StreamingTimelineAggregator {
             TimelineStayLocationDTO stayDTO = converter.convertStayEntityToDto(stayEntity);
             timeline.getStays().add(stayDTO);
         }
+        attachDataGapOverrideMetadata(userId, timeline.getStays());
 
         // Get trips with boundary expansion
         var tripEntities = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
@@ -177,10 +186,16 @@ public class StreamingTimelineAggregator {
         snapTripEndpointsToAdjacentFavoriteStays(timeline.getTrips(), timeline.getStays());
 
         // Get data gaps with boundary expansion
+        Instant latestGpsTimestamp = gpsPointRepository.findLatest(userId)
+                .map(point -> point.getTimestamp())
+                .orElse(null);
         var gapEntities = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
         for (var gapEntity : gapEntities) {
+            boolean ongoing = latestGpsTimestamp != null
+                    && gapEntity.getStartTime() != null
+                    && gapEntity.getStartTime().equals(latestGpsTimestamp);
             var gapDTO = new TimelineDataGapDTO(
-                    gapEntity.getStartTime(), gapEntity.getEndTime());
+                    gapEntity.getId(), gapEntity.getStartTime(), gapEntity.getEndTime(), ongoing);
             timeline.getDataGaps().add(gapDTO);
         }
 
@@ -188,6 +203,39 @@ public class StreamingTimelineAggregator {
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
 
         return timeline;
+    }
+
+    private void attachDataGapOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {
+        if (stays == null || stays.isEmpty()) {
+            return;
+        }
+
+        List<Long> stayIds = stays.stream()
+                .map(TimelineStayLocationDTO::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (stayIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Long> firstOverrideByStayId = new HashMap<>();
+        dataGapStayOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
+            if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
+                return;
+            }
+            firstOverrideByStayId.putIfAbsent(override.getStay().getId(), override.getId());
+        });
+
+        if (firstOverrideByStayId.isEmpty()) {
+            return;
+        }
+
+        stays.forEach(stay -> {
+            if (stay.getId() == null) {
+                return;
+            }
+            stay.setDataGapOverrideId(firstOverrideByStayId.get(stay.getId()));
+        });
     }
 
     private void snapTripEndpointsToAdjacentFavoriteStays(

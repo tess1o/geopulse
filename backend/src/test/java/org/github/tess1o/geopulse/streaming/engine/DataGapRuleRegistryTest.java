@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.DataGapContext;
+import org.github.tess1o.geopulse.streaming.engine.datagap.rules.DataGapRule;
+import org.github.tess1o.geopulse.streaming.engine.datagap.rules.DataGapRuleRegistry;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;

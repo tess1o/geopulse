@@ -96,6 +96,16 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .firstResultOptional();
     }
 
+    public Optional<GpsPointEntity> findLatestByUserIdAtOrBeforeTimestamp(UUID userId, Instant timestamp) {
+        return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
+                .firstResultOptional();
+    }
+
+    public Optional<GpsPointEntity> findEarliestByUserIdAtOrAfterTimestamp(UUID userId, Instant timestamp) {
+        return find("user.id = ?1 and timestamp >= ?2 order by timestamp asc", userId, timestamp)
+                .firstResultOptional();
+    }
+
     /**
      * Find GPS points for a user within a date range with pagination and sorting.
      *
