@@ -1,0 +1,10 @@
+[
+  {
+    "title": "Missing version"
+  },
+  {
+    "version": "8.8.8",
+    "title": "Valid release",
+    "highlights": ["One"]
+  }
+]
