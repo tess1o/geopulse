@@ -706,6 +706,33 @@
           }
         }
       },
+      "DataGapStayOverrideRequest" : {
+        "type" : "object",
+        "properties" : {
+          "locationStrategy" : {
+            "type" : "string"
+          },
+          "favoriteId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "geocodingId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "locationName" : {
+            "type" : "string"
+          }
+        }
+      },
       "DawarichGeometry" : {
         "type" : "object",
         "properties" : {
@@ -6549,6 +6576,26 @@
         } ]
       }
     },
+    "/api/gps/source/owntracks/mqtt-config" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Own Tracks Mqtt Config",
+        "tags" : [ "Gps Source Config Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/gps/source/telemetry/{sourceType}" : {
       "put" : {
         "parameters" : [ {
@@ -6891,6 +6938,17 @@
         },
         "summary" : "Check Health",
         "tags" : [ "Health Resource" ]
+      }
+    },
+    "/api/home/content" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Home Content",
+        "tags" : [ "Home Content Resource" ]
       }
     },
     "/api/homeassistant" : {
@@ -8748,6 +8806,106 @@
           }
         },
         "summary" : "Get Timeline Count",
+        "tags" : [ "Streaming Timeline Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/streaming-timeline/data-gap-overrides/{overrideId}/stay-conversion" : {
+      "delete" : {
+        "parameters" : [ {
+          "name" : "overrideId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Reset Data Gap Stay Override",
+        "tags" : [ "Streaming Timeline Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/streaming-timeline/data-gaps/{gapId}/stay-conversion" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "gapId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DataGapStayOverrideRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Convert Data Gap To Stay",
+        "tags" : [ "Streaming Timeline Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/streaming-timeline/data-gaps/{gapId}/stay-conversion-preview" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "gapId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Data Gap Stay Conversion Preview",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -10702,7 +10860,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.23.1",
+    "version" : "1.24.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
