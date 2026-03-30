@@ -21,19 +21,19 @@ import java.util.List;
 public class SparseInTripStayGapRule implements DataGapRule {
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.min_gap_duration_floor_hours",
             defaultValue = "3")
-    long minGapDurationFloorHours;
+    long minGapDurationFloorHours = 3L;
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.min_boundary_distance_meters",
             defaultValue = "150.0")
-    double minBoundaryDistanceMeters;
+    double minBoundaryDistanceMeters = 150.0d;
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.max_boundary_distance_meters",
             defaultValue = "800.0")
-    double maxBoundaryDistanceMeters;
+    double maxBoundaryDistanceMeters = 800.0d;
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.sparse_in_trip.max_implied_speed_kmh",
             defaultValue = "1.0")
-    double maxImpliedSpeedKmh;
+    double maxImpliedSpeedKmh = 1.0d;
 
     private final TimelineEventFinalizationService finalizationService;
 

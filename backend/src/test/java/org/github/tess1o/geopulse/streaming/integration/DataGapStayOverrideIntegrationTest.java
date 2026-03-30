@@ -164,6 +164,8 @@ class DataGapStayOverrideIntegrationTest {
 
         TimelineDataGapEntity sourceGap = createDataGap(user, sourceStart, sourceEnd);
         dataGapStayOverrideService.convertGapToStay(user.getId(), sourceGap.getId(), new DataGapStayOverrideRequest());
+        entityManager.flush();
+        entityManager.clear();
 
         stayRepository.delete("user.id = ?1", user.getId());
         entityManager.flush();

@@ -26,11 +26,11 @@ public class GapStayInferenceService {
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.in_trip_local_excursion.max_duration_minutes",
             defaultValue = "30")
-    long inTripLocalExcursionMaxDurationMinutes;
+    long inTripLocalExcursionMaxDurationMinutes = 30L;
 
     @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.in_trip_local_excursion.radius_multiplier",
             defaultValue = "2.0")
-    double inTripLocalExcursionRadiusMultiplier;
+    double inTripLocalExcursionRadiusMultiplier = 2.0d;
 
     @Inject
     TripStopHeuristicsService tripStopHeuristicsService;
