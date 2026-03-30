@@ -127,6 +127,7 @@ const routes = [
         meta: {title: 'Home'},
         beforeEnter: async (to, from, next) => {
             const authStore = useAuthStore()
+            to.meta.homeResolvedAuthStatus = null
 
             try {
                 // Check auth if not already authenticated
@@ -143,6 +144,7 @@ const routes = [
                 // For guests, optionally redirect from / to /login based on global auth setting
                 if (!authStore.isAuthenticated) {
                     const authStatus = await authStore.getAuthStatus()
+                    to.meta.homeResolvedAuthStatus = authStatus || null
                     if (authStatus?.guestRootRedirectToLoginEnabled) {
                         next('/login')
                         return

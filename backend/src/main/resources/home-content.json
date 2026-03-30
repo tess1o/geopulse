@@ -1,0 +1,262 @@
+{
+  "tips": [
+    {
+      "id": "export-trip-or-stay-gpx",
+      "title": "Export any stay or trip as GPX",
+      "description": "On the Timeline page, right-click a stay or trip card and choose \"Export as GPX\". This is useful when you want to share a route, archive a segment, or inspect it in another mapping tool.",
+      "icon": "pi pi-download",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "show-favorites-on-map",
+      "title": "Show favorites directly on the Timeline map",
+      "description": "Use the map control button \"Show Favorites\" on the Timeline page to display all your saved favorite points and favorite areas. It is a quick way to review known places while browsing daily movement.",
+      "icon": "pi pi-heart",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "favorite-point-vs-area",
+      "title": "Choose the right favorite type: point or area",
+      "description": "Favorite points represent one precise place and match nearby GPS records within your stay detection radius. Favorite areas are map rectangles and match any records inside the zone, which is better for campuses, parks, malls, and other larger spaces.",
+      "icon": "pi pi-map-marker",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open favorites management",
+          "url": "/app/favorites-management"
+        }
+      ]
+    },
+    {
+      "id": "manage-favorites",
+      "title": "Manage favorites from Timeline or dedicated page",
+      "description": "You can create and update favorite places either from the Timeline map while you explore data, or from Favorites Management for bulk cleanup and structured editing.",
+      "icon": "pi pi-star",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Favorites management",
+          "url": "/app/favorites-management"
+        },
+        {
+          "label": "Managing places docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places"
+        }
+      ]
+    },
+    {
+      "id": "journey-insights-overview",
+      "title": "Track long-term milestones in Journey Insights",
+      "description": "Journey Insights summarizes your travel footprint with milestones and progress views. Use it to understand where you have been over time at country and city levels, not only day-to-day movement.",
+      "icon": "pi pi-compass",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open journey insights",
+          "url": "/app/journey-insights"
+        },
+        {
+          "label": "Journey Insights docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/journey-insights"
+        }
+      ]
+    },
+    {
+      "id": "rewind-heatmaps",
+      "title": "Use Rewind for monthly and yearly heatmaps",
+      "description": "The Rewind page helps you analyze historical movement trends with detailed period views and heatmaps. It is ideal for spotting seasonal patterns and comparing different months or years.",
+      "icon": "pi pi-calendar",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open rewind",
+          "url": "/app/rewind"
+        },
+        {
+          "label": "Rewind docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/rewind"
+        }
+      ]
+    },
+    {
+      "id": "geofences-for-you-and-friends",
+      "title": "Monitor enter/leave events with Geofences",
+      "description": "Configure geofence rules to detect enter and leave events for yourself, and for friends who shared live-location permission with you. Use it for arrival alerts, routine monitoring, or automation hooks.",
+      "icon": "pi pi-map",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open geofences",
+          "url": "/app/geofences"
+        },
+        {
+          "label": "Geofences docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/geofences"
+        }
+      ]
+    },
+    {
+      "id": "ai-setup-and-chat",
+      "title": "Configure AI with your own key or server",
+      "description": "In Profile settings, you can configure an OpenAI-compatible key and endpoint, then use AI Chat to ask questions about your own timeline data and friend data when sharing permissions allow it.",
+      "icon": "pi pi-sparkles",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "AI settings",
+          "url": "/app/profile?tab=ai"
+        },
+        {
+          "label": "Open AI chat",
+          "url": "/app/ai/chat"
+        }
+      ]
+    },
+    {
+      "id": "location-analytics-drilldown",
+      "title": "Drill down with Location Analytics",
+      "description": "Location Analytics lets you move from country-level to city-level and down to specific places. Use map and list views together to understand where time and movement concentrate.",
+      "icon": "pi pi-globe",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open location analytics",
+          "url": "/app/location-analytics?tab=map"
+        }
+      ]
+    },
+    {
+      "id": "timeline-preferences-rebuild",
+      "title": "Tune Timeline behavior in preferences",
+      "description": "Adjust timeline detection and classification preferences to match your movement style and data quality. GeoPulse automatically re-generates timeline results after relevant preference changes.",
+      "icon": "pi pi-sliders-h",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Timeline preferences",
+          "url": "/app/timeline/preferences"
+        }
+      ]
+    },
+    {
+      "id": "share-links-live-and-timeline",
+      "title": "Share live location or timeline with guests",
+      "description": "Use Share Links to publish controlled links for live location and timeline history. These links can be shared with both authenticated users and guests, depending on your sharing setup.",
+      "icon": "pi pi-share-alt",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open share links",
+          "url": "/app/share-links"
+        }
+      ]
+    },
+    {
+      "id": "trip-type-override",
+      "title": "Override trip type when needed",
+      "description": "If GeoPulse classifies a movement incorrectly, open Timeline and manually override the trip type. Your correction helps keep analytics and reporting aligned with real behavior.",
+      "icon": "pi pi-pencil",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "Timeline docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline"
+        }
+      ]
+    },
+    {
+      "id": "classification-explainer",
+      "title": "Inspect trip classification reasoning",
+      "description": "Right-click a trip card in Timeline and open \"Why this classification?\" to review the decision process behind the selected movement type.",
+      "icon": "pi pi-info-circle",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "enable-more-trip-types",
+      "title": "Enable bicycle, running, and train detection",
+      "description": "Use Timeline Preferences to enable additional movement types and tune related thresholds. This improves classification quality for non-car travel patterns.",
+      "icon": "pi pi-cog",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Timeline preferences",
+          "url": "/app/timeline/preferences?tab=trips"
+        }
+      ]
+    },
+    {
+      "id": "friends-sharing",
+      "title": "Add friends and control what they can see",
+      "description": "From the Friends page, send requests and configure permissions separately for live location and timeline history. This keeps sharing flexible and privacy-aware.",
+      "icon": "pi pi-users",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open friends page",
+          "url": "/app/friends"
+        }
+      ]
+    },
+    {
+      "id": "setup-admin-user",
+      "title": "Promote your account to admin",
+      "description": "Set GEOPULSE_ADMIN_EMAIL in your .env to your user email, restart GeoPulse, then sign out and sign in again. After that, admin pages and system settings become available for your account.",
+      "icon": "pi pi-shield",
+      "audiences": ["non_admin"],
+      "links": [
+        {
+          "label": "Admin setup docs",
+          "url": "https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel"
+        }
+      ]
+    },
+    {
+      "id": "disable-registration",
+      "title": "Control new user registration",
+      "description": "Admins can disable public registration in System Settings when they want an invite-only instance or tighter access control.",
+      "icon": "pi pi-user-minus",
+      "audiences": ["admin"],
+      "links": [
+        {
+          "label": "Authentication settings",
+          "url": "/app/admin/settings?tab=authentication"
+        }
+      ]
+    },
+    {
+      "id": "configure-geocoding",
+      "title": "Set global reverse geocoding providers",
+      "description": "Admins can configure primary and fallback reverse geocoding providers for the whole instance, including API keys and provider-level options.",
+      "icon": "pi pi-map-marker",
+      "audiences": ["admin"],
+      "links": [
+        {
+          "label": "Geocoding settings",
+          "url": "/app/admin/settings?tab=geocoding"
+        }
+      ]
+    }
+  ]
+}

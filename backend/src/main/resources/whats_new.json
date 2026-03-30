@@ -1,0 +1,14 @@
+[
+  {
+    "version": "1.23.1",
+    "title": "GeoPulse 1.23.1",
+    "highlights": [
+      "MQTT TLS support for secure external broker connections",
+      "Friends live location with real-time filter controls",
+      "Geofence improvements with smarter entry/exit detection",
+      "Geocoding retry logic with circuit-breaker protection",
+      "Timeline page fix for large date-range queries"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases"
+  }
+]
