@@ -1,13 +1,13 @@
 [
   {
-    "version": "1.23.1",
-    "title": "GeoPulse 1.23.1",
+    "version": "1.24.0",
+    "title": "GeoPulse 1.24.0",
     "highlights": [
-      "MQTT TLS support for secure external broker connections",
-      "Friends live location with real-time filter controls",
-      "Geofence improvements with smarter entry/exit detection",
-      "Geocoding retry logic with circuit-breaker protection",
-      "Timeline page fix for large date-range queries"
+      "New design for Home page with links to Github, Tips of the day, etc",
+      "Improved Data Gap logic and added option to convert a Data Gap to a Stay (beta)",
+      "Fixed MQTT instructions in UI",
+      "Fixed bulk reverse geocoding reconciliation when some entity fails",
+      "Fixed issue with sharing timeline for 1 day"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
