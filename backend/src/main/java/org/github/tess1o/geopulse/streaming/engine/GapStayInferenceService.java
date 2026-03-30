@@ -3,7 +3,9 @@ package org.github.tess1o.geopulse.streaming.engine;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.datagap.model.GapStayInferencePlan;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
@@ -20,15 +22,20 @@ import java.util.List;
  */
 @Slf4j
 @ApplicationScoped
-class GapStayInferenceService {
+public class GapStayInferenceService {
 
-    private static final Duration MAX_IN_TRIP_LOCAL_EXCURSION_DURATION = Duration.ofMinutes(30);
-    private static final double IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER = 2;
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.in_trip_local_excursion.max_duration_minutes",
+            defaultValue = "30")
+    long inTripLocalExcursionMaxDurationMinutes;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.in_trip_local_excursion.radius_multiplier",
+            defaultValue = "2.0")
+    double inTripLocalExcursionRadiusMultiplier;
 
     @Inject
     TripStopHeuristicsService tripStopHeuristicsService;
 
-    GapStayInferencePlan tryInfer(GPSPoint currentPoint, UserState userState,
+    public GapStayInferencePlan tryInfer(GPSPoint currentPoint, UserState userState,
                                   TimelineConfig config, Duration gapDuration) {
         Boolean enabled = config.getGapStayInferenceEnabled();
         if (enabled == null || !enabled) {
@@ -107,10 +114,11 @@ class GapStayInferenceService {
             return GapStayInferencePlan.none();
         }
 
+        Duration maxInTripLocalExcursionDuration = Duration.ofMinutes(Math.max(0L, inTripLocalExcursionMaxDurationMinutes));
         Duration pendingTripDuration = Duration.between(firstTripPoint.getTimestamp(), lastTripPoint.getTimestamp());
-        if (pendingTripDuration.compareTo(MAX_IN_TRIP_LOCAL_EXCURSION_DURATION) > 0) {
+        if (pendingTripDuration.compareTo(maxInTripLocalExcursionDuration) > 0) {
             log.debug("Pending IN_TRIP duration {} exceeds local excursion limit {} for gap stay inference",
-                    pendingTripDuration, MAX_IN_TRIP_LOCAL_EXCURSION_DURATION);
+                    pendingTripDuration, maxInTripLocalExcursionDuration);
             return GapStayInferencePlan.none();
         }
 
@@ -126,13 +134,14 @@ class GapStayInferenceService {
             maxDistanceFromTripEnd = Math.max(maxDistanceFromTripEnd, tripPoint.distanceTo(lastTripPoint));
         }
 
-        double localExcursionLimitMeters = stayRadiusMeters * IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER;
+        double radiusMultiplier = Math.max(0.1d, inTripLocalExcursionRadiusMultiplier);
+        double localExcursionLimitMeters = stayRadiusMeters * radiusMultiplier;
         if (maxDistanceFromTripEnd > localExcursionLimitMeters) {
             log.debug("Pending IN_TRIP spread {}m exceeds local excursion limit {}m (radius={}m x {})",
                     String.format("%.1f", maxDistanceFromTripEnd),
                     String.format("%.1f", localExcursionLimitMeters),
                     stayRadiusMeters,
-                    IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER);
+                    String.format("%.2f", radiusMultiplier));
             return GapStayInferencePlan.none();
         }
 

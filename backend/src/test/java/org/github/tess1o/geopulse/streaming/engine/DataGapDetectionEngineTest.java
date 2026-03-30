@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.engine.datagap.rules.*;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
+import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 /**
  * Unit tests for DataGapDetectionEngine, focusing on gap stay inference feature.
@@ -31,6 +34,10 @@ class DataGapDetectionEngineTest {
     private TimelineEventFinalizationService finalizationService;
     @Mock
     private StreamingDataGapService dataGapService;
+    @Mock
+    private DataGapRuleRegistry dataGapRuleRegistry;
+    @Mock
+    private TravelClassification travelClassification;
     @Spy
     private GapStayInferenceService gapStayInferenceService = new GapStayInferenceService();
     private TimelineConfig config;
@@ -45,6 +52,13 @@ class DataGapDetectionEngineTest {
                 .gapStayInferenceEnabled(false) // disabled by default
                 .gapStayInferenceMaxGapHours(24)
                 .build();
+        List<DataGapRule> orderedRules = List.of(
+                new GapStayInferenceRule(gapStayInferenceService, finalizationService),
+                new SparseInTripStayGapRule(finalizationService),
+                new GapTripInferenceRule(finalizationService, travelClassification),
+                new DefaultDataGapRule(finalizationService)
+        );
+        lenient().when(dataGapRuleRegistry.getOrderedRules()).thenReturn(orderedRules);
     }
     // ============== Tests for gap stay inference disabled ==============
     @Test
@@ -226,6 +240,95 @@ class DataGapDetectionEngineTest {
         assertFalse(events.stream().anyMatch(e -> e instanceof DataGap));
         assertEquals(ProcessorMode.CONFIRMED_STAY, userState.getCurrentMode());
         assertTrue(userState.getActivePoints().size() >= 3, "Tail stop cluster should seed stay state");
+    }
+    @Test
+    void shouldInferSparseStay_WhenInTripLongGapShortDistanceLowImpliedSpeed() {
+        config.setGapStayInferenceEnabled(true);
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2026-03-27T05:59:58Z"), 51.8582276, 1.1342692, 6.0),
+                createGpsPoint(Instant.parse("2026-03-27T08:07:50Z"), 51.8593500, 1.1451401, 0.4));
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2026-03-27T14:25:22Z"), 51.8585587, 1.1383040, 0.5);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTrip(any(), any()))
+                .thenReturn(createTrip(Instant.parse("2026-03-27T05:59:58Z")));
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(2, events.size());
+        assertTrue(events.stream().anyMatch(e -> e instanceof Trip));
+        assertTrue(events.stream().anyMatch(e -> e instanceof Stay));
+        assertFalse(events.stream().anyMatch(e -> e instanceof DataGap));
+        Stay inferredStay = (Stay) events.stream().filter(e -> e instanceof Stay).findFirst().orElseThrow();
+        assertEquals(Instant.parse("2026-03-27T08:07:50Z"), inferredStay.getStartTime());
+        assertEquals(java.time.Duration.ofSeconds(22652), inferredStay.getDuration());
+        assertEquals(ProcessorMode.UNKNOWN, userState.getCurrentMode());
+    }
+    @Test
+    void shouldCreateGap_WhenInTripSparseDistanceButGapTooShort() {
+        config.setGapStayInferenceEnabled(true);
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2024-01-01T10:00:00Z"), 40.7128, -74.0060, 8.0),
+                createGpsPoint(Instant.parse("2024-01-01T10:45:00Z"), 40.7128, -73.9985, 8.0));
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-01T11:55:00Z"), 40.7128, -73.9910, 8.0);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTripForGap(any(), any(), any())).thenReturn(null);
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(1, events.size());
+        assertTrue(events.get(0) instanceof DataGap);
+    }
+    @Test
+    void shouldCreateGap_WhenSparseGapBelowUserConfiguredDataGapThreshold() {
+        config.setGapStayInferenceEnabled(true);
+        config.setDataGapThresholdSeconds(28800); // 8h, above 3h floor
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2026-03-27T05:59:58Z"), 51.8582276, 1.1342692, 6.0),
+                createGpsPoint(Instant.parse("2026-03-27T08:07:50Z"), 51.8593500, 1.1451401, 0.4));
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2026-03-27T14:25:22Z"), 51.8585587, 1.1383040, 0.5);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTripForGap(any(), any(), any())).thenReturn(null);
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(1, events.size());
+        assertTrue(events.get(0) instanceof DataGap);
+    }
+    @Test
+    void shouldCreateGap_WhenNotInTrip_EvenIfSparseHeuristicWouldMatch() {
+        config.setGapStayInferenceEnabled(true);
+        UserState userState = createUserStateWithPoints(ProcessorMode.POTENTIAL_STAY,
+                createGpsPoint(Instant.parse("2024-01-01T08:00:00Z"), 40.7128, -74.0060, 0.0));
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-01T14:30:00Z"), 40.7180, -74.0060, 0.0);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeStayWithoutLocation(any(), any()))
+                .thenReturn(createStay(Instant.parse("2024-01-01T08:00:00Z")));
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(2, events.size());
+        assertTrue(events.stream().anyMatch(e -> e instanceof DataGap));
+        assertEquals(1, events.stream().filter(e -> e instanceof Stay).count());
+    }
+    @Test
+    void shouldCreateGap_WhenInTripGapIsLongButBoundaryDistanceTooLarge() {
+        config.setGapStayInferenceEnabled(true);
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2024-01-01T08:00:00Z"), 40.7128, -74.0060, 0.4),
+                createGpsPoint(Instant.parse("2024-01-01T08:10:00Z"), 40.7130, -74.0060, 0.4));
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-01T14:30:00Z"), 40.8120, -74.0060, 0.4);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTripForGap(any(), any(), any())).thenReturn(null);
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(1, events.size());
+        assertTrue(events.get(0) instanceof DataGap);
     }
     // ============== Tests for max gap hours ==============
     @Test

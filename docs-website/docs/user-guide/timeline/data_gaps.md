@@ -153,11 +153,12 @@ When a data gap is detected, the system checks if stay inference should apply:
    - IN_TRIP (special cases only):
      a) Short local unfinished trip that returns within stay radius
      b) Trip tail looks like arrival/stop cluster, and first post-gap point resumes there
+     c) Sparse-tracker fallback: long gap + small boundary movement + very low implied speed
 
 If ALL conditions are true:
   → Skip gap creation
   → Continue stay across the gap
-  → (IN_TRIP tail-arrival case only) finalize the trip portion before the stop cluster
+  → (IN_TRIP tail-arrival and sparse fallback cases) finalize trip before inferred stay when applicable
 
 If ANY condition is false:
   → Create normal Data Gap
@@ -169,10 +170,11 @@ If ANY condition is false:
 **Usually must be stationary before gap (with IN_TRIP exceptions):**
 Most stay inference applies when you were already in a stay (`POTENTIAL_STAY` or `CONFIRMED_STAY`).
 
-For `IN_TRIP`, the system now supports two conservative exceptions:
+For `IN_TRIP`, the system now supports three conservative exceptions:
 
 - **Short local unfinished trip:** If the active trip is a short/local excursion and the first point after the gap returns within the stay radius, the system treats it as a continuous stay (for example, a brief movement around home before tracking stops).
 - **Trip tail arrival inference:** If the end of the active trip already looks like an arrival (slow + spatially clustered points), and the first point after the gap resumes at the same place, the system finalizes the trip portion and infers a stay across the gap.
+- **Sparse IN_TRIP boundary-movement fallback:** For sparse distance-triggered trackers (for example, OwnTracks-like setups), if a long gap has low boundary movement and very low implied speed, the system treats it as arrival/stationary continuity instead of creating a Data Gap.
 
 If neither exception applies, a normal data gap is created.
 
@@ -186,12 +188,21 @@ Gaps longer than the maximum (default 24 hours) create normal gaps. A week-long 
 - Short local unfinished trip inference requires multiple trip points and strict locality checks (time, radius, and trip spread)
 - Trip tail arrival inference requires a slow clustered tail, minimum points, and a short stop duration before the gap
 - The first point after the gap must also be slow and near the trip tail location
+- Sparse fallback requires conservative duration, distance range, and implied-speed checks to avoid false positives
 
 **Current heuristic details (implementation-specific):**
 - **Short local unfinished trip**: active `IN_TRIP` must have at least 2 points, pending trip duration must be at most **30 minutes**, resume point must be within **stay radius**, and pending trip spread must stay within **2× stay radius**
 - **Trip tail arrival inference**: uses existing trip arrival settings (`Trip Arrival Min Points`, stay radius, velocity threshold), but allows a **relaxed pre-gap stop duration** for the tail cluster: **half** of `Trip Arrival Detection Min Duration`, clamped to **30-60 seconds**
+- **Sparse IN_TRIP fallback**:
+  - `Gap Stay Inference` must be enabled
+  - mode must be `IN_TRIP` with at least **2 active trip points**
+  - gap duration must be at least `max(Data Gap Threshold, 3 hours)`
+  - boundary distance (last pre-gap point to first post-gap point) must be between **150m and 800m**
+  - implied boundary speed must be ≤ **1.0 km/h**
+  - when matched: finalize trip up to the pre-gap point, create inferred stay spanning the gap window, and skip Data Gap creation
 
 These `IN_TRIP` stay-continuation heuristics are designed to be conservative and reduce false positives while covering common real-world gaps (for example, arriving home and losing GPS shortly after).
+The sparse fallback is internal and does **not** add new user-facing configuration fields.
 
 ---
 
@@ -208,6 +219,7 @@ Toggle to enable/disable the inference feature.
 - You frequently stay home overnight without GPS tracking
 - Your GPS app only runs during certain hours
 - You want continuous stays across predictable gaps
+- You use sparse distance-triggered tracking and want fewer false Data Gaps after arrival
 
 **When to keep disabled:**
 - You want explicit record of tracking gaps
@@ -558,7 +570,27 @@ Result:
 Inference doesn't apply because gap exceeds maximum duration.
 ```
 
-### Example 4: Gap During Trip
+### Example 4: Sparse Distance-Triggered Tracking (IN_TRIP)
+
+```
+Timeline:
+  08:07:50 - Last pre-gap point near destination
+  ------ 6h17m without points (device reports sparsely) ------
+  14:25:22 - First post-gap point ~478m away
+
+Checks:
+  - mode: IN_TRIP ✓
+  - gap: 6h17m >= max(Data Gap Threshold, 3h) ✓
+  - boundary distance: 478m (150-800m) ✓
+  - implied speed: ~0.076 km/h (<= 1.0) ✓
+
+Result:
+  - Finalize trip at pre-gap point
+  - Create inferred stay across the gap window
+  - No Data Gap event for this interval
+```
+
+### Example 5: Gap During Trip
 
 ```
 Configuration:
@@ -582,7 +614,7 @@ Result:
 Inference doesn't apply here because the user resumes at a different location, so this is not a stay-continuation case.
 ```
 
-### Example 5: Gap Right After Arriving (Trip Tail Arrival Inference)
+### Example 6: Gap Right After Arriving (Trip Tail Arrival Inference)
 
 ```
 Configuration:

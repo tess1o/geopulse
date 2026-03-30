@@ -49,6 +49,16 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .firstResultOptional();
     }
 
+    public Optional<TimelineStayEntity> findLatestByUserIdAtOrBeforeTimestamp(UUID userId, Instant timestamp) {
+        return find("user.id = ?1 and timestamp <= ?2 order by timestamp desc", userId, timestamp)
+                .firstResultOptional();
+    }
+
+    public Optional<TimelineStayEntity> findEarliestByUserIdAtOrAfterTimestamp(UUID userId, Instant timestamp) {
+        return find("user.id = ?1 and timestamp >= ?2 order by timestamp asc", userId, timestamp)
+                .firstResultOptional();
+    }
+
     /**
      * Find timeline stays for a user within a time range, including boundary expansion.
      * Includes stays that start before the range but extend into it.

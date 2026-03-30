@@ -73,6 +73,7 @@
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
+              @reset-data-gap-override="handleResetDataGapOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -83,6 +84,7 @@
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
+              @reset-data-gap-override="handleResetDataGapOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -117,12 +119,14 @@
               :data-gap-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
+              @convert-to-stay="handleConvertDataGapToStay"
             />
 
             <DataGapCard
               v-else-if="slotProps.item.type === 'dataGap'"
               :data-gap-item="slotProps.item"
               @click="handleTimelineItemClick"
+              @convert-to-stay="handleConvertDataGapToStay"
             />
           </template>
         </Timeline>
@@ -142,6 +146,13 @@
       :trip="selectedTripForQuickEdit"
       @movement-updated="handleMovementTypeUpdated"
       @close="handleCloseQuickEditDialog"
+    />
+
+    <DataGapToStayDialog
+      :visible="dataGapConversionDialogVisible"
+      :data-gap="selectedDataGapForConversion"
+      @converted="handleDataGapConverted"
+      @close="handleCloseDataGapConversionDialog"
     />
   </div>
 </template>
@@ -171,6 +182,9 @@ const TripClassificationDialog = defineAsyncComponent(() =>
 const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
 )
+const DataGapToStayDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/DataGapToStayDialog.vue')
+)
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
@@ -185,6 +199,8 @@ const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
 const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
+const dataGapConversionDialogVisible = ref(false)
+const selectedDataGapForConversion = ref(null)
 
 // Props
 const props = defineProps({
@@ -215,7 +231,14 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['timeline-item-click', 'tag-clicked', 'photo-show-on-map', 'rename-stay'])
+const emit = defineEmits([
+  'timeline-item-click',
+  'tag-clicked',
+  'photo-show-on-map',
+  'rename-stay',
+  'timeline-refresh-requested',
+  'reset-data-gap-override'
+])
 
 // Composables
 const timezone = useTimezone()
@@ -356,6 +379,10 @@ const handleRenameStay = (stayItem) => {
   emit('rename-stay', stayItem)
 }
 
+const handleResetDataGapOverride = (stayItem) => {
+  emit('reset-data-gap-override', stayItem)
+}
+
 const handleExportTripAsGpx = async (tripItem) => {
   try {
     await exportImportStore.exportTripAsGpx(tripItem.id)
@@ -414,6 +441,20 @@ const handleQuickEditMovementType = (tripItem) => {
 const handleCloseQuickEditDialog = () => {
   quickEditDialogVisible.value = false
   selectedTripForQuickEdit.value = null
+}
+
+const handleConvertDataGapToStay = (dataGapItem) => {
+  selectedDataGapForConversion.value = dataGapItem
+  dataGapConversionDialogVisible.value = true
+}
+
+const handleCloseDataGapConversionDialog = () => {
+  dataGapConversionDialogVisible.value = false
+  selectedDataGapForConversion.value = null
+}
+
+const handleDataGapConverted = () => {
+  emit('timeline-refresh-requested')
 }
 
 const handleMovementTypeUpdated = (updated) => {

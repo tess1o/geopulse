@@ -68,6 +68,9 @@ public class StreamingTimelineGenerationService {
     TripMovementTypeOverrideService tripMovementTypeOverrideService;
 
     @Inject
+    DataGapStayOverrideService dataGapStayOverrideService;
+
+    @Inject
     BadgeRecalculationService badgeRecalculationService;
 
     @Inject
@@ -181,6 +184,8 @@ public class StreamingTimelineGenerationService {
 
                 // Re-attach manual movement-type overrides to regenerated trips.
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);
+                // Re-attach manual Data Gap -> Stay conversions to regenerated gaps.
+                dataGapStayOverrideService.reapplyManualOverrides(userId);
             }
 
             // Step 8: Data gap detection (90%)

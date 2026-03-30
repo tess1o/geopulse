@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.streaming.engine;
+package org.github.tess1o.geopulse.streaming.engine.datagap.model;
 
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
@@ -9,7 +9,7 @@ import java.util.List;
  * Internal result object describing how gap stay inference should be applied.
  * Keeps decisioning separate from event finalization/state mutation in the engine.
  */
-final class GapStayInferencePlan {
+public final class GapStayInferencePlan {
 
     private static final GapStayInferencePlan NONE =
             new GapStayInferencePlan(false, Collections.emptyList(), null);
@@ -28,40 +28,40 @@ final class GapStayInferencePlan {
         this.replacementStayPoints = replacementStayPoints;
     }
 
-    static GapStayInferencePlan none() {
+    public static GapStayInferencePlan none() {
         return NONE;
     }
 
-    static GapStayInferencePlan continueExistingStay() {
+    public static GapStayInferencePlan continueExistingStay() {
         return CONTINUE_EXISTING_STAY;
     }
 
-    static GapStayInferencePlan replaceWithConfirmedStay(List<GPSPoint> stayPoints) {
+    public static GapStayInferencePlan replaceWithConfirmedStay(List<GPSPoint> stayPoints) {
         return new GapStayInferencePlan(true, List.of(), List.copyOf(stayPoints));
     }
 
-    static GapStayInferencePlan finalizeTripAndReplaceWithConfirmedStay(List<GPSPoint> tripPoints,
+    public static GapStayInferencePlan finalizeTripAndReplaceWithConfirmedStay(List<GPSPoint> tripPoints,
                                                                         List<GPSPoint> stayPoints) {
         return new GapStayInferencePlan(true, List.copyOf(tripPoints), List.copyOf(stayPoints));
     }
 
-    boolean isInferred() {
+    public boolean isInferred() {
         return inferred;
     }
 
-    boolean hasTripToFinalize() {
+    public boolean hasTripToFinalize() {
         return !tripPointsToFinalize.isEmpty();
     }
 
-    List<GPSPoint> getTripPointsToFinalize() {
+    public List<GPSPoint> getTripPointsToFinalize() {
         return tripPointsToFinalize;
     }
 
-    boolean hasReplacementStayPoints() {
+    public boolean hasReplacementStayPoints() {
         return replacementStayPoints != null && !replacementStayPoints.isEmpty();
     }
 
-    List<GPSPoint> getReplacementStayPoints() {
+    public List<GPSPoint> getReplacementStayPoints() {
         return replacementStayPoints;
     }
 }

@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEventType;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
+import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
 import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
@@ -15,11 +16,13 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         TimelineStayEntity.class,
         TimelineTripEntity.class,
         TimelineTripMovementOverrideEntity.class,
+        TimelineDataGapStayOverrideEntity.class,
         TimelineDataGapEntity.class,
         LocationSource.class,
         ProcessorMode.class,
         TimelineEventType.class,
         TripType.class,
+        DataGapStayOverrideLocationStrategy.class,
         MovementTypeSource.class,
         TimelineDataGapDTO.class,
         MovementTimelineDTO.class,
@@ -27,6 +30,9 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         TimelineTripDTO.class,
         TripMovementTypeUpdateRequest.class,
         TripMovementTypeUpdateResponseDTO.class,
+        DataGapStayOverrideRequest.class,
+        DataGapStayOverrideResponseDTO.class,
+        DataGapStayConversionPreviewDTO.class,
         TimelineDataGapDTO.class,
         TimelineConfig.class,
         TimelineJobProgress.class,

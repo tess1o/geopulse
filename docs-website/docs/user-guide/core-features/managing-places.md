@@ -95,10 +95,41 @@ When your timeline identifies a **stay** at a location, the system follows a cle
 
 Advanced users can view and maintain the cached reverse geocoding results from the **Reverse Geocoding Management page** (`/app/geocoding-management`). This page allows you to search, refresh (reconcile), and manually edit stored geocoding results.
 
-> **Important:** Currently, all changes on this page affect **all users** of the GeoPulse instance.
+### What You See on Reverse Geocoding Management
+
+The table does **not** show every geocoding row in the database. It shows:
+
+-   Geocoding entries currently referenced by your timeline stays
+-   User-specific entries that you created by manual edit or reconciliation
+
+Because of this, an older shared entry can temporarily disappear from the page when your timeline no longer references it, then appear again later if a regenerated timeline references it again.
+
+### Who Is Affected by Edit/Reconcile Actions
+
+Reverse Geocoding Management uses copy-on-write behavior:
+
+-   If you edit or reconcile a shared original entry, GeoPulse creates a **user-specific copy** and switches **your** timeline references to that copy.
+-   If you edit or reconcile your own user-specific entry, GeoPulse updates only your copy.
+-   You cannot edit or reconcile another user's private copy.
+
+This means edits/reconciliation from this page do **not** globally overwrite geocoding data for all users.
+
+### Provider Changes and Cache Behavior
+
+Changing primary/fallback provider settings affects only **new external lookups**.
+
+-   Existing cached geocoding entries remain as they are until you reconcile them.
+-   Cached rows from a disabled provider can still be reused if they match by coordinates/spatial cache logic.
 
 Key features of this page include:
 -   **Search Records:** Find entries by provider, location name, city, or country.
 -   **Reconcile Selected Records:** Refresh one or more entries using a specific provider. This is useful if you change providers and want to update existing data.
--   **Reconcile All:** Refresh **every** stored entry. Use with caution, as this can be a long-running process.
+-   **Reconcile All:** Refresh all records currently in your management scope (optionally narrowed by filters). Use with caution, as this can be a long-running process.
 -   **Manual Editing:** Manually update the display name, city, or country for any record.
+
+### Troubleshooting: Why Nominatim Can Still Appear After Switching to Photon
+
+Even after setting Photon as primary and disabling fallback, you may still see some Nominatim entries. Common reasons:
+
+-   A cached Nominatim entry matched and was reused instead of making a new external lookup.
+-   The entry already existed but was previously hidden because it was not referenced by your timeline; after regeneration it became referenced again and reappeared.
