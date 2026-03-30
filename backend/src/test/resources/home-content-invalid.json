@@ -1,0 +1,15 @@
+{
+  "tips": [
+    {
+      "id": "missing-desc",
+      "title": "No description"
+    },
+    {
+      "id": "valid-tip",
+      "title": "Valid Tip",
+      "description": "Valid description",
+      "icon": "pi pi-lightbulb",
+      "audiences": ["all"]
+    }
+  ]
+}

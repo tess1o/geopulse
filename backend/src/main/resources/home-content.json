@@ -1,0 +1,86 @@
+{
+  "tips": [
+    {
+      "id": "trip-type-override",
+      "title": "Override trip type when needed",
+      "description": "If GeoPulse guessed the wrong movement type, open trip details and override it with the correct one.",
+      "icon": "pi pi-pencil",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "Trip classification docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"
+        }
+      ]
+    },
+    {
+      "id": "classification-explainer",
+      "title": "See why a trip was classified this way",
+      "description": "Use the \"Why this classification?\" action on a trip to inspect speeds and decision signals used by GeoPulse.",
+      "icon": "pi pi-info-circle",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        }
+      ]
+    },
+    {
+      "id": "enable-more-trip-types",
+      "title": "Enable bicycle, running, and train detection",
+      "description": "Tune trip classification thresholds from Timeline Preferences to improve mode detection for your activity profile.",
+      "icon": "pi pi-sliders-h",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Timeline preferences",
+          "url": "/app/timeline/preferences"
+        }
+      ]
+    },
+    {
+      "id": "setup-admin-user",
+      "title": "Become an admin on your instance",
+      "description": "Set GEOPULSE_ADMIN_EMAIL in {code}.env{code} to your account email, restart GeoPulse, then sign out and sign back in.",
+      "icon": "pi pi-shield",
+      "audiences": ["non_admin"],
+      "links": [
+        {
+          "label": "Initial setup guide",
+          "url": "https://tess1o.github.io/geopulse/docs/system-administration/initial-setup"
+        }
+      ]
+    },
+    {
+      "id": "friends-sharing",
+      "title": "Add friends and choose sharing permissions",
+      "description": "Invite friends from the Friends page and choose whether they can see timeline history, live location, or both.",
+      "icon": "pi pi-users",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open friends",
+          "url": "/app/friends"
+        }
+      ]
+    },
+    {
+      "id": "convert-gap-to-stay",
+      "title": "Turn data gaps into meaningful stays",
+      "description": "Configure gap-stay inference so overnight or stationary gaps become stays instead of blank data gaps.",
+      "icon": "pi pi-clock",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Timeline preferences",
+          "url": "/app/timeline/preferences?tab=gaps"
+        }
+      ]
+    }
+  ]
+}

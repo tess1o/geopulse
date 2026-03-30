@@ -17,6 +17,7 @@ if [ -z "$1" ]; then
 fi
 
 NEW_VERSION=$1
+WHATS_NEW_FILE="backend/src/main/resources/whats_new.json"
 
 # Validate version format (x.y.z)
 if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -30,6 +31,22 @@ CURRENT_VERSION=$(grep -m1 "<version>" pom.xml | sed -E 's/.*<version>(.*)<\/ver
 echo -e "${GREEN}🚀 Starting release process${NC}"
 echo -e "${YELLOW}Current version: $CURRENT_VERSION${NC}"
 echo -e "${YELLOW}New version: $NEW_VERSION${NC}"
+echo ""
+
+# Step 1: Validate release notes version entry
+echo -e "${GREEN}🔎 Step 1/5: Validating What's New content...${NC}"
+if [ ! -f "$WHATS_NEW_FILE" ]; then
+  echo -e "${RED}❌ Error: $WHATS_NEW_FILE is missing${NC}"
+  exit 1
+fi
+
+if ! grep -Eq "\"version\"[[:space:]]*:[[:space:]]*\"$NEW_VERSION\"" "$WHATS_NEW_FILE"; then
+  echo -e "${RED}❌ Error: $WHATS_NEW_FILE does not include version $NEW_VERSION${NC}"
+  echo "Add release notes for version $NEW_VERSION to $WHATS_NEW_FILE before releasing."
+  exit 1
+fi
+
+echo -e "${GREEN}✅ Found release notes entry for $NEW_VERSION${NC}"
 echo ""
 
 # Check for uncommitted changes
@@ -52,18 +69,18 @@ if [[ "$CURRENT_BRANCH" != "main" && "$CURRENT_BRANCH" != "master" ]]; then
   fi
 fi
 
-# Step 1: Update version
-echo -e "${GREEN}📝 Step 1/4: Updating version files...${NC}"
+# Step 2: Update version
+echo -e "${GREEN}📝 Step 2/5: Updating version files...${NC}"
 ./update_version.sh "$NEW_VERSION"
 echo ""
 
-# Step 2: Generate OpenAPI specs
-echo -e "${GREEN}📘 Step 2/4: Generating OpenAPI specifications...${NC}"
+# Step 3: Generate OpenAPI specs
+echo -e "${GREEN}📘 Step 3/5: Generating OpenAPI specifications...${NC}"
 make openapi
 echo ""
 
-# Step 3: Commit changes
-echo -e "${GREEN}💾 Step 3/4: Committing changes...${NC}"
+# Step 4: Commit changes
+echo -e "${GREEN}💾 Step 4/5: Committing changes...${NC}"
 git add -A
 git commit -m "Release $NEW_VERSION
 
@@ -73,8 +90,8 @@ git commit -m "Release $NEW_VERSION
 🤖 Generated with automated release script"
 echo ""
 
-# Step 4: Create and push tag
-echo -e "${GREEN}🏷️  Step 4/4: Creating and pushing tag v$NEW_VERSION...${NC}"
+# Step 5: Create and push tag
+echo -e "${GREEN}🏷️  Step 5/5: Creating and pushing tag v$NEW_VERSION...${NC}"
 git tag "v$NEW_VERSION"
 git push origin "$CURRENT_BRANCH"
 git push origin "v$NEW_VERSION"
