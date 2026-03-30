@@ -58,6 +58,9 @@
                 <div class="step-content">
                   <div class="step-title">Connection Type</div>
                   <div class="step-value">Select <strong>MQTT</strong> in OwnTracks connection settings</div>
+                  <small v-if="!mqttServiceEnabled" class="text-muted">
+                    MQTT integration is currently disabled on this server. Ask your admin to enable it.
+                  </small>
                 </div>
               </div>
 
@@ -66,10 +69,16 @@
                 <div class="step-content">
                   <div class="step-title">MQTT Broker Host</div>
                   <div class="copy-field">
-                    <code>{{ mqttHost }}</code>
-                    <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(mqttHost)" />
+                    <code>{{ mqttBrokerHost }}</code>
+                    <Button
+                      icon="pi pi-copy"
+                      size="small"
+                      outlined
+                      :disabled="!canCopyMqttHost"
+                      @click="emitCopy(mqttBrokerHost)"
+                    />
                   </div>
-                  <small class="text-muted">Use your public host or IP address</small>
+                  <small class="text-muted">Configured on GeoPulse server by admin</small>
                 </div>
               </div>
 
@@ -78,8 +87,14 @@
                 <div class="step-content">
                   <div class="step-title">MQTT Port</div>
                   <div class="copy-field">
-                    <code>1883</code>
-                    <Button icon="pi pi-copy" size="small" outlined @click="emitCopy('1883')" />
+                    <code>{{ mqttBrokerPort }}</code>
+                    <Button
+                      icon="pi pi-copy"
+                      size="small"
+                      outlined
+                      :disabled="!canCopyMqttPort"
+                      @click="emitCopy(mqttBrokerPort)"
+                    />
                   </div>
                 </div>
               </div>
@@ -98,8 +113,8 @@
                 <div class="step-content">
                   <div class="step-title">Security Settings</div>
                   <div class="step-value">
-                    TLS: <strong>Disabled</strong><br>
-                    <small class="text-muted">Leave TLS/SSL settings unchecked</small>
+                    TLS: <strong>{{ mqttTlsEnabled ? 'Enabled' : 'Disabled' }}</strong><br>
+                    <small class="text-muted">{{ mqttTlsHint }}</small>
                   </div>
                 </div>
               </div>
@@ -371,6 +386,10 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  ownTracksMqttConfig: {
+    type: Object,
+    default: null
+  },
   hasOwnTracksHttp: {
     type: Boolean,
     default: false
@@ -411,8 +430,24 @@ const browserOrigin = computed(() => (
   typeof window !== 'undefined' ? window.location.origin : ''
 ))
 
-const mqttHost = computed(() => (
-  typeof window !== 'undefined' ? window.location.hostname : ''
+const mqttBrokerHost = computed(() => {
+  const host = props.ownTracksMqttConfig?.brokerHost
+  return typeof host === 'string' && host.trim().length > 0 ? host.trim() : 'Not configured'
+})
+
+const mqttBrokerPort = computed(() => {
+  const port = props.ownTracksMqttConfig?.brokerPort
+  return Number.isInteger(port) && port > 0 ? String(port) : 'Not configured'
+})
+
+const mqttTlsEnabled = computed(() => Boolean(props.ownTracksMqttConfig?.tlsEnabled))
+const mqttServiceEnabled = computed(() => Boolean(props.ownTracksMqttConfig?.mqttEnabled))
+const canCopyMqttHost = computed(() => mqttBrokerHost.value !== 'Not configured')
+const canCopyMqttPort = computed(() => mqttBrokerPort.value !== 'Not configured')
+const mqttTlsHint = computed(() => (
+  mqttTlsEnabled.value
+    ? 'Enable TLS/SSL in OwnTracks connection settings'
+    : 'Leave TLS/SSL settings unchecked'
 ))
 
 const owntracksUrl = computed(() => `${browserOrigin.value}/api/owntracks`)

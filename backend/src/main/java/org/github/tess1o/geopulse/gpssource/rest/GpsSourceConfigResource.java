@@ -7,6 +7,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt.MqttConfiguration;
 import org.github.tess1o.geopulse.gpssource.model.*;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
@@ -27,13 +28,16 @@ public class GpsSourceConfigResource {
     private final GpsSourceService gpsSourceService;
     private final GpsSourceTypeTelemetryConfigService telemetryConfigService;
     private final CurrentUserService currentUserService;
+    private final MqttConfiguration mqttConfiguration;
 
     public GpsSourceConfigResource(GpsSourceService gpsSourceService,
                                    GpsSourceTypeTelemetryConfigService telemetryConfigService,
-                                   CurrentUserService currentUserService) {
+                                   CurrentUserService currentUserService,
+                                   MqttConfiguration mqttConfiguration) {
         this.gpsSourceService = gpsSourceService;
         this.telemetryConfigService = telemetryConfigService;
         this.currentUserService = currentUserService;
+        this.mqttConfiguration = mqttConfiguration;
     }
 
     @Path("/")
@@ -55,6 +59,18 @@ public class GpsSourceConfigResource {
             "duplicateDetectionThresholdMinutes", gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()
         );
         return Response.ok(defaults).build();
+    }
+
+    @Path("/owntracks/mqtt-config")
+    @GET
+    public Response getOwnTracksMqttConfig() {
+        OwnTracksMqttConfigDTO config = OwnTracksMqttConfigDTO.builder()
+                .mqttEnabled(mqttConfiguration.isMqttEnabled())
+                .brokerHost(mqttConfiguration.getBrokerHost())
+                .brokerPort(mqttConfiguration.getBrokerPort())
+                .tlsEnabled(mqttConfiguration.isTlsEnabled())
+                .build();
+        return Response.ok(config).build();
     }
 
     @Path("/telemetry/{sourceType}")

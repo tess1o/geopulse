@@ -44,6 +44,7 @@
           :tab-items="tabItems"
           :active-tab-index="activeTabIndex"
           :active-tab="activeTab"
+          :own-tracks-mqtt-config="ownTracksMqttConfig"
           :has-own-tracks-http="hasOwnTracksHttp"
           :has-own-tracks-mqtt="hasOwnTracksMqtt"
           :has-overland-source="hasOverlandSource"
@@ -93,7 +94,7 @@ import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 // Store setup
 const gpsStore = useGpsSourcesStore()
-const { gpsSourceConfigs, defaultFilteringValues } = storeToRefs(gpsStore)
+const { gpsSourceConfigs, defaultFilteringValues, ownTracksMqttConfig } = storeToRefs(gpsStore)
 
 // Services
 const toast = useToast()
@@ -451,10 +452,11 @@ const copyToClipboard = async (text) => {
 // Lifecycle
 onMounted(async () => {
   try {
-    // Fetch both GPS configs and default values in parallel
+    // Fetch source list, filtering defaults, and MQTT instruction config in parallel
     await Promise.all([
       gpsStore.fetchGpsConfigSources(),
-      gpsStore.fetchDefaultFilteringValues()
+      gpsStore.fetchDefaultFilteringValues(),
+      gpsStore.fetchOwnTracksMqttConfig()
     ])
 
     // Ensure first tab is active after data loads

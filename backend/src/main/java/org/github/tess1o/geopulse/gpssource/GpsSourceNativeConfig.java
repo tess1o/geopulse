@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.gpssource.model.*;
         GpsTelemetryMappingEntry.class,
         GpsSourceTypeTelemetryConfigEntity.class,
         GpsSourceTypeTelemetryConfigDTO.class,
+        OwnTracksMqttConfigDTO.class,
 })
 public class GpsSourceNativeConfig {
 }

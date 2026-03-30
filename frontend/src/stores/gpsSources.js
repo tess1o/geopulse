@@ -6,6 +6,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         gpsSourceConfigs: [],
         // Will be populated from backend API - no hardcoded defaults
         defaultFilteringValues: null,
+        ownTracksMqttConfig: null,
         telemetryMappingsByType: {}
     }),
 
@@ -13,6 +14,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Direct access getters
         getGpsSourceConfigs: (state) => state.gpsSourceConfigs,
         getDefaultFilteringValues: (state) => state.defaultFilteringValues,
+        getOwnTracksMqttConfig: (state) => state.ownTracksMqttConfig,
         getTelemetryMappingsByType: (state) => state.telemetryMappingsByType,
         getTelemetryMappingByType: (state) => (sourceType) => state.telemetryMappingsByType[sourceType] || null,
 
@@ -45,7 +47,12 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Clear all GPS data
         clearGpsData() {
             this.gpsSourceConfigs = []
+            this.ownTracksMqttConfig = null
             this.telemetryMappingsByType = {}
+        },
+
+        setOwnTracksMqttConfig(config) {
+            this.ownTracksMqttConfig = config
         },
 
         // Update a single config in the store (optimistic update)
@@ -86,6 +93,17 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
                 return response
             } catch (error) {
                 console.error('Error fetching default filtering values:', error)
+                throw error
+            }
+        },
+
+        async fetchOwnTracksMqttConfig() {
+            try {
+                const response = await apiService.get('/gps/source/owntracks/mqtt-config')
+                this.setOwnTracksMqttConfig(response)
+                return response
+            } catch (error) {
+                console.error('Error fetching OwnTracks MQTT config:', error)
                 throw error
             }
         },
