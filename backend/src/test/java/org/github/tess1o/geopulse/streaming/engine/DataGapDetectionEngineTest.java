@@ -55,6 +55,7 @@ class DataGapDetectionEngineTest {
         List<DataGapRule> orderedRules = List.of(
                 new GapStayInferenceRule(gapStayInferenceService, finalizationService),
                 new SparseInTripStayGapRule(finalizationService),
+                new StationaryBoundaryStayGapRule(finalizationService),
                 new GapTripInferenceRule(finalizationService, travelClassification),
                 new DefaultDataGapRule(finalizationService)
         );
@@ -330,6 +331,54 @@ class DataGapDetectionEngineTest {
         assertEquals(1, events.size());
         assertTrue(events.get(0) instanceof DataGap);
     }
+
+    @Test
+    void shouldInferStationaryBoundaryStay_WhenInTripLongGapAndBoundariesAreStationaryAndClose() {
+        config.setGapStayInferenceEnabled(true);
+        config.setStaypointRadiusMeters(100);
+        config.setStaypointVelocityThreshold(3.5);
+        config.setTripArrivalMinPoints(2);
+
+        StationaryBoundaryStayGapRule enabledBoundaryRule = new StationaryBoundaryStayGapRule(
+                finalizationService,
+                true,
+                3L,
+                100.0d,
+                1.0d
+        );
+        List<DataGapRule> orderedRules = List.of(
+                new GapStayInferenceRule(gapStayInferenceService, finalizationService),
+                new SparseInTripStayGapRule(finalizationService),
+                enabledBoundaryRule,
+                new GapTripInferenceRule(finalizationService, travelClassification),
+                new DefaultDataGapRule(finalizationService)
+        );
+        when(dataGapRuleRegistry.getOrderedRules()).thenReturn(orderedRules);
+
+        GPSPoint point1 = createGpsPoint(Instant.parse("2026-03-30T10:14:34Z"), 42.1935374, 35.5638919, 41.76);
+        GPSPoint point2 = createGpsPoint(Instant.parse("2026-03-30T10:27:47Z"), 42.1977320, 35.5796580, 5.70);
+        GPSPoint point3 = createGpsPoint(Instant.parse("2026-03-30T10:27:53Z"), 42.1978710, 35.5797640, 1.10);
+        GPSPoint point4 = createGpsPoint(Instant.parse("2026-03-30T10:27:59Z"), 42.1978710, 35.5798030, 0.70);
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP, point1, point2, point3, point4);
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2026-03-30T16:53:52Z"), 42.1978200, 35.5797800, 0.0);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTrip(any(), any()))
+                .thenReturn(createTrip(Instant.parse("2026-03-30T10:14:34Z")));
+
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        assertEquals(2, events.size());
+        assertTrue(events.stream().anyMatch(e -> e instanceof Trip));
+        assertTrue(events.stream().anyMatch(e -> e instanceof Stay));
+        assertFalse(events.stream().anyMatch(e -> e instanceof DataGap));
+
+        Stay inferredStay = (Stay) events.stream().filter(e -> e instanceof Stay).findFirst().orElseThrow();
+        assertEquals(Instant.parse("2026-03-30T10:27:59Z"), inferredStay.getStartTime());
+        assertEquals(Duration.ofSeconds(23153), inferredStay.getDuration());
+        assertEquals(ProcessorMode.UNKNOWN, userState.getCurrentMode());
+    }
+
     // ============== Tests for max gap hours ==============
     @Test
     void shouldCreateGap_WhenGapExceedsMaxHours() {

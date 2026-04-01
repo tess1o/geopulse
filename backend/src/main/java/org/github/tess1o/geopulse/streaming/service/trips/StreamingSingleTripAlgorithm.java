@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -66,8 +67,16 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                 // Data gaps and other events finalize the current trip segment
                 if (!tripsToMerge.isEmpty()) {
                     Trip mergedTrip = mergeTripSegments(userd, tripsToMerge, config);
-                    if (mergedTrip != null && isValidTrip(mergedTrip, config)) {
-                        processedEvents.add(mergedTrip);
+                    if (mergedTrip != null) {
+                        if (isValidTrip(mergedTrip, config)) {
+                            processedEvents.add(mergedTrip);
+                        } else if (event instanceof DataGap) {
+                            // Keep short movement before a data gap to preserve continuity
+                            // and allow downstream stay/gap interpretation to retain context.
+                            log.warn("Including short trip before data gap for continuity: {}m, {}min",
+                                    mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
+                            processedEvents.add(mergedTrip);
+                        }
                     }
                     tripsToMerge.clear();
                 }

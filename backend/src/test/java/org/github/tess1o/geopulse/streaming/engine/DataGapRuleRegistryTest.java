@@ -22,7 +22,8 @@ class DataGapRuleRegistryTest {
                 new StubRule(DataGapRule.ORDER_TRIP_INFERENCE),
                 new StubRule(DataGapRule.ORDER_DEFAULT_GAP),
                 new StubRule(DataGapRule.ORDER_STAY_INFERENCE),
-                new StubRule(DataGapRule.ORDER_SPARSE_STAY)
+                new StubRule(DataGapRule.ORDER_SPARSE_STAY),
+                new StubRule(DataGapRule.ORDER_STATIONARY_BOUNDARY_STAY)
         );
 
         List<DataGapRule> orderedRules = DataGapRuleRegistry.sortAndValidate(unsortedRules);
@@ -31,6 +32,7 @@ class DataGapRuleRegistryTest {
                 List.of(
                         DataGapRule.ORDER_STAY_INFERENCE,
                         DataGapRule.ORDER_SPARSE_STAY,
+                        DataGapRule.ORDER_STATIONARY_BOUNDARY_STAY,
                         DataGapRule.ORDER_TRIP_INFERENCE,
                         DataGapRule.ORDER_DEFAULT_GAP
                 ),
