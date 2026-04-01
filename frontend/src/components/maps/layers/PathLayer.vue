@@ -17,7 +17,6 @@ import {useTimezone} from '@/composables/useTimezone'
 import {
   normalizePathPoints,
   reconstructTripPathPoints,
-  resolveTripMarkerPoint,
   areSameCoordinate
 } from '@/utils/tripPathReconstruction'
 
@@ -468,16 +467,12 @@ watch(() => props.highlightedTrip, (newTrip) => {
       return
     }
 
-    const startPoint = resolveTripMarkerPoint(newTrip, 'start', tripPath[0])
-    const endPoint = resolveTripMarkerPoint(newTrip, 'end', tripPath[tripPath.length - 1])
+    const tripStartPathPoint = tripPath[0]
+    const tripEndPathPoint = tripPath[tripPath.length - 1]
+    const startPoint = tripStartPathPoint
+    const endPoint = tripEndPathPoint
     const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
-
-    // Keep highlighted polyline endpoints aligned with start/end markers.
-    if (tripCoords.length >= 2) {
-      tripCoords[0] = [startPoint.latitude, startPoint.longitude]
-      tripCoords[tripCoords.length - 1] = [endPoint.latitude, endPoint.longitude]
-    }
 
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#ff6b6b',
