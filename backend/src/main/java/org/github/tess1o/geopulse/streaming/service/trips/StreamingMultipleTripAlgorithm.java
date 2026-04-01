@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -88,7 +89,17 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                     List<Trip> validTrips = processedTrips.stream()
                             .filter(trip -> isValidTrip(trip, config))
                             .collect(Collectors.toList());
-                    processedEvents.addAll(validTrips);
+                    if (!validTrips.isEmpty()) {
+                        processedEvents.addAll(validTrips);
+                    } else if (event instanceof DataGap && !processedTrips.isEmpty()) {
+                        // Preserve context before a gap even when trip is below normal thresholds.
+                        Trip bestTrip = processedTrips.stream()
+                                .max((t1, t2) -> Double.compare(t1.getDistanceMeters(), t2.getDistanceMeters()))
+                                .orElse(processedTrips.get(0));
+                        log.warn("Including short trip before data gap for continuity: {}m, {}min",
+                                bestTrip.getDistanceMeters(), bestTrip.getDuration().toMinutes());
+                        processedEvents.add(bestTrip);
+                    }
                     tripSegment.clear();
                 }
                 processedEvents.add(event);

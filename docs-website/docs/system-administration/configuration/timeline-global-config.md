@@ -238,6 +238,10 @@ These settings are global-only and are **not** exposed in Timeline Preferences U
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MIN_BOUNDARY_DISTANCE_METERS`      | `150.0` | Minimum distance between gap boundary points for sparse `IN_TRIP` stay inference                     |
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MAX_BOUNDARY_DISTANCE_METERS`      | `800.0` | Maximum distance between gap boundary points for sparse `IN_TRIP` stay inference                     |
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MAX_IMPLIED_SPEED_KMH`             | `1.0`   | Maximum implied speed across the gap boundary points for sparse `IN_TRIP` stay inference             |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_ENABLED`              | `false` | Enable stationary-boundary `IN_TRIP` gap stay fallback (long gap + very close, slow boundary points) |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MIN_GAP_DURATION_FLOOR_HOURS` | `3` | Minimum floor for stationary-boundary `IN_TRIP` stay inference before data-gap threshold comparison |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MAX_BOUNDARY_DISTANCE_METERS` | `100.0` | Maximum allowed boundary distance for stationary-boundary `IN_TRIP` stay inference (also limited by stay radius) |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MAX_IMPLIED_SPEED_KMH` | `1.0` | Maximum implied speed across gap boundary points for stationary-boundary `IN_TRIP` stay inference |
 
 **How it works:**
 When enabled and GPS resumes within the stay radius of the previous location, extends the stay across the gap instead of
@@ -302,7 +306,7 @@ Base gap inference toggles and limits (`...GAP_STAY_INFERENCE_ENABLED`, `...GAP_
 `...GAP_TRIP_INFERENCE_*`) can be overridden per-user through Timeline Preferences.
 Environment variables set defaults for new users.
 
-Advanced sparse/local heuristics and manual Data Gap -> Stay override matching settings above are environment-only.
+Advanced sparse/local/stationary-boundary heuristics and manual Data Gap -> Stay override matching settings above are environment-only.
 :::
 
 ## Kubernetes / Helm Configuration

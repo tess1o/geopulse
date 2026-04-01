@@ -154,11 +154,12 @@ When a data gap is detected, the system checks if stay inference should apply:
      a) Short local unfinished trip that returns within stay radius
      b) Trip tail looks like arrival/stop cluster, and first post-gap point resumes there
      c) Sparse-tracker fallback: long gap + small boundary movement + very low implied speed
+     d) Stationary-boundary fallback: long gap + very close boundary points + both boundary points look stationary
 
 If ALL conditions are true:
   → Skip gap creation
   → Continue stay across the gap
-  → (IN_TRIP tail-arrival and sparse fallback cases) finalize trip before inferred stay when applicable
+  → (IN_TRIP tail-arrival, sparse, and stationary-boundary fallback cases) finalize trip before inferred stay when applicable
 
 If ANY condition is false:
   → Create normal Data Gap
@@ -170,11 +171,12 @@ If ANY condition is false:
 **Usually must be stationary before gap (with IN_TRIP exceptions):**
 Most stay inference applies when you were already in a stay (`POTENTIAL_STAY` or `CONFIRMED_STAY`).
 
-For `IN_TRIP`, the system now supports three conservative exceptions:
+For `IN_TRIP`, the system now supports four conservative exceptions:
 
 - **Short local unfinished trip:** If the active trip is a short/local excursion and the first point after the gap returns within the stay radius, the system treats it as a continuous stay (for example, a brief movement around home before tracking stops).
 - **Trip tail arrival inference:** If the end of the active trip already looks like an arrival (slow + spatially clustered points), and the first point after the gap resumes at the same place, the system finalizes the trip portion and infers a stay across the gap.
 - **Sparse IN_TRIP boundary-movement fallback:** For sparse distance-triggered trackers (for example, OwnTracks-like setups), if a long gap has low boundary movement and very low implied speed, the system treats it as arrival/stationary continuity instead of creating a Data Gap.
+- **Stationary-boundary IN_TRIP fallback:** For long gaps where the boundary points are very close and both look stationary, the system can finalize the pending trip and infer a stay across the gap even when tail-arrival clustering is insufficient.
 
 If neither exception applies, a normal data gap is created.
 
@@ -189,6 +191,7 @@ Gaps longer than the maximum (default 24 hours) create normal gaps. A week-long 
 - Trip tail arrival inference requires a slow clustered tail, minimum points, and a short stop duration before the gap
 - The first point after the gap must also be slow and near the trip tail location
 - Sparse fallback requires conservative duration, distance range, and implied-speed checks to avoid false positives
+- Stationary-boundary fallback requires conservative duration, boundary-distance, speed, and implied-speed checks and is disabled by default
 
 **Current heuristic details (implementation-specific):**
 - **Short local unfinished trip**: active `IN_TRIP` must have at least 2 points, pending trip duration must be at most **30 minutes**, resume point must be within **stay radius**, and pending trip spread must stay within **2× stay radius**
@@ -200,9 +203,18 @@ Gaps longer than the maximum (default 24 hours) create normal gaps. A week-long 
   - boundary distance (last pre-gap point to first post-gap point) must be between **150m and 800m**
   - implied boundary speed must be ≤ **1.0 km/h**
   - when matched: finalize trip up to the pre-gap point, create inferred stay spanning the gap window, and skip Data Gap creation
+- **Stationary-boundary IN_TRIP fallback** (environment-only, default disabled):
+  - `Gap Stay Inference` must be enabled
+  - mode must be `IN_TRIP` with at least `Trip Arrival Min Points` active points (default **3**)
+  - `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_ENABLED` must be `true`
+  - gap duration must be at least `max(Data Gap Threshold, 3 hours)` (default floor **3h**)
+  - boundary distance must be ≤ `min(stay radius, configured max boundary distance)` (configured default **100m**)
+  - both boundary points (last pre-gap and first post-gap) must be below stay velocity threshold
+  - implied boundary speed must be ≤ **1.0 km/h**
+  - when matched: finalize trip up to the pre-gap point, create inferred stay spanning the gap window, and skip Data Gap creation
 
 These `IN_TRIP` stay-continuation heuristics are designed to be conservative and reduce false positives while covering common real-world gaps (for example, arriving home and losing GPS shortly after).
-The sparse fallback is internal and does **not** add new user-facing configuration fields.
+Sparse and stationary-boundary fallbacks are environment-only advanced settings and are **not** exposed in Timeline Preferences UI.
 
 ---
 

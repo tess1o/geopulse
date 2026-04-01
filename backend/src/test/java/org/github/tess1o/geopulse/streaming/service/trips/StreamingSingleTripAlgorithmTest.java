@@ -154,4 +154,88 @@ class StreamingSingleTripAlgorithmTest {
         assertTrue(result.get(0) instanceof Stay);
         assertTrue(result.get(1) instanceof Stay);
     }
+
+    @Test
+    void shouldPreserveShortTripBeforeDataGapSingleAlgorithm() {
+        TimelineConfig strictConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(100)
+                .staypointMinDurationMinutes(7)
+                .walkingMaxAvgSpeed(5.0)
+                .walkingMaxMaxSpeed(8.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .build();
+
+        Stay stay = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:18:00Z"))
+                .duration(Duration.ofMinutes(5))
+                .locationName("Start")
+                .latitude(35.5639)
+                .longitude(42.1875)
+                .build();
+
+        Trip shortTrip = Trip.builder()
+                .startTime(Instant.parse("2025-01-01T10:24:40Z"))
+                .duration(Duration.ofMinutes(3))
+                .distanceMeters(1900)
+                .build();
+
+        DataGap dataGap = DataGap.fromTimeRange(
+                Instant.parse("2025-01-01T10:27:59Z"),
+                Instant.parse("2025-01-01T16:53:03Z")
+        );
+
+        List<TimelineEvent> events = Arrays.asList(stay, shortTrip, dataGap);
+
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig);
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof DataGap);
+        assertEquals(3, ((Trip) result.get(1)).getDuration().toMinutes());
+    }
+
+    @Test
+    void shouldPreserveShortTripBeforeDataGapMultiAlgorithm() {
+        TimelineConfig strictConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(100)
+                .staypointMinDurationMinutes(7)
+                .walkingMaxAvgSpeed(5.0)
+                .walkingMaxMaxSpeed(8.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .build();
+
+        Stay stay = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:18:00Z"))
+                .duration(Duration.ofMinutes(5))
+                .locationName("Start")
+                .latitude(35.5639)
+                .longitude(42.1875)
+                .build();
+
+        Trip shortTrip = Trip.builder()
+                .startTime(Instant.parse("2025-01-01T10:24:40Z"))
+                .duration(Duration.ofMinutes(3))
+                .distanceMeters(1900)
+                .build();
+
+        DataGap dataGap = DataGap.fromTimeRange(
+                Instant.parse("2025-01-01T10:27:59Z"),
+                Instant.parse("2025-01-01T16:53:03Z")
+        );
+
+        List<TimelineEvent> events = Arrays.asList(stay, shortTrip, dataGap);
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig);
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof DataGap);
+        assertEquals(3, ((Trip) result.get(1)).getDuration().toMinutes());
+    }
 }

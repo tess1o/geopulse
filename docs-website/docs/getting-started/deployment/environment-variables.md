@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **185** distinct env vars.
+Backend runtime currently includes **189** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -162,7 +162,7 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Timeline and Trip Intelligence (76)
+### Timeline and Trip Intelligence (80)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -191,6 +191,10 @@ Notes:
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MAX_IMPLIED_SPEED_KMH` | `1.0` | Advanced sparse `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.sparse_in_trip.max_implied_speed_kmh\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MIN_BOUNDARY_DISTANCE_METERS` | `150.0` | Advanced sparse `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.sparse_in_trip.min_boundary_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_SPARSE_IN_TRIP_MIN_GAP_DURATION_FLOOR_HOURS` | `3` | Advanced sparse `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.sparse_in_trip.min_gap_duration_floor_hours\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_ENABLED` | `false` | Advanced stationary-boundary `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.stationary_boundary_in_trip.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MAX_BOUNDARY_DISTANCE_METERS` | `100.0` | Advanced stationary-boundary `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.stationary_boundary_in_trip.max_boundary_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MAX_IMPLIED_SPEED_KMH` | `1.0` | Advanced stationary-boundary `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.stationary_boundary_in_trip.max_implied_speed_kmh\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_STATIONARY_BOUNDARY_IN_TRIP_MIN_GAP_DURATION_FLOOR_HOURS` | `3` | Advanced stationary-boundary `IN_TRIP` gap stay inference heuristic Property: \`geopulse.timeline.gap_stay_inference.stationary_boundary_in_trip.min_gap_duration_floor_hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_ENABLED` | `false` | Gap Trip Inference Configuration When enabled, infers a trip instead of creating a data gap when distance between points exceeds threshold Useful for detecting flights, long-dis... Property: \`geopulse.timeline.gap_trip_inference.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MAX_GAP_HOURS` | `24` | Gap Trip Inference Configuration When enabled, infers a trip instead of creating a data gap when distance between points exceeds threshold Useful for detecting flights, long-dis... Property: \`geopulse.timeline.gap_trip_inference.max_gap_hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_DISTANCE_METERS` | `100000` | Gap Trip Inference Configuration When enabled, infers a trip instead of creating a data gap when distance between points exceeds threshold Useful for detecting flights, long-dis... Property: \`geopulse.timeline.gap_trip_inference.min_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |

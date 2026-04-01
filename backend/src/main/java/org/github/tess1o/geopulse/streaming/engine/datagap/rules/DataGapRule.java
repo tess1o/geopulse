@@ -8,6 +8,7 @@ import java.util.List;
 public interface DataGapRule {
     int ORDER_STAY_INFERENCE = 100;
     int ORDER_SPARSE_STAY = 200;
+    int ORDER_STATIONARY_BOUNDARY_STAY = 250;
     int ORDER_TRIP_INFERENCE = 300;
     int ORDER_DEFAULT_GAP = 900;
 
