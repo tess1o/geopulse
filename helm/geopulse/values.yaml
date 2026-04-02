@@ -340,8 +340,8 @@ config:
   # CORS configuration
   cors:
     # Keep true for backward compatibility with existing Helm deployments.
-    # For same-origin nginx deployments, this can be disabled.
-    enabled: true
+    # Enable it when backend and frontend are on different origins
+    enabled: false
     # Comma-separated allowed origins when CORS is enabled.
     origins: "http://localhost:5555"
 

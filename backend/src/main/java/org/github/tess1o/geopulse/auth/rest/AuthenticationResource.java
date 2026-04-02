@@ -55,6 +55,7 @@ public class AuthenticationResource {
         try {
             // Check if password login is enabled (with admin bypass)
             if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+                log.warn("Password login blocked by configuration for email={}", request.getEmail());
                 return Response.status(Response.Status.FORBIDDEN)
                         .entity(ApiResponse.error("Password login is currently disabled"))
                         .build();
@@ -73,19 +74,22 @@ public class AuthenticationResource {
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (UserNotFoundException e) {
+            log.warn("Login failed: user not found for email={}", request.getEmail());
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("User is not found"))
                     .build();
         } catch (InvalidPasswordException e) {
+            log.warn("Login failed: invalid password for email={}", request.getEmail());
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Invalid password"))
                     .build();
         } catch (IllegalArgumentException e) {
+            log.warn("Login failed: forbidden for email={}, reason={}", request.getEmail(), e.getMessage());
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.info("Authentication failed for user {}", request.getEmail(), e);
+            log.error("Authentication failed for user {}", request.getEmail(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Authentication failed"))
                     .build();
@@ -104,6 +108,7 @@ public class AuthenticationResource {
         try {
             // Check if password login is enabled (with admin bypass)
             if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+                log.warn("API login blocked by configuration for email={}", request.getEmail());
                 return Response.status(Response.Status.FORBIDDEN)
                         .entity(ApiResponse.error("Password login is currently disabled"))
                         .build();
@@ -115,19 +120,22 @@ public class AuthenticationResource {
             return Response.ok(ApiResponse.success(authResponse))
                     .build();
         } catch (UserNotFoundException e) {
+            log.warn("API login failed: user not found for email={}", request.getEmail());
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("User is not found"))
                     .build();
         } catch (InvalidPasswordException e) {
+            log.warn("API login failed: invalid password for email={}", request.getEmail());
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Invalid password"))
                     .build();
         } catch (IllegalArgumentException e) {
+            log.warn("API login failed: forbidden for email={}, reason={}", request.getEmail(), e.getMessage());
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.info("API authentication failed for user {}", request.getEmail(), e);
+            log.error("API authentication failed for user {}", request.getEmail(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Authentication failed"))
                     .build();
@@ -147,14 +155,17 @@ public class AuthenticationResource {
         try {
             return Response.ok(authenticationService.refreshToken(request.getRefreshToken())).build();
         } catch (ParseException e) {
+            log.warn("Token refresh failed: invalid refresh token");
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error("Invalid refresh token"))
                     .build();
         } catch (UserNotFoundException e) {
+            log.warn("Token refresh failed: user not found");
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("User is not found"))
                     .build();
         } catch (IllegalArgumentException e) {
+            log.warn("Token refresh failed: unauthorized reason={}", e.getMessage());
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();

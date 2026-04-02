@@ -95,7 +95,7 @@ helm install geopulse ./helm/geopulse -f my-values.yaml
 
 | Feature             | values.yaml Path            | Environment Variable            | Default                 |
 |---------------------|-----------------------------|---------------------------------|-------------------------|
-| CORS Enabled        | `config.cors.enabled`       | `GEOPULSE_CORS_ENABLED`         | `true`                  |
+| CORS Enabled        | `config.cors.enabled`       | `GEOPULSE_CORS_ENABLED`         | `false`                 |
 | CORS Origins        | `config.cors.origins`       | `GEOPULSE_CORS_ORIGINS`         | `http://localhost:5555` |
 | Public Base URL     | `config.publicBaseUrl`      | `GEOPULSE_PUBLIC_BASE_URL`      | `""` (empty)            |
 | Frontend URL (legacy) | `config.uiUrl`            | `GEOPULSE_UI_URL`               | `http://localhost:5555` |

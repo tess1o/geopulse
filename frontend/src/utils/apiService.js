@@ -110,11 +110,10 @@ const apiService = {
         this._refreshingToken = true;
         this._refreshTokenPromise = (async () => {
             try {
-                // Cookie-based refresh is handled server-side
-                const response = await axios.post(`${API_BASE_URL}/auth/refresh-cookie`, {}, {
-                    withCredentials: true
-                });
-                return response.status === 200;
+                // Cookie-based refresh is handled server-side.
+                // Include CSRF header when csrf-token cookie exists.
+                await this._performSecureRequest('post', '/auth/refresh-cookie', {});
+                return true;
             } catch (refreshError) {
                 console.error('Cookie refresh failed:', refreshError);
                 const status = refreshError.response?.status;
@@ -529,15 +528,13 @@ const apiService = {
      */
     async login(email, password) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+            const response = await this._performSecureRequest('post', '/auth/login', {
                 email,
                 password,
-            }, {
-                withCredentials: true
             });
 
-            if (response.data && response.data.data) {
-                return response.data;
+            if (response && response.data) {
+                return response;
             }
             throw new Error('Invalid login response');
         } catch (error) {
@@ -551,9 +548,7 @@ const apiService = {
      */
     async logout() {
         try {
-            await axios.post(`${API_BASE_URL}/auth/logout`, {}, {
-                withCredentials: true
-            });
+            await this._performSecureRequest('post', '/auth/logout', {});
         } catch (error) {
             // Even if logout fails on server, clear local data
             console.error('Logout request failed:', error);
