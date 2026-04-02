@@ -56,7 +56,8 @@ public class UserServiceTest {
                 "/avatars/avatar1.png",
                 "/avatars/avatar5.png",
                 "/avatars/avatar10.png",
-                "/avatars/avatar20.png"
+                "/avatars/avatar20.png",
+                "/api/users/" + user.getId() + "/avatar"
         };
         for (String validPath : validPaths) {
             UpdateProfileRequest request = new UpdateProfileRequest();
@@ -86,6 +87,8 @@ public class UserServiceTest {
                 "../avatars/avatar1.png",      // Path traversal
                 "/avatars//avatar1.png",       // Double slash
                 "/avatars/avatar1.png.exe",    // Suspicious extension
+                "/api/users/not-a-uuid/avatar",// Invalid custom avatar URL
+                "/api/users//avatar",          // Invalid path
                 "javascript:alert(1)",         // XSS attempt
                 "/avatars/script.js",          // Script file
                 "avatar1.png",                 // Missing leading slash

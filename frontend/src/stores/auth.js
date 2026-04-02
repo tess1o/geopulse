@@ -174,6 +174,24 @@ export const useAuthStore = defineStore('auth', {
             return this.fetchCurrentUserProfile()
         },
 
+        async uploadAvatar(file) {
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const response = await apiService.post('/users/avatar', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+
+            const avatarPath = response?.data?.avatar || response?.avatar
+            if (!avatarPath) {
+                throw new Error('Avatar upload succeeded but no avatar path was returned')
+            }
+
+            return avatarPath
+        },
+
         async updateTimelineDisplayPreferences(displayPreferences) {
             const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
             const updatedPreferences = response?.data || null

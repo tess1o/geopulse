@@ -208,9 +208,14 @@ const getErrorMessage = (error) => {
 // Profile Save Handler
 const handleProfileSave = async (data) => {
   try {
+    let avatarToSave = data.avatar
+    if (data.avatarFile) {
+      avatarToSave = await authStore.uploadAvatar(data.avatarFile)
+    }
+
     await authStore.updateProfile({
       fullName: data.fullName,
-      avatar: data.avatar,
+      avatar: avatarToSave,
       timezone: data.timezone,
       measureUnit: data.measureUnit,
       defaultRedirectUrl: data.defaultRedirectUrl,

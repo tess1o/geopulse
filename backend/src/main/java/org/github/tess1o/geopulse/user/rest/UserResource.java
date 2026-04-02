@@ -14,7 +14,12 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.service.UserService;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.nio.file.Files;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -84,6 +89,72 @@ public class UserResource {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to update user profile"))
                     .build();
+        }
+    }
+
+    @POST
+    @Path("/avatar")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response uploadAvatar(@RestForm("file") FileUpload file) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+
+            if (file == null || file.uploadedFile() == null || file.size() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("No avatar file uploaded"))
+                        .build();
+            }
+
+            String contentType = file.contentType();
+            if (contentType == null || contentType.isBlank()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Avatar content type is missing"))
+                        .build();
+            }
+
+            byte[] imageBytes = Files.readAllBytes(file.uploadedFile());
+            String avatarPath = userService.upsertCustomAvatar(userId, imageBytes, contentType);
+            return Response.ok(ApiResponse.success(Map.of("avatar", avatarPath))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to upload avatar", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to upload avatar"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{userId}/avatar")
+    @Produces({"image/jpeg", "image/png", "image/webp"})
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getUserAvatar(@PathParam("userId") UUID userId, @HeaderParam("If-None-Match") String ifNoneMatch) {
+        try {
+            Optional<UserAvatarEntity> avatarOpt = userService.findUserAvatar(userId);
+            if (avatarOpt.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            UserAvatarEntity avatar = avatarOpt.get();
+            String etag = "\"" + avatar.getUpdatedAt().toEpochMilli() + "-" + avatar.getSizeBytes() + "\"";
+            if (etag.equals(ifNoneMatch)) {
+                return Response.notModified()
+                        .header("ETag", etag)
+                        .header("Cache-Control", "private, no-cache, max-age=0")
+                        .build();
+            }
+
+            return Response.ok(avatar.getImageData(), avatar.getContentType())
+                    .header("ETag", etag)
+                    .header("Cache-Control", "private, no-cache, max-age=0")
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to load avatar for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
     }
 

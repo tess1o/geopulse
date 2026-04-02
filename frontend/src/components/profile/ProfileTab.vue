@@ -6,13 +6,35 @@
         <div class="avatar-section">
           <div class="avatar-preview">
             <Avatar
-              :image="localAvatar || '/avatars/avatar1.png'"
+              :image="currentAvatarImage"
               size="xlarge"
               class="user-avatar"
             />
             <div class="avatar-info">
               <h3 class="avatar-title">Profile Picture</h3>
-              <p class="avatar-description">Choose your avatar from the options below</p>
+              <p class="avatar-description">Choose a preset avatar or upload your own (optimized for map markers)</p>
+              <div class="avatar-actions">
+                <Button
+                  type="button"
+                  label="Upload Custom Avatar"
+                  icon="pi pi-upload"
+                  size="small"
+                  outlined
+                  @click="triggerAvatarUpload"
+                />
+                <input
+                  ref="avatarFileInput"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  class="hidden-avatar-input"
+                  @change="handleAvatarFileChange"
+                />
+                <small class="help-text">Accepted: PNG, JPEG, WEBP. Automatically resized before upload.</small>
+                <small v-if="selectedAvatarFile" class="help-text">Custom avatar selected: {{ selectedAvatarFile.name }}</small>
+                <small v-if="errors.avatar" class="error-message">
+                  {{ errors.avatar }}
+                </small>
+              </div>
             </div>
           </div>
 
@@ -21,7 +43,7 @@
               v-for="(avatar, index) in avatarOptions"
               :key="index"
               :class="['avatar-option', { active: avatar === localAvatar }]"
-              @click="localAvatar = avatar"
+              @click="selectBuiltInAvatar(avatar)"
             >
               <Avatar :image="avatar" size="large" />
             </div>
@@ -182,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // Props
 const props = defineProps({
@@ -222,6 +244,9 @@ const emit = defineEmits(['save'])
 // State
 const loading = ref(false)
 const localAvatar = ref('')
+const avatarFileInput = ref(null)
+const selectedAvatarFile = ref(null)
+const avatarPreviewUrl = ref('')
 const form = ref({
   fullName: '',
   timezone: '',
@@ -231,6 +256,9 @@ const form = ref({
   customRedirectUrl: ''
 })
 const errors = ref({})
+const AVATAR_TARGET_SIZE = 96
+const AVATAR_MAX_BYTES = 1024 * 1024
+const SUPPORTED_AVATAR_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
 // Avatar options
 const avatarOptions = [
@@ -353,13 +381,133 @@ const hasChanges = computed(() => {
     ? form.value.customRedirectUrl
     : form.value.defaultRedirectUrl
 
-  return form.value.fullName !== props.userName ||
+  return selectedAvatarFile.value !== null ||
+         form.value.fullName !== props.userName ||
          localAvatar.value !== props.userAvatar ||
          form.value.timezone !== props.userTimezone ||
          form.value.dateFormat !== props.userDateFormat ||
          form.value.measureUnit !== props.userMeasureUnit ||
          effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
+const currentAvatarImage = computed(() => avatarPreviewUrl.value || localAvatar.value || '/avatars/avatar1.png')
+
+const revokeAvatarPreview = () => {
+  if (avatarPreviewUrl.value) {
+    URL.revokeObjectURL(avatarPreviewUrl.value)
+    avatarPreviewUrl.value = ''
+  }
+}
+
+const clearCustomAvatarSelection = () => {
+  selectedAvatarFile.value = null
+  revokeAvatarPreview()
+  if (avatarFileInput.value) {
+    avatarFileInput.value.value = ''
+  }
+}
+
+const selectBuiltInAvatar = (avatar) => {
+  clearCustomAvatarSelection()
+  delete errors.value.avatar
+  localAvatar.value = avatar
+}
+
+const triggerAvatarUpload = () => {
+  avatarFileInput.value?.click()
+}
+
+const loadImageFromFile = (file) => {
+  return new Promise((resolve, reject) => {
+    const imageUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      URL.revokeObjectURL(imageUrl)
+      resolve(image)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl)
+      reject(new Error('Failed to load image'))
+    }
+
+    image.src = imageUrl
+  })
+}
+
+const canvasToBlob = (canvas, mimeType, quality) => {
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), mimeType, quality)
+  })
+}
+
+const compressAvatar = async (canvas) => {
+  const qualityLevels = [0.85, 0.75, 0.65, 0.55]
+  for (const mimeType of ['image/webp', 'image/jpeg']) {
+    for (const quality of qualityLevels) {
+      const blob = await canvasToBlob(canvas, mimeType, quality)
+      if (blob && blob.size <= AVATAR_MAX_BYTES) {
+        return blob
+      }
+    }
+  }
+  throw new Error('Image is too large after compression. Try a different image.')
+}
+
+const preprocessAvatarFile = async (file) => {
+  const normalizedType = file.type?.toLowerCase() || ''
+  if (!SUPPORTED_AVATAR_TYPES.has(normalizedType)) {
+    throw new Error('Unsupported image format. Use PNG, JPEG, or WEBP.')
+  }
+
+  const image = await loadImageFromFile(file)
+  const canvas = document.createElement('canvas')
+  canvas.width = AVATAR_TARGET_SIZE
+  canvas.height = AVATAR_TARGET_SIZE
+
+  const sourceSize = Math.min(image.width, image.height)
+  const sourceX = (image.width - sourceSize) / 2
+  const sourceY = (image.height - sourceSize) / 2
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('Image processing is not supported in this browser')
+  }
+  context.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    sourceSize,
+    sourceSize,
+    0,
+    0,
+    AVATAR_TARGET_SIZE,
+    AVATAR_TARGET_SIZE
+  )
+
+  const compressedBlob = await compressAvatar(canvas)
+  const extension = compressedBlob.type === 'image/webp' ? 'webp' : 'jpg'
+  return new File([compressedBlob], `avatar-${Date.now()}.${extension}`, { type: compressedBlob.type })
+}
+
+const handleAvatarFileChange = async (event) => {
+  const file = event.target?.files?.[0]
+  if (!file) {
+    return
+  }
+
+  try {
+    const optimizedFile = await preprocessAvatarFile(file)
+    delete errors.value.avatar
+    selectedAvatarFile.value = optimizedFile
+    localAvatar.value = ''
+    revokeAvatarPreview()
+    avatarPreviewUrl.value = URL.createObjectURL(optimizedFile)
+  } catch (error) {
+    clearCustomAvatarSelection()
+    errors.value.avatar = error.message || 'Unable to process selected image'
+  }
+}
 
 // Methods
 const validate = () => {
@@ -388,6 +536,10 @@ const validate = () => {
     }
   }
 
+  if (selectedAvatarFile.value && selectedAvatarFile.value.size > AVATAR_MAX_BYTES) {
+    errors.value.avatar = 'Avatar is too large after compression'
+  }
+
   return Object.keys(errors.value).length === 0
 }
 
@@ -405,6 +557,7 @@ const handleSubmit = async () => {
     await emit('save', {
       fullName: form.value.fullName.trim(),
       avatar: localAvatar.value,
+      avatarFile: selectedAvatarFile.value,
       timezone: form.value.timezone,
       dateFormat: form.value.dateFormat,
       measureUnit: form.value.measureUnit,
@@ -438,6 +591,7 @@ const handleReset = () => {
     form.value.customRedirectUrl = ''
   }
 
+  clearCustomAvatarSelection()
   localAvatar.value = props.userAvatar || '/avatars/avatar1.png'
   errors.value = {}
 }
@@ -457,6 +611,10 @@ onMounted(() => {
 // Watch props changes
 watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
+})
+
+onUnmounted(() => {
+  revokeAvatarPreview()
 })
 </script>
 
@@ -513,6 +671,17 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDat
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
+}
+
+.avatar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.hidden-avatar-input {
+  display: none;
 }
 
 .avatar-grid {

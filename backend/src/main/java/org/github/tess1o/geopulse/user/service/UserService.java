@@ -16,11 +16,13 @@ import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
+import org.github.tess1o.geopulse.user.repository.UserAvatarRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -32,6 +34,7 @@ import java.util.regex.Pattern;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserAvatarRepository userAvatarRepository;
     private final SecurePasswordUtils securePasswordUtils;
     private final TimelinePreferencesUpdater preferencesUpdater;
     private final Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent;
@@ -47,8 +50,17 @@ public class UserService {
     @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
     boolean coverageEnabledByDefault;
 
-    // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
-    private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
+    @ConfigProperty(name = "geopulse.avatar.max-size-bytes", defaultValue = "204800")
+    int maxAvatarSizeBytes;
+
+    private static final Pattern VALID_DEFAULT_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
+    private static final Pattern VALID_CUSTOM_AVATAR_PATTERN = Pattern.compile("^/api/users/[0-9a-fA-F\\-]{36}/avatar$");
+
+    private static final Set<String> ALLOWED_AVATAR_CONTENT_TYPES = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
 
     // Mapping for timezone names that differ between JavaScript and Java
     private static final Map<String, String> TIMEZONE_MAPPING = Map.of(
@@ -57,6 +69,7 @@ public class UserService {
 
     @Inject
     public UserService(UserRepository userRepository,
+                       UserAvatarRepository userAvatarRepository,
                        SecurePasswordUtils securePasswordUtils,
                        TimelinePreferencesUpdater preferencesUpdater,
                        Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent,
@@ -66,6 +79,7 @@ public class UserService {
                        AsyncTimelineGenerationService asyncTimelineGenerationService,
                        DefaultNotificationTemplateService defaultNotificationTemplateService) {
         this.userRepository = userRepository;
+        this.userAvatarRepository = userAvatarRepository;
         this.securePasswordUtils = securePasswordUtils;
         this.preferencesUpdater = preferencesUpdater;
         this.preferencesUpdatedEvent = preferencesUpdatedEvent;
@@ -366,17 +380,146 @@ public class UserService {
             return; // Allow null/empty to remove avatar
         }
 
-        // Check against whitelist pattern
-        if (!VALID_AVATAR_PATTERN.matcher(avatarPath).matches()) {
-            log.warn("Invalid avatar path attempted: {}", avatarPath);
-            throw new IllegalArgumentException("Invalid avatar path. Must be in format /avatars/avatar{1-20}.png");
-        }
+        String normalizedPath = avatarPath.trim();
 
         // Additional security checks
-        if (avatarPath.contains("..") || avatarPath.contains("//")) {
-            log.warn("Path traversal attempt in avatar path: {}", avatarPath);
+        if (normalizedPath.contains("..") || normalizedPath.contains("//")) {
+            log.warn("Path traversal attempt in avatar path: {}", normalizedPath);
             throw new IllegalArgumentException("Invalid avatar path. Path traversal not allowed.");
         }
+
+        boolean isDefaultAvatar = VALID_DEFAULT_AVATAR_PATTERN.matcher(normalizedPath).matches();
+        boolean isCustomAvatar = VALID_CUSTOM_AVATAR_PATTERN.matcher(normalizedPath).matches();
+        if (!isDefaultAvatar && !isCustomAvatar) {
+            log.warn("Invalid avatar path attempted: {}", normalizedPath);
+            throw new IllegalArgumentException("Invalid avatar path. Allowed values: /avatars/avatar{1-20}.png or /api/users/{uuid}/avatar");
+        }
+    }
+
+    private String normalizeAvatarContentType(String contentType) {
+        if (contentType == null || contentType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Avatar content type is required");
+        }
+
+        String normalized = contentType.trim().toLowerCase(Locale.ENGLISH);
+        int separatorIndex = normalized.indexOf(';');
+        if (separatorIndex > 0) {
+            normalized = normalized.substring(0, separatorIndex).trim();
+        }
+
+        if ("image/jpg".equals(normalized)) {
+            normalized = "image/jpeg";
+        }
+
+        if (!ALLOWED_AVATAR_CONTENT_TYPES.contains(normalized)) {
+            throw new IllegalArgumentException("Unsupported avatar format. Allowed formats: JPEG, PNG, WEBP");
+        }
+
+        return normalized;
+    }
+
+    private boolean hasJpegSignature(byte[] imageBytes) {
+        return imageBytes.length >= 3 &&
+                (imageBytes[0] & 0xFF) == 0xFF &&
+                (imageBytes[1] & 0xFF) == 0xD8 &&
+                (imageBytes[2] & 0xFF) == 0xFF;
+    }
+
+    private boolean hasPngSignature(byte[] imageBytes) {
+        return imageBytes.length >= 8 &&
+                (imageBytes[0] & 0xFF) == 0x89 &&
+                imageBytes[1] == 0x50 &&
+                imageBytes[2] == 0x4E &&
+                imageBytes[3] == 0x47 &&
+                imageBytes[4] == 0x0D &&
+                imageBytes[5] == 0x0A &&
+                imageBytes[6] == 0x1A &&
+                imageBytes[7] == 0x0A;
+    }
+
+    private boolean hasWebpSignature(byte[] imageBytes) {
+        return imageBytes.length >= 12 &&
+                imageBytes[0] == 0x52 &&
+                imageBytes[1] == 0x49 &&
+                imageBytes[2] == 0x46 &&
+                imageBytes[3] == 0x46 &&
+                imageBytes[8] == 0x57 &&
+                imageBytes[9] == 0x45 &&
+                imageBytes[10] == 0x42 &&
+                imageBytes[11] == 0x50;
+    }
+
+    private boolean matchesImageSignature(byte[] imageBytes, String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> hasJpegSignature(imageBytes);
+            case "image/png" -> hasPngSignature(imageBytes);
+            case "image/webp" -> hasWebpSignature(imageBytes);
+            default -> false;
+        };
+    }
+
+    public String buildCustomAvatarPath(UUID userId) {
+        return "/api/users/" + userId + "/avatar";
+    }
+
+    public boolean isCustomAvatarPath(String avatarPath) {
+        if (avatarPath == null || avatarPath.trim().isEmpty()) {
+            return false;
+        }
+        return VALID_CUSTOM_AVATAR_PATTERN.matcher(avatarPath.trim()).matches();
+    }
+
+    private void removeStoredCustomAvatar(UUID userId) {
+        UserAvatarEntity existingAvatar = userAvatarRepository.findById(userId);
+        if (existingAvatar != null) {
+            userAvatarRepository.delete(existingAvatar);
+        }
+    }
+
+    @Transactional
+    public String upsertCustomAvatar(UUID userId, byte[] imageBytes, String contentType) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new UserNotFoundException("User not found");
+        }
+
+        if (imageBytes == null || imageBytes.length == 0) {
+            throw new IllegalArgumentException("Avatar image is required");
+        }
+
+        if (imageBytes.length > maxAvatarSizeBytes) {
+            throw new IllegalArgumentException("Avatar image is too large. Maximum size is " + maxAvatarSizeBytes + " bytes");
+        }
+
+        String normalizedContentType = normalizeAvatarContentType(contentType);
+        if (!matchesImageSignature(imageBytes, normalizedContentType)) {
+            throw new IllegalArgumentException("Avatar file content does not match declared image type");
+        }
+
+        UserAvatarEntity avatar = userAvatarRepository.findById(userId);
+        boolean isNewAvatar = avatar == null;
+        if (avatar == null) {
+            avatar = UserAvatarEntity.builder()
+                    .userId(userId)
+                    .build();
+        }
+
+        avatar.setContentType(normalizedContentType);
+        avatar.setSizeBytes(imageBytes.length);
+        avatar.setImageData(imageBytes);
+        if (isNewAvatar) {
+            userAvatarRepository.persist(avatar);
+        }
+
+        String avatarPath = buildCustomAvatarPath(userId);
+        user.setAvatar(avatarPath);
+
+        log.info("Stored custom avatar for user {} ({} bytes, type: {})", userId, imageBytes.length, normalizedContentType);
+        return avatarPath;
+    }
+
+    public Optional<UserAvatarEntity> findUserAvatar(UUID userId) {
+        return Optional.ofNullable(userAvatarRepository.findById(userId));
     }
 
     @Transactional
@@ -391,9 +534,13 @@ public class UserService {
 
         // Validate and update avatar path
         if (request.getAvatar() != null) {
-            validateAvatarPath(request.getAvatar());
-            user.setAvatar(request.getAvatar());
-            log.debug("Updated avatar for user {} to {}", user.getId(), request.getAvatar());
+            String normalizedAvatar = request.getAvatar().trim();
+            validateAvatarPath(normalizedAvatar);
+            if (!isCustomAvatarPath(normalizedAvatar)) {
+                removeStoredCustomAvatar(userId);
+            }
+            user.setAvatar(normalizedAvatar.isEmpty() ? null : normalizedAvatar);
+            log.debug("Updated avatar for user {} to {}", user.getId(), normalizedAvatar);
         }
 
         // Validate and update timezone

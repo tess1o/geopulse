@@ -21,19 +21,20 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **189** distinct env vars.
+Backend runtime currently includes **190** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
 - Runtime env changes require backend restart to take effect.
 
-### Core and Database (8)
+### Core and Database (9)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_CORS_ENABLED` | `true` | Enables/disables backend CORS handling. Property: `quarkus.http.cors.enabled`. New `.env.example` sets this to `false` for same-origin nginx deployments. | `true` or `false`. | Backend restart |
 | `GEOPULSE_CORS_ORIGINS` | `(falls back to GEOPULSE_UI_URL)` | Comma-separated CORS origins when CORS is enabled. Property: `quarkus.http.cors.origins`. | One URL or comma-separated URLs. | Backend restart |
 | `GEOPULSE_DATABASE_TRANSACTION_TIMEOUT_MINUTES` | `60` | Transaction configuration for large imports Property: \`quarkus.transaction-manager.default-transaction-timeout\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_AVATAR_MAX_SIZE_BYTES` | `1048576` | Maximum allowed size for uploaded custom avatars (in bytes). Property: `geopulse.avatar.max-size-bytes`. | Positive integer value (bytes). | Backend restart |
 | `GEOPULSE_POSTGRES_PASSWORD` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_POSTGRES_URL` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.jdbc.url\`. | Valid PostgreSQL JDBC URL (\`jdbc:postgresql://...\`). | Backend restart |
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
