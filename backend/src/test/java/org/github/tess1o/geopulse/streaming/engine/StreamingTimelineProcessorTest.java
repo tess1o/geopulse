@@ -80,6 +80,7 @@ class StreamingTimelineProcessorTest {
         lenient().when(finalizationService.finalizeTrip(any(), any()))
             .thenAnswer(invocation -> {
                 UserState userState = invocation.getArgument(0);
+                if (userState == null) return null;
                 if (userState.getFirstActivePoint() == null) return null;
                 // Return a mock trip - details don't matter for most tests
                 return null; // Can be expanded if needed
@@ -193,6 +194,58 @@ class StreamingTimelineProcessorTest {
                          "This causes trip duration to be inflated by 30 minutes!",
                          actualStayStart, expectedStayStart));
     }
+
+    @Test
+    void shouldEndTripAtFirstStoppedPoint_WhenStopClusterDetectedLater() {
+        TimelineConfig config3Points = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(7)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(config3Points)))
+            .thenAnswer(invocation -> {
+                UserState userState = invocation.getArgument(0);
+                GPSPoint first = userState.getFirstActivePoint();
+                GPSPoint last = userState.getLastActivePoint();
+                if (first == null || last == null) return null;
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2024-08-15T10:00:00Z"), 40.7589, -73.9851, 15.0, 20.0), // moving
+            createGpsPoint(Instant.parse("2024-08-15T10:03:00Z"), 40.7689, -73.9751, 14.0, 20.0), // moving
+            createGpsPoint(Instant.parse("2024-08-15T10:06:00Z"), 40.7789, -73.9651, 10.0, 20.0), // moving
+            createGpsPoint(Instant.parse("2024-08-15T10:09:00Z"), 40.7889, -73.9551, 0.0, 20.0),  // first stopped (arrival)
+            createGpsPoint(Instant.parse("2024-08-15T10:12:00Z"), 40.7889, -73.9551, 0.0, 20.0),  // stopped
+            createGpsPoint(Instant.parse("2024-08-15T10:15:00Z"), 40.7889, -73.9551, 0.0, 20.0)   // stopped -> detection
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, config3Points, testUserId);
+        TimelineEvent tripEvent = events.stream()
+            .filter(e -> e instanceof Trip)
+            .findFirst()
+            .orElse(null);
+
+        assertNotNull(tripEvent, "A trip should be finalized when arrival is detected");
+        Trip trip = (Trip) tripEvent;
+
+        Instant expectedTripEnd = Instant.parse("2024-08-15T10:09:00Z");
+        Instant actualTripEnd = trip.getStartTime().plus(trip.getDuration());
+        assertEquals(expectedTripEnd, actualTripEnd,
+            "Trip should end at first stopped point (arrival boundary), not at the last moving point");
+    }
+
     /**
      * CRITICAL TEST #2: Demonstrates the hardcoded "3 points" issue using reflection.
      * This test directly calls isSustainedStopInTrip to verify the logic.

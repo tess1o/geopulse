@@ -351,8 +351,10 @@ public class StreamingTimelineProcessor {
             // Split points: trip points (before stop) and stopped points (potential stay)
             List<GPSPoint> allPoints = userState.copyActivePoints();
 
-            // Trip ends at the point BEFORE stopping began
-            List<GPSPoint> tripPoints = allPoints.subList(0, stopResult.stoppedClusterStartIndex);
+            // Trip ends at the FIRST stopped point (arrival boundary).
+            // This avoids cutting the trip short when arrival is detected only after
+            // additional stopped points accumulate for confidence.
+            List<GPSPoint> tripPoints = allPoints.subList(0, stopResult.stoppedClusterStartIndex + 1);
 
             // Stay starts at the FIRST stopped point (retroactive timestamp)
             List<GPSPoint> stoppedPoints = allPoints.subList(stopResult.stoppedClusterStartIndex, allPoints.size());
