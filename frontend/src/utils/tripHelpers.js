@@ -140,14 +140,25 @@ export const findMatchingTripForVisit = (visit, trips = []) => {
 export const findMatchingTripForShareLink = (shareLink, trips = []) => {
   if (!shareLink) return null
 
+  const startValue = shareLink.startDate ?? shareLink.start_date
+  const endValue = shareLink.endDate ?? shareLink.end_date
+  const shareStartMs = toEpochMs(startValue)
+  const shareEndMs = toEpochMs(endValue) ?? shareStartMs
+
   const directTripId = Number(shareLink.tripId ?? shareLink.trip_id)
   if (Number.isFinite(directTripId)) {
     const directMatch = (Array.isArray(trips) ? trips : []).find((trip) => Number(trip?.id) === directTripId)
-    if (directMatch) return directMatch
+    if (directMatch) {
+      const range = getTripRange(directMatch)
+      if (range && shareStartMs !== null && shareEndMs !== null) {
+        const overlapsShareRange = shareStartMs <= range.endMs && shareEndMs >= range.startMs
+        if (overlapsShareRange) {
+          return directMatch
+        }
+      }
+    }
   }
 
-  const startValue = shareLink.startDate ?? shareLink.start_date
-  const endValue = shareLink.endDate ?? shareLink.end_date
   if (!startValue) return null
   return findMatchingTripForInterval(startValue, endValue || startValue, trips)
 }

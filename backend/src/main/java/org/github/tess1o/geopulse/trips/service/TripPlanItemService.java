@@ -14,7 +14,6 @@ import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemOverrideState;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemPriority;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
-import org.github.tess1o.geopulse.trips.repository.TripRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,17 +24,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TripPlanItemService {
 
-    private final TripRepository tripRepository;
+    private final TripAccessService tripAccessService;
     private final TripPlanItemRepository tripPlanItemRepository;
 
-    public TripPlanItemService(TripRepository tripRepository,
+    public TripPlanItemService(TripAccessService tripAccessService,
                                TripPlanItemRepository tripPlanItemRepository) {
-        this.tripRepository = tripRepository;
+        this.tripAccessService = tripAccessService;
         this.tripPlanItemRepository = tripPlanItemRepository;
     }
 
     public List<TripPlanItemDto> getTripPlanItems(UUID userId, Long tripId) {
-        ensureTripOwnership(userId, tripId);
+        tripAccessService.requireReadAccess(userId, tripId);
         return tripPlanItemRepository.findByTripId(tripId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -43,7 +42,7 @@ public class TripPlanItemService {
 
     @Transactional
     public TripPlanItemDto createTripPlanItem(UUID userId, Long tripId, CreateTripPlanItemDto dto) {
-        TripEntity trip = ensureTripOwnership(userId, tripId);
+        TripEntity trip = tripAccessService.requirePlanEditAccess(userId, tripId).trip();
 
         int orderIndex = dto.getOrderIndex() != null
                 ? dto.getOrderIndex()
@@ -67,9 +66,9 @@ public class TripPlanItemService {
 
     @Transactional
     public TripPlanItemDto updateTripPlanItem(UUID userId, Long tripId, Long itemId, UpdateTripPlanItemDto dto) {
-        ensureTripOwnership(userId, tripId);
+        tripAccessService.requirePlanEditAccess(userId, tripId);
 
-        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripIdAndUserId(itemId, tripId, userId)
+        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
                 .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
 
         entity.setTitle(dto.getTitle().trim());
@@ -98,9 +97,9 @@ public class TripPlanItemService {
 
     @Transactional
     public void deleteTripPlanItem(UUID userId, Long tripId, Long itemId) {
-        ensureTripOwnership(userId, tripId);
+        tripAccessService.requirePlanEditAccess(userId, tripId);
 
-        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripIdAndUserId(itemId, tripId, userId)
+        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
                 .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
 
         tripPlanItemRepository.delete(entity);
@@ -109,9 +108,9 @@ public class TripPlanItemService {
 
     @Transactional
     public TripPlanItemDto applyVisitOverride(UUID userId, Long tripId, Long itemId, TripVisitOverrideRequestDto request) {
-        ensureTripOwnership(userId, tripId);
+        tripAccessService.requirePlanEditAccess(userId, tripId);
 
-        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripIdAndUserId(itemId, tripId, userId)
+        TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
                 .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
 
         String action = request != null && request.getAction() != null ? request.getAction().trim().toUpperCase() : "";
@@ -143,11 +142,6 @@ public class TripPlanItemService {
         tripPlanItemRepository.persist(entity);
         log.info("Applied visit override '{}' to plan item {} in trip {} for user {}", action, itemId, tripId, userId);
         return toDto(entity);
-    }
-
-    private TripEntity ensureTripOwnership(UUID userId, Long tripId) {
-        return tripRepository.findByIdAndUserId(tripId, userId)
-                .orElseThrow(() -> new NotFoundException("Trip not found"));
     }
 
     private TripPlanItemDto toDto(TripPlanItemEntity entity) {

@@ -13,23 +13,39 @@
       </template>
       <template #actions>
         <div class="workspace-header-actions">
-          <DatePicker
-            v-model="selectedDateRange"
-            selectionMode="range"
-            :manualInput="false"
-            :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-            :minDate="tripMinDate"
-            :maxDate="tripMaxDate"
-            @update:model-value="handleDateRangeChange"
-            class="workspace-date-picker"
+          <Button
+            v-if="isUnplannedTrip && isOwner"
+            icon="pi pi-calendar-plus"
+            label="Set Trip Dates"
+            class="gp-btn-primary"
+            @click="openTripScheduling"
           />
           <Button
-            icon="pi pi-history"
-            text
-            rounded
-            @click="resetToTripRange"
-            v-tooltip.bottom="'Reset to full trip range'"
+            v-if="isOwner"
+            icon="pi pi-users"
+            outlined
+            label="Collaborators"
+            @click="openCollaboratorsDialog"
           />
+          <template v-else>
+            <DatePicker
+              v-model="selectedDateRange"
+              selectionMode="range"
+              :manualInput="false"
+              :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+              :minDate="tripMinDate"
+              :maxDate="tripMaxDate"
+              @update:model-value="handleDateRangeChange"
+              class="workspace-date-picker"
+            />
+            <Button
+              icon="pi pi-history"
+              text
+              rounded
+              @click="resetToTripRange"
+              v-tooltip.bottom="'Reset to full trip range'"
+            />
+          </template>
         </div>
       </template>
 
@@ -52,6 +68,13 @@
             @click="selectWorkspaceTab(tab.key)"
           />
         </div>
+
+        <Message v-if="isUnplannedTrip" severity="info" :closable="false" class="unplanned-trip-banner">
+          This trip is unplanned. Add planned stops now, then set trip dates to enable timeline, path, and analytics.
+        </Message>
+        <Message v-if="showAccessModeBanner" severity="warn" :closable="false" class="trip-access-banner">
+          {{ accessModeBannerText }}
+        </Message>
 
         <div v-if="showOverviewSection" class="summary-strip">
           <div class="summary-chip">
@@ -86,10 +109,10 @@
                 :plannedItemsData="tripPlanMapItems"
                 :showFavoritesByDefault="false"
                 :showImmichByDefault="true"
-                :showPlanToVisitAction="true"
+                :showPlanToVisitAction="canEditPlanItems"
                 :showFavoritesContextActions="false"
                 :showHeatmapControl="false"
-                :enableFavoriteContextMenu="true"
+                :enableFavoriteContextMenu="canEditPlanItems"
                 :showCurrentLocation="false"
                 @plan-to-visit="handlePlanToVisit"
                 @plan-item-edit="handlePlanItemEditFromMap"
@@ -136,6 +159,7 @@
                     </button>
                     <div class="planning-list-actions">
                       <Button
+                        v-if="canEditPlanItems"
                         icon="pi pi-pencil"
                         text
                         rounded
@@ -144,6 +168,7 @@
                         @click.stop="openEditPlanItemDialog(item)"
                       />
                       <Button
+                        v-if="canEditPlanItems"
                         icon="pi pi-trash"
                         text
                         rounded
@@ -170,7 +195,7 @@
         </BaseCard>
 
         <ImmichLatestPhotosSection
-          v-show="showTripPhotosSection"
+          v-if="showTripPhotosSection"
           title="Trip Photos"
           :search-params="tripImmichSearchParams"
           :use-store-photos="true"
@@ -190,9 +215,10 @@
             <div class="plan-content-table">
               <TripPlanItemsTable
                 :items="sortedTripPlanItems"
-                :isPlanningMode="isPlanningMode"
+                :isPlanningMode="isPlanningWorkspace"
                 :isActiveTrip="isActiveTrip"
                 :visitSuggestions="visitSuggestions"
+                :canEdit="canEditPlanItems"
                 @focus-item="focusPlannedItemOnMap"
                 @override="handlePlanItemOverrideFromTable"
                 @edit-item="openEditPlanItemDialog"
@@ -286,6 +312,83 @@
       </template>
     </Dialog>
 
+    <Dialog
+      v-model:visible="showCollaboratorsDialog"
+      modal
+      header="Trip Collaborators"
+      class="gp-dialog-md"
+      @show="loadCollaboratorsData"
+    >
+      <div class="collaborators-content">
+        <Message severity="info" :closable="false">
+          Only invited friends can access this trip. Choose Viewer or Editor per friend.
+        </Message>
+
+        <div class="collaborator-add-row">
+          <Select
+            v-model="newCollaboratorFriendId"
+            :options="availableFriendOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select friend"
+            class="w-full"
+            filter
+          />
+          <Select
+            v-model="newCollaboratorRole"
+            :options="collaboratorRoleOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="collaborator-role-select"
+          />
+          <Button
+            icon="pi pi-plus"
+            label="Add"
+            :loading="isSavingCollaborator"
+            :disabled="!newCollaboratorFriendId"
+            @click="addCollaborator"
+          />
+        </div>
+
+        <div v-if="collaboratorsLoading" class="collaborators-loading">
+          <ProgressSpinner />
+        </div>
+
+        <div v-else-if="collaborators.length === 0" class="collaborators-empty">
+          No collaborators yet.
+        </div>
+
+        <div v-else class="collaborators-list">
+          <div
+            v-for="collaborator in collaborators"
+            :key="collaborator.userId"
+            class="collaborator-row"
+          >
+            <div class="collaborator-main">
+              <strong>{{ collaborator.fullName || collaborator.email }}</strong>
+              <small>{{ collaborator.email }}</small>
+            </div>
+            <Select
+              :model-value="collaborator.accessRole"
+              :options="collaboratorRoleOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="collaborator-role-select"
+              @update:model-value="updateCollaboratorRole(collaborator, $event)"
+            />
+            <Button
+              icon="pi pi-trash"
+              text
+              rounded
+              severity="danger"
+              :loading="isSavingCollaborator"
+              @click="removeCollaborator(collaborator)"
+            />
+          </div>
+        </div>
+      </div>
+    </Dialog>
+
     <ConfirmDialog group="trip-workspace-plan-item" />
   </AppLayout>
 </template>
@@ -300,6 +403,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { useTripsStore } from '@/stores/trips'
 import { useImmichStore } from '@/stores/immich'
+import friendsService from '@/services/friendsService'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -349,6 +453,13 @@ const editingPlanItemId = ref(null)
 const isSubmittingPlanItem = ref(false)
 const planItemErrors = ref({})
 const isResolvingPlanSuggestion = ref(false)
+const showCollaboratorsDialog = ref(false)
+const collaboratorsLoading = ref(false)
+const isSavingCollaborator = ref(false)
+const collaborators = ref([])
+const availableFriends = ref([])
+const newCollaboratorFriendId = ref(null)
+const newCollaboratorRole = ref('VIEW')
 
 const planItemForm = ref({
   title: '',
@@ -365,11 +476,31 @@ const priorityOptions = [
   { label: 'Must', value: 'MUST' }
 ]
 
+const collaboratorRoleOptions = [
+  { label: 'Viewer', value: 'VIEW' },
+  { label: 'Editor', value: 'EDIT' }
+]
+
 const tripId = computed(() => Number(route.params.tripId))
+const isOwner = computed(() => Boolean(currentTrip.value?.isOwner) || String(currentTrip.value?.accessRole || '').toUpperCase() === 'OWNER')
+const accessRole = computed(() => String(currentTrip.value?.accessRole || (isOwner.value ? 'OWNER' : 'VIEW')).toUpperCase())
+const canEditPlanItems = computed(() => isOwner.value || accessRole.value === 'EDIT')
+const showAccessModeBanner = computed(() => !isOwner.value)
+const accessModeBannerText = computed(() => {
+  if (accessRole.value === 'EDIT') {
+    return 'Editor access: you can update planned stops and visit states, but only the owner can change trip metadata.'
+  }
+  return 'Viewer access: this trip is read-only for you.'
+})
 
 const pageTitle = computed(() => currentTrip.value?.name || 'Trip Planner')
 const pageSubtitle = computed(() => {
   if (!currentTrip.value) return 'Workspace'
+
+  if (isUnplannedTrip.value) {
+    return 'Unplanned • Set trip dates later to unlock timeline and analytics'
+  }
+
   const status = String(currentTrip.value.status || '').toLowerCase()
   const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'
   return `${statusLabel} • ${formatDateTime(currentTrip.value.startTime)} - ${formatDateTime(currentTrip.value.endTime)}`
@@ -390,16 +521,26 @@ const mustCompletionLabel = computed(() => {
 
 const hasPathData = computed(() => Array.isArray(workspacePath.value?.points) && workspacePath.value.points.length > 0)
 const hasTimelineData = computed(() => Array.isArray(workspaceTimeline.value) && workspaceTimeline.value.length > 0)
+const isUnplannedTrip = computed(() => {
+  const status = String(currentTrip.value?.status || '').toUpperCase()
+  return status === 'UNPLANNED' || (!currentTrip.value?.startTime && !currentTrip.value?.endTime)
+})
 const isFutureTrip = computed(() => {
+  if (isUnplannedTrip.value) return false
   if (!currentTrip.value?.startTime) return false
   return timezone.fromUtc(currentTrip.value.startTime).isAfter(timezone.now())
 })
 const isPlanningMode = computed(() => isFutureTrip.value && !hasPathData.value && !hasTimelineData.value)
+const isPlanningWorkspace = computed(() => isUnplannedTrip.value || isPlanningMode.value)
 const isActiveTrip = computed(() => String(currentTrip.value?.status || '').toUpperCase() === 'ACTIVE')
-const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value)
+const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value && !isUnplannedTrip.value)
 const showPlanSection = computed(() => activeWorkspaceTab.value === 'plan')
-const showPlanningPanelMode = computed(() => isPlanningMode.value || (showPlanSection.value && isActiveTrip.value))
+const showPlanningPanelMode = computed(() => isPlanningWorkspace.value || (showPlanSection.value && isActiveTrip.value))
 const workspaceTabs = computed(() => {
+  if (isUnplannedTrip.value) {
+    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }]
+  }
+
   const tabs = []
   if (!isFutureTrip.value) {
     tabs.push({ key: 'overview', label: 'Overview', icon: 'pi pi-chart-line' })
@@ -407,14 +548,24 @@ const workspaceTabs = computed(() => {
   tabs.push({ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' })
   return tabs
 })
-const comparisonCardTitle = computed(() => ((isPlanningMode.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
-const planningPanelTitle = computed(() => (isPlanningMode.value ? 'Future trip planning mode' : 'Active trip planning mode'))
+const comparisonCardTitle = computed(() => ((isPlanningWorkspace.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
+const planningPanelTitle = computed(() => {
+  if (isUnplannedTrip.value) return 'Unplanned trip planning mode'
+  return isPlanningMode.value ? 'Future trip planning mode' : 'Active trip planning mode'
+})
 const planningPanelPrimaryText = computed(() => (
-  isPlanningMode.value
-    ? 'This trip has no actual timeline data yet.'
-    : 'This trip is in progress. Keep adding planned stops while actual visits are matched automatically.'
+  isUnplannedTrip.value
+    ? 'This trip has no schedule yet. Build your place plan first, then set trip dates when you are ready.'
+    : (isPlanningMode.value
+      ? 'This trip has no actual timeline data yet.'
+      : 'This trip is in progress. Keep adding planned stops while actual visits are matched automatically.')
 ))
-const planningPanelHintText = computed(() => 'Right-click on the map and use Plan to visit here to add planned stops.')
+const planningPanelHintText = computed(() => {
+  if (!canEditPlanItems.value) {
+    return 'You have read-only access to this trip plan.'
+  }
+  return 'Right-click on the map and use Plan to visit here to add planned stops.'
+})
 const sortPlanItems = (items) => {
   const safeItems = Array.isArray(items) ? items : []
   const priorityRank = (priority) => (String(priority || '').toUpperCase() === 'MUST' ? 0 : 1)
@@ -447,11 +598,13 @@ const tripPlanMapItems = computed(() => {
     }))
 })
 const tripMinDate = computed(() => {
+  if (isUnplannedTrip.value) return null
   if (!currentTrip.value?.startTime || !currentTrip.value?.endTime) return null
   return timezone.convertUtcRangeToCalendarDates(currentTrip.value.startTime, currentTrip.value.endTime)[0]
 })
 
 const tripMaxDate = computed(() => {
+  if (isUnplannedTrip.value) return null
   if (!currentTrip.value?.startTime || !currentTrip.value?.endTime) return null
   return timezone.convertUtcRangeToCalendarDates(currentTrip.value.startTime, currentTrip.value.endTime)[1]
 })
@@ -464,7 +617,7 @@ const activeDateRangeArray = computed(() => {
 })
 
 const tripImmichSearchParams = computed(() => {
-  if (isFutureTrip.value || !immichStore.isConfigured) return null
+  if (isFutureTrip.value || isUnplannedTrip.value || !immichStore.isConfigured) return null
   const start = activeRange.value.start || currentTrip.value?.startTime
   const end = activeRange.value.end || currentTrip.value?.endTime
   if (!start || !end) return null
@@ -473,7 +626,20 @@ const tripImmichSearchParams = computed(() => {
     endDate: end
   }
 })
-const showTripPhotosSection = computed(() => showOverviewSection.value && Boolean(tripImmichSearchParams.value))
+const showTripPhotosSection = computed(() => (
+  showOverviewSection.value &&
+  !isUnplannedTrip.value &&
+  Boolean(tripImmichSearchParams.value)
+))
+const availableFriendOptions = computed(() => {
+  const selectedIds = new Set((collaborators.value || []).map((item) => String(item.userId)))
+  return (availableFriends.value || [])
+    .filter((friend) => !selectedIds.has(String(friend.friendId)))
+    .map((friend) => ({
+      value: friend.friendId,
+      label: friend.fullName || friend.email || String(friend.friendId)
+    }))
+})
 
 const formatDateTime = (value) => {
   if (!value) return '—'
@@ -488,6 +654,17 @@ const formatPlannedDay = (plannedDay) => {
 
 const getPrioritySeverity = (priority) => {
   return String(priority || '').toUpperCase() === 'MUST' ? 'danger' : 'warn'
+}
+
+const ensurePlanEditAccess = (message = 'You have read-only access to this trip plan.') => {
+  if (canEditPlanItems.value) return true
+  toast.add({
+    severity: 'warn',
+    summary: 'Read-Only Access',
+    detail: message,
+    life: 3500
+  })
+  return false
 }
 
 const getPhotoCoordinates = (photo) => {
@@ -511,6 +688,121 @@ const ensureActiveWorkspaceTab = () => {
 
 const selectWorkspaceTab = (tabKey) => {
   activeWorkspaceTab.value = tabKey
+}
+
+const openTripScheduling = () => {
+  if (!isOwner.value) return
+  if (!tripId.value) return
+  router.push({
+    path: '/app/trips',
+    query: {
+      action: 'edit',
+      tripId: String(tripId.value)
+    }
+  })
+}
+
+const openCollaboratorsDialog = () => {
+  if (!isOwner.value) return
+  showCollaboratorsDialog.value = true
+}
+
+const loadCollaboratorsData = async () => {
+  if (!isOwner.value) return
+  collaboratorsLoading.value = true
+  try {
+    const [loadedCollaborators, friendsResponse] = await Promise.all([
+      tripsStore.fetchTripCollaborators(tripId.value),
+      friendsService.getFriends()
+    ])
+    collaborators.value = Array.isArray(loadedCollaborators) ? loadedCollaborators : []
+    availableFriends.value = Array.isArray(friendsResponse?.data) ? friendsResponse.data : []
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Load Collaborators',
+      detail: error.response?.data?.message || error.message || 'Could not load collaborators.',
+      life: 5000
+    })
+  } finally {
+    collaboratorsLoading.value = false
+  }
+}
+
+const addCollaborator = async () => {
+  if (!newCollaboratorFriendId.value) return
+  isSavingCollaborator.value = true
+  try {
+    await tripsStore.setTripCollaborator(tripId.value, newCollaboratorFriendId.value, newCollaboratorRole.value)
+    newCollaboratorFriendId.value = null
+    newCollaboratorRole.value = 'VIEW'
+    await loadCollaboratorsData()
+    toast.add({
+      severity: 'success',
+      summary: 'Collaborator Added',
+      detail: 'Trip collaborator updated successfully.',
+      life: 2500
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Add Collaborator',
+      detail: error.response?.data?.message || error.message || 'Request failed.',
+      life: 5000
+    })
+  } finally {
+    isSavingCollaborator.value = false
+  }
+}
+
+const updateCollaboratorRole = async (collaborator, nextRole) => {
+  if (!collaborator?.userId || !nextRole) return
+  const previousRole = collaborator.accessRole
+  collaborator.accessRole = nextRole
+  isSavingCollaborator.value = true
+  try {
+    await tripsStore.setTripCollaborator(tripId.value, collaborator.userId, nextRole)
+    toast.add({
+      severity: 'success',
+      summary: 'Role Updated',
+      detail: 'Collaborator role updated.',
+      life: 2200
+    })
+  } catch (error) {
+    collaborator.accessRole = previousRole
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Update Role',
+      detail: error.response?.data?.message || error.message || 'Request failed.',
+      life: 5000
+    })
+  } finally {
+    isSavingCollaborator.value = false
+  }
+}
+
+const removeCollaborator = async (collaborator) => {
+  if (!collaborator?.userId) return
+  isSavingCollaborator.value = true
+  try {
+    await tripsStore.removeTripCollaborator(tripId.value, collaborator.userId)
+    collaborators.value = collaborators.value.filter((item) => String(item.userId) !== String(collaborator.userId))
+    toast.add({
+      severity: 'success',
+      summary: 'Collaborator Removed',
+      detail: 'Access revoked.',
+      life: 2200
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Remove Collaborator',
+      detail: error.response?.data?.message || error.message || 'Request failed.',
+      life: 5000
+    })
+  } finally {
+    isSavingCollaborator.value = false
+  }
 }
 
 const clampRangeToTrip = (startTime, endTime, trip = currentTrip.value) => {
@@ -542,6 +834,12 @@ const clampRangeToTrip = (startTime, endTime, trip = currentTrip.value) => {
 }
 
 const syncCalendarRange = (range) => {
+  if (!range?.start || !range?.end) {
+    activeRange.value = { start: null, end: null }
+    selectedDateRange.value = null
+    return
+  }
+
   activeRange.value = { ...range }
   selectedDateRange.value = timezone.convertUtcRangeToCalendarDates(range.start, range.end)
 }
@@ -585,6 +883,15 @@ const resolveInitialRange = () => {
 
 const refreshVisitComparisons = async () => {
   try {
+    if (isUnplannedTrip.value) {
+      visitSuggestions.value = []
+      await Promise.all([
+        tripsStore.fetchTripSummary(tripId.value),
+        tripsStore.fetchTripPlanItems(tripId.value)
+      ])
+      return
+    }
+
     await tripsStore.fetchVisitSuggestions(tripId.value)
     await Promise.all([
       tripsStore.fetchTripSummary(tripId.value),
@@ -624,6 +931,18 @@ const loadWorkspace = async () => {
       tripsStore.fetchTripPlanItems(tripId.value)
     ])
 
+    if (isUnplannedTrip.value) {
+      workspaceTimeline.value = []
+      workspacePath.value = {
+        points: [],
+        segments: [],
+        pointCount: 0
+      }
+      visitSuggestions.value = []
+      syncCalendarRange({ start: null, end: null })
+      return
+    }
+
     const initialRange = resolveInitialRange()
     if (!initialRange.start || !initialRange.end) {
       throw new Error('Trip date range is invalid')
@@ -640,6 +959,10 @@ const loadWorkspace = async () => {
 }
 
 const handleDateRangeChange = async (value) => {
+  if (isUnplannedTrip.value) {
+    return
+  }
+
   if (!value || !Array.isArray(value) || value.length < 2 || !value[0] || !value[1]) {
     return
   }
@@ -651,6 +974,7 @@ const handleDateRangeChange = async (value) => {
 }
 
 const resetToTripRange = async () => {
+  if (isUnplannedTrip.value) return
   if (!currentTrip.value) return
   const range = clampRangeToTrip(currentTrip.value.startTime, currentTrip.value.endTime)
   syncCalendarRange(range)
@@ -669,6 +993,7 @@ const applyPlanSuggestionToForm = async (suggestion) => {
 }
 
 const handlePlanToVisit = async (event) => {
+  if (!ensurePlanEditAccess()) return
   const lat = event?.latlng?.lat
   const lon = event?.latlng?.lng
   if (typeof lat !== 'number' || typeof lon !== 'number') {
@@ -734,6 +1059,7 @@ const findPlanItemById = (planItemId) => {
 }
 
 const handlePlanItemEditFromMap = (contextPayload) => {
+  if (!ensurePlanEditAccess()) return
   const planItemId = resolvePlanItemIdFromContext(contextPayload)
   const planItem = findPlanItemById(planItemId)
   if (!planItem) {
@@ -743,6 +1069,7 @@ const handlePlanItemEditFromMap = (contextPayload) => {
 }
 
 const handlePlanItemDeleteFromMap = (contextPayload) => {
+  if (!ensurePlanEditAccess()) return
   const planItemId = resolvePlanItemIdFromContext(contextPayload)
   const planItem = findPlanItemById(planItemId)
   if (!planItem) {
@@ -752,6 +1079,7 @@ const handlePlanItemDeleteFromMap = (contextPayload) => {
 }
 
 const handlePlanItemOverrideFromTable = (payload) => {
+  if (!ensurePlanEditAccess()) return
   const item = payload?.item
   const action = payload?.action
   if (!item || !action) {
@@ -788,6 +1116,7 @@ const formatCalendarDate = (dateValue) => {
 }
 
 const openEditPlanItemDialog = (item) => {
+  if (!ensurePlanEditAccess()) return
   resetPlanItemForm()
   editingPlanItemId.value = item.id
   planItemForm.value = {
@@ -814,6 +1143,7 @@ const validatePlanItem = () => {
 }
 
 const submitPlanItem = async () => {
+  if (!ensurePlanEditAccess()) return
   if (!validatePlanItem()) return
 
   isSubmittingPlanItem.value = true
@@ -865,6 +1195,7 @@ const submitPlanItem = async () => {
 }
 
 const confirmDeletePlanItem = (item) => {
+  if (!ensurePlanEditAccess()) return
   confirm.require({
     group: 'trip-workspace-plan-item',
     message: `Delete plan item "${item.title}"?`,
@@ -897,6 +1228,7 @@ const confirmDeletePlanItem = (item) => {
 }
 
 const applyVisitOverride = async (item, action) => {
+  if (!ensurePlanEditAccess()) return
   try {
     await tripsStore.applyVisitOverride(
       tripId.value,
@@ -1008,6 +1340,14 @@ watch(workspaceTabs, () => {
   box-shadow: none;
 }
 
+.unplanned-trip-banner {
+  margin-bottom: var(--gp-spacing-sm);
+}
+
+.trip-access-banner {
+  margin-bottom: var(--gp-spacing-sm);
+}
+
 .summary-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1088,6 +1428,60 @@ watch(workspaceTabs, () => {
 
 .workspace-date-picker {
   min-width: 260px;
+}
+
+.collaborators-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-md);
+}
+
+.collaborator-add-row {
+  display: grid;
+  grid-template-columns: 1fr 10rem auto;
+  gap: var(--gp-spacing-sm);
+  align-items: center;
+}
+
+.collaborator-role-select {
+  min-width: 8rem;
+}
+
+.collaborators-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--gp-spacing-md);
+}
+
+.collaborators-empty {
+  color: var(--gp-text-secondary);
+  text-align: center;
+  padding: var(--gp-spacing-md);
+}
+
+.collaborators-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.collaborator-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--gp-spacing-sm);
+  align-items: center;
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  padding: var(--gp-spacing-sm);
+}
+
+.collaborator-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.collaborator-main small {
+  color: var(--gp-text-secondary);
 }
 
 .workspace-layout {
@@ -1327,6 +1721,14 @@ watch(workspaceTabs, () => {
 
   .workspace-header-actions {
     width: 100%;
+  }
+
+  .collaborator-add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .collaborator-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

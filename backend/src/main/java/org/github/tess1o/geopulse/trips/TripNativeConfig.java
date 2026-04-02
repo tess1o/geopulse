@@ -5,12 +5,16 @@ import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.PlanSuggestionDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripDto;
+import org.github.tess1o.geopulse.trips.model.dto.TripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitOverrideRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitSuggestionDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripDto;
+import org.github.tess1o.geopulse.trips.model.dto.UpdateTripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripPlanItemDto;
+import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorAccessRole;
+import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlaceVisitMatchEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
@@ -24,16 +28,20 @@ import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
         TripEntity.class,
         TripPlanItemEntity.class,
         TripPlaceVisitMatchEntity.class,
+        TripCollaboratorEntity.class,
 
         // Entity enums
         TripStatus.class,
         TripPlanItemPriority.class,
         TripPlanItemVisitSource.class,
         TripPlanItemOverrideState.class,
+        TripCollaboratorAccessRole.class,
 
         // DTOs
         CreateTripDto.class,
         UpdateTripDto.class,
+        TripCollaboratorDto.class,
+        UpdateTripCollaboratorDto.class,
         TripDto.class,
         TripSummaryDto.class,
         CreateTripPlanItemDto.class,

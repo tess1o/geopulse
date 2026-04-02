@@ -65,24 +65,28 @@
     <Column header="Actions" style="width: 16rem">
       <template #body="{ data }">
         <Button
+          v-if="canEdit"
           icon="pi pi-check"
           class="p-button-text p-button-sm"
           v-tooltip.top="'Mark visited'"
           @click="emitOverride(data, 'CONFIRM_VISITED')"
         />
         <Button
+          v-if="canEdit"
           icon="pi pi-times"
           class="p-button-text p-button-sm"
           v-tooltip.top="'Mark not visited'"
           @click="emitOverride(data, 'REJECT_VISIT')"
         />
         <Button
+          v-if="canEdit"
           icon="pi pi-undo"
           class="p-button-text p-button-sm"
           v-tooltip.top="'Reset visit state'"
           @click="emitOverride(data, 'RESET_TO_AUTO')"
         />
         <Button
+          v-if="canEdit"
           icon="pi pi-pencil"
           class="p-button-text p-button-sm"
           v-tooltip.top="'Edit item'"
@@ -96,6 +100,7 @@
           @click="openGoogleMaps(data)"
         />
         <Button
+          v-if="canEdit"
           icon="pi pi-trash"
           class="p-button-text p-button-sm"
           severity="danger"
@@ -139,6 +144,10 @@ const props = defineProps({
   visitSuggestions: {
     type: Array,
     default: () => []
+  },
+  canEdit: {
+    type: Boolean,
+    default: true
   }
 })
 

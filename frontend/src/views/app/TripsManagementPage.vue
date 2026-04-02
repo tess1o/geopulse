@@ -46,6 +46,13 @@
               optionValue="value"
               class="status-select"
             />
+            <Select
+              v-model="accessFilter"
+              :options="accessOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="status-select"
+            />
           </div>
 
           <Button
@@ -89,6 +96,12 @@
             </template>
           </Column>
 
+          <Column header="Access" sortable style="width: 8rem">
+            <template #body="{ data }">
+              <Tag :severity="getAccessSeverity(data)" :value="getAccessLabel(data)" />
+            </template>
+          </Column>
+
           <Column field="startTime" header="Start" sortable>
             <template #body="{ data }">
               {{ formatDateTime(data.startTime) }}
@@ -117,26 +130,28 @@
                   v-tooltip.top="'Open trip planner'"
                 />
                 <Button
-                  v-if="isLinkedToLabel(data)"
+                  v-if="isLinkedToLabel(data) && isTripOwner(data)"
                   icon="pi pi-tag"
                   class="p-button-text p-button-sm"
                   @click="openLinkedLabel(data)"
                   v-tooltip.top="'Open timeline label'"
                 />
                 <Button
-                  v-if="isLinkedToLabel(data)"
+                  v-if="isLinkedToLabel(data) && isTripOwner(data)"
                   icon="pi pi-link"
                   class="p-button-text p-button-sm"
                   @click="unlinkTripFromLabel(data)"
                   v-tooltip.top="'Unlink timeline label'"
                 />
                 <Button
+                  v-if="isTripOwner(data)"
                   icon="pi pi-pencil"
                   class="p-button-text p-button-sm"
                   @click="openEditDialog(data)"
                   v-tooltip.top="'Edit trip plan'"
                 />
                 <Button
+                  v-if="isTripOwner(data)"
                   icon="pi pi-trash"
                   class="p-button-text p-button-sm"
                   severity="danger"
@@ -179,7 +194,7 @@
         </div>
 
         <div class="col-12">
-          <label for="tripDateRange" class="field-label">Date Range *</label>
+          <label for="tripDateRange" class="field-label">{{ tripDateRangeLabel }}</label>
           <DatePicker
             id="tripDateRange"
             v-model="tripDateRange"
@@ -190,6 +205,7 @@
             :class="{ 'p-invalid': formErrors.dateRange }"
           />
           <small v-if="formErrors.dateRange" class="p-error">{{ formErrors.dateRange }}</small>
+          <small v-else class="field-hint">{{ tripDateRangeHint }}</small>
         </div>
 
         <div class="col-12">
@@ -359,10 +375,12 @@ const { periodTags } = storeToRefs(periodTagsStore)
 
 const searchTerm = ref('')
 const statusFilter = ref('ALL')
+const accessFilter = ref('ALL')
 const showTripDialog = ref(false)
 const showFromPeriodTagDialog = ref(false)
 const isEditMode = ref(false)
 const editingTripId = ref(null)
+const editingTripWasUnplanned = ref(false)
 const isSubmittingTrip = ref(false)
 const isCreatingFromTag = ref(false)
 const selectedPeriodTagId = ref(null)
@@ -381,10 +399,17 @@ const formErrors = ref({})
 
 const statusOptions = [
   { label: 'All statuses', value: 'ALL' },
+  { label: 'Unplanned', value: 'UNPLANNED' },
   { label: 'Upcoming', value: 'UPCOMING' },
   { label: 'Active', value: 'ACTIVE' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Cancelled', value: 'CANCELLED' }
+]
+
+const accessOptions = [
+  { label: 'All access', value: 'ALL' },
+  { label: 'Owned by me', value: 'OWNED' },
+  { label: 'Shared with me', value: 'SHARED' }
 ]
 
 const pageSubtitle = computed(() => {
@@ -396,9 +421,24 @@ const pageSubtitle = computed(() => {
 })
 
 const normalizedTripColor = computed(() => formatColorWithHash(tripForm.value.color) || 'var(--gp-primary)')
+const tripDateRangeLabel = computed(() => {
+  if (!isEditMode.value) return 'Date Range (optional)'
+  return editingTripWasUnplanned.value ? 'Date Range (optional)' : 'Date Range *'
+})
+const tripDateRangeHint = computed(() => {
+  if (!isEditMode.value) return 'Leave empty to create this plan as unplanned.'
+  if (editingTripWasUnplanned.value) return 'Add both dates to schedule this trip.'
+  return 'Date range is required for scheduled trips.'
+})
 
 const filteredTrips = computed(() => {
   let items = Array.isArray(trips.value) ? [...trips.value] : []
+
+  if (accessFilter.value === 'OWNED') {
+    items = items.filter((trip) => isTripOwner(trip))
+  } else if (accessFilter.value === 'SHARED') {
+    items = items.filter((trip) => !isTripOwner(trip))
+  }
 
   if (statusFilter.value && statusFilter.value !== 'ALL') {
     items = items.filter((trip) => String(trip.status || '').toUpperCase() === statusFilter.value)
@@ -440,11 +480,26 @@ const getStatusLabel = (status) => {
 
 const getStatusSeverity = (status) => {
   const value = String(status || '').toUpperCase()
+  if (value === 'UNPLANNED') return 'warn'
   if (value === 'ACTIVE') return 'success'
   if (value === 'UPCOMING') return 'info'
   if (value === 'COMPLETED') return 'secondary'
   if (value === 'CANCELLED') return 'danger'
   return 'contrast'
+}
+
+const isTripOwner = (trip) => Boolean(trip?.isOwner) || String(trip?.accessRole || '').toUpperCase() === 'OWNER'
+
+const getAccessLabel = (trip) => {
+  if (isTripOwner(trip)) return 'Owner'
+  const role = String(trip?.accessRole || '').toUpperCase()
+  return role === 'EDIT' ? 'Editor' : 'Viewer'
+}
+
+const getAccessSeverity = (trip) => {
+  if (isTripOwner(trip)) return 'info'
+  const role = String(trip?.accessRole || '').toUpperCase()
+  return role === 'EDIT' ? 'success' : 'secondary'
 }
 
 const formatDateTime = (value) => {
@@ -462,7 +517,7 @@ const formatDurationLabel = (startTime, endTime) => {
 
 const refreshTrips = async () => {
   try {
-    await tripsStore.fetchTrips(statusFilter.value)
+    await tripsStore.fetchTrips(statusFilter.value === 'ALL' ? null : statusFilter.value)
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -474,12 +529,15 @@ const refreshTrips = async () => {
 }
 
 const openWorkspace = (trip) => {
+  const query = {}
+  if (trip?.startTime && trip?.endTime) {
+    query.start = timezone.formatUrlDate(trip.startTime)
+    query.end = timezone.formatUrlDate(trip.endTime)
+  }
+
   router.push({
     path: `/app/trips/${trip.id}`,
-    query: {
-      start: timezone.formatUrlDate(trip.startTime),
-      end: timezone.formatUrlDate(trip.endTime)
-    }
+    query
   })
 }
 
@@ -494,7 +552,19 @@ const openLinkedLabel = (trip) => {
   })
 }
 
+const guardOwnerAction = (trip, message = 'Only trip owner can perform this action.') => {
+  if (isTripOwner(trip)) return true
+  toast.add({
+    severity: 'warn',
+    summary: 'Owner Access Required',
+    detail: message,
+    life: 3500
+  })
+  return false
+}
+
 const unlinkTripFromLabel = (trip) => {
+  if (!guardOwnerAction(trip)) return
   if (!trip?.id || !trip?.periodTagId) return
   confirm.require({
     message: `Unlink trip plan "${trip.name}" from its timeline label?`,
@@ -531,6 +601,7 @@ const resetTripForm = () => {
   tripDateRange.value = null
   formErrors.value = {}
   editingTripId.value = null
+  editingTripWasUnplanned.value = false
   isEditMode.value = false
 }
 
@@ -540,27 +611,35 @@ const openCreateDialog = () => {
 }
 
 const openEditDialog = (trip) => {
+  if (!guardOwnerAction(trip, 'You can edit trip metadata only if you own this trip.')) return
   resetTripForm()
   isEditMode.value = true
   editingTripId.value = trip.id
+  editingTripWasUnplanned.value = String(trip.status || '').toUpperCase() === 'UNPLANNED' || (!trip.startTime && !trip.endTime)
   tripForm.value = {
     name: trip.name || '',
     color: trip.color || getRandomColor(),
     notes: trip.notes || ''
   }
-  tripDateRange.value = timezone.convertUtcRangeToCalendarDates(trip.startTime, trip.endTime)
+  tripDateRange.value = (trip.startTime && trip.endTime)
+    ? timezone.convertUtcRangeToCalendarDates(trip.startTime, trip.endTime)
+    : null
   showTripDialog.value = true
 }
 
 const validateTripForm = () => {
   formErrors.value = {}
+  const hasCompleteDateRange = Boolean(tripDateRange.value && tripDateRange.value[0] && tripDateRange.value[1])
+  const hasAnyDateValue = Boolean(tripDateRange.value && (tripDateRange.value[0] || tripDateRange.value[1]))
 
   if (!tripForm.value.name || !tripForm.value.name.trim()) {
     formErrors.value.name = 'Plan name is required'
   }
 
-  if (!tripDateRange.value || !tripDateRange.value[0] || !tripDateRange.value[1]) {
+  if (!hasAnyDateValue && isEditMode.value && !editingTripWasUnplanned.value) {
     formErrors.value.dateRange = 'Date range is required'
+  } else if (hasAnyDateValue && !hasCompleteDateRange) {
+    formErrors.value.dateRange = 'Select both start and end dates'
   }
 
   return Object.keys(formErrors.value).length === 0
@@ -571,7 +650,16 @@ const submitTrip = async () => {
 
   isSubmittingTrip.value = true
   try {
-    const { start, end } = timezone.createDateRangeFromPicker(tripDateRange.value[0], tripDateRange.value[1])
+    const hasCompleteDateRange = Boolean(tripDateRange.value && tripDateRange.value[0] && tripDateRange.value[1])
+
+    let start = null
+    let end = null
+    if (hasCompleteDateRange) {
+      const range = timezone.createDateRangeFromPicker(tripDateRange.value[0], tripDateRange.value[1])
+      start = range.start
+      end = range.end
+    }
+
     const payload = {
       name: tripForm.value.name.trim(),
       startTime: start,
@@ -581,11 +669,7 @@ const submitTrip = async () => {
     }
 
     if (isEditMode.value && editingTripId.value) {
-      const existing = tripsStore.getTripById(editingTripId.value)
-      await tripsStore.updateTrip(editingTripId.value, {
-        ...payload,
-        status: existing?.status || undefined
-      })
+      await tripsStore.updateTrip(editingTripId.value, payload)
       toast.add({
         severity: 'success',
         summary: 'Trip Plan Updated',
@@ -617,6 +701,7 @@ const submitTrip = async () => {
 }
 
 const performDeleteTrip = async (trip, mode) => {
+  if (!guardOwnerAction(trip, 'You can delete trip plans only if you own this trip.')) return
   try {
     await tripsStore.deleteTrip(trip.id, mode)
     await periodTagsStore.fetchPeriodTags()
@@ -651,6 +736,7 @@ const deleteLinkedTrip = async (mode) => {
 }
 
 const confirmDeleteTrip = (trip) => {
+  if (!guardOwnerAction(trip, 'You can delete trip plans only if you own this trip.')) return
   if (isLinkedToLabel(trip)) {
     linkedTripDeleteTarget.value = trip
     showLinkedTripDeleteDialog.value = true
@@ -879,6 +965,12 @@ onMounted(async () => {
   margin-bottom: var(--gp-spacing-xs);
   color: var(--gp-text-secondary);
   font-weight: 500;
+}
+
+.field-hint {
+  display: block;
+  margin-top: var(--gp-spacing-xs);
+  color: var(--gp-text-secondary);
 }
 
 .color-row {

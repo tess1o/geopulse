@@ -2,6 +2,14 @@ import apiService from '@/utils/apiService'
 
 const friendsService = {
     /**
+     * Get friends list
+     * @returns {Promise<Object>} API response envelope
+     */
+    async getFriends() {
+        return apiService.get('/friends')
+    },
+
+    /**
      * Get friend permissions for a specific friend
      * @param {string} friendId
      * @returns {Promise<Object>} API response envelope

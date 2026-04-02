@@ -11,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
+import org.github.tess1o.geopulse.trips.model.dto.TripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripDto;
+import org.github.tess1o.geopulse.trips.model.dto.UpdateTripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripDto;
 import org.github.tess1o.geopulse.trips.service.TripService;
 
@@ -180,6 +182,76 @@ public class TripResource {
             log.error("Failed to unlink trip {}", id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to unlink trip"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{id}/collaborators")
+    public Response getTripCollaborators(@PathParam("id") Long id) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            List<TripCollaboratorDto> collaborators = tripService.getTripCollaborators(userId, id);
+            return Response.ok(ApiResponse.success(collaborators)).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Trip not found"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to get trip collaborators for trip {}", id, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get trip collaborators"))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/{id}/collaborators/{friendId}")
+    public Response upsertTripCollaborator(@PathParam("id") Long id,
+                                           @PathParam("friendId") String friendId,
+                                           @Valid UpdateTripCollaboratorDto dto) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            UUID friendUserId = UUID.fromString(friendId);
+            TripCollaboratorDto collaborator = tripService.upsertTripCollaborator(userId, id, friendUserId, dto);
+            return Response.ok(ApiResponse.success(collaborator)).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Trip not found"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to update trip collaborator for trip {} friend {}", id, friendId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to update trip collaborator"))
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/{id}/collaborators/{friendId}")
+    public Response removeTripCollaborator(@PathParam("id") Long id,
+                                           @PathParam("friendId") String friendId) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            UUID friendUserId = UUID.fromString(friendId);
+            tripService.removeTripCollaborator(userId, id, friendUserId);
+            return Response.ok(ApiResponse.success("Trip collaborator removed")).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Trip not found"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to remove trip collaborator for trip {} friend {}", id, friendId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to remove trip collaborator"))
                     .build();
         }
     }

@@ -34,10 +34,10 @@ public class TripEntity {
     @Column(name = "name", nullable = false, length = 150)
     private String name;
 
-    @Column(name = "start_time", nullable = false)
+    @Column(name = "start_time")
     private Instant startTime;
 
-    @Column(name = "end_time", nullable = false)
+    @Column(name = "end_time")
     private Instant endTime;
 
     @Enumerated(EnumType.STRING)
@@ -71,4 +71,3 @@ public class TripEntity {
         this.updatedAt = Instant.now();
     }
 }
-

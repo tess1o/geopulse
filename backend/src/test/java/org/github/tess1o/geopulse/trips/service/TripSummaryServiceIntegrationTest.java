@@ -168,4 +168,40 @@ class TripSummaryServiceIntegrationTest {
         assertThat(summary.getTotalTripDurationSeconds()).isEqualTo(900);
         assertThat(summary.getActualPlacesCount()).isEqualTo(2);
     }
+
+    @Test
+    @Transactional
+    void getSummary_shouldReturnPlanOnlyMetricsForUnplannedTrip() {
+        UserEntity user = userRepository.findById(userId);
+
+        TripEntity unplannedTrip = TripEntity.builder()
+                .user(user)
+                .name("Unplanned Summary Trip")
+                .status(TripStatus.UNPLANNED)
+                .build();
+        tripRepository.persist(unplannedTrip);
+
+        tripPlanItemRepository.persist(TripPlanItemEntity.builder()
+                .trip(unplannedTrip)
+                .title("Future place")
+                .priority(TripPlanItemPriority.MUST)
+                .orderIndex(0)
+                .isVisited(false)
+                .build());
+
+        TripSummaryDto summary = tripSummaryService.getSummary(userId, unplannedTrip.getId());
+
+        assertThat(summary.getTripId()).isEqualTo(unplannedTrip.getId());
+        assertThat(summary.getStatus()).isEqualTo(TripStatus.UNPLANNED);
+        assertThat(summary.getStartTime()).isNull();
+        assertThat(summary.getEndTime()).isNull();
+        assertThat(summary.getPlanItemsTotal()).isEqualTo(1);
+        assertThat(summary.getPlanItemsVisited()).isEqualTo(0);
+        assertThat(summary.getPlanCompletionRate()).isEqualTo(0.0);
+        assertThat(summary.getTimelineStays()).isEqualTo(0);
+        assertThat(summary.getTimelineTrips()).isEqualTo(0);
+        assertThat(summary.getTotalDistanceMeters()).isEqualTo(0);
+        assertThat(summary.getTotalTripDurationSeconds()).isEqualTo(0);
+        assertThat(summary.getActualPlacesCount()).isEqualTo(0);
+    }
 }

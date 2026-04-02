@@ -144,6 +144,37 @@ class TripVisitAutoMatchServiceIntegrationTest {
         assertThat(suggestion.getApplied()).isFalse();
         assertThat(tripPlaceVisitMatchRepository.findByTripId(tripId)).isEmpty();
     }
+
+    @Test
+    @Transactional
+    void evaluate_shouldReturnNoMatchForUnplannedTripWithoutPersistingMatches() {
+        TripEntity unplannedTrip = TripEntity.builder()
+                .user(userRepository.findById(userId))
+                .name("Unplanned match trip")
+                .status(TripStatus.UNPLANNED)
+                .build();
+        tripRepository.persist(unplannedTrip);
+
+        TripPlanItemEntity item = TripPlanItemEntity.builder()
+                .trip(unplannedTrip)
+                .title("Planned stop")
+                .priority(TripPlanItemPriority.OPTIONAL)
+                .orderIndex(0)
+                .build();
+        item.setLatitude(50.4501);
+        item.setLongitude(30.5234);
+        tripPlanItemRepository.persist(item);
+
+        List<TripVisitSuggestionDto> suggestions = tripVisitAutoMatchService.evaluate(userId, unplannedTrip.getId(), true);
+
+        assertThat(suggestions).hasSize(1);
+        TripVisitSuggestionDto suggestion = suggestions.getFirst();
+        assertThat(suggestion.getDecision()).isEqualTo("NO_MATCH");
+        assertThat(suggestion.getReason()).isEqualTo("Trip has no scheduled date range");
+        assertThat(suggestion.getApplied()).isFalse();
+        assertThat(tripPlaceVisitMatchRepository.findByTripId(unplannedTrip.getId())).isEmpty();
+    }
+
     private TripPlanItemEntity createPlanItem(String title, double lat, double lon) {
         TripPlanItemEntity item = TripPlanItemEntity.builder()
                 .trip(tripRepository.findById(tripId))

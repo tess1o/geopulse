@@ -182,6 +182,23 @@ export const useTripsStore = defineStore('trips', {
       return created
     },
 
+    async fetchTripCollaborators(tripId) {
+      this.error = null
+      const response = await apiService.get(`/trips/${tripId}/collaborators`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+
+    async setTripCollaborator(tripId, friendId, accessRole) {
+      this.error = null
+      const response = await apiService.put(`/trips/${tripId}/collaborators/${friendId}`, { accessRole })
+      return response.data || null
+    },
+
+    async removeTripCollaborator(tripId, friendId) {
+      this.error = null
+      await apiService.delete(`/trips/${tripId}/collaborators/${friendId}`)
+    },
+
     async fetchTripSummary(tripId) {
       this.loading.summary = true
       this.error = null

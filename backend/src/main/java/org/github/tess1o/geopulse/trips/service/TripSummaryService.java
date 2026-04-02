@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
+import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class TripSummaryService {
 
     private final TripService tripService;
+    private final TripAccessService tripAccessService;
     private final TripPlanItemRepository tripPlanItemRepository;
     private final StreamingTimelineAggregator timelineAggregator;
     private final TimelineTripRepository timelineTripRepository;
@@ -32,11 +34,13 @@ public class TripSummaryService {
     int placesPageSize;
 
     public TripSummaryService(TripService tripService,
+                              TripAccessService tripAccessService,
                               TripPlanItemRepository tripPlanItemRepository,
                               StreamingTimelineAggregator timelineAggregator,
                               TimelineTripRepository timelineTripRepository,
                               LocationAnalyticsService locationAnalyticsService) {
         this.tripService = tripService;
+        this.tripAccessService = tripAccessService;
         this.tripPlanItemRepository = tripPlanItemRepository;
         this.timelineAggregator = timelineAggregator;
         this.timelineTripRepository = timelineTripRepository;
@@ -44,18 +48,40 @@ public class TripSummaryService {
     }
 
     public TripSummaryDto getSummary(UUID userId, Long tripId) {
-        TripEntity trip = tripService.getTripEntityOrThrow(userId, tripId);
-        Instant start = trip.getStartTime();
-        Instant end = trip.getEndTime();
+        TripAccessContext access = tripAccessService.requireReadAccess(userId, tripId);
+        TripEntity trip = access.trip();
+        UUID ownerUserId = access.ownerUserId();
+        TripStatus resolvedStatus = tripService.resolveStatus(trip);
 
         List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
         int totalPlanItems = planItems.size();
         int visitedPlanItems = (int) planItems.stream().filter(item -> Boolean.TRUE.equals(item.getIsVisited())).count();
         double completionRate = totalPlanItems == 0 ? 0.0 : (visitedPlanItems * 100.0) / totalPlanItems;
 
-        Map<String, Long> timelineCounts = timelineAggregator.getTimelineItemCounts(userId, start, end);
+        if (resolvedStatus == TripStatus.UNPLANNED || trip.getStartTime() == null || trip.getEndTime() == null) {
+            return TripSummaryDto.builder()
+                    .tripId(trip.getId())
+                    .tripName(trip.getName())
+                    .status(TripStatus.UNPLANNED)
+                    .startTime(null)
+                    .endTime(null)
+                    .planItemsTotal(totalPlanItems)
+                    .planItemsVisited(visitedPlanItems)
+                    .planCompletionRate(completionRate)
+                    .timelineStays(0)
+                    .timelineTrips(0)
+                    .totalDistanceMeters(0)
+                    .totalTripDurationSeconds(0)
+                    .actualPlacesCount(0)
+                    .build();
+        }
 
-        List<TimelineTripEntity> trips = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, start, end);
+        Instant start = trip.getStartTime();
+        Instant end = trip.getEndTime();
+
+        Map<String, Long> timelineCounts = timelineAggregator.getTimelineItemCounts(ownerUserId, start, end);
+
+        List<TimelineTripEntity> trips = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(ownerUserId, start, end);
         long totalDistanceMeters = trips.stream()
                 .mapToLong(TimelineTripEntity::getDistanceMeters)
                 .sum();
@@ -64,13 +90,13 @@ public class TripSummaryService {
                 .sum();
 
         var places = locationAnalyticsService.getMapPlaces(
-                userId, start, end, null, null, null, null, placesPage, placesPageSize
+                ownerUserId, start, end, null, null, null, null, placesPage, placesPageSize
         );
 
         return TripSummaryDto.builder()
                 .tripId(trip.getId())
                 .tripName(trip.getName())
-                .status(tripService.resolveStatus(trip))
+                .status(resolvedStatus)
                 .startTime(start)
                 .endTime(end)
                 .planItemsTotal(totalPlanItems)

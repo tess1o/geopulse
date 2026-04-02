@@ -33,6 +33,7 @@ public class TripVisitAutoMatchService {
     private static final double DISTANCE_WEIGHT = 0.7;
     private static final double DWELL_WEIGHT = 0.3;
     private static final double EXACT_NAME_MIN_CONFIDENCE = 0.99;
+    private static final String REASON_UNPLANNED_TRIP = "Trip has no scheduled date range";
 
     @ConfigProperty(name = "geopulse.trip.visit-matching.max-distance-meters", defaultValue = "400")
     double maxDistanceMeters;
@@ -67,9 +68,19 @@ public class TripVisitAutoMatchService {
     @Transactional
     public List<TripVisitSuggestionDto> evaluate(UUID userId, Long tripId, boolean applyAutoMatches) {
         TripEntity trip = tripService.getTripEntityOrThrow(userId, tripId);
+        UUID ownerUserId = trip.getUser().getId();
         List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
+
+        if (isUnplannedTrip(trip)) {
+            List<TripVisitSuggestionDto> suggestions = new ArrayList<>();
+            for (TripPlanItemEntity item : planItems) {
+                suggestions.add(toUnplannedTripSuggestion(item));
+            }
+            return suggestions;
+        }
+
         List<TimelineStayEntity> stays = timelineStayRepository.findByUserIdAndTimeRangeWithExpansion(
-                userId, trip.getStartTime(), trip.getEndTime()
+                ownerUserId, trip.getStartTime(), trip.getEndTime()
         );
 
         List<TripVisitSuggestionDto> suggestions = new ArrayList<>();
@@ -91,9 +102,18 @@ public class TripVisitAutoMatchService {
 
     @Transactional
     public List<TripVisitSuggestionDto> getStoredSuggestions(UUID userId, Long tripId) {
-        tripService.getTripEntityOrThrow(userId, tripId);
+        TripEntity trip = tripService.getTripEntityOrThrow(userId, tripId);
 
         List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
+
+        if (isUnplannedTrip(trip)) {
+            List<TripVisitSuggestionDto> suggestions = new ArrayList<>();
+            for (TripPlanItemEntity item : planItems) {
+                suggestions.add(toUnplannedTripSuggestion(item));
+            }
+            return suggestions;
+        }
+
         List<TripPlaceVisitMatchEntity> storedMatches = tripPlaceVisitMatchRepository.findByTripId(tripId);
 
         Map<Long, TripPlaceVisitMatchEntity> latestMatchByPlanItem = new HashMap<>();
@@ -269,6 +289,22 @@ public class TripVisitAutoMatchService {
     private boolean canAutoApply(TripPlanItemEntity item) {
         return item.getManualOverrideState() == null &&
                 item.getVisitSource() != TripPlanItemVisitSource.MANUAL;
+    }
+
+    private boolean isUnplannedTrip(TripEntity trip) {
+        return tripService.resolveStatus(trip) == TripStatus.UNPLANNED
+                || trip.getStartTime() == null
+                || trip.getEndTime() == null;
+    }
+
+    private TripVisitSuggestionDto toUnplannedTripSuggestion(TripPlanItemEntity item) {
+        return TripVisitSuggestionDto.builder()
+                .planItemId(item.getId())
+                .planItemTitle(item.getTitle())
+                .decision(DECISION_NO_MATCH)
+                .applied(false)
+                .reason(REASON_UNPLANNED_TRIP)
+                .build();
     }
 
     private double confidence(double distanceMeters,

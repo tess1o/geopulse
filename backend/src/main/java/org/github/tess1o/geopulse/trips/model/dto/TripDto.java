@@ -16,6 +16,7 @@ import java.util.UUID;
 public class TripDto {
     private Long id;
     private UUID userId;
+    private String ownerFullName;
     private Long periodTagId;
     private String name;
     private Instant startTime;
@@ -23,7 +24,8 @@ public class TripDto {
     private TripStatus status;
     private String color;
     private String notes;
+    private Boolean isOwner;
+    private String accessRole;
     private Instant createdAt;
     private Instant updatedAt;
 }
-
