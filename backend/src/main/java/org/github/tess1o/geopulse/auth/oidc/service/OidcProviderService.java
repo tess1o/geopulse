@@ -170,6 +170,7 @@ public class OidcProviderService {
             // Create REST client for discovery document
             OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
                     .baseUri(URI.create(provider.getDiscoveryUrl()))
+                    .followRedirects(true)
                     .build(OidcDiscoveryClient.class)
                     .getDiscoveryDocument();
 

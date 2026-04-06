@@ -349,6 +349,7 @@ public class AdminOidcProviderResource {
             // Attempt to fetch discovery document
             OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
                     .baseUri(URI.create(provider.getDiscoveryUrl()))
+                    .followRedirects(true)
                     .build(OidcDiscoveryClient.class)
                     .getDiscoveryDocument();
 
