@@ -5,7 +5,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -47,8 +46,6 @@ class TripCollaborationResourceIntegrationTest {
     TripCollaboratorRepository tripCollaboratorRepository;
     @Inject
     FriendshipRepository friendshipRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
 
     private String ownerToken;
     private String friendToken;
@@ -59,8 +56,6 @@ class TripCollaborationResourceIntegrationTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupTripWorkspaceAndUsers();
-
         String ownerEmail = "trip-collab-owner-" + UUID.randomUUID() + "@example.com";
         String friendEmail = "trip-collab-friend-" + UUID.randomUUID() + "@example.com";
         String outsiderEmail = "trip-collab-outsider-" + UUID.randomUUID() + "@example.com";
