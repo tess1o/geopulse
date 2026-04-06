@@ -1,13 +1,13 @@
 [
   {
-    "version": "1.24.0",
-    "title": "GeoPulse 1.24.0",
+    "version": "1.25.0",
+    "title": "GeoPulse 1.25.0",
     "highlights": [
-      "New design for Home page with links to Github, Tips of the day, etc",
-      "Improved Data Gap logic and added option to convert a Data Gap to a Stay (beta)",
-      "Fixed MQTT instructions in UI",
-      "Fixed bulk reverse geocoding reconciliation when some entity fails",
-      "Fixed issue with sharing timeline for 1 day"
+      "Added custom avatar upload support in Profile Settings",
+      "Added trip sharing with collaborators (Viewer and Editor roles)",
+      "Added support for creating unplanned trips and scheduling them later",
+      "Added Export/Import for Timeline Preferences with import preview",
+      "Improved timeline gap handling to better preserve trip continuity and infer stays in long stationary gaps"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
