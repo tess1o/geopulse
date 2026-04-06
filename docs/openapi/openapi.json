@@ -644,7 +644,7 @@
         }
       },
       "CreateTripDto" : {
-        "required" : [ "name", "startTime", "endTime" ],
+        "required" : [ "name" ],
         "type" : "object",
         "properties" : {
           "name" : {
@@ -1653,6 +1653,10 @@
           }
         }
       },
+      "TripCollaboratorAccessRole" : {
+        "enum" : [ "VIEW", "EDIT" ],
+        "type" : "string"
+      },
       "TripMovementTypeUpdateRequest" : {
         "type" : "object",
         "properties" : {
@@ -1674,7 +1678,7 @@
         "type" : "string"
       },
       "TripStatus" : {
-        "enum" : [ "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
+        "enum" : [ "UNPLANNED", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
         "type" : "string"
       },
       "TripVisitOverrideRequestDto" : {
@@ -2297,8 +2301,17 @@
           }
         }
       },
+      "UpdateTripCollaboratorDto" : {
+        "required" : [ "accessRole" ],
+        "type" : "object",
+        "properties" : {
+          "accessRole" : {
+            "$ref" : "#/components/schemas/TripCollaboratorAccessRole"
+          }
+        }
+      },
       "UpdateTripDto" : {
-        "required" : [ "name", "startTime", "endTime" ],
+        "required" : [ "name" ],
         "type" : "object",
         "properties" : {
           "name" : {
@@ -9406,6 +9419,118 @@
         } ]
       }
     },
+    "/api/trips/{id}/collaborators" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip Collaborators",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{id}/collaborators/{friendId}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "friendId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTripCollaboratorDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Upsert Trip Collaborator",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "friendId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Remove Trip Collaborator",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/trips/{id}/unlink" : {
       "post" : {
         "parameters" : [ {
@@ -9774,6 +9899,42 @@
         },
         "summary" : "Get Visit Suggestions",
         "tags" : [ "Trip Visit Matching Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/users/avatar" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Upload Avatar",
+        "tags" : [ "User Resource" ],
         "security" : [ {
           "jwt" : [ ]
         } ]
@@ -10389,6 +10550,40 @@
         } ]
       }
     },
+    "/api/users/{userId}/avatar" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "userId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "If-None-Match",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get User Avatar",
+        "tags" : [ "User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/users/{userId}/immich-config" : {
       "put" : {
         "parameters" : [ {
@@ -10860,7 +11055,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.24.0",
+    "version" : "1.25.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
