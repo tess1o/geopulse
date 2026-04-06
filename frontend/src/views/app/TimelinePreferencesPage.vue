@@ -13,6 +13,22 @@
             </div>
             <div class="header-actions">
               <Button
+                label="Export Config"
+                icon="pi pi-download"
+                severity="secondary"
+                outlined
+                @click="exportPreferences"
+              />
+              <Button
+                label="Import Config"
+                icon="pi pi-upload"
+                severity="secondary"
+                outlined
+                @click="openImportPicker"
+                :disabled="timelineRegenerationVisible"
+              />
+              <Button
+                v-if="hasActiveJob"
                 label="View Active Job"
                 icon="pi pi-eye"
                 severity="info"
@@ -126,6 +142,77 @@
           />
         </TabContainer>
 
+        <input
+          ref="importFileInput"
+          type="file"
+          accept=".json,application/json"
+          class="hidden-file-input"
+          @change="handleImportFileChange"
+        />
+
+        <Dialog
+          v-model:visible="importPreviewVisible"
+          modal
+          :closable="!isImportApplying"
+          :dismissableMask="!isImportApplying"
+          header="Import Timeline Configuration"
+          class="import-preview-dialog"
+        >
+          <div class="import-preview-content">
+            <p class="import-preview-description">
+              Review all detected changes before applying this configuration.
+            </p>
+
+            <Message :severity="importImpactSeverity">
+              {{ importImpactMessage }}
+            </Message>
+
+            <div class="import-preview-summary">
+              <span class="summary-label">Detected changes:</span>
+              <span class="summary-value">{{ importPreviewChanges.length }}</span>
+            </div>
+
+            <div class="import-table-wrapper">
+              <table class="import-preview-table">
+                <thead>
+                  <tr>
+                    <th>Setting</th>
+                    <th>Current</th>
+                    <th>Imported</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in importPreviewChanges" :key="item.key">
+                    <td>
+                      <div class="setting-label">{{ item.label }}</div>
+                      <div class="setting-key">{{ item.key }}</div>
+                    </td>
+                    <td>{{ formatPreferenceValue(item.key, item.currentValue) }}</td>
+                    <td>{{ formatPreferenceValue(item.key, item.importedValue) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <template #footer>
+            <Button
+              label="Cancel"
+              severity="secondary"
+              outlined
+              @click="closeImportPreview"
+              :disabled="isImportApplying"
+            />
+            <Button
+              label="Apply Import"
+              icon="pi pi-check"
+              @click="applyImportedPreferences"
+              :loading="isImportApplying"
+              :disabled="isImportApplying || importPreviewChanges.length === 0"
+            />
+          </template>
+        </Dialog>
+
         <!-- Confirm Dialog -->
         <ConfirmDialog />
         <Toast />
@@ -143,7 +230,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -167,6 +254,163 @@ import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useClassificationValidation } from '@/composables/useClassificationValidation'
+import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
+
+const TIMELINE_PREFERENCES_SCHEMA_VERSION = 'timeline-preferences.v1'
+
+const TIMELINE_PREFERENCE_LABELS = {
+  staypointRadiusMeters: 'Stay Detection Radius',
+  staypointMinDurationMinutes: 'Minimum Stay Duration',
+  useVelocityAccuracy: 'Enhanced Filtering',
+  staypointVelocityThreshold: 'Velocity Threshold',
+  staypointMaxAccuracyThreshold: 'GPS Accuracy Threshold',
+  staypointMinAccuracyRatio: 'Minimum Accuracy Ratio',
+  tripDetectionAlgorithm: 'Trip Detection Algorithm',
+  walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
+  walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
+  carEnabled: 'Car Detection Enabled',
+  carMinAvgSpeed: 'Car Minimum Average Speed',
+  carMinMaxSpeed: 'Car Minimum Peak Speed',
+  shortDistanceKm: 'Short Trip Distance Threshold',
+  bicycleEnabled: 'Bicycle Detection Enabled',
+  bicycleMinAvgSpeed: 'Bicycle Minimum Average Speed',
+  bicycleMaxAvgSpeed: 'Bicycle Maximum Average Speed',
+  bicycleMaxMaxSpeed: 'Bicycle Maximum Peak Speed',
+  runningEnabled: 'Running Detection Enabled',
+  runningMinAvgSpeed: 'Running Minimum Average Speed',
+  runningMaxAvgSpeed: 'Running Maximum Average Speed',
+  runningMaxMaxSpeed: 'Running Maximum Peak Speed',
+  trainEnabled: 'Train Detection Enabled',
+  trainMinAvgSpeed: 'Train Minimum Average Speed',
+  trainMaxAvgSpeed: 'Train Maximum Average Speed',
+  trainMinMaxSpeed: 'Train Minimum Peak Speed',
+  trainMaxMaxSpeed: 'Train Maximum Peak Speed',
+  trainMaxSpeedVariance: 'Train Maximum Speed Variance',
+  flightEnabled: 'Flight Detection Enabled',
+  flightMinAvgSpeed: 'Flight Minimum Average Speed',
+  flightMinMaxSpeed: 'Flight Minimum Peak Speed',
+  tripArrivalDetectionMinDurationSeconds: 'Arrival Detection Duration',
+  tripSustainedStopMinDurationSeconds: 'Sustained Stop Duration',
+  tripArrivalMinPoints: 'Minimum Stop Points for Arrival Detection',
+  isMergeEnabled: 'Stay Point Merging Enabled',
+  mergeMaxDistanceMeters: 'Maximum Merge Distance',
+  mergeMaxTimeGapMinutes: 'Maximum Merge Time Gap',
+  dataGapThresholdSeconds: 'Data Gap Threshold',
+  dataGapMinDurationSeconds: 'Minimum Gap Duration',
+  gapStayInferenceEnabled: 'Gap Stay Inference',
+  gapStayInferenceMaxGapHours: 'Gap Stay Inference Max Gap Duration',
+  gapTripInferenceEnabled: 'Gap Trip Inference',
+  gapTripInferenceMinDistanceMeters: 'Gap Trip Inference Minimum Distance',
+  gapTripInferenceMinGapHours: 'Gap Trip Inference Minimum Gap Duration',
+  gapTripInferenceMaxGapHours: 'Gap Trip Inference Maximum Gap Duration'
+}
+
+const CLASSIFICATION_FIELDS = [
+  'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
+  'carEnabled',
+  'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
+  'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
+  'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
+  'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
+  'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
+  'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed'
+]
+
+const STRUCTURAL_FIELDS = [
+  'staypointVelocityThreshold', 'staypointRadiusMeters',
+  'staypointMinDurationMinutes', 'tripDetectionAlgorithm',
+  'useVelocityAccuracy', 'staypointMaxAccuracyThreshold', 'staypointMinAccuracyRatio',
+  'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
+  'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
+  'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
+  'gapTripInferenceEnabled', 'gapTripInferenceMinDistanceMeters',
+  'gapTripInferenceMinGapHours', 'gapTripInferenceMaxGapHours',
+  'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds',
+  'tripArrivalMinPoints'
+]
+
+const MANAGED_TIMELINE_PREFERENCE_KEYS = Object.keys(TIMELINE_PREFERENCE_LABELS)
+
+const PREFERENCE_VALUE_TYPES = {
+  staypointRadiusMeters: 'number',
+  staypointMinDurationMinutes: 'number',
+  useVelocityAccuracy: 'boolean',
+  staypointVelocityThreshold: 'number',
+  staypointMaxAccuracyThreshold: 'number',
+  staypointMinAccuracyRatio: 'number',
+  tripDetectionAlgorithm: 'string',
+  walkingMaxAvgSpeed: 'number',
+  walkingMaxMaxSpeed: 'number',
+  carEnabled: 'boolean',
+  carMinAvgSpeed: 'number',
+  carMinMaxSpeed: 'number',
+  shortDistanceKm: 'number',
+  bicycleEnabled: 'boolean',
+  bicycleMinAvgSpeed: 'number',
+  bicycleMaxAvgSpeed: 'number',
+  bicycleMaxMaxSpeed: 'number',
+  runningEnabled: 'boolean',
+  runningMinAvgSpeed: 'number',
+  runningMaxAvgSpeed: 'number',
+  runningMaxMaxSpeed: 'number',
+  trainEnabled: 'boolean',
+  trainMinAvgSpeed: 'number',
+  trainMaxAvgSpeed: 'number',
+  trainMinMaxSpeed: 'number',
+  trainMaxMaxSpeed: 'number',
+  trainMaxSpeedVariance: 'number',
+  flightEnabled: 'boolean',
+  flightMinAvgSpeed: 'number',
+  flightMinMaxSpeed: 'number',
+  tripArrivalDetectionMinDurationSeconds: 'number',
+  tripSustainedStopMinDurationSeconds: 'number',
+  tripArrivalMinPoints: 'number',
+  isMergeEnabled: 'boolean',
+  mergeMaxDistanceMeters: 'number',
+  mergeMaxTimeGapMinutes: 'number',
+  dataGapThresholdSeconds: 'number',
+  dataGapMinDurationSeconds: 'number',
+  gapStayInferenceEnabled: 'boolean',
+  gapStayInferenceMaxGapHours: 'number',
+  gapTripInferenceEnabled: 'boolean',
+  gapTripInferenceMinDistanceMeters: 'number',
+  gapTripInferenceMinGapHours: 'number',
+  gapTripInferenceMaxGapHours: 'number'
+}
+
+const PREFERENCE_UNITS = {
+  staypointRadiusMeters: 'm',
+  staypointMinDurationMinutes: 'min',
+  staypointVelocityThreshold: 'km/h',
+  staypointMaxAccuracyThreshold: 'm',
+  walkingMaxAvgSpeed: 'km/h',
+  walkingMaxMaxSpeed: 'km/h',
+  carMinAvgSpeed: 'km/h',
+  carMinMaxSpeed: 'km/h',
+  shortDistanceKm: 'km',
+  bicycleMinAvgSpeed: 'km/h',
+  bicycleMaxAvgSpeed: 'km/h',
+  bicycleMaxMaxSpeed: 'km/h',
+  runningMinAvgSpeed: 'km/h',
+  runningMaxAvgSpeed: 'km/h',
+  runningMaxMaxSpeed: 'km/h',
+  trainMinAvgSpeed: 'km/h',
+  trainMaxAvgSpeed: 'km/h',
+  trainMinMaxSpeed: 'km/h',
+  trainMaxMaxSpeed: 'km/h',
+  flightMinAvgSpeed: 'km/h',
+  flightMinMaxSpeed: 'km/h',
+  tripArrivalDetectionMinDurationSeconds: 's',
+  tripSustainedStopMinDurationSeconds: 's',
+  tripArrivalMinPoints: 'points',
+  mergeMaxDistanceMeters: 'm',
+  mergeMaxTimeGapMinutes: 'min',
+  dataGapThresholdSeconds: 's',
+  dataGapMinDurationSeconds: 's',
+  gapStayInferenceMaxGapHours: 'hours',
+  gapTripInferenceMinGapHours: 'hours',
+  gapTripInferenceMaxGapHours: 'hours'
+}
 
 // Store
 const router = useRouter()
@@ -175,6 +419,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
 const timelineStore = useTimelineStore()
+const { checkActiveJob } = useTimelineJobCheck()
 
 // Composables
 const {
@@ -228,6 +473,15 @@ const activeTabIndex = computed(() => {
 })
 
 const prefs = ref({})
+const importFileInput = ref(null)
+const importPreviewVisible = ref(false)
+const importPreviewChanges = ref([])
+const importChangesPayload = ref({})
+const importSaveType = ref('full')
+const isImportApplying = ref(false)
+const detectedActiveJobId = ref(null)
+const checkingActiveJob = ref(false)
+let activeJobPollingTimer = null
 
 // Computed
 const hasUnsavedChanges = computed(() => {
@@ -237,6 +491,10 @@ const hasUnsavedChanges = computed(() => {
 const isFormValid = computed(() => {
   // Basic validation - can be extended
   return Object.values(prefs.value).every(val => val !== null && val !== undefined)
+})
+
+const hasActiveJob = computed(() => {
+  return Boolean(currentJobId.value || detectedActiveJobId.value)
 })
 
 // Methods
@@ -249,24 +507,237 @@ const handleTabChange = (event) => {
   }
 }
 
-const getChangedPrefs = () => {
+const getManagedPreferencesFromSource = (source = {}) => {
+  const managed = {}
+  for (const key of MANAGED_TIMELINE_PREFERENCE_KEYS) {
+    const value = source?.[key]
+    if (value !== undefined && value !== null) {
+      managed[key] = value
+    }
+  }
+  return managed
+}
+
+const getChangedPrefsFromSource = (source) => {
   const changed = {}
-  
-  for (const key in prefs.value) {
-    const currentValue = prefs.value[key]
-    const originalValue = originalPrefs.value?.[key]
-    
-    // Skip null values (they indicate no change requested)
-    if (currentValue === null) {
+  for (const [key, currentValue] of Object.entries(source)) {
+    if (currentValue === null || currentValue === undefined) {
       continue
     }
-    
-    // Only include fields that have actually changed from their original values
-    if (currentValue !== originalValue) {
+    if (currentValue !== originalPrefs.value?.[key]) {
       changed[key] = currentValue
     }
   }
   return changed
+}
+
+const getChangedPrefs = () => {
+  return getChangedPrefsFromSource(prefs.value)
+}
+
+const importImpactSeverity = computed(() => {
+  return importSaveType.value === 'classification' ? 'info' : 'warn'
+})
+
+const importImpactMessage = computed(() => {
+  if (importSaveType.value === 'classification') {
+    return 'This import will update classification parameters only and recalculate trip movement types.'
+  }
+  return 'This import includes structural settings and will trigger full timeline regeneration after save.'
+})
+
+const formatPreferenceValue = (key, value) => {
+  if (value === null || value === undefined) {
+    return 'Not set'
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Enabled' : 'Disabled'
+  }
+
+  if (key === 'tripDetectionAlgorithm') {
+    if (value === 'single') return 'Single trip'
+    if (value === 'multiple') return 'Multiple trips'
+  }
+
+  if (key === 'staypointMinAccuracyRatio' && typeof value === 'number') {
+    return `${Math.round(value * 100)}%`
+  }
+
+  if (key === 'gapTripInferenceMinDistanceMeters' && typeof value === 'number') {
+    const kilometers = value / 1000
+    return `${kilometers} km`
+  }
+
+  const unit = PREFERENCE_UNITS[key]
+  if (unit && typeof value === 'number') {
+    return `${value} ${unit}`
+  }
+
+  return String(value)
+}
+
+const buildSaveTypeForChanges = (changes) => {
+  const hasClassificationChanges = hasClassificationParameters(changes)
+  const hasStructuralChanges = hasStructuralParameters(changes)
+  return hasClassificationChanges && !hasStructuralChanges ? 'classification' : 'full'
+}
+
+const openImportPicker = () => {
+  importFileInput.value?.click()
+}
+
+const closeImportPreview = () => {
+  importPreviewVisible.value = false
+  importPreviewChanges.value = []
+  importChangesPayload.value = {}
+  importSaveType.value = 'full'
+}
+
+const exportPreferences = () => {
+  const effectivePrefs = getManagedPreferencesFromSource(originalPrefs.value)
+  if (Object.keys(effectivePrefs).length === 0) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Nothing to Export',
+      detail: 'No timeline preferences are currently available.',
+      life: 3000
+    })
+    return
+  }
+
+  const payload = {
+    schemaVersion: TIMELINE_PREFERENCES_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    preferences: effectivePrefs
+  }
+
+  if (import.meta.env.VITE_APP_VERSION) {
+    payload.appVersion = import.meta.env.VITE_APP_VERSION
+  }
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `timeline-preferences.v1.${timestamp}.json`
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  URL.revokeObjectURL(url)
+
+  toast.add({
+    severity: 'success',
+    summary: 'Export Complete',
+    detail: 'Timeline configuration exported successfully.',
+    life: 3000
+  })
+}
+
+const sanitizeImportedPreferences = (rawPreferences) => {
+  const sanitized = {}
+  for (const key of MANAGED_TIMELINE_PREFERENCE_KEYS) {
+    const value = rawPreferences?.[key]
+    if (value === undefined || value === null) {
+      continue
+    }
+    const expectedType = PREFERENCE_VALUE_TYPES[key]
+    if (expectedType && typeof value === expectedType) {
+      if (key === 'tripDetectionAlgorithm' && !['single', 'multiple'].includes(value)) {
+        continue
+      }
+      sanitized[key] = value
+    }
+  }
+  return sanitized
+}
+
+const handleImportFileChange = async (event) => {
+  const file = event.target?.files?.[0]
+  event.target.value = ''
+
+  if (!file) {
+    return
+  }
+
+  try {
+    const raw = await file.text()
+    const parsed = JSON.parse(raw)
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Invalid import file format.')
+    }
+    if (parsed.schemaVersion !== TIMELINE_PREFERENCES_SCHEMA_VERSION) {
+      throw new Error(`Unsupported schema version. Expected ${TIMELINE_PREFERENCES_SCHEMA_VERSION}.`)
+    }
+    if (!parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) {
+      throw new Error('Import file does not contain a valid preferences object.')
+    }
+
+    const importedManaged = sanitizeImportedPreferences(parsed.preferences)
+    if (Object.keys(importedManaged).length === 0) {
+      throw new Error('Import file contains no compatible timeline preference fields.')
+    }
+
+    const effectivePrefs = originalPrefs.value || {}
+    const changedEntries = Object.entries(importedManaged)
+      .filter(([key, importedValue]) => effectivePrefs[key] !== importedValue)
+      .map(([key, importedValue]) => ({
+        key,
+        label: TIMELINE_PREFERENCE_LABELS[key] || key,
+        currentValue: effectivePrefs[key],
+        importedValue
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+
+    if (changedEntries.length === 0) {
+      toast.add({
+        severity: 'info',
+        summary: 'No Changes',
+        detail: 'Imported configuration matches your current effective settings.',
+        life: 3500
+      })
+      return
+    }
+
+    const changedPayload = Object.fromEntries(changedEntries.map(entry => [entry.key, entry.importedValue]))
+
+    importPreviewChanges.value = changedEntries
+    importChangesPayload.value = changedPayload
+    importSaveType.value = buildSaveTypeForChanges(changedPayload)
+    importPreviewVisible.value = true
+  } catch (error) {
+    console.error('Failed to import timeline preferences file:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Import Failed',
+      detail: error.message || 'Failed to parse imported configuration file.',
+      life: 5000
+    })
+  }
+}
+
+const applyImportedPreferences = async () => {
+  if (isImportApplying.value) {
+    return
+  }
+
+  const changes = importChangesPayload.value
+  if (!changes || Object.keys(changes).length === 0) {
+    closeImportPreview()
+    return
+  }
+
+  isImportApplying.value = true
+  importPreviewVisible.value = false
+
+  try {
+    await savePreferences(importSaveType.value, changes)
+  } finally {
+    isImportApplying.value = false
+    closeImportPreview()
+  }
 }
 
 const loadPreferences = async () => {
@@ -280,6 +751,25 @@ const loadPreferences = async () => {
       detail: 'Failed to load timeline preferences',
       life: 5000
     })
+  }
+}
+
+const refreshActiveJob = async () => {
+  if (currentJobId.value) {
+    detectedActiveJobId.value = currentJobId.value
+    return
+  }
+
+  if (checkingActiveJob.value) {
+    return
+  }
+
+  checkingActiveJob.value = true
+  try {
+    const activeJobInfo = await checkActiveJob()
+    detectedActiveJobId.value = activeJobInfo?.hasActiveJob ? activeJobInfo.jobId : null
+  } finally {
+    checkingActiveJob.value = false
   }
 }
 
@@ -318,7 +808,7 @@ const confirmSavePreferences = () => {
         label: 'Update Classifications',
         severity: 'success'
       },
-      accept: () => savePreferences('classification')
+      accept: () => savePreferences('classification', changes)
     })
   } else {
     // Full regeneration path (current behavior)
@@ -335,28 +825,14 @@ const confirmSavePreferences = () => {
         label: 'Save & Regenerate',
         severity: 'primary'
       },
-      accept: () => savePreferences('full')
+      accept: () => savePreferences('full', changes)
     })
   }
 }
 
 // Parameter categorization functions
 const hasClassificationParameters = (changes) => {
-  const classificationFields = [
-    'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
-    'carEnabled',
-    'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
-    // Bicycle
-    'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
-    // Running
-    'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
-    // Train
-    'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
-    'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
-    // Flight
-    'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed'
-  ]
-  return classificationFields.some(field => field in changes)
+  return CLASSIFICATION_FIELDS.some(field => field in changes)
 }
 
 /**
@@ -365,26 +841,22 @@ const hasClassificationParameters = (changes) => {
  * managed via User Profile > Timeline Display tab.
  */
 const hasStructuralParameters = (changes) => {
-  const structuralFields = [
-    'staypointVelocityThreshold', 'staypointRadiusMeters',
-    'staypointMinDurationMinutes', 'tripDetectionAlgorithm',
-    'useVelocityAccuracy', 'staypointMaxAccuracyThreshold', 'staypointMinAccuracyRatio',
-    'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
-    'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
-    'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
-    'gapTripInferenceEnabled', 'gapTripInferenceMinDistanceMeters',
-    'gapTripInferenceMinGapHours', 'gapTripInferenceMaxGapHours',
-    'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds',
-    'tripArrivalMinPoints'
-  ]
-  return structuralFields.some(field => field in changes)
+  return STRUCTURAL_FIELDS.some(field => field in changes)
 }
 
-const savePreferences = async (saveType = 'full') => {
-  if (!isFormValid.value) return
+const savePreferences = async (saveType = 'full', explicitChanges = null) => {
+  if (!isFormValid.value && !explicitChanges) return
 
-  // Capture changes immediately to avoid closure issues
-  const changes = getChangedPrefs()
+  const changes = explicitChanges || getChangedPrefs()
+  if (!changes || Object.keys(changes).length === 0) {
+    toast.add({
+      severity: 'info',
+      summary: 'No Changes',
+      detail: 'No preferences were modified',
+      life: 3000
+    })
+    return
+  }
 
   if (saveType === 'classification') {
     // Fast path: classification-only updates don't need job tracking
@@ -496,6 +968,12 @@ const regenerateTimeline = () => {
 }
 
 const goToActiveJob = () => {
+  const jobId = currentJobId.value || detectedActiveJobId.value
+  if (jobId) {
+    router.push(`/app/timeline/jobs/${jobId}`)
+    return
+  }
+
   router.push('/app/timeline/jobs')
 }
 
@@ -504,6 +982,14 @@ watch(originalPrefs, (newVal) => {
     prefs.value = { ...newVal }
   }
 }, { immediate: true })
+
+watch(currentJobId, (newJobId) => {
+  if (newJobId) {
+    detectedActiveJobId.value = newJobId
+  } else {
+    refreshActiveJob()
+  }
+})
 
 // Watch for URL changes and validate tab parameter
 watch(() => route.query.tab, (newTab) => {
@@ -520,6 +1006,8 @@ watch(() => route.query.tab, (newTab) => {
 // Lifecycle
 onMounted(() => {
   loadPreferences()
+  refreshActiveJob()
+  activeJobPollingTimer = window.setInterval(refreshActiveJob, 15000)
 
   // Validate initial tab from URL
   const validTabs = tabItems.value.map(t => t.key)
@@ -529,6 +1017,13 @@ onMounted(() => {
     activeTab.value = 'staypoints'
   } else if (initialTab) {
     activeTab.value = initialTab
+  }
+})
+
+onUnmounted(() => {
+  if (activeJobPollingTimer) {
+    window.clearInterval(activeJobPollingTimer)
+    activeJobPollingTimer = null
   }
 })
 </script>
@@ -584,6 +1079,8 @@ onMounted(() => {
   display: flex;
   gap: 1rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* Info Banner */
@@ -687,6 +1184,82 @@ onMounted(() => {
   margin-bottom: 2rem;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
+.import-preview-dialog {
+  width: min(920px, 95vw);
+}
+
+.import-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.import-preview-description {
+  margin: 0;
+  color: var(--gp-text-secondary);
+}
+
+.import-preview-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.summary-label {
+  color: var(--gp-text-secondary);
+}
+
+.summary-value {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.import-table-wrapper {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--gp-border-medium);
+  border-radius: var(--gp-radius-medium);
+}
+
+.import-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--gp-border-light);
+  vertical-align: top;
+}
+
+.import-preview-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--gp-surface-light);
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.setting-label {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.setting-key {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--gp-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 /* Input and Button Styling */
 :deep(.p-dropdown) {
   border-radius: var(--gp-radius-medium);
@@ -769,6 +1342,20 @@ onMounted(() => {
   .header-actions .p-button {
     flex: 1;
     min-height: 44px;
+  }
+
+  .import-preview-dialog {
+    width: 96vw;
+  }
+
+  .import-table-wrapper {
+    max-height: 340px;
+  }
+
+  .import-preview-table th,
+  .import-preview-table td {
+    padding: 0.65rem;
+    font-size: 0.85rem;
   }
   
   .banner-content {
@@ -872,6 +1459,16 @@ onMounted(() => {
     width: 100%;
     min-height: 48px;
     font-size: 0.95rem;
+  }
+
+  .import-preview-table th,
+  .import-preview-table td {
+    padding: 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .setting-key {
+    font-size: 0.7rem;
   }
   
   .banner-icon {
