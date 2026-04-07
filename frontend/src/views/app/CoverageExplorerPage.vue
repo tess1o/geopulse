@@ -77,6 +77,7 @@
         </div>
         <div class="map-container">
           <MapContainer
+              ref="mapContainerRef"
               map-id="coverage-map"
               :center="mapCenter"
               :zoom="mapZoom"
@@ -180,6 +181,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 const coverageStore = useCoverageStore()
 const locationStore = useLocationStore()
 
+const mapContainerRef = ref(null)
 const mapInstance = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(10)
@@ -471,7 +473,7 @@ const handleMapReady = async (map) => {
   try {
     const lastPosition = await locationStore.getLastKnownPosition()
     if (lastPosition?.lat && lastPosition?.lon) {
-      map.setView([lastPosition.lat, lastPosition.lon], 12, {animate: false})
+      mapContainerRef.value?.setView?.([lastPosition.lat, lastPosition.lon], 12, {animate: false})
     }
   } catch (error) {
     console.warn('Failed to load last known position:', error)

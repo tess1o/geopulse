@@ -14,11 +14,13 @@ import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEve
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserAvatarRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
+import java.net.URI;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -323,6 +325,59 @@ public class UserService {
         // Optional: Validate URL length (already enforced by @Size, but double-check)
         if (tileUrl.length() > 1000) {
             throw new IllegalArgumentException("Custom map tile URL is too long (max 1000 characters)");
+        }
+    }
+
+    /**
+     * Validates custom vector map style URL to ensure it's a safe and valid URL.
+     * Must use HTTP/HTTPS protocols and should point to a style JSON document.
+     *
+     * @param styleUrl the style URL to validate
+     * @throws IllegalArgumentException if the style URL is invalid
+     */
+    private void validateCustomMapStyleUrl(String styleUrl) {
+        if (styleUrl == null || styleUrl.trim().isEmpty()) {
+            return; // Allow null/empty to use default style
+        }
+
+        String normalizedUrl = styleUrl.trim().toLowerCase();
+
+        if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+            log.warn("Invalid style URL protocol: {}", styleUrl);
+            throw new IllegalArgumentException("Custom map style URL must use HTTP or HTTPS protocol");
+        }
+
+        if (normalizedUrl.contains("javascript:") || normalizedUrl.contains("data:") ||
+                normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
+            log.warn("Dangerous protocol detected in style URL: {}", styleUrl);
+            throw new IllegalArgumentException("Invalid style URL protocol");
+        }
+
+        if (styleUrl.contains("..")) {
+            log.warn("Path traversal attempt in style URL: {}", styleUrl);
+            throw new IllegalArgumentException("Invalid style URL format");
+        }
+
+        if (styleUrl.length() > 1000) {
+            throw new IllegalArgumentException("Custom map style URL is too long (max 1000 characters)");
+        }
+
+        if (styleUrl.contains("{z}") || styleUrl.contains("{x}") || styleUrl.contains("{y}")) {
+            throw new IllegalArgumentException("Custom map style URL must not contain raster tile placeholders");
+        }
+
+        if (!looksLikeVectorStyleEndpoint(styleUrl)) {
+            throw new IllegalArgumentException("Custom map style URL should point to a style JSON endpoint");
+        }
+    }
+
+    private boolean looksLikeVectorStyleEndpoint(String styleUrl) {
+        try {
+            URI parsedUrl = URI.create(styleUrl.trim());
+            String path = parsedUrl.getPath() != null ? parsedUrl.getPath().toLowerCase(Locale.ENGLISH) : "";
+            return path.endsWith(".json") || path.contains("/style") || path.contains("/styles/");
+        } catch (IllegalArgumentException exception) {
+            return false;
         }
     }
 
@@ -753,6 +808,15 @@ public class UserService {
             user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
             log.debug("Updated custom map tile URL for user {}", userId);
         }
+        if (request.getCustomMapStyleUrl() != null) {
+            validateCustomMapStyleUrl(request.getCustomMapStyleUrl());
+            user.setCustomMapStyleUrl(request.getCustomMapStyleUrl().trim().isEmpty() ? null : request.getCustomMapStyleUrl().trim());
+            log.debug("Updated custom map style URL for user {}", userId);
+        }
+        if (request.getMapRenderMode() != null) {
+            user.setMapRenderMode(request.getMapRenderMode());
+            log.debug("Updated map render mode for user {} to {}", userId, request.getMapRenderMode());
+        }
 
         // Update display preference columns (no event firing, no regeneration)
         if (request.getPathSimplificationEnabled() != null) {
@@ -791,6 +855,8 @@ public class UserService {
 
         return TimelineDisplayPreferences.builder()
                 .customMapTileUrl(user.getCustomMapTileUrl())
+                .customMapStyleUrl(user.getCustomMapStyleUrl())
+                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
                 .pathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled() != null
                         ? user.getTimelineDisplayPathSimplificationEnabled() : true)
                 .pathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance() != null

@@ -70,7 +70,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, measureUnit, defaultRedirectUrl, dateFormat, defaultDateRangePreset } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, defaultDateRangePreset } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -89,6 +89,8 @@ const aiSettings = ref({
 // Timeline Display Preferences state
 const timelineDisplayPrefs = ref({
   customMapTileUrl: customMapTileUrl.value || '',
+  customMapStyleUrl: customMapStyleUrl.value || '',
+  mapRenderMode: mapRenderMode.value || 'VECTOR',
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
@@ -379,6 +381,8 @@ const loadTimelineDisplayPreferences = async () => {
     if (data) {
       timelineDisplayPrefs.value = {
         customMapTileUrl: data.customMapTileUrl || '',
+        customMapStyleUrl: data.customMapStyleUrl || '',
+        mapRenderMode: data.mapRenderMode || 'VECTOR',
         pathSimplificationEnabled: data.pathSimplificationEnabled ?? true,
         pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: data.pathMaxPoints ?? 0,

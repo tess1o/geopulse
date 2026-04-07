@@ -19,7 +19,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { MapContainer } from '@/components/maps'
-import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
+import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 
 const props = defineProps({
@@ -54,7 +54,7 @@ const {
   renderPhotoMarkerGroups: renderMapPhotoMarkerGroups,
   focusOnCoordinates: focusOnMapCoordinates,
   focusOnPhoto: focusOnMapPhoto
-} = usePhotoMapMarkers({ emit })
+} = usePhotoMapMarkersRuntime({ emit })
 
 const photosWithCoordinates = computed(() => props.photos.filter((photo) => {
   return typeof photo?.latitude === 'number' && typeof photo?.longitude === 'number'
@@ -124,9 +124,9 @@ const renderPhotoMarkers = () => {
 
   if (!hasAutoCentered.value) {
     if (bounds.length === 1) {
-      map.value.setView(bounds[0], 12)
+      mapContainerRef.value?.setView?.(bounds[0], 12)
     } else {
-      map.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 })
+      mapContainerRef.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 12 })
     }
     hasAutoCentered.value = true
   }

@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.user.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
 
@@ -30,6 +31,8 @@ public class UserMapper {
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
+                .customMapStyleUrl(entity.getCustomMapStyleUrl())
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
                 .measureUnit(entity.getMeasureUnit())
                 .defaultRedirectUrl(entity.getDefaultRedirectUrl())
                 .dateFormat(entity.getDateFormat())

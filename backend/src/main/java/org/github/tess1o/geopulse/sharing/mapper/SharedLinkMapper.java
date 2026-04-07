@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.sharing.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -33,6 +34,9 @@ public class SharedLinkMapper {
         sharedLinkEntity.setShowPhotos(createShareLinkRequest.getShowPhotos() != null ?
                 createShareLinkRequest.getShowPhotos() : false);
         sharedLinkEntity.setCustomMapTileUrl(createShareLinkRequest.getCustomMapTileUrl());
+        sharedLinkEntity.setCustomMapStyleUrl(createShareLinkRequest.getCustomMapStyleUrl());
+        sharedLinkEntity.setMapRenderMode(createShareLinkRequest.getMapRenderMode() != null ?
+                createShareLinkRequest.getMapRenderMode() : MapRenderMode.VECTOR);
 
         return sharedLinkEntity;
     }
@@ -67,6 +71,8 @@ public class SharedLinkMapper {
                 .showPhotos(entity.getShowPhotos())
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
+                .customMapStyleUrl(entity.getCustomMapStyleUrl())
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
                 .build();
     }
 
@@ -90,6 +96,8 @@ public class SharedLinkMapper {
                 .showPhotos(entity.getShowPhotos())
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
+                .customMapStyleUrl(entity.getCustomMapStyleUrl())
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
                 .build();
     }
 
@@ -164,5 +172,10 @@ public class SharedLinkMapper {
         }
         // Always set custom map tile URL (null is valid - means disabled)
         entity.setCustomMapTileUrl(dto.getCustomMapTileUrl());
+        // Always set custom map style URL (null is valid - means disabled)
+        entity.setCustomMapStyleUrl(dto.getCustomMapStyleUrl());
+        if (dto.getMapRenderMode() != null) {
+            entity.setMapRenderMode(dto.getMapRenderMode());
+        }
     }
 }

@@ -8,6 +8,7 @@
   >
     <div class="places-map-content">
       <MapContainer
+        ref="mapContainerRef"
         :map-id="`places-map-${mapId}`"
         :center="coordinates"
         :zoom="16"
@@ -59,6 +60,7 @@ const emit = defineEmits(['close'])
 // State
 const internalVisible = ref(props.showMap)
 const mapId = ref(Math.random().toString(36).substr(2, 9))
+const mapContainerRef = ref(null)
 
 // Computed
 const favoriteData = computed(() => {
@@ -75,11 +77,11 @@ const favoriteData = computed(() => {
 })
 
 // Methods
-const handleMapReady = (map) => {
+const handleMapReady = () => {
   // Center map on the coordinates
   if (props.coordinates && props.coordinates.length >= 2) {
     nextTick(() => {
-      map.setView(props.coordinates, 16)
+      mapContainerRef.value?.setView?.(props.coordinates, 16)
     })
   }
 }

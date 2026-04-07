@@ -11,11 +11,12 @@
         @map-ready="handleMapReady"
       >
         <template #overlays="{ map, isReady }">
-          <!-- Point Marker -->
-          <div v-if="map && isReady && geometry.type === 'point'" ref="pointMarkerRef"></div>
-
-          <!-- Area Rectangle -->
-          <div v-if="map && isReady && geometry.type === 'area'" ref="areaRectangleRef"></div>
+          <FavoritesLayer
+            v-if="map && isReady"
+            :map="map"
+            :favorites-data="placeFavoriteData"
+            :visible="true"
+          />
         </template>
       </MapContainer>
     </div>
@@ -25,9 +26,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
-import { MapContainer } from '@/components/maps'
-import L from 'leaflet'
-import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
+import { FavoritesLayer, MapContainer } from '@/components/maps'
+import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 
 const props = defineProps({
@@ -52,11 +52,7 @@ const props = defineProps({
 const emit = defineEmits(['photo-click'])
 
 const mapContainerRef = ref(null)
-const pointMarkerRef = ref(null)
-const areaRectangleRef = ref(null)
 const map = ref(null)
-const marker = ref(null)
-const rectangle = ref(null)
 
 const mapId = `place-details-map-${Math.random().toString(36).slice(2, 11)}`
 const mapOptions = {
@@ -69,7 +65,7 @@ const {
   renderPhotoMarkerGroups: renderMapPhotoMarkerGroups,
   focusOnCoordinates: focusOnMapCoordinates,
   focusOnPhoto: focusOnMapPhoto
-} = usePhotoMapMarkers({ emit })
+} = usePhotoMapMarkersRuntime({ emit })
 
 const mapCenter = computed(() => {
   if (props.geometry.latitude && props.geometry.longitude) {
@@ -82,8 +78,78 @@ const mapZoom = computed(() => {
   return props.geometry.type === 'area' ? 13 : 15
 })
 
+const placeFavoriteData = computed(() => {
+  if (!props.geometry) {
+    return []
+  }
+
+  if (props.geometry.type === 'point') {
+    const latitude = Number(props.geometry.latitude)
+    const longitude = Number(props.geometry.longitude)
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return []
+    }
+
+    return [
+      {
+        id: 'place-point',
+        name: props.locationName || 'Place',
+        type: 'point',
+        latitude,
+        longitude
+      }
+    ]
+  }
+
+  if (props.geometry.type === 'area' && Array.isArray(props.geometry.northEast) && Array.isArray(props.geometry.southWest)) {
+    const northEastLat = Number(props.geometry.northEast[0])
+    const northEastLon = Number(props.geometry.northEast[1])
+    const southWestLat = Number(props.geometry.southWest[0])
+    const southWestLon = Number(props.geometry.southWest[1])
+
+    if ([northEastLat, northEastLon, southWestLat, southWestLon].every((value) => Number.isFinite(value))) {
+      return [
+        {
+          id: 'place-area',
+          name: props.locationName || 'Place Area',
+          type: 'area',
+          northEastLat,
+          northEastLon,
+          southWestLat,
+          southWestLon
+        }
+      ]
+    }
+  }
+
+  return []
+})
+
 const handleMapBackgroundClick = () => {
   clearFocusMarker()
+}
+
+const focusGeometry = () => {
+  if (!map.value) {
+    return
+  }
+
+  if (props.geometry.type === 'point') {
+    const latitude = Number(props.geometry.latitude)
+    const longitude = Number(props.geometry.longitude)
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      mapContainerRef.value?.setView?.([latitude, longitude], mapZoom.value)
+    }
+    return
+  }
+
+  if (props.geometry.type === 'area' && Array.isArray(props.geometry.northEast) && Array.isArray(props.geometry.southWest)) {
+    const bounds = [
+      [props.geometry.southWest[0], props.geometry.southWest[1]],
+      [props.geometry.northEast[0], props.geometry.northEast[1]]
+    ]
+    mapContainerRef.value?.fitBounds?.(bounds, { padding: [50, 50] })
+  }
 }
 
 const handleMapReady = (mapInstance) => {
@@ -91,64 +157,9 @@ const handleMapReady = (mapInstance) => {
   map.value.on('click', handleMapBackgroundClick)
 
   nextTick(() => {
-    if (props.geometry.type === 'point') {
-      addPointMarker()
-    } else if (props.geometry.type === 'area') {
-      addAreaRectangle()
-    }
+    focusGeometry()
     renderPhotoMarkers()
   })
-}
-
-const addPointMarker = () => {
-  if (!map.value || !props.geometry.latitude || !props.geometry.longitude) return
-
-  // Remove existing marker
-  if (marker.value) {
-    marker.value.remove()
-  }
-
-  // Create marker
-  marker.value = L.marker([props.geometry.latitude, props.geometry.longitude], {
-    icon: L.divIcon({
-      className: 'place-marker',
-      html: '<div class="place-marker-icon"><i class="pi pi-map-marker"></i></div>',
-      iconSize: [40, 40],
-      iconAnchor: [20, 40]
-    })
-  }).addTo(map.value)
-
-  marker.value.bindPopup(`<strong>${props.locationName}</strong>`)
-
-  // Center map on marker
-  map.value.setView([props.geometry.latitude, props.geometry.longitude], mapZoom.value)
-}
-
-const addAreaRectangle = () => {
-  if (!map.value || !props.geometry.northEast || !props.geometry.southWest) return
-
-  // Remove existing rectangle
-  if (rectangle.value) {
-    rectangle.value.remove()
-  }
-
-  // Create rectangle
-  const bounds = [
-    [props.geometry.southWest[0], props.geometry.southWest[1]],
-    [props.geometry.northEast[0], props.geometry.northEast[1]]
-  ]
-
-  rectangle.value = L.rectangle(bounds, {
-    color: '#3b82f6',
-    weight: 2,
-    fillColor: '#3b82f6',
-    fillOpacity: 0.2
-  }).addTo(map.value)
-
-  rectangle.value.bindPopup(`<strong>${props.locationName}</strong><br>Area`)
-
-  // Fit map to rectangle bounds
-  map.value.fitBounds(bounds, { padding: [50, 50] })
 }
 
 const renderPhotoMarkers = () => {
@@ -173,11 +184,7 @@ const focusOnPhoto = (photo, zoom = 16) => {
 // Watch for geometry changes
 watch(() => props.geometry, () => {
   nextTick(() => {
-    if (props.geometry.type === 'point') {
-      addPointMarker()
-    } else if (props.geometry.type === 'area') {
-      addAreaRectangle()
-    }
+    focusGeometry()
   })
 }, { deep: true })
 
@@ -197,14 +204,6 @@ onBeforeUnmount(() => {
   clearPhotoMarkers()
   if (map.value) {
     map.value.off('click', handleMapBackgroundClick)
-  }
-  if (marker.value) {
-    marker.value.remove()
-    marker.value = null
-  }
-  if (rectangle.value) {
-    rectangle.value.remove()
-    rectangle.value = null
   }
   clearFocusMarker()
 })
@@ -228,31 +227,5 @@ defineExpose({
   .place-map-container {
     height: 300px;
   }
-}
-</style>
-
-<style>
-/* Place marker styles (not scoped) */
-.place-marker {
-  background: transparent;
-  border: none;
-}
-
-.place-marker-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.place-marker-icon i {
-  transform: rotate(45deg);
-  font-size: 1.5rem;
 }
 </style>

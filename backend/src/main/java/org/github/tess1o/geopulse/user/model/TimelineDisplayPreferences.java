@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 /**
  * Timeline display preferences - settings that affect ONLY how timelines are rendered in the UI.
@@ -24,6 +25,18 @@ public class TimelineDisplayPreferences {
      * Default: null (use default OpenStreetMap tiles)
      */
     private String customMapTileUrl;
+
+    /**
+     * Custom vector map style URL for displaying the map.
+     * Default: null (use app default style).
+     */
+    private String customMapStyleUrl;
+
+    /**
+     * Preferred map rendering mode.
+     * Default: VECTOR.
+     */
+    private MapRenderMode mapRenderMode;
 
     /**
      * Enable GPS path simplification when rendering paths in UI.

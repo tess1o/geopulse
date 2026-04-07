@@ -192,6 +192,8 @@
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
                 :custom-tile-url="shareInfo.custom_map_tile_url"
+                :custom-style-url="shareInfo.custom_map_style_url"
+                :map-render-mode="shareInfo.map_render_mode"
                 :is-shared-view="true"
                 @timeline-marker-click="handleTimelineItemClick"
             />

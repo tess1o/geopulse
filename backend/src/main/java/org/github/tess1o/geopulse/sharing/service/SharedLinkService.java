@@ -26,10 +26,12 @@ import org.github.tess1o.geopulse.sharing.repository.SharedLinkRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -105,6 +107,9 @@ public class SharedLinkService {
             }
         }
 
+        validateCustomMapTileUrl(request.getCustomMapTileUrl());
+        validateCustomMapStyleUrl(request.getCustomMapStyleUrl());
+
         SharedLinkEntity entity = mapper.toEntity(request, user);
         if (shareType == ShareType.TIMELINE) {
             TimelineRange normalizedRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
@@ -158,8 +163,13 @@ public class SharedLinkService {
                 updateDto.getEndDate(),
                 updateDto.getShowCurrentLocation(),
                 updateDto.getShowPhotos(),
-                updateDto.getCustomMapTileUrl()
+                updateDto.getCustomMapTileUrl(),
+                updateDto.getCustomMapStyleUrl(),
+                updateDto.getMapRenderMode()
         );
+
+        validateCustomMapTileUrl(safeDto.getCustomMapTileUrl());
+        validateCustomMapStyleUrl(safeDto.getCustomMapStyleUrl());
 
         if (safeDto.getPassword() != null && !safeDto.getPassword().trim().isEmpty()) {
             String hashedPassword = passwordUtils.hashPassword(safeDto.getPassword());
@@ -175,6 +185,69 @@ public class SharedLinkService {
         sharedLinkRepository.persist(entity);
 
         return mapper.toDto(entity);
+    }
+
+    private void validateCustomMapTileUrl(String tileUrl) {
+        if (tileUrl == null || tileUrl.trim().isEmpty()) {
+            return;
+        }
+
+        String normalizedUrl = tileUrl.trim().toLowerCase();
+        if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+            throw new IllegalArgumentException("Custom map tile URL must use HTTP or HTTPS protocol");
+        }
+        if (normalizedUrl.contains("javascript:") || normalizedUrl.contains("data:") ||
+                normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
+            throw new IllegalArgumentException("Invalid tile URL protocol");
+        }
+        if (!tileUrl.contains("{z}") || !tileUrl.contains("{x}") || !tileUrl.contains("{y}")) {
+            throw new IllegalArgumentException("Custom map tile URL must contain {z}, {x}, and {y} placeholders");
+        }
+        if (tileUrl.contains("..")) {
+            throw new IllegalArgumentException("Invalid tile URL format");
+        }
+        if (tileUrl.length() > 1000) {
+            throw new IllegalArgumentException("Custom map tile URL is too long (max 1000 characters)");
+        }
+    }
+
+    private void validateCustomMapStyleUrl(String styleUrl) {
+        if (styleUrl == null || styleUrl.trim().isEmpty()) {
+            return;
+        }
+
+        String normalizedUrl = styleUrl.trim().toLowerCase();
+        if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+            throw new IllegalArgumentException("Custom map style URL must use HTTP or HTTPS protocol");
+        }
+        if (normalizedUrl.contains("javascript:") || normalizedUrl.contains("data:") ||
+                normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
+            throw new IllegalArgumentException("Invalid style URL protocol");
+        }
+        if (styleUrl.contains("..")) {
+            throw new IllegalArgumentException("Invalid style URL format");
+        }
+        if (styleUrl.length() > 1000) {
+            throw new IllegalArgumentException("Custom map style URL is too long (max 1000 characters)");
+        }
+
+        if (styleUrl.contains("{z}") || styleUrl.contains("{x}") || styleUrl.contains("{y}")) {
+            throw new IllegalArgumentException("Custom map style URL must not contain raster tile placeholders");
+        }
+
+        if (!looksLikeVectorStyleEndpoint(styleUrl)) {
+            throw new IllegalArgumentException("Custom map style URL should point to a style JSON endpoint");
+        }
+    }
+
+    private boolean looksLikeVectorStyleEndpoint(String styleUrl) {
+        try {
+            URI parsedUrl = URI.create(styleUrl.trim());
+            String path = parsedUrl.getPath() != null ? parsedUrl.getPath().toLowerCase(Locale.ENGLISH) : "";
+            return path.endsWith(".json") || path.contains("/style") || path.contains("/styles/");
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     @Transactional

@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 /**
  * Request DTO for updating timeline display preferences.
@@ -27,6 +28,18 @@ public class UpdateTimelineDisplayPreferencesRequest {
      */
     @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
     private String customMapTileUrl;
+
+    /**
+     * Custom vector map style URL for displaying the map.
+     * Valid range: 0 to 1000 characters.
+     */
+    @Size(max = 1000, message = "Custom map style URL cannot exceed 1000 characters")
+    private String customMapStyleUrl;
+
+    /**
+     * Preferred map rendering mode.
+     */
+    private MapRenderMode mapRenderMode;
 
     /**
      * Enable GPS path simplification when rendering paths in UI.

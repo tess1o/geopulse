@@ -70,8 +70,22 @@
       </div>
 
       <div class="field-checkbox">
+        <label for="map-render-mode">Map render mode</label>
+      </div>
+      <div class="field">
+        <Dropdown
+          id="map-render-mode"
+          v-model="formData.map_render_mode"
+          :options="mapRenderModeOptions"
+          optionLabel="label"
+          optionValue="value"
+          class="w-full"
+        />
+      </div>
+
+      <div class="field-checkbox">
         <Checkbox id="use-custom-tiles" v-model="formData.use_custom_tiles" :binary="true" />
-        <label for="use-custom-tiles">Use custom map tiles</label>
+        <label for="use-custom-tiles">Use custom raster tiles</label>
       </div>
 
       <div v-if="formData.use_custom_tiles" class="custom-tiles-section">
@@ -100,6 +114,30 @@
           </small>
           <small v-if="errors.custom_map_tile_url" class="p-error">
             {{ errors.custom_map_tile_url }}
+          </small>
+        </div>
+      </div>
+
+      <div class="field-checkbox">
+        <Checkbox id="use-custom-style" v-model="formData.use_custom_style" :binary="true" />
+        <label for="use-custom-style">Use custom vector style</label>
+      </div>
+
+      <div v-if="formData.use_custom_style" class="custom-tiles-section">
+        <div class="field">
+          <label for="custom-style-url">Custom Vector Style URL</label>
+          <InputText
+            id="custom-style-url"
+            v-model="formData.custom_map_style_url"
+            placeholder="https://tiles.openfreemap.org/styles/liberty"
+            class="w-full"
+            :class="{'p-invalid': errors.custom_map_style_url}"
+          />
+          <small class="p-text-secondary">
+            Style JSON URL (HTTP/HTTPS)
+          </small>
+          <small v-if="errors.custom_map_style_url" class="p-error">
+            {{ errors.custom_map_style_url }}
           </small>
         </div>
       </div>
@@ -138,6 +176,7 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
 import Checkbox from 'primevue/checkbox'
+import Dropdown from 'primevue/dropdown'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -184,20 +223,28 @@ const formData = ref({
   start_date: null,
   end_date: null,
   expires_at: null,
+  map_render_mode: 'VECTOR',
   show_current_location: true,
   show_photos: false,
   has_password: false,
   password: '',
   use_custom_tiles: false,
-  custom_map_tile_url: ''
+  custom_map_tile_url: '',
+  use_custom_style: false,
+  custom_map_style_url: ''
 })
 
 const errors = ref({
   start_date: null,
   end_date: null,
   password: null,
-  custom_map_tile_url: null
+  custom_map_tile_url: null,
+  custom_map_style_url: null
 })
+const mapRenderModeOptions = [
+  { label: 'Vector (MapLibre)', value: 'VECTOR' },
+  { label: 'Raster (Leaflet)', value: 'RASTER' }
+]
 
 // Initialize form data when dialog opens
 watch(() => props.visible, (visible) => {
@@ -215,10 +262,13 @@ watch(() => props.visible, (visible) => {
         expires_at: props.editingShare.expires_at ? new Date(props.editingShare.expires_at) : null,
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
+        map_render_mode: props.editingShare.map_render_mode || 'VECTOR',
         has_password: props.editingShare.has_password || false,
         password: '',
         use_custom_tiles: !!(props.editingShare.custom_map_tile_url),
-        custom_map_tile_url: props.editingShare.custom_map_tile_url || ''
+        custom_map_tile_url: props.editingShare.custom_map_tile_url || '',
+        use_custom_style: !!(props.editingShare.custom_map_style_url),
+        custom_map_style_url: props.editingShare.custom_map_style_url || ''
       }
     } else if (props.prefillDates) {
       // Create mode with prefilled dates from TimelinePage
@@ -234,16 +284,19 @@ watch(() => props.visible, (visible) => {
         expires_at: expiresAt,
         show_current_location: true,
         show_photos: false,
+        map_render_mode: 'VECTOR',
         has_password: false,
         password: '',
         use_custom_tiles: false,
-        custom_map_tile_url: ''
+        custom_map_tile_url: '',
+        use_custom_style: false,
+        custom_map_style_url: ''
       }
     } else {
       // Create mode - reset to defaults
       resetForm()
     }
-    errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null }
+    errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
   }
 })
 
@@ -255,10 +308,13 @@ function resetForm() {
     expires_at: null,
     show_current_location: true,
     show_photos: false,
+    map_render_mode: 'VECTOR',
     has_password: false,
     password: '',
     use_custom_tiles: false,
-    custom_map_tile_url: ''
+    custom_map_tile_url: '',
+    use_custom_style: false,
+    custom_map_style_url: ''
   }
 }
 
@@ -277,8 +333,21 @@ watch(() => formData.value.use_custom_tiles, (enabled) => {
   }
 })
 
+watch(() => formData.value.use_custom_style, (enabled) => {
+  if (enabled && !formData.value.custom_map_style_url) {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.customMapStyleUrl && userInfo.customMapStyleUrl.trim()) {
+        formData.value.custom_map_style_url = userInfo.customMapStyleUrl.trim()
+      }
+    } catch (error) {
+      console.error('Error reading user custom style URL:', error)
+    }
+  }
+})
+
 function validateForm() {
-  errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null }
+  errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
   let isValid = true
 
   if (!formData.value.start_date) {
@@ -312,6 +381,37 @@ function validateForm() {
       isValid = false
     }
   }
+  if (formData.value.use_custom_style) {
+    const styleUrl = formData.value.custom_map_style_url || ''
+    const normalizedUrl = styleUrl.trim().toLowerCase()
+    if (!styleUrl.trim()) {
+      errors.value.custom_map_style_url = 'Custom style URL required when enabled'
+      isValid = false
+    } else if (styleUrl.length > 1000) {
+      errors.value.custom_map_style_url = 'URL cannot exceed 1000 characters'
+      isValid = false
+    } else if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      errors.value.custom_map_style_url = 'URL must use HTTP or HTTPS protocol'
+      isValid = false
+    } else if (
+      normalizedUrl.includes('javascript:') ||
+      normalizedUrl.includes('data:') ||
+      normalizedUrl.includes('file:') ||
+      normalizedUrl.includes('ftp:')
+    ) {
+      errors.value.custom_map_style_url = 'Invalid URL protocol'
+      isValid = false
+    } else if (styleUrl.includes('..')) {
+      errors.value.custom_map_style_url = 'Invalid URL format'
+      isValid = false
+    } else {
+      const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
+      if (!looksLikeStyleUrl) {
+        errors.value.custom_map_style_url = 'URL should point to a style JSON endpoint'
+        isValid = false
+      }
+    }
+  }
 
   return isValid
 }
@@ -337,8 +437,10 @@ async function handleSubmit() {
       expires_at: formData.value.expires_at ? formData.value.expires_at.toISOString() : null,
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
+      map_render_mode: formData.value.map_render_mode || 'VECTOR',
       password: formData.value.has_password ? formData.value.password : null,
       custom_map_tile_url: formData.value.use_custom_tiles ? formData.value.custom_map_tile_url : null,
+      custom_map_style_url: formData.value.use_custom_style ? formData.value.custom_map_style_url : null,
       // Keep live location fields for compatibility
       show_history: false,
       history_hours: 0
@@ -397,14 +499,14 @@ function resetToForm() {
   showSuccessState.value = false
   createdShareUrl.value = ''
   resetForm()
-  errors.value = { start_date: null, end_date: null, password: null }
+  errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
 }
 
 function onHide() {
   showSuccessState.value = false
   createdShareUrl.value = ''
   resetForm()
-  errors.value = { start_date: null, end_date: null, password: null }
+  errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
 }
 </script>
 

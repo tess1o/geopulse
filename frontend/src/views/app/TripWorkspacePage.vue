@@ -912,12 +912,12 @@ const handleTripPhotoShowOnMap = (photo) => {
     activeWorkspaceTab.value = 'overview'
   }
 
-  const mapInstance = timelineMapRef.value?.map?.value || timelineMapRef.value?.map
-  if (!mapInstance || typeof mapInstance.setView !== 'function') {
+  const setView = timelineMapRef.value?.setView
+  if (typeof setView !== 'function') {
     return
   }
 
-  mapInstance.setView([coords.latitude, coords.longitude], 16, { animate: true })
+  setView([coords.latitude, coords.longitude], 16, { animate: true })
 }
 
 const loadWorkspace = async () => {
@@ -1028,12 +1028,12 @@ const focusPlannedItemOnMap = (item) => {
     return
   }
 
-  const mapInstance = timelineMapRef.value?.map?.value || timelineMapRef.value?.map
-  if (!mapInstance || typeof mapInstance.setView !== 'function') {
+  const setView = timelineMapRef.value?.setView
+  if (typeof setView !== 'function') {
     return
   }
 
-  mapInstance.setView([item.latitude, item.longitude], 16, { animate: true })
+  setView([item.latitude, item.longitude], 16, { animate: true })
 }
 
 const resolvePlanItemIdFromContext = (contextPayload) => {

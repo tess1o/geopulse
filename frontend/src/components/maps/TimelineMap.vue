@@ -10,6 +10,8 @@
       :show-controls="true"
       :controls-props="controlsProps"
       :custom-tile-url="customTileUrl"
+      :custom-style-url="customStyleUrl"
+      :map-render-mode="mapRenderMode"
       :is-shared-view="isSharedView"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
@@ -186,14 +188,14 @@
 </template>
 
 <script setup>
-import {computed, nextTick, onMounted, onUnmounted, readonly, ref, watch} from 'vue'
+import {computed, markRaw, nextTick, onMounted, onUnmounted, readonly, ref, shallowRef, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
-import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
+import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 
 // Map components
@@ -247,6 +249,14 @@ const props = defineProps({
     default: true
   },
   customTileUrl: {
+    type: String,
+    default: null
+  },
+  customStyleUrl: {
+    type: String,
+    default: null
+  },
+  mapRenderMode: {
     type: String,
     default: null
   },
@@ -368,7 +378,7 @@ const confirm = useConfirm()
 const toast = useToast()
 
 // Local state
-const map = ref(null)
+const map = shallowRef(null)
 const favoriteContextMenuActive = ref(false)
 const heatmapEnabled = ref(false)
 const heatmapLayer = ref('stays')
@@ -415,7 +425,7 @@ const openPhotoViewerFromPayload = (payload) => {
 const {
   clearFocusMarker: clearFocusedPhotoMarker,
   focusOnPhoto: focusOnMapPhoto
-} = usePhotoMapMarkers({
+} = usePhotoMapMarkersRuntime({
   emit: (eventName, payload) => {
     if (eventName === 'photo-click') {
       openPhotoViewerFromPayload(payload)
@@ -579,7 +589,7 @@ const plannedItemMenuItems = ref([
 
 // Map event handlers
 const handleMapReady = (mapInstance) => {
-  map.value = mapInstance
+  map.value = mapInstance ? markRaw(mapInstance) : null
   
   // Initialize rectangle drawing
   initializeDrawing(mapInstance)
@@ -590,10 +600,10 @@ const handleMapReady = (mapInstance) => {
     nextTick(() => {
       if (dataBounds.value.length === 1) {
         // Single point - center on it with a reasonable zoom
-        mapInstance.setView(dataBounds.value[0], 14)
+        mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
       } else if (dataBounds.value.length > 1) {
         // Multiple points - fit bounds
-        mapInstance.fitBounds(dataBounds.value, { padding: [20, 20] })
+        mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
       }
     })
   }
@@ -807,10 +817,10 @@ const handleZoomToData = () => {
   if (map.value && dataBounds.value) {
     if (dataBounds.value.length === 1) {
       // Single point - center on it with a reasonable zoom
-      map.value.setView(dataBounds.value[0], 14)
+      mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
     } else if (dataBounds.value.length > 1) {
       // Multiple points - fit bounds
-      map.value.fitBounds(dataBounds.value, { padding: [20, 20] })
+      mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
     }
   }
 }
@@ -1148,10 +1158,10 @@ watch(dataBounds, (newBounds) => {
           if (map.value) {
             if (newBounds.length === 1) {
               // Single point - center on it with a reasonable zoom
-              map.value.setView(newBounds[0], 14, { animate: false })
+              mapContainerRef.value?.setView?.(newBounds[0], 14, { animate: false })
             } else if (newBounds.length > 1) {
               // Multiple points - fit bounds
-              map.value.fitBounds(newBounds, { 
+              mapContainerRef.value?.fitBounds?.(newBounds, { 
                 padding: [20, 20],
                 maxZoom: 16,
                 animate: false // Disable animation to prevent tile issues
@@ -1201,12 +1211,27 @@ onUnmounted(() => {
   clearFocusedPhotoMarker()
 })
 
+const invalidateSize = () => {
+  mapContainerRef.value?.invalidateSize?.()
+}
+
+const setView = (center, zoom, options = {}) => {
+  mapContainerRef.value?.setView?.(center, zoom, options)
+}
+
+const fitBounds = (bounds, options = {}) => {
+  mapContainerRef.value?.fitBounds?.(bounds, options)
+}
+
 // Expose methods for parent component
 defineExpose({
   map: readonly(map),
   clearAllHighlights: clearAllMapHighlights,
   zoomToData: handleZoomToData,
-  focusOnPhoto
+  focusOnPhoto,
+  invalidateSize,
+  setView,
+  fitBounds
 })
 </script>
 

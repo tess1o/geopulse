@@ -20,6 +20,8 @@ export function writeUserSnapshot(user) {
         createdAt: user.createdAt,
         hasPassword: user.hasPassword,
         customMapTileUrl: user.customMapTileUrl,
+        customMapStyleUrl: user.customMapStyleUrl,
+        mapRenderMode: user.mapRenderMode || 'VECTOR',
         measureUnit: user.measureUnit,
         defaultRedirectUrl: user.defaultRedirectUrl,
         dateFormat: user.dateFormat,

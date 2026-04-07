@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 import java.util.UUID;
 
@@ -23,6 +24,8 @@ public class UserResponse {
     private String avatar;
     private boolean hasPassword;
     private String customMapTileUrl;
+    private String customMapStyleUrl;
+    private MapRenderMode mapRenderMode;
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
     private String dateFormat;

@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.user.model.RefreshTokenResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -160,6 +161,8 @@ public class AuthenticationService {
                 .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
                 .customMapTileUrl(user.getCustomMapTileUrl())
+                .customMapStyleUrl(user.getCustomMapStyleUrl())
+                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
                 .defaultRedirectUrl(user.getDefaultRedirectUrl())
                 .measureUnit(user.getMeasureUnit())
                 .dateFormat(user.getDateFormat())

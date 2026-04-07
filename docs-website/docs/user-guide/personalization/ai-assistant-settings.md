@@ -62,6 +62,11 @@ Once the AI Assistant is enabled, the following settings become available:
   The base URL of the OpenAI-compatible API endpoint.  
   You can change this if you use a **self-hosted** or **third-party** LLM (e.g., local model or proxy).
 
+**Examples:**
+
+- **OpenAI:** `https://api.openai.com/v1`
+- **Ollama (OpenAI-compatible):** `http://localhost:11434/v1`
+
 ---
 
 ### **Model**

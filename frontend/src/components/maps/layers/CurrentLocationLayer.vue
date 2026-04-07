@@ -1,22 +1,17 @@
 <template>
-  <!-- This component doesn't render anything in the template - it manages map layers directly -->
-  <SharedLocationMarker
-    v-if="map && location"
+  <component
+    :is="activeComponent"
     :map="map"
-    :latitude="location.latitude"
-    :longitude="location.longitude"
-    :share-data="shareData"
-    :avatar-url="location.avatar"
-    :open-popup="false"
+    :location="location"
   />
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import SharedLocationMarker from '../SharedLocationMarker.vue'
-import { useTimezone } from '@/composables/useTimezone';
+import RasterCurrentLocationLayer from '@/maps/raster/layers/RasterCurrentLocationLayer.vue'
+import VectorCurrentLocationLayer from '@/maps/vector/layers/VectorCurrentLocationLayer.vue'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
-// Props
 const props = defineProps({
   map: {
     type: Object,
@@ -28,17 +23,6 @@ const props = defineProps({
   }
 })
 
-// Computed shareData for current location
-const timezone = useTimezone()
-const shareData = computed(() => ({
-  shareName: 'Your Current Location',
-  sharedBy: 'You',
-  description: '',
-  sharedAt: props.location?.timestamp || timezone.now().toISOString(),
-  telemetry: props.location?.telemetryCurrentPopup || []
-}))
+const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorCurrentLocationLayer : RasterCurrentLocationLayer)
 </script>
-
-<style>
-/* No custom styles needed - using SharedLocationMarker */
-</style>

@@ -20,13 +20,30 @@
         <div class="section">
           <h3 class="section-title">Map Tile Provider</h3>
           <p class="section-description">
-            Customize the map tiles used to display your timeline
+            Choose rendering mode and configure both raster and vector map sources
           </p>
 
           <div class="form-field">
+            <label for="mapRenderMode" class="form-label">
+              Map Render Mode
+            </label>
+            <Dropdown
+              id="mapRenderMode"
+              v-model="form.mapRenderMode"
+              :options="mapRenderModeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-full"
+            />
+            <small class="help-text">
+              Switching modes keeps both custom URLs so you can toggle anytime.
+            </small>
+          </div>
+
+          <div class="form-field">
             <label for="customMapTileUrl" class="form-label">
-              Custom Map Tile URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Use custom map tiles from providers like MapTiler, Mapbox, etc. Tiles are proxied through GeoPulse to avoid CORS issues.'"></i>
+              Custom Raster Tile URL
+              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Raster tile template. Must include {z}, {x}, and {y} placeholders.'"></i>
             </label>
             <InputText
               id="customMapTileUrl"
@@ -39,7 +56,27 @@
               {{ errors.customMapTileUrl }}
             </small>
             <small v-else class="help-text">
-              Leave empty to use default OpenStreetMap tiles. URL must contain {z}, {x}, and {y} placeholders.
+              Used when render mode is Raster. Leave empty to use default OSM raster tiles.
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label for="customMapStyleUrl" class="form-label">
+              Custom Vector Style URL
+              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Vector style URL (style.json). Must use HTTP or HTTPS.'"></i>
+            </label>
+            <InputText
+              id="customMapStyleUrl"
+              v-model="form.customMapStyleUrl"
+              placeholder="https://tiles.openfreemap.org/styles/liberty"
+              :invalid="!!errors.customMapStyleUrl"
+              class="w-full"
+            />
+            <small v-if="errors.customMapStyleUrl" class="error-message">
+              {{ errors.customMapStyleUrl }}
+            </small>
+            <small v-else class="help-text">
+              Used when render mode is Vector. Leave empty to use default OpenFreeMap style.
             </small>
           </div>
         </div>
@@ -222,6 +259,8 @@ const emit = defineEmits(['save'])
 // Form state
 const form = ref({
   customMapTileUrl: '',
+  customMapStyleUrl: '',
+  mapRenderMode: 'VECTOR',
   defaultDateRangePreset: '',
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15.0,
@@ -231,7 +270,8 @@ const form = ref({
 })
 
 const errors = ref({
-  customMapTileUrl: null
+  customMapTileUrl: null,
+  customMapStyleUrl: null
 })
 
 const loading = ref(false)
@@ -241,6 +281,10 @@ const defaultDateRangePresetOptions = [
   { label: 'Last 7 days', value: 'lastWeek' },
   { label: 'Last 30 days', value: 'lastMonth' }
 ]
+const mapRenderModeOptions = [
+  { label: 'Vector (MapLibre)', value: 'VECTOR' },
+  { label: 'Raster (Leaflet)', value: 'RASTER' }
+]
 
 // Initialize form from props
 watch(
@@ -249,6 +293,8 @@ watch(
     if (newPrefs) {
       form.value = {
         customMapTileUrl: newPrefs.customMapTileUrl || '',
+        customMapStyleUrl: newPrefs.customMapStyleUrl || '',
+        mapRenderMode: newPrefs.mapRenderMode || 'VECTOR',
         defaultDateRangePreset: newPrefs.defaultDateRangePreset || '',
         pathSimplificationEnabled: newPrefs.pathSimplificationEnabled ?? true,
         pathSimplificationTolerance: newPrefs.pathSimplificationTolerance ?? 15.0,
@@ -296,9 +342,41 @@ const validateCustomMapTileUrl = (url) => {
   return null
 }
 
+const validateCustomMapStyleUrl = (url) => {
+  if (!url || url.trim() === '') {
+    return null
+  }
+
+  const normalizedUrl = url.trim().toLowerCase()
+
+  if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+    return 'URL must use HTTP or HTTPS protocol'
+  }
+
+  if (
+    normalizedUrl.includes('javascript:') ||
+    normalizedUrl.includes('data:') ||
+    normalizedUrl.includes('file:')
+  ) {
+    return 'Invalid URL protocol'
+  }
+
+  if (url.includes('..')) {
+    return 'Invalid URL format'
+  }
+
+  const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
+  if (!looksLikeStyleUrl) {
+    return 'URL should point to a style JSON endpoint'
+  }
+
+  return null
+}
+
 const validateForm = () => {
   errors.value.customMapTileUrl = validateCustomMapTileUrl(form.value.customMapTileUrl)
-  return !errors.value.customMapTileUrl
+  errors.value.customMapStyleUrl = validateCustomMapStyleUrl(form.value.customMapStyleUrl)
+  return !errors.value.customMapTileUrl && !errors.value.customMapStyleUrl
 }
 
 const handleSubmit = async () => {
@@ -312,6 +390,8 @@ const handleSubmit = async () => {
     // Save all display preferences including custom map tile URL
     emit('save', {
       customMapTileUrl: form.value.customMapTileUrl,
+      customMapStyleUrl: form.value.customMapStyleUrl,
+      mapRenderMode: form.value.mapRenderMode || 'VECTOR',
       defaultDateRangePreset: form.value.defaultDateRangePreset ?? '',
       pathSimplificationEnabled: form.value.pathSimplificationEnabled,
       pathSimplificationTolerance: form.value.pathSimplificationTolerance,
@@ -327,6 +407,8 @@ const handleSubmit = async () => {
 const handleReset = () => {
   form.value = {
     customMapTileUrl: '',
+    customMapStyleUrl: '',
+    mapRenderMode: 'VECTOR',
     defaultDateRangePreset: '',
     pathSimplificationEnabled: true,
     pathSimplificationTolerance: 15.0,
@@ -335,7 +417,8 @@ const handleReset = () => {
     showCurrentLocationTelemetry: true
   }
   errors.value = {
-    customMapTileUrl: null
+    customMapTileUrl: null,
+    customMapStyleUrl: null
   }
 }
 </script>

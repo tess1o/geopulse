@@ -22,6 +22,7 @@
     "leaflet.fullscreen": "^5.3.0",
     "leaflet.heat": "^0.2.0",
     "leaflet.markercluster": "^1.5.3",
+    "maplibre-gl": "^5.5.0",
     "pinia": "^3.0.3",
     "postcss": "^8.4.31",
     "primeicons": "latest",

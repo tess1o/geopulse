@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationEntit
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.hibernate.annotations.Type;
 
 import java.time.Instant;
@@ -91,6 +92,15 @@ public class UserEntity extends PanacheEntityBase {
     @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
     @Column(name = "custom_map_tile_url", length = 1000)
     private String customMapTileUrl;
+
+    @Size(max = 1000, message = "Custom map style URL cannot exceed 1000 characters")
+    @Column(name = "custom_map_style_url", length = 1000)
+    private String customMapStyleUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "map_render_mode", nullable = false, length = 32)
+    @Builder.Default
+    private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "measure_unit", length = 1000)

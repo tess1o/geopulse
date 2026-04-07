@@ -2,6 +2,7 @@
   <div class="location-analytics-map">
     <div class="map-frame">
       <MapContainer
+        ref="mapContainerRef"
         map-id="location-analytics-map"
         :center="mapCenter"
         :zoom="mapZoom"
@@ -68,6 +69,7 @@ const props = defineProps({
 
 const emit = defineEmits(['viewport-change', 'place-click', 'open-place-details'])
 
+const mapContainerRef = ref(null)
 const mapInstance = ref(null)
 const mapCenter = ref([20, 0])
 const mapZoom = ref(2)
@@ -87,6 +89,41 @@ const selectedPlace = computed(() => {
   if (!props.selectedPlaceKey) return null
   return props.places.find((place) => getPlaceKey(place) === props.selectedPlaceKey) || null
 })
+
+const setMapView = (center, zoom, options = {}) => {
+  if (typeof mapContainerRef.value?.setView !== 'function') {
+    return false
+  }
+
+  mapContainerRef.value.setView(center, zoom, options)
+  return true
+}
+
+const fitMapBounds = (bounds, options = {}) => {
+  if (typeof mapContainerRef.value?.fitBounds !== 'function') {
+    return false
+  }
+
+  mapContainerRef.value.fitBounds(bounds, options)
+  return true
+}
+
+const isCoordinateVisibleInBounds = (bounds, latitude, longitude) => {
+  if (!bounds || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return false
+  }
+
+  const south = bounds.getSouth?.()
+  const north = bounds.getNorth?.()
+  const west = bounds.getWest?.()
+  const east = bounds.getEast?.()
+
+  if (![south, north, west, east].every(Number.isFinite)) {
+    return false
+  }
+
+  return latitude >= south && latitude <= north && longitude >= west && longitude <= east
+}
 
 const showInitialLoadingOverlay = computed(() => props.loading && loadingIndicatorVisible.value && !hasPlaces.value)
 const showRefreshIndicator = computed(() => props.loading && loadingIndicatorVisible.value && hasPlaces.value)
@@ -124,34 +161,39 @@ const fitToPlaces = () => {
   if (validPlaces.length === 0) return
   if (validPlaces.length === 1) {
     suppressViewportEvents(600)
-    mapInstance.value.setView([validPlaces[0].latitude, validPlaces[0].longitude], 13, { animate: false })
+    setMapView([validPlaces[0].latitude, validPlaces[0].longitude], 13, { animate: false })
     return
   }
 
   const bounds = validPlaces.map((place) => [place.latitude, place.longitude])
   suppressViewportEvents(600)
-  mapInstance.value.fitBounds(bounds, { padding: [24, 24], animate: false, maxZoom: 13 })
+  fitMapBounds(bounds, { padding: [24, 24], animate: false, maxZoom: 13 })
 }
 
 const focusSelectedPlace = () => {
   if (!mapInstance.value || !selectedPlace.value) return
-  const latLng = [selectedPlace.value.latitude, selectedPlace.value.longitude]
+
+  const latitude = Number(selectedPlace.value.latitude)
+  const longitude = Number(selectedPlace.value.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  const center = [latitude, longitude]
   const currentBounds = mapInstance.value.getBounds()
   const currentZoom = mapInstance.value.getZoom?.() ?? 0
   const shouldSoftZoom = props.selectionFocusMode === 'soft-zoom' && currentZoom < CARD_SELECTION_MIN_ZOOM
   const targetZoom = shouldSoftZoom ? CARD_SELECTION_MIN_ZOOM : currentZoom
-  const isVisible = currentBounds?.contains?.(latLng)
+  const isVisible = isCoordinateVisibleInBounds(currentBounds, latitude, longitude)
 
   if (isVisible && !shouldSoftZoom) return
 
   suppressViewportEvents(900)
 
-  if (targetZoom > currentZoom) {
-    mapInstance.value.setView(latLng, targetZoom, { animate: true })
-    return
-  }
-
-  mapInstance.value.panTo(latLng, { animate: true, duration: 0.35 })
+  setMapView(center, targetZoom, {
+    animate: true,
+    duration: targetZoom > currentZoom ? 0.45 : 0.35
+  })
 }
 
 const handleMapReady = (map) => {

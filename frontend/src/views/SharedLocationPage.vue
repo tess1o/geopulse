@@ -133,6 +133,8 @@
                     width="100%"
                     :show-controls="false"
                     :custom-tile-url="shareLinksStore.getSharedLocationInfo?.custom_map_tile_url"
+                    :custom-style-url="shareLinksStore.getSharedLocationInfo?.custom_map_style_url"
+                    :map-render-mode="shareLinksStore.getSharedLocationInfo?.map_render_mode"
                     :is-shared-view="true"
                     @map-ready="handleMapReady"
                 >
