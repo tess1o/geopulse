@@ -1,9 +1,11 @@
 <template>
   <div class="friends-timeline-map">
     <MapContainer
+        ref="mapContainerRef"
         :map-id="mapId"
         :center="mapCenter"
         :zoom="13"
+        :map-render-mode="MAP_RENDER_MODES.RASTER"
         height="100%"
         width="100%"
         :show-controls="false"
@@ -35,6 +37,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import { MapContainer } from '@/components/maps'
+import { MAP_RENDER_MODES } from '@/maps/contracts/mapContracts'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
 import {
   normalizePathPoints,
@@ -63,6 +66,7 @@ const props = defineProps({
 })
 
 const mapId = ref(`friends-timeline-map-${Date.now()}`)
+const mapContainerRef = ref(null)
 const map = ref(null)
 const markerGroups = ref(new Map()) // userId -> L.LayerGroup
 const markerRefs = ref(new Map()) // itemId -> L.Marker
@@ -77,13 +81,59 @@ function parseCoordinate(value) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function isValidLatitude(value) {
+  return Number.isFinite(value) && value >= -90 && value <= 90
+}
+
+function isValidLongitude(value) {
+  return Number.isFinite(value) && value >= -180 && value <= 180
+}
+
+function normalizeLatLng(point) {
+  if (!point) return null
+
+  // Array form: either [lat, lng] or [lng, lat]
+  if (Array.isArray(point) && point.length >= 2) {
+    const first = parseCoordinate(point[0])
+    const second = parseCoordinate(point[1])
+    if (first === null || second === null) return null
+
+    // If first cannot be latitude but second can, treat as [lng, lat].
+    if (!isValidLatitude(first) && isValidLatitude(second) && isValidLongitude(first)) {
+      return { lat: second, lng: first }
+    }
+
+    // If second cannot be longitude but first can, treat as [lng, lat].
+    if (!isValidLongitude(second) && isValidLongitude(first) && isValidLatitude(second)) {
+      return { lat: second, lng: first }
+    }
+
+    // Default to [lat, lng] for Leaflet-style tuples.
+    return { lat: first, lng: second }
+  }
+
+  // Object form: supports latitude/longitude and lat/lng.
+  const rawLat = parseCoordinate(point.latitude ?? point.lat)
+  const rawLng = parseCoordinate(point.longitude ?? point.lng ?? point.lon)
+
+  if (rawLat === null || rawLng === null) return null
+
+  // Auto-correct obvious inversion.
+  if (!isValidLatitude(rawLat) && isValidLatitude(rawLng) && isValidLongitude(rawLat)) {
+    return { lat: rawLng, lng: rawLat }
+  }
+
+  return { lat: rawLat, lng: rawLng }
+}
+
 function hasValidCoordinates(point) {
-  if (!point) return false
-  return parseCoordinate(point.latitude) !== null && parseCoordinate(point.longitude) !== null
+  return Boolean(normalizeLatLng(point))
 }
 
 function toLatLng(point) {
-  return [parseCoordinate(point.latitude), parseCoordinate(point.longitude)]
+  const normalized = normalizeLatLng(point)
+  if (!normalized) return null
+  return [normalized.lat, normalized.lng]
 }
 
 function normalizePathSegments(pathSegments) {
@@ -93,15 +143,17 @@ function normalizePathSegments(pathSegments) {
     .map((segment) => {
       if (!Array.isArray(segment)) return []
       return segment
-        .filter(hasValidCoordinates)
         .map(toLatLng)
+        .filter((coord) => Array.isArray(coord) && coord.length === 2)
     })
     .filter((segment) => segment.length >= 2)
 }
 
 function reconstructTripCoordsFromPath(trip, userPathPoints) {
   const { points } = reconstructTripPathPoints(trip, userPathPoints)
-  return points.map(toLatLng)
+  return points
+    .map(toLatLng)
+    .filter((coord) => Array.isArray(coord) && coord.length === 2)
 }
 
 function getFallbackTripCoords(trip) {
@@ -120,13 +172,13 @@ function getFallbackTripCoords(trip) {
 }
 
 function clearHighlightedTrip() {
-  if (highlightedTripPath.value && map.value) {
+  if (highlightedTripPath.value && map.value && typeof map.value.removeLayer === 'function') {
     map.value.removeLayer(highlightedTripPath.value)
   }
-  if (highlightedTripStartMarker.value && map.value) {
+  if (highlightedTripStartMarker.value && map.value && typeof map.value.removeLayer === 'function') {
     map.value.removeLayer(highlightedTripStartMarker.value)
   }
-  if (highlightedTripEndMarker.value && map.value) {
+  if (highlightedTripEndMarker.value && map.value && typeof map.value.removeLayer === 'function') {
     map.value.removeLayer(highlightedTripEndMarker.value)
   }
   highlightedTripPath.value = null
@@ -149,8 +201,9 @@ const mapCenter = computed(() => {
     const firstTimeline = visibleTimelines.value[0].timeline
     if (firstTimeline && firstTimeline.stays && firstTimeline.stays.length > 0) {
       const firstStay = firstTimeline.stays[0]
-      if (hasValidCoordinates(firstStay)) {
-        return toLatLng(firstStay)
+      const normalized = toLatLng(firstStay)
+      if (normalized) {
+        return normalized
       }
     }
   }
@@ -223,7 +276,12 @@ function renderAllMarkers() {
           return
         }
 
-        const marker = L.marker(toLatLng(stay), {
+        const stayLatLng = toLatLng(stay)
+        if (!stayLatLng) {
+          return
+        }
+
+        const marker = L.marker(stayLatLng, {
           icon: L.divIcon({
             className: 'custom-marker',
             html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
@@ -245,7 +303,7 @@ function renderAllMarkers() {
         markerRefs.value.set(stayId, marker)
 
         layerGroup.addLayer(marker)
-        allBounds.push(toLatLng(stay))
+        allBounds.push(stayLatLng)
       })
     }
 
@@ -259,7 +317,11 @@ function renderAllMarkers() {
   // Fit bounds to show all markers
   if (allBounds.length > 0) {
     nextTick(() => {
-      map.value.fitBounds(allBounds, { padding: [50, 50] })
+      if (typeof mapContainerRef.value?.fitBounds === 'function') {
+        mapContainerRef.value.fitBounds(allBounds, { padding: [50, 50] })
+      } else if (map.value && typeof map.value.fitBounds === 'function') {
+        map.value.fitBounds(allBounds, { padding: [50, 50] })
+      }
     })
   }
 }
@@ -276,7 +338,17 @@ function handleItemSelection(item) {
     const marker = markerRefs.value.get(stayId)
 
     if (marker) {
-      map.value.setView(toLatLng(item), 15, { animate: true })
+      const selectedLatLng = toLatLng(item)
+      if (!selectedLatLng) {
+        return
+      }
+
+      if (typeof mapContainerRef.value?.setView === 'function') {
+        mapContainerRef.value.setView(selectedLatLng, 15, { animate: true })
+      } else if (typeof map.value?.setView === 'function') {
+        map.value.setView(selectedLatLng, 15, { animate: true })
+      }
+
       nextTick(() => {
         marker.openPopup()
       })
@@ -381,7 +453,11 @@ function handleItemSelection(item) {
       highlightBounds.extend([endPoint.latitude, endPoint.longitude])
     }
 
-    map.value.fitBounds(highlightBounds, { padding: [50, 50], animate: true })
+    if (typeof mapContainerRef.value?.fitBounds === 'function') {
+      mapContainerRef.value.fitBounds(highlightBounds, { padding: [50, 50], animate: true })
+    } else if (typeof map.value?.fitBounds === 'function') {
+      map.value.fitBounds(highlightBounds, { padding: [50, 50], animate: true })
+    }
     nextTick(() => {
       tripPath.openPopup()
     })

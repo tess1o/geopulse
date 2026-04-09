@@ -364,7 +364,7 @@ const renderLayer = () => {
       ? createTimelineStackMarkerElement({ count: group.items.length, highlighted: isHighlighted })
       : createTimelineMarkerElement({ item: primaryItem, highlighted: isHighlighted })
 
-    markerSpec.element.style.zIndex = isHighlighted ? '3400' : '3200'
+    markerSpec.element.style.zIndex = isHighlighted ? '340' : '320'
 
     const marker = new maplibregl.Marker({
       element: markerSpec.element,

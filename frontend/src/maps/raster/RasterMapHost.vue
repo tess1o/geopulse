@@ -268,8 +268,71 @@ const setView = (center, zoom) => {
 }
 
 const fitBounds = (bounds, options = {}) => {
-  if (map.value && bounds) {
-    map.value.fitBounds(bounds, { padding: [20, 20], ...options })
+  if (!map.value || !bounds) {
+    return
+  }
+
+  const toFiniteCoordinate = (value) => {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90
+  const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180
+
+  const normalizePoint = (point) => {
+    if (Array.isArray(point) && point.length >= 2) {
+      const latitude = toFiniteCoordinate(point[0])
+      const longitude = toFiniteCoordinate(point[1])
+      if (
+        latitude === null
+        || longitude === null
+        || !isValidLatitude(latitude)
+        || !isValidLongitude(longitude)
+      ) {
+        return null
+      }
+      return [latitude, longitude]
+    }
+
+    if (point && typeof point === 'object') {
+      const latitude = toFiniteCoordinate(point.lat ?? point.latitude)
+      const longitude = toFiniteCoordinate(point.lng ?? point.lon ?? point.longitude)
+      if (
+        latitude === null
+        || longitude === null
+        || !isValidLatitude(latitude)
+        || !isValidLongitude(longitude)
+      ) {
+        return null
+      }
+      return [latitude, longitude]
+    }
+
+    return null
+  }
+
+  let normalizedBounds = bounds
+  if (Array.isArray(bounds)) {
+    normalizedBounds = bounds
+      .map(normalizePoint)
+      .filter(Boolean)
+  }
+
+  if (Array.isArray(normalizedBounds) && normalizedBounds.length === 0) {
+    console.warn('[RasterMapHost] fitBounds skipped: all bounds points are invalid', { bounds, options })
+    return
+  }
+
+  try {
+    if (Array.isArray(normalizedBounds) && normalizedBounds.length === 1) {
+      map.value.setView(normalizedBounds[0], map.value.getZoom())
+      return
+    }
+
+    map.value.fitBounds(normalizedBounds, { padding: [20, 20], ...options })
+  } catch (error) {
+    console.error('[RasterMapHost] fitBounds failed', { error, bounds, normalizedBounds, options })
   }
 }
 

@@ -50,6 +50,7 @@
           v-if="map && isReady"
           :map="map"
           :points="heatmapPoints"
+          :profile="heatmapLayer"
           :value-key="'durationSeconds'"
           :min-weight="heatmapScale.minWeight"
           :gamma="heatmapScale.gamma"
@@ -203,7 +204,8 @@ import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, Time
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
-import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
+import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
+import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -385,6 +387,7 @@ const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
 let heatmapRequestId = 0
 const heatmapPrefetches = new Map()
+let mapContextMenuShowTimeoutId = null
 
 // Dialog state
 const dialogState = ref({
@@ -403,7 +406,7 @@ const {
   stopDrawing,
   cleanupTempLayer,
   isDrawing
-} = useRectangleDrawing({
+} = useRectangleDrawingRuntime({
   onRectangleCreated: (rectangle) => {
     drawingState.value.tempAreaLayer = rectangle.layer
     dialogState.value.addAreaVisible = true
@@ -634,25 +637,34 @@ const handleMapContextMenu = (event) => {
     return
   }
 
-  // Don't show map context menu if favorite context menu is active
-  if (favoriteContextMenuActive.value) {
-    favoriteContextMenuActive.value = false
-    return
-  }
-
   // Prevent default browser context menu
   if (event.originalEvent) {
     event.originalEvent.preventDefault()
     event.originalEvent.stopPropagation()
   }
 
-  dialogState.value.addToFavoritesLatLng = event.latlng
-  baseHandleMapContextMenu(event)
-
-  // Show PrimeVue context menu
-  if (mapContextMenuRef.value && event.originalEvent) {
-    mapContextMenuRef.value.show(event.originalEvent)
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
   }
+
+  // Defer map-context menu opening by one tick to allow feature-level
+  // contextmenu handlers (favorites/planned items) to set suppression flags.
+  mapContextMenuShowTimeoutId = setTimeout(() => {
+    mapContextMenuShowTimeoutId = null
+
+    if (favoriteContextMenuActive.value) {
+      favoriteContextMenuActive.value = false
+      return
+    }
+
+    dialogState.value.addToFavoritesLatLng = event.latlng
+    baseHandleMapContextMenu(event)
+
+    if (mapContextMenuRef.value && event.originalEvent) {
+      mapContextMenuRef.value.show(event.originalEvent)
+    }
+  }, 0)
 }
 
 // Layer event handlers
@@ -753,6 +765,11 @@ const handleFavoriteContextMenu = (event) => {
     return
   }
 
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
+
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
 
@@ -766,20 +783,23 @@ const handleFavoriteContextMenu = (event) => {
   // Store the selected favorite for context menu actions
   dialogState.value.selectedFavorite = event
 
+  mapContextMenuRef.value?.hide?.()
+
   // Show favorite context menu
   if (favoriteContextMenuRef.value && event.event) {
-    // Use setTimeout to ensure the event has fully propagated/stopped
+    favoriteContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      favoriteContextMenuRef.value.show(event.event)
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
+      favoriteContextMenuActive.value = false
+    }, 120)
   }
 }
 
 const handlePlannedItemContextMenu = (event) => {
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
+
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
 
@@ -791,13 +811,13 @@ const handlePlannedItemContextMenu = (event) => {
 
   dialogState.value.selectedPlannedItem = event
 
+  mapContextMenuRef.value?.hide?.()
+
   if (plannedItemContextMenuRef.value && event.event) {
+    plannedItemContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      plannedItemContextMenuRef.value.show(event.event)
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
+      favoriteContextMenuActive.value = false
+    }, 120)
   }
 }
 
@@ -1208,6 +1228,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
   clearFocusedPhotoMarker()
 })
 

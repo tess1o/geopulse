@@ -2,6 +2,7 @@
 
 <script setup>
 import { readonly, ref, watch, onBeforeUnmount } from 'vue'
+import maplibregl from 'maplibre-gl'
 import {
   createFeatureCollection,
   ensureGeoJsonSource,
@@ -13,6 +14,7 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import { createFavoritePointMarkerElement } from '@/maps/shared/favoriteMarkerBuilder'
 
 const props = defineProps({
   map: {
@@ -37,47 +39,19 @@ const emit = defineEmits(['favorite-click', 'favorite-hover', 'favorite-edit', '
 
 const state = {
   token: nextLayerToken('gp-favorites'),
-  pointSourceId: '',
   areaSourceId: '',
   areaFillLayerId: '',
   areaOutlineLayerId: '',
-  pointLayerId: '',
-  pointLabelLayerId: '',
   styleLoadHandler: null,
   boundMap: null
 }
 
-state.pointSourceId = `${state.token}-points-source`
 state.areaSourceId = `${state.token}-areas-source`
 state.areaFillLayerId = `${state.token}-areas-fill`
 state.areaOutlineLayerId = `${state.token}-areas-outline`
-state.pointLayerId = `${state.token}-points`
-state.pointLabelLayerId = `${state.token}-points-label`
 
 const favoriteMarkers = ref([])
-
-const normalizePointFeature = (favorite, index) => {
-  const latitude = toFiniteNumber(favorite?.latitude)
-  const longitude = toFiniteNumber(favorite?.longitude)
-  if (latitude === null || longitude === null) {
-    return null
-  }
-
-  return {
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: [longitude, latitude]
-    },
-    properties: {
-      favoriteIndex: index,
-      favoriteId: favorite?.id ?? `favorite-point-${index}`,
-      favoriteType: 'point',
-      favoriteRaw: JSON.stringify(favorite || {}),
-      name: favorite?.name || 'Favorite Place'
-    }
-  }
-}
+const areaEventHandlers = ref([])
 
 const normalizeAreaRing = (favorite) => {
   if (Array.isArray(favorite?.coordinates) && favorite.coordinates.length >= 3) {
@@ -151,19 +125,10 @@ const normalizeAreaFeature = (favorite, index) => {
 }
 
 const buildCollections = () => {
-  const pointFeatures = []
   const areaFeatures = []
 
   props.favoritesData.forEach((favorite, index) => {
     const normalizedType = String(favorite?.type || '').toLowerCase()
-
-    if (normalizedType === 'point' || (!favorite?.type && favorite?.latitude !== undefined && favorite?.longitude !== undefined)) {
-      const pointFeature = normalizePointFeature(favorite, index)
-      if (pointFeature) {
-        pointFeatures.push(pointFeature)
-      }
-      return
-    }
 
     if (normalizedType === 'area' || favorite?.northEastLat !== undefined || favorite?.coordinates) {
       const areaFeature = normalizeAreaFeature(favorite, index)
@@ -174,9 +139,141 @@ const buildCollections = () => {
   })
 
   return {
-    points: createFeatureCollection(pointFeatures),
     areas: createFeatureCollection(areaFeatures)
   }
+}
+
+const buildPointEntries = () => {
+  const entries = []
+
+  props.favoritesData.forEach((favorite, index) => {
+    const normalizedType = String(favorite?.type || '').toLowerCase()
+    const isPointType = normalizedType === 'point'
+      || (!favorite?.type && favorite?.latitude !== undefined && favorite?.longitude !== undefined)
+
+    if (!isPointType) {
+      return
+    }
+
+    const latitude = toFiniteNumber(favorite?.latitude)
+    const longitude = toFiniteNumber(favorite?.longitude)
+    if (latitude === null || longitude === null) {
+      return
+    }
+
+    entries.push({
+      favorite,
+      index,
+      latitude,
+      longitude
+    })
+  })
+
+  return entries
+}
+
+const clearPointMarkers = () => {
+  favoriteMarkers.value.forEach(({ cleanup }) => {
+    cleanup?.()
+  })
+  favoriteMarkers.value = []
+
+  if (isMapLibreMap(props.map)) {
+    props.map.getCanvas().style.cursor = ''
+  }
+}
+
+const renderPointMarkers = () => {
+  if (!isMapLibreMap(props.map)) {
+    return
+  }
+
+  clearPointMarkers()
+
+  if (!props.visible) {
+    return
+  }
+
+  const entries = buildPointEntries()
+  entries.forEach(({ favorite, index, latitude, longitude }) => {
+    const markerSpec = createFavoritePointMarkerElement()
+    markerSpec.element.style.zIndex = '340'
+
+    const marker = new maplibregl.Marker({
+      element: markerSpec.element,
+      anchor: markerSpec.anchor || 'bottom',
+      offset: markerSpec.offset || [0, 0]
+    })
+      .setLngLat([longitude, latitude])
+      .addTo(props.map)
+
+    const handleClick = (domEvent) => {
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+
+      emit('favorite-click', {
+        favorite,
+        index,
+        event: {
+          target: marker,
+          originalEvent: domEvent,
+          lngLat: { lng: longitude, lat: latitude }
+        },
+        marker: null
+      })
+    }
+
+    const handleMouseEnter = (domEvent) => {
+      props.map.getCanvas().style.cursor = 'pointer'
+
+      emit('favorite-hover', {
+        favorite,
+        index,
+        event: {
+          target: marker,
+          originalEvent: domEvent,
+          lngLat: { lng: longitude, lat: latitude }
+        },
+        marker: null
+      })
+    }
+
+    const handleMouseLeave = () => {
+      props.map.getCanvas().style.cursor = ''
+    }
+
+    const handleContextMenu = (domEvent) => {
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+      domEvent.stopImmediatePropagation?.()
+
+      emit('favorite-contextmenu', {
+        favorite,
+        index,
+        event: domEvent,
+        latlng: { lat: latitude, lng: longitude },
+        type: 'point',
+        marker: null
+      })
+    }
+
+    markerSpec.element.addEventListener('click', handleClick)
+    markerSpec.element.addEventListener('mouseenter', handleMouseEnter)
+    markerSpec.element.addEventListener('mouseleave', handleMouseLeave)
+    markerSpec.element.addEventListener('contextmenu', handleContextMenu)
+
+    favoriteMarkers.value.push({
+      favorite,
+      marker,
+      cleanup: () => {
+        markerSpec.element.removeEventListener('click', handleClick)
+        markerSpec.element.removeEventListener('mouseenter', handleMouseEnter)
+        markerSpec.element.removeEventListener('mouseleave', handleMouseLeave)
+        markerSpec.element.removeEventListener('contextmenu', handleContextMenu)
+        marker.remove()
+      }
+    })
+  })
 }
 
 const parseFavoriteFromEvent = (event) => {
@@ -203,14 +300,24 @@ const registerEvents = () => {
     return
   }
 
-  const handlePointClick = (event) => {
-    const favorite = parseFavoriteFromEvent(event)
-    emit('favorite-click', {
-      favorite,
-      index: getFavoriteIndexFromEvent(event),
-      event,
-      marker: null
-    })
+  let lastContextMenuOriginalEvent = null
+  const shouldSkipDuplicateContextMenu = (originalEvent) => {
+    if (!originalEvent || (typeof originalEvent !== 'object' && typeof originalEvent !== 'function')) {
+      return false
+    }
+
+    if (lastContextMenuOriginalEvent === originalEvent) {
+      return true
+    }
+
+    lastContextMenuOriginalEvent = originalEvent
+    setTimeout(() => {
+      if (lastContextMenuOriginalEvent === originalEvent) {
+        lastContextMenuOriginalEvent = null
+      }
+    }, 0)
+
+    return false
   }
 
   const handleAreaClick = (event) => {
@@ -223,14 +330,30 @@ const registerEvents = () => {
     })
   }
 
-  const handlePointHover = (event) => {
-    props.map.getCanvas().style.cursor = 'pointer'
+  const handleAreaContextMenu = (event) => {
+    const originalEvent = event?.originalEvent
+    if (shouldSkipDuplicateContextMenu(originalEvent)) {
+      return
+    }
+
+    event?.preventDefault?.()
+    originalEvent?.preventDefault?.()
+    originalEvent?.stopPropagation?.()
+    originalEvent?.stopImmediatePropagation?.()
+    if (originalEvent) {
+      originalEvent.cancelBubble = true
+    }
+
     const favorite = parseFavoriteFromEvent(event)
-    emit('favorite-hover', {
+    emit('favorite-contextmenu', {
       favorite,
       index: getFavoriteIndexFromEvent(event),
-      event,
-      marker: null
+      event: originalEvent || event,
+      latlng: event?.lngLat
+        ? { lat: event.lngLat.lat, lng: event.lngLat.lng }
+        : null,
+      type: 'area',
+      polygon: null
     })
   }
 
@@ -249,36 +372,34 @@ const registerEvents = () => {
     props.map.getCanvas().style.cursor = ''
   }
 
-  props.map.on('click', state.pointLayerId, handlePointClick)
   props.map.on('click', state.areaFillLayerId, handleAreaClick)
-  props.map.on('mousemove', state.pointLayerId, handlePointHover)
+  props.map.on('contextmenu', state.areaFillLayerId, handleAreaContextMenu)
+  props.map.on('contextmenu', state.areaOutlineLayerId, handleAreaContextMenu)
   props.map.on('mousemove', state.areaFillLayerId, handleAreaHover)
-  props.map.on('mouseleave', state.pointLayerId, handleMouseLeave)
   props.map.on('mouseleave', state.areaFillLayerId, handleMouseLeave)
 
-  favoriteMarkers.value = [
-    { event: 'click', layerId: state.pointLayerId, handler: handlePointClick },
+  areaEventHandlers.value = [
     { event: 'click', layerId: state.areaFillLayerId, handler: handleAreaClick },
-    { event: 'mousemove', layerId: state.pointLayerId, handler: handlePointHover },
+    { event: 'contextmenu', layerId: state.areaFillLayerId, handler: handleAreaContextMenu },
+    { event: 'contextmenu', layerId: state.areaOutlineLayerId, handler: handleAreaContextMenu },
     { event: 'mousemove', layerId: state.areaFillLayerId, handler: handleAreaHover },
-    { event: 'mouseleave', layerId: state.pointLayerId, handler: handleMouseLeave },
     { event: 'mouseleave', layerId: state.areaFillLayerId, handler: handleMouseLeave }
   ]
 }
 
 const unregisterEvents = () => {
   if (!isMapLibreMap(props.map)) {
-    favoriteMarkers.value = []
+    areaEventHandlers.value = []
     return
   }
 
-  favoriteMarkers.value.forEach(({ event, layerId, handler }) => {
+  areaEventHandlers.value.forEach(({ event, layerId, handler }) => {
     if (props.map.getLayer(layerId)) {
       props.map.off(event, layerId, handler)
     }
   })
 
-  favoriteMarkers.value = []
+  areaEventHandlers.value = []
   props.map.getCanvas().style.cursor = ''
 }
 
@@ -289,7 +410,6 @@ const renderLayer = () => {
 
   const collections = buildCollections()
 
-  ensureGeoJsonSource(props.map, state.pointSourceId, collections.points)
   ensureGeoJsonSource(props.map, state.areaSourceId, collections.areas)
 
   ensureLayer(props.map, {
@@ -313,45 +433,15 @@ const renderLayer = () => {
     }
   })
 
-  ensureLayer(props.map, {
-    id: state.pointLayerId,
-    type: 'circle',
-    source: state.pointSourceId,
-    paint: {
-      'circle-radius': 7,
-      'circle-color': '#f59e0b',
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2
-    }
-  })
-
-  ensureLayer(props.map, {
-    id: state.pointLabelLayerId,
-    type: 'symbol',
-    source: state.pointSourceId,
-    layout: {
-      'text-field': '★',
-      'text-size': 10,
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-      'text-offset': [0, 0.05],
-      'text-anchor': 'center'
-    },
-    paint: {
-      'text-color': '#111827'
-    }
-  })
-
-  setLayerVisibility(
-    props.map,
-    [state.areaFillLayerId, state.areaOutlineLayerId, state.pointLayerId, state.pointLabelLayerId],
-    props.visible
-  )
+  setLayerVisibility(props.map, [state.areaFillLayerId, state.areaOutlineLayerId], props.visible)
 
   unregisterEvents()
   registerEvents()
+  renderPointMarkers()
 }
 
 const clearLayer = () => {
+  clearPointMarkers()
   unregisterEvents()
 
   if (state.boundMap && state.styleLoadHandler) {
@@ -365,8 +455,8 @@ const clearLayer = () => {
     return
   }
 
-  removeLayers(targetMap, [state.pointLabelLayerId, state.pointLayerId, state.areaOutlineLayerId, state.areaFillLayerId])
-  removeSources(targetMap, [state.pointSourceId, state.areaSourceId])
+  removeLayers(targetMap, [state.areaOutlineLayerId, state.areaFillLayerId])
+  removeSources(targetMap, [state.areaSourceId])
   state.boundMap = null
 }
 
@@ -394,7 +484,13 @@ watch(
   { deep: true, immediate: true }
 )
 
-const getMarkerByFavorite = () => null
+const getMarkerByFavorite = (favoriteData) => {
+  const found = favoriteMarkers.value.find(({ favorite }) =>
+    favorite?.id === favoriteData?.id || favorite === favoriteData
+  )
+
+  return found?.marker || null
+}
 
 const focusOnFavorite = (favoriteData) => {
   if (!isMapLibreMap(props.map) || !favoriteData) {

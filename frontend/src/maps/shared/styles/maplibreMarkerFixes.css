@@ -5,6 +5,16 @@
   transition: none !important;
 }
 
+.maplibregl-map,
+.maplibregl-canvas-container,
+.maplibregl-control-container {
+  z-index: 0;
+}
+
+.maplibregl-marker {
+  z-index: 20;
+}
+
 .maplibregl-marker.custom-marker div,
 .maplibregl-marker.timeline-stack-marker,
 .maplibregl-marker.timeline-stack-marker-highlighted {

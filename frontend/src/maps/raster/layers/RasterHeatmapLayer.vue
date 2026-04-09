@@ -53,6 +53,10 @@ const props = defineProps({
       1.0: '#dc2626',
     })
   },
+  profile: {
+    type: String,
+    default: 'default'
+  },
   lockMaxZoom: {
     type: Boolean,
     default: true

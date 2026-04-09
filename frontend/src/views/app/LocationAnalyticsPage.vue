@@ -37,7 +37,7 @@
       <!-- Map Panel -->
       <div v-if="activeTab === 'map'" class="map-tab-content">
         <LocationAnalyticsMap
-          :places="sortedMapPlaces"
+          :places="mapPlaces"
           :loading="mapPlacesLoading"
           :selected-place-key="selectedMapPlaceKey"
           :hovered-place-key="hoveredMapPlaceKey"

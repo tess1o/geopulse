@@ -64,6 +64,7 @@
         </div>
         <div class="map-container">
           <BaseMap
+              v-if="isMapBootstrapReady"
               mapId="favorites-map"
               :center="mapCenter"
               :zoom="mapZoom"
@@ -73,6 +74,10 @@
               @map-contextmenu="handleMapContextMenu"
               ref="baseMapRef"
           />
+          <div v-else class="map-loading-state">
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Preparing map...</span>
+          </div>
         </div>
       </BaseCard>
 
@@ -340,9 +345,15 @@ import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useFavoritesStore} from '@/stores/favorites'
 import {useGeocodingStore} from '@/stores/geocoding'
-import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
+import {useRectangleDrawingRuntime} from '@/composables/useRectangleDrawingRuntime'
 import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
 import BaseMap from '@/components/maps/BaseMap.vue'
+import {createFavoritesManagementMapAdapter} from '@/maps/favoritesManagement/runtime/createFavoritesManagementMapAdapter'
+import {
+  extractLatLng,
+  getAreaCenterLatLng,
+  getFavoritePointLatLng
+} from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -444,11 +455,11 @@ const selectedPendingFavorite = ref(null)
 // Map state
 const baseMapRef = ref(null)
 const mapInstance = ref(null)
-const favoritesLayerRef = ref(null)
-const tempMarker = ref(null)
+const mapAdapter = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(13)
 const shouldAutoFitMap = ref(false)
+const isMapBootstrapReady = ref(false)
 
 // Rectangle drawing composable
 const {
@@ -457,7 +468,7 @@ const {
   startDrawing,
   stopDrawing,
   cleanupTempLayer
-} = useRectangleDrawing({
+} = useRectangleDrawingRuntime({
   onRectangleCreated: (data) => {
     // Store bounds for area favorite
     const bounds = data.bounds
@@ -531,6 +542,8 @@ const hasPendingFavorites = computed(() => favoritesStore.hasPendingFavorites)
 const pendingCount = computed(() => favoritesStore.pendingCount)
 const pendingPointsCount = computed(() => favoritesStore.getPendingPoints.length)
 const pendingAreasCount = computed(() => favoritesStore.getPendingAreas.length)
+const pendingPoints = computed(() => favoritesStore.getPendingPoints)
+const pendingAreas = computed(() => favoritesStore.getPendingAreas)
 
 // Context menu items
 const mapMenuItems = ref([
@@ -750,6 +763,57 @@ const loadEnabledProviders = async () => {
   }
 }
 
+const applyInitialMapCenterFromData = () => {
+  const firstPointFavorite = allFavorites.value.find((favorite) => favorite?.type === 'POINT')
+  if (firstPointFavorite) {
+    const point = getFavoritePointLatLng(firstPointFavorite)
+    if (point) {
+      mapCenter.value = [point.lat, point.lng]
+      return
+    }
+  }
+
+  const firstAreaFavorite = allFavorites.value.find((favorite) => favorite?.type === 'AREA')
+  if (firstAreaFavorite) {
+    const center = getAreaCenterLatLng(firstAreaFavorite)
+    if (center) {
+      mapCenter.value = [center.lat, center.lng]
+    }
+  }
+}
+
+const markFavoriteContextMenuHandled = () => {
+  favoriteContextMenuActive.value = true
+  setTimeout(() => {
+    favoriteContextMenuActive.value = false
+  }, 120)
+}
+
+const showContextMenu = (menuRef, originalEvent) => {
+  if (!menuRef?.value || !originalEvent) {
+    return
+  }
+
+  setTimeout(() => {
+    menuRef.value.show(originalEvent)
+  }, 0)
+}
+
+const renderMapMarkers = () => {
+  if (!mapAdapter.value) {
+    return
+  }
+
+  mapAdapter.value.render({
+    favorites: displayedFavorites.value,
+    pendingPoints: pendingPoints.value,
+    pendingAreas: pendingAreas.value,
+    autoFit: shouldAutoFitMap.value && !pendingAddCoordinates.value
+  })
+
+  shouldAutoFitMap.value = false
+}
+
 const handleAddPointFromContextMenu = () => {
   if (!contextMenuLatLng.value) return
 
@@ -759,19 +823,7 @@ const handleAddPointFromContextMenu = () => {
     lng: contextMenuLatLng.value.lng
   }
 
-  // Add temporary marker
-  if (tempMarker.value && mapInstance.value) {
-    mapInstance.value.removeLayer(tempMarker.value)
-  }
-
-  tempMarker.value = baseMapRef.value.L.marker([contextMenuLatLng.value.lat, contextMenuLatLng.value.lng], {
-    icon: baseMapRef.value.L.divIcon({
-      className: 'temp-favorite-marker',
-      html: '<div class="temp-marker-icon"><i class="pi pi-map-marker"></i></div>',
-      iconSize: [40, 40],
-      iconAnchor: [20, 40]
-    })
-  }).addTo(mapInstance.value)
+  mapAdapter.value?.setTempPoint?.(contextMenuLatLng.value)
 
   // Show add dialog
   addDialogHeader.value = 'Add Point to Favorites'
@@ -829,16 +881,12 @@ const handleAddFavorite = (name) => {
     showAddDialog.value = false
     pendingAddCoordinates.value = null
     pendingAddBounds.value = null
-
-    if (tempMarker.value && mapInstance.value) {
-      mapInstance.value.removeLayer(tempMarker.value)
-      tempMarker.value = null
-    }
+    mapAdapter.value?.clearTempPoint?.()
     cleanupTempLayer()
 
     // Update map to show pending markers WITHOUT auto-fitting
     shouldAutoFitMap.value = false
-    updateMapMarkers()
+    renderMapMarkers()
     return
   }
 
@@ -878,10 +926,7 @@ const handleAddFavorite = (name) => {
   pendingAddCoordinates.value = null
   pendingAddBounds.value = null
 
-  if (tempMarker.value && mapInstance.value) {
-    mapInstance.value.removeLayer(tempMarker.value)
-    tempMarker.value = null
-  }
+  mapAdapter.value?.clearTempPoint?.()
   cleanupTempLayer()
 
   withTimelineRegeneration(action, {
@@ -900,11 +945,7 @@ const handleCloseAddDialog = () => {
   pendingAddCoordinates.value = null
   pendingAddBounds.value = null
 
-  // Clean up temp marker
-  if (tempMarker.value && mapInstance.value) {
-    mapInstance.value.removeLayer(tempMarker.value)
-    tempMarker.value = null
-  }
+  mapAdapter.value?.clearTempPoint?.()
 
   // Stop drawing if active and clean up temp layer
   if (isDrawing()) {
@@ -974,7 +1015,7 @@ const handleClearPending = () => {
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
       favoritesStore.clearPending()
-      updateMapMarkers()
+      renderMapMarkers()
       toast.add({
         severity: 'info',
         summary: 'Cleared',
@@ -987,7 +1028,7 @@ const handleClearPending = () => {
 
 const handleRemovePending = (tempId) => {
   favoritesStore.removeFromPending(tempId)
-  updateMapMarkers()
+  renderMapMarkers()
   toast.add({
     severity: 'info',
     summary: 'Removed',
@@ -1001,17 +1042,7 @@ const handleRemovePending = (tempId) => {
 
 
 const focusOnMap = (favorite) => {
-  if (!baseMapRef.value) return
-
-  if (favorite.type === 'POINT') {
-    baseMapRef.value.setView([favorite.latitude, favorite.longitude], 15)
-  } else if (favorite.type === 'AREA') {
-    const bounds = baseMapRef.value.L.latLngBounds(
-        [favorite.southWestLat, favorite.southWestLon],
-        [favorite.northEastLat, favorite.northEastLon]
-    )
-    baseMapRef.value.fitBounds(bounds, {padding: [50, 50], animate: true})
-  }
+  mapAdapter.value?.focusOnFavorite?.(favorite)
 }
 
 const loadFavorites = async () => {
@@ -1020,10 +1051,14 @@ const loadFavorites = async () => {
     tableLoading.value = true
     await favoritesStore.fetchFavoritePlaces()
 
+    if (!mapInstance.value) {
+      applyInitialMapCenterFromData()
+    }
+
     // Update map markers with auto-fit enabled
-    if (mapInstance.value && favoritesLayerRef.value) {
+    if (mapInstance.value && mapAdapter.value) {
       shouldAutoFitMap.value = true
-      updateMapMarkers()
+      renderMapMarkers()
     }
   } catch (error) {
     console.error('Error loading favorites:', error)
@@ -1043,16 +1078,29 @@ const loadFavorites = async () => {
 const handleMapReady = (map) => {
   mapInstance.value = map
 
-  // Add favorites layer
-  const favoritesLayer = baseMapRef.value.L.layerGroup().addTo(mapInstance.value)
-  favoritesLayerRef.value = favoritesLayer
+  if (mapAdapter.value) {
+    mapAdapter.value.cleanup()
+  }
+
+  mapAdapter.value = createFavoritesManagementMapAdapter(mapInstance.value, {
+    onFavoriteContextMenu: ({ favorite, originalEvent }) => {
+      handleFavoriteContextMenu(originalEvent, favorite)
+    },
+    onPendingFavoriteContextMenu: ({ pendingFavorite, originalEvent }) => {
+      handlePendingFavoriteContextMenu(originalEvent, pendingFavorite)
+    },
+    onContextMenuHandled: () => {
+      markFavoriteContextMenuHandled()
+    }
+  })
+  mapAdapter.value.initialize(mapInstance.value)
 
   // Initialize rectangle drawing
   initializeDrawing(mapInstance.value)
 
   // Initial update with auto-fit enabled
   shouldAutoFitMap.value = true
-  updateMapMarkers()
+  renderMapMarkers()
 }
 
 const handleMapContextMenu = (e) => {
@@ -1068,253 +1116,52 @@ const handleMapContextMenu = (e) => {
   }
 
   // Store the latlng for context menu actions
-  contextMenuLatLng.value = e.latlng
+  const latlng = extractLatLng(e)
+  if (!latlng) {
+    return
+  }
+  contextMenuLatLng.value = latlng
 
   // Show PrimeVue context menu
-  if (mapContextMenuRef.value && e.originalEvent) {
-    mapContextMenuRef.value.show(e.originalEvent)
+  const originalEvent = e.originalEvent || null
+  if (!mapContextMenuRef.value || !originalEvent) {
+    return
   }
+
+  setTimeout(() => {
+    if (favoriteContextMenuActive.value || isDrawing()) {
+      return
+    }
+    mapContextMenuRef.value.show(originalEvent)
+  }, 0)
 }
 
-const handleFavoriteContextMenu = (e, favorite) => {
-  // Set flag to prevent map context menu
-  favoriteContextMenuActive.value = true
-
-  // Prevent default browser context menu and map context menu
-  if (e.originalEvent) {
-    e.originalEvent.preventDefault()
-    e.originalEvent.stopPropagation()
-  }
-
-  if (baseMapRef.value && baseMapRef.value.L) {
-    baseMapRef.value.L.DomEvent.stopPropagation(e)
-  }
-
+const handleFavoriteContextMenu = (originalEvent, favorite) => {
+  markFavoriteContextMenuHandled()
   // Store the selected favorite
   selectedFavorite.value = favorite
 
   // Show favorite context menu
-  if (favoriteContextMenuRef.value && e.originalEvent) {
-    // Use setTimeout to ensure the event has fully propagated/stopped
-    setTimeout(() => {
-      favoriteContextMenuRef.value.show(e.originalEvent)
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
-  }
+  showContextMenu(favoriteContextMenuRef, originalEvent || null)
 }
 
-const handlePendingFavoriteContextMenu = (e, pendingFavorite) => {
-  // Set flag to prevent map context menu
-  favoriteContextMenuActive.value = true
-
-  // Prevent default browser context menu and map context menu
-  if (e.originalEvent) {
-    e.originalEvent.preventDefault()
-    e.originalEvent.stopPropagation()
-  }
-
-  if (baseMapRef.value && baseMapRef.value.L) {
-    baseMapRef.value.L.DomEvent.stopPropagation(e)
-  }
-
+const handlePendingFavoriteContextMenu = (originalEvent, pendingFavorite) => {
+  markFavoriteContextMenuHandled()
   // Store the selected pending favorite (tempId)
   selectedPendingFavorite.value = pendingFavorite.tempId
 
   // Show pending favorite context menu
-  if (pendingFavoriteContextMenuRef.value && e.originalEvent) {
-    // Use setTimeout to ensure the event has fully propagated/stopped
-    setTimeout(() => {
-      pendingFavoriteContextMenuRef.value.show(e.originalEvent)
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
-  }
-}
-
-const updateMapMarkers = () => {
-  if (!mapInstance.value || !favoritesLayerRef.value) return
-
-  // Clear existing markers
-  favoritesLayerRef.value.clearLayers()
-
-  // Add saved favorite markers
-  displayedFavorites.value.forEach(favorite => {
-    if (favorite.type === 'POINT') {
-      const marker = baseMapRef.value.L.marker([favorite.latitude, favorite.longitude], {
-        icon: baseMapRef.value.L.divIcon({
-          className: 'favorite-point-marker',
-          html: '<div class="favorite-marker-icon"><i class="pi pi-map-marker"></i></div>',
-          iconSize: [40, 40],
-          iconAnchor: [20, 40]
-        })
-      })
-
-      marker.bindPopup(`<strong>${favorite.name}</strong>`)
-      marker.on('click', () => focusOnMap(favorite))
-
-      // Add context menu handler
-      marker.on('contextmenu', (e) => {
-        handleFavoriteContextMenu(e, favorite)
-      })
-
-      marker.addTo(favoritesLayerRef.value)
-    } else if (favorite.type === 'AREA') {
-      const bounds = [
-        [favorite.southWestLat, favorite.southWestLon],
-        [favorite.northEastLat, favorite.northEastLon]
-      ]
-
-      const rectangle = baseMapRef.value.L.rectangle(bounds, {
-        color: '#ef4444',
-        fillColor: '#ef4444',
-        fillOpacity: 0.2,
-        weight: 2
-      })
-
-      rectangle.bindPopup(`<strong>${favorite.name}</strong><br>Area Favorite`)
-      rectangle.on('click', () => focusOnMap(favorite))
-
-      // Add context menu handler
-      rectangle.on('contextmenu', (e) => {
-        handleFavoriteContextMenu(e, favorite)
-      })
-
-      rectangle.addTo(favoritesLayerRef.value)
-
-      // Add a center marker icon for better visibility when zoomed out
-      const centerLat = (favorite.southWestLat + favorite.northEastLat) / 2
-      const centerLon = (favorite.southWestLon + favorite.northEastLon) / 2
-
-      const areaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
-        icon: baseMapRef.value.L.divIcon({
-          className: 'favorite-area-marker',
-          html: '<div class="favorite-area-icon"><i class="pi pi-th-large"></i></div>',
-          iconSize: [40, 40],
-          iconAnchor: [20, 20]
-        })
-      })
-
-      areaMarker.bindPopup(`<strong>${favorite.name}</strong><br>Area Favorite`)
-      areaMarker.on('click', () => focusOnMap(favorite))
-
-      // Add context menu handler
-      areaMarker.on('contextmenu', (e) => {
-        handleFavoriteContextMenu(e, favorite)
-      })
-
-      areaMarker.addTo(favoritesLayerRef.value)
-    }
-  })
-
-  // Add pending point markers (orange color, dashed border)
-  const pendingPoints = favoritesStore.getPendingPoints
-  pendingPoints.forEach(pending => {
-    const marker = baseMapRef.value.L.marker([pending.lat, pending.lon], {
-      icon: baseMapRef.value.L.divIcon({
-        className: 'pending-point-marker',
-        html: '<div class="pending-marker-icon"><i class="pi pi-map-marker"></i></div>',
-        iconSize: [40, 40],
-        iconAnchor: [20, 40]
-      })
-    })
-
-    marker.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending</span>`)
-
-    // Add context menu handler for pending favorites
-    marker.on('contextmenu', (e) => {
-      handlePendingFavoriteContextMenu(e, pending)
-    })
-
-    marker.addTo(favoritesLayerRef.value)
-  })
-
-  // Add pending area rectangles (orange color, dashed border)
-  const pendingAreas = favoritesStore.getPendingAreas
-  pendingAreas.forEach(pending => {
-    const bounds = [
-      [pending.southWestLat, pending.southWestLon],
-      [pending.northEastLat, pending.northEastLon]
-    ]
-
-    const rectangle = baseMapRef.value.L.rectangle(bounds, {
-      color: '#f59e0b',
-      fillColor: '#f59e0b',
-      fillOpacity: 0.2,
-      weight: 2,
-      dashArray: '5, 5'
-    })
-
-    rectangle.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending Area</span>`)
-
-    // Add context menu handler for pending favorites
-    rectangle.on('contextmenu', (e) => {
-      handlePendingFavoriteContextMenu(e, pending)
-    })
-
-    rectangle.addTo(favoritesLayerRef.value)
-
-    // Add a center marker icon for better visibility when zoomed out
-    const centerLat = (pending.southWestLat + pending.northEastLat) / 2
-    const centerLon = (pending.southWestLon + pending.northEastLon) / 2
-
-    const pendingAreaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
-      icon: baseMapRef.value.L.divIcon({
-        className: 'pending-area-marker',
-        html: '<div class="pending-area-icon"><i class="pi pi-th-large"></i></div>',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      })
-    })
-
-    pendingAreaMarker.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending Area</span>`)
-
-    // Add context menu handler for pending favorites
-    pendingAreaMarker.on('contextmenu', (e) => {
-      handlePendingFavoriteContextMenu(e, pending)
-    })
-
-    pendingAreaMarker.addTo(favoritesLayerRef.value)
-  })
-
-  // Fit map to show all markers if there are any (only if flag is set)
-  if (shouldAutoFitMap.value && (displayedFavorites.value.length > 0 || pendingPoints.length > 0 || pendingAreas.length > 0) && !pendingAddCoordinates.value) {
-    const bounds = []
-    displayedFavorites.value.forEach(favorite => {
-      if (favorite.type === 'POINT') {
-        bounds.push([favorite.latitude, favorite.longitude])
-      } else if (favorite.type === 'AREA') {
-        bounds.push([favorite.southWestLat, favorite.southWestLon])
-        bounds.push([favorite.northEastLat, favorite.northEastLon])
-      }
-    })
-
-    // Add pending favorites to bounds
-    pendingPoints.forEach(pending => {
-      bounds.push([pending.lat, pending.lon])
-    })
-    pendingAreas.forEach(pending => {
-      bounds.push([pending.southWestLat, pending.southWestLon])
-      bounds.push([pending.northEastLat, pending.northEastLon])
-    })
-
-    if (bounds.length > 0) {
-      mapInstance.value.fitBounds(bounds, {padding: [50, 50], maxZoom: 15})
-    }
-
-    // Reset flag after auto-fit
-    shouldAutoFitMap.value = false
-  }
+  showContextMenu(pendingFavoriteContextMenuRef, originalEvent || null)
 }
 
 // Watch for filter changes to update map
-watch(() => displayedFavorites.value, () => {
-  updateMapMarkers()
-}, {deep: true})
+watch(
+  () => [displayedFavorites.value, pendingPoints.value, pendingAreas.value],
+  () => {
+    renderMapMarkers()
+  },
+  {deep: true}
+)
 
 // Route guard for navigation warning
 onBeforeRouteLeave((to, from, next) => {
@@ -1356,6 +1203,8 @@ onMounted(async () => {
     loadFavorites(),
     loadEnabledProviders()
   ])
+
+  isMapBootstrapReady.value = true
 })
 
 onUnmounted(() => {
@@ -1363,15 +1212,7 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
   if (searchTimeout) clearTimeout(searchTimeout)
 
-  // Clean up temp marker
-  if (tempMarker.value && mapInstance.value) {
-    try {
-      mapInstance.value.removeLayer(tempMarker.value)
-    } catch (error) {
-      console.warn('Error removing temp marker:', error)
-    }
-    tempMarker.value = null
-  }
+  mapAdapter.value?.clearTempPoint?.()
 
   // Clean up drawing
   if (isDrawing()) {
@@ -1387,15 +1228,8 @@ onUnmounted(() => {
     console.warn('Error cleaning up temp layer:', error)
   }
 
-  // Clean up favorites layer
-  if (favoritesLayerRef.value && mapInstance.value) {
-    try {
-      favoritesLayerRef.value.clearLayers()
-    } catch (error) {
-      console.warn('Error clearing favorites layer:', error)
-    }
-    favoritesLayerRef.value = null
-  }
+  mapAdapter.value?.cleanup?.()
+  mapAdapter.value = null
 })
 </script>
 
@@ -1430,6 +1264,19 @@ onUnmounted(() => {
   width: 100%;
   height: 500px;
   position: relative;
+}
+
+.map-loading-state {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--gp-text-secondary);
+  font-weight: 500;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
 }
 
 .map-element {
@@ -1737,6 +1584,11 @@ onUnmounted(() => {
 
 .p-dark .map-header {
   border-bottom-color: var(--gp-border-dark);
+}
+
+.p-dark .map-loading-state {
+  background: var(--gp-surface-dark);
+  color: var(--gp-text-primary);
 }
 </style>
 

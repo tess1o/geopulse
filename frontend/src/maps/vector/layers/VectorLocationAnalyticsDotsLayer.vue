@@ -38,6 +38,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['marker-click', 'open-place-details'])
+const CLUSTER_LABEL_MIN_ZOOM = 8
+const CLUSTER_LABEL_MAX_COUNT = 49
 
 const state = {
   token: nextLayerToken('gp-location-analytics'),
@@ -224,16 +226,18 @@ const renderLayer = () => {
     filter: ['has', 'point_count'],
     paint: {
       'circle-color': '#ff8a3d',
-      'circle-radius': [
-        'step',
-        ['get', 'point_count'],
-        14,
-        8, 16,
-        24, 19,
-        64, 22
-      ],
+      // Match raster cluster visual scale: size by zoom, not by child count.
+      'circle-radius': ['step', ['zoom'], 7, 6, 8, 8, 9, 10, 10],
       'circle-stroke-color': '#ffe5d0',
-      'circle-stroke-width': 1.5
+      // MapLibre requires zoom expressions to be top-level step/interpolate.
+      // Match raster behavior: compact (thin) below label zoom, labeled clusters can be thicker.
+      'circle-stroke-width': [
+        'step',
+        ['zoom'],
+        1.5,
+        CLUSTER_LABEL_MIN_ZOOM,
+        ['case', ['<=', ['get', 'point_count'], CLUSTER_LABEL_MAX_COUNT], 2, 1.5]
+      ]
     }
   })
 
@@ -243,12 +247,18 @@ const renderLayer = () => {
     source: state.sourceId,
     filter: ['has', 'point_count'],
     layout: {
-      'text-field': ['get', 'point_count_abbreviated'],
-      'text-size': 11,
+      'text-field': [
+        'step',
+        ['zoom'],
+        '',
+        CLUSTER_LABEL_MIN_ZOOM,
+        ['case', ['<=', ['get', 'point_count'], CLUSTER_LABEL_MAX_COUNT], ['to-string', ['get', 'point_count_abbreviated']], '']
+      ],
+      'text-size': 10,
       'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
     },
     paint: {
-      'text-color': '#111827'
+      'text-color': '#ffffff'
     }
   })
 

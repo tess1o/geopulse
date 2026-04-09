@@ -81,9 +81,18 @@ let loadingOverlayTimer = null
 let suppressViewportEventsUntil = 0
 const loadingIndicatorVisible = ref(false)
 const CARD_SELECTION_MIN_ZOOM = 12
+const hasAppliedInitialAutoFit = ref(false)
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
 const hasPlaces = computed(() => props.places.length > 0)
+
+const toFiniteCoordinate = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90
+const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180
 
 const selectedPlace = computed(() => {
   if (!props.selectedPlaceKey) return null
@@ -99,12 +108,72 @@ const setMapView = (center, zoom, options = {}) => {
   return true
 }
 
+const normalizeBoundsPoints = (bounds) => {
+  if (!Array.isArray(bounds)) {
+    console.warn('[LocationAnalyticsMap] fitBounds skipped: bounds is not an array', bounds)
+    return null
+  }
+
+  const normalized = bounds
+    .map((point, index) => {
+      if (!Array.isArray(point) || point.length < 2) {
+        console.warn('[LocationAnalyticsMap] fitBounds dropped non-point entry', { index, point })
+        return null
+      }
+
+      const latitude = toFiniteCoordinate(point[0])
+      const longitude = toFiniteCoordinate(point[1])
+      if (
+        latitude === null
+        || longitude === null
+        || !isValidLatitude(latitude)
+        || !isValidLongitude(longitude)
+      ) {
+        console.warn('[LocationAnalyticsMap] fitBounds dropped invalid coordinate', {
+          index,
+          rawPoint: point,
+          latitude,
+          longitude
+        })
+        return null
+      }
+
+      return [latitude, longitude]
+    })
+    .filter(Boolean)
+
+  return normalized.length > 0 ? normalized : null
+}
+
 const fitMapBounds = (bounds, options = {}) => {
   if (typeof mapContainerRef.value?.fitBounds !== 'function') {
+    console.warn('[LocationAnalyticsMap] fitBounds skipped: mapContainerRef.fitBounds is unavailable')
     return false
   }
 
-  mapContainerRef.value.fitBounds(bounds, options)
+  const normalizedBounds = normalizeBoundsPoints(bounds)
+  if (!normalizedBounds) {
+    console.warn('[LocationAnalyticsMap] fitBounds skipped: no valid bounds points after normalization')
+    return false
+  }
+
+  try {
+    console.info('[LocationAnalyticsMap] fitBounds call', {
+      pointsCount: normalizedBounds.length,
+      firstPoint: normalizedBounds[0],
+      lastPoint: normalizedBounds[normalizedBounds.length - 1],
+      options
+    })
+    mapContainerRef.value.fitBounds(normalizedBounds, options)
+  } catch (error) {
+    console.error('[LocationAnalyticsMap] fitBounds failed', {
+      error,
+      normalizedBounds,
+      options
+    })
+    return false
+  }
+
   return true
 }
 
@@ -153,21 +222,108 @@ const scheduleViewportEmit = () => {
 }
 
 const fitToPlaces = () => {
-  if (!mapInstance.value || props.places.length === 0 || userMovedMap.value) return
-
-  const validPlaces = props.places.filter(
-    (place) => typeof place.latitude === 'number' && typeof place.longitude === 'number'
-  )
-  if (validPlaces.length === 0) return
-  if (validPlaces.length === 1) {
-    suppressViewportEvents(600)
-    setMapView([validPlaces[0].latitude, validPlaces[0].longitude], 13, { animate: false })
+  const shouldSkipForUserMove = userMovedMap.value && hasAppliedInitialAutoFit.value
+  if (!mapInstance.value || props.places.length === 0 || shouldSkipForUserMove) {
+    console.info('[LocationAnalyticsMap] fitToPlaces skipped', {
+      hasMap: Boolean(mapInstance.value),
+      placesCount: props.places.length,
+      userMovedMap: userMovedMap.value,
+      hasAppliedInitialAutoFit: hasAppliedInitialAutoFit.value
+    })
     return
   }
 
-  const bounds = validPlaces.map((place) => [place.latitude, place.longitude])
+  const invalidPlaces = []
+  const validPlaces = props.places
+    .map((place, index) => {
+      const latitude = toFiniteCoordinate(place?.latitude)
+      const longitude = toFiniteCoordinate(place?.longitude)
+      if (
+        latitude === null
+        || longitude === null
+        || !isValidLatitude(latitude)
+        || !isValidLongitude(longitude)
+      ) {
+        invalidPlaces.push({
+          index,
+          id: place?.id,
+          type: place?.type,
+          rawLatitude: place?.latitude,
+          rawLongitude: place?.longitude,
+          normalizedLatitude: latitude,
+          normalizedLongitude: longitude
+        })
+        return null
+      }
+
+      return {
+        ...place,
+        latitude,
+        longitude
+      }
+    })
+    .filter(Boolean)
+
+  console.info('[LocationAnalyticsMap] fitToPlaces normalization summary', {
+    totalPlaces: props.places.length,
+    validPlaces: validPlaces.length,
+    invalidPlaces: invalidPlaces.length
+  })
+
+  if (invalidPlaces.length > 0) {
+    console.warn('[LocationAnalyticsMap] invalid places sample', invalidPlaces.slice(0, 10))
+  }
+
+  if (validPlaces.length === 0) {
+    console.warn('[LocationAnalyticsMap] fitToPlaces aborted: no valid places after normalization')
+    return
+  }
+  if (validPlaces.length === 1) {
+    suppressViewportEvents(600)
+    const didSetView = setMapView([validPlaces[0].latitude, validPlaces[0].longitude], 13, { animate: false })
+    if (didSetView) {
+      hasAppliedInitialAutoFit.value = true
+    }
+    emitViewport()
+    return
+  }
+
+  let south = Infinity
+  let west = Infinity
+  let north = -Infinity
+  let east = -Infinity
+
+  validPlaces.forEach((place) => {
+    const latitude = place.latitude
+    const longitude = place.longitude
+    if (latitude < south) south = latitude
+    if (latitude > north) north = latitude
+    if (longitude < west) west = longitude
+    if (longitude > east) east = longitude
+  })
+
+  if (![south, west, north, east].every(Number.isFinite)) {
+    console.error('[LocationAnalyticsMap] fitToPlaces aborted: computed bbox is invalid', {
+      south,
+      west,
+      north,
+      east
+    })
+    return
+  }
+
+  const bounds = [
+    [south, west],
+    [north, east]
+  ]
+
+  console.info('[LocationAnalyticsMap] fitToPlaces bbox', { south, west, north, east })
   suppressViewportEvents(600)
-  fitMapBounds(bounds, { padding: [24, 24], animate: false, maxZoom: 13 })
+  const didFitBounds = fitMapBounds(bounds, { padding: [24, 24], animate: false, maxZoom: 13 })
+  if (didFitBounds) {
+    hasAppliedInitialAutoFit.value = true
+  }
+  emitViewport()
 }
 
 const focusSelectedPlace = () => {
@@ -198,14 +354,22 @@ const focusSelectedPlace = () => {
 
 const handleMapReady = (map) => {
   mapInstance.value = map
+  userMovedMap.value = false
+  hasAppliedInitialAutoFit.value = false
 
   moveHandler = () => {
-    if (Date.now() < suppressViewportEventsUntil) return
+    if (Date.now() < suppressViewportEventsUntil) {
+      scheduleViewportEmit()
+      return
+    }
     userMovedMap.value = true
     scheduleViewportEmit()
   }
   zoomHandler = () => {
-    if (Date.now() < suppressViewportEventsUntil) return
+    if (Date.now() < suppressViewportEventsUntil) {
+      scheduleViewportEmit()
+      return
+    }
     userMovedMap.value = true
     scheduleViewportEmit()
   }
@@ -226,6 +390,9 @@ const handleOpenPlaceDetails = (place) => {
 }
 
 watch(() => props.places, () => {
+  if (!props.places?.length) {
+    hasAppliedInitialAutoFit.value = false
+  }
   fitToPlaces()
 }, { deep: false })
 

@@ -11,6 +11,7 @@
     :min-opacity="minOpacity"
     :max="max"
     :gradient="gradient"
+    :profile="profile"
     :lock-max-zoom="lockMaxZoom"
     :enabled="enabled"
   />
@@ -68,6 +69,10 @@ const props = defineProps({
       0.8: '#f97316',
       1.0: '#dc2626'
     })
+  },
+  profile: {
+    type: String,
+    default: 'default'
   },
   lockMaxZoom: {
     type: Boolean,

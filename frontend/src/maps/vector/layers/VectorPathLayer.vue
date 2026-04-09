@@ -315,7 +315,7 @@ const createHighlightedEndpointMarker = ({
   })
   const resolvedZIndex = Number.isFinite(Number(zIndex))
     ? Number(zIndex)
-    : (markerType === 'start' ? 4200 : 4100)
+    : (markerType === 'start' ? 420 : 410)
   markerElement.style.zIndex = String(resolvedZIndex)
 
   const marker = new maplibregl.Marker({
@@ -604,7 +604,7 @@ const buildHighlightedData = () => {
       markerType: 'start',
       latitude: startPoint.latitude,
       longitude: startPoint.longitude,
-      zIndex: sameEndpoint ? 4210 : 4200,
+      zIndex: sameEndpoint ? 421 : 420,
       styleOverrides: sameEndpoint ? { transform: 'translateX(-14px)' } : {}
     })
   }
@@ -614,7 +614,7 @@ const buildHighlightedData = () => {
       markerType: 'end',
       latitude: endPoint.latitude,
       longitude: endPoint.longitude,
-      zIndex: sameEndpoint ? 4200 : 4100,
+      zIndex: sameEndpoint ? 420 : 410,
       styleOverrides: sameEndpoint ? { transform: 'translateX(14px)' } : {}
     })
   }

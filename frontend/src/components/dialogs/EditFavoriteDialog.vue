@@ -100,7 +100,12 @@ import Button from "primevue/button"
 import Dialog from "primevue/dialog"
 import InputText from "primevue/inputtext"
 import BaseMap from '@/components/maps/BaseMap.vue'
-import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
+import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
+import { createFavoriteAreaOverlayAdapter } from '@/maps/favoritesEdit/runtime/createFavoriteAreaOverlayAdapter'
+import {
+  getAreaCenterLatLng,
+  toLeafletBounds
+} from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 
 const props = defineProps({
   visible: Boolean,
@@ -117,7 +122,7 @@ const internalHeader = ref(props.header)
 // Map state
 const baseMapRef = ref(null)
 const mapInstance = ref(null)
-const currentRectangle = ref(null)
+const areaOverlayAdapter = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(13)
 
@@ -131,7 +136,7 @@ const {
   startDrawing,
   stopDrawing,
   cleanupTempLayer
-} = useRectangleDrawing({
+} = useRectangleDrawingRuntime({
   onRectangleCreated: (data) => {
     const bounds = data.bounds
     const southWest = bounds.getSouthWest()
@@ -148,25 +153,37 @@ const {
   }
 })
 
+const clearCurrentAreaOverlay = () => {
+  areaOverlayAdapter.value?.clear?.()
+}
+
+const initializeAreaOverlayAdapter = (map) => {
+  areaOverlayAdapter.value?.destroy?.()
+  const adapter = createFavoriteAreaOverlayAdapter(map)
+  adapter.initialize(map)
+  areaOverlayAdapter.value = adapter
+}
+
 // Methods
 const handleMapReady = (map) => {
   mapInstance.value = map
 
   // Initialize rectangle drawing
   initializeDrawing(mapInstance.value)
+  initializeAreaOverlayAdapter(mapInstance.value)
 
   // If it's an area favorite, center on it and draw it
   if (isAreaFavorite.value && props.favoriteLocation) {
-    const centerLat = (props.favoriteLocation.southWestLat + props.favoriteLocation.northEastLat) / 2
-    const centerLon = (props.favoriteLocation.southWestLon + props.favoriteLocation.northEastLon) / 2
-    mapCenter.value = [centerLat, centerLon]
+    const center = getAreaCenterLatLng(props.favoriteLocation)
+    if (center) {
+      mapCenter.value = [center.lat, center.lng]
+    }
 
     // Fit bounds to show the entire area
-    const bounds = baseMapRef.value.L.latLngBounds(
-      [props.favoriteLocation.southWestLat, props.favoriteLocation.southWestLon],
-      [props.favoriteLocation.northEastLat, props.favoriteLocation.northEastLon]
-    )
-    mapInstance.value.fitBounds(bounds, {padding: [50, 50]})
+    const bounds = toLeafletBounds(props.favoriteLocation)
+    if (bounds) {
+      mapInstance.value.fitBounds(bounds, {padding: [50, 50]})
+    }
 
     // Draw the current area
     drawCurrentArea()
@@ -174,35 +191,15 @@ const handleMapReady = (map) => {
 }
 
 const drawCurrentArea = () => {
-  if (!mapInstance.value || !baseMapRef.value || !isAreaFavorite.value) return
+  if (!mapInstance.value || !isAreaFavorite.value) return
 
-  // Remove existing rectangle if any
-  if (currentRectangle.value) {
-    mapInstance.value.removeLayer(currentRectangle.value)
-  }
-
-  // Draw new rectangle
-  const bounds = [
-    [props.favoriteLocation.southWestLat, props.favoriteLocation.southWestLon],
-    [props.favoriteLocation.northEastLat, props.favoriteLocation.northEastLon]
-  ]
-
-  currentRectangle.value = baseMapRef.value.L.rectangle(bounds, {
-    color: '#ef4444',
-    fillColor: '#ef4444',
-    fillOpacity: 0.2,
-    weight: 2
-  }).addTo(mapInstance.value)
+  areaOverlayAdapter.value?.draw?.(props.favoriteLocation)
 }
 
 const handleRedrawArea = () => {
   if (!mapInstance.value) return
 
-  // Remove the current rectangle
-  if (currentRectangle.value) {
-    mapInstance.value.removeLayer(currentRectangle.value)
-    currentRectangle.value = null
-  }
+  clearCurrentAreaOverlay()
 
   // Start drawing mode
   startDrawing()
@@ -239,11 +236,7 @@ const onDialogHide = () => {
   }
   cleanupTempLayer()
 
-  // Remove rectangle
-  if (currentRectangle.value && mapInstance.value) {
-    mapInstance.value.removeLayer(currentRectangle.value)
-    currentRectangle.value = null
-  }
+  clearCurrentAreaOverlay()
 }
 
 // Watchers
@@ -257,6 +250,20 @@ watch(internalVisible, (val) => {
   }
 })
 
+watch(
+  () => [
+    props.favoriteLocation?.northEastLat,
+    props.favoriteLocation?.northEastLon,
+    props.favoriteLocation?.southWestLat,
+    props.favoriteLocation?.southWestLon
+  ],
+  () => {
+    if (isAreaFavorite.value && mapInstance.value) {
+      drawCurrentArea()
+    }
+  }
+)
+
 // Cleanup on unmount
 onUnmounted(() => {
   if (isDrawing()) {
@@ -264,13 +271,14 @@ onUnmounted(() => {
   }
   cleanupTempLayer()
 
-  if (currentRectangle.value && mapInstance.value) {
-    try {
-      mapInstance.value.removeLayer(currentRectangle.value)
-    } catch (error) {
-      console.warn('Error removing rectangle:', error)
-    }
+  try {
+    clearCurrentAreaOverlay()
+  } catch (error) {
+    console.warn('Error clearing area overlay:', error)
   }
+
+  areaOverlayAdapter.value?.destroy?.()
+  areaOverlayAdapter.value = null
 })
 </script>
 

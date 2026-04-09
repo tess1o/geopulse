@@ -98,19 +98,20 @@ const hasBrowserWebGlContext = () => {
 const getWebGlDiagnostics = () => {
   const browserContextAvailable = hasBrowserWebGlContext()
 
-  let mapLibreReportedSupported = false
+  let mapLibreReportedSupported = null
   try {
-    mapLibreReportedSupported = typeof maplibregl.supported === 'function'
-      ? maplibregl.supported()
-      : false
+    if (typeof maplibregl.supported === 'function') {
+      mapLibreReportedSupported = maplibregl.supported({
+        failIfMajorPerformanceCaveat: false
+      })
+    }
   } catch {
-    mapLibreReportedSupported = false
+    mapLibreReportedSupported = null
   }
 
   return {
     browserContextAvailable,
-    mapLibreReportedSupported,
-    isSupported: browserContextAvailable || mapLibreReportedSupported
+    mapLibreReportedSupported
   }
 }
 
@@ -214,6 +215,7 @@ const createMapInstance = () => {
   })
 
   vectorMap.on('error', (event) => {
+    console.log(event);
     emit('map-warning', {
       code: 'vector_runtime_error',
       message: 'Vector map rendering reported a runtime error.',
@@ -230,19 +232,15 @@ const initializeMap = async () => {
   }
 
   const webGlDiagnostics = getWebGlDiagnostics()
-  if (!webGlDiagnostics.isSupported) {
-    emit('engine-fatal', {
-      code: 'webgl_not_supported',
-      message: 'WebGL appears unavailable for this session. Falling back to raster tiles.',
-      diagnostics: webGlDiagnostics
-    })
-    return
-  }
+  const shouldWarnPreflight = webGlDiagnostics.browserContextAvailable === false
+    && webGlDiagnostics.mapLibreReportedSupported === false
 
-  if (!webGlDiagnostics.mapLibreReportedSupported && webGlDiagnostics.browserContextAvailable) {
+  // Preflight checks can be false-negative on some desktop browser sessions.
+  // Always attempt native initialization; fallback is handled on real init failure.
+  if (shouldWarnPreflight) {
     emit('map-warning', {
-      code: 'webgl_partial_support',
-      message: 'Browser WebGL is available but MapLibre support check was inconclusive. Trying vector initialization anyway.',
+      code: 'webgl_preflight_failed_attempting_init',
+      message: 'WebGL preflight checks failed, attempting vector initialization anyway.',
       diagnostics: webGlDiagnostics
     })
   }
@@ -326,9 +324,31 @@ const fitBounds = (bounds, options = {}) => {
     return
   }
 
+  const normalizePaddingForMapLibre = (paddingValue) => {
+    if (Array.isArray(paddingValue) && paddingValue.length >= 2) {
+      const horizontal = Number(paddingValue[0])
+      const vertical = Number(paddingValue[1])
+      if (Number.isFinite(horizontal) && Number.isFinite(vertical)) {
+        return {
+          left: horizontal,
+          right: horizontal,
+          top: vertical,
+          bottom: vertical
+        }
+      }
+    }
+
+    return paddingValue
+  }
+
+  const normalizedOptions = {
+    ...options,
+    padding: normalizePaddingForMapLibre(options.padding)
+  }
+
   map.value.fitBounds(normalizedBounds, {
-    padding: 20,
-    ...options
+    padding: { top: 20, right: 20, bottom: 20, left: 20 },
+    ...normalizedOptions
   })
 }
 
