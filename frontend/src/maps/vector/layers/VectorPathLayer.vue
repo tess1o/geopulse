@@ -4,6 +4,7 @@
 import { onBeforeUnmount, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import '@/maps/shared/styles/mapPopupContent.css'
 import {
   createFeatureCollection,
@@ -26,6 +27,7 @@ import {
   buildTripHoverTooltipHtml,
   buildTripPopupHtml
 } from '@/maps/shared/popupContentBuilders'
+import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildTripHoverContext as buildSharedTripHoverContext,
   projectTripHoverContext,
@@ -70,16 +72,14 @@ const state = {
   lineLayerId: '',
   highlightedSourceId: '',
   highlightedLineLayerId: '',
-  highlightedPointsSourceId: '',
-  highlightedPointLayerId: '',
-  highlightedPointIconLayerId: '',
+  highlightedStartEndpointMarker: null,
+  highlightedEndEndpointMarker: null,
   listeners: [],
   styleLoadHandler: null,
   boundMap: null,
   highlightedTripPopup: null,
   highlightedTripPopupKey: '',
   highlightedTripPopupTimeoutId: null,
-  highlightedLayerOrderTimeoutId: null,
   highlightedHoverPopup: null,
   highlightedHoverContext: null,
   highlightedHoverMapHandler: null
@@ -89,9 +89,6 @@ state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
 state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
-state.highlightedPointsSourceId = `${state.token}-highlighted-points-source`
-state.highlightedPointLayerId = `${state.token}-highlighted-points`
-state.highlightedPointIconLayerId = `${state.token}-highlighted-points-icon`
 
 const formatDateTimeDisplay = (dateValue) =>
   `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`
@@ -239,6 +236,166 @@ const closeHighlightedTripPopup = () => {
   state.highlightedTripPopupKey = ''
 }
 
+const removeHighlightedEndpointMarkers = () => {
+  const markerKeys = ['highlightedStartEndpointMarker', 'highlightedEndEndpointMarker']
+
+  markerKeys.forEach((markerKey) => {
+    const markerEntry = state[markerKey]
+    if (!markerEntry) {
+      return
+    }
+
+    markerEntry.cleanup?.()
+    state[markerKey] = null
+  })
+}
+
+const buildTripEndpointPopupContent = (trip, markerType) => {
+  const startTime = timezone.fromUtc(trip.timestamp)
+  const endTime = startTime.add(trip.tripDuration, 'second')
+
+  if (markerType === 'start') {
+    return `
+      <div class="trip-popup">
+        <div class="trip-title trip-start">
+          🚀 Trip Start
+        </div>
+        <div class="trip-detail">
+          Start: ${formatDateTimeDisplay(startTime.toISOString())}
+        </div>
+        <div class="trip-detail">
+          Duration: ${formatDuration(trip.tripDuration)}
+        </div>
+        <div class="trip-detail">
+          Distance: ${formatDistance(trip.distanceMeters || 0)}
+        </div>
+        <div class="trip-detail">
+          Mode: ${trip.movementType || 'Unknown'}
+        </div>
+      </div>
+    `
+  }
+
+  return `
+    <div class="trip-popup">
+      <div class="trip-title trip-end">
+        🏁 Trip End
+      </div>
+      <div class="trip-detail">
+        End: ${formatDateTimeDisplay(endTime.toISOString())}
+      </div>
+      <div class="trip-detail">
+        Duration: ${formatDuration(trip.tripDuration)}
+      </div>
+      <div class="trip-detail">
+        Distance: ${formatDistance(trip.distanceMeters || 0)}
+      </div>
+      <div class="trip-detail">
+        Mode: ${trip.movementType || 'Unknown'}
+      </div>
+    </div>
+  `
+}
+
+const createHighlightedEndpointMarker = ({
+  markerType,
+  latitude,
+  longitude,
+  styleOverrides = {},
+  zIndex = null
+}) => {
+  if (!isMapLibreMap(props.map) || !props.highlightedTrip) {
+    return null
+  }
+
+  const markerElement = createTripEndpointMarkerElement({
+    markerType,
+    instant: true,
+    styleOverrides
+  })
+  const resolvedZIndex = Number.isFinite(Number(zIndex))
+    ? Number(zIndex)
+    : (markerType === 'start' ? 4200 : 4100)
+  markerElement.style.zIndex = String(resolvedZIndex)
+
+  const marker = new maplibregl.Marker({
+    element: markerElement,
+    anchor: 'center',
+    // Raster marker anchors are effectively shifted by border width (3px).
+    // Keep the same visual pin-point parity in vector mode.
+    offset: [-3, -3]
+  })
+    .setLngLat([longitude, latitude])
+    .addTo(props.map)
+
+  const popup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    closeOnMove: false,
+    className: 'gp-trip-popup-container',
+    offset: 14
+  }).setHTML(buildTripEndpointPopupContent(props.highlightedTrip, markerType))
+
+  const openPopup = () => {
+    popup.setLngLat([longitude, latitude]).addTo(props.map)
+  }
+  const closePopup = () => {
+    popup.remove()
+  }
+  const handleClick = (domEvent) => {
+    domEvent.preventDefault()
+    domEvent.stopPropagation()
+
+    emit('trip-marker-click', {
+      tripData: props.highlightedTrip,
+      markerType,
+      event: {
+        target: marker,
+        originalEvent: domEvent,
+        lngLat: { lng: longitude, lat: latitude }
+      }
+    })
+  }
+
+  markerElement.addEventListener('mouseenter', openPopup)
+  markerElement.addEventListener('mouseleave', closePopup)
+  markerElement.addEventListener('click', handleClick)
+
+  return {
+    marker,
+    popup,
+    cleanup: () => {
+      markerElement.removeEventListener('mouseenter', openPopup)
+      markerElement.removeEventListener('mouseleave', closePopup)
+      markerElement.removeEventListener('click', handleClick)
+      popup.remove()
+      marker.remove()
+    }
+  }
+}
+
+const syncHighlightedEndpointMarkers = (endpointMarkers) => {
+  removeHighlightedEndpointMarkers()
+
+  if (!isMapLibreMap(props.map) || !props.visible || !props.highlightedTrip) {
+    return
+  }
+
+  const markers = Array.isArray(endpointMarkers) ? endpointMarkers : []
+  markers.forEach((endpointMarker) => {
+    const markerEntry = createHighlightedEndpointMarker(endpointMarker)
+    if (!markerEntry) {
+      return
+    }
+
+    if (endpointMarker.markerType === 'start') {
+      state.highlightedStartEndpointMarker = markerEntry
+    } else if (endpointMarker.markerType === 'end') {
+      state.highlightedEndEndpointMarker = markerEntry
+    }
+  })
+}
+
 const resolveHighlightedLineCoordinates = (lineCollection) => {
   const coordinates = lineCollection?.features?.[0]?.geometry?.coordinates
   if (!Array.isArray(coordinates)) {
@@ -372,7 +529,7 @@ const buildHighlightedData = () => {
   if (!props.highlightedTrip) {
     return {
       lineCollection: createFeatureCollection([]),
-      pointCollection: createFeatureCollection([]),
+      endpointMarkers: [],
       hoverPathPoints: []
     }
   }
@@ -398,7 +555,7 @@ const buildHighlightedData = () => {
   if (!tripPoints || tripPoints.length < 2) {
     return {
       lineCollection: createFeatureCollection([]),
-      pointCollection: createFeatureCollection([]),
+      endpointMarkers: [],
       hoverPathPoints: []
     }
   }
@@ -439,6 +596,29 @@ const buildHighlightedData = () => {
     }
   }
 
+  const sameEndpoint = Boolean(startPoint && endPoint && areSameCoordinate(startPoint, endPoint))
+  const endpointMarkers = []
+
+  if (startPoint) {
+    endpointMarkers.push({
+      markerType: 'start',
+      latitude: startPoint.latitude,
+      longitude: startPoint.longitude,
+      zIndex: sameEndpoint ? 4210 : 4200,
+      styleOverrides: sameEndpoint ? { transform: 'translateX(-14px)' } : {}
+    })
+  }
+
+  if (endPoint) {
+    endpointMarkers.push({
+      markerType: 'end',
+      latitude: endPoint.latitude,
+      longitude: endPoint.longitude,
+      zIndex: sameEndpoint ? 4200 : 4100,
+      styleOverrides: sameEndpoint ? { transform: 'translateX(14px)' } : {}
+    })
+  }
+
   const lineCollection = createFeatureCollection([
     {
       type: 'Feature',
@@ -452,39 +632,9 @@ const buildHighlightedData = () => {
     }
   ])
 
-  const pointFeatures = []
-
-  if (startPoint) {
-    pointFeatures.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [startPoint.longitude, startPoint.latitude]
-      },
-      properties: {
-        markerType: 'start',
-        tripRaw: JSON.stringify(props.highlightedTrip || {})
-      }
-    })
-  }
-
-  if (endPoint) {
-    pointFeatures.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [endPoint.longitude, endPoint.latitude]
-      },
-      properties: {
-        markerType: 'end',
-        tripRaw: JSON.stringify(props.highlightedTrip || {})
-      }
-    })
-  }
-
   return {
     lineCollection,
-    pointCollection: createFeatureCollection(pointFeatures),
+    endpointMarkers,
     hoverPathPoints
   }
 }
@@ -556,15 +706,6 @@ const registerEvents = () => {
     hideTripHoverTooltip()
   }
 
-  const handleTripMarkerClick = (event) => {
-    const markerType = event?.features?.[0]?.properties?.markerType
-    emit('trip-marker-click', {
-      tripData: props.highlightedTrip,
-      markerType,
-      event
-    })
-  }
-
   props.map.on('click', state.lineLayerId, handlePathClick)
   props.map.on('mousemove', state.lineLayerId, handlePathHover)
   props.map.on('mouseleave', state.lineLayerId, handlePathLeave)
@@ -572,8 +713,6 @@ const registerEvents = () => {
   props.map.on('click', state.highlightedLineLayerId, handleHighlightedLineClick)
   props.map.on('mousemove', state.highlightedLineLayerId, handleHighlightedLineMouseMove)
   props.map.on('mouseleave', state.highlightedLineLayerId, handleHighlightedLineMouseLeave)
-  props.map.on('click', state.highlightedPointLayerId, handleTripMarkerClick)
-  props.map.on('click', state.highlightedPointIconLayerId, handleTripMarkerClick)
 
   state.listeners = [
     { event: 'click', layerId: state.lineLayerId, handler: handlePathClick },
@@ -581,9 +720,7 @@ const registerEvents = () => {
     { event: 'mouseleave', layerId: state.lineLayerId, handler: handlePathLeave },
     { event: 'click', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineClick },
     { event: 'mousemove', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineMouseMove },
-    { event: 'mouseleave', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineMouseLeave },
-    { event: 'click', layerId: state.highlightedPointLayerId, handler: handleTripMarkerClick },
-    { event: 'click', layerId: state.highlightedPointIconLayerId, handler: handleTripMarkerClick }
+    { event: 'mouseleave', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineMouseLeave }
   ]
 }
 
@@ -603,41 +740,6 @@ const unregisterEvents = () => {
   props.map.getCanvas().style.cursor = ''
 }
 
-const bringHighlightedTripLayersToFront = () => {
-  if (!isMapLibreMap(props.map)) {
-    return
-  }
-
-  const orderedLayerIds = [
-    state.highlightedPointLayerId,
-    state.highlightedPointIconLayerId
-  ]
-
-  orderedLayerIds.forEach((layerId) => {
-    if (props.map.getLayer(layerId)) {
-      props.map.moveLayer(layerId)
-    }
-  })
-}
-
-const scheduleBringHighlightedTripLayersToFront = () => {
-  if (!isMapLibreMap(props.map)) {
-    return
-  }
-
-  bringHighlightedTripLayersToFront()
-
-  if (state.highlightedLayerOrderTimeoutId !== null) {
-    clearTimeout(state.highlightedLayerOrderTimeoutId)
-  }
-
-  // Run one extra pass after sibling layers settle their order.
-  state.highlightedLayerOrderTimeoutId = setTimeout(() => {
-    state.highlightedLayerOrderTimeoutId = null
-    bringHighlightedTripLayersToFront()
-  }, 0)
-}
-
 const renderLayer = () => {
   if (!isMapLibreMap(props.map)) {
     return
@@ -649,7 +751,6 @@ const renderLayer = () => {
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
   ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
-  ensureGeoJsonSource(props.map, state.highlightedPointsSourceId, highlighted.pointCollection)
 
   ensureLayer(props.map, {
     id: state.lineLayerId,
@@ -678,74 +779,17 @@ const renderLayer = () => {
     }
   })
 
-  ensureLayer(props.map, {
-    id: state.highlightedPointLayerId,
-    type: 'circle',
-    source: state.highlightedPointsSourceId,
-    paint: {
-      'circle-radius': [
-        'match',
-        ['get', 'markerType'],
-        'start', 18,
-        'end', 16,
-        14
-      ],
-      'circle-color': [
-        'match',
-        ['get', 'markerType'],
-        'start', '#22c55e',
-        'end', '#ef4444',
-        '#2563eb'
-      ],
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 4
-    }
-  })
-
-  ensureLayer(props.map, {
-    id: state.highlightedPointIconLayerId,
-    type: 'symbol',
-    source: state.highlightedPointsSourceId,
-    layout: {
-      'text-field': [
-        'match',
-        ['get', 'markerType'],
-        'start', '▶',
-        'end', '■',
-        '•'
-      ],
-      'text-size': [
-        'match',
-        ['get', 'markerType'],
-        'start', 14,
-        'end', 12,
-        11
-      ],
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-      'text-anchor': 'center',
-      'text-allow-overlap': true,
-      'text-ignore-placement': true
-    },
-    paint: {
-      'text-color': '#ffffff',
-      'text-halo-color': 'rgba(15, 23, 42, 0.2)',
-      'text-halo-width': 1
-    }
-  })
-
   setLayerVisibility(
     props.map,
     [
       state.lineLayerId,
-      state.highlightedLineLayerId,
-      state.highlightedPointLayerId,
-      state.highlightedPointIconLayerId
+      state.highlightedLineLayerId
     ],
     props.visible
   )
-  scheduleBringHighlightedTripLayersToFront()
 
   syncHighlightedTripPopup(highlightedLineCoordinates)
+  syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
   syncTripHoverContext(highlighted.hoverPathPoints)
 
   unregisterEvents()
@@ -756,10 +800,7 @@ const clearLayer = () => {
   unregisterEvents()
   clearTripHoverState()
   closeHighlightedTripPopup()
-  if (state.highlightedLayerOrderTimeoutId !== null) {
-    clearTimeout(state.highlightedLayerOrderTimeoutId)
-    state.highlightedLayerOrderTimeoutId = null
-  }
+  removeHighlightedEndpointMarkers()
 
   if (state.boundMap && state.styleLoadHandler) {
     state.boundMap.off('style.load', state.styleLoadHandler)
@@ -774,9 +815,9 @@ const clearLayer = () => {
 
   removeLayers(
     targetMap,
-    [state.highlightedPointIconLayerId, state.highlightedPointLayerId, state.highlightedLineLayerId, state.lineLayerId]
+    [state.highlightedLineLayerId, state.lineLayerId]
   )
-  removeSources(targetMap, [state.highlightedPointsSourceId, state.highlightedSourceId, state.sourceId])
+  removeSources(targetMap, [state.highlightedSourceId, state.sourceId])
   state.boundMap = null
 }
 

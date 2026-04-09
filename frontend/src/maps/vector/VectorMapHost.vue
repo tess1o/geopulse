@@ -6,6 +6,7 @@
 import { computed, markRaw, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/maps/shared/styles/maplibreMarkerFixes.css'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, markMapEngineMode } from '@/maps/contracts/mapContracts'
 import { resolveVectorStyleSource } from '@/maps/runtime/mapSourceResolver'
