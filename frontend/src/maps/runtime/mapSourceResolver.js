@@ -2,7 +2,7 @@ import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES, normalizeMapRenderMode } from '@/maps/contracts/mapContracts'
 
 export const DEFAULT_RASTER_TILE_URL = '/osm/tiles/{s}/{z}/{x}/{y}.png'
-export const DEFAULT_VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
+export const DEFAULT_VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/bright'
 
 const GENERIC_VECTOR_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
 
