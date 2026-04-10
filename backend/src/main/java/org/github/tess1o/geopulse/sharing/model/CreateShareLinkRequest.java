@@ -59,5 +59,5 @@ public class CreateShareLinkRequest {
     private String customMapStyleUrl;
 
     @JsonProperty("map_render_mode")
-    private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
+    private MapRenderMode mapRenderMode = MapRenderMode.RASTER;
 }

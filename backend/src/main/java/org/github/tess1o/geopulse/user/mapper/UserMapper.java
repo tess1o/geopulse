@@ -32,7 +32,7 @@ public class UserMapper {
                 .timezone(entity.getTimezone())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
-                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.RASTER)
                 .measureUnit(entity.getMeasureUnit())
                 .defaultRedirectUrl(entity.getDefaultRedirectUrl())
                 .dateFormat(entity.getDateFormat())

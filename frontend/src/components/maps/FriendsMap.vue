@@ -243,7 +243,7 @@ const mapCenter = ref((() => {
   return [51.505, -0.09]
 })())
 
-const mapZoom = ref(15)
+const mapZoom = ref(13)
 
 // Computed
 const hasLocations = computed(() => {

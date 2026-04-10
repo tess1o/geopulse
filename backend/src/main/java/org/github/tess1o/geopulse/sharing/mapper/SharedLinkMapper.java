@@ -36,7 +36,7 @@ public class SharedLinkMapper {
         sharedLinkEntity.setCustomMapTileUrl(createShareLinkRequest.getCustomMapTileUrl());
         sharedLinkEntity.setCustomMapStyleUrl(createShareLinkRequest.getCustomMapStyleUrl());
         sharedLinkEntity.setMapRenderMode(createShareLinkRequest.getMapRenderMode() != null ?
-                createShareLinkRequest.getMapRenderMode() : MapRenderMode.VECTOR);
+                createShareLinkRequest.getMapRenderMode() : MapRenderMode.RASTER);
 
         return sharedLinkEntity;
     }
@@ -72,7 +72,7 @@ public class SharedLinkMapper {
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
-                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.RASTER)
                 .build();
     }
 
@@ -97,7 +97,7 @@ public class SharedLinkMapper {
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
-                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
+                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.RASTER)
                 .build();
     }
 

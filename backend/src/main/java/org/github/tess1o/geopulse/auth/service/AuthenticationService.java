@@ -162,7 +162,7 @@ public class AuthenticationService {
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
                 .customMapTileUrl(user.getCustomMapTileUrl())
                 .customMapStyleUrl(user.getCustomMapStyleUrl())
-                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
+                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.RASTER)
                 .defaultRedirectUrl(user.getDefaultRedirectUrl())
                 .measureUnit(user.getMeasureUnit())
                 .dateFormat(user.getDateFormat())

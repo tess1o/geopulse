@@ -100,7 +100,7 @@ public class UserEntity extends PanacheEntityBase {
     @Enumerated(EnumType.STRING)
     @Column(name = "map_render_mode", nullable = false, length = 32)
     @Builder.Default
-    private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
+    private MapRenderMode mapRenderMode = MapRenderMode.RASTER;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "measure_unit", length = 1000)

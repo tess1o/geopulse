@@ -26,7 +26,6 @@
 
 <script setup>
 import { computed, markRaw, ref, shallowRef, watch } from 'vue'
-import L from 'leaflet'
 import { useAuthStore } from '@/stores/auth'
 import { MAP_RENDER_MODES } from '@/maps/contracts/mapContracts'
 import { resolveEffectiveMapMode } from '@/maps/runtime/mapSourceResolver'
@@ -171,7 +170,6 @@ defineExpose({
   isReady,
   invalidateSize,
   setView,
-  fitBounds,
-  L
+  fitBounds
 })
 </script>

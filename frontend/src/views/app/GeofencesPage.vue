@@ -96,16 +96,17 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLocationStore } from '@/stores/location'
 import apiService from '@/utils/apiService'
-import L from 'leaflet'
-import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
+import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
 import { useTimezone } from '@/composables/useTimezone'
+import { createGeofenceRulesMapAdapter } from '@/maps/geofences/runtime/createGeofenceRulesMapAdapter'
+import { buildAreaLikeFromBoundsApi, hasRuleArea } from '@/maps/geofences/shared/geofenceRuleAreaUtils'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -204,8 +205,7 @@ function defaultGeofenceEventsQuery() {
 const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
 const geofenceMap = ref(null)
-const rectangleLayer = ref(null)
-const allRuleAreasLayerGroup = ref(null)
+const geofenceMapAdapter = ref(null)
 const mapCenter = ref(FALLBACK_GEOFENCE_CENTER)
 const mapZoom = ref(11)
 const lastKnownMapCenter = ref(null)
@@ -220,21 +220,21 @@ const statusOptions = [
 
 const ruleForm = ref(defaultRuleForm())
 const templateForm = ref(defaultTemplateForm())
-const rectangleDrawing = useRectangleDrawing({
-  onRectangleCreated: ({ bounds, layer }) => {
-    ruleFormErrors.value.area = ''
-    ruleForm.value.northEastLat = Number(bounds.getNorthEast().lat.toFixed(6))
-    ruleForm.value.northEastLon = Number(bounds.getNorthEast().lng.toFixed(6))
-    ruleForm.value.southWestLat = Number(bounds.getSouthWest().lat.toFixed(6))
-    ruleForm.value.southWestLon = Number(bounds.getSouthWest().lng.toFixed(6))
-
-    if (geofenceMap.value) {
-      if (rectangleLayer.value) {
-        geofenceMap.value.removeLayer(rectangleLayer.value)
-      }
-      rectangleLayer.value = layer.addTo(geofenceMap.value)
-      geofenceMap.value.fitBounds(bounds, { padding: [20, 20] })
+const rectangleDrawing = useRectangleDrawingRuntime({
+  onRectangleCreated: ({ bounds }) => {
+    const areaLike = buildAreaLikeFromBoundsApi(bounds)
+    if (!areaLike) {
+      return
     }
+
+    ruleFormErrors.value.area = ''
+    ruleForm.value.northEastLat = Number(areaLike.northEastLat.toFixed(6))
+    ruleForm.value.northEastLon = Number(areaLike.northEastLon.toFixed(6))
+    ruleForm.value.southWestLat = Number(areaLike.southWestLat.toFixed(6))
+    ruleForm.value.southWestLon = Number(areaLike.southWestLon.toFixed(6))
+
+    rectangleDrawing.cleanupTempLayer()
+    syncMapRectangleFromForm(true)
   }
 })
 
@@ -824,8 +824,9 @@ function onTabChange(event) {
 function handleMapReady(map) {
   geofenceMap.value = map
   mapViewportInitialized.value = false
-  rectangleLayer.value = null
-  allRuleAreasLayerGroup.value = null
+  geofenceMapAdapter.value?.destroy?.()
+  geofenceMapAdapter.value = createGeofenceRulesMapAdapter(map)
+  geofenceMapAdapter.value.initialize?.(map)
   rectangleDrawing.initialize(map)
   syncMapRectangleFromForm()
   syncAllRuleAreasOnMap()
@@ -840,147 +841,49 @@ function startRectangleDraw() {
 }
 
 function syncMapRectangleFromForm(focus = false) {
-  if (!geofenceMap.value) {
-    return
-  }
-  const { northEastLat, northEastLon, southWestLat, southWestLon } = ruleForm.value
-  if ([northEastLat, northEastLon, southWestLat, southWestLon].some(v => v === null || v === undefined)) {
+  if (!geofenceMap.value || !geofenceMapAdapter.value) {
     return
   }
 
-  const bounds = L.latLngBounds(
-    [southWestLat, southWestLon],
-    [northEastLat, northEastLon]
-  )
-
-  if (rectangleLayer.value) {
-    geofenceMap.value.removeLayer(rectangleLayer.value)
+  if (!hasValidAreaBounds(ruleForm.value)) {
+    geofenceMapAdapter.value.clearEditingArea()
+    return
   }
-  rectangleLayer.value = L.rectangle(bounds, {
-    color: '#e91e63',
-    weight: 2,
-    fill: false
-  }).addTo(geofenceMap.value)
 
-  if (focus) {
-    geofenceMap.value.fitBounds(bounds, { padding: [20, 20] })
-  }
+  geofenceMapAdapter.value.syncEditingArea({
+    northEastLat: ruleForm.value.northEastLat,
+    northEastLon: ruleForm.value.northEastLon,
+    southWestLat: ruleForm.value.southWestLat,
+    southWestLon: ruleForm.value.southWestLon
+  }, { focus })
 }
 
 function isRuleMapVisible() {
   return activeTab.value === 'rules' && !!geofenceMap.value
 }
 
-function hasRuleArea(rule) {
-  return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
-    const value = Number(rule?.[key])
-    return Number.isFinite(value)
-  })
-}
-
-function getRuleBounds(rule) {
-  if (!hasRuleArea(rule)) {
-    return null
-  }
-
-  return L.latLngBounds(
-    [Number(rule.southWestLat), Number(rule.southWestLon)],
-    [Number(rule.northEastLat), Number(rule.northEastLon)]
-  )
-}
-
-function collectRuleBounds() {
-  const boundsList = []
-  for (const rule of rules.value) {
-    if (
-      editingRuleId.value !== null
-      && Number(rule.id) === Number(editingRuleId.value)
-      && hasValidAreaBounds(ruleForm.value)
-    ) {
-      continue
-    }
-    const bounds = getRuleBounds(rule)
-    if (bounds) {
-      boundsList.push(bounds)
-    }
-  }
-  return boundsList
-}
-
-function ensureRuleAreasLayerGroup() {
-  if (!geofenceMap.value) {
-    return null
-  }
-
-  if (!allRuleAreasLayerGroup.value) {
-    allRuleAreasLayerGroup.value = L.layerGroup().addTo(geofenceMap.value)
-  }
-
-  return allRuleAreasLayerGroup.value
-}
-
 function syncAllRuleAreasOnMap() {
-  if (!isRuleMapVisible()) {
+  if (!isRuleMapVisible() || !geofenceMapAdapter.value) {
     return
   }
 
-  const layerGroup = ensureRuleAreasLayerGroup()
-  if (!layerGroup) {
-    return
-  }
-
-  layerGroup.clearLayers()
-
-  for (const rule of rules.value) {
-    if (
-      editingRuleId.value !== null
-      && Number(rule.id) === Number(editingRuleId.value)
-      && hasValidAreaBounds(ruleForm.value)
-    ) {
-      continue
-    }
-
-    const bounds = getRuleBounds(rule)
-    if (!bounds) {
-      continue
-    }
-
-    L.rectangle(bounds, {
-      color: rule.status === 'ACTIVE' ? '#3b82f6' : '#94a3b8',
-      weight: 2,
-      dashArray: '6 4',
-      fill: true,
-      fillOpacity: 0.06,
-      interactive: true
-    })
-      .bindPopup(buildRuleAreaPopupContent(rule), {
-        maxWidth: 360,
-        className: 'geofence-area-popup'
-      })
-      .addTo(layerGroup)
-  }
+  geofenceMapAdapter.value.syncRuleAreas({
+    rules: rules.value,
+    editingRuleId: editingRuleId.value,
+    editingAreaExists: hasValidAreaBounds(ruleForm.value),
+    popupBuilder: buildRuleAreaPopupContent
+  })
 }
 
 function fitMapToAllRuleAreas() {
-  if (!isRuleMapVisible()) {
+  if (!isRuleMapVisible() || !geofenceMapAdapter.value) {
     return false
   }
-
-  const boundsList = collectRuleBounds()
-  if (boundsList.length === 0) {
-    return false
-  }
-
-  const combinedBounds = boundsList[0]
-  for (let index = 1; index < boundsList.length; index += 1) {
-    combinedBounds.extend(boundsList[index])
-  }
-
-  geofenceMap.value.fitBounds(combinedBounds, {
-    padding: [24, 24],
-    maxZoom: 14
+  return geofenceMapAdapter.value.fitAllRuleAreas({
+    rules: rules.value,
+    editingRuleId: editingRuleId.value,
+    editingAreaExists: hasValidAreaBounds(ruleForm.value)
   })
-  return true
 }
 
 async function loadLastKnownMapCenter() {
@@ -1290,10 +1193,8 @@ function resetRuleForm() {
   editingRuleId.value = null
   ruleForm.value = defaultRuleForm()
   clearRuleFormErrors()
-  if (geofenceMap.value && rectangleLayer.value) {
-    geofenceMap.value.removeLayer(rectangleLayer.value)
-    rectangleLayer.value = null
-  }
+  rectangleDrawing.cleanupTempLayer()
+  geofenceMapAdapter.value?.clearEditingArea?.()
   syncAllRuleAreasOnMap()
 }
 
@@ -1798,6 +1699,14 @@ watch(
     }
   }
 )
+
+onBeforeUnmount(() => {
+  rectangleDrawing.stopDrawing()
+  rectangleDrawing.cleanupTempLayer()
+  geofenceMapAdapter.value?.destroy?.()
+  geofenceMapAdapter.value = null
+  geofenceMap.value = null
+})
 </script>
 
 <style scoped>
@@ -1807,6 +1716,12 @@ watch(
 
 :deep(.geofence-area-popup .leaflet-popup-content) {
   margin: 0;
+}
+
+:deep(.geofence-area-popup .maplibregl-popup-content) {
+  border-radius: 10px;
+  margin: 0;
+  padding: 0;
 }
 
 :deep(.geofence-area-tooltip) {
@@ -1850,5 +1765,13 @@ watch(
 
 :deep(.p-dark .geofence-area-popup .leaflet-popup-tip) {
   background: #1e293b;
+}
+
+:deep(.p-dark .geofence-area-popup .maplibregl-popup-content) {
+  background: #1e293b;
+}
+
+:deep(.p-dark .geofence-area-popup .maplibregl-popup-tip) {
+  border-top-color: #1e293b;
 }
 </style>
