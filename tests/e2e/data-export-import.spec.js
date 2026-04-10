@@ -1385,11 +1385,14 @@ test.describe('Data Export & Import', () => {
 
             // Verify data integrity
             const importUserId = (await dbManager.getUserByEmail(importUser.email)).id;
-            const importedGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId);
-            const importedFavoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, importUserId);
-
-            expect(importedGpsCount).toBe(originalGpsCount);
-            expect(importedFavoritesCount).toBe(originalFavoritesCount);
+            await expect.poll(
+                () => DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId),
+                { timeout: 30000 }
+            ).toBe(originalGpsCount);
+            await expect.poll(
+                () => DataExportImportPage.getFavoritesCount(dbManager, importUserId),
+                { timeout: 30000 }
+            ).toBe(originalFavoritesCount);
 
             // Cleanup
             if (fs.existsSync(exportFilePath)) {
@@ -1462,9 +1465,10 @@ test.describe('Data Export & Import', () => {
 
             // Verify data integrity - GPS count should match
             const importUserId = (await dbManager.getUserByEmail(importUser.email)).id;
-            const importedGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId);
-
-            expect(importedGpsCount).toBe(originalGpsCount);
+            await expect.poll(
+                () => DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId),
+                { timeout: 30000 }
+            ).toBe(originalGpsCount);
 
             // Verify source type is OWNTRACKS
             const gpsPoints = await dbManager.client.query(`

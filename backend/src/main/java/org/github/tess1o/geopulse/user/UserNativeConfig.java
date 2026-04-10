@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.user;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.*;
 
 @RegisterForReflection(targets = {
@@ -17,6 +18,7 @@ import org.github.tess1o.geopulse.user.model.*;
         TimelineDisplayPreferences.class,
         RefreshTokenResponse.class,
         MeasureUnit.class,
+        MapRenderMode.class,
         UserAvatarEntity.class
 })
 public class UserNativeConfig {

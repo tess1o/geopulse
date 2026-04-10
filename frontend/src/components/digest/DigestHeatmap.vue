@@ -72,6 +72,7 @@
         v-if="mapInstance && hasData"
         :map="mapInstance"
         :points="heatPoints"
+        :profile="layerMode"
         :value-key="valueKey"
         :min-weight="scaleConfig.minWeight"
         :gamma="scaleConfig.gamma"
@@ -97,7 +98,6 @@
 <script setup>
 import { ref, watch, computed, nextTick, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
-import L from 'leaflet'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import HeatmapLayer from '@/components/maps/layers/HeatmapLayer.vue'
 import { useDigestStore } from '@/stores/digest'
@@ -197,11 +197,27 @@ const loadHeatmap = async () => {
 
 const fitMap = () => {
   if (!heatPoints.value.length) return
-  const map = mapInstance.value
-  if (!map) return
+  const bounds = heatPoints.value
+    .map((point) => {
+      const lat = Number(point?.lat)
+      const lng = Number(point?.lng)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return null
+      }
+      return [lat, lng]
+    })
+    .filter(Boolean)
 
-  const bounds = L.latLngBounds(heatPoints.value.map(p => [p.lat, p.lng]))
-  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+  if (bounds.length === 0) {
+    return
+  }
+
+  if (baseMapRef.value?.fitBounds) {
+    baseMapRef.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+    return
+  }
+
+  mapInstance.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 14 })
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────

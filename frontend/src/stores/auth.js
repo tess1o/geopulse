@@ -40,6 +40,8 @@ function normalizeUser(source) {
         createdAt: raw.createdAt || null,
         hasPassword: !!raw.hasPassword,
         customMapTileUrl: raw.customMapTileUrl || '',
+        customMapStyleUrl: raw.customMapStyleUrl || '',
+        mapRenderMode: raw.mapRenderMode || 'VECTOR',
         measureUnit: raw.measureUnit || 'METRIC',
         defaultRedirectUrl: raw.defaultRedirectUrl || '',
         dateFormat: raw.dateFormat || 'MDY',
@@ -65,6 +67,8 @@ export const useAuthStore = defineStore('auth', {
         userTimezone: (state) => state.user?.timezone || 'UTC',
         hasPassword: (state) => state.user?.hasPassword || false,
         customMapTileUrl: (state) => state.user?.customMapTileUrl || '',
+        customMapStyleUrl: (state) => state.user?.customMapStyleUrl || '',
+        mapRenderMode: (state) => state.user?.mapRenderMode || 'VECTOR',
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
@@ -201,6 +205,12 @@ export const useAuthStore = defineStore('auth', {
 
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
                     userPatch.customMapTileUrl = updatedPreferences.customMapTileUrl || ''
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapStyleUrl')) {
+                    userPatch.customMapStyleUrl = updatedPreferences.customMapStyleUrl || ''
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapRenderMode')) {
+                    userPatch.mapRenderMode = updatedPreferences.mapRenderMode || 'VECTOR'
                 }
 
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultDateRangePreset')) {

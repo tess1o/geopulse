@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 import java.time.Instant;
 
@@ -50,6 +51,13 @@ public class UpdateShareLinkDto {
     @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
     @JsonProperty("custom_map_tile_url")
     private String customMapTileUrl;
+
+    @Size(max = 1000, message = "Custom map style URL cannot exceed 1000 characters")
+    @JsonProperty("custom_map_style_url")
+    private String customMapStyleUrl;
+
+    @JsonProperty("map_render_mode")
+    private MapRenderMode mapRenderMode;
 
     public boolean isPasswordRemoval() {
         return password == null;

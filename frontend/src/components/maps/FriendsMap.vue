@@ -243,7 +243,7 @@ const mapCenter = ref((() => {
   return [51.505, -0.09]
 })())
 
-const mapZoom = ref(15)
+const mapZoom = ref(13)
 
 // Computed
 const hasLocations = computed(() => {
@@ -267,6 +267,24 @@ const findFriendByKey = (targetKey) => {
   return props.friends.find(friend => toFriendKey(friend) === String(targetKey)) || null
 }
 
+const setMapView = (center, zoom, options = {}) => {
+  if (typeof mapContainerRef.value?.setView !== 'function') {
+    return false
+  }
+
+  mapContainerRef.value.setView(center, zoom, options)
+  return true
+}
+
+const fitMapBounds = (bounds, options = {}) => {
+  if (typeof mapContainerRef.value?.fitBounds !== 'function') {
+    return false
+  }
+
+  mapContainerRef.value.fitBounds(bounds, options)
+  return true
+}
+
 const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
   if (!map.value || !friend) {
     return false
@@ -280,8 +298,7 @@ const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
   }
 
   if (hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)) {
-    map.value.setView([friend.lastLatitude, friend.lastLongitude], zoom)
-    return true
+    return setMapView([friend.lastLatitude, friend.lastLongitude], zoom)
   }
 
   return false
@@ -311,7 +328,7 @@ const handleMapReady = (mapInstance) => {
   } else if (hasLocations.value && dataBounds.value) {
     // Otherwise, fit map to all friends data if available
     nextTick(() => {
-      mapInstance.fitBounds(dataBounds.value, {padding: [20, 20]})
+      fitMapBounds(dataBounds.value, {padding: [20, 20]})
     })
   }
 }
@@ -424,7 +441,7 @@ watch(dataBounds, (newBounds, oldBounds) => {
 
     nextTick(() => {
       try {
-        map.value.fitBounds(newBounds, {padding: [20, 20]})
+        fitMapBounds(newBounds, {padding: [20, 20]})
       } catch (error) {
         console.warn('Error fitting bounds:', error)
       }
@@ -492,7 +509,7 @@ watch(() => props.initialFriendEmail, (newEmail) => {
     selectedFriendKey.value = null
     // If the friend is deselected, fit the map to the data bounds
     nextTick(() => {
-      map.value.fitBounds(dataBounds.value, { padding: [20, 20] })
+      fitMapBounds(dataBounds.value, { padding: [20, 20] })
     })
   }
 })

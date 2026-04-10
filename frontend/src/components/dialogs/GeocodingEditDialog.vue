@@ -109,7 +109,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -117,6 +117,8 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { MapContainer } from '@/components/maps'
 import L from 'leaflet'
+import maplibregl from 'maplibre-gl'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
   visible: {
@@ -134,7 +136,7 @@ const emit = defineEmits(['close', 'save'])
 const saving = ref(false)
 const mapId = ref(Math.random().toString(36).substring(2, 11))
 const mapInstance = ref(null)
-const currentMarker = ref(null)
+const mapAdapter = ref(null)
 
 const formData = ref({
   displayName: '',
@@ -152,6 +154,95 @@ const mapCenter = computed(() => {
 const isFormValid = computed(() => {
   return formData.value.displayName && formData.value.displayName.trim() !== ''
 })
+
+const resolveCoordinates = () => {
+  const lat = Number(props.geocodingResult?.latitude)
+  const lng = Number(props.geocodingResult?.longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null
+  }
+
+  return { lat, lng }
+}
+
+const createRasterGeocodingMapAdapter = (map) => {
+  let marker = null
+
+  const clear = () => {
+    if (marker) {
+      map.removeLayer(marker)
+      marker = null
+    }
+  }
+
+  const render = (coords) => {
+    clear()
+    if (!coords) {
+      return
+    }
+
+    const customIcon = L.divIcon({
+      className: 'custom-marker-icon',
+      html: '<i class="pi pi-map-marker" style="font-size: 2rem; color: #3b82f6;"></i>',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    })
+
+    marker = L.marker([coords.lat, coords.lng], { icon: customIcon })
+      .addTo(map)
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createVectorMarkerElement = () => {
+  const root = document.createElement('div')
+  root.className = 'custom-marker-icon custom-marker-icon--vector'
+  root.innerHTML = '<i class="pi pi-map-marker"></i>'
+  return root
+}
+
+const createVectorGeocodingMapAdapter = (map) => {
+  let marker = null
+
+  const clear = () => {
+    if (marker) {
+      marker.remove()
+      marker = null
+    }
+  }
+
+  const render = (coords) => {
+    clear()
+    if (!coords) {
+      return
+    }
+
+    marker = new maplibregl.Marker({
+      element: createVectorMarkerElement(),
+      anchor: 'bottom'
+    })
+      .setLngLat([coords.lng, coords.lat])
+      .addTo(map)
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createGeocodingMapAdapter = (map) => {
+  const mode = resolveMapEngineModeFromInstance(map, MAP_RENDER_MODES.RASTER)
+  if (mode === MAP_RENDER_MODES.VECTOR) {
+    return createVectorGeocodingMapAdapter(map)
+  }
+
+  return createRasterGeocodingMapAdapter(map)
+}
 
 // Watch for geocodingResult changes to populate form
 watch(() => props.geocodingResult, (newValue) => {
@@ -171,34 +262,22 @@ watch(() => props.geocodingResult, (newValue) => {
 
 const handleMapReady = (map) => {
   mapInstance.value = map
+  mapAdapter.value?.cleanup?.()
+  mapAdapter.value = createGeocodingMapAdapter(mapInstance.value)
   updateMapMarker()
 }
 
 const updateMapMarker = () => {
-  if (!mapInstance.value || !props.geocodingResult) return
-
-  // Remove existing marker
-  if (currentMarker.value) {
-    currentMarker.value.remove()
+  if (!mapInstance.value || !mapAdapter.value) {
+    return
   }
 
-  const lat = props.geocodingResult.latitude
-  const lng = props.geocodingResult.longitude
+  const coordinates = resolveCoordinates()
+  mapAdapter.value.render(coordinates)
 
-  // Create custom icon
-  const customIcon = L.divIcon({
-    className: 'custom-marker-icon',
-    html: '<i class="pi pi-map-marker" style="font-size: 2rem; color: #3b82f6;"></i>',
-    iconSize: [32, 32],
-    iconAnchor: [16, 32]
-  })
-
-  // Add marker
-  currentMarker.value = L.marker([lat, lng], { icon: customIcon })
-    .addTo(mapInstance.value)
-
-  // Center map on marker
-  mapInstance.value.setView([lat, lng], 16)
+  if (coordinates) {
+    mapInstance.value.setView([coordinates.lat, coordinates.lng], 16)
+  }
 }
 
 const handleSave = async () => {
@@ -215,6 +294,11 @@ const handleSave = async () => {
     saving.value = false
   }
 }
+
+onUnmounted(() => {
+  mapAdapter.value?.cleanup?.()
+  mapAdapter.value = null
+})
 </script>
 
 <style scoped>
@@ -314,5 +398,12 @@ const handleSave = async () => {
 
 :deep(.custom-marker-icon i) {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+</style>
+
+<style>
+.custom-marker-icon--vector i {
+  font-size: 2rem;
+  color: #3b82f6;
 }
 </style>

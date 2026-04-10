@@ -9,7 +9,7 @@
           <div class="header-content">
             <div class="header-text">
               <h1 class="page-title">Share Links</h1>
-              <p c  lass="page-description">
+              <p class="page-description">
                 Create and manage shareable links to your location data
               </p>
             </div>
@@ -433,13 +433,28 @@
             </div>
 
             <div class="form-group">
+              <label for="live-map-render-mode" class="form-label">Map Render Mode</label>
+              <Dropdown
+                  id="live-map-render-mode"
+                  v-model="linkForm.map_render_mode"
+                  :options="mapRenderModeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="form-input"
+              />
+              <small class="p-text-secondary">
+                Switching modes preserves both custom raster and vector settings.
+              </small>
+            </div>
+
+            <div class="form-group">
               <div class="checkbox-wrapper">
                 <Checkbox
                     id="use_custom_tiles"
                     v-model="linkForm.use_custom_tiles"
                     :binary="true"
                 />
-                <label for="use_custom_tiles" class="checkbox-label">Use custom map tiles</label>
+                <label for="use_custom_tiles" class="checkbox-label">Use custom raster tiles</label>
               </div>
             </div>
 
@@ -469,6 +484,36 @@
                 </small>
                 <small v-if="formErrors.custom_map_tile_url" class="p-error">
                   {{ formErrors.custom_map_tile_url }}
+                </small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="checkbox-wrapper">
+                <Checkbox
+                    id="use_custom_style"
+                    v-model="linkForm.use_custom_style"
+                    :binary="true"
+                />
+                <label for="use_custom_style" class="checkbox-label">Use custom vector style</label>
+              </div>
+            </div>
+
+            <div v-if="linkForm.use_custom_style" class="custom-tiles-section">
+              <div class="form-group">
+                <label for="custom-style-url" class="form-label">Custom Vector Style URL</label>
+                <InputText
+                    id="custom-style-url"
+                    v-model="linkForm.custom_map_style_url"
+                    placeholder="https://tiles.openfreemap.org/styles/liberty"
+                    class="form-input"
+                    :class="{'p-invalid': formErrors.custom_map_style_url}"
+                />
+                <small class="p-text-secondary">
+                  Should point to a style JSON endpoint (HTTP/HTTPS).
+                </small>
+                <small v-if="formErrors.custom_map_style_url" class="p-error">
+                  {{ formErrors.custom_map_style_url }}
                 </small>
               </div>
             </div>
@@ -591,15 +636,23 @@ const linkForm = reactive({
   expires_at: null,
   show_history: false,
   history_hours: 24,
+  map_render_mode: 'VECTOR',
   has_password: false,
   password: '',
   use_custom_tiles: false,
-  custom_map_tile_url: ''
+  custom_map_tile_url: '',
+  use_custom_style: false,
+  custom_map_style_url: ''
 })
 
 const formErrors = reactive({
-  custom_map_tile_url: null
+  custom_map_tile_url: null,
+  custom_map_style_url: null
 })
+const mapRenderModeOptions = [
+  { label: 'Vector (MapLibre)', value: 'VECTOR' },
+  { label: 'Raster (Leaflet)', value: 'RASTER' }
+]
 
 // Computed
 const minDate = computed(() => timezone.now().toDate())
@@ -619,17 +672,34 @@ watch(() => linkForm.use_custom_tiles, (enabled) => {
   }
 })
 
+watch(() => linkForm.use_custom_style, (enabled) => {
+  if (enabled && !linkForm.custom_map_style_url) {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.customMapStyleUrl && userInfo.customMapStyleUrl.trim()) {
+        linkForm.custom_map_style_url = userInfo.customMapStyleUrl.trim()
+      }
+    } catch (error) {
+      console.error('Error reading user custom style URL:', error)
+    }
+  }
+})
+
 // Methods
 const resetForm = () => {
   linkForm.name = ''
   linkForm.expires_at = null
   linkForm.show_history = false
   linkForm.history_hours = 24
+  linkForm.map_render_mode = 'VECTOR'
   linkForm.has_password = false
   linkForm.password = ''
   linkForm.use_custom_tiles = false
   linkForm.custom_map_tile_url = ''
+  linkForm.use_custom_style = false
+  linkForm.custom_map_style_url = ''
   formErrors.custom_map_tile_url = null
+  formErrors.custom_map_style_url = null
 }
 
 const closeDialog = () => {
@@ -651,10 +721,13 @@ const editLink = (link) => {
     linkForm.expires_at = link.expires_at ? timezone.fromUtc(link.expires_at).toDate() : null
     linkForm.show_history = link.show_history
     linkForm.history_hours = link.history_hours || 24
+    linkForm.map_render_mode = link.map_render_mode || 'VECTOR'
     linkForm.has_password = link.has_password
     linkForm.password = '' // Don't pre-fill password for security
     linkForm.use_custom_tiles = !!(link.custom_map_tile_url)
     linkForm.custom_map_tile_url = link.custom_map_tile_url || ''
+    linkForm.use_custom_style = !!(link.custom_map_style_url)
+    linkForm.custom_map_style_url = link.custom_map_style_url || ''
     showCreateDialog.value = true
   }
 }
@@ -662,6 +735,7 @@ const editLink = (link) => {
 const submitLinkForm = async () => {
   // Clear previous errors
   formErrors.custom_map_tile_url = null
+  formErrors.custom_map_style_url = null
 
   // Validate custom tiles if enabled
   if (linkForm.use_custom_tiles) {
@@ -674,18 +748,52 @@ const submitLinkForm = async () => {
     }
   }
 
+  if (linkForm.use_custom_style) {
+    const styleUrl = linkForm.custom_map_style_url || ''
+    const normalizedUrl = styleUrl.trim().toLowerCase()
+    if (!styleUrl.trim()) {
+      formErrors.custom_map_style_url = 'Custom style URL required when enabled'
+      return
+    }
+    if (styleUrl.length > 1000) {
+      formErrors.custom_map_style_url = 'URL cannot exceed 1000 characters'
+      return
+    }
+    if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+      formErrors.custom_map_style_url = 'URL must use HTTP or HTTPS protocol'
+      return
+    }
+    if (
+      normalizedUrl.includes('javascript:') ||
+      normalizedUrl.includes('data:') ||
+      normalizedUrl.includes('file:') ||
+      normalizedUrl.includes('ftp:')
+    ) {
+      formErrors.custom_map_style_url = 'Invalid URL protocol'
+      return
+    }
+    if (styleUrl.includes('..')) {
+      formErrors.custom_map_style_url = 'Invalid URL format'
+      return
+    }
+    const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
+    if (!looksLikeStyleUrl) {
+      formErrors.custom_map_style_url = 'URL should point to a style JSON endpoint'
+      return
+    }
+  }
+
   try {
-    console.log('submitLinkForm', linkForm);
     const formData = {
       name: linkForm.name || 'Untitled Link',
       expires_at: linkForm.expires_at ? linkForm.expires_at.toISOString() : null,
       show_history: linkForm.show_history,
       history_hours: linkForm.show_history ? linkForm.history_hours : null,
+      map_render_mode: linkForm.map_render_mode || 'VECTOR',
       password: linkForm.has_password ? linkForm.password : null,
-      custom_map_tile_url: linkForm.use_custom_tiles ? linkForm.custom_map_tile_url : null
+      custom_map_tile_url: linkForm.use_custom_tiles ? linkForm.custom_map_tile_url : null,
+      custom_map_style_url: linkForm.use_custom_style ? linkForm.custom_map_style_url : null
     }
-
-    console.log('formData', formData);
 
     if (editingLink.value) {
       await shareLinksStore.updateShareLink(editingLink.value.id, formData)

@@ -115,12 +115,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, reactive, nextTick } from 'vue'
+import { ref, computed, watch, reactive, nextTick, onUnmounted } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import { MapContainer } from '@/components/maps'
 import L from 'leaflet'
+import maplibregl from 'maplibre-gl'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
   visible: {
@@ -140,7 +142,7 @@ const internalVisible = ref(props.visible)
 const loading = ref(false)
 const mapId = ref(Math.random().toString(36).substring(2, 11))
 const mapInstance = ref(null)
-const currentMarker = ref(null)
+const mapAdapter = ref(null)
 const originalLocation = ref(null)
 
 // Form data
@@ -161,8 +163,8 @@ const errors = reactive({
 
 // Computed
 const mapCenter = computed(() => {
-  if (formData.coordinates.lat && formData.coordinates.lng) {
-    return [formData.coordinates.lat, formData.coordinates.lng]
+  if (hasValidCoordinates(Number(formData.coordinates.lat), Number(formData.coordinates.lng))) {
+    return [Number(formData.coordinates.lat), Number(formData.coordinates.lng)]
   }
   return [37.7749, -122.4194] // Default to San Francisco
 })
@@ -217,6 +219,181 @@ const validateForm = () => {
   return !errors.lat && !errors.lng
 }
 
+const hasValidCoordinates = (lat, lng) => {
+  return Number.isFinite(lat)
+    && Number.isFinite(lng)
+    && lat >= -90
+    && lat <= 90
+    && lng >= -180
+    && lng <= 180
+}
+
+const hasDifferentLocation = (left, right) => {
+  if (!left || !right) {
+    return false
+  }
+
+  if (!hasValidCoordinates(left.lat, left.lng) || !hasValidCoordinates(right.lat, right.lng)) {
+    return false
+  }
+
+  return Math.abs(left.lat - right.lat) > 0.000001 || Math.abs(left.lng - right.lng) > 0.000001
+}
+
+const createRasterGpsEditMapAdapter = (map) => {
+  let currentMarker = null
+  let originalMarker = null
+
+  const removeMarker = (marker) => {
+    if (!marker) {
+      return null
+    }
+    map.removeLayer(marker)
+    return null
+  }
+
+  const clear = () => {
+    currentMarker = removeMarker(currentMarker)
+    originalMarker = removeMarker(originalMarker)
+  }
+
+  const render = ({ currentLocation, originalLocationRef }) => {
+    clear()
+
+    if (hasValidCoordinates(currentLocation?.lat, currentLocation?.lng)) {
+      currentMarker = L.circleMarker([currentLocation.lat, currentLocation.lng], {
+        radius: 14,
+        fillColor: '#ff0040',
+        color: '#ffffff',
+        weight: 5,
+        opacity: 1,
+        fillOpacity: 1
+      })
+        .addTo(map)
+        .bindPopup('Current Location - Click on map to move')
+    }
+
+    if (hasDifferentLocation(originalLocationRef, currentLocation)) {
+      originalMarker = L.circleMarker([originalLocationRef.lat, originalLocationRef.lng], {
+        radius: 6,
+        fillColor: '#ef4444',
+        color: 'white',
+        weight: 2,
+        opacity: 0.9,
+        fillOpacity: 0.7
+      })
+        .addTo(map)
+        .bindPopup('Original Location')
+    }
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createVectorMarkerElement = (variant) => {
+  const root = document.createElement('div')
+  root.className = `gps-edit-marker gps-edit-marker--${variant}`
+  return root
+}
+
+const createVectorGpsEditMapAdapter = (map) => {
+  let currentMarker = null
+  let originalMarker = null
+
+  const removeMarker = (marker) => {
+    if (marker) {
+      marker.remove()
+    }
+    return null
+  }
+
+  const clear = () => {
+    currentMarker = removeMarker(currentMarker)
+    originalMarker = removeMarker(originalMarker)
+  }
+
+  const render = ({ currentLocation, originalLocationRef }) => {
+    clear()
+
+    if (hasValidCoordinates(currentLocation?.lat, currentLocation?.lng)) {
+      currentMarker = new maplibregl.Marker({
+        element: createVectorMarkerElement('current'),
+        anchor: 'center'
+      })
+        .setLngLat([currentLocation.lng, currentLocation.lat])
+        .setPopup(new maplibregl.Popup({
+          closeButton: true,
+          closeOnClick: true,
+          closeOnMove: false,
+          offset: 12
+        }).setText('Current Location - Click on map to move'))
+        .addTo(map)
+    }
+
+    if (hasDifferentLocation(originalLocationRef, currentLocation)) {
+      originalMarker = new maplibregl.Marker({
+        element: createVectorMarkerElement('original'),
+        anchor: 'center'
+      })
+        .setLngLat([originalLocationRef.lng, originalLocationRef.lat])
+        .setPopup(new maplibregl.Popup({
+          closeButton: true,
+          closeOnClick: true,
+          closeOnMove: false,
+          offset: 10
+        }).setText('Original Location'))
+        .addTo(map)
+    }
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createGpsEditMapAdapter = (map) => {
+  const mode = resolveMapEngineModeFromInstance(map, MAP_RENDER_MODES.RASTER)
+  if (mode === MAP_RENDER_MODES.VECTOR) {
+    return createVectorGpsEditMapAdapter(map)
+  }
+
+  return createRasterGpsEditMapAdapter(map)
+}
+
+const renderMapMarkers = () => {
+  if (!mapInstance.value || !mapAdapter.value) {
+    return
+  }
+
+  mapAdapter.value.render({
+    currentLocation: {
+      lat: Number(formData.coordinates.lat),
+      lng: Number(formData.coordinates.lng)
+    },
+    originalLocationRef: originalLocation.value
+  })
+}
+
+const syncMapViewAndMarkers = () => {
+  if (!mapInstance.value || !mapAdapter.value) {
+    return
+  }
+
+  const lat = Number(formData.coordinates.lat)
+  const lng = Number(formData.coordinates.lng)
+  if (!hasValidCoordinates(lat, lng)) {
+    mapAdapter.value.cleanup()
+    return
+  }
+
+  mapInstance.value.setView([lat, lng], 16)
+  renderMapMarkers()
+}
+
 const handleSave = async () => {
   if (!validateForm()) return
   
@@ -246,79 +423,20 @@ const handleCancel = () => {
 
 const handleMapReady = (map) => {
   mapInstance.value = map
-  
-  // Set initial view and markers
-  if (formData.coordinates.lat && formData.coordinates.lng) {
-    setTimeout(() => {
-      map.setView([formData.coordinates.lat, formData.coordinates.lng], 16)
-      
-      // Add markers after a short delay to ensure map is fully loaded
-      setTimeout(() => {
-        addMarkers()
-      }, 200)
-    }, 100)
-  }
-}
 
-const addMarkers = () => {
-  if (!mapInstance.value) {
-    return
-  }
-  
-  if (!L) {
-    return
+  if (mapAdapter.value) {
+    mapAdapter.value.cleanup()
   }
 
-  // Remove existing current marker
-  if (currentMarker.value) {
-    mapInstance.value.removeLayer(currentMarker.value)
-    currentMarker.value = null
-  }
-  
-  // Remove all existing markers with our custom class
-  mapInstance.value.eachLayer((layer) => {
-    if (layer.options && (layer.options.isEditMarker || layer.options.isOriginalMarker)) {
-      mapInstance.value.removeLayer(layer)
-    }
-  })
-  
-  // Add current location marker using a prominent marker style
-  if (formData.coordinates.lat && formData.coordinates.lng) {
-    // Create a prominent marker with pulsing effect
-    currentMarker.value = L.circleMarker([formData.coordinates.lat, formData.coordinates.lng], {
-      radius: 14,
-      fillColor: '#ff0040',
-      color: '#ffffff',
-      weight: 5,
-      opacity: 1,
-      fillOpacity: 1,
-      isEditMarker: true
-    })
-      .addTo(mapInstance.value)
-      .bindPopup('Current Location - Click on map to move')
-
-  }
-  
-  // Add original location marker for reference (if different)
-  if (originalLocation.value && 
-      (Math.abs(originalLocation.value.lat - formData.coordinates.lat) > 0.000001 ||
-       Math.abs(originalLocation.value.lng - formData.coordinates.lng) > 0.000001)) {
-
-    L.circleMarker([originalLocation.value.lat, originalLocation.value.lng], {
-      radius: 6,
-      fillColor: '#ef4444',
-      color: 'white',
-      weight: 2,
-      opacity: 0.9,
-      fillOpacity: 0.7,
-      isOriginalMarker: true
-    })
-        .addTo(mapInstance.value)
-        .bindPopup('Original Location')
-  }
+  mapAdapter.value = createGpsEditMapAdapter(mapInstance.value)
+  syncMapViewAndMarkers()
 }
 
 const handleMapClick = (event) => {
+  if (!event?.latlng) {
+    return
+  }
+
   const { lat, lng } = event.latlng
   
   // Update form data
@@ -327,19 +445,20 @@ const handleMapClick = (event) => {
 
   // Update markers
   nextTick(() => {
-    addMarkers()
+    renderMapMarkers()
   })
 }
 
 const updateMapMarker = () => {
-  if (formData.coordinates.lat && formData.coordinates.lng) {
+  if (hasValidCoordinates(Number(formData.coordinates.lat), Number(formData.coordinates.lng))) {
     // Update map center and markers when coordinates change
     nextTick(() => {
       if (mapInstance.value) {
-        mapInstance.value.setView([formData.coordinates.lat, formData.coordinates.lng], 16)
-        addMarkers()
+        syncMapViewAndMarkers()
       }
     })
+  } else {
+    mapAdapter.value?.cleanup?.()
   }
 }
 
@@ -348,14 +467,10 @@ watch(() => props.visible, (val) => {
   internalVisible.value = val
   if (val) {
     initializeForm()
-    // If map is already ready, add markers
-    if (mapInstance.value && formData.coordinates.lat && formData.coordinates.lng) {
-      setTimeout(() => {
-        mapInstance.value.setView([formData.coordinates.lat, formData.coordinates.lng], 16)
-        setTimeout(() => {
-          addMarkers()
-        }, 200)
-      }, 100)
+    if (mapInstance.value && mapAdapter.value) {
+      nextTick(() => {
+        syncMapViewAndMarkers()
+      })
     }
   }
 })
@@ -370,6 +485,11 @@ watch(internalVisible, (val) => {
   if (!val) {
     emit('close')
   }
+})
+
+onUnmounted(() => {
+  mapAdapter.value?.cleanup?.()
+  mapAdapter.value = null
 })
 </script>
 
@@ -471,5 +591,30 @@ export default {
 
 .p-dark .map-instructions {
   color: var(--gp-text-secondary);
+}
+</style>
+
+<style>
+.gps-edit-marker {
+  border-radius: 999px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.gps-edit-marker--current {
+  width: 28px;
+  height: 28px;
+  background: #ff0040;
+  border: 5px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.gps-edit-marker--original {
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  border: 2px solid #ffffff;
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 </style>

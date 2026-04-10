@@ -82,15 +82,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
+import { createDetailsMapAdapter } from '@/maps/details/runtime/createDetailsMapAdapter'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -113,8 +113,7 @@ const internalVisible = ref(props.visible)
 
 // Map data
 const mapId = ref(Math.random().toString(36).substr(2, 9))
-const mapInstance = ref(null)
-const marker = ref(null)
+const mapAdapter = ref(null)
 
 // Computed
 const dialogTitle = computed(() => {
@@ -129,14 +128,6 @@ const mapCenter = computed(() => {
 })
 
 // Methods
-const formatDate = (timestamp) => {
-  return timezone.formatDateDisplay(timestamp)
-}
-
-const formatTime = (timestamp) => {
-  return timezone.format(timestamp, 'HH:mm:ss')
-}
-
 const getStartDateTime = () => {
   if (!props.stay?.timestamp) return 'N/A'
   return `${timezone.formatDateDisplay(props.stay.timestamp)} ${timezone.format(props.stay.timestamp, 'HH:mm:ss')}`
@@ -179,34 +170,19 @@ const copyToClipboard = async (text) => {
 }
 
 const handleMapReady = (map) => {
-  mapInstance.value = map
-  updateMapMarker()
+  mapAdapter.value?.destroy?.()
+  mapAdapter.value = createDetailsMapAdapter(map)
+  mapAdapter.value.initialize?.(map)
+  renderStayOnMap()
 }
 
-const updateMapMarker = async () => {
-  if (!mapInstance.value || !props.stay?.latitude || !props.stay?.longitude) return
+const renderStayOnMap = async () => {
+  if (!mapAdapter.value) {
+    return
+  }
 
   await nextTick()
-
-  // Remove existing marker
-  if (marker.value) {
-    mapInstance.value.removeLayer(marker.value)
-  }
-
-  // Add new marker
-  const L = window.L
-  if (L) {
-    marker.value = L.marker([props.stay.latitude, props.stay.longitude])
-      .addTo(mapInstance.value)
-      .bindPopup(`
-        <div class="marker-popup">
-          <strong>${props.stay?.locationName || 'Unknown Location'}</strong><br/>
-          ${props.stay?.address ? `<span>${props.stay.address}</span><br/>` : ''}
-          <small>Duration: ${formatDuration(props.stay?.stayDuration)}</small>
-        </div>
-      `)
-      .openPopup()
-  }
+  mapAdapter.value.renderStay(props.stay)
 }
 
 // Watch for visibility changes
@@ -214,15 +190,17 @@ watch(() => props.visible, (newValue) => {
   internalVisible.value = newValue
   if (newValue) {
     nextTick(() => {
-      updateMapMarker()
+      renderStayOnMap()
     })
+  } else {
+    mapAdapter.value?.clear?.()
   }
 })
 
 watch(() => props.stay, () => {
   if (internalVisible.value) {
     nextTick(() => {
-      updateMapMarker()
+      renderStayOnMap()
     })
   }
 }, { deep: true })
@@ -231,6 +209,11 @@ watch(internalVisible, (newValue) => {
   if (!newValue) {
     emit('close')
   }
+})
+
+onBeforeUnmount(() => {
+  mapAdapter.value?.destroy?.()
+  mapAdapter.value = null
 })
 </script>
 

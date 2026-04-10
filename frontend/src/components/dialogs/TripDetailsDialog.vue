@@ -111,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -121,6 +121,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { useLocationStore } from '@/stores/location'
+import { createDetailsMapAdapter } from '@/maps/details/runtime/createDetailsMapAdapter'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -150,6 +151,7 @@ const internalVisible = computed({
 
 const mapId = ref(Date.now())
 const mapInstance = ref(null)
+const mapAdapter = ref(null)
 const tripGpsPoints = ref([])
 
 const dialogTitle = computed(() => {
@@ -238,18 +240,14 @@ const copyToClipboard = async (text) => {
 
 const handleMapReady = async (map) => {
   mapInstance.value = map
+  mapAdapter.value?.destroy?.()
+  mapAdapter.value = createDetailsMapAdapter(map)
+  mapAdapter.value.initialize?.(map)
 
-  // Fetch GPS points for the trip
   if (props.trip) {
     await fetchTripGpsPoints()
+    renderTripOnMap()
   }
-
-  // Create PathLayer instance and add it to the map when trip data is available
-  nextTick(() => {
-    if (tripGpsPoints.value.length > 0) {
-      addPathToMap()
-    }
-  })
 }
 
 const fetchTripGpsPoints = async () => {
@@ -282,53 +280,16 @@ const fetchTripGpsPoints = async () => {
   }
 }
 
-const addPathToMap = () => {
-  if (!mapInstance.value || tripGpsPoints.value.length === 0) return
-
-  try {
-    // Create PathLayer with trip data
-    const pathData = {
-      color: getPathColor(props.trip.movementType),
-      weight: 4,
-      opacity: 0.8
-    }
-
-    // Add path to map
-    const pathLayer = new window.L.polyline(
-      tripGpsPoints.value.map(point => [point.latitude, point.longitude]),
-      pathData
-    ).addTo(mapInstance.value)
-
-    // Add start and end markers
-    if (props.trip.latitude && props.trip.longitude) {
-      new window.L.marker([props.trip.latitude, props.trip.longitude], {
-        icon: new window.L.divIcon({
-          className: 'start-marker',
-          html: '<div class="marker-pin start-pin"><i class="pi pi-play"></i></div>',
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
-        })
-      }).addTo(mapInstance.value)
-    }
-
-    if (props.trip.endLatitude && props.trip.endLongitude) {
-      new window.L.marker([props.trip.endLatitude, props.trip.endLongitude], {
-        icon: new window.L.divIcon({
-          className: 'end-marker', 
-          html: '<div class="marker-pin end-pin"><i class="pi pi-stop"></i></div>',
-          iconSize: [30, 30],
-          iconAnchor: [15, 15]
-        })
-      }).addTo(mapInstance.value)
-    }
-
-    // Fit map to show entire path
-    const bounds = pathLayer.getBounds()
-    mapInstance.value.fitBounds(bounds, { padding: [20, 20] })
-    
-  } catch (error) {
-    console.error('Error adding path to map:', error)
+const renderTripOnMap = () => {
+  if (!mapAdapter.value || !props.trip) {
+    return
   }
+
+  mapAdapter.value.renderTrip({
+    trip: props.trip,
+    tripGpsPoints: tripGpsPoints.value,
+    pathColor: getPathColor(props.trip.movementType)
+  })
 }
 
 const getPathColor = (movementType) => {
@@ -347,24 +308,30 @@ const getPathColor = (movementType) => {
 watch(() => props.trip, async (newTrip) => {
   if (newTrip && mapInstance.value) {
     await fetchTripGpsPoints()
-    nextTick(() => {
-      addPathToMap()
-    })
+    renderTripOnMap()
+    return
   }
+
+  tripGpsPoints.value = []
+  mapAdapter.value?.clear?.()
 }, { deep: true })
 
 // Reset map ID when dialog opens/closes to ensure fresh map
 watch(() => props.visible, async (isVisible) => {
   if (isVisible) {
     mapId.value = Date.now()
-    // Fetch GPS points when dialog opens
     if (props.trip) {
       await fetchTripGpsPoints()
     }
   } else {
-    // Clear GPS points when dialog closes
     tripGpsPoints.value = []
+    mapAdapter.value?.clear?.()
   }
+})
+
+onBeforeUnmount(() => {
+  mapAdapter.value?.destroy?.()
+  mapAdapter.value = null
 })
 </script>
 

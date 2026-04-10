@@ -110,7 +110,7 @@ The AI Assistant works with any OpenAI-compatible API, including:
 ### Local Models
 Run models locally using:
 - **LM Studio**: Provides OpenAI-compatible API
-- **Ollama**: Use with OpenAI-compatible proxies
+- **Ollama**: OpenAI-compatible base URL `http://localhost:11434/v1`
 - **LocalAI**: Self-hosted OpenAI alternative
 
 ### Third-Party Providers

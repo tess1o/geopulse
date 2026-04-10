@@ -9,15 +9,22 @@
       :height="height"
       :width="width"
       :custom-tile-url="customTileUrl"
+      :custom-style-url="customStyleUrl"
+      :map-render-mode="mapRenderMode"
       :is-shared-view="isSharedView"
       :enable-fullscreen="enableFullscreen"
       :fullscreen-options="fullscreenOptions"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
       @map-contextmenu="handleMapContextMenu"
+      @map-warning="handleMapWarning"
       @map-zoom="handleMapZoom"
       @map-move="handleMapMove"
     />
+
+    <div v-if="mapWarningMessage" class="map-warning-banner" data-testid="map-warning">
+      {{ mapWarningMessage }}
+    </div>
 
     <slot name="controls" :map="map" :isReady="isReady">
       <MapControls
@@ -35,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, readonly } from 'vue'
+import { markRaw, onUnmounted, readonly, ref, shallowRef } from 'vue'
 import BaseMap from './BaseMap.vue'
 import MapControls from './controls/MapControls.vue'
 
@@ -76,6 +83,14 @@ const props = defineProps({
     type: String,
     default: null
   },
+  customStyleUrl: {
+    type: String,
+    default: null
+  },
+  mapRenderMode: {
+    type: String,
+    default: null
+  },
   isSharedView: {
     type: Boolean,
     default: false
@@ -94,18 +109,21 @@ const emit = defineEmits([
   'map-ready',
   'map-click',
   'map-contextmenu',
+  'map-warning',
   'map-zoom',
   'map-move'
 ])
 
 // Reactive state
 const mapRef = ref(null)
-const map = ref(null)
+const map = shallowRef(null)
 const isReady = ref(false)
+const mapWarningMessage = ref('')
+let mapWarningTimer = null
 
 // Event handlers
 const handleMapReady = (mapInstance) => {
-  map.value = mapInstance
+  map.value = mapInstance ? markRaw(mapInstance) : null
   isReady.value = true
   emit('map-ready', mapInstance)
 }
@@ -116,6 +134,20 @@ const handleMapClick = (event) => {
 
 const handleMapContextMenu = (event) => {
   emit('map-contextmenu', event)
+}
+
+const handleMapWarning = (warning) => {
+  const message = warning?.message || 'Map warning'
+  mapWarningMessage.value = message
+  emit('map-warning', warning)
+
+  if (mapWarningTimer) {
+    clearTimeout(mapWarningTimer)
+  }
+  mapWarningTimer = setTimeout(() => {
+    mapWarningMessage.value = ''
+    mapWarningTimer = null
+  }, 5000)
 }
 
 const handleMapZoom = (data) => {
@@ -141,6 +173,13 @@ const fitBounds = (bounds, options) => {
 const invalidateSize = () => {
   mapRef.value?.invalidateSize()
 }
+
+onUnmounted(() => {
+  if (mapWarningTimer) {
+    clearTimeout(mapWarningTimer)
+    mapWarningTimer = null
+  }
+})
 
 // Expose methods and state
 defineExpose({
@@ -169,6 +208,21 @@ defineExpose({
   top: var(--gp-spacing-lg, 1rem);
   right: var(--gp-spacing-lg, 1rem);
   z-index: 900;
+}
+
+.map-warning-banner {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gp-spacing-lg, 1rem);
+  transform: translateX(-50%);
+  z-index: 950;
+  background: rgba(245, 158, 11, 0.95);
+  color: #1f2937;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
 /* Responsive adjustments */

@@ -1,19 +1,22 @@
 <template>
-  <BaseLayer
-    ref="baseLayerRef"
+  <component
+    :is="activeComponent"
+    ref="implRef"
     :map="map"
     :visible="visible"
-    @layer-ready="handleLayerReady"
+    :marker-options="markerOptions"
+    @photo-click="(payload) => emit('photo-click', payload)"
+    @cluster-click="(payload) => emit('cluster-click', payload)"
+    @photo-hover="(payload) => emit('photo-hover', payload)"
+    @error="(payload) => emit('error', payload)"
   />
 </template>
 
 <script setup>
-import { ref, watch, computed, readonly, onMounted, onUnmounted } from 'vue'
-import BaseLayer from './BaseLayer.vue'
-import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
-import { useImmichStore } from '@/stores/immich'
-import { useDateRangeStore } from '@/stores/dateRange'
-import '@/styles/photo-map-markers.css'
+import { computed, ref } from 'vue'
+import RasterImmichLayer from '@/maps/raster/layers/RasterImmichLayer.vue'
+import VectorImmichLayer from '@/maps/vector/layers/VectorImmichLayer.vue'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 const props = defineProps({
   map: {
@@ -32,183 +35,17 @@ const props = defineProps({
 
 const emit = defineEmits(['photo-click', 'cluster-click', 'photo-hover', 'error'])
 
-const immichStore = useImmichStore()
-const dateRangeStore = useDateRangeStore()
+const implRef = ref(null)
+const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
+const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorImmichLayer : RasterImmichLayer)
 
-const baseLayerRef = ref(null)
-const loading = ref(false)
-
-const isConfigured = computed(() => immichStore.isConfigured)
-
-const {
-  clearPhotoMarkers: clearConsistentPhotoMarkers,
-  renderPhotoMarkers: renderConsistentPhotoMarkers
-} = usePhotoMapMarkers({
-  emit: (eventName, payload) => {
-    if (eventName === 'photo-click') {
-      emit('photo-click', payload)
-    }
-  }
-})
-
-const handleLayerReady = async () => {
-  if (isConfigured.value && props.visible) {
-    await fetchAndRenderPhotos()
-  }
-}
-
-const renderPhotoMarkers = () => {
-  if (!baseLayerRef.value?.isReady || !isConfigured.value || !props.visible) {
-    return
-  }
-
-  clearConsistentPhotoMarkers()
-  renderConsistentPhotoMarkers(props.map, immichStore.photos || [])
-}
-
-const fetchAndRenderPhotos = async () => {
-  if (!isConfigured.value) {
-    emit('error', {
-      type: 'config',
-      message: 'Immich is not configured. Please set up your Immich server first.',
-      error: new Error('Immich not configured')
-    })
-    return
-  }
-
-  try {
-    loading.value = true
-    await immichStore.fetchPhotos()
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'fetch',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
-    renderPhotoMarkers()
-  } catch (error) {
-    console.error('Failed to fetch Immich photos:', error)
-    emit('error', {
-      type: 'fetch',
-      message: error.userMessage || 'Failed to load photos from Immich',
-      error
-    })
-  } finally {
-    loading.value = false
-  }
-}
-
-const refreshPhotos = async () => {
-  if (!isConfigured.value || !props.visible) {
-    return
-  }
-
-  try {
-    await immichStore.fetchPhotos(null, null, true)
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'refresh',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
-    renderPhotoMarkers()
-  } catch (error) {
-    console.error('Failed to refresh Immich photos:', error)
-    emit('error', {
-      type: 'refresh',
-      message: error.userMessage || 'Failed to refresh photos from Immich',
-      error
-    })
-  }
-}
-
-const clearPhotoMarkers = () => {
-  clearConsistentPhotoMarkers()
-}
-
-watch(
-  () => immichStore.photos,
-  () => {
-    if (props.visible) {
-      renderPhotoMarkers()
-    }
-  },
-  { deep: false }
-)
-
-watch(
-  () => dateRangeStore.getCurrentDateRange,
-  async (newRange) => {
-    if (newRange && props.visible && isConfigured.value) {
-      await fetchAndRenderPhotos()
-    }
-  },
-  { deep: true }
-)
-
-watch(
-  () => props.visible,
-  async (newVisible) => {
-    if (!newVisible) {
-      clearPhotoMarkers()
-      return
-    }
-
-    if (!isConfigured.value) {
-      return
-    }
-
-    if (immichStore.hasPhotos) {
-      renderPhotoMarkers()
-      return
-    }
-
-    await fetchAndRenderPhotos()
-  }
-)
-
-watch(
-  () => immichStore.isConfigured,
-  async (newConfigured) => {
-    if (newConfigured && props.visible) {
-      await fetchAndRenderPhotos()
-      return
-    }
-
-    if (!newConfigured) {
-      clearPhotoMarkers()
-    }
-  }
-)
-
-onMounted(async () => {
-  try {
-    await immichStore.fetchConfig()
-  } catch (error) {
-    console.error('Failed to fetch Immich config on mount:', error)
-  }
-})
-
-onUnmounted(() => {
-  clearPhotoMarkers()
-})
+const refreshPhotos = (...args) => implRef.value?.refreshPhotos?.(...args)
+const clearPhotoMarkers = (...args) => implRef.value?.clearPhotoMarkers?.(...args)
 
 defineExpose({
-  baseLayerRef,
+  implRef,
   refreshPhotos,
   clearPhotoMarkers,
-  isLoading: readonly(loading)
+  isLoading: computed(() => implRef.value?.isLoading ?? false)
 })
 </script>
-
-<style scoped>
-/* Marker styles are provided globally by photo-map-markers.css */
-</style>

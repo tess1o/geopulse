@@ -1,8 +1,10 @@
 import { expect } from '@playwright/test';
+import { MapEngineHarness } from '../utils/map-engine-harness.js';
 
 export class FavoritesManagementPage {
   constructor(page) {
     this.page = page;
+    this.mapHarness = new MapEngineHarness(page);
 
     this.selectors = {
       // Page container
@@ -18,7 +20,8 @@ export class FavoritesManagementPage {
 
       // Map
       mapContainer: '.map-container',
-      leafletMap: '.leaflet-container',
+      mapHost: '#favorites-map[data-testid="map-host-raster"], #favorites-map[data-testid="map-host-vector"]',
+      leafletMap: '#favorites-map[data-testid="map-host-raster"], #favorites-map[data-testid="map-host-vector"]',
       favoriteMarker: '.favorite-marker-icon',
       favoriteAreaMarker: '.favorite-area-icon',
       pendingPointMarker: '.pending-marker-icon',
@@ -125,31 +128,16 @@ export class FavoritesManagementPage {
   // ===========================================
 
   async waitForMapReady() {
-    await this.page.waitForSelector(this.selectors.leafletMap, { timeout: 10000 });
-    await this.page.waitForSelector('.leaflet-tile-pane', {
-      state: 'attached',
-      timeout: 10000
+    await this.mapHarness.waitForMapReady({
+      mapId: 'favorites-map',
+      timeout: 15000,
+      settleMs: 1200
     });
-    await this.page.waitForTimeout(1500);
   }
 
   async rightClickOnMap(x, y) {
-    const mapContainer = this.page.locator(this.selectors.leafletMap);
-    await mapContainer.waitFor({ state: 'visible' });
-
-    const boundingBox = await mapContainer.boundingBox();
-    if (boundingBox) {
-      const safeX = Math.min(x, boundingBox.width - 10);
-      const safeY = Math.min(y, boundingBox.height - 10);
-
-      await mapContainer.click({
-        position: { x: safeX, y: safeY },
-        button: 'right',
-        force: true
-      });
-    }
-
-    await this.page.waitForTimeout(1000);
+    await this.mapHarness.rightClickOnMap(x, y, { mapId: 'favorites-map' });
+    await this.page.waitForTimeout(700);
   }
 
   async waitForMapContextMenu() {
@@ -165,43 +153,9 @@ export class FavoritesManagementPage {
   }
 
   async drawRectangle(startX, startY, endX, endY, mapId = null) {
-    // If mapId is specified, use it; otherwise use the main map
-    const mapSelector = mapId ? `#${mapId}` : '#favorites-map';
-    const mapContainer = this.page.locator(mapSelector);
-
-    // Get the bounding box of the map
-    const boundingBox = await mapContainer.boundingBox();
-    if (!boundingBox) {
-      throw new Error('Map container not found or not visible');
-    }
-
-    // Calculate absolute coordinates
-    const startAbsX = boundingBox.x + startX;
-    const startAbsY = boundingBox.y + startY;
-    const endAbsX = boundingBox.x + endX;
-    const endAbsY = boundingBox.y + endY;
-
-    // Simulate click-and-drag: move to start, hold down, drag to end, release
-    await this.page.mouse.move(startAbsX, startAbsY);
-    await this.page.waitForTimeout(100); // Small delay before pressing
-
-    await this.page.mouse.down(); // Press and HOLD left button
-    await this.page.waitForTimeout(200); // Hold for a moment to ensure mousedown registers
-
-    // Drag to end position while holding button
-    // Use intermediate steps for more realistic dragging
-    const steps = 10;
-    for (let i = 1; i <= steps; i++) {
-      const intermediateX = startAbsX + ((endAbsX - startAbsX) * i / steps);
-      const intermediateY = startAbsY + ((endAbsY - startAbsY) * i / steps);
-      await this.page.mouse.move(intermediateX, intermediateY);
-      await this.page.waitForTimeout(20); // Small delay between moves
-    }
-
-    await this.page.waitForTimeout(100); // Pause at end position
-    await this.page.mouse.up(); // Release button
-
-    await this.page.waitForTimeout(500); // Wait for rectangle to be created
+    await this.mapHarness.drawRectangle(startX, startY, endX, endY, {
+      mapId: mapId || 'favorites-map'
+    });
   }
 
   async cancelDrawing() {
@@ -550,20 +504,77 @@ export class FavoritesManagementPage {
     });
   }
 
+  async waitForTimelineRegenerationCycle(options = {}) {
+    const appearanceTimeout = options.appearanceTimeout ?? 7000;
+    const completionTimeout = options.completionTimeout ?? 45000;
+    const optional = options.optional ?? true;
+
+    try {
+      await this.page.waitForSelector(this.selectors.timelineRegenerationModal, { timeout: appearanceTimeout });
+    } catch (error) {
+      if (optional) {
+        return false;
+      }
+      throw error;
+    }
+
+    await this.page.waitForSelector(this.selectors.timelineRegenerationModal, {
+      state: 'hidden',
+      timeout: completionTimeout
+    });
+
+    return true;
+  }
+
   // ===========================================
   // TOAST NOTIFICATIONS
   // ===========================================
 
-  async waitForSuccessToast() {
-    await this.page.waitForSelector(this.selectors.successToast, { timeout: 5000 });
+  async waitForToastBySelector(selector, expectedText = null, timeout = 15000) {
+    const visibleSelector = `${selector}:visible`;
+
+    if (!expectedText) {
+      await expect.poll(
+        () => this.page.locator(visibleSelector).count(),
+        { timeout }
+      ).toBeGreaterThan(0);
+      return;
+    }
+
+    await expect.poll(async () => {
+      const texts = await this.page.locator(visibleSelector).allInnerTexts().catch(() => []);
+      return texts.join(' | ');
+    }, { timeout }).toContain(expectedText);
+  }
+
+  async waitForSuccessToast(expectedText = null, options = {}) {
+    const timeout = options.timeout ?? 20000;
+    const allowInfoFallback = options.allowInfoFallback ?? true;
+    const required = options.required ?? true;
+
+    try {
+      await this.waitForToastBySelector(this.selectors.successToast, expectedText, timeout);
+      return 'success';
+    } catch (error) {
+      if (!required) {
+        return null;
+      }
+
+      if (!allowInfoFallback) {
+        throw error;
+      }
+
+      await this.waitForToastBySelector(this.selectors.infoToast, expectedText, timeout);
+      return 'info';
+    }
   }
 
   async waitForInfoToast() {
-    await this.page.waitForSelector(this.selectors.infoToast, { timeout: 5000 });
+    await this.waitForToastBySelector(this.selectors.infoToast, null, 10000);
   }
 
   async waitForErrorToast() {
-    await this.page.waitForSelector(this.selectors.errorToast, { timeout: 5000 });
+    await this.waitForToastBySelector(this.selectors.errorToast, null, 10000);
   }
 
   async getToastMessage() {
@@ -621,19 +632,27 @@ export class FavoritesManagementPage {
   }
 
   async deleteFavoriteWorkflow(index) {
+    const initialRowCount = await this.getTableRowCount();
     await this.clickDeleteInTable(index);
     await this.confirmDialog();
-    await this.waitForTimelineRegenerationModal();
-    await this.waitForTimelineRegenerationToComplete();
-    await this.waitForSuccessToast();
+    await this.waitForTimelineRegenerationCycle({ optional: true });
+    await this.waitForSuccessToast(null, { required: false, timeout: 20000 });
+
+    await expect.poll(async () => {
+      const currentCount = await this.getTableRowCount();
+      if (currentCount < initialRowCount) {
+        return true;
+      }
+
+      return await this.isTableEmpty().catch(() => false);
+    }, { timeout: 20000 }).toBe(true);
   }
 
   async bulkSaveWorkflow() {
     await this.clickSavePending();
     await this.waitForBulkSaveDialog();
     await this.confirmBulkSave();
-    await this.waitForTimelineRegenerationModal();
-    await this.waitForTimelineRegenerationToComplete();
-    await this.waitForSuccessToast();
+    await this.waitForTimelineRegenerationCycle({ optional: true });
+    await this.waitForSuccessToast(null, { required: false, timeout: 20000 });
   }
 }

@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.auth.model;
 
 import lombok.*;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
 
 import java.time.Instant;
@@ -26,6 +27,8 @@ public class AuthResponse {
     private Instant createdAt;
     private boolean hasPassword;
     private String customMapTileUrl;
+    private String customMapStyleUrl;
+    private MapRenderMode mapRenderMode;
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
     private String dateFormat;

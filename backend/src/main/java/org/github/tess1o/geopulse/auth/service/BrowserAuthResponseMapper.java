@@ -20,6 +20,8 @@ public class BrowserAuthResponseMapper {
                 .timezone(authResponse.getTimezone())
                 .hasPassword(authResponse.isHasPassword())
                 .customMapTileUrl(authResponse.getCustomMapTileUrl())
+                .customMapStyleUrl(authResponse.getCustomMapStyleUrl())
+                .mapRenderMode(authResponse.getMapRenderMode())
                 .measureUnit(authResponse.getMeasureUnit())
                 .defaultRedirectUrl(authResponse.getDefaultRedirectUrl())
                 .dateFormat(authResponse.getDateFormat())

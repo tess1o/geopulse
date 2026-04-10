@@ -49,10 +49,10 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Run full E2E test suite
+      - name: Run full E2E test suite (RASTER + VECTOR)
         run: |
           cd tests
-          npm run test:e2e
+          npx playwright test --project=chromium --project=chromium-vector
         env:
           BASE_URL: http://localhost:5556
           PLAYWRIGHT_WORKERS: 4

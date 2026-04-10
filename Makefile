@@ -255,6 +255,7 @@ backend-test-integration-tz-matrix:
 
 # Variables for E2E testing
 E2E_COMPOSE_FILE := tests/docker-compose.e2e.yml
+E2E_PLAYWRIGHT_PROJECTS ?= --project=chromium --project=chromium-vector
 
 # Start E2E test environment (UI + Backend + DB)
 .PHONY: e2e-start
@@ -296,26 +297,26 @@ e2e-logs:
 # Run E2E tests (requires environment to be running)
 .PHONY: test-e2e
 test-e2e:
-	@echo "🧪 Running E2E tests..."
-	cd tests && npm run test:e2e
+	@echo "🧪 Running E2E tests (RASTER + VECTOR)..."
+	cd tests && npx playwright test $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Run E2E tests with UI (interactive)
 .PHONY: test-e2e-ui
 test-e2e-ui:
-	@echo "🧪 Running E2E tests in UI mode..."
-	cd tests && npm run test:e2e:ui
+	@echo "🧪 Running E2E tests in UI mode (RASTER + VECTOR)..."
+	cd tests && npx playwright test --ui $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Run E2E tests in headed mode (visible browser)
 .PHONY: test-e2e-headed
 test-e2e-headed:
-	@echo "🧪 Running E2E tests in headed mode..."
-	cd tests && npm run test:e2e:headed
+	@echo "🧪 Running E2E tests in headed mode (RASTER + VECTOR)..."
+	cd tests && npx playwright test --headed $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Debug E2E tests
 .PHONY: test-e2e-debug
 test-e2e-debug:
-	@echo "🐛 Running E2E tests in debug mode..."
-	cd tests && npm run test:e2e:debug
+	@echo "🐛 Running E2E tests in debug mode (RASTER + VECTOR)..."
+	cd tests && npx playwright test --debug $(E2E_PLAYWRIGHT_PROJECTS)
 
 # Show E2E test report
 .PHONY: test-e2e-report
@@ -446,10 +447,10 @@ help:
 	@echo "  backend-test-unit      Run backend unit tests"
 	@echo "  backend-test-integration Run backend integration tests"
 	@echo "  backend-test-all       Run all backend tests (unit + integration)"
-	@echo "  test-e2e               Run E2E tests (requires E2E environment)"
-	@echo "  test-e2e-ui            Run E2E tests in UI mode (interactive)"
-	@echo "  test-e2e-headed        Run E2E tests in headed mode (visible browser)"
-	@echo "  test-e2e-debug         Debug E2E tests (step through)"
+	@echo "  test-e2e               Run E2E tests (RASTER + VECTOR, requires E2E environment)"
+	@echo "  test-e2e-ui            Run E2E tests in UI mode (RASTER + VECTOR)"
+	@echo "  test-e2e-headed        Run E2E tests in headed mode (RASTER + VECTOR)"
+	@echo "  test-e2e-debug         Debug E2E tests (RASTER + VECTOR)"
 	@echo "  test-e2e-report        Show E2E test report"
 	@echo "  test-e2e-full          Complete E2E workflow: start → test → report"
 	@echo ""

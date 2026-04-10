@@ -10,6 +10,8 @@
       :show-controls="true"
       :controls-props="controlsProps"
       :custom-tile-url="customTileUrl"
+      :custom-style-url="customStyleUrl"
+      :map-render-mode="mapRenderMode"
       :is-shared-view="isSharedView"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
@@ -48,6 +50,7 @@
           v-if="map && isReady"
           :map="map"
           :points="heatmapPoints"
+          :profile="heatmapLayer"
           :value-key="'durationSeconds'"
           :min-weight="heatmapScale.minWeight"
           :gamma="heatmapScale.gamma"
@@ -186,14 +189,14 @@
 </template>
 
 <script setup>
-import {computed, nextTick, onMounted, onUnmounted, readonly, ref, watch} from 'vue'
+import {computed, markRaw, nextTick, onMounted, onUnmounted, readonly, ref, shallowRef, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
-import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
+import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 
 // Map components
@@ -201,7 +204,8 @@ import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, Time
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
-import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
+import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
+import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -247,6 +251,14 @@ const props = defineProps({
     default: true
   },
   customTileUrl: {
+    type: String,
+    default: null
+  },
+  customStyleUrl: {
+    type: String,
+    default: null
+  },
+  mapRenderMode: {
     type: String,
     default: null
   },
@@ -368,13 +380,14 @@ const confirm = useConfirm()
 const toast = useToast()
 
 // Local state
-const map = ref(null)
+const map = shallowRef(null)
 const favoriteContextMenuActive = ref(false)
 const heatmapEnabled = ref(false)
 const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
 let heatmapRequestId = 0
 const heatmapPrefetches = new Map()
+let mapContextMenuShowTimeoutId = null
 
 // Dialog state
 const dialogState = ref({
@@ -393,7 +406,7 @@ const {
   stopDrawing,
   cleanupTempLayer,
   isDrawing
-} = useRectangleDrawing({
+} = useRectangleDrawingRuntime({
   onRectangleCreated: (rectangle) => {
     drawingState.value.tempAreaLayer = rectangle.layer
     dialogState.value.addAreaVisible = true
@@ -415,7 +428,7 @@ const openPhotoViewerFromPayload = (payload) => {
 const {
   clearFocusMarker: clearFocusedPhotoMarker,
   focusOnPhoto: focusOnMapPhoto
-} = usePhotoMapMarkers({
+} = usePhotoMapMarkersRuntime({
   emit: (eventName, payload) => {
     if (eventName === 'photo-click') {
       openPhotoViewerFromPayload(payload)
@@ -579,7 +592,7 @@ const plannedItemMenuItems = ref([
 
 // Map event handlers
 const handleMapReady = (mapInstance) => {
-  map.value = mapInstance
+  map.value = mapInstance ? markRaw(mapInstance) : null
   
   // Initialize rectangle drawing
   initializeDrawing(mapInstance)
@@ -590,10 +603,10 @@ const handleMapReady = (mapInstance) => {
     nextTick(() => {
       if (dataBounds.value.length === 1) {
         // Single point - center on it with a reasonable zoom
-        mapInstance.setView(dataBounds.value[0], 14)
+        mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
       } else if (dataBounds.value.length > 1) {
         // Multiple points - fit bounds
-        mapInstance.fitBounds(dataBounds.value, { padding: [20, 20] })
+        mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
       }
     })
   }
@@ -624,25 +637,34 @@ const handleMapContextMenu = (event) => {
     return
   }
 
-  // Don't show map context menu if favorite context menu is active
-  if (favoriteContextMenuActive.value) {
-    favoriteContextMenuActive.value = false
-    return
-  }
-
   // Prevent default browser context menu
   if (event.originalEvent) {
     event.originalEvent.preventDefault()
     event.originalEvent.stopPropagation()
   }
 
-  dialogState.value.addToFavoritesLatLng = event.latlng
-  baseHandleMapContextMenu(event)
-
-  // Show PrimeVue context menu
-  if (mapContextMenuRef.value && event.originalEvent) {
-    mapContextMenuRef.value.show(event.originalEvent)
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
   }
+
+  // Defer map-context menu opening by one tick to allow feature-level
+  // contextmenu handlers (favorites/planned items) to set suppression flags.
+  mapContextMenuShowTimeoutId = setTimeout(() => {
+    mapContextMenuShowTimeoutId = null
+
+    if (favoriteContextMenuActive.value) {
+      favoriteContextMenuActive.value = false
+      return
+    }
+
+    dialogState.value.addToFavoritesLatLng = event.latlng
+    baseHandleMapContextMenu(event)
+
+    if (mapContextMenuRef.value && event.originalEvent) {
+      mapContextMenuRef.value.show(event.originalEvent)
+    }
+  }, 0)
 }
 
 // Layer event handlers
@@ -743,6 +765,11 @@ const handleFavoriteContextMenu = (event) => {
     return
   }
 
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
+
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
 
@@ -756,20 +783,23 @@ const handleFavoriteContextMenu = (event) => {
   // Store the selected favorite for context menu actions
   dialogState.value.selectedFavorite = event
 
+  mapContextMenuRef.value?.hide?.()
+
   // Show favorite context menu
   if (favoriteContextMenuRef.value && event.event) {
-    // Use setTimeout to ensure the event has fully propagated/stopped
+    favoriteContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      favoriteContextMenuRef.value.show(event.event)
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
+      favoriteContextMenuActive.value = false
+    }, 120)
   }
 }
 
 const handlePlannedItemContextMenu = (event) => {
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
+
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
 
@@ -781,13 +811,13 @@ const handlePlannedItemContextMenu = (event) => {
 
   dialogState.value.selectedPlannedItem = event
 
+  mapContextMenuRef.value?.hide?.()
+
   if (plannedItemContextMenuRef.value && event.event) {
+    plannedItemContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      plannedItemContextMenuRef.value.show(event.event)
-      setTimeout(() => {
-        favoriteContextMenuActive.value = false
-      }, 100)
-    }, 10)
+      favoriteContextMenuActive.value = false
+    }, 120)
   }
 }
 
@@ -807,10 +837,10 @@ const handleZoomToData = () => {
   if (map.value && dataBounds.value) {
     if (dataBounds.value.length === 1) {
       // Single point - center on it with a reasonable zoom
-      map.value.setView(dataBounds.value[0], 14)
+      mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
     } else if (dataBounds.value.length > 1) {
       // Multiple points - fit bounds
-      map.value.fitBounds(dataBounds.value, { padding: [20, 20] })
+      mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
     }
   }
 }
@@ -1148,10 +1178,10 @@ watch(dataBounds, (newBounds) => {
           if (map.value) {
             if (newBounds.length === 1) {
               // Single point - center on it with a reasonable zoom
-              map.value.setView(newBounds[0], 14, { animate: false })
+              mapContainerRef.value?.setView?.(newBounds[0], 14, { animate: false })
             } else if (newBounds.length > 1) {
               // Multiple points - fit bounds
-              map.value.fitBounds(newBounds, { 
+              mapContainerRef.value?.fitBounds?.(newBounds, { 
                 padding: [20, 20],
                 maxZoom: 16,
                 animate: false // Disable animation to prevent tile issues
@@ -1198,15 +1228,34 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
   clearFocusedPhotoMarker()
 })
+
+const invalidateSize = () => {
+  mapContainerRef.value?.invalidateSize?.()
+}
+
+const setView = (center, zoom, options = {}) => {
+  mapContainerRef.value?.setView?.(center, zoom, options)
+}
+
+const fitBounds = (bounds, options = {}) => {
+  mapContainerRef.value?.fitBounds?.(bounds, options)
+}
 
 // Expose methods for parent component
 defineExpose({
   map: readonly(map),
   clearAllHighlights: clearAllMapHighlights,
   zoomToData: handleZoomToData,
-  focusOnPhoto
+  focusOnPhoto,
+  invalidateSize,
+  setView,
+  fitBounds
 })
 </script>
 

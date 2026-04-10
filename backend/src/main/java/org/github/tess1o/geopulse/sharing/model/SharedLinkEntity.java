@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.sharing.model;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import lombok.*;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
@@ -68,6 +69,14 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Column(name = "custom_map_tile_url", length = 1000)
     private String customMapTileUrl;
 
+    @Column(name = "custom_map_style_url", length = 1000)
+    private String customMapStyleUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "map_render_mode", nullable = false, length = 32)
+    @Builder.Default
+    private MapRenderMode mapRenderMode = MapRenderMode.RASTER;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();
@@ -82,6 +91,9 @@ public class SharedLinkEntity extends PanacheEntityBase {
         }
         if (showPhotos == null) {
             showPhotos = false;
+        }
+        if (mapRenderMode == null) {
+            mapRenderMode = MapRenderMode.RASTER;
         }
     }
 

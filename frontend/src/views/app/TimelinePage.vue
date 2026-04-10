@@ -45,6 +45,9 @@
             :favoritePlaces="favoritePlaces"
             :currentLocation="currentLocation"
             :showCurrentLocation="isToday"
+            :custom-tile-url="customMapTileUrl"
+            :custom-style-url="customMapStyleUrl"
+            :map-render-mode="mapRenderMode"
             @timeline-marker-click="handleTimelineMarkerClick"
             @highlighted-path-click="handleHighlightedPathClick"
             @edit-favorite="handleEditFavorite"
@@ -175,6 +178,9 @@ const timelineDataLoading = ref(true)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 const showCurrentLocationTelemetry = ref(true)
+const customMapTileUrl = ref(null)
+const customMapStyleUrl = ref(null)
+const mapRenderMode = ref('VECTOR')
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -590,8 +596,14 @@ const loadTimelineDisplaySettings = async () => {
     const response = await apiService.get('/users/preferences/timeline/display')
     const data = response?.data || response
     showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? true
+    customMapTileUrl.value = data?.customMapTileUrl || null
+    customMapStyleUrl.value = data?.customMapStyleUrl || null
+    mapRenderMode.value = data?.mapRenderMode || 'VECTOR'
   } catch (error) {
     showCurrentLocationTelemetry.value = true
+    customMapTileUrl.value = null
+    customMapStyleUrl.value = null
+    mapRenderMode.value = 'VECTOR'
   }
 }
 
@@ -666,8 +678,19 @@ watch([mapDataLoading, mapNoData], ([newLoading, newNoData], [oldLoading, oldNoD
       nextTick(() => {
         setTimeout(() => {
           // Force map container to reinitialize by invalidating size
-          if (mapViewRef.value && mapViewRef.value.map) {
-            mapViewRef.value.map.invalidateSize()
+          if (typeof mapViewRef.value?.invalidateSize === 'function') {
+            mapViewRef.value.invalidateSize()
+            return
+          }
+
+          const rawMap = mapViewRef.value?.map?.value || mapViewRef.value?.map
+          if (typeof rawMap?.invalidateSize === 'function') {
+            rawMap.invalidateSize()
+            return
+          }
+
+          if (typeof rawMap?.resize === 'function') {
+            rawMap.resize()
           }
         }, 300)
       })
