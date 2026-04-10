@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -126,7 +128,17 @@ class GeofenceEvaluationServiceDateFormatTest {
         point.setTimestamp(Instant.parse("2026-03-24T10:00:00Z"));
         point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(30.5234, 50.4501)));
 
-        when(templateRepository.findDefaultEnterByUser(ownerId)).thenReturn(Optional.empty());
+        NotificationTemplateEntity inAppTemplate = NotificationTemplateEntity.builder()
+                .id(71L)
+                .name("In-app")
+                .enabled(true)
+                .sendInApp(true)
+                .build();
+        UserEntity templateOwner = new UserEntity();
+        templateOwner.setId(ownerId);
+        inAppTemplate.setUser(templateOwner);
+
+        when(templateRepository.findDefaultEnterByUser(ownerId)).thenReturn(Optional.of(inAppTemplate));
 
         Method method = GeofenceEvaluationService.class.getDeclaredMethod(
                 "emitEvent",
@@ -152,6 +164,92 @@ class GeofenceEvaluationServiceDateFormatTest {
                 "lat", 50.4501,
                 "lon", 30.5234
         ));
+    }
+
+    @Test
+    void shouldNotPublishInAppWhenNoTemplateResolved() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UserEntity owner = new UserEntity();
+        owner.setId(ownerId);
+        owner.setTimezone("UTC");
+
+        UserEntity subject = new UserEntity();
+        subject.setId(UUID.randomUUID());
+        subject.setFullName("Subject Name");
+        subject.setEmail("subject@example.com");
+
+        GeofenceRuleEntity rule = new GeofenceRuleEntity();
+        rule.setId(30L);
+        rule.setName("No template rule");
+        rule.setOwnerUser(owner);
+
+        GpsPointEntity point = new GpsPointEntity();
+        point.setUser(subject);
+        point.setTimestamp(Instant.parse("2026-03-24T13:00:00Z"));
+        point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(30.5234, 50.4501)));
+
+        when(templateRepository.findDefaultEnterByUser(ownerId)).thenReturn(Optional.empty());
+
+        Method method = GeofenceEvaluationService.class.getDeclaredMethod(
+                "emitEvent",
+                GeofenceRuleEntity.class,
+                UserEntity.class,
+                GpsPointEntity.class,
+                GeofenceEventType.class
+        );
+        method.setAccessible(true);
+        method.invoke(service, rule, subject, point, GeofenceEventType.ENTER);
+
+        verify(eventRepository).persist(org.mockito.ArgumentMatchers.any(GeofenceEventEntity.class));
+        verify(notificationProjectionService, never()).publishSnapshot(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    void shouldSkipInAppProjectionWhenTemplateDisablesInApp() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UserEntity owner = new UserEntity();
+        owner.setId(ownerId);
+        owner.setTimezone("UTC");
+
+        UserEntity subject = new UserEntity();
+        subject.setId(UUID.randomUUID());
+        subject.setFullName("Subject Name");
+        subject.setEmail("subject@example.com");
+
+        NotificationTemplateEntity template = NotificationTemplateEntity.builder()
+                .id(99L)
+                .name("External Only")
+                .destination("discord://token")
+                .enabled(true)
+                .sendInApp(false)
+                .build();
+        UserEntity templateOwner = new UserEntity();
+        templateOwner.setId(ownerId);
+        template.setUser(templateOwner);
+
+        GeofenceRuleEntity rule = new GeofenceRuleEntity();
+        rule.setId(20L);
+        rule.setName("Office");
+        rule.setOwnerUser(owner);
+        rule.setEnterTemplate(template);
+
+        GpsPointEntity point = new GpsPointEntity();
+        point.setUser(subject);
+        point.setTimestamp(Instant.parse("2026-03-24T12:00:00Z"));
+        point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(30.5234, 50.4501)));
+
+        Method method = GeofenceEvaluationService.class.getDeclaredMethod(
+                "emitEvent",
+                GeofenceRuleEntity.class,
+                UserEntity.class,
+                GpsPointEntity.class,
+                GeofenceEventType.class
+        );
+        method.setAccessible(true);
+        method.invoke(service, rule, subject, point, GeofenceEventType.ENTER);
+
+        verify(eventRepository).persist(org.mockito.ArgumentMatchers.any(GeofenceEventEntity.class));
+        verify(notificationProjectionService, never()).publishSnapshot(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyMap());
     }
 
     private String invokeFormatTimestampForOwner(Instant timestamp, UserEntity owner) throws Exception {

@@ -75,16 +75,66 @@ export const createVectorGeofenceRulesMapAdapter = () => {
     }
   }
 
+  const safeMapCall = (operation, fallback = null) => {
+    if (!isMapLibreMap(map) || typeof operation !== 'function') {
+      return fallback
+    }
+
+    try {
+      return operation()
+    } catch {
+      return fallback
+    }
+  }
+
+  const isStyleReady = () => {
+    if (!isMapLibreMap(map)) {
+      return false
+    }
+
+    if (typeof map.isStyleLoaded === 'function' && !safeMapCall(() => map.isStyleLoaded(), false)) {
+      return false
+    }
+
+    if (typeof map.getStyle === 'function') {
+      const style = safeMapCall(() => map.getStyle(), null)
+      return !!style
+    }
+
+    return true
+  }
+
+  const hasLayer = (layerId) => {
+    if (!isStyleReady()) {
+      return false
+    }
+    return !!safeMapCall(() => map.getLayer(layerId), null)
+  }
+
+  const hasSource = (sourceId) => {
+    if (!isStyleReady()) {
+      return false
+    }
+    return !!safeMapCall(() => map.getSource(sourceId), null)
+  }
+
+  const getGeoJsonSource = (sourceId) => {
+    if (!isStyleReady()) {
+      return null
+    }
+    return safeMapCall(() => map.getSource(sourceId), null)
+  }
+
   const removeEditingLayers = () => {
     if (!isMapLibreMap(map)) {
       return
     }
 
-    if (map.getLayer(ids.editingLayerId)) {
-      map.removeLayer(ids.editingLayerId)
+    if (hasLayer(ids.editingLayerId)) {
+      safeMapCall(() => map.removeLayer(ids.editingLayerId))
     }
-    if (map.getSource(ids.editingSourceId)) {
-      map.removeSource(ids.editingSourceId)
+    if (hasSource(ids.editingSourceId)) {
+      safeMapCall(() => map.removeSource(ids.editingSourceId))
     }
   }
 
@@ -93,20 +143,20 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       return
     }
 
-    if (map.getLayer(ids.rulesLineLayerId)) {
-      map.removeLayer(ids.rulesLineLayerId)
+    if (hasLayer(ids.rulesLineLayerId)) {
+      safeMapCall(() => map.removeLayer(ids.rulesLineLayerId))
     }
-    if (map.getLayer(ids.rulesFillLayerId)) {
-      map.removeLayer(ids.rulesFillLayerId)
+    if (hasLayer(ids.rulesFillLayerId)) {
+      safeMapCall(() => map.removeLayer(ids.rulesFillLayerId))
     }
-    if (map.getSource(ids.rulesSourceId)) {
-      map.removeSource(ids.rulesSourceId)
+    if (hasSource(ids.rulesSourceId)) {
+      safeMapCall(() => map.removeSource(ids.rulesSourceId))
     }
   }
 
   const ensureEditingArea = (areaLike) => {
     const bounds = toRuleAreaBounds(areaLike)
-    if (!bounds || !isMapLibreMap(map)) {
+    if (!bounds || !isMapLibreMap(map) || !isStyleReady()) {
       removeEditingLayers()
       return false
     }
@@ -128,18 +178,18 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       }
     ])
 
-    const source = map.getSource(ids.editingSourceId)
+    const source = getGeoJsonSource(ids.editingSourceId)
     if (source && typeof source.setData === 'function') {
-      source.setData(data)
+      safeMapCall(() => source.setData(data))
     } else {
-      map.addSource(ids.editingSourceId, {
+      safeMapCall(() => map.addSource(ids.editingSourceId, {
         type: 'geojson',
         data
-      })
+      }))
     }
 
-    if (!map.getLayer(ids.editingLayerId)) {
-      map.addLayer({
+    if (!hasLayer(ids.editingLayerId)) {
+      safeMapCall(() => map.addLayer({
         id: ids.editingLayerId,
         type: 'line',
         source: ids.editingSourceId,
@@ -148,7 +198,7 @@ export const createVectorGeofenceRulesMapAdapter = () => {
           'line-width': 2,
           'line-opacity': 1
         }
-      })
+      }))
     }
 
     return true
@@ -159,7 +209,7 @@ export const createVectorGeofenceRulesMapAdapter = () => {
     editingRuleId = null,
     editingAreaExists = false
   } = {}) => {
-    if (!isMapLibreMap(map)) {
+    if (!isMapLibreMap(map) || !isStyleReady()) {
       return
     }
 
@@ -197,18 +247,18 @@ export const createVectorGeofenceRulesMapAdapter = () => {
 
     const data = createFeatureCollection(features)
 
-    const source = map.getSource(ids.rulesSourceId)
+    const source = getGeoJsonSource(ids.rulesSourceId)
     if (source && typeof source.setData === 'function') {
-      source.setData(data)
+      safeMapCall(() => source.setData(data))
     } else {
-      map.addSource(ids.rulesSourceId, {
+      safeMapCall(() => map.addSource(ids.rulesSourceId, {
         type: 'geojson',
         data
-      })
+      }))
     }
 
-    if (!map.getLayer(ids.rulesFillLayerId)) {
-      map.addLayer({
+    if (!hasLayer(ids.rulesFillLayerId)) {
+      safeMapCall(() => map.addLayer({
         id: ids.rulesFillLayerId,
         type: 'fill',
         source: ids.rulesSourceId,
@@ -221,11 +271,11 @@ export const createVectorGeofenceRulesMapAdapter = () => {
           ],
           'fill-opacity': 0.06
         }
-      })
+      }))
     }
 
-    if (!map.getLayer(ids.rulesLineLayerId)) {
-      map.addLayer({
+    if (!hasLayer(ids.rulesLineLayerId)) {
+      safeMapCall(() => map.addLayer({
         id: ids.rulesLineLayerId,
         type: 'line',
         source: ids.rulesSourceId,
@@ -240,7 +290,7 @@ export const createVectorGeofenceRulesMapAdapter = () => {
           'line-dasharray': [2, 2],
           'line-opacity': 0.95
         }
-      })
+      }))
     }
   }
 
@@ -336,12 +386,16 @@ export const createVectorGeofenceRulesMapAdapter = () => {
     }
 
     const getFeatureAtPoint = (eventPayload) => {
-      const layers = [ids.rulesFillLayerId, ids.rulesLineLayerId].filter((layerId) => map.getLayer(layerId))
+      if (!isStyleReady()) {
+        return null
+      }
+
+      const layers = [ids.rulesFillLayerId, ids.rulesLineLayerId].filter((layerId) => hasLayer(layerId))
       if (layers.length === 0) {
         return null
       }
 
-      const features = map.queryRenderedFeatures(eventPayload.point, { layers })
+      const features = safeMapCall(() => map.queryRenderedFeatures(eventPayload.point, { layers }), [])
       if (!Array.isArray(features) || features.length === 0) {
         return null
       }
@@ -377,16 +431,22 @@ export const createVectorGeofenceRulesMapAdapter = () => {
 
     eventHandlers.mousemove = (eventPayload) => {
       const feature = getFeatureAtPoint(eventPayload)
-      map.getCanvas().style.cursor = feature ? 'pointer' : ''
+      const canvas = safeMapCall(() => map.getCanvas(), null)
+      if (canvas?.style) {
+        canvas.style.cursor = feature ? 'pointer' : ''
+      }
     }
 
     eventHandlers.mouseleave = () => {
-      map.getCanvas().style.cursor = ''
+      const canvas = safeMapCall(() => map.getCanvas(), null)
+      if (canvas?.style) {
+        canvas.style.cursor = ''
+      }
     }
 
-    map.on('click', eventHandlers.click)
-    map.on('mousemove', eventHandlers.mousemove)
-    map.on('mouseleave', eventHandlers.mouseleave)
+    safeMapCall(() => map.on('click', eventHandlers.click))
+    safeMapCall(() => map.on('mousemove', eventHandlers.mousemove))
+    safeMapCall(() => map.on('mouseleave', eventHandlers.mouseleave))
   }
 
   const detachEvents = () => {
@@ -395,17 +455,17 @@ export const createVectorGeofenceRulesMapAdapter = () => {
     }
 
     if (eventHandlers.click) {
-      map.off('click', eventHandlers.click)
+      safeMapCall(() => map.off('click', eventHandlers.click))
       eventHandlers.click = null
     }
 
     if (eventHandlers.mousemove) {
-      map.off('mousemove', eventHandlers.mousemove)
+      safeMapCall(() => map.off('mousemove', eventHandlers.mousemove))
       eventHandlers.mousemove = null
     }
 
     if (eventHandlers.mouseleave) {
-      map.off('mouseleave', eventHandlers.mouseleave)
+      safeMapCall(() => map.off('mouseleave', eventHandlers.mouseleave))
       eventHandlers.mouseleave = null
     }
   }

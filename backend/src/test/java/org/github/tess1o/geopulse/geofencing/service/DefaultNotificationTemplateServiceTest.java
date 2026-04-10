@@ -58,12 +58,14 @@ class DefaultNotificationTemplateServiceTest {
             assertThat(t.getDefaultForEnter()).isTrue();
             assertThat(t.getDefaultForLeave()).isFalse();
             assertThat(t.getDestination()).isEmpty();
+            assertThat(t.getSendInApp()).isTrue();
             assertThat(t.getBodyTemplate()).contains("{{eventVerb}}");
         });
         assertThat(created).anySatisfy(t -> {
             assertThat(t.getDefaultForEnter()).isFalse();
             assertThat(t.getDefaultForLeave()).isTrue();
             assertThat(t.getDestination()).isEmpty();
+            assertThat(t.getSendInApp()).isTrue();
             assertThat(t.getBodyTemplate()).contains("{{eventVerb}}");
         });
     }

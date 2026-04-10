@@ -25,4 +25,7 @@ public class CreateNotificationTemplateRequest {
 
     @NotNull
     private Boolean enabled;
+
+    @NotNull
+    private Boolean sendInApp;
 }

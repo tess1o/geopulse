@@ -112,7 +112,7 @@
               />
               <i
                 class="pi pi-info-circle rule-sentence-info"
-                v-tooltip.bottom="'If no template is selected, default ENTER template is used; otherwise fallback is built-in in-app message.'"
+                v-tooltip.bottom="'If no template is selected, default ENTER template is used when enabled. If no template resolves, event is logged without inbox notification.'"
               />
             </div>
 
@@ -137,7 +137,7 @@
               />
               <i
                 class="pi pi-info-circle rule-sentence-info"
-                v-tooltip.bottom="'If no template is selected, default LEAVE template is used; otherwise fallback is built-in in-app message.'"
+                v-tooltip.bottom="'If no template is selected, default LEAVE template is used when enabled. If no template resolves, event is logged without inbox notification.'"
               />
             </div>
 

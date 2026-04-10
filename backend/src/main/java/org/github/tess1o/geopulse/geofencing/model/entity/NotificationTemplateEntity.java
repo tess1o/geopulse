@@ -49,6 +49,10 @@ public class NotificationTemplateEntity {
     @Builder.Default
     private Boolean enabled = true;
 
+    @Column(name = "send_in_app", nullable = false)
+    @Builder.Default
+    private Boolean sendInApp = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -68,6 +72,9 @@ public class NotificationTemplateEntity {
         }
         if (enabled == null) {
             enabled = true;
+        }
+        if (sendInApp == null) {
+            sendInApp = true;
         }
     }
 

@@ -472,6 +472,7 @@ function defaultTemplateForm() {
     destination: '',
     titleTemplate: '',
     bodyTemplate: '',
+    sendInApp: true,
     sendExternal: false,
     defaultForEnter: false,
     defaultForLeave: false,
@@ -687,7 +688,13 @@ function validateTemplateForm() {
     errors.name = 'Template name must be 120 characters or less.'
   }
 
-  const requiresDestination = appriseEnabled.value && form.sendExternal
+  const externalEnabled = appriseEnabled.value && form.sendExternal
+  const hasAnyEnabledChannel = !!form.sendInApp || externalEnabled
+  if (form.enabled && !hasAnyEnabledChannel) {
+    errors.general = 'Enabled templates must have at least one active channel: in-app or external.'
+  }
+
+  const requiresDestination = externalEnabled
   if (requiresDestination) {
     const destinationError = validateDestinationLines(form.destination)
     if (destinationError) {
@@ -1269,6 +1276,7 @@ function editTemplate(template) {
     destination,
     titleTemplate: template.titleTemplate || '',
     bodyTemplate: template.bodyTemplate || '',
+    sendInApp: template.sendInApp !== false,
     sendExternal: appriseEnabled.value ? hasExternalDestination : false,
     defaultForEnter: !!template.defaultForEnter,
     defaultForLeave: !!template.defaultForLeave,
@@ -1631,6 +1639,15 @@ watch(
       templateFormErrors.value.general = ''
     }
     templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => templateForm.value.sendInApp,
+  () => {
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
   }
 )
 

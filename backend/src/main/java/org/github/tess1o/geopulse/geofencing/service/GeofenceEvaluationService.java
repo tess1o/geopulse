@@ -263,7 +263,9 @@ public class GeofenceEvaluationService {
         metadataSnapshot.put("lat", point.getCoordinates().getY());
         metadataSnapshot.put("lon", point.getCoordinates().getX());
 
-        notificationProjectionService.publishSnapshot(event, metadataSnapshot);
+        if (shouldPublishInApp(template)) {
+            notificationProjectionService.publishSnapshot(event, metadataSnapshot);
+        }
     }
 
     private NotificationTemplateEntity resolveTemplate(GeofenceRuleEntity rule, GeofenceEventType eventType) {
@@ -287,6 +289,11 @@ public class GeofenceEvaluationService {
                 && Boolean.TRUE.equals(template.getEnabled())
                 && template.getDestination() != null
                 && !template.getDestination().isBlank();
+    }
+
+    private boolean shouldPublishInApp(NotificationTemplateEntity template) {
+        // Bell/toast inbox projection should happen only when an in-app-enabled template is resolved.
+        return template != null && Boolean.TRUE.equals(template.getSendInApp());
     }
 
     private boolean isMonitored(GeofenceRuleEntity rule, GeofenceEventType eventType) {

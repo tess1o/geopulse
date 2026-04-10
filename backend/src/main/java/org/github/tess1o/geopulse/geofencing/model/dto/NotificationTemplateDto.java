@@ -16,6 +16,7 @@ public class NotificationTemplateDto {
     private Boolean defaultForEnter;
     private Boolean defaultForLeave;
     private Boolean enabled;
+    private Boolean sendInApp;
     private Instant createdAt;
     private Instant updatedAt;
 }

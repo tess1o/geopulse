@@ -66,6 +66,7 @@ class NotificationTemplateServiceTest {
         request.setDefaultForEnter(false);
         request.setDefaultForLeave(false);
         request.setEnabled(true);
+        request.setSendInApp(true);
 
         NotificationTemplateDto result = service.createTemplate(userId, request);
 
@@ -89,6 +90,7 @@ class NotificationTemplateServiceTest {
         request.setDefaultForEnter(false);
         request.setDefaultForLeave(false);
         request.setEnabled(true);
+        request.setSendInApp(true);
 
         service.createTemplate(userId, request);
 
@@ -111,12 +113,14 @@ class NotificationTemplateServiceTest {
         request.setBodyTemplate("Body");
         request.setDefaultForEnter(false);
         request.setDefaultForLeave(false);
+        request.setSendInApp(true);
 
         service.createTemplate(userId, request);
 
         ArgumentCaptor<NotificationTemplateEntity> captor = ArgumentCaptor.forClass(NotificationTemplateEntity.class);
         verify(templateRepository).persist(captor.capture());
         assertThat(captor.getValue().getEnabled()).isTrue();
+        assertThat(captor.getValue().getSendInApp()).isTrue();
     }
 
     @Test
@@ -131,6 +135,7 @@ class NotificationTemplateServiceTest {
         request.setDefaultForEnter(false);
         request.setDefaultForLeave(false);
         request.setEnabled(true);
+        request.setSendInApp(true);
 
         assertThatThrownBy(() -> service.createTemplate(userId, request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -149,6 +154,7 @@ class NotificationTemplateServiceTest {
         request.setDefaultForEnter(false);
         request.setDefaultForLeave(false);
         request.setEnabled(true);
+        request.setSendInApp(true);
 
         assertThatThrownBy(() -> service.createTemplate(userId, request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -171,6 +177,7 @@ class NotificationTemplateServiceTest {
         request.setDefaultForEnter(true);
         request.setDefaultForLeave(false);
         request.setEnabled(true);
+        request.setSendInApp(true);
 
         service.createTemplate(userId, request);
 
@@ -195,6 +202,7 @@ class NotificationTemplateServiceTest {
                 .defaultForEnter(false)
                 .defaultForLeave(false)
                 .enabled(false)
+                .sendInApp(false)
                 .build();
 
         when(templateRepository.findByIdAndUser(templateId, userId)).thenReturn(Optional.of(entity));
@@ -205,7 +213,76 @@ class NotificationTemplateServiceTest {
         service.updateTemplate(userId, templateId, request);
 
         assertThat(entity.getEnabled()).isFalse();
+        assertThat(entity.getSendInApp()).isFalse();
         verify(entityManager).flush();
+    }
+
+    @Test
+    void shouldRejectEnabledTemplateWhenAllChannelsDisabled() {
+        UUID userId = UUID.randomUUID();
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("No Channels");
+        request.setDestination("");
+        request.setTitleTemplate("Title");
+        request.setBodyTemplate("Body");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+        request.setEnabled(true);
+        request.setSendInApp(false);
+
+        assertThatThrownBy(() -> service.createTemplate(userId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at least one active channel");
+    }
+
+    @Test
+    void shouldAllowDisabledTemplateWhenAllChannelsDisabled() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(entityManager.getReference(eq(UserEntity.class), eq(userId))).thenReturn(user);
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("Disabled no channels");
+        request.setDestination("");
+        request.setTitleTemplate("Title");
+        request.setBodyTemplate("Body");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+        request.setEnabled(false);
+        request.setSendInApp(false);
+
+        NotificationTemplateDto result = service.createTemplate(userId, request);
+
+        assertThat(result.getEnabled()).isFalse();
+        assertThat(result.getSendInApp()).isFalse();
+        verify(templateRepository).persist(any(NotificationTemplateEntity.class));
+    }
+
+    @Test
+    void shouldMapSendInAppToDto() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(entityManager.getReference(eq(UserEntity.class), eq(userId))).thenReturn(user);
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("External only");
+        request.setDestination("discord://token");
+        request.setTitleTemplate("Title");
+        request.setBodyTemplate("Body");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+        request.setEnabled(true);
+        request.setSendInApp(false);
+
+        NotificationTemplateDto result = service.createTemplate(userId, request);
+
+        ArgumentCaptor<NotificationTemplateEntity> captor = ArgumentCaptor.forClass(NotificationTemplateEntity.class);
+        verify(templateRepository).persist(captor.capture());
+        assertThat(captor.getValue().getSendInApp()).isFalse();
+        assertThat(result.getSendInApp()).isFalse();
     }
 
     @Test

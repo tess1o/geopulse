@@ -48,6 +48,17 @@
           <section class="editor-section">
             <h4>Delivery</h4>
 
+            <div class="external-toggle">
+              <Checkbox
+                inputId="template-send-in-app"
+                v-model="templateSendInAppModel"
+                :binary="true"
+              />
+              <label for="template-send-in-app" class="checkbox-label">
+                Send in-app
+              </label>
+            </div>
+
             <div v-if="appriseEnabled" class="external-toggle">
               <Checkbox
                 inputId="template-send-external"
@@ -383,6 +394,7 @@ const templateNameModel = createFieldModel('name')
 const templateDestinationModel = createFieldModel('destination')
 const templateTitleModel = createFieldModel('titleTemplate')
 const templateBodyModel = createFieldModel('bodyTemplate')
+const templateSendInAppModel = createFieldModel('sendInApp')
 const templateSendExternalModel = createFieldModel('sendExternal')
 const templateDefaultForEnterModel = createFieldModel('defaultForEnter')
 const templateDefaultForLeaveModel = createFieldModel('defaultForLeave')

@@ -62,7 +62,14 @@ public class NotificationTemplateService {
     @Transactional
     public NotificationTemplateDto createTemplate(UUID userId, CreateNotificationTemplateRequest request) {
         TemplateWriteInput writeInput = buildCreateWriteInput(request);
-        validateTemplateRequest(writeInput.name(), writeInput.destination(), writeInput.titleTemplate(), writeInput.bodyTemplate());
+        validateTemplateRequest(
+                writeInput.name(),
+                writeInput.destination(),
+                writeInput.titleTemplate(),
+                writeInput.bodyTemplate(),
+                writeInput.enabled(),
+                writeInput.sendInApp()
+        );
 
         NotificationTemplateEntity entity = NotificationTemplateEntity.builder()
                 .user(entityManager.getReference(UserEntity.class, userId))
@@ -77,7 +84,14 @@ public class NotificationTemplateService {
                 .orElseThrow(() -> new IllegalArgumentException("Notification template not found"));
 
         TemplateWriteInput writeInput = buildUpdateWriteInput(entity, request);
-        validateTemplateRequest(writeInput.name(), writeInput.destination(), writeInput.titleTemplate(), writeInput.bodyTemplate());
+        validateTemplateRequest(
+                writeInput.name(),
+                writeInput.destination(),
+                writeInput.titleTemplate(),
+                writeInput.bodyTemplate(),
+                writeInput.enabled(),
+                writeInput.sendInApp()
+        );
         return persistTemplate(userId, entity, writeInput, false);
     }
 
@@ -121,11 +135,14 @@ public class NotificationTemplateService {
     private void validateTemplateRequest(String name,
                                          String destination,
                                          String titleTemplate,
-                                         String bodyTemplate) {
+                                         String bodyTemplate,
+                                         boolean enabled,
+                                         boolean sendInApp) {
         validateName(name);
         validateDestination(destination);
         validateTemplateSyntax("Title template", titleTemplate);
         validateTemplateSyntax("Body template", bodyTemplate);
+        validateEnabledChannels(enabled, sendInApp, destination);
     }
 
     private void validateName(String name) {
@@ -163,6 +180,19 @@ public class NotificationTemplateService {
         String templateWithoutMacros = TEMPLATE_MACRO_PATTERN.matcher(template).replaceAll("");
         if (templateWithoutMacros.contains("{{") || templateWithoutMacros.contains("}}")) {
             throw new IllegalArgumentException(fieldName + " contains invalid macro syntax. Use {{macroName}}.");
+        }
+    }
+
+    private void validateEnabledChannels(boolean enabled, boolean sendInApp, String destination) {
+        if (!enabled) {
+            return;
+        }
+
+        boolean hasExternalDestination = destination != null && !destination.isBlank();
+        if (!sendInApp && !hasExternalDestination) {
+            throw new IllegalArgumentException(
+                    "Enabled template must have at least one active channel: in-app or external destination."
+            );
         }
     }
 
@@ -219,6 +249,7 @@ public class NotificationTemplateService {
                 .defaultForEnter(entity.getDefaultForEnter())
                 .defaultForLeave(entity.getDefaultForLeave())
                 .enabled(entity.getEnabled())
+                .sendInApp(entity.getSendInApp())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -232,7 +263,8 @@ public class NotificationTemplateService {
                 normalizeTemplate(request.getBodyTemplate()),
                 Boolean.TRUE.equals(request.getDefaultForEnter()),
                 Boolean.TRUE.equals(request.getDefaultForLeave()),
-                request.getEnabled() == null || request.getEnabled()
+                request.getEnabled() == null || request.getEnabled(),
+                request.getSendInApp() == null || request.getSendInApp()
         );
     }
 
@@ -245,7 +277,8 @@ public class NotificationTemplateService {
                 request.getBodyTemplate() != null ? normalizeTemplate(request.getBodyTemplate()) : entity.getBodyTemplate(),
                 request.getDefaultForEnter() != null ? request.getDefaultForEnter() : Boolean.TRUE.equals(entity.getDefaultForEnter()),
                 request.getDefaultForLeave() != null ? request.getDefaultForLeave() : Boolean.TRUE.equals(entity.getDefaultForLeave()),
-                request.getEnabled() != null ? request.getEnabled() : Boolean.TRUE.equals(entity.getEnabled())
+                request.getEnabled() != null ? request.getEnabled() : Boolean.TRUE.equals(entity.getEnabled()),
+                request.getSendInApp() != null ? request.getSendInApp() : Boolean.TRUE.equals(entity.getSendInApp())
         );
     }
 
@@ -283,6 +316,7 @@ public class NotificationTemplateService {
         entity.setDefaultForEnter(writeInput.defaultForEnter());
         entity.setDefaultForLeave(writeInput.defaultForLeave());
         entity.setEnabled(writeInput.enabled());
+        entity.setSendInApp(writeInput.sendInApp());
     }
 
     private record TemplateWriteInput(String name,
@@ -291,6 +325,7 @@ public class NotificationTemplateService {
                                       String bodyTemplate,
                                       boolean defaultForEnter,
                                       boolean defaultForLeave,
-                                      boolean enabled) {
+                                      boolean enabled,
+                                      boolean sendInApp) {
     }
 }

@@ -50,6 +50,7 @@ public class DefaultNotificationTemplateService {
                     .defaultForEnter(true)
                     .defaultForLeave(false)
                     .enabled(true)
+                    .sendInApp(true)
                     .build();
             templateRepository.persist(enterTemplate);
         }
@@ -64,6 +65,7 @@ public class DefaultNotificationTemplateService {
                     .defaultForEnter(false)
                     .defaultForLeave(true)
                     .enabled(true)
+                    .sendInApp(true)
                     .build();
             templateRepository.persist(leaveTemplate);
         }

@@ -460,6 +460,7 @@ class GeofenceEventsResourceIntegrationTest {
                     .defaultForEnter(false)
                     .defaultForLeave(false)
                     .enabled(true)
+                    .sendInApp(true)
                     .build();
             templateRepository.persist(template);
             templateRepository.flush();
