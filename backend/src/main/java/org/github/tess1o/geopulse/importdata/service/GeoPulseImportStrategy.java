@@ -308,6 +308,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         BatchProcessor.BatchResult result = batchProcessor.processInBatches(
             gpsEntities, batchSize, clearMode, job, baseProgress, baseProgress + 30);
+        if (result.imported > 0) {
+            job.setGpsDataImported(true);
+        }
         
         log.info("Successfully imported {} GPS points using BatchProcessor (skipped {} duplicates)", 
                 result.imported, result.skipped);

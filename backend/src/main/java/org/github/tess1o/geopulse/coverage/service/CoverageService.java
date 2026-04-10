@@ -59,6 +59,13 @@ public class CoverageService {
         coverageRepository.upsertLastProcessed(userId, upperBound);
     }
 
+    @Transactional
+    public void rebuildUserCoverage(UUID userId) {
+        coverageRepository.deleteCoverageCells(userId);
+        coverageRepository.resetProcessingCursor(userId);
+        processUserCoverage(userId);
+    }
+
     public List<CoverageCell> getCoverageCells(UUID userId,
                                                double minLon,
                                                double minLat,

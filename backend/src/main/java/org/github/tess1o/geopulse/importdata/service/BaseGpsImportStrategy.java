@@ -128,6 +128,9 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             // Start streaming import with direct DB writes
             job.updateProgress(20, progressMessage);
             StreamingImportResult result = streamingFunction.execute(job, user, clearMode);
+            if (result.imported > 0) {
+                job.setGpsDataImported(true);
+            }
 
             // Use timestamp from validation, or fall back to streaming result
             if (firstTimestamp == null) {

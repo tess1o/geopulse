@@ -44,6 +44,12 @@ public class ImportJob {
     // but data import is done. This prevents re-processing the same job.
     private boolean dataProcessingCompleted = false;
 
+    // True when import actually inserted GPS data and coverage rebuild should be considered.
+    private boolean gpsDataImported = false;
+
+    // Tracks that a coverage rebuild has been triggered for this import.
+    private boolean coverageRecalculationStarted = false;
+
     @ToString.Exclude
     private byte[] fileData;
 

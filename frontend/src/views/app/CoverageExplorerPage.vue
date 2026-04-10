@@ -33,6 +33,16 @@
               <span class="toggle-text">{{ coverageToggleLabel }}</span>
             </div>
           </div>
+          <div v-if="userEnabled" class="coverage-recalculate">
+            <label class="control-label">Refresh</label>
+            <Button
+              label="Recalculate Coverage"
+              icon="pi pi-refresh"
+              :disabled="!canRecalculateCoverage"
+              :loading="settingsUpdating && !statusLoading"
+              @click="handleCoverageRecalculation"
+            />
+          </div>
         </div>
       </template>
 
@@ -235,6 +245,13 @@ const coverageToggleLabel = computed(() => {
 })
 const canToggleCoverage = computed(() =>
   statusReady.value && !settingsUpdating.value && !processing.value
+)
+const canRecalculateCoverage = computed(() =>
+  statusReady.value
+  && userEnabled.value
+  && !settingsUpdating.value
+  && !processing.value
+  && !statusLoading.value
 )
 
 const getGridForZoom = (zoom) => {
@@ -449,6 +466,25 @@ const enableCoverageFromOverlay = async () => {
   await handleCoverageToggle()
 }
 
+const handleCoverageRecalculation = async () => {
+  if (!canRecalculateCoverage.value) {
+    return
+  }
+  try {
+    const updated = await coverageStore.recalculateCoverage()
+    if (updated?.processing) {
+      startStatusPolling()
+      return
+    }
+    coverageStore.invalidateSummary(summaryGrid)
+    await loadSummary()
+    lastRequestKey = ''
+    scheduleFetch()
+  } catch (error) {
+    console.error('Failed to recalculate coverage:', error)
+  }
+}
+
 const loadSummary = async () => {
   if (!coverageAllowed.value) {
     summary.value = null
@@ -624,6 +660,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 0.35rem;
   min-width: 160px;
+}
+
+.coverage-recalculate {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .toggle-row {
@@ -816,7 +858,8 @@ onBeforeUnmount(() => {
   }
 
   .grid-control,
-  .coverage-toggle {
+  .coverage-toggle,
+  .coverage-recalculate {
     width: 100%;
     min-width: 0;
   }

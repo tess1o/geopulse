@@ -52,6 +52,27 @@ public class CoverageRepository {
                 .executeUpdate();
     }
 
+    @Transactional
+    public void deleteCoverageCells(UUID userId) {
+        entityManager.createNativeQuery(
+                        "DELETE FROM coverage_cells WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+    }
+
+    @Transactional
+    public void resetProcessingCursor(UUID userId) {
+        entityManager.createNativeQuery(
+                        "INSERT INTO coverage_state (user_id, last_processed, last_processed_point_id, updated_at) " +
+                                "VALUES (:userId, NULL, NULL, NOW()) " +
+                                "ON CONFLICT (user_id) DO UPDATE SET " +
+                                "last_processed = NULL, " +
+                                "last_processed_point_id = NULL, " +
+                                "updated_at = NOW()")
+                .setParameter("userId", userId)
+                .executeUpdate();
+    }
+
     public List<UUID> findUsersWithNewCoverage(double maxAccuracyMeters, int staleTimeoutSeconds) {
         @SuppressWarnings("unchecked")
         List<Object> results = entityManager.createNativeQuery(
