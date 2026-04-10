@@ -23,6 +23,7 @@ const isolatedSpecs = [
   '**/trips-management.spec.js',
   '**/trip-workspace.spec.js',
   '**/friends.spec.js',
+  '**/friends-map.spec.js',
   '**/favorites-management.spec.js',
   '**/geofences.spec.js',
   '**/timeline-map-interactions.spec.js',
@@ -88,7 +89,22 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        mapMode: 'RASTER',
+      },
+    },
+    {
+      name: 'chromium-vector',
+      testMatch: [
+        '**/timeline-map-interactions.spec.js',
+        '**/favorites-management.spec.js',
+        '**/friends-map.spec.js',
+      ],
+      use: {
+        ...devices['Desktop Chrome'],
+        mapMode: 'VECTOR',
+      },
     },
 
     // Uncomment to test on Firefox and Safari

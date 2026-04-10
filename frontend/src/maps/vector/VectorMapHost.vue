@@ -71,6 +71,38 @@ const isReady = ref(false)
 const isInitializing = ref(false)
 const appliedStyleUrl = ref('')
 
+const shouldExposeMapForE2E = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.__GP_E2E_MAP_DEBUG_ENABLED__ === true || window.__GP_E2E_MAP_DEBUG__?.enabled === true
+}
+
+const registerMapForE2E = (mapInstance) => {
+  if (!shouldExposeMapForE2E() || !mapInstance) {
+    return
+  }
+
+  window.__GP_E2E_MAPS = window.__GP_E2E_MAPS || {}
+  window.__GP_E2E_MAPS[props.mapId] = mapInstance
+}
+
+const unregisterMapForE2E = (mapInstance = null) => {
+  if (typeof window === 'undefined' || !window.__GP_E2E_MAPS) {
+    return
+  }
+
+  const registered = window.__GP_E2E_MAPS[props.mapId]
+  if (!registered) {
+    return
+  }
+
+  if (!mapInstance || registered === mapInstance) {
+    delete window.__GP_E2E_MAPS[props.mapId]
+  }
+}
+
 const currentStyleSource = computed(() => {
   return resolveVectorStyleSource({
     overrideStyleUrl: props.customStyleUrl,
@@ -192,6 +224,7 @@ const createMapInstance = () => {
     }
 
     markMapEngineMode(vectorMap, MAP_RENDER_MODES.VECTOR)
+    registerMapForE2E(vectorMap)
     isReady.value = true
     isInitializing.value = false
 
@@ -509,6 +542,7 @@ onUnmounted(() => {
   }
 
   if (map.value) {
+    unregisterMapForE2E(map.value)
     try {
       map.value.remove()
     } catch {

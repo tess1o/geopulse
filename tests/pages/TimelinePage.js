@@ -9,6 +9,19 @@ export class TimelinePage {
     this.page = page;
   }
 
+  async resolveMapModeFromPage() {
+    try {
+      const mode = await this.page.evaluate(() => window.__GP_E2E_MAP_DEBUG__?.mode || null);
+      if (!mode) {
+        return null;
+      }
+
+      return String(mode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Check if currently on timeline page
    */
@@ -48,10 +61,18 @@ export class TimelinePage {
   /**
    * Common setup: login and navigate to timeline page
    */
-  async loginAndNavigate(testUser = TestData.users.existing) {
+  async loginAndNavigate(testUser = TestData.users.existing, options = {}) {
     const loginPage = new LoginPage(this.page);
+    const mapMode = options?.mapMode || await this.resolveMapModeFromPage();
+    const dbManager = options?.dbManager || null;
     
     await UserFactory.createUser(this.page, testUser);
+    if (dbManager && mapMode) {
+      await dbManager.client.query(
+        'UPDATE users SET map_render_mode = $2 WHERE email = $1',
+        [testUser.email, mapMode]
+      );
+    }
     await loginPage.navigate();
     await loginPage.login(testUser.email, testUser.password);
     await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
@@ -62,9 +83,18 @@ export class TimelinePage {
   /**
    * Setup timeline test with data and navigation to date range
    */
-  async setupTimelineWithData(dbManager, dataInsertFunction, testUser = TestData.users.existing, dateRange = null) {
+  async setupTimelineWithData(dbManager, dataInsertFunction, testUser = TestData.users.existing, dateRange = null, options = {}) {
+    const mapMode = options?.mapMode || await this.resolveMapModeFromPage();
+
     // Login and navigate
     await UserFactory.createUser(this.page, testUser);
+    if (mapMode) {
+      const normalizedMode = String(mapMode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
+      await dbManager.client.query(
+        'UPDATE users SET map_render_mode = $2 WHERE email = $1',
+        [testUser.email, normalizedMode]
+      );
+    }
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
 
     const loginPage = new LoginPage(this.page);

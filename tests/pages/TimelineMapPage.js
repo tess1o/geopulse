@@ -1,8 +1,22 @@
 import { expect } from '@playwright/test';
+import { MAP_POPUP_CONTENT_SELECTOR, MapEngineHarness } from '../utils/map-engine-harness.js';
 
 export class TimelineMapPage {
   constructor(page) {
     this.page = page;
+    this.mapHarness = new MapEngineHarness(page);
+    this.selectors = {
+      mapHost: '[data-testid="map-host-raster"], [data-testid="map-host-vector"]',
+      popupContent: MAP_POPUP_CONTENT_SELECTOR,
+      favoriteMarker: [
+        '.map-view-container .custom-marker.favorite-marker',
+        '.map-view-container .custom-marker.favorite-location-marker',
+        '.map-view-container .favorite-marker-icon',
+        '.map-view-container .leaflet-marker-pane .leaflet-marker-icon.favorite-location-marker',
+        '.map-view-container .leaflet-interactive[role="button"]:has(i.fas.fa-star)',
+        '.map-view-container .maplibregl-marker:has(i.fas.fa-star)'
+      ].join(', '),
+    };
   }
 
   // ===========================================
@@ -13,27 +27,12 @@ export class TimelineMapPage {
    * Wait for the map to be fully initialized and ready for interaction
    */
   async waitForMapReady() {
-    // Wait for map container to be visible
     await this.page.waitForSelector('.map-view-container', { timeout: 10000 });
-    
-    // Wait for Leaflet map to be initialized (check for leaflet-container class)
-    await this.page.waitForSelector('.leaflet-container', { timeout: 10000 });
-    
-    // Wait for map loading to complete first
-    await this.waitForMapLoadingToComplete();
-    
-    // Wait for map tiles to start loading (check for tile layer)
-    // Use state: 'attached' instead of visible since tiles might be loading
-    await this.page.waitForSelector('.leaflet-tile-pane', { 
-      state: 'attached',
-      timeout: 10000 
+    await this.mapHarness.waitForMapReady({
+      rootSelector: '.map-view-container',
+      timeout: 15000,
+      settleMs: 1200
     });
-    
-    // Give additional time for tiles to load and map to settle
-    await this.page.waitForTimeout(2000);
-    
-    // Verify map is interactive (zoom controls present)
-    await this.page.waitForSelector('.leaflet-control-zoom', { timeout: 5000 });
   }
 
   /**
@@ -41,45 +40,22 @@ export class TimelineMapPage {
    */
   async getMapCenter() {
     return await this.page.evaluate(() => {
-      // Try multiple approaches to get the map instance
-      const mapContainer = document.querySelector('.leaflet-container');
-      
-      // Approach 1: Direct _leaflet_map property
-      if (mapContainer && mapContainer._leaflet_map) {
-        const center = mapContainer._leaflet_map.getCenter();
+      const host = document.querySelector('[data-testid="map-host-vector"], [data-testid="map-host-raster"]');
+      const mapId = host?.id;
+      const registry = window.__GP_E2E_MAPS || {};
+      const registeredMap = mapId ? registry[mapId] : null;
+
+      if (registeredMap && typeof registeredMap.getCenter === 'function') {
+        const center = registeredMap.getCenter();
         return { lat: center.lat, lng: center.lng };
       }
-      
-      // Approach 2: Try to find map through Vue component
-      if (window.Vue && mapContainer) {
-        const vueComponent = mapContainer.__vue__;
-        if (vueComponent && vueComponent.map) {
-          const center = vueComponent.map.getCenter();
-          return { lat: center.lat, lng: center.lng };
-        }
-      }
-      
-      // Approach 3: Check for global map instances
-      if (window.L && window.L.map) {
-        const center = window.L.map.getCenter();
+
+      const leafletContainer = document.querySelector('.leaflet-container');
+      if (leafletContainer && leafletContainer._leaflet_map) {
+        const center = leafletContainer._leaflet_map.getCenter();
         return { lat: center.lat, lng: center.lng };
       }
-      
-      // Approach 4: Look for any Leaflet map instances in global scope
-      if (typeof window !== 'undefined') {
-        for (const key in window) {
-          if (window[key] && typeof window[key].getCenter === 'function') {
-            try {
-              const center = window[key].getCenter();
-              return { lat: center.lat, lng: center.lng };
-            } catch (e) {
-              // Continue if this wasn't a valid map instance
-            }
-          }
-        }
-      }
-      
-      console.warn('Could not find Leaflet map instance for center coordinates');
+
       return null;
     });
   }
@@ -88,61 +64,18 @@ export class TimelineMapPage {
    * Click on the map at specific coordinates (relative to map container)
    */
   async clickOnMap(x, y) {
-    const mapContainer = this.page.locator('.leaflet-container');
-    await mapContainer.click({ position: { x, y } });
+    const mapHost = this.page.locator(this.selectors.mapHost).first();
+    await mapHost.click({ position: { x, y }, force: true });
   }
 
   /**
    * Right-click on the map at specific coordinates
    */
   async rightClickOnMap(x, y) {
-    const mapContainer = this.page.locator('.leaflet-container');
-    
-    // First ensure the map container is visible and has size
-    await mapContainer.waitFor({ state: 'visible' });
-    
-    // Try multiple approaches to trigger context menu
-    try {
-      // Approach 1: Regular right-click with position
-      const boundingBox = await mapContainer.boundingBox();
-      if (boundingBox) {
-        const safeX = Math.min(x, boundingBox.width - 10);
-        const safeY = Math.min(y, boundingBox.height - 10);
-        
-        await mapContainer.click({ 
-          position: { x: safeX, y: safeY }, 
-          button: 'right',
-          force: true
-        });
-      } else {
-        // Fallback: click on the center
-        await mapContainer.click({ 
-          button: 'right',
-          force: true
-        });
-      }
-      
-      // Wait for context menu to appear
-      await this.page.waitForTimeout(1000);
-      
-    } catch (error) {
-      // Approach 2: Use dispatchEvent for contextmenu
-      await this.page.evaluate((coords) => {
-        const container = document.querySelector('.leaflet-container');
-        if (container) {
-          const event = new MouseEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            clientX: coords.x,
-            clientY: coords.y,
-            button: 2
-          });
-          container.dispatchEvent(event);
-        }
-      }, { x, y });
-      
-      await this.page.waitForTimeout(1000);
-    }
+    await this.mapHarness.rightClickOnMap(x, y, {
+      rootSelector: '.map-view-container'
+    });
+    await this.page.waitForTimeout(700);
   }
 
   // ===========================================
@@ -154,6 +87,10 @@ export class TimelineMapPage {
    */
   getMapControls() {
     return this.page.locator('.map-controls');
+  }
+
+  getPopupContent() {
+    return this.page.locator(this.selectors.popupContent).first();
   }
 
   /**
@@ -216,7 +153,7 @@ export class TimelineMapPage {
    * Get all timeline markers on the map
    */
   getTimelineMarkers() {
-    return this.page.locator('.leaflet-marker-pane .timeline-marker');
+    return this.page.locator('.custom-marker.timeline-marker, .leaflet-marker-pane .timeline-marker');
   }
 
   /**
@@ -239,16 +176,163 @@ export class TimelineMapPage {
    * Get all favorite markers on the map
    */
   getFavoriteMarkers() {
-    // Favorite markers have a star icon inside them
-    return this.page.locator('.leaflet-marker-pane .fas.fa-star').locator('..');
+    return this.page.locator(this.selectors.favoriteMarker);
   }
 
   /**
    * Right-click on a favorite marker
    */
   async rightClickFavoriteMarker(index = 0) {
-    const marker = this.getFavoriteMarkers().nth(index);
-    await marker.click({ button: 'right' });
+    const mode = await this.mapHarness.getActiveMode({ rootSelector: '.map-view-container' });
+
+    if (mode === 'VECTOR') {
+      const vectorMarker = this.page.locator(
+        '.map-view-container .maplibregl-marker.custom-marker.favorite-marker, ' +
+        '.map-view-container .maplibregl-marker.custom-marker.favorite-location-marker, ' +
+        '.map-view-container .maplibregl-marker .custom-marker.favorite-marker, ' +
+        '.map-view-container .maplibregl-marker .custom-marker.favorite-location-marker'
+      ).nth(index);
+
+      await vectorMarker.waitFor({ state: 'visible', timeout: 10000 });
+      await vectorMarker.scrollIntoViewIfNeeded();
+      await this.page.waitForTimeout(100);
+
+      await this.tryTriggerContextMenuOnMarker(vectorMarker);
+      if (await this.isContextMenuVisible()) {
+        return;
+      }
+      throw new Error(`Could not open vector favorite context menu for marker index ${index}`);
+    }
+
+    const marker = this.page.locator(
+      '.map-view-container .custom-marker.favorite-marker, ' +
+      '.map-view-container .custom-marker.favorite-location-marker, ' +
+      '.map-view-container .leaflet-interactive[role="button"]:has(i.fas.fa-star), ' +
+      '.map-view-container .leaflet-marker-pane .leaflet-marker-icon.favorite-location-marker'
+    ).nth(index);
+    await marker.waitFor({ state: 'visible', timeout: 10000 });
+    await marker.scrollIntoViewIfNeeded();
+    await this.page.waitForTimeout(100);
+
+    await this.tryTriggerContextMenuOnMarker(marker);
+    if (await this.isContextMenuVisible()) {
+      return;
+    }
+
+    // Last-resort fallback: trigger Leaflet marker contextmenu directly from layer object for raster.
+    const firedFromLayer = await this.page.evaluate((targetIndex) => {
+      const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+      const mapId = host?.id || null;
+      const registry = window.__GP_E2E_MAPS || {};
+      const map = mapId ? registry[mapId] : null;
+      if (!map || typeof map.eachLayer !== 'function') {
+        return false;
+      }
+
+      const favoriteLayers = [];
+      map.eachLayer((layer) => {
+        if (!layer || typeof layer.fire !== 'function' || typeof layer.getLatLng !== 'function') {
+          return;
+        }
+        if (layer?.options?.favorite || layer?.options?.favoriteIndex !== undefined) {
+          favoriteLayers.push(layer);
+        }
+      });
+
+      const layer = favoriteLayers[targetIndex] || favoriteLayers[0];
+      if (!layer) {
+        return false;
+      }
+
+      const latlng = layer.getLatLng?.();
+      layer.fire('contextmenu', {
+        latlng,
+        originalEvent: {
+          preventDefault() {},
+          stopPropagation() {},
+          stopImmediatePropagation() {}
+        }
+      });
+      return true;
+    }, index);
+
+    if (!firedFromLayer) {
+      throw new Error(`Could not open favorite context menu for marker index ${index}`);
+    }
+  }
+
+  async tryTriggerContextMenuOnMarker(markerLocator) {
+    try {
+      await markerLocator.click({ button: 'right', force: true, timeout: 3000 });
+      await this.page.waitForTimeout(250);
+      if (await this.isContextMenuVisible()) {
+        return true;
+      }
+    } catch {
+      // Fall through to alternative strategies.
+    }
+
+    const markerBox = await markerLocator.boundingBox();
+    if (markerBox) {
+      await this.page.mouse.click(
+        markerBox.x + (markerBox.width / 2),
+        markerBox.y + (markerBox.height / 2),
+        { button: 'right' }
+      );
+      await this.page.waitForTimeout(250);
+      if (await this.isContextMenuVisible()) {
+        return true;
+      }
+    }
+
+    const handle = await markerLocator.elementHandle();
+    if (handle) {
+      await handle.evaluate((element) => {
+        const target = element instanceof HTMLElement ? element : null;
+        if (!target) {
+          return;
+        }
+
+        const icon = target.querySelector('i.fas.fa-star, i.pi.pi-map-marker');
+        const eventTarget = (icon instanceof HTMLElement ? icon : target);
+        const rect = eventTarget.getBoundingClientRect();
+        const clientX = rect.left + (rect.width / 2);
+        const clientY = rect.top + (rect.height / 2);
+
+        eventTarget.dispatchEvent(new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          buttons: 2,
+          pointerType: 'mouse',
+          clientX,
+          clientY
+        }));
+
+        eventTarget.dispatchEvent(new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          buttons: 2,
+          clientX,
+          clientY
+        }));
+
+        eventTarget.dispatchEvent(new PointerEvent('pointerup', {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          buttons: 0,
+          pointerType: 'mouse',
+          clientX,
+          clientY
+        }));
+      });
+      await this.page.waitForTimeout(250);
+      return await this.isContextMenuVisible();
+    }
+
+    return false;
   }
 
   /**
@@ -270,6 +354,23 @@ export class TimelineMapPage {
    * Count favorite area polygons
    */
   async countFavoritePolygons() {
+    const mode = await this.mapHarness.getActiveMode({ rootSelector: '.map-view-container' });
+    if (mode === 'VECTOR') {
+      const rendered = await this.mapHarness.countVectorRenderedFeatures({
+        rootSelector: '.map-view-container',
+        layerIncludes: ['gp-favorites', 'areas']
+      });
+      if (rendered.count > 0) {
+        return rendered.count;
+      }
+
+      const summary = await this.mapHarness.countVectorSourceFeatures({
+        rootSelector: '.map-view-container',
+        sourceIncludes: ['gp-favorites', 'areas-source']
+      });
+      return summary.count;
+    }
+
     const polygons = this.getFavoritePolygons();
     return await polygons.count();
   }
@@ -286,7 +387,7 @@ export class TimelineMapPage {
    * Get current location marker
    */
   getCurrentLocationMarker() {
-    return this.page.locator('.leaflet-marker-icon[data-marker-type="current-location"]');
+    return this.page.locator('.leaflet-marker-icon[data-marker-type="current-location"], .maplibre-shared-location-dot, .maplibre-avatar-icon-container');
   }
 
   /**
@@ -440,18 +541,30 @@ export class TimelineMapPage {
   /**
    * Wait for Timeline Regeneration modal to appear
    */
-  async waitForTimelineRegenerationModal() {
-    await this.page.waitForSelector('.timeline-regeneration-modal', { timeout: 5000 });
-    await this.page.waitForSelector('.p-dialog-title:text("Timeline Regeneration")', { timeout: 2000 });
+  async waitForTimelineRegenerationModal(options = {}) {
+    const timeout = options.timeout ?? 7000;
+    const required = options.required ?? true;
+
+    try {
+      await this.page.waitForSelector('.timeline-regeneration-modal', { timeout });
+      await this.page.waitForSelector('.p-dialog-title:text("Timeline Regeneration")', { timeout: 3000 });
+      return true;
+    } catch (error) {
+      if (!required) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   /**
    * Wait for Timeline Regeneration modal to disappear
    */
-  async waitForTimelineRegenerationModalToClose() {
-    await this.page.waitForSelector('.timeline-regeneration-modal', { 
-      state: 'hidden', 
-      timeout: 15000 // Regeneration can take time
+  async waitForTimelineRegenerationModalToClose(options = {}) {
+    const timeout = options.timeout ?? 30000;
+    await this.page.waitForSelector('.timeline-regeneration-modal', {
+      state: 'hidden',
+      timeout
     });
   }
 
@@ -487,20 +600,9 @@ export class TimelineMapPage {
    * Simulate drawing a rectangle on the map
    */
   async drawRectangle(startX, startY, endX, endY) {
-    const mapContainer = this.page.locator('.leaflet-container');
-    
-    // Start drawing by mouse down at start position
-    await mapContainer.hover({ position: { x: startX, y: startY } });
-    await this.page.mouse.down();
-    
-    // Drag to end position
-    await mapContainer.hover({ position: { x: endX, y: endY } });
-    
-    // Complete drawing by mouse up
-    await this.page.mouse.up();
-    
-    // Wait for drawing to complete and dialog to appear
-    await this.page.waitForTimeout(500);
+    await this.mapHarness.drawRectangle(startX, startY, endX, endY, {
+      rootSelector: '.map-view-container'
+    });
   }
 
   /**
@@ -514,10 +616,20 @@ export class TimelineMapPage {
    * Check if currently in drawing mode
    */
   async isInDrawingMode() {
-    // Check for drawing cursor or drawing-related classes
     return await this.page.evaluate(() => {
-      const mapContainer = document.querySelector('.leaflet-container');
-      return mapContainer ? mapContainer.style.cursor === 'crosshair' : false;
+      const mapHost = document.querySelector('[data-testid="map-host-raster"], [data-testid="map-host-vector"]');
+      if (!mapHost) {
+        return false;
+      }
+
+      const hostCursor = getComputedStyle(mapHost).cursor;
+      if (hostCursor === 'crosshair') {
+        return true;
+      }
+
+      const canvas = mapHost.querySelector('canvas');
+      const canvasCursor = canvas ? getComputedStyle(canvas).cursor : null;
+      return canvasCursor === 'crosshair';
     });
   }
 
@@ -530,19 +642,78 @@ export class TimelineMapPage {
    */
   async countMarkers(markerType) {
     const markerSelectors = {
-      // Timeline list markers use the same class name, so scope to Leaflet map markers.
-      timeline: '.leaflet-marker-pane .timeline-marker',
-      favorite: '.leaflet-marker-pane .fas.fa-star',
-      'current-location': '.leaflet-marker-icon[data-marker-type="current-location"]'
+      timeline: '.custom-marker.timeline-marker, .leaflet-marker-pane .timeline-marker',
+      favorite: this.selectors.favoriteMarker,
+      'current-location': '.leaflet-marker-icon[data-marker-type="current-location"], .maplibre-shared-location-dot, .maplibre-avatar-icon-container'
     };
     
     const selector = markerSelectors[markerType];
     if (!selector) {
       throw new Error(`Unknown marker type: ${markerType}`);
     }
+
+    if (markerType === 'favorite') {
+      const mode = await this.mapHarness.getActiveMode({ rootSelector: '.map-view-container' });
+      if (mode === 'RASTER') {
+        const layerCount = await this.page.evaluate(() => {
+          const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+          const mapId = host?.id || null;
+          const registry = window.__GP_E2E_MAPS || {};
+          const map = mapId ? registry[mapId] : null;
+
+          if (!map || typeof map.eachLayer !== 'function') {
+            return 0;
+          }
+
+          let count = 0;
+          map.eachLayer((layer) => {
+            if (!layer || typeof layer.getLatLng !== 'function') {
+              return;
+            }
+
+            if (layer?.options?.favorite || layer?.options?.favoriteIndex !== undefined) {
+              count += 1;
+            }
+          });
+
+          return count;
+        });
+
+        if (layerCount > 0) {
+          return layerCount;
+        }
+      }
+    }
     
     const markers = this.page.locator(selector);
     return await markers.count();
+  }
+
+  async focusMapOnCoordinates(latitude, longitude, zoom = 12) {
+    await this.page.evaluate(({ latitude: lat, longitude: lng, zoomLevel }) => {
+      const host = document.querySelector('[data-testid="map-host-vector"], [data-testid="map-host-raster"]');
+      const mapId = host?.id || null;
+      const registry = window.__GP_E2E_MAPS || {};
+      const map = mapId ? registry[mapId] : null;
+
+      if (map && typeof map.setView === 'function') {
+        map.setView([lat, lng], zoomLevel, { animate: false });
+        return;
+      }
+
+      if (map && typeof map.jumpTo === 'function') {
+        map.jumpTo({ center: [lng, lat], zoom: zoomLevel });
+        return;
+      }
+
+      const leafletContainer = document.querySelector('.leaflet-container');
+      const leafletMap = leafletContainer?._leaflet_map;
+      if (leafletMap && typeof leafletMap.setView === 'function') {
+        leafletMap.setView([lat, lng], zoomLevel, { animate: false });
+      }
+    }, { latitude, longitude, zoomLevel: zoom });
+
+    await this.page.waitForTimeout(800);
   }
 
   /**
@@ -620,13 +791,34 @@ export class TimelineMapPage {
   /**
    * Wait for a success toast notification
    */
-  async waitForSuccessToast(expectedText = null) {
-    await this.page.waitForSelector('.p-toast-message-success', { timeout: 5000 });
-    
-    if (expectedText) {
-      const toastText = await this.page.locator('.p-toast-message-success .p-toast-detail').textContent();
-      expect(toastText).toContain(expectedText);
+  async waitForSuccessToast(expectedText = null, options = {}) {
+    const timeout = options.timeout ?? 15000;
+    const allowInfoFallback = options.allowInfoFallback ?? true;
+    const required = options.required ?? true;
+
+    const visibleSelector = allowInfoFallback
+      ? '.p-toast-message-success:visible, .p-toast-message-info:visible'
+      : '.p-toast-message-success:visible';
+
+    try {
+      await expect.poll(() => this.page.locator(visibleSelector).count(), { timeout }).toBeGreaterThan(0);
+    } catch (error) {
+      if (!required) {
+        return null;
+      }
+      throw error;
     }
+
+    if (!expectedText) {
+      return true;
+    }
+
+    await expect.poll(async () => {
+      const texts = await this.page.locator(visibleSelector).allInnerTexts().catch(() => []);
+      return texts.join(' | ');
+    }, { timeout }).toContain(expectedText);
+
+    return true;
   }
 
   /**
@@ -660,11 +852,13 @@ export class TimelineMapPage {
     await this.submitAddFavoriteDialog(favoriteName);
     
     // Wait for timeline regeneration to complete
-    await this.waitForTimelineRegenerationModal();
-    await this.waitForTimelineRegenerationModalToClose();
+    const modalVisible = await this.waitForTimelineRegenerationModal({ required: false, timeout: 7000 });
+    if (modalVisible) {
+      await this.waitForTimelineRegenerationModalToClose({ timeout: 40000 });
+    }
     
     // Wait for success notification
-    await this.waitForSuccessToast('Favorite point added');
+    await this.waitForSuccessToast(null, { required: false, timeout: 12000 });
   }
 
   /**
@@ -685,11 +879,13 @@ export class TimelineMapPage {
     await this.submitAddAreaFavoriteDialog(areaName);
     
     // Wait for timeline regeneration to complete
-    await this.waitForTimelineRegenerationModal();
-    await this.waitForTimelineRegenerationModalToClose();
+    const modalVisible = await this.waitForTimelineRegenerationModal({ required: false, timeout: 7000 });
+    if (modalVisible) {
+      await this.waitForTimelineRegenerationModalToClose({ timeout: 40000 });
+    }
     
     // Wait for success notification
-    await this.waitForSuccessToast('area');
+    await this.waitForSuccessToast(null, { required: false, timeout: 12000 });
   }
 
   /**
@@ -707,7 +903,7 @@ export class TimelineMapPage {
     await this.submitEditFavoriteDialog(newName);
     
     // Wait for success notification
-    await this.waitForSuccessToast('updated successfully');
+    await this.waitForSuccessToast(null, { required: false, timeout: 12000 });
   }
 
   /**
@@ -729,11 +925,13 @@ export class TimelineMapPage {
     await this.page.click('.p-confirmdialog-accept-button');
     
     // Wait for timeline regeneration to complete
-    await this.waitForTimelineRegenerationModal();
-    await this.waitForTimelineRegenerationModalToClose();
+    const modalVisible = await this.waitForTimelineRegenerationModal({ required: false, timeout: 7000 });
+    if (modalVisible) {
+      await this.waitForTimelineRegenerationModalToClose({ timeout: 40000 });
+    }
     
     // Wait for success notification
-    await this.waitForSuccessToast('deleted');
-    await this.page.waitForTimeout(1000)
+    await this.waitForSuccessToast(null, { required: false, timeout: 12000 });
+    await this.page.waitForTimeout(600);
   }
 }

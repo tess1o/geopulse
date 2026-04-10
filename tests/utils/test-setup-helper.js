@@ -20,15 +20,42 @@ import {GeofencesPage} from "../pages/GeofencesPage.js";
  * Centralized test setup utilities to eliminate duplication
  */
 export class TestSetupHelper {
+  static async resolveMapModeFromPage(page) {
+    try {
+      const mode = await page.evaluate(() => window.__GP_E2E_MAP_DEBUG__?.mode || null);
+      if (!mode) {
+        return null;
+      }
+
+      return String(mode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
+    } catch {
+      return null;
+    }
+  }
+
+  static async applyMapRenderModeIfProvided(dbManager, email, mapMode = null) {
+    if (!mapMode) {
+      return;
+    }
+
+    const normalizedMode = String(mapMode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
+    await dbManager.client.query(
+      'UPDATE users SET map_render_mode = $2 WHERE email = $1',
+      [email, normalizedMode]
+    );
+  }
+
   /**
    * Create a user, login, and return necessary objects
    * @returns {Promise<{loginPage, user, testUser}>}
    */
-  static async createAndLoginUser(page, dbManager, userData = null) {
+  static async createAndLoginUser(page, dbManager, userData = null, options = {}) {
     const loginPage = new LoginPage(page);
     const testUser = userData || TestData.users.existing;
+    const mapMode = options?.mapMode || await this.resolveMapModeFromPage(page);
 
     await UserFactory.createUser(page, testUser);
+    await this.applyMapRenderModeIfProvided(dbManager, testUser.email, mapMode);
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
     await loginPage.navigate();
     await loginPage.login(testUser.email, testUser.password);
@@ -39,8 +66,8 @@ export class TestSetupHelper {
     return { loginPage, user, testUser };
   }
 
-  static async createAndLoginUserAndNavigateToFriendsPage(page, dbManager, userData = null) {
-    const {testUser} = await this.createAndLoginUser(page, dbManager, userData);
+  static async createAndLoginUserAndNavigateToFriendsPage(page, dbManager, userData = null, options = {}) {
+    const {testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
     const friendsPage = new FriendsPage(page);
     await friendsPage.navigate();
     await friendsPage.waitForPageLoad();
@@ -66,8 +93,8 @@ export class TestSetupHelper {
   /**
    * Setup for share links tests: create user, login, navigate to share links page
    */
-  static async setupShareLinksTest(page, dbManager, userData = null) {
-    const { loginPage, user, testUser } = await this.createAndLoginUser(page, dbManager, userData);
+  static async setupShareLinksTest(page, dbManager, userData = null, options = {}) {
+    const { loginPage, user, testUser } = await this.createAndLoginUser(page, dbManager, userData, options);
     const shareLinksPage = new ShareLinksPage(page);
 
     await shareLinksPage.navigate();
@@ -81,8 +108,8 @@ export class TestSetupHelper {
    * @param {number} gpsPointCount - Number of GPS points to seed before logout
    * @param {Object|null} userData - Optional user object for isolated test user injection
    */
-  static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5, userData = null) {
-    const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData);
+  static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5, userData = null, options = {}) {
+    const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData, options);
 
     if (gpsPointCount > 0) {
       await GpsDataFactory.createGpsPointsForUser(dbManager, user.id, gpsPointCount);
@@ -120,8 +147,8 @@ export class TestSetupHelper {
     await friendsPage.waitForPageLoad();
   }
 
-  static async loginAndNavigateToUserProfilePage(page, dbManager, userData) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+  static async loginAndNavigateToUserProfilePage(page, dbManager, userData, options = {}) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
     const profilePage = new UserProfilePage(page);
     await profilePage.navigate();
     await profilePage.waitForPageLoad();
@@ -354,8 +381,8 @@ export class TestSetupHelper {
    * Login user and navigate to Geofences page
    * @returns {Promise<{geofencesPage, user, testUser}>}
    */
-  static async loginAndNavigateToGeofencesPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+  static async loginAndNavigateToGeofencesPage(page, dbManager, userData = null, options = {}) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
     const geofencesPage = new GeofencesPage(page);
     await geofencesPage.navigate();
     await geofencesPage.waitForPageLoad();
@@ -366,8 +393,8 @@ export class TestSetupHelper {
    * Login user and navigate to Favorites Management page
    * @returns {Promise<{favoritesPage, user, testUser}>}
    */
-  static async loginAndNavigateToFavoritesPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+  static async loginAndNavigateToFavoritesPage(page, dbManager, userData = null, options = {}) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
     const favoritesPage = new FavoritesManagementPage(page);
     await favoritesPage.navigate();
     await favoritesPage.waitForPageLoad();
@@ -864,8 +891,8 @@ export class TestSetupHelper {
    * Login user and navigate to specific Trip Workspace page
    * @returns {Promise<{tripWorkspacePage, user, testUser}>}
    */
-  static async loginAndNavigateToTripWorkspacePage(page, dbManager, tripId, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+  static async loginAndNavigateToTripWorkspacePage(page, dbManager, tripId, userData = null, options = {}) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
     const tripWorkspacePage = new TripWorkspacePage(page);
     await tripWorkspacePage.navigate(tripId);
     await tripWorkspacePage.waitForPageLoad();

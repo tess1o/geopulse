@@ -15,6 +15,8 @@ const sanitizeSegment = (value, fallback = 'test', maxLength = 24) => {
 };
 
 export const test = base.extend({
+  mapMode: ['RASTER', { option: true }],
+
   dbManager: [async ({}, use) => {
     const dbManager = new DatabaseManager();
     await dbManager.connect();
@@ -84,6 +86,19 @@ export const test = base.extend({
   cleanBrowser: [async ({ context }, use) => {
     await context.clearCookies();
     await context.clearPermissions();
+    await use();
+  }, { auto: true }],
+
+  mapE2EDebugBootstrap: [async ({ page, mapMode }, use) => {
+    await page.addInitScript(({ mode }) => {
+      window.__GP_E2E_MAP_DEBUG_ENABLED__ = true;
+      window.__GP_E2E_MAP_DEBUG__ = {
+        enabled: true,
+        mode
+      };
+      window.__GP_E2E_MAPS = window.__GP_E2E_MAPS || {};
+    }, { mode: mapMode || 'RASTER' });
+
     await use();
   }, { auto: true }],
 });
