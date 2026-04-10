@@ -6,6 +6,9 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
+import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
+import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
@@ -32,6 +35,12 @@ public class ImportJobService {
 
     @Inject
     TimelineJobProgressService timelineJobProgressService;
+
+    @Inject
+    CoverageService coverageService;
+
+    @Inject
+    CoverageProcessingService coverageProcessingService;
 
     private final ConcurrentHashMap<UUID, ImportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
@@ -179,21 +188,12 @@ public class ImportJobService {
                     log.info("Import job {} data processing completed, waiting for timeline job {} to complete",
                             job.getJobId(), job.getTimelineJobId());
                 } else {
-                    // No timeline job - mark import as completed immediately
-                    job.setStatus(ImportStatus.COMPLETED);
-                    job.setCompletedAt(Instant.now());
-                    job.setProgress(100);
-
-                    log.info("Completed import job {} (no timeline generation)", job.getJobId());
-
-                    // Trigger badge recalculation after successful import
-                    try {
-                        badgeRecalculationService.recalculateAllBadgesForUser(job.getUserId());
-                        log.info("Triggered badge recalculation for user {} after import completion", job.getUserId());
-                    } catch (Exception e) {
-                        log.error("Failed to recalculate badges for user {} after import: {}",
-                                job.getUserId(), e.getMessage(), e);
-                        // Don't fail the import job if badge calculation fails
+                    // No timeline job. If GPS data was imported and coverage is enabled,
+                    // keep the job in PROCESSING until coverage rebuild completes.
+                    if (waitForCoverageRecalculation(job)) {
+                        log.info("Import job {} waiting for coverage recalculation to finish", job.getJobId());
+                    } else {
+                        completeImportJob(job, true);
                     }
                 }
 
@@ -214,66 +214,156 @@ public class ImportJobService {
      * Updates import progress based on timeline job status and marks imports as completed/failed.
      */
     private void monitorTimelineJobsForImports() {
-        // Find all imports that are waiting for timeline generation to complete
-        List<ImportJob> jobsWithTimeline = activeJobs.values().stream()
+        // Find all imports that have finished data processing and are awaiting timeline/coverage completion.
+        List<ImportJob> activeProcessingJobs = activeJobs.values().stream()
                 .filter(job -> job.getStatus() == ImportStatus.PROCESSING)
-                .filter(job -> job.getTimelineJobId() != null)
+                .filter(ImportJob::isDataProcessingCompleted)
                 .filter(job -> job.getDetectedDataTypes() != null) // Only monitor validated imports
                 .collect(Collectors.toList());
 
-        for (ImportJob importJob : jobsWithTimeline) {
+        for (ImportJob importJob : activeProcessingJobs) {
             try {
-                // Check timeline job status
-                java.util.Optional<org.github.tess1o.geopulse.streaming.model.TimelineJobProgress> timelineJobOpt =
-                        timelineJobProgressService.getJobProgress(importJob.getTimelineJobId());
+                if (importJob.getTimelineJobId() != null) {
+                    // Check timeline job status
+                    java.util.Optional<org.github.tess1o.geopulse.streaming.model.TimelineJobProgress> timelineJobOpt =
+                            timelineJobProgressService.getJobProgress(importJob.getTimelineJobId());
 
-                if (timelineJobOpt.isEmpty()) {
-                    log.warn("Timeline job {} not found for import {}", importJob.getTimelineJobId(), importJob.getJobId());
+                    if (timelineJobOpt.isEmpty()) {
+                        log.warn("Timeline job {} not found for import {}", importJob.getTimelineJobId(), importJob.getJobId());
+                        continue;
+                    }
+
+                    org.github.tess1o.geopulse.streaming.model.TimelineJobProgress timelineJob = timelineJobOpt.get();
+
+                    boolean coverageWillRun = shouldRunCoverageRecalculation(importJob);
+                    int timelineProgressRange = coverageWillRun ? 20 : 25;
+
+                    // Map timeline progress (0-100%) to import progress:
+                    // - 75-95% when coverage recalculation still needs to run
+                    // - 75-100% otherwise
+                    int importProgress = 75 + (timelineJob.getProgressPercentage() * timelineProgressRange / 100);
+                    importJob.setProgress(Math.min(100, importProgress));
+
+                    // Update progress message based on timeline step
+                    String progressMessage = "Timeline generation: " + timelineJob.getCurrentStep();
+                    importJob.setProgressMessage(progressMessage);
+
+                    // Check if timeline job failed
+                    if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.FAILED) {
+                        // GPS data was imported successfully, but timeline generation failed
+                        // Mark import as failed but include helpful message
+                        String errorMessage = "GPS data imported successfully, but timeline generation failed: " +
+                                (timelineJob.getErrorMessage() != null ? timelineJob.getErrorMessage() : "Unknown error");
+
+                        importJob.setStatus(ImportStatus.FAILED);
+                        importJob.setError(errorMessage);
+                        importJob.setCompletedAt(Instant.now());
+                        importJob.setProgressMessage("Timeline generation failed");
+
+                        log.warn("Import job {} marked as failed because timeline job {} failed: {}",
+                                importJob.getJobId(), importJob.getTimelineJobId(), timelineJob.getErrorMessage());
+                        continue;
+                    }
+
+                    // Timeline still running.
+                    if (timelineJob.getStatus() != org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.COMPLETED) {
+                        continue;
+                    }
+
+                    // Timeline completed; continue below to coverage handling.
+                }
+
+                if (waitForCoverageRecalculation(importJob)) {
                     continue;
                 }
 
-                org.github.tess1o.geopulse.streaming.model.TimelineJobProgress timelineJob = timelineJobOpt.get();
-
-                // Map timeline progress (0-100%) to import progress (75-100%)
-                int importProgress = 75 + (timelineJob.getProgressPercentage() * 25 / 100);
-                importJob.setProgress(Math.min(100, importProgress));
-
-                // Update progress message based on timeline step
-                String progressMessage = "Timeline generation: " + timelineJob.getCurrentStep();
-                importJob.setProgressMessage(progressMessage);
-
-                // Check if timeline job is completed
-                if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.COMPLETED) {
-                    importJob.setStatus(ImportStatus.COMPLETED);
-                    importJob.setCompletedAt(Instant.now());
-                    importJob.setProgress(100);
-                    importJob.setProgressMessage("Import completed successfully");
-
-                    log.info("Import job {} completed after timeline job {} finished", importJob.getJobId(), importJob.getTimelineJobId());
-
-                    // Note: Badge recalculation already done in TimelineImportHelper.finishTimelineJob()
-                    // No need to do it again here
-                }
-                // Check if timeline job failed
-                else if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.FAILED) {
-                    // GPS data was imported successfully, but timeline generation failed
-                    // Mark import as failed but include helpful message
-                    String errorMessage = "GPS data imported successfully, but timeline generation failed: " +
-                            (timelineJob.getErrorMessage() != null ? timelineJob.getErrorMessage() : "Unknown error");
-
-                    importJob.setStatus(ImportStatus.FAILED);
-                    importJob.setError(errorMessage);
-                    importJob.setCompletedAt(Instant.now());
-                    importJob.setProgressMessage("Timeline generation failed");
-
-                    log.warn("Import job {} marked as failed because timeline job {} failed: {}",
-                            importJob.getJobId(), importJob.getTimelineJobId(), timelineJob.getErrorMessage());
-                }
-
+                // Timeline imports already recalculate badges in TimelineImportHelper.finishTimelineJob().
+                completeImportJob(importJob, importJob.getTimelineJobId() == null);
             } catch (Exception e) {
                 log.error("Error monitoring timeline job for import {}: {}", importJob.getJobId(), e.getMessage(), e);
             }
         }
+    }
+
+    private void completeImportJob(ImportJob job, boolean recalculateBadges) {
+        job.setStatus(ImportStatus.COMPLETED);
+        job.setCompletedAt(Instant.now());
+        job.setProgress(100);
+        job.setProgressMessage("Import completed successfully");
+
+        log.info("Completed import job {}", job.getJobId());
+
+        if (!recalculateBadges) {
+            return;
+        }
+
+        try {
+            badgeRecalculationService.recalculateAllBadgesForUser(job.getUserId());
+            log.info("Triggered badge recalculation for user {} after import completion", job.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to recalculate badges for user {} after import: {}",
+                    job.getUserId(), e.getMessage(), e);
+            // Don't fail the import job if badge calculation fails
+        }
+    }
+
+    private boolean shouldRunCoverageRecalculation(ImportJob job) {
+        if (!job.isGpsDataImported()) {
+            return false;
+        }
+        if (job.isCoverageRecalculationStarted()) {
+            return true;
+        }
+        CoverageStatus coverageStatus = coverageService.getCoverageStatus(job.getUserId());
+        return coverageStatus.userEnabled();
+    }
+
+    /**
+     * Starts coverage full-recalculation once and keeps import job in PROCESSING
+     * until coverage background processing is finished.
+     */
+    private boolean waitForCoverageRecalculation(ImportJob job) {
+        if (!job.isGpsDataImported() && !job.isCoverageRecalculationStarted()) {
+            return false;
+        }
+
+        CoverageStatus coverageStatus = coverageService.getCoverageStatus(job.getUserId());
+
+        if (!job.isCoverageRecalculationStarted()) {
+            if (!coverageStatus.userEnabled()) {
+                return false;
+            }
+
+            if (coverageStatus.processing()) {
+                job.setProgress(Math.max(job.getProgress(), 95));
+                job.setProgressMessage("Waiting for ongoing coverage update...");
+                return true;
+            }
+
+            boolean started = coverageProcessingService.startFullRecalculationAsync(job.getUserId());
+            if (!started) {
+                CoverageStatus refreshedStatus = coverageService.getCoverageStatus(job.getUserId());
+                if (refreshedStatus.processing()) {
+                    job.setProgress(Math.max(job.getProgress(), 95));
+                    job.setProgressMessage("Waiting for ongoing coverage update...");
+                    return true;
+                }
+                log.warn("Failed to start coverage recalculation for import job {}", job.getJobId());
+                return false;
+            }
+
+            job.setCoverageRecalculationStarted(true);
+            coverageStatus = coverageService.getCoverageStatus(job.getUserId());
+            log.info("Started coverage recalculation for import job {}", job.getJobId());
+        }
+
+        if (coverageStatus.processing()) {
+            job.setProgress(Math.max(job.getProgress(), 95));
+            job.setProgressMessage("Recalculating coverage...");
+            return true;
+        }
+
+        return false;
     }
 
     private void cleanupExpiredJobs() {

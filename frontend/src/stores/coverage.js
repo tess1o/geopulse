@@ -85,6 +85,25 @@ export const useCoverageStore = defineStore('coverage', {
       }
     },
 
+    async recalculateCoverage() {
+      this.settingsUpdating = true
+      this.statusError = null
+      try {
+        const response = await apiService.post('/coverage/recalculate', {})
+        const data = response?.data ?? response ?? null
+        if (data) {
+          this.status = data
+        }
+        return data
+      } catch (error) {
+        console.error('Error recalculating coverage:', error)
+        this.statusError = error.message || 'Failed to recalculate coverage'
+        throw error
+      } finally {
+        this.settingsUpdating = false
+      }
+    },
+
     async fetchCoverageCells(bbox, grid, options = {}) {
       const silent = options?.silent === true
       const requestSeq = ++this.cellsRequestSeq

@@ -4,6 +4,7 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -69,6 +70,23 @@ public class CoverageResource {
         if (enable) {
             processingService.startProcessingAsync(userId);
         }
+
+        CoverageStatus status = coverageService.getCoverageStatus(userId);
+        return Response.ok(ApiResponse.success(status)).build();
+    }
+
+    @POST
+    @Path("/recalculate")
+    public Response recalculateCoverage() {
+        UserEntity user = currentUserService.getCurrentUser();
+        if (!user.isCoverageEnabled()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
+                    .build();
+        }
+
+        UUID userId = user.getId();
+        processingService.startFullRecalculationAsync(userId);
 
         CoverageStatus status = coverageService.getCoverageStatus(userId);
         return Response.ok(ApiResponse.success(status)).build();
