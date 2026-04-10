@@ -1758,20 +1758,22 @@ onBeforeUnmount(() => {
   color: var(--text-color);
   overflow-wrap: anywhere;
 }
+</style>
 
-:deep(.p-dark .geofence-area-popup .leaflet-popup-content-wrapper) {
+<style>
+.p-dark .geofence-area-popup .leaflet-popup-content-wrapper {
   background: #1e293b;
 }
 
-:deep(.p-dark .geofence-area-popup .leaflet-popup-tip) {
+.p-dark .geofence-area-popup .leaflet-popup-tip {
   background: #1e293b;
 }
 
-:deep(.p-dark .geofence-area-popup .maplibregl-popup-content) {
+.p-dark .geofence-area-popup .maplibregl-popup-content {
   background: #1e293b;
 }
 
-:deep(.p-dark .geofence-area-popup .maplibregl-popup-tip) {
+.p-dark .geofence-area-popup .maplibregl-popup-tip {
   border-top-color: #1e293b;
 }
 </style>
