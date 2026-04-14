@@ -18,6 +18,7 @@ dayjs.extend(isSameOrAfter)
 dayjs.extend(customParseFormat)
 
 const DEFAULT_DATE_FORMAT = 'MDY'
+const DEFAULT_TIME_FORMAT = '24h'
 const DATE_FORMAT_PATTERNS = {
     MDY: 'MM/DD/YYYY',
     DMY: 'DD/MM/YYYY',
@@ -41,6 +42,11 @@ const normalizeDateFormat = (value) => {
         : DEFAULT_DATE_FORMAT
 }
 
+const normalizeTimeFormat = (value) => {
+    const normalized = String(value || '').trim().toLowerCase()
+    return normalized === '12h' ? '12h' : DEFAULT_TIME_FORMAT
+}
+
 const getUserTimezoneFromStorage = () => {
     try {
         const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
@@ -61,8 +67,19 @@ const getUserDateFormatFromStorage = () => {
     }
 }
 
+const getUserTimeFormatFromStorage = () => {
+    try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        return normalizeTimeFormat(userInfo.timeFormat)
+    } catch (error) {
+        console.warn('Failed to get user time format from localStorage:', error)
+        return DEFAULT_TIME_FORMAT
+    }
+}
+
 const userTimezone = ref(getUserTimezoneFromStorage())
 const userDateFormat = ref(getUserDateFormatFromStorage())
+const userTimeFormat = ref(getUserTimeFormatFromStorage())
 
 export function useTimezone() {
     // --- Core Timezone Management ---
@@ -78,6 +95,12 @@ export function useTimezone() {
     }
 
     const getDateFormat = () => userDateFormat.value
+
+    const setTimeFormat = (timeFormat) => {
+        userTimeFormat.value = normalizeTimeFormat(timeFormat)
+    }
+
+    const getTimeFormat = () => userTimeFormat.value
 
     const now = () => {
         // Use explicit Date object to avoid browser timezone detection issues (LibreWolf, etc.)
@@ -213,16 +236,31 @@ export function useTimezone() {
 
     // --- Formatting (always in user timezone) ---
 
+    const getTimeFormatPattern = (withSeconds = false) => {
+        if (getTimeFormat() === '12h') {
+            return withSeconds ? 'h:mm:ss A' : 'h:mm A'
+        }
+        return withSeconds ? 'HH:mm:ss' : 'HH:mm'
+    }
+
     const format = (date, fmt = 'YYYY-MM-DD HH:mm') =>
         fromUtc(date).format(fmt)
 
-    const formatTime = (date) => format(date, 'HH:mm')
+    const formatTime = (date, options = {}) => {
+        const withSeconds = options?.withSeconds === true
+        return format(date, getTimeFormatPattern(withSeconds))
+    }
 
     const formatDate = (date) => format(date, 'YYYY-MM-DD')
 
     const formatDateUS = (date) => format(date, 'MM/DD/YYYY')
 
     const formatDateDisplay = (date) => format(date, DATE_FORMAT_PATTERNS[getDateFormat()])
+
+    const formatDateTimeDisplay = (date, options = {}) => {
+        const withSeconds = options?.withSeconds === true
+        return `${formatDateDisplay(date)} ${formatTime(date, { withSeconds })}`
+    }
 
     const formatUrlDate = (date) => format(date, 'YYYY-MM-DD')
 
@@ -369,8 +407,9 @@ export function useTimezone() {
         const thisDayEnd = itemEnd.isAfter(dayEnd) ? dayEnd : itemEnd
 
         // Format time range and duration
-        const startTimeStr = thisDayStart.format('HH:mm')
-        const endTimeStr = thisDayEnd.format('HH:mm')
+        const timePattern = getTimeFormatPattern(false)
+        const startTimeStr = thisDayStart.format(timePattern)
+        const endTimeStr = thisDayEnd.format(timePattern)
         const durationMs = thisDayEnd.diff(thisDayStart)
         const durationFormatted = formatDurationCompact(Math.floor(durationMs / 1000))
 
@@ -383,10 +422,10 @@ export function useTimezone() {
         const daysDiff = currentDate.diff(startDate, 'day')
 
         if (daysDiff === 1) {
-            return `Continued from yesterday, ${startDate.format('HH:mm')}`
+            return `Continued from yesterday, ${startDate.format(getTimeFormatPattern(false))}`
         } else {
             const format = startDate.year() === currentDate.year() ? 'MMM D' : 'MMM D, YYYY'
-            return `Continued from ${startDate.format(format)}, ${startDate.format('HH:mm')}`
+            return `Continued from ${startDate.format(format)}, ${startDate.format(getTimeFormatPattern(false))}`
         }
     }
 
@@ -506,11 +545,11 @@ export function useTimezone() {
 
         if (isStartDay) {
             // Show actual start time on start day
-            return format(utcTimestamp, `${DATE_FORMAT_PATTERNS[getDateFormat()]}, HH:mm`)
+            return format(utcTimestamp, `${DATE_FORMAT_PATTERNS[getDateFormat()]}, ${getTimeFormatPattern(false)}`)
         } else {
             // Show "Continued from" on other days
             const startDate = fromUtc(utcTimestamp)
-            return `Continued from ${startDate.format('MMM D, HH:mm')}`
+            return `Continued from ${startDate.format(`MMM D, ${getTimeFormatPattern(false)}`)}`
         }
     }
 
@@ -530,10 +569,13 @@ export function useTimezone() {
         // Core
         userTimezone,
         userDateFormat,
+        userTimeFormat,
         setTimezone,
         getTimezone,
         setDateFormat,
         getDateFormat,
+        setTimeFormat,
+        getTimeFormat,
         now,
         fromUtc,
         toUtc,
@@ -573,9 +615,11 @@ export function useTimezone() {
         format,
         formatDateInTimezone: format,
         formatTime,
+        getTimeFormatPattern,
         formatDate,
         formatDateUS,
         formatDateDisplay,
+        formatDateTimeDisplay,
         formatDateLong,
         formatDateShort,
         formatDateWithYear,

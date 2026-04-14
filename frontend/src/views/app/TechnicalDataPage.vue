@@ -888,7 +888,7 @@ const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
   return {
     date: timezone.formatDateDisplay(timestamp),
-    time: timezone.format(timestamp, 'HH:mm')
+    time: timezone.formatTime(timestamp)
   }
 }
 

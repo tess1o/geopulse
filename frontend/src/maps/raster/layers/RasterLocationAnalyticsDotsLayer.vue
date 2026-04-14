@@ -69,7 +69,7 @@ const escapeHtml = (value) => {
 const formatDate = (timestamp) => {
   if (!timestamp) return 'Unknown'
   try {
-    return `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm:ss')}`
+    return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
   } catch {
     return 'Unknown'
   }

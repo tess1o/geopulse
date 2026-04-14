@@ -91,7 +91,7 @@ state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
 
 const formatDateTimeDisplay = (dateValue) =>
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`
+  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
 const buildTripPopupContent = (trip) => buildTripPopupHtml(trip, { formatDateTimeDisplay })
 

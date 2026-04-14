@@ -96,6 +96,21 @@ Choose how distances and speeds are displayed throughout GeoPulse.
 Your measurement unit preference applies to all pages and reports, ensuring consistent data presentation.
 :::
 
+### Time Format
+
+Choose how times are shown in user-facing timestamps.
+
+**Options:**
+- **24-hour** - examples: `13:45`, `03:07:59`
+- **12-hour** - examples: `1:45 PM`, `3:07:59 AM`
+
+**What it affects:**
+- Timeline cards, tables, dialogs, and map popups
+- Notification timestamps in the app
+- Geofence notification message timestamps
+
+**Default:** `24-hour`
+
 ### Default Home Page
 
 Choose which page you see after logging in or when you click the GeoPulse logo.

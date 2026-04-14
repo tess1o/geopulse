@@ -161,7 +161,8 @@ const formatDate = (timestamp) => {
 }
 
 const formatTime = (timestamp) => {
-  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
+  const cacheKeyFormat = `TIME:${timezone.getTimeFormat()}:m`
+  return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatTime(ts))
 }
 
 const isSameDay = (startTime, endTime) => {

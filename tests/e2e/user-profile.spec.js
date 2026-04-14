@@ -295,6 +295,31 @@ test.describe('User Profile Management', () => {
     });
   });
 
+  test.describe('Time Format Management', () => {
+    test('should update time format and persist to database and localStorage', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
+
+      await profilePage.selectTimeFormat('12-hour (1:45 PM)');
+      expect(await profilePage.getSelectedTimeFormat()).toBe('12-hour (1:45 PM)');
+
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      const toastMessage = await profilePage.getToastMessage();
+      expect(toastMessage).toContain('updated successfully');
+
+      expect(await profilePage.getTimeFormatFromLocalStorage()).toBe('12h');
+
+      const dbUser = await dbManager.getUserByEmail(testUser.email);
+      expect(dbUser.time_format).toBe('12h');
+
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      expect(await profilePage.getSelectedTimeFormat()).toBe('12-hour (1:45 PM)');
+      expect(await profilePage.getTimeFormatFromLocalStorage()).toBe('12h');
+    });
+  });
+
   test.describe('Security Tab', () => {
     test('should switch to security tab correctly', async ({page, isolatedUsers, dbManager}) => {
       const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));

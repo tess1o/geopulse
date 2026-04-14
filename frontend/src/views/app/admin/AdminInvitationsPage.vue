@@ -555,7 +555,7 @@ const getStatusSeverity = (status) => {
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '-'
-  return `${timezone.formatDateDisplay(dateStr)} ${timezone.format(dateStr, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(dateStr)} ${timezone.formatTime(dateStr, { withSeconds: true })}`
 }
 
 // Mobile pagination methods

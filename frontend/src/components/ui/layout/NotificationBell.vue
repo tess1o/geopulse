@@ -219,7 +219,7 @@ const formatOccurredAt = (value) => {
   if (!value) {
     return '-'
   }
-  return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
 }
 
 const deliverySeverity = (status) => {

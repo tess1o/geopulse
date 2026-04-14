@@ -387,7 +387,7 @@ const resetToAutomaticMovementType = async () => {
 // Formatting helpers
 const formatDateTime = (timestamp) => {
   if (!timestamp) return 'N/A'
-  return `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
 }
 
 const formatDuration = (seconds) => {

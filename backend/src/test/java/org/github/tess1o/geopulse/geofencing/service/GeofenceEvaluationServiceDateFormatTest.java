@@ -107,6 +107,30 @@ class GeofenceEvaluationServiceDateFormatTest {
     }
 
     @Test
+    void shouldRender12HourTimeWhenConfigured() throws Exception {
+        UserEntity owner = new UserEntity();
+        owner.setTimezone("Europe/Kyiv");
+        owner.setDateFormat("YMD");
+        owner.setTimeFormat("12h");
+
+        String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
+
+        assertThat(rendered).isEqualTo("2026-03-26 3:31:27 AM");
+    }
+
+    @Test
+    void shouldFallbackTo24HourTimeWhenTimeFormatInvalid() throws Exception {
+        UserEntity owner = new UserEntity();
+        owner.setTimezone("Europe/Kyiv");
+        owner.setDateFormat("YMD");
+        owner.setTimeFormat("unexpected");
+
+        String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
+
+        assertThat(rendered).isEqualTo("2026-03-26 03:31:27");
+    }
+
+    @Test
     void shouldPersistSubjectDisplayNameSnapshotOnEventCreation() throws Exception {
         UUID ownerId = UUID.randomUUID();
         UserEntity owner = new UserEntity();

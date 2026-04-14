@@ -1412,7 +1412,7 @@ function maskDestination(destination) {
 
 function formatDate(value) {
   if (!value) return '-'
-  return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
 }
 
 function resolveRuleTemplateLabel(templateId, type) {

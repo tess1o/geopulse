@@ -370,7 +370,8 @@ const formatDate = (timestamp) => {
 }
 
 const formatTime = (timestamp) => {
-  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
+  const cacheKeyFormat = `TIME:${timezone.getTimeFormat()}:m`
+  return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatTime(ts))
 }
 
 const getEndDate = (trip) => {
@@ -394,11 +395,11 @@ const getEndTime = (trip) => {
   return memoizedEndTimeFormat(
     trip.timestamp,
     trip.tripDuration,
-    'HH:mm',
-    (startTime, duration, format) => {
+    `TIME:${timezone.getTimeFormat()}:m`,
+    (startTime, duration) => {
       const start = timezone.fromUtc(startTime)
       const end = start.clone().add(duration, 'seconds')
-      return timezone.format(end.toISOString(), format)
+      return timezone.formatTime(end.toISOString())
     }
   )
 }

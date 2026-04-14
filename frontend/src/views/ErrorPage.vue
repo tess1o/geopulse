@@ -201,7 +201,8 @@ const toast = useToast()
 const retrying = ref(false)
 const isOnline = ref(navigator.onLine)
 const backendOnline = ref(false)
-const lastUpdated = ref(timezone.now().format('HH:mm:ss'))
+const formatCurrentTime = () => timezone.formatTime(timezone.now().toISOString(), { withSeconds: true })
+const lastUpdated = ref(formatCurrentTime())
 const checkingStatus = ref(false)
 const recovering = ref(false)
 let statusCheckInterval = null
@@ -241,7 +242,7 @@ const redirectAfterRecovery = () => {
 // Update connection status
 const updateConnectionStatus = async () => {
   isOnline.value = navigator.onLine
-  lastUpdated.value = timezone.now().format('HH:mm:ss')
+  lastUpdated.value = formatCurrentTime()
   
   // Also check backend status
   await checkBackendConnectivity()
@@ -462,7 +463,7 @@ const getStatusClass = (status) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return 'N/A'
   try {
-    return `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm:ss')}`
+    return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
   } catch (error) {
     return timestamp
   }

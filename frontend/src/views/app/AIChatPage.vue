@@ -261,31 +261,24 @@ const generateMessageId = () => {
 }
 
 const formatTimestamp = (date) => {
-  const now = new Date()
-  const messageDate = new Date(date)
-  const diffMs = now - messageDate
+  const now = timezone.now()
+  const messageDate = timezone.fromUtc(date)
+  const diffMs = now.diff(messageDate)
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   
   if (diffMs < 60000) return 'Just now'
   if (diffMs < 3600000) return `${diffMins}m ago`
-  
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const msgDate = new Date(messageDate)
-  msgDate.setHours(0, 0, 0, 0)
-  
-  if (msgDate.getTime() === today.getTime()) {
-    return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  if (messageDate.isSame(now, 'day')) {
+    return timezone.formatTime(date)
   }
-  
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (msgDate.getTime() === yesterday.getTime()) {
-    return `Yesterday ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+
+  if (messageDate.isSame(now.subtract(1, 'day'), 'day')) {
+    return `Yesterday ${timezone.formatTime(date)}`
   }
-  
-  return `${timezone.formatDateDisplay(date)} ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+
+  return `${timezone.formatDateDisplay(date)} ${timezone.formatTime(date)}`
 }
 
 const saveMessagesToStorage = (messagesToSave) => {

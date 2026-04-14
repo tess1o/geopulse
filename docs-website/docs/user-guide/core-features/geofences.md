@@ -100,7 +100,7 @@ Behavior with these examples:
 - `{{eventCode}}` (`ENTER` / `LEAVE`)
 - `{{eventVerb}}` (`entered` / `left`)
 - `{{geofenceName}}`
-- `{{timestamp}}` (owner-local timezone/date format)
+- `{{timestamp}}` (owner-local timezone, date format, and time format)
 - `{{timestampUtc}}` (UTC ISO-8601)
 - `{{lat}}`
 - `{{lon}}`

@@ -95,7 +95,7 @@ const createStackTimelineIcon = (count, isHighlighted = false) => {
 }
 
 const formatDateTimeDisplay = (dateValue) =>
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`
+  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
 const createStackPopupElement = (marker, markerItems) => {
   const popupRoot = document.createElement('div')
@@ -114,7 +114,7 @@ const createStackPopupElement = (marker, markerItems) => {
     markerItems.map(({ item }) => item),
     {
       formatDateDisplay: (value) => timezone.formatDateDisplay(value),
-      formatTime: (value) => timezone.format(value, 'HH:mm:ss')
+      formatTime: (value) => timezone.formatTime(value, { withSeconds: true })
     }
   )
 

@@ -16,6 +16,7 @@ import ConfirmationService from 'primevue/confirmationservice';
 import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
+import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 
 initializeThemeMode()
 
@@ -44,7 +45,7 @@ app.use(ConfirmationService);
 app.directive('tooltip', Tooltip)
 
 watch(
-    timezone.userDateFormat,
+    [timezone.userDateFormat, timezone.userTimeFormat, timezone.userTimezone],
     () => {
         const primevueConfig = app.config.globalProperties.$primevue?.config
         if (!primevueConfig) {
@@ -55,6 +56,7 @@ watch(
             primevueConfig.locale = {}
         }
         primevueConfig.locale.firstDayOfWeek = timezone.getPrimeVueFirstDayOfWeek()
+        clearAllFormatCaches()
     },
     { immediate: true }
 )

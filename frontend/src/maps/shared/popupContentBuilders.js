@@ -14,7 +14,7 @@ export const escapeHtml = (value) => {
 }
 
 const defaultFormatDateTimeDisplay = (value, timezone) => (
-  `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
+  `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
 )
 
 const resolveFormatDateTimeDisplay = (deps = {}) => {

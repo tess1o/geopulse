@@ -31,9 +31,11 @@ import java.util.UUID;
 @Slf4j
 public class GeofenceEvaluationService {
 
-    private static final DateTimeFormatter DATE_TIME_FORMAT_MDY = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
-    private static final DateTimeFormatter DATE_TIME_FORMAT_DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    private static final DateTimeFormatter DATE_TIME_FORMAT_YMD = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String DATE_PATTERN_MDY = "MM/dd/yyyy";
+    private static final String DATE_PATTERN_DMY = "dd/MM/yyyy";
+    private static final String DATE_PATTERN_YMD = "yyyy-MM-dd";
+    private static final String TIME_PATTERN_24H = "HH:mm:ss";
+    private static final String TIME_PATTERN_12H = "h:mm:ss a";
 
     private final GeofenceRuleRepository ruleRepository;
     private final GeofenceRuleStateRepository stateRepository;
@@ -317,7 +319,10 @@ public class GeofenceEvaluationService {
 
     private String formatTimestampForOwner(Instant timestamp, UserEntity owner) {
         ZoneId zoneId = resolveZoneId(owner != null ? owner.getTimezone() : null);
-        DateTimeFormatter formatter = resolveDateTimeFormatter(owner != null ? owner.getDateFormat() : null);
+        DateTimeFormatter formatter = resolveDateTimeFormatter(
+                owner != null ? owner.getDateFormat() : null,
+                owner != null ? owner.getTimeFormat() : null
+        );
         return timestamp.atZone(zoneId).format(formatter);
     }
 
@@ -332,15 +337,32 @@ public class GeofenceEvaluationService {
         }
     }
 
-    private DateTimeFormatter resolveDateTimeFormatter(String dateFormat) {
+    private DateTimeFormatter resolveDateTimeFormatter(String dateFormat, String timeFormat) {
+        String resolvedDatePattern = resolveDatePattern(dateFormat);
+        String resolvedTimePattern = resolveTimePattern(timeFormat);
+        return DateTimeFormatter.ofPattern(resolvedDatePattern + " " + resolvedTimePattern, Locale.ENGLISH);
+    }
+
+    private String resolveDatePattern(String dateFormat) {
         if (dateFormat == null || dateFormat.isBlank()) {
-            return DATE_TIME_FORMAT_MDY;
+            return DATE_PATTERN_MDY;
         }
         return switch (dateFormat.trim().toUpperCase(Locale.ROOT)) {
-            case "MDY", "US", "MM/DD/YYYY", "MM-DD-YYYY" -> DATE_TIME_FORMAT_MDY;
-            case "DMY", "EU", "DD/MM/YYYY", "DD-MM-YYYY" -> DATE_TIME_FORMAT_DMY;
-            case "YMD", "ISO", "YYYY-MM-DD" -> DATE_TIME_FORMAT_YMD;
-            default -> DATE_TIME_FORMAT_MDY;
+            case "MDY", "US", "MM/DD/YYYY", "MM-DD-YYYY" -> DATE_PATTERN_MDY;
+            case "DMY", "EU", "DD/MM/YYYY", "DD-MM-YYYY" -> DATE_PATTERN_DMY;
+            case "YMD", "ISO", "YYYY-MM-DD" -> DATE_PATTERN_YMD;
+            default -> DATE_PATTERN_MDY;
+        };
+    }
+
+    private String resolveTimePattern(String timeFormat) {
+        if (timeFormat == null || timeFormat.isBlank()) {
+            return TIME_PATTERN_24H;
+        }
+        return switch (timeFormat.trim().toLowerCase(Locale.ROOT)) {
+            case "12h" -> TIME_PATTERN_12H;
+            case "24h" -> TIME_PATTERN_24H;
+            default -> TIME_PATTERN_24H;
         };
     }
 }

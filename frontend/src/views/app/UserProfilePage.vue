@@ -70,7 +70,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, defaultDateRangePreset } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -153,6 +153,7 @@ const currentTabProps = computed(() => {
       userMeasureUnit: measureUnit.value || 'METRIC',
       userDefaultRedirectUrl: defaultRedirectUrl.value || '',
       userDateFormat: dateFormat.value || 'MDY',
+      userTimeFormat: timeFormat.value || '24h',
     },
     security: {
       hasPassword: hasPassword.value,
@@ -221,7 +222,8 @@ const handleProfileSave = async (data) => {
       timezone: data.timezone,
       measureUnit: data.measureUnit,
       defaultRedirectUrl: data.defaultRedirectUrl,
-      dateFormat: data.dateFormat
+      dateFormat: data.dateFormat,
+      timeFormat: data.timeFormat
     })
 
     toast.add({

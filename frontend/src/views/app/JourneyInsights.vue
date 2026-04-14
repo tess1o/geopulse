@@ -315,8 +315,8 @@ const localMostActiveTime = computed(() => {
     const [hours, minutes] = time24.split(':').map(Number)
     const utcDateTime = today.utc().hour(hours).minute(minutes)
 
-    // Convert to user timezone and format as 12-hour time
-    return timezone.fromUtc(utcDateTime.toISOString()).format('h:mm A')
+    // Convert to user timezone and format using user preference
+    return timezone.formatTime(utcDateTime.toISOString())
   } catch (error) {
     console.error('Error converting time to local timezone:', error)
     return utcTime // fallback to original UTC time

@@ -880,7 +880,7 @@ const copyToClipboard = async (text) => {
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
-  return `${timezone.formatDateDisplay(dateString)} ${timezone.format(dateString, 'h:mm A')}`
+  return `${timezone.formatDateDisplay(dateString)} ${timezone.formatTime(dateString)}`
 }
 
 const formatShowHistory = (link) => {

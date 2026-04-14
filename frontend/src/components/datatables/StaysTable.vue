@@ -253,7 +253,8 @@ const formatDate = (timestamp) => {
 }
 
 const formatTime = (timestamp) => {
-  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
+  const cacheKeyFormat = `TIME:${timezone.getTimeFormat()}:m`
+  return memoizedDateTimeFormat(timestamp, cacheKeyFormat, (ts) => timezone.formatTime(ts))
 }
 
 const formatDuration = (seconds) => {
@@ -262,11 +263,11 @@ const formatDuration = (seconds) => {
 
 const formatDateTime = (timestamp) => {
   if (!timestamp) return 'N/A'
-  const cacheKeyFormat = `DATETIME_DISPLAY:${timezone.getDateFormat()}:HH:mm:ss`
+  const cacheKeyFormat = `DATETIME_DISPLAY:${timezone.getDateFormat()}:${timezone.getTimeFormat()}:s`
   return memoizedDateTimeFormat(
     timestamp,
     cacheKeyFormat,
-    (ts) => `${timezone.formatDateDisplay(ts)} ${timezone.format(ts, 'HH:mm:ss')}`
+    (ts) => `${timezone.formatDateDisplay(ts)} ${timezone.formatTime(ts, { withSeconds: true })}`
   )
 }
 
@@ -276,11 +277,11 @@ const getEndDateTime = (stay) => {
   return memoizedEndTimeFormat(
     stay.timestamp,
     stay.stayDuration,
-    `DATETIME_DISPLAY:${timezone.getDateFormat()}:HH:mm:ss`,
+    `DATETIME_DISPLAY:${timezone.getDateFormat()}:${timezone.getTimeFormat()}:s`,
     (startTime, duration) => {
       const start = timezone.fromUtc(startTime)
       const end = start.clone().add(duration, 'seconds')
-      return `${timezone.formatDateDisplay(end.toISOString())} ${timezone.format(end.toISOString(), 'HH:mm:ss')}`
+      return `${timezone.formatDateDisplay(end.toISOString())} ${timezone.formatTime(end.toISOString(), { withSeconds: true })}`
     }
   )
 }
@@ -306,11 +307,11 @@ const getEndTime = (stay) => {
   return memoizedEndTimeFormat(
     stay.timestamp,
     stay.stayDuration,
-    'HH:mm',
-    (startTime, duration, format) => {
+    `TIME:${timezone.getTimeFormat()}:m`,
+    (startTime, duration) => {
       const start = timezone.fromUtc(startTime)
       const end = start.clone().add(duration, 'seconds')
-      return timezone.format(end.toISOString(), format)
+      return timezone.formatTime(end.toISOString())
     }
   )
 }

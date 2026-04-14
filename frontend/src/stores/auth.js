@@ -45,6 +45,7 @@ function normalizeUser(source) {
         measureUnit: raw.measureUnit || 'METRIC',
         defaultRedirectUrl: raw.defaultRedirectUrl || '',
         dateFormat: raw.dateFormat || 'MDY',
+        timeFormat: raw.timeFormat || '24h',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
         role: raw.role || 'USER'
     }
@@ -72,6 +73,7 @@ export const useAuthStore = defineStore('auth', {
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
+        timeFormat: (state) => state.user?.timeFormat || '24h',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
@@ -90,9 +92,11 @@ export const useAuthStore = defineStore('auth', {
                 }
                 timezone.setTimezone(user.timezone || 'UTC')
                 timezone.setDateFormat(user.dateFormat || 'MDY')
+                timezone.setTimeFormat(user.timeFormat || '24h')
             } else if (persist) {
                 clearUserSnapshot()
                 timezone.setDateFormat('MDY')
+                timezone.setTimeFormat('24h')
             }
 
             return user
@@ -129,6 +133,7 @@ export const useAuthStore = defineStore('auth', {
             const timezone = useTimezone()
             timezone.setTimezone('UTC')
             timezone.setDateFormat('MDY')
+            timezone.setTimeFormat('24h')
             apiService.clearAuthData()
         },
 
@@ -159,14 +164,15 @@ export const useAuthStore = defineStore('auth', {
             this.clearUser()
         },
 
-        async updateProfile({fullName, avatar, timezone, measureUnit, defaultRedirectUrl, dateFormat}) {
+        async updateProfile({fullName, avatar, timezone, measureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
             const response = await apiService.post('/users/update', {
                 fullName,
                 avatar,
                 timezone,
                 measureUnit,
                 defaultRedirectUrl,
-                dateFormat
+                dateFormat,
+                timeFormat
             })
 
             const updatedUser = response?.data

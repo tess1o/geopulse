@@ -122,4 +122,37 @@ public class UserServiceTest {
         // Should not throw exception
         assertDoesNotThrow(() -> userService.updateProfile(user.getId(),request));
     }
+
+    @Test
+    @Transactional
+    public void testValidTimeFormatValues() {
+        UserEntity user = userService.registerUser(
+                TestIds.uniqueEmail("user-service-time-format-valid"), "password", "Test User", "Europe/Kyiv");
+
+        UpdateProfileRequest updateTo12h = new UpdateProfileRequest();
+        updateTo12h.setFullName("Test User");
+        updateTo12h.setTimeFormat("12h");
+        assertDoesNotThrow(() -> userService.updateProfile(user.getId(), updateTo12h));
+        assertEquals("12h", userRepository.findById(user.getId()).getTimeFormat());
+
+        UpdateProfileRequest updateTo24h = new UpdateProfileRequest();
+        updateTo24h.setFullName("Test User");
+        updateTo24h.setTimeFormat("24h");
+        assertDoesNotThrow(() -> userService.updateProfile(user.getId(), updateTo24h));
+        assertEquals("24h", userRepository.findById(user.getId()).getTimeFormat());
+    }
+
+    @Test
+    @Transactional
+    public void testInvalidTimeFormatValues() {
+        UserEntity user = userService.registerUser(
+                TestIds.uniqueEmail("user-service-time-format-invalid"), "password", "Test User", "Europe/Kyiv");
+
+        UpdateProfileRequest invalidRequest = new UpdateProfileRequest();
+        invalidRequest.setFullName("Test User");
+        invalidRequest.setTimeFormat("AMPM");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateProfile(user.getId(), invalidRequest));
+    }
 }

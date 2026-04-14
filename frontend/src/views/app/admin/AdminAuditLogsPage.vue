@@ -434,12 +434,12 @@ const formatDate = (timestamp) => {
 
 const formatTime = (timestamp) => {
   if (!timestamp) return '-'
-  return timezone.format(timestamp, 'HH:mm:ss')
+  return timezone.formatTime(timestamp, { withSeconds: true })
 }
 
 const formatFullTimestamp = (timestamp) => {
   if (!timestamp) return '-'
-  return `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
 }
 
 const formatActionType = (actionType) => {

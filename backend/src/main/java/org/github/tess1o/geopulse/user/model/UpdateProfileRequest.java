@@ -25,4 +25,7 @@ public class UpdateProfileRequest {
 
     @Pattern(regexp = "^(MDY|DMY|YMD)$", message = "Date format must be one of: MDY, DMY, YMD")
     private String dateFormat;
+
+    @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")
+    private String timeFormat;
 }

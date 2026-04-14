@@ -120,6 +120,25 @@
           </div>
 
           <div class="form-field">
+            <label for="timeFormat" class="form-label">
+              Time Format
+              <i class="pi pi-info-circle" v-tooltip.right="'Choose whether times are shown in 24-hour or 12-hour format.'"></i>
+            </label>
+            <Dropdown
+              id="timeFormat"
+              v-model="form.timeFormat"
+              :options="timeFormatOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select your preferred time format"
+              class="w-full"
+            />
+            <small class="help-text">
+              Controls time display across user-facing timestamps in the app.
+            </small>
+          </div>
+
+          <div class="form-field">
             <label for="measureUnit" class="form-label">
               Measurement Unit
               <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
@@ -235,6 +254,10 @@ const props = defineProps({
   userDateFormat: {
     type: String,
     default: 'MDY'
+  },
+  userTimeFormat: {
+    type: String,
+    default: '24h'
   }
 })
 
@@ -251,6 +274,7 @@ const form = ref({
   fullName: '',
   timezone: '',
   dateFormat: 'MDY',
+  timeFormat: '24h',
   measureUnit: 'METRIC', // Default value
   defaultRedirectUrl: '',
   customRedirectUrl: ''
@@ -363,6 +387,11 @@ const dateFormatOptions = [
   { label: 'YYYY-MM-DD (ISO)', value: 'YMD' }
 ]
 
+const timeFormatOptions = [
+  { label: '24-hour (13:45)', value: '24h' },
+  { label: '12-hour (1:45 PM)', value: '12h' }
+]
+
 const defaultRedirectUrlOptions = [
   { label: 'Timeline', value: '/app/timeline' },
   { label: 'Dashboard', value: '/app/dashboard' },
@@ -386,6 +415,7 @@ const hasChanges = computed(() => {
          localAvatar.value !== props.userAvatar ||
          form.value.timezone !== props.userTimezone ||
          form.value.dateFormat !== props.userDateFormat ||
+         form.value.timeFormat !== props.userTimeFormat ||
          form.value.measureUnit !== props.userMeasureUnit ||
          effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
@@ -560,6 +590,7 @@ const handleSubmit = async () => {
       avatarFile: selectedAvatarFile.value,
       timezone: form.value.timezone,
       dateFormat: form.value.dateFormat,
+      timeFormat: form.value.timeFormat,
       measureUnit: form.value.measureUnit,
       defaultRedirectUrl: effectiveRedirectUrl
     })
@@ -572,6 +603,7 @@ const handleReset = () => {
   form.value.fullName = props.userName || ''
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.dateFormat = props.userDateFormat || 'MDY'
+  form.value.timeFormat = props.userTimeFormat || '24h'
   form.value.measureUnit = props.userMeasureUnit || 'METRIC'
 
   // Check if the stored URL matches any predefined option
@@ -609,7 +641,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 

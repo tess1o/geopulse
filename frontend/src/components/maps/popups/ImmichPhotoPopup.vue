@@ -117,7 +117,7 @@ const dateRange = computed(() => {
 const formatDate = (dateString) => {
   if (!dateString) return ''
   try {
-    return `${timezone.formatDateDisplay(dateString)} ${timezone.format(dateString, 'HH:mm:ss')}`
+    return `${timezone.formatDateDisplay(dateString)} ${timezone.formatTime(dateString, { withSeconds: true })}`
   } catch (error) {
     return dateString
   }

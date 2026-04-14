@@ -268,6 +268,18 @@ public class UserService {
         };
     }
 
+    private String validateTimeFormat(String timeFormat) {
+        if (timeFormat == null || timeFormat.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = timeFormat.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "24h", "12h" -> normalized;
+            default -> throw new IllegalArgumentException("Invalid time format. Allowed values: 24h, 12h");
+        };
+    }
+
     private String validateDefaultDateRangePreset(String defaultDateRangePreset) {
         if (defaultDateRangePreset == null || defaultDateRangePreset.trim().isEmpty()) {
             return null;
@@ -619,6 +631,11 @@ public class UserService {
         if (request.getDateFormat() != null) {
             user.setDateFormat(validateDateFormat(request.getDateFormat()));
             log.debug("Updated date format for user {}", user.getId());
+        }
+
+        if (request.getTimeFormat() != null) {
+            user.setTimeFormat(validateTimeFormat(request.getTimeFormat()));
+            log.debug("Updated time format for user {}", user.getId());
         }
 
         return user;

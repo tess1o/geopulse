@@ -1067,7 +1067,7 @@ const getPhotoBlobUrl = (photoId) => photoBlobUrls.value.get(photoId)
 
 const formatPhotoDate = (dateValue) => {
   if (!dateValue) return 'Unknown date'
-  return `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm')}`
+  return `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue)}`
 }
 
 onMounted(async () => {

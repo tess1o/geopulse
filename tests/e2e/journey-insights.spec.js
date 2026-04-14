@@ -189,6 +189,8 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
+      const createdUser = await dbManager.getUserByEmail(testUser.email);
+      await dbManager.client.query('UPDATE users SET time_format = $1 WHERE id = $2', ['12h', createdUser.id]);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -233,6 +235,8 @@ test.describe('Journey Insights', () => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
       const testUser = await isolatedUsers.create(page);
+      const createdUser = await dbManager.getUserByEmail(testUser.email);
+      await dbManager.client.query('UPDATE users SET time_format = $1 WHERE id = $2', ['12h', createdUser.id]);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');

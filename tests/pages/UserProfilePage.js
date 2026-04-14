@@ -21,6 +21,9 @@ export class UserProfilePage {
         dateFormatDropdown: '#dateFormat',
         dateFormatLabel: '#dateFormat .p-select-label',
         dateFormatOptions: '[role="option"], .p-select-option',
+        timeFormatDropdown: '#timeFormat',
+        timeFormatLabel: '#timeFormat .p-select-label',
+        timeFormatOptions: '[role="option"], .p-select-option',
         defaultRedirectUrlDropdown: '#defaultRedirectUrl',
         defaultRedirectUrlLabel: '#defaultRedirectUrl .p-select-label',
         defaultRedirectUrlOptions: '[role="option"], .p-select-option',
@@ -371,6 +374,41 @@ export class UserProfilePage {
       return userInfoStr ? JSON.parse(userInfoStr) : null;
     });
     return userInfo?.dateFormat || null;
+  }
+
+  /**
+   * Select time format from dropdown
+   */
+  async selectTimeFormat(timeFormatLabel) {
+    await this.page.click(this.selectors.profile.timeFormatLabel);
+    await this.page.waitForSelector(this.selectors.profile.timeFormatOptions, { timeout: 10000 });
+
+    const optionSelector = this.page.locator(this.selectors.profile.timeFormatOptions).filter({ hasText: timeFormatLabel });
+    await optionSelector.first().click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Get currently selected time format label
+   */
+  async getSelectedTimeFormat() {
+    const dropdownLabel = this.page.locator(this.selectors.profile.timeFormatLabel);
+    const text = await dropdownLabel.textContent();
+    if (text === 'Select your preferred time format') {
+      return null;
+    }
+    return text?.trim();
+  }
+
+  /**
+   * Get time format value from localStorage
+   */
+  async getTimeFormatFromLocalStorage() {
+    const userInfo = await this.page.evaluate(() => {
+      const userInfoStr = localStorage.getItem('userInfo');
+      return userInfoStr ? JSON.parse(userInfoStr) : null;
+    });
+    return userInfo?.timeFormat || null;
   }
 
   /**

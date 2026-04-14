@@ -262,7 +262,7 @@ const formatDate = (timestamp) => {
 }
 
 const formatTime = (timestamp) => {
-  return timezone.format(timestamp, 'HH:mm')
+  return timezone.formatTime(timestamp)
 }
 
 const formatDuration = (seconds) => {
@@ -304,7 +304,7 @@ const getEndTime = (visit) => {
   const startTime = timezone.fromUtc(visit.timestamp)
   const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
 
-  return timezone.format(endTime.toISOString(), 'HH:mm')
+  return timezone.formatTime(endTime.toISOString())
 }
 
 const getDayOfWeek = (timestamp) => {

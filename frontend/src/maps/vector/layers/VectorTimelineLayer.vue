@@ -108,7 +108,7 @@ const groupTimelineByCoordinate = () => {
 }
 
 const formatDateTimeDisplay = (dateValue) =>
-  `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`
+  `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
 const createPopupContent = (item) => buildTimelineItemPopupHtml(item, { formatDateTimeDisplay })
 
@@ -146,7 +146,7 @@ const createStackPopupElement = (items, onSelect) => {
 
   const rows = buildTimelineStackItems(items, {
     formatDateDisplay: (value) => timezone.formatDateDisplay(value),
-    formatTime: (value) => timezone.format(value, 'HH:mm:ss')
+    formatTime: (value) => timezone.formatTime(value, { withSeconds: true })
   })
 
   rows.forEach((row, stackIndex) => {

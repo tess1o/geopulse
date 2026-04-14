@@ -504,7 +504,7 @@ const getAccessSeverity = (trip) => {
 
 const formatDateTime = (value) => {
   if (!value) return '—'
-  return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm')}`
+  return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
 }
 
 const formatDurationLabel = (startTime, endTime) => {

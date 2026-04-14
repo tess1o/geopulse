@@ -205,7 +205,7 @@ const viewJobDetails = (jobId) => {
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A'
-  return `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm')}`
+  return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp)}`
 }
 
 const formatDuration = (durationMs) => {

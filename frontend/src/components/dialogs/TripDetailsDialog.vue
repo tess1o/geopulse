@@ -175,7 +175,7 @@ const getTripTitle = () => {
 
 const getStartDateTime = () => {
   if (!props.trip?.timestamp) return 'N/A'
-  return `${timezone.formatDateDisplay(props.trip.timestamp)} ${timezone.format(props.trip.timestamp, 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(props.trip.timestamp)} ${timezone.formatTime(props.trip.timestamp, { withSeconds: true })}`
 }
 
 const getEndDateTime = () => {
@@ -184,7 +184,7 @@ const getEndDateTime = () => {
   const startTime = timezone.fromUtc(props.trip.timestamp)
   const endTime = startTime.clone().add(props.trip.tripDuration, 'seconds')
   
-  return `${timezone.formatDateDisplay(endTime.toISOString())} ${timezone.format(endTime.toISOString(), 'HH:mm:ss')}`
+  return `${timezone.formatDateDisplay(endTime.toISOString())} ${timezone.formatTime(endTime.toISOString(), { withSeconds: true })}`
 }
 
 const formatDuration = (seconds) => {

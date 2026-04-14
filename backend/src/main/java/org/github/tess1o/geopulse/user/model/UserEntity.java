@@ -114,6 +114,12 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "date_format", length = 16)
     private String dateFormat;
 
+    @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")
+    @Size(max = 16, message = "Time format cannot exceed 16 characters")
+    @Column(name = "time_format", length = 16, nullable = false)
+    @Builder.Default
+    private String timeFormat = "24h";
+
     @Size(max = 32, message = "Default date range preset cannot exceed 32 characters")
     @Column(name = "default_date_range_preset", length = 32)
     private String defaultDateRangePreset;
