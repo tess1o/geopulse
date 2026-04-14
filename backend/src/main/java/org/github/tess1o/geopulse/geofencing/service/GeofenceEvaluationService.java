@@ -115,6 +115,10 @@ public class GeofenceEvaluationService {
                                    GpsPointEntity point,
                                    double latitude,
                                    double longitude) {
+        if (!stateRepository.lockSubjectAssignment(rule.getId(), subject.getId())) {
+            return;
+        }
+
         boolean inside = isInside(rule, latitude, longitude);
 
         GeofenceRuleStateId stateId = new GeofenceRuleStateId(rule.getId(), subject.getId());
