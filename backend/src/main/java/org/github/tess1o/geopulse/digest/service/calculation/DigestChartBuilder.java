@@ -49,6 +49,7 @@ public class DigestChartBuilder {
      */
     public ActivityChartData buildMonthlyChartForYear(UUID userId, int year, ZoneId zoneId) {
         String[] monthLabels = new String[12];
+        String[] monthSortKeys = new String[12];
         Map<String, double[]> tripTypeDistances = new HashMap<>();
 
         // Month names for labels
@@ -69,6 +70,7 @@ public class DigestChartBuilder {
 
             // Store label
             monthLabels[month - 1] = monthNames[month - 1];
+            monthSortKeys[month - 1] = String.format("%04d-%02d-01", year, month);
 
             // Extract distances from all trip types
             if (monthStats.getDistanceChartsByTripType() != null) {
@@ -89,7 +91,7 @@ public class DigestChartBuilder {
         // Build map of trip type to BarChartData
         Map<String, BarChartData> chartsByTripType = new HashMap<>();
         tripTypeDistances.forEach((tripType, distances) -> {
-            chartsByTripType.put(tripType, new BarChartData(monthLabels, distances));
+            chartsByTripType.put(tripType, new BarChartData(monthLabels, distances, monthSortKeys));
         });
 
         return ActivityChartData.builder()

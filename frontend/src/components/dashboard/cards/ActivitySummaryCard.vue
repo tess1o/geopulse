@@ -96,6 +96,7 @@ import {
   formatDistanceValue,
   getDistanceUnitLabel
 } from '@/utils/calculationsHelpers'
+import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
 
 const props = defineProps({
   title: {
@@ -150,66 +151,36 @@ const hasChartData = computed(() => {
   )
 })
 
-const chartLabels = computed(() => {
+const mergedChartAxis = computed(() => {
   const chartsByType = props.stats?.distanceChartsByTripType || {}
-
-  // Collect all labels from trip types that have data (filter out empty ones)
-  const allLabels = Object.values(chartsByType)
-    .filter(chart => chart?.labels?.length > 0 && chart?.data?.length > 0)
-    .flatMap(chart => chart.labels)
-
-  // Merge unique labels
-  const uniqueLabels = [...new Set(allLabels)]
-
-  if (uniqueLabels.length === 0) return []
-
-  // Define day order for sorting
-  const dayOrder = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-
-  // Check if labels are day abbreviations or date strings (MM/DD format)
-  const isDateFormat = uniqueLabels.some(label => /^\d{2}\/\d{2}$/.test(label))
-
-  if (isDateFormat) {
-    // Sort by date (MM/DD format)
-    return uniqueLabels.sort((a, b) => {
-      const [aMonth, aDay] = a.split('/').map(Number)
-      const [bMonth, bDay] = b.split('/').map(Number)
-      return aMonth !== bMonth ? aMonth - bMonth : aDay - bDay
-    })
-  } else {
-    // Sort by day of week
-    return uniqueLabels.sort((a, b) => {
-      const aIndex = dayOrder.indexOf(a.toUpperCase())
-      const bIndex = dayOrder.indexOf(b.toUpperCase())
-      // Handle unknown day names by putting them at the end
-      if (aIndex === -1) return 1
-      if (bIndex === -1) return -1
-      return aIndex - bIndex
-    })
-  }
+  return buildMergedChartAxis(chartsByType)
 })
+
+const chartLabels = computed(() => mergedChartAxis.value.labels)
 
 const chartDatasets = computed(() => {
   const datasets = []
-  const mergedLabels = chartLabels.value
+  const mergedKeys = mergedChartAxis.value.keys
   const chartsByType = props.stats?.distanceChartsByTripType || {}
 
   // Process each trip type
   Object.entries(chartsByType).forEach(([tripType, chartData]) => {
     if (!chartData || !chartData.data || chartData.data.length === 0) return
 
-    const labels = chartData.labels || []
     const data = chartData.data || []
 
-    // Create label-to-value map for this trip type, converting km to appropriate unit
-    const dataMap = new Map(labels.map((label, i) => [label, convertKilometersToDisplayUnit(data[i] || 0)]))
+    // Create key-to-value map for this trip type, converting km to the active unit.
+    const dataMap = new Map((chartData.labels || []).map((_, i) => [
+      getChartPointKey(chartData, i),
+      convertKilometersToDisplayUnit(data[i] || 0)
+    ]))
 
     // Get configuration for this trip type
     const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
 
     datasets.push({
       label: `${config.label}`,
-      data: mergedLabels.map(label => dataMap.get(label) || 0),
+      data: mergedKeys.map(key => dataMap.get(key) || 0),
       color: config.color
     })
   })

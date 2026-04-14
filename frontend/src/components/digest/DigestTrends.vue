@@ -29,6 +29,7 @@ import {
   formatDistanceValue,
   getDistanceUnitLabel
 } from '@/utils/calculationsHelpers'
+import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
 
 // Trip type display configuration with distinct colors
 const tripTypeConfig = {
@@ -70,69 +71,36 @@ const hasChartData = computed(() => {
   )
 })
 
-const chartLabels = computed(() => {
+const mergedChartAxis = computed(() => {
   const chartsByType = props.chartData?.chartsByTripType || {}
-
-  // Collect all labels from trip types that have data (filter out empty ones)
-  const allLabels = Object.values(chartsByType)
-    .filter(chart => chart?.labels?.length > 0 && chart?.data?.length > 0)
-    .flatMap(chart => chart.labels)
-
-  // Combine and deduplicate labels
-  const uniqueLabels = [...new Set(allLabels)]
-
-  // Sort chronologically based on view mode
-  if (props.viewMode === 'yearly') {
-    // For yearly view, sort months chronologically
-    // Support both full and abbreviated month names
-    const monthOrder = {
-      'January': 0, 'Jan': 0,
-      'February': 1, 'Feb': 1,
-      'March': 2, 'Mar': 2,
-      'April': 3, 'Apr': 3,
-      'May': 4,
-      'June': 5, 'Jun': 5,
-      'July': 6, 'Jul': 6,
-      'August': 7, 'Aug': 7,
-      'September': 8, 'Sep': 8, 'Sept': 8,
-      'October': 9, 'Oct': 9,
-      'November': 10, 'Nov': 10,
-      'December': 11, 'Dec': 11
-    }
-    uniqueLabels.sort((a, b) => {
-      const orderA = monthOrder[a] ?? 999
-      const orderB = monthOrder[b] ?? 999
-      return orderA - orderB
-    })
-  } else {
-    // For monthly view (weeks), sort naturally
-    uniqueLabels.sort()
-  }
-
-  return uniqueLabels
+  return buildMergedChartAxis(chartsByType, { viewMode: props.viewMode })
 })
+
+const chartLabels = computed(() => mergedChartAxis.value.labels)
 
 const chartDatasets = computed(() => {
   const datasets = []
-  const allLabels = chartLabels.value
+  const mergedKeys = mergedChartAxis.value.keys
   const chartsByType = props.chartData?.chartsByTripType || {}
 
-  // Helper function to align data with merged labels - use 0 instead of null, convert km to appropriate unit
-  const alignDataWithLabels = (sourceLabels, sourceData) => {
+  // Align series data using stable point keys so ordering is independent from display labels.
+  const alignDataWithKeys = (chart, sourceData) => {
     const labelDataMap = new Map()
-    sourceLabels.forEach((label, index) => {
-      labelDataMap.set(label, convertKilometersToDisplayUnit(sourceData[index] || 0))
+    const sourceLabels = chart?.labels || []
+
+    sourceLabels.forEach((_, index) => {
+      labelDataMap.set(getChartPointKey(chart, index), convertKilometersToDisplayUnit(sourceData[index] || 0))
     })
 
-    // Map data to all labels, use 0 for missing values
-    return allLabels.map(label => labelDataMap.get(label) || 0)
+    // Map data to all merged keys, use 0 for missing values
+    return mergedKeys.map(key => labelDataMap.get(key) || 0)
   }
 
   // Process each trip type
   Object.entries(chartsByType).forEach(([tripType, chartData]) => {
     if (!chartData || !chartData.labels?.length || !chartData.data?.length) return
 
-    const alignedData = alignDataWithLabels(chartData.labels, chartData.data)
+    const alignedData = alignDataWithKeys(chartData, chartData.data)
 
     // Get configuration for this trip type
     const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }

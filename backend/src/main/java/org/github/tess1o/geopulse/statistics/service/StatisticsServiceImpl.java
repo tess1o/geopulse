@@ -101,6 +101,10 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .mapToDouble(ChartDataPoint::getDistanceKm)
                 .toArray();
 
-        return new BarChartData(labels, distances);
+        String[] sortKeys = dataPoints.stream()
+                .map(ChartDataPoint::getSortKey)
+                .toArray(String[]::new);
+
+        return new BarChartData(labels, distances, sortKeys);
     }
 }

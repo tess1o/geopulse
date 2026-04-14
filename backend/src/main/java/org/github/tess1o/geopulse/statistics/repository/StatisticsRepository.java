@@ -331,6 +331,7 @@ public class StatisticsRepository {
             String movementType) {
         String sql = """
                 SELECT
+                    DATE(timestamp) as day_date,
                     UPPER(TO_CHAR(DATE(timestamp), 'Dy')) as day_label,
                     SUM(distance_meters) / 1000.0 as distance_km
                 FROM timeline_trips
@@ -353,8 +354,9 @@ public class StatisticsRepository {
 
         return results.stream()
                 .map(row -> new ChartDataPoint(
-                        (String) row[0],
-                        ((Number) row[1]).doubleValue()))
+                        (String) row[1],
+                        ((Number) row[2]).doubleValue(),
+                        row[0] != null ? row[0].toString() : null))
                 .toList();
     }
 
@@ -365,6 +367,7 @@ public class StatisticsRepository {
             String movementType) {
         String sql = """
                 SELECT
+                    DATE(DATE_TRUNC('week', timestamp::date)) as week_start_date,
                     TO_CHAR(DATE_TRUNC('week', timestamp::date), 'MM/DD') as week_label,
                     SUM(distance_meters) / 1000.0 as distance_km
                 FROM timeline_trips
@@ -387,8 +390,9 @@ public class StatisticsRepository {
 
         return results.stream()
                 .map(row -> new ChartDataPoint(
-                        (String) row[0],
-                        ((Number) row[1]).doubleValue()))
+                        (String) row[1],
+                        ((Number) row[2]).doubleValue(),
+                        row[0] != null ? row[0].toString() : null))
                 .toList();
     }
 

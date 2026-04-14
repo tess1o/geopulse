@@ -49,7 +49,7 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(new ChartDataPoint("MON", 10.0)));
+                .thenReturn(List.of(new ChartDataPoint("MON", 10.0, "MON")));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
         // Then
@@ -142,8 +142,8 @@ class StatisticsServiceImplTest {
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
                 .thenReturn(List.of(
-                        new ChartDataPoint("01/01", 10.0),
-                        new ChartDataPoint("01/08", 5.0)
+                        new ChartDataPoint("01/01", 10.0, "01/01"),
+                        new ChartDataPoint("01/08", 5.0, "01/08")
                 ));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS);
@@ -167,8 +167,8 @@ class StatisticsServiceImplTest {
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any()))
                 .thenReturn(List.of(
-                        new ChartDataPoint("MON", 5.0),
-                        new ChartDataPoint("TUE", 10.0)
+                        new ChartDataPoint("MON", 5.0, "MON"),
+                        new ChartDataPoint("TUE", 10.0, "TUE")
                 ));
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
@@ -191,7 +191,7 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
-                .thenReturn(List.of(new ChartDataPoint("01/01", 15.0)));
+                .thenReturn(List.of(new ChartDataPoint("01/01", 15.0, "01/01")));
         // When
         statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
         // Then

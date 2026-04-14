@@ -14,4 +14,5 @@ import lombok.NoArgsConstructor;
 public class ChartDataPoint {
     private String label;
     private Double distanceKm;
+    private String sortKey;
 }
