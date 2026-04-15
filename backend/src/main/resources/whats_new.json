@@ -8,7 +8,7 @@
       "Added device.uniqueId support for the Traccar integration",
       "Added Regenerate Coverage button and automatic coverage regeneration after file import",
       "Fixed chart labels being sorted incorrectly",
-      "Fixed geofences alerts concurrency issue",
+      "Fixed geofences alerts concurrency issue"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
