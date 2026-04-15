@@ -465,6 +465,9 @@
           "token" : {
             "type" : "string"
           },
+          "deviceId" : {
+            "type" : "string"
+          },
           "userId" : {
             "$ref" : "#/components/schemas/UUID"
           },
@@ -500,7 +503,7 @@
         }
       },
       "CreateNotificationTemplateRequest" : {
-        "required" : [ "name", "defaultForEnter", "defaultForLeave", "enabled" ],
+        "required" : [ "name", "defaultForEnter", "defaultForLeave", "enabled", "sendInApp" ],
         "type" : "object",
         "properties" : {
           "name" : {
@@ -524,6 +527,9 @@
             "type" : "boolean"
           },
           "enabled" : {
+            "type" : "boolean"
+          },
+          "sendInApp" : {
             "type" : "boolean"
           }
         }
@@ -640,6 +646,13 @@
           "custom_map_tile_url" : {
             "maxLength" : 1000,
             "type" : "string"
+          },
+          "custom_map_style_url" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "map_render_mode" : {
+            "$ref" : "#/components/schemas/MapRenderMode"
           }
         }
       },
@@ -1308,6 +1321,10 @@
           }
         }
       },
+      "MapRenderMode" : {
+        "enum" : [ "RASTER", "VECTOR" ],
+        "type" : "string"
+      },
       "MeasureUnit" : {
         "enum" : [ "METRIC", "IMPERIAL" ],
         "type" : "string"
@@ -1778,6 +1795,9 @@
           "token" : {
             "type" : "string"
           },
+          "deviceId" : {
+            "type" : "string"
+          },
           "userId" : {
             "type" : "string"
           },
@@ -1860,6 +1880,9 @@
             "type" : "boolean"
           },
           "enabled" : {
+            "type" : "boolean"
+          },
+          "sendInApp" : {
             "type" : "boolean"
           }
         }
@@ -1969,6 +1992,10 @@
           "dateFormat" : {
             "pattern" : "^(MDY|DMY|YMD)$",
             "type" : "string"
+          },
+          "timeFormat" : {
+            "pattern" : "^(24h|12h)$",
+            "type" : "string"
           }
         }
       },
@@ -2024,6 +2051,13 @@
             "maxLength" : 1000,
             "type" : "string"
           },
+          "custom_map_style_url" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "map_render_mode" : {
+            "$ref" : "#/components/schemas/MapRenderMode"
+          },
           "passwordRemoval" : {
             "type" : "boolean"
           }
@@ -2035,6 +2069,13 @@
           "customMapTileUrl" : {
             "maxLength" : 1000,
             "type" : "string"
+          },
+          "customMapStyleUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "mapRenderMode" : {
+            "$ref" : "#/components/schemas/MapRenderMode"
           },
           "pathSimplificationEnabled" : {
             "type" : "boolean"
@@ -3983,6 +4024,26 @@
           }
         },
         "summary" : "Get Coverage Cells",
+        "tags" : [ "Coverage Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/coverage/recalculate" : {
+      "post" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Recalculate Coverage",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -11055,7 +11116,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.25.0",
+    "version" : "1.26.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",

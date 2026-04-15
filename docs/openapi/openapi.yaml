@@ -353,6 +353,8 @@ components:
           type: string
         token:
           type: string
+        deviceId:
+          type: string
         userId:
           $ref: "#/components/schemas/UUID"
         connectionType:
@@ -381,6 +383,7 @@ components:
       - defaultForEnter
       - defaultForLeave
       - enabled
+      - sendInApp
       type: object
       properties:
         name:
@@ -398,6 +401,8 @@ components:
         defaultForLeave:
           type: boolean
         enabled:
+          type: boolean
+        sendInApp:
           type: boolean
     CreateOidcProviderRequest:
       required:
@@ -491,6 +496,11 @@ components:
         custom_map_tile_url:
           maxLength: 1000
           type: string
+        custom_map_style_url:
+          maxLength: 1000
+          type: string
+        map_render_mode:
+          $ref: "#/components/schemas/MapRenderMode"
     CreateTripDto:
       required:
       - name
@@ -1004,6 +1014,11 @@ components:
           type: string
         password:
           type: string
+    MapRenderMode:
+      enum:
+      - RASTER
+      - VECTOR
+      type: string
     MeasureUnit:
       enum:
       - METRIC
@@ -1361,6 +1376,8 @@ components:
           type: string
         token:
           type: string
+        deviceId:
+          type: string
         userId:
           type: string
         connectionType:
@@ -1420,6 +1437,8 @@ components:
         defaultForLeave:
           type: boolean
         enabled:
+          type: boolean
+        sendInApp:
           type: boolean
     UpdateOidcProviderRequest:
       required:
@@ -1503,6 +1522,9 @@ components:
         dateFormat:
           pattern: ^(MDY|DMY|YMD)$
           type: string
+        timeFormat:
+          pattern: ^(24h|12h)$
+          type: string
     UpdateSettingRequest:
       type: object
       properties:
@@ -1540,6 +1562,11 @@ components:
         custom_map_tile_url:
           maxLength: 1000
           type: string
+        custom_map_style_url:
+          maxLength: 1000
+          type: string
+        map_render_mode:
+          $ref: "#/components/schemas/MapRenderMode"
         passwordRemoval:
           type: boolean
     UpdateTimelineDisplayPreferencesRequest:
@@ -1548,6 +1575,11 @@ components:
         customMapTileUrl:
           maxLength: 1000
           type: string
+        customMapStyleUrl:
+          maxLength: 1000
+          type: string
+        mapRenderMode:
+          $ref: "#/components/schemas/MapRenderMode"
         pathSimplificationEnabled:
           type: boolean
         pathSimplificationTolerance:
@@ -2937,6 +2969,20 @@ paths:
         "403":
           description: Not Allowed
       summary: Get Coverage Cells
+      tags:
+      - Coverage Resource
+      security:
+      - jwt: []
+  /api/coverage/recalculate:
+    post:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Recalculate Coverage
       tags:
       - Coverage Resource
       security:
@@ -7897,7 +7943,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.25.0
+  version: 1.26.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
