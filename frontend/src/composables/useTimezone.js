@@ -156,6 +156,35 @@ export function useTimezone() {
         return createDateRangeUtc(startCalendar, endCalendar)
     }
 
+    const createDateTimeFromPicker = (pickerDate) => {
+        if (!(pickerDate instanceof Date) || Number.isNaN(pickerDate.getTime())) {
+            return null
+        }
+
+        // Rebuild a timezone-naive datetime from picker components and interpret in user timezone.
+        // This preserves selected hour/minute even when browser timezone differs from user timezone.
+        const year = pickerDate.getFullYear()
+        const month = String(pickerDate.getMonth() + 1).padStart(2, '0')
+        const day = String(pickerDate.getDate()).padStart(2, '0')
+        const hour = String(pickerDate.getHours()).padStart(2, '0')
+        const minute = String(pickerDate.getMinutes()).padStart(2, '0')
+        const second = String(pickerDate.getSeconds()).padStart(2, '0')
+        const millisecond = String(pickerDate.getMilliseconds()).padStart(3, '0')
+        const dateTimeString = `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}`
+
+        return dayjs.tz(dateTimeString, userTimezone.value)
+    }
+
+    const createDateTimeRangeFromPicker = (pickerStartDate, pickerEndDate) => {
+        const startDateTime = createDateTimeFromPicker(pickerStartDate)
+        const endDateTime = createDateTimeFromPicker(pickerEndDate)
+
+        return {
+            start: startDateTime ? startDateTime.utc().toISOString() : null,
+            end: endDateTime ? endDateTime.utc().toISOString() : null
+        }
+    }
+
     const parseUrlDate = (dateString, isEndDate = false) => {
         if (!dateString) return null
 
@@ -593,6 +622,8 @@ export function useTimezone() {
         // Date Ranges
         createDateRangeUtc,
         createDateRangeFromPicker,
+        createDateTimeFromPicker,
+        createDateTimeRangeFromPicker,
         parseUrlDate,
         convertUtcRangeToCalendarDates,
         getDateRangeArray,

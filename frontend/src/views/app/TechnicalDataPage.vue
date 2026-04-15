@@ -907,12 +907,12 @@ const formatDateRange = (range) => {
   return `${start} - ${end}`
 }
 
-const formatDateForAPI = (date, isEndDate = false) => {
-  // Fix: Use createDateRangeFromPicker to properly handle browser timezone dates
-  // The date parameter comes from browser's DatePicker component and needs to be 
-  // converted to user's timezone before getting UTC boundaries
-  const { start, end } = timezone.createDateRangeFromPicker(date, date);
-  return isEndDate ? end : start;
+const formatDateForAPI = (date) => {
+  if (!date) return null
+
+  // Preserve selected hour/minute from DatePicker while still interpreting in user timezone.
+  const { start } = timezone.createDateTimeRangeFromPicker(date, date)
+  return start
 }
 
 const getSourceSeverity = (sourceType) => {
@@ -1184,8 +1184,8 @@ const buildFilterParams = () => {
   // Date/time range
   if (hasDateFilter.value) {
     const dates = Array.isArray(dateRange.value) ? dateRange.value : [dateRange.value[0], dateRange.value[1]]
-    if (dates[0]) params.startTime = formatDateForAPI(dates[0], false)
-    if (dates[1]) params.endTime = formatDateForAPI(dates[1], true)
+    if (dates[0]) params.startTime = formatDateForAPI(dates[0])
+    if (dates[1]) params.endTime = formatDateForAPI(dates[1])
   }
 
   // Advanced filters
