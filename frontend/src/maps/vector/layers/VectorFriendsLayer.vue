@@ -1,6 +1,7 @@
 <template></template>
 
 <script setup>
+import maplibregl from 'maplibre-gl'
 import { readonly, ref, watch, onBeforeUnmount } from 'vue'
 import {
   createFeatureCollection,
@@ -13,6 +14,7 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import { createBasicFriendPopup } from '@/utils/friendPopupBuilder'
 
 const props = defineProps({
   map: {
@@ -45,19 +47,12 @@ const emit = defineEmits(['friend-click', 'friend-hover'])
 
 const state = {
   token: nextLayerToken('gp-friends'),
-  friendSourceId: '',
-  friendLayerId: '',
-  friendLabelLayerId: '',
   trailSourceId: '',
   trailLayerId: '',
-  listeners: [],
   styleLoadHandler: null,
   boundMap: null
 }
 
-state.friendSourceId = `${state.token}-source`
-state.friendLayerId = `${state.token}-circle`
-state.friendLabelLayerId = `${state.token}-label`
 state.trailSourceId = `${state.token}-trails-source`
 state.trailLayerId = `${state.token}-trails`
 
@@ -74,6 +69,11 @@ const getFriendLookupKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id || friend?.email
 }
 
+const getFriendAvatar = (friend) => {
+  if (!friend) return null
+  return friend.avatar || friend.avatarUrl || null
+}
+
 const getColorByFriend = (friend, index) => {
   const key = String(getFriendLookupKey(friend) || `friend-${index}`)
   const hash = key
@@ -83,36 +83,16 @@ const getColorByFriend = (friend, index) => {
   return trailColorPalette[hash]
 }
 
-const buildFriendCollections = () => {
-  const friendFeatures = []
+const getFriendLabel = (friend) => {
+  return (friend?.fullName || friend?.name || friend?.email || '?').slice(0, 1).toUpperCase()
+}
+
+const buildTrailCollection = () => {
   const trailFeatures = []
 
   props.friendsData.forEach((friend, index) => {
-    const latitude = toFiniteNumber(friend?.latitude ?? friend?.lastLatitude)
-    const longitude = toFiniteNumber(friend?.longitude ?? friend?.lastLongitude)
-
-    if (latitude === null || longitude === null) {
-      return
-    }
-
     const friendKey = String(getFriendLookupKey(friend) || `friend-${index}`)
     const color = friend?.trailColor || getColorByFriend(friend, index)
-    const label = (friend?.fullName || friend?.name || friend?.email || '?').slice(0, 1).toUpperCase()
-
-    friendFeatures.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [longitude, latitude]
-      },
-      properties: {
-        friendKey,
-        friendRaw: JSON.stringify(friend || {}),
-        friendIndex: index,
-        color,
-        label
-      }
-    })
 
     const trail = props.friendTrails?.[friendKey] || props.friendTrails?.[String(friendKey)] || []
     if (!props.showTrails || !Array.isArray(trail)) {
@@ -148,85 +128,137 @@ const buildFriendCollections = () => {
     })
   })
 
-  return {
-    friends: createFeatureCollection(friendFeatures),
-    trails: createFeatureCollection(trailFeatures)
-  }
+  return createFeatureCollection(trailFeatures)
 }
 
-const parseFriend = (event) => {
-  const raw = event?.features?.[0]?.properties?.friendRaw
-  if (!raw) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-const registerEvents = () => {
+const setMapCursor = (value) => {
   if (!isMapLibreMap(props.map)) {
     return
   }
 
-  const handleClick = (event) => {
-    const friend = parseFriend(event)
-    const index = Number.parseInt(event?.features?.[0]?.properties?.friendIndex, 10)
-
-    emit('friend-click', {
-      friend,
-      index: Number.isFinite(index) ? index : -1,
-      marker: null,
-      event
-    })
-  }
-
-  const handleHover = (event) => {
-    props.map.getCanvas().style.cursor = 'pointer'
-
-    const friend = parseFriend(event)
-    const index = Number.parseInt(event?.features?.[0]?.properties?.friendIndex, 10)
-
-    emit('friend-hover', {
-      friend,
-      index: Number.isFinite(index) ? index : -1,
-      marker: null,
-      event
-    })
-  }
-
-  const handleLeave = () => {
-    props.map.getCanvas().style.cursor = ''
-  }
-
-  props.map.on('click', state.friendLayerId, handleClick)
-  props.map.on('mousemove', state.friendLayerId, handleHover)
-  props.map.on('mouseleave', state.friendLayerId, handleLeave)
-
-  state.listeners = [
-    { event: 'click', layerId: state.friendLayerId, handler: handleClick },
-    { event: 'mousemove', layerId: state.friendLayerId, handler: handleHover },
-    { event: 'mouseleave', layerId: state.friendLayerId, handler: handleLeave }
-  ]
+  props.map.getCanvas().style.cursor = value
 }
 
-const unregisterEvents = () => {
-  if (!isMapLibreMap(props.map)) {
-    state.listeners = []
-    return
+const createFriendMarkerElement = ({ friend, color, label }) => {
+  const markerElement = document.createElement('button')
+  markerElement.type = 'button'
+  markerElement.className = 'gp-vector-friend-marker'
+  markerElement.style.setProperty('--gp-friend-marker-color', color)
+  markerElement.setAttribute('aria-label', friend?.fullName || friend?.name || friend?.email || 'Friend')
+
+  const avatarUrl = getFriendAvatar(friend)
+  if (avatarUrl) {
+    markerElement.classList.add('gp-vector-friend-marker--avatar')
+    const avatarImage = document.createElement('img')
+    avatarImage.src = avatarUrl
+    avatarImage.alt = friend?.fullName || friend?.name || friend?.email || 'Friend avatar'
+
+    avatarImage.addEventListener('error', () => {
+      markerElement.classList.remove('gp-vector-friend-marker--avatar')
+      markerElement.classList.add('gp-vector-friend-marker--fallback')
+      markerElement.textContent = label
+    }, { once: true })
+
+    markerElement.appendChild(avatarImage)
+    return markerElement
   }
 
-  state.listeners.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
-      props.map.off(event, layerId, handler)
-    }
+  markerElement.classList.add('gp-vector-friend-marker--fallback')
+  markerElement.textContent = label
+  return markerElement
+}
+
+const createFriendPopup = (friend) => {
+  return new maplibregl.Popup({
+    closeButton: true,
+    closeOnClick: false,
+    offset: 24,
+    className: 'gp-friend-popup'
+  }).setHTML(createBasicFriendPopup(friend))
+}
+
+const clearFriendMarkers = () => {
+  friendMarkers.value.forEach(({ marker }) => {
+    marker.remove()
   })
 
-  state.listeners = []
-  props.map.getCanvas().style.cursor = ''
+  friendMarkers.value = []
+  setMapCursor('')
+}
+
+const renderFriendMarkers = () => {
+  clearFriendMarkers()
+
+  if (!isMapLibreMap(props.map) || !props.visible) {
+    return
+  }
+
+  props.friendsData.forEach((friend, index) => {
+    const latitude = toFiniteNumber(friend?.latitude ?? friend?.lastLatitude)
+    const longitude = toFiniteNumber(friend?.longitude ?? friend?.lastLongitude)
+
+    if (latitude === null || longitude === null) {
+      return
+    }
+
+    const key = String(getFriendLookupKey(friend) || `friend-${index}`)
+    const color = friend?.trailColor || getColorByFriend(friend, index)
+    const label = getFriendLabel(friend)
+
+    const markerElement = createFriendMarkerElement({ friend, color, label })
+    const marker = new maplibregl.Marker({
+      element: markerElement,
+      anchor: 'center',
+      ...props.markerOptions
+    })
+      .setLngLat([longitude, latitude])
+      .addTo(props.map)
+
+    const popup = createFriendPopup(friend)
+    marker.setPopup(popup)
+
+    const handleClick = (event) => {
+      event.stopPropagation()
+      marker.togglePopup()
+      emit('friend-click', {
+        friend,
+        index,
+        marker,
+        event
+      })
+    }
+
+    const handleMouseEnter = (event) => {
+      setMapCursor('pointer')
+      emit('friend-hover', {
+        friend,
+        index,
+        marker,
+        event
+      })
+    }
+
+    const handleMouseLeave = () => {
+      setMapCursor('')
+    }
+
+    markerElement.addEventListener('click', handleClick)
+    markerElement.addEventListener('mouseenter', handleMouseEnter)
+    markerElement.addEventListener('mouseleave', handleMouseLeave)
+
+    friendMarkers.value.push({
+      key,
+      friend,
+      marker,
+      popup,
+      index,
+      handlers: {
+        click: handleClick,
+        mouseenter: handleMouseEnter,
+        mouseleave: handleMouseLeave
+      }
+    })
+  })
 }
 
 const renderLayer = () => {
@@ -234,10 +266,9 @@ const renderLayer = () => {
     return
   }
 
-  const collections = buildFriendCollections()
+  const trailCollection = buildTrailCollection()
 
-  ensureGeoJsonSource(props.map, state.friendSourceId, collections.friends)
-  ensureGeoJsonSource(props.map, state.trailSourceId, collections.trails)
+  ensureGeoJsonSource(props.map, state.trailSourceId, trailCollection)
 
   ensureLayer(props.map, {
     id: state.trailLayerId,
@@ -250,72 +281,68 @@ const renderLayer = () => {
     }
   })
 
-  ensureLayer(props.map, {
-    id: state.friendLayerId,
-    type: 'circle',
-    source: state.friendSourceId,
-    paint: {
-      'circle-radius': 12,
-      'circle-color': ['coalesce', ['get', 'color'], '#1E88E5'],
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 2
-    }
-  })
-
-  ensureLayer(props.map, {
-    id: state.friendLabelLayerId,
-    type: 'symbol',
-    source: state.friendSourceId,
-    layout: {
-      'text-field': ['get', 'label'],
-      'text-size': 11,
-      'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
-    },
-    paint: {
-      'text-color': '#ffffff'
-    }
-  })
-
-  setLayerVisibility(
-    props.map,
-    [state.friendLayerId, state.friendLabelLayerId],
-    props.visible
-  )
-
   setLayerVisibility(
     props.map,
     [state.trailLayerId],
     props.visible && props.showTrails
   )
 
-  unregisterEvents()
-  registerEvents()
+  trailLayers.value = trailCollection.features || []
+  renderFriendMarkers()
 }
 
 const clearLayer = () => {
-  unregisterEvents()
-
   if (state.boundMap && state.styleLoadHandler) {
     state.boundMap.off('style.load', state.styleLoadHandler)
     state.styleLoadHandler = null
   }
 
+  clearFriendMarkers()
+
   const targetMap = state.boundMap || props.map
   if (!isMapLibreMap(targetMap)) {
     state.boundMap = null
+    trailLayers.value = []
     return
   }
 
-  removeLayers(targetMap, [state.friendLabelLayerId, state.friendLayerId, state.trailLayerId])
-  removeSources(targetMap, [state.friendSourceId, state.trailSourceId])
+  removeLayers(targetMap, [state.trailLayerId])
+  removeSources(targetMap, [state.trailSourceId])
+
   state.boundMap = null
+  trailLayers.value = []
 }
 
-const getMarkerByFriend = () => null
+const getMarkerByFriend = (friendData) => {
+  const targetKey = String(getFriendLookupKey(friendData) || '')
+  if (!targetKey) {
+    return undefined
+  }
+
+  return friendMarkers.value.find(({ key }) => key === targetKey)?.marker
+}
 
 const focusOnFriend = (friendData, options = {}) => {
   if (!isMapLibreMap(props.map) || !friendData) {
     return false
+  }
+
+  const marker = getMarkerByFriend(friendData)
+  if (marker) {
+    const targetZoom = Number.isFinite(options.zoom) ? options.zoom : 17
+    const markerPosition = marker.getLngLat()
+    props.map.easeTo({
+      center: [markerPosition.lng, markerPosition.lat],
+      zoom: targetZoom,
+      duration: 320
+    })
+
+    if (options.openPopup === true && typeof marker.togglePopup === 'function') {
+      if (!marker.getPopup()?.isOpen()) {
+        marker.togglePopup()
+      }
+    }
+    return true
   }
 
   const latitude = toFiniteNumber(friendData?.lastLatitude ?? friendData?.latitude)
@@ -372,3 +399,88 @@ defineExpose({
   clearFriendMarkers: clearLayer
 })
 </script>
+
+<style>
+@import '@/styles/friendPopup.css';
+
+.gp-vector-friend-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 3px solid var(--gp-surface-white, #ffffff);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  background: var(--gp-friend-marker-color, #1E88E5);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.gp-vector-friend-marker img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gp-vector-friend-marker:focus-visible {
+  outline: 2px solid var(--gp-primary, #1a56db);
+  outline-offset: 2px;
+}
+
+.gp-friend-popup.maplibregl-popup .maplibregl-popup-content {
+  padding: 0.625rem;
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid var(--gp-border-light, #e2e8f0);
+  background: var(--gp-surface-white, #ffffff);
+  box-shadow: var(--gp-shadow-large, 0 10px 25px rgba(15, 23, 42, 0.2));
+}
+
+.gp-friend-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--gp-surface-white, #ffffff);
+}
+
+.gp-friend-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--gp-surface-white, #ffffff);
+}
+
+.gp-friend-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--gp-surface-white, #ffffff);
+}
+
+.gp-friend-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--gp-surface-white, #ffffff);
+}
+
+.p-dark .gp-vector-friend-marker {
+  border-color: var(--gp-border-dark, rgba(148, 163, 184, 0.55));
+}
+
+.p-dark .gp-friend-popup.maplibregl-popup .maplibregl-popup-content {
+  border-color: var(--gp-border-dark, rgba(148, 163, 184, 0.35));
+  background: var(--gp-surface-dark, #1e293b);
+}
+
+.p-dark .gp-friend-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: var(--gp-surface-dark, #1e293b);
+}
+
+.p-dark .gp-friend-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--gp-surface-dark, #1e293b);
+}
+
+.p-dark .gp-friend-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--gp-surface-dark, #1e293b);
+}
+
+.p-dark .gp-friend-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--gp-surface-dark, #1e293b);
+}
+</style>

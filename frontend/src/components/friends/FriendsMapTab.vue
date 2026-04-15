@@ -52,6 +52,9 @@
       <LiveFriendsFilter
           v-model="selectedFriendKeysState"
           :friends="friendsWithLocation"
+          :trail-range="trailRange"
+          :trail-range-options="trailRangeOptions"
+          @update:trailRange="$emit('trail-range-change', $event)"
           class="live-friends-filter"
       />
 
@@ -126,6 +129,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  trailRange: {
+    type: String,
+    default: '1h'
+  },
+  trailRangeOptions: {
+    type: Array,
+    default: () => []
+  },
   refreshing: {
     type: Boolean,
     default: false
@@ -136,7 +147,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all', 'toggle-trails', 'selection-change'])
+const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all', 'toggle-trails', 'selection-change', 'trail-range-change'])
 
 const friendsMapRef = ref(null)
 

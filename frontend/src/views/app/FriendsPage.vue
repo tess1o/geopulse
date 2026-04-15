@@ -88,6 +88,7 @@ import {useConfirm} from 'primevue/useconfirm'
 import {useLocationStore} from '@/stores/location'
 import {useAuthStore} from '@/stores/auth'
 import AutoComplete from 'primevue/autocomplete'
+import {useTimezone} from '@/composables/useTimezone'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -103,6 +104,15 @@ import InvitationsTab from '@/components/friends/InvitationsTab.vue'
 // Store
 import {useFriendsStore} from '@/stores/friends'
 import friendsService from '@/services/friendsService'
+import {
+  FRIEND_TRAIL_RANGE_OPTIONS,
+  filterFriendTrailPointsForRange,
+  getFriendTrailRangeDescription,
+  getFriendTrailRangeRequest,
+  loadStoredFriendTrailRange,
+  normalizeFriendTrailRange,
+  saveFriendTrailRange
+} from '@/utils/friendsTrailRange'
 
 // Composables
 const toast = useToast()
@@ -110,6 +120,7 @@ const confirm = useConfirm()
 const friendsStore = useFriendsStore()
 const locationStore = useLocationStore()
 const authStore = useAuthStore()
+const timezone = useTimezone()
 
 const currentUser = ref(null)
 
@@ -300,7 +311,9 @@ const currentTabConfig = computed(() => {
         refreshing: refreshing.value,
         loading: dataLoading.value,
         friendTrails: friendLocationTrails.value,
-        showFriendLocationTrails: showFriendLocationTrails.value
+        showFriendLocationTrails: showFriendLocationTrails.value,
+        trailRange: selectedTrailRange.value,
+        trailRangeOptions: FRIEND_TRAIL_RANGE_OPTIONS
       },
       handlers: {
         onInviteFriend: () => { showInviteDialog.value = true },
@@ -308,7 +321,8 @@ const currentTabConfig = computed(() => {
         onFriendLocated: handleFriendLocated,
         onShowAll: handleShowAll,
         onToggleTrails: handleToggleFriendLocationTrails,
-        onSelectionChange: handleLiveFriendSelectionChange
+        onSelectionChange: handleLiveFriendSelectionChange,
+        onTrailRangeChange: handleTrailRangeChange
       }
     },
     timeline: {
@@ -382,10 +396,10 @@ const inviteForm = ref({
   message: ''
 })
 
-const FRIEND_TRAIL_WINDOW_MINUTES = 60
 const FRIEND_TRAIL_TOAST_COOLDOWN_MS = 15000
 const showFriendLocationTrails = ref(true)
 const friendLocationTrails = ref({})
+const selectedTrailRange = ref(loadStoredFriendTrailRange())
 const lastFriendTrailSuccessToastAt = ref(0)
 const lastFriendTrailErrorToastAt = ref(0)
 
@@ -498,6 +512,10 @@ watch([() => route.query.friends, liveFriendFilterAvailableKeys], ([queryValue, 
 
   updateLiveFriendFilterQuery(normalizedSelection, availableKeys)
 }, { immediate: true })
+
+watch(selectedTrailRange, (newRange) => {
+  saveFriendTrailRange(newRange)
+})
 
 // Watch for when all invites are cleared while on the invites tab
 watch([receivedInvites, sentInvites], () => {
@@ -821,6 +839,19 @@ const handleToggleFriendLocationTrails = (value) => {
   }
 }
 
+const handleTrailRangeChange = async (value) => {
+  const normalizedRange = normalizeFriendTrailRange(value)
+  if (normalizedRange === selectedTrailRange.value) {
+    return
+  }
+
+  selectedTrailRange.value = normalizedRange
+
+  if (activeTab.value === 'live' && !dataLoading.value && !refreshing.value) {
+    await refreshFriendLocationTrails({ notifyOnError: true })
+  }
+}
+
 const updateCurrentUserFromLastPosition = (lastPosition) => {
   if (!lastPosition) return
 
@@ -879,6 +910,7 @@ const showFriendTrailVisibleToast = (trails) => {
     return
   }
 
+  const activeTrailRangeDescription = getFriendTrailRangeDescription(selectedTrailRange.value)
   const friendIds = Object.keys(trails || {})
   const friendsWithPoints = friendIds.filter(friendId => Array.isArray(trails[friendId]) && trails[friendId].length > 0)
   const totalPoints = friendsWithPoints.reduce((sum, friendId) => sum + trails[friendId].length, 0)
@@ -887,7 +919,7 @@ const showFriendTrailVisibleToast = (trails) => {
     toast.add({
       severity: 'success',
       summary: 'Location Trails Enabled',
-      detail: `Showing ${totalPoints} points across ${friendsWithPoints.length} friend trail(s)`,
+      detail: `Showing ${totalPoints} points across ${friendsWithPoints.length} friend trail(s) for ${activeTrailRangeDescription}`,
       life: 3500
     })
     return
@@ -896,7 +928,7 @@ const showFriendTrailVisibleToast = (trails) => {
   toast.add({
     severity: 'info',
     summary: 'Location Trails Enabled',
-    detail: `No trail points found for the last ${FRIEND_TRAIL_WINDOW_MINUTES} minutes`,
+    detail: `No trail points found for ${activeTrailRangeDescription}`,
     life: 3500
   })
 }
@@ -928,6 +960,11 @@ const refreshFriendLocationTrails = async ({ notifyOnError = false } = {}) => {
   friendTrailFetchInFlight = true
 
   try {
+    const trailRequest = getFriendTrailRangeRequest({
+      trailRange: selectedTrailRange.value,
+      nowInUserTimezone: timezone.now()
+    })
+
     const trails = {}
     friendsWithLiveLocation.value.forEach((friend) => {
       const key = getFriendLocationKey(friend)
@@ -936,10 +973,15 @@ const refreshFriendLocationTrails = async ({ notifyOnError = false } = {}) => {
       }
     })
 
-    const response = await friendsService.getFriendsLocationTrails(FRIEND_TRAIL_WINDOW_MINUTES)
+    const response = await friendsService.getFriendsLocationTrails(trailRequest.minutes, trailRequest.endTime)
     const trailsByFriend = extractTrailsByFriend(response)
     Object.entries(trailsByFriend).forEach(([friendId, points]) => {
-      trails[String(friendId)] = Array.isArray(points) ? points : []
+      trails[String(friendId)] = filterFriendTrailPointsForRange({
+        points: Array.isArray(points) ? points : [],
+        trailRange: trailRequest.trailRange,
+        nowIso: trailRequest.nowIso,
+        isSameDay: (timestamp, nowIso) => timezone.fromUtc(timestamp).isSame(timezone.fromUtc(nowIso), 'day')
+      })
     })
 
     friendLocationTrails.value = trails

@@ -27,6 +27,15 @@
         </MultiSelect>
 
         <div class="filter-summary">{{ summaryLabel }}</div>
+
+        <Select
+            v-model="trailRangeModel"
+            :options="trailRangeSelectOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="trail-range-select"
+            aria-label="Trail duration"
+        />
       </div>
 
       <div class="filter-actions">
@@ -62,6 +71,19 @@
       <div class="mobile-dialog-content">
         <p class="mobile-summary">{{ summaryLabel }}</p>
 
+        <div class="mobile-trail-range">
+          <label class="mobile-trail-range-label" for="mobileTrailRangeSelect">Trail duration</label>
+          <Select
+              input-id="mobileTrailRangeSelect"
+              v-model="trailRangeModel"
+              :options="trailRangeSelectOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="mobile-trail-range-select"
+              aria-label="Trail duration"
+          />
+        </div>
+
         <MultiSelect
             v-model="selectionModel"
             :options="friendOptions"
@@ -96,8 +118,10 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import Select from 'primevue/select'
 import FriendFilterOptionRow from '@/components/friends/FriendFilterOptionRow.vue'
 import FriendFilterQuickActions from '@/components/friends/FriendFilterQuickActions.vue'
+import { FRIEND_TRAIL_RANGE_OPTIONS, normalizeFriendTrailRange } from '@/utils/friendsTrailRange'
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
 
@@ -109,10 +133,18 @@ const props = defineProps({
   modelValue: {
     type: Array,
     default: () => []
+  },
+  trailRange: {
+    type: String,
+    default: '1h'
+  },
+  trailRangeOptions: {
+    type: Array,
+    default: () => FRIEND_TRAIL_RANGE_OPTIONS
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:trailRange'])
 const mobileDialogVisible = ref(false)
 
 const getFriendKey = (friend) => {
@@ -181,6 +213,22 @@ const normalizeSelection = (selection) => {
 const selectionModel = computed({
   get: () => normalizeSelection(props.modelValue),
   set: (value) => emit('update:modelValue', normalizeSelection(value))
+})
+
+const trailRangeSelectOptions = computed(() => {
+  if (!Array.isArray(props.trailRangeOptions) || props.trailRangeOptions.length === 0) {
+    return FRIEND_TRAIL_RANGE_OPTIONS
+  }
+
+  return props.trailRangeOptions.map((option) => ({
+    value: normalizeFriendTrailRange(option?.value),
+    label: option?.label || option?.value || ''
+  }))
+})
+
+const trailRangeModel = computed({
+  get: () => normalizeFriendTrailRange(props.trailRange),
+  set: (value) => emit('update:trailRange', normalizeFriendTrailRange(value))
 })
 
 const totalFriends = computed(() => optionKeys.value.length)
@@ -277,6 +325,11 @@ const selectOnlineFriends = () => {
   color: var(--gp-text-secondary);
 }
 
+.trail-range-select {
+  width: 7rem;
+  flex-shrink: 0;
+}
+
 .filter-actions {
   flex-shrink: 0;
 }
@@ -308,6 +361,21 @@ const selectOnlineFriends = () => {
   margin: 0;
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
+}
+
+.mobile-trail-range {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mobile-trail-range-label {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+}
+
+.mobile-trail-range-select {
+  width: 100%;
 }
 
 .mobile-friends-select {
