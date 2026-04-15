@@ -1,13 +1,14 @@
 [
   {
-    "version": "1.25.0",
-    "title": "GeoPulse 1.25.0",
+    "version": "1.26.0",
+    "title": "GeoPulse 1.26.0",
     "highlights": [
-      "Added custom avatar upload support in Profile Settings",
-      "Added trip sharing with collaborators (Viewer and Editor roles)",
-      "Added support for creating unplanned trips and scheduling them later",
-      "Added Export/Import for Timeline Preferences with import preview",
-      "Improved timeline gap handling to better preserve trip continuity and infer stays in long stationary gaps"
+      "Added Vector map support. Existing Raster maps are also supported",
+      "Added 12h/24h time format support",
+      "Added device.uniqueId support for the Traccar integration",
+      "Added Regenerate Coverage button and automatic coverage regeneration after file import",
+      "Fixed chart labels being sorted incorrectly",
+      "Fixed geofences alerts concurrency issue",
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
