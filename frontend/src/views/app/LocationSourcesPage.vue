@@ -323,7 +323,8 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
           formData.maxAllowedAccuracy,
           formData.maxAllowedSpeed,
           formData.enableDuplicateDetection,
-          formData.duplicateDetectionThresholdMinutes
+          formData.duplicateDetectionThresholdMinutes,
+          null
         )
       } else {
         // Token-only sources (Overland, Traccar, Dawarich, Home Assistant).
@@ -337,7 +338,8 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
           formData.maxAllowedAccuracy,
           formData.maxAllowedSpeed,
           formData.enableDuplicateDetection,
-          formData.duplicateDetectionThresholdMinutes
+          formData.duplicateDetectionThresholdMinutes,
+          formData.type === 'TRACCAR' ? formData.deviceId : null
         )
       }
       

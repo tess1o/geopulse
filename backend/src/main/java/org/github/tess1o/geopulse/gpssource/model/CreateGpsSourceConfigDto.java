@@ -15,6 +15,7 @@ public class CreateGpsSourceConfigDto {
     private String username;
     private String password;
     private String token;
+    private String deviceId;
     private UUID userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
     // Use Boolean wrapper to allow null from frontend, will be converted to false in mapper if null
@@ -24,4 +25,3 @@ public class CreateGpsSourceConfigDto {
     private Boolean enableDuplicateDetection;
     private Integer duplicateDetectionThresholdMinutes;
 }
-

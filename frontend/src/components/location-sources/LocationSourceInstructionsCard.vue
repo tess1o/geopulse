@@ -173,6 +173,17 @@
                   </small>
                 </div>
               </div>
+
+              <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <div class="step-title">Shared Traccar token setup</div>
+                  <div class="step-value">
+                    If multiple people share one Traccar server/token, create one GeoPulse Traccar source per device and set
+                    <code>Device Unique ID</code> to that device's <code>uniqueId</code>.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

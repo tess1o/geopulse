@@ -111,7 +111,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
 
         async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP',
                                  filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed,
-                                 enableDuplicateDetection, duplicateDetectionThresholdMinutes) {
+                                 enableDuplicateDetection, duplicateDetectionThresholdMinutes, deviceId = null) {
             try {
                 // Note: Removed userId parameter as per your security discussion
                 await apiService.post('/gps/source', {
@@ -119,6 +119,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
                     username,
                     password,
                     token,
+                    deviceId,
                     connectionType,
                     filterInaccurateData,
                     maxAllowedAccuracy,

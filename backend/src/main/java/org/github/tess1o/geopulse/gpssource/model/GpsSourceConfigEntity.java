@@ -32,6 +32,8 @@ public class GpsSourceConfigEntity {
     @Column(name = "password_hash")
     private String passwordHash;  // For OwnTracks
     private String token;         // For Overland
+    @Column(name = "device_id")
+    private String deviceId;      // Optional Traccar device uniqueId filter
     private boolean active;
 
     @Enumerated(EnumType.STRING)

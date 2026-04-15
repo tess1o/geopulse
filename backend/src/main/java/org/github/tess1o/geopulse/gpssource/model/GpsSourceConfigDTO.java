@@ -16,6 +16,7 @@ public class GpsSourceConfigDTO {
     private String type;
     private String username;
     private String token;
+    private String deviceId;
     private UUID userId;
     private boolean active;
     private GpsSourceConfigEntity.ConnectionType connectionType;

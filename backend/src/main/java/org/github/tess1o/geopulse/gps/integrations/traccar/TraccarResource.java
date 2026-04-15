@@ -11,10 +11,12 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
-import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
-import java.util.UUID;
+import java.util.List;
+import java.util.Locale;
 
 @Path("/")
 @ApplicationScoped
@@ -24,12 +26,12 @@ import java.util.UUID;
 public class TraccarResource {
 
     private final GpsPointService gpsPointService;
-    private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final GpsSourceService gpsSourceService;
 
     public TraccarResource(GpsPointService gpsPointService,
-                           GpsIntegrationAuthenticatorRegistry authRegistry) {
+                           GpsSourceService gpsSourceService) {
         this.gpsPointService = gpsPointService;
-        this.authRegistry = authRegistry;
+        this.gpsSourceService = gpsSourceService;
     }
 
     @POST
@@ -38,15 +40,66 @@ public class TraccarResource {
                                   @HeaderParam("Authorization") String authHeader) {
         log.info("Received Traccar payload: {}", payload);
 
-
-        var authResult = authRegistry.authenticate(GpsSourceType.TRACCAR, authHeader);
-        if (authResult.isEmpty()) {
+        String token;
+        try {
+            token = extractBearerToken(authHeader);
+        } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 
-        UUID userId = authResult.get().getUserId();
-        var config = authResult.get().getConfig();
-        gpsPointService.saveTraccarGpsPoint(payload, userId, GpsSourceType.TRACCAR, config);
+        List<GpsSourceConfigEntity> tokenConfigs = gpsSourceService.findAllActiveByTokenAndSourceType(token, GpsSourceType.TRACCAR);
+        if (tokenConfigs.isEmpty()) {
+            return Response.status(Response.Status.UNAUTHORIZED).build();
+        }
+
+        List<GpsSourceConfigEntity> matchedConfigs = resolveMatchedConfigs(payload, tokenConfigs);
+        if (matchedConfigs.isEmpty()) {
+            log.info("No eligible Traccar config route for token and incoming device id");
+            return Response.ok().build();
+        }
+
+        for (GpsSourceConfigEntity config : matchedConfigs) {
+            gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config);
+        }
         return Response.ok().build();
+    }
+
+    private List<GpsSourceConfigEntity> resolveMatchedConfigs(TraccarPositionData payload, List<GpsSourceConfigEntity> tokenConfigs) {
+        String incomingDeviceId = normalizeDeviceId(payload != null && payload.getDevice() != null
+                ? payload.getDevice().getUniqueId()
+                : null);
+
+        List<GpsSourceConfigEntity> exactMatches = incomingDeviceId == null
+                ? List.of()
+                : tokenConfigs.stream()
+                        .filter(config -> incomingDeviceId.equals(normalizeDeviceId(config.getDeviceId())))
+                        .toList();
+
+        if (!exactMatches.isEmpty()) {
+            return exactMatches;
+        }
+
+        // Wildcard fallback: use configs without a device filter only when no exact match exists.
+        return tokenConfigs.stream()
+                .filter(config -> normalizeDeviceId(config.getDeviceId()) == null)
+                .toList();
+    }
+
+    private String extractBearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid Bearer Auth header");
+        }
+        return authHeader.substring("Bearer ".length());
+    }
+
+    private String normalizeDeviceId(String deviceId) {
+        if (deviceId == null) {
+            return null;
+        }
+        String trimmed = deviceId.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.toLowerCase(Locale.ROOT);
     }
 }

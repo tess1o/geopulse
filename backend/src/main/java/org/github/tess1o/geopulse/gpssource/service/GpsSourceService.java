@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
+import java.util.Locale;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +71,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     @Transactional
     public GpsSourceConfigDTO addGpsSourceConfig(CreateGpsSourceConfigDto newConfig) {
+        normalizeTraccarConfig(newConfig);
         validateUniqueness(newConfig);
         UserEntity user = em.getReference(UserEntity.class, newConfig.getUserId());
         GpsSourceConfigEntity gpsSourceConfigEntity = gpsSourceMapper.toEntity(newConfig, user);
@@ -94,10 +96,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
                 throw new IllegalArgumentException("Overland token is already used");
             }
         } else if (newConfig.getType() == GpsSourceType.TRACCAR) {
-            boolean isUnique = isTokenSourceUnique(newConfig, GpsSourceType.TRACCAR);
-            if (!isUnique) {
-                throw new IllegalArgumentException("Traccar token is already used");
-            }
+            validateTraccarTokenDeviceUniqueness(newConfig.getUserId(), newConfig.getToken(), newConfig.getDeviceId(), null);
         } else if (newConfig.getType() == GpsSourceType.HOME_ASSISTANT) {
             boolean isUnique = isTokenSourceUnique(newConfig, GpsSourceType.HOME_ASSISTANT);
             if (!isUnique) {
@@ -143,14 +142,30 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             }
         }
         if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
-                dbConfig.getSourceType() == GpsSourceType.TRACCAR ||
                 dbConfig.getSourceType() == GpsSourceType.DAWARICH ||
                 dbConfig.getSourceType() == GpsSourceType.HOME_ASSISTANT) {
             // Only update token if a new one is provided
-            if (config.getToken() != null && !config.getToken().isEmpty()) {
+            if (hasText(config.getToken())) {
                 dbConfig.setToken(config.getToken());
             }
         }
+
+        if (dbConfig.getSourceType() == GpsSourceType.TRACCAR) {
+            String nextToken = hasText(config.getToken()) ? config.getToken() : dbConfig.getToken();
+            String nextDeviceId = config.getDeviceId() == null
+                    ? dbConfig.getDeviceId()
+                    : normalizeTraccarDeviceId(config.getDeviceId());
+
+            validateTraccarTokenDeviceUniqueness(userId, nextToken, nextDeviceId, dbConfig.getId());
+
+            if (hasText(config.getToken())) {
+                dbConfig.setToken(config.getToken());
+            }
+            if (config.getDeviceId() != null) {
+                dbConfig.setDeviceId(nextDeviceId);
+            }
+        }
+
         if (config.getConnectionType() != null) {
             dbConfig.setConnectionType(config.getConnectionType());
         }
@@ -162,6 +177,10 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         dbConfig.setEnableDuplicateDetection(config.isEnableDuplicateDetection());
         dbConfig.setDuplicateDetectionThresholdMinutes(config.getDuplicateDetectionThresholdMinutes());
         return true;
+    }
+
+    public List<GpsSourceConfigEntity> findAllActiveByTokenAndSourceType(String token, GpsSourceType sourceType) {
+        return gpsSourceRepository.findAllActiveByTokenAndSourceType(token, sourceType);
     }
 
     @Transactional
@@ -199,6 +218,53 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     @Override
     public Optional<GpsSourceConfigEntity> findByUsernameAndConnectionType(String username, GpsSourceConfigEntity.ConnectionType connectionType) {
         return gpsSourceRepository.findByUsernameAndConnectionType(username, connectionType);
+    }
+
+    private void normalizeTraccarConfig(CreateGpsSourceConfigDto newConfig) {
+        if (newConfig.getType() == GpsSourceType.TRACCAR) {
+            newConfig.setDeviceId(normalizeTraccarDeviceId(newConfig.getDeviceId()));
+        }
+    }
+
+    private void validateTraccarTokenDeviceUniqueness(UUID userId, String token, String deviceId, UUID excludedConfigId) {
+        List<GpsSourceConfigEntity> existing = gpsSourceRepository.findByUserIdSourceTypeAndToken(
+                userId,
+                GpsSourceType.TRACCAR,
+                token
+        );
+
+        String normalizedDeviceId = normalizeTraccarDeviceId(deviceId);
+        boolean exists = existing.stream()
+                .filter(config -> excludedConfigId == null || !config.getId().equals(excludedConfigId))
+                .map(config -> normalizeTraccarDeviceId(config.getDeviceId()))
+                .anyMatch(existingDeviceId -> {
+                    if (normalizedDeviceId == null) {
+                        return existingDeviceId == null;
+                    }
+                    return normalizedDeviceId.equals(existingDeviceId);
+                });
+
+        if (exists) {
+            if (normalizedDeviceId == null) {
+                throw new IllegalArgumentException("Traccar wildcard source is already configured for this token");
+            }
+            throw new IllegalArgumentException("Traccar device ID is already configured for this token");
+        }
+    }
+
+    private String normalizeTraccarDeviceId(String deviceId) {
+        if (deviceId == null) {
+            return null;
+        }
+        String trimmed = deviceId.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
 }

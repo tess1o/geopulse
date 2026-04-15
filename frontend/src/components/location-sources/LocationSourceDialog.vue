@@ -149,6 +149,16 @@
             />
             <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
           </div>
+
+          <div class="form-field">
+            <label for="location-source-device-id-traccar" class="form-label">Device Unique ID (optional)</label>
+            <InputText
+              id="location-source-device-id-traccar"
+              v-model="formData.deviceId"
+              placeholder="Leave empty to accept all devices"
+            />
+            <small class="text-muted">Matches Traccar <code>device.uniqueId</code>. Use one source per device when sharing a token.</small>
+          </div>
         </div>
 
         <div v-else-if="formData.type === 'DAWARICH'" class="form-section">
@@ -245,6 +255,7 @@ const formData = ref({
   username: '',
   password: '',
   token: '',
+  deviceId: '',
   connectionType: 'HTTP',
   filterInaccurateData: null,
   maxAllowedAccuracy: null,
@@ -285,6 +296,7 @@ const resetDialogForm = () => {
     username: '',
     password: '',
     token: '',
+    deviceId: '',
     connectionType: 'HTTP',
     filterInaccurateData: defaults.filterInaccurateData,
     maxAllowedAccuracy: defaults.maxAllowedAccuracy,
@@ -322,6 +334,7 @@ const openEdit = (source) => {
     username: source.username || '',
     password: '',
     token: source.token || '',
+    deviceId: source.deviceId || '',
     connectionType: source.connectionType || 'HTTP',
     filterInaccurateData: source.filterInaccurateData ?? false,
     maxAllowedAccuracy: source.maxAllowedAccuracy ?? null,

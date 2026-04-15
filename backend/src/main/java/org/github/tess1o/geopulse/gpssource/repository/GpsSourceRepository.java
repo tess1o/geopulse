@@ -44,6 +44,14 @@ public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfi
         return find("token = ?1 and sourceType = ?2 and active = true", token, sourceType).firstResultOptional();
     }
 
+    public List<GpsSourceConfigEntity> findAllActiveByTokenAndSourceType(String token, GpsSourceType sourceType) {
+        return list("token = ?1 and sourceType = ?2 and active = true", token, sourceType);
+    }
+
+    public List<GpsSourceConfigEntity> findByUserIdSourceTypeAndToken(UUID userId, GpsSourceType sourceType, String token) {
+        return list("user.id = ?1 and sourceType = ?2 and token = ?3", userId, sourceType, token);
+    }
+
     public Optional<GpsSourceConfigEntity> findByUsernameAndConnectionType(String username, GpsSourceConfigEntity.ConnectionType connectionType) {
         return find("username = ?1 and connectionType = ?2 and active = true", username, connectionType).firstResultOptional();
     }

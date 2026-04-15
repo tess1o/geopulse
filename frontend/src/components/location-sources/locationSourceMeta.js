@@ -73,7 +73,9 @@ export const getLocationSourceIdentifier = (source) => {
     return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
   }
   if (source.type === 'TRACCAR') {
-    return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+    const deviceLabel = source.deviceId ? `Device: ${source.deviceId}` : 'All devices'
+    const tokenLabel = source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+    return `${deviceLabel} • ${tokenLabel}`
   }
   if (source.type === 'DAWARICH') {
     return source.token ? `API Key: ${source.token.substring(0, 8)}...` : 'No API key'
