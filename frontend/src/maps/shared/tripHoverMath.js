@@ -1,3 +1,5 @@
+import { haversineDistanceMeters } from '@/utils/geoDistance'
+
 const DEFAULT_EXACT_HOVER_THRESHOLD_PX = 10
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value))
@@ -23,23 +25,6 @@ const toPointTimestampMs = (point, timeApi = {}) => {
 
   const parsed = Date.parse(point.timestamp)
   return Number.isNaN(parsed) ? null : parsed
-}
-
-const toRadians = (value) => value * (Math.PI / 180)
-
-const haversineDistanceMeters = (left, right) => {
-  const earthRadius = 6371000
-  const lat1 = toRadians(left.latitude)
-  const lat2 = toRadians(right.latitude)
-  const deltaLat = toRadians(right.latitude - left.latitude)
-  const deltaLon = toRadians(right.longitude - left.longitude)
-
-  const a = (
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
-    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2)
-  )
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return earthRadius * c
 }
 
 const normalizeGeoPoint = (point) => {

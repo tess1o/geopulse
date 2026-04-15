@@ -33,6 +33,10 @@ import {
   projectTripHoverContext,
   resolveTripHoverTiming as resolveSharedTripHoverTiming
 } from '@/maps/shared/tripHoverMath'
+import {
+  buildHighlightedTripSegments,
+  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS
+} from '@/maps/shared/highlightedTripSpeedBands'
 
 const timezone = useTimezone()
 
@@ -396,19 +400,6 @@ const syncHighlightedEndpointMarkers = (endpointMarkers) => {
   })
 }
 
-const resolveHighlightedLineCoordinates = (lineCollection) => {
-  const coordinates = lineCollection?.features?.[0]?.geometry?.coordinates
-  if (!Array.isArray(coordinates)) {
-    return []
-  }
-
-  return coordinates.filter((coord) => (
-    Array.isArray(coord)
-    && Number.isFinite(toFiniteNumber(coord[0]))
-    && Number.isFinite(toFiniteNumber(coord[1]))
-  ))
-}
-
 const resolvePopupAnchorCoordinate = (lineCoordinates) => {
   if (!Array.isArray(lineCoordinates) || lineCoordinates.length === 0) {
     return null
@@ -530,7 +521,8 @@ const buildHighlightedData = () => {
     return {
       lineCollection: createFeatureCollection([]),
       endpointMarkers: [],
-      hoverPathPoints: []
+      hoverPathPoints: [],
+      fullLineCoordinates: []
     }
   }
 
@@ -556,30 +548,37 @@ const buildHighlightedData = () => {
     return {
       lineCollection: createFeatureCollection([]),
       endpointMarkers: [],
-      hoverPathPoints: []
+      hoverPathPoints: [],
+      fullLineCoordinates: []
     }
   }
 
-  const hoverPathPoints = tripPoints.map((point) => ({
+  const renderedTripPoints = tripPoints.map((point) => ({ ...point }))
+  const hoverPathPoints = renderedTripPoints.map((point) => ({
     latitude: point.latitude,
     longitude: point.longitude,
     timestamp: point.timestamp || null
   }))
 
-  const lineCoordinates = tripPoints.map((point) => [point.longitude, point.latitude])
+  const lineCoordinates = renderedTripPoints.map((point) => [point.longitude, point.latitude])
 
   const startPoint = resolveTripMarkerPoint(props.highlightedTrip, 'start', {
-    latitude: tripPoints[0].latitude,
-    longitude: tripPoints[0].longitude
+    latitude: renderedTripPoints[0].latitude,
+    longitude: renderedTripPoints[0].longitude
   })
 
   const endPoint = resolveTripMarkerPoint(props.highlightedTrip, 'end', {
-    latitude: tripPoints[tripPoints.length - 1].latitude,
-    longitude: tripPoints[tripPoints.length - 1].longitude
+    latitude: renderedTripPoints[renderedTripPoints.length - 1].latitude,
+    longitude: renderedTripPoints[renderedTripPoints.length - 1].longitude
   })
 
-  if (startPoint && !areSameCoordinate(tripPoints[0], startPoint)) {
+  if (startPoint && !areSameCoordinate(renderedTripPoints[0], startPoint)) {
     lineCoordinates[0] = [startPoint.longitude, startPoint.latitude]
+    renderedTripPoints[0] = {
+      ...renderedTripPoints[0],
+      latitude: startPoint.latitude,
+      longitude: startPoint.longitude
+    }
     hoverPathPoints[0] = {
       ...hoverPathPoints[0],
       latitude: startPoint.latitude,
@@ -587,8 +586,13 @@ const buildHighlightedData = () => {
     }
   }
 
-  if (endPoint && !areSameCoordinate(tripPoints[tripPoints.length - 1], endPoint)) {
+  if (endPoint && !areSameCoordinate(renderedTripPoints[renderedTripPoints.length - 1], endPoint)) {
     lineCoordinates[lineCoordinates.length - 1] = [endPoint.longitude, endPoint.latitude]
+    renderedTripPoints[renderedTripPoints.length - 1] = {
+      ...renderedTripPoints[renderedTripPoints.length - 1],
+      latitude: endPoint.latitude,
+      longitude: endPoint.longitude
+    }
     hoverPathPoints[hoverPathPoints.length - 1] = {
       ...hoverPathPoints[hoverPathPoints.length - 1],
       latitude: endPoint.latitude,
@@ -619,25 +623,37 @@ const buildHighlightedData = () => {
     })
   }
 
-  const lineCollection = createFeatureCollection([
-    {
-      type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: lineCoordinates
-      },
-      properties: {
-        tripRaw: JSON.stringify(props.highlightedTrip || {})
-      }
+  const highlightedSegments = buildHighlightedTripSegments(renderedTripPoints)
+
+  const lineCollection = createFeatureCollection(highlightedSegments.segments.map((segment) => ({
+    type: 'Feature',
+    geometry: {
+      type: 'LineString',
+      coordinates: segment.coordinates
+    },
+    properties: {
+      speedBand: segment.speedBand,
+      tripRaw: JSON.stringify(props.highlightedTrip || {})
     }
-  ])
+  })))
 
   return {
     lineCollection,
     endpointMarkers,
-    hoverPathPoints
+    hoverPathPoints,
+    fullLineCoordinates: lineCoordinates
   }
 }
+
+const highlightedLineColorExpression = [
+  'match',
+  ['get', 'speedBand'],
+  'red', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.red,
+  'yellow', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.yellow,
+  'green', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.green,
+  'unknown', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown,
+  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown
+]
 
 const registerEvents = () => {
   if (!isMapLibreMap(props.map)) {
@@ -747,7 +763,7 @@ const renderLayer = () => {
 
   const pathCollection = buildPathCollection()
   const highlighted = buildHighlightedData()
-  const highlightedLineCoordinates = resolveHighlightedLineCoordinates(highlighted.lineCollection)
+  const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
   ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
@@ -772,10 +788,9 @@ const renderLayer = () => {
       'line-cap': 'round'
     },
     paint: {
-      'line-color': '#ff5f66',
+      'line-color': highlightedLineColorExpression,
       'line-width': 6,
-      'line-opacity': 1,
-      'line-dasharray': [0.6, 1.6]
+      'line-opacity': 1
     }
   })
 
@@ -822,7 +837,13 @@ const clearLayer = () => {
 }
 
 watch(
-  () => [props.map, props.pathData, props.highlightedTrip, props.pathOptions, props.visible],
+  () => [
+    props.map,
+    props.pathData,
+    props.highlightedTrip,
+    props.pathOptions,
+    props.visible
+  ],
   () => {
     if (!isMapLibreMap(props.map)) {
       clearLayer()

@@ -29,6 +29,9 @@ import {
   reconstructTripPathPoints,
   areSameCoordinate
 } from '@/utils/tripPathReconstruction'
+import {
+  buildHighlightedTripSegments
+} from '@/maps/shared/highlightedTripSpeedBands'
 
 const timezone = useTimezone()
 
@@ -238,6 +241,7 @@ watch(() => props.pathData, () => {
 
 // Trip-specific state
 const tripPathLayer = ref(null)
+const tripVisualPathLayers = ref([])
 const tripStartMarker = ref(null)
 const tripEndMarker = ref(null)
 let tripHoverContext = null
@@ -290,6 +294,10 @@ const clearHighlightedTripLayers = () => {
     baseLayerRef.value?.removeFromLayer(tripPathLayer.value)
     tripPathLayer.value = null
   }
+  tripVisualPathLayers.value.forEach((visualLayer) => {
+    baseLayerRef.value?.removeFromLayer(visualLayer)
+  })
+  tripVisualPathLayers.value = []
   if (tripStartMarker.value) {
     baseLayerRef.value?.removeFromLayer(tripStartMarker.value)
     tripStartMarker.value = null
@@ -317,11 +325,21 @@ watch(() => props.highlightedTrip, (newTrip) => {
     const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
 
-    tripPathLayer.value = L.polyline(tripCoords, {
-      color: '#ff6b6b',
+    const highlightedSegments = buildHighlightedTripSegments(tripPath)
+
+    tripVisualPathLayers.value = highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
+      color: segment.color,
       weight: 6,
       opacity: 1,
-      dashArray: '2, 12',
+      lineCap: 'round',
+      lineJoin: 'round',
+      interactive: false
+    }))
+
+    tripPathLayer.value = L.polyline(tripCoords, {
+      color: '#000000',
+      weight: 16,
+      opacity: 0,
       lineCap: 'round',
       lineJoin: 'round'
     })
@@ -470,6 +488,9 @@ watch(() => props.highlightedTrip, (newTrip) => {
     tripStartMarker.value.bindPopup(startInfo)
     tripEndMarker.value.bindPopup(endInfo)
 
+    tripVisualPathLayers.value.forEach((visualLayer) => {
+      baseLayerRef.value?.addToLayer(visualLayer)
+    })
     baseLayerRef.value?.addToLayer(tripPathLayer.value)
     baseLayerRef.value?.addToLayer(tripStartMarker.value)
     baseLayerRef.value?.addToLayer(tripEndMarker.value)
