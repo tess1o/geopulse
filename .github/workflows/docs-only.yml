@@ -1,11 +1,6 @@
 name: Update Docs Only
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'docs-website/**'
-      - '.github/workflows/docs-only.yml'
   workflow_dispatch:
 
 permissions:

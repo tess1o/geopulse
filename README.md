@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Privacy-First-green.svg" alt="Privacy First">
 </p>
 
-GeoPulse transforms raw GPS data from OwnTracks, Overland, Dawarich, GPSLogger, Home Assistant, and other sources into a
+GeoPulse transforms raw GPS data from OwnTracks, Overland, Dawarich, GPSLogger, Home Assistant, Traccar, Colota and other sources into a
 searchable timeline of stays, trips, and movement patterns. It runs fully on your own infrastructure and integrates with
 **Immich** so your photos appear directly on your map history.
 
@@ -64,7 +64,7 @@ the [Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-sta
 
 **Sources & Syncing**
 
-- **Real-time Tracking:** Supports OwnTracks (HTTP/MQTT), Overland, GPSLogger, Home Assistant, Traccar, or Colota.
+- **Real-time Tracking:** Supports OwnTracks (HTTP/MQTT), Overland, GPSLogger, Home Assistant, Traccar, Dawarich or Colota.
 - **Universal Import:** Bulk import from Google Timeline, GPX, GeoJSON, OwnTracks exports, and CSV.
 
 **Sharing & Privacy**
