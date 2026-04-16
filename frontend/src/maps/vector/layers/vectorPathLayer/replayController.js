@@ -20,7 +20,13 @@ export const createVectorPathReplayController = ({
     replayUserCameraInteractionUntil: 0,
     replayUserCameraHandlers: null,
     replayWasPlaying: false,
-    replayLastElapsedMs: 0
+    replayLastElapsedMs: 0,
+    prevReplay3dEnabled: false,
+    pendingReplayEntryCameraForce: false,
+    pendingReplay3dModeForce: false,
+    replayStartZoom: null,
+    replay3dTerrainReady: true,
+    replay3dTerrainIdleListener: null
   }
 
   const getActiveMap = () => {
@@ -41,10 +47,65 @@ export const createVectorPathReplayController = ({
     return markerElement
   }
 
-  const removeReplayMarker = () => {
+  const resetReplayTransitionTracking = () => {
     state.replayWasPlaying = false
     state.replayLastElapsedMs = 0
     state.replayLastCameraSyncMs = 0
+    state.prevReplay3dEnabled = false
+    state.pendingReplayEntryCameraForce = false
+    state.pendingReplay3dModeForce = false
+    state.replayStartZoom = null
+    state.replay3dTerrainReady = true
+  }
+
+  const clearReplayTerrainReadyListener = () => {
+    const listenerState = state.replay3dTerrainIdleListener
+    if (!listenerState?.map || typeof listenerState.handler !== 'function') {
+      state.replay3dTerrainIdleListener = null
+      return
+    }
+
+    try {
+      listenerState.map.off?.('idle', listenerState.handler)
+    } catch {
+      // Idle listener cleanup is best-effort.
+    }
+    state.replay3dTerrainIdleListener = null
+  }
+
+  const armReplayTerrainReadyListener = (map) => {
+    if (!isMapLibreMap(map)) {
+      state.replay3dTerrainReady = true
+      clearReplayTerrainReadyListener()
+      return
+    }
+
+    clearReplayTerrainReadyListener()
+    state.replay3dTerrainReady = false
+
+    const handleIdle = () => {
+      state.replay3dTerrainReady = true
+      if (state.replay3dTerrainIdleListener?.handler === handleIdle) {
+        state.replay3dTerrainIdleListener = null
+      }
+    }
+
+    state.replay3dTerrainIdleListener = { map, handler: handleIdle }
+    map.once?.('idle', handleIdle)
+  }
+
+  const resolveReplayForced3dZoom = (zoomSeed) => {
+    const numericZoomSeed = Number.isFinite(zoomSeed) ? Number(zoomSeed) : REPLAY_3D_MIN_ZOOM
+    return Math.min(
+      REPLAY_3D_TARGET_ZOOM_CAP,
+      Math.max(REPLAY_3D_MIN_ZOOM, numericZoomSeed + REPLAY_3D_ZOOM_STEP)
+    )
+  }
+
+  const removeReplayMarker = ({ resetReplaySession = true } = {}) => {
+    if (resetReplaySession) {
+      resetReplayTransitionTracking()
+    }
 
     if (!state.replayMarkerEntry) {
       return
@@ -238,7 +299,7 @@ export const createVectorPathReplayController = ({
       snapshotMap.easeTo({
         pitch: Number.isFinite(snapshot.pitch) ? snapshot.pitch : 0,
         bearing: Number.isFinite(snapshot.bearing) ? snapshot.bearing : snapshotMap.getBearing?.() || 0,
-        duration: 250,
+        duration: 0,
         essential: true
       })
     } catch {
@@ -263,55 +324,83 @@ export const createVectorPathReplayController = ({
     bearing = null,
     force = false
   } = {}) => {
+    const result = {
+      terrainJustEnabled: false,
+      terrainSourceId: null
+    }
+
     if (!isMapLibreMap(map)) {
-      return
+      return result
     }
 
     if (!enable3d) {
+      state.replay3dTerrainReady = true
+      clearReplayTerrainReadyListener()
       restoreReplayCameraSnapshot()
-      return
+      return result
     }
 
     snapshotReplayCameraIfNeeded(map)
 
     try {
       const terrainSourceId = resolveRasterDemSourceId(map)
+      result.terrainSourceId = terrainSourceId
       if (terrainSourceId) {
         const activeTerrain = map.getTerrain?.()
         if (!activeTerrain || activeTerrain.source !== terrainSourceId) {
           map.setTerrain({ source: terrainSourceId, exaggeration: 1.2 })
+          result.terrainJustEnabled = true
         }
       }
     } catch {
       // Terrain enablement is best-effort.
     }
 
-    const targetPitch = REPLAY_3D_PITCH
-    const currentPitch = map.getPitch?.() || 0
-    const shouldApplyPitch = Math.abs(currentPitch - targetPitch) > 0.45
-    const shouldApplyBearing = force && Number.isFinite(bearing)
-    if (!shouldApplyPitch && !shouldApplyBearing) {
-      state.replay3dActive = true
-      return
+    if (result.terrainJustEnabled) {
+      armReplayTerrainReadyListener(map)
+      // Defer 3D camera transforms until terrain is fully initialized.
+      return result
+    }
+    if (!result.terrainSourceId) {
+      state.replay3dTerrainReady = true
+      clearReplayTerrainReadyListener()
     }
 
-    if (!force && isReplayUserCameraInteracting()) {
+    const targetPitch = REPLAY_3D_PITCH
+    const currentPitch = map.getPitch?.() || 0
+    const effectiveForce = force && !result.terrainJustEnabled
+    const shouldApplyPitch = Math.abs(currentPitch - targetPitch) > 0.45
+    const shouldApplyBearing = effectiveForce && Number.isFinite(bearing)
+    if (!shouldApplyPitch && !shouldApplyBearing) {
       state.replay3dActive = true
-      return
+      return result
+    }
+
+    if (!effectiveForce && isReplayUserCameraInteracting()) {
+      state.replay3dActive = true
+      return result
+    }
+
+    const threeDUpdate = {
+      pitch: targetPitch,
+      ...(shouldApplyBearing ? { bearing } : {}),
+      duration: effectiveForce ? 0 : 150,
+      essential: true
     }
 
     try {
-      map.easeTo({
-        pitch: targetPitch,
-        ...(shouldApplyBearing ? { bearing } : {}),
-        duration: force ? 0 : 150,
-        essential: true
-      })
+      if (effectiveForce) {
+        const { duration: _duration, essential: _essential, ...forcedUpdate } = threeDUpdate
+        map.jumpTo(forcedUpdate)
+      } else {
+        map.easeTo(threeDUpdate)
+      }
     } catch {
       // Pitch fallback is best-effort.
     }
 
     state.replay3dActive = true
+    return result
   }
 
   const syncReplayCamera = ({
@@ -321,7 +410,9 @@ export const createVectorPathReplayController = ({
     playing = false,
     enable3d = false,
     force = false,
-    forceZoomTo3dDefault = false
+    forceZoomTo3dDefault = false,
+    preferred3dEntryZoom = null,
+    forceReplayEntryReason = null
   } = {}) => {
     if (!isMapLibreMap(map) || !followCamera || !cursor) {
       return
@@ -360,20 +451,25 @@ export const createVectorPathReplayController = ({
       }
 
       const currentZoom = Number(map.getZoom?.())
-      if (
-        (force || forceZoomTo3dDefault)
-        && (!Number.isFinite(currentZoom) || currentZoom < REPLAY_3D_MIN_ZOOM)
-      ) {
-        const currentZoomValue = Number.isFinite(currentZoom) ? currentZoom : REPLAY_3D_MIN_ZOOM
-        cameraUpdate.zoom = Math.min(
-          REPLAY_3D_TARGET_ZOOM_CAP,
-          Math.max(REPLAY_3D_MIN_ZOOM, currentZoomValue + REPLAY_3D_ZOOM_STEP)
-        )
+      const zoomSeed = Number.isFinite(preferred3dEntryZoom)
+        ? Number(preferred3dEntryZoom)
+        : currentZoom
+      if (forceZoomTo3dDefault) {
+        if (forceReplayEntryReason === 'toggle3d') {
+          cameraUpdate.zoom = REPLAY_3D_TARGET_ZOOM_CAP
+        } else if (!Number.isFinite(zoomSeed) || zoomSeed < REPLAY_3D_MIN_ZOOM) {
+          cameraUpdate.zoom = resolveReplayForced3dZoom(zoomSeed)
+        }
       }
     }
 
     try {
-      map.easeTo(cameraUpdate)
+      if (force) {
+        const { duration: _duration, essential: _essential, ...forcedUpdate } = cameraUpdate
+        map.jumpTo(forcedUpdate)
+      } else {
+        map.easeTo(cameraUpdate)
+      }
     } catch {
       // Camera follow is best-effort.
     }
@@ -402,9 +498,22 @@ export const createVectorPathReplayController = ({
     const cursorLongitude = toFiniteNumber(cursor?.longitude)
 
     if (!replayEnabled || cursorLatitude === null || cursorLongitude === null) {
-      removeReplayMarker()
-      restoreReplayCameraSnapshot()
+      if (!replay3dEnabled || !replayIsPlaying) {
+        state.pendingReplayEntryCameraForce = false
+      }
+      if (!replayEnabled) {
+        removeReplayMarker()
+        restoreReplayCameraSnapshot()
+      } else {
+        // Keep transition-tracking and camera state across brief cursor gaps.
+        removeReplayMarker({ resetReplaySession: false })
+      }
       return
+    }
+
+    if (!replay3dEnabled || !replayIsPlaying) {
+      state.pendingReplayEntryCameraForce = false
+      state.pendingReplay3dModeForce = false
     }
 
     const movementType = String(
@@ -412,7 +521,7 @@ export const createVectorPathReplayController = ({
     ).toUpperCase()
 
     if (!state.replayMarkerEntry || state.replayMarkerMovementType !== movementType) {
-      removeReplayMarker()
+      removeReplayMarker({ resetReplaySession: false })
 
       const markerElement = buildReplayMarkerElement(movementType)
       const marker = new maplibregl.Marker({
@@ -457,33 +566,104 @@ export const createVectorPathReplayController = ({
 
     const replayStarted = replayIsPlaying && !state.replayWasPlaying
     const replayRestarted = replayElapsedMs <= 1 && state.replayLastElapsedMs > 1
-    const forceCameraSync = replayStarted || replayRestarted
-    if (forceCameraSync) {
-      state.replayLastCameraSyncMs = 0
+    const currentMapZoom = toFiniteNumber(map.getZoom?.())
+    if ((replayStarted || replayRestarted) && currentMapZoom !== null) {
+      state.replayStartZoom = currentMapZoom
+    } else if (state.replayStartZoom === null && replayIsPlaying && currentMapZoom !== null) {
+      state.replayStartZoom = currentMapZoom
     }
-
-    syncReplay3dMode({
+    const replay3dToggledOnWhilePlaying = (
+      replayIsPlaying
+      && replay3dEnabled
+      && !state.prevReplay3dEnabled
+    )
+    const forceReplayEntryCameraRequested = (
+      replayStarted
+      || replayRestarted
+      || replay3dToggledOnWhilePlaying
+    )
+    if (replay3dToggledOnWhilePlaying) {
+      state.pendingReplayEntryCameraForce = true
+      state.pendingReplay3dModeForce = true
+    }
+    const replay3dModeSync = syncReplay3dMode({
       map,
       enable3d: replay3dEnabled,
       bearing: cursorBearing !== null ? cursorBearing : null,
-      force: replayStarted || replayRestarted
+      force: forceReplayEntryCameraRequested || state.pendingReplay3dModeForce
     })
+    if (state.pendingReplay3dModeForce && !replay3dModeSync.terrainJustEnabled) {
+      state.pendingReplay3dModeForce = false
+    }
+    const terrainSourceId = replay3dModeSync.terrainSourceId
+    const terrainSourceLoadState = terrainSourceId
+      ? map.isSourceLoaded?.(terrainSourceId)
+      : true
+    const terrainSourceLoaded = terrainSourceLoadState === true
+    const shouldPromoteTerrainReadyFromSourceLoad = (
+      replay3dEnabled
+      && !replay3dModeSync.terrainJustEnabled
+      && !state.replay3dTerrainReady
+      && Boolean(terrainSourceId)
+      && terrainSourceLoaded
+    )
+    if (shouldPromoteTerrainReadyFromSourceLoad) {
+      state.replay3dTerrainReady = true
+      clearReplayTerrainReadyListener()
+    }
+    const terrainReadyForEntryForce = (
+      !terrainSourceId
+      || terrainSourceLoadState !== false
+    )
+    const replay3dCameraReady = (
+      replay3dEnabled
+      && terrainReadyForEntryForce
+      && !replay3dModeSync.terrainJustEnabled
+      && state.replay3dTerrainReady
+    )
+    const applyPendingReplayEntryForce = (
+      state.pendingReplayEntryCameraForce
+      && replayIsPlaying
+      && replay3dCameraReady
+    )
+    const forceReplayEntryCamera = (
+      replayStarted
+      || replayRestarted
+      || (replay3dToggledOnWhilePlaying && replay3dCameraReady)
+      || applyPendingReplayEntryForce
+    )
+    const forceReplayEntryReason = replayStarted
+      ? 'start'
+      : replayRestarted
+        ? 'restart'
+        : forceReplayEntryCamera
+          ? 'toggle3d'
+          : null
+    if (forceReplayEntryCamera) {
+      state.replayLastCameraSyncMs = 0
+      state.pendingReplayEntryCameraForce = false
+    }
+
     syncReplayCamera({
       map,
       cursor,
       followCamera: Boolean(resolvedReplayState.followCamera),
       playing: replayIsPlaying,
-      enable3d: replay3dEnabled,
-      force: forceCameraSync,
-      forceZoomTo3dDefault: replayStarted || replayRestarted
+      enable3d: replay3dCameraReady,
+      force: forceReplayEntryCamera,
+      forceZoomTo3dDefault: forceReplayEntryCamera,
+      preferred3dEntryZoom: state.replayStartZoom,
+      forceReplayEntryReason
     })
 
     state.replayWasPlaying = replayIsPlaying
     state.replayLastElapsedMs = replayElapsedMs
+    state.prevReplay3dEnabled = replay3dEnabled
   }
 
   const cleanupReplay = () => {
     unregisterReplayUserCameraHandlers()
+    clearReplayTerrainReadyListener()
     removeReplayMarker()
     restoreReplayCameraSnapshot()
   }

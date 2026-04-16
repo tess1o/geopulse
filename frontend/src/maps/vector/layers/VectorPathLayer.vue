@@ -136,8 +136,23 @@ const removeHighlightedEndpointMarkers = () => {
 }
 
 const buildTripEndpointPopupContent = (trip, markerType) => {
-  const startTime = timezone.fromUtc(trip.timestamp)
-  const endTime = startTime.add(trip.tripDuration, 'second')
+  const parsedTripDurationSeconds = Number(trip?.tripDuration)
+  const tripDurationSeconds = (
+    Number.isFinite(parsedTripDurationSeconds) && parsedTripDurationSeconds > 0
+      ? parsedTripDurationSeconds
+      : 0
+  )
+  const startTime = timezone.fromUtc(trip?.timestamp)
+  const hasValidStartTime = Boolean(startTime?.isValid?.())
+  const endTime = hasValidStartTime ? startTime.add(tripDurationSeconds, 'second') : null
+  const hasValidEndTime = Boolean(endTime?.isValid?.())
+  const startTimeLabel = hasValidStartTime
+    ? formatDateTimeDisplay(startTime.toISOString())
+    : 'Unknown'
+  const endTimeLabel = hasValidEndTime
+    ? formatDateTimeDisplay(endTime.toISOString())
+    : 'Unknown'
+  const durationLabel = formatDuration(tripDurationSeconds)
 
   if (markerType === 'start') {
     return `
@@ -146,10 +161,10 @@ const buildTripEndpointPopupContent = (trip, markerType) => {
           🚀 Trip Start
         </div>
         <div class="trip-detail">
-          Start: ${formatDateTimeDisplay(startTime.toISOString())}
+          Start: ${startTimeLabel}
         </div>
         <div class="trip-detail">
-          Duration: ${formatDuration(trip.tripDuration)}
+          Duration: ${durationLabel}
         </div>
         <div class="trip-detail">
           Distance: ${formatDistance(trip.distanceMeters || 0)}
@@ -167,10 +182,10 @@ const buildTripEndpointPopupContent = (trip, markerType) => {
         🏁 Trip End
       </div>
       <div class="trip-detail">
-        End: ${formatDateTimeDisplay(endTime.toISOString())}
+        End: ${endTimeLabel}
       </div>
       <div class="trip-detail">
-        Duration: ${formatDuration(trip.tripDuration)}
+        Duration: ${durationLabel}
       </div>
       <div class="trip-detail">
         Distance: ${formatDistance(trip.distanceMeters || 0)}
