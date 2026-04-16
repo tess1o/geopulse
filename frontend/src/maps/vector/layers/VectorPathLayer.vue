@@ -7,37 +7,26 @@ import { useTimezone } from '@/composables/useTimezone'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import '@/maps/shared/styles/mapPopupContent.css'
 import {
-  createFeatureCollection,
   ensureGeoJsonSource,
   ensureLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
   removeSources,
-  setLayerVisibility,
-  toFiniteNumber
+  setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
-import {
-  normalizePathPoints,
-  reconstructTripPathPoints,
-  resolveTripMarkerPoint,
-  areSameCoordinate
-} from '@/utils/tripPathReconstruction'
-import {
-  buildTripHoverTooltipHtml,
-  buildTripPopupHtml
-} from '@/maps/shared/popupContentBuilders'
+import { buildTripPopupHtml } from '@/maps/shared/popupContentBuilders'
 import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
-  buildTripHoverContext as buildSharedTripHoverContext,
-  projectTripHoverContext,
-  resolveTripHoverTiming as resolveSharedTripHoverTiming
-} from '@/maps/shared/tripHoverMath'
-import {
-  buildHighlightedTripSegments,
-  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS
-} from '@/maps/shared/highlightedTripSpeedBands'
-import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+  buildHighlightedData,
+  buildPathCollection,
+  getHighlightedTripKey,
+  highlightedLineColorExpression,
+  normalizeReplayPathPoints,
+  resolvePopupAnchorCoordinate
+} from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
+import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
+import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
 
 const timezone = useTimezone()
 
@@ -95,163 +84,28 @@ const state = {
   highlightedTripPopup: null,
   highlightedTripPopupKey: '',
   highlightedTripPopupTimeoutId: null,
-  highlightedHoverPopup: null,
-  highlightedHoverContext: null,
-  highlightedHoverMapHandler: null,
-  replayMarkerEntry: null,
-  replayMarkerMovementType: '',
-  replayLastCameraSyncMs: 0,
-  replayCameraSnapshot: null,
-  replay3dActive: false,
-  replayUserCameraInteracting: false,
-  replayUserCameraInteractionUntil: 0,
-  replayUserCameraHandlers: null,
-  replayWasPlaying: false,
-  replayLastElapsedMs: 0,
   lastReplayEmissionKey: ''
 }
-
-const REPLAY_3D_PITCH = 50
-const REPLAY_3D_MIN_ZOOM = 16.5
-const REPLAY_3D_TARGET_ZOOM_CAP = 17.5
-const REPLAY_3D_ZOOM_STEP = 2.4
 
 state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
 state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
 
-const formatDateTimeDisplay = (dateValue) =>
+const formatDateTimeDisplay = (dateValue) => (
   `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
-
-const buildTripPopupContent = (trip) => buildTripPopupHtml(trip, { formatDateTimeDisplay })
-
-const buildTripHoverContext = (tripPathPoints) => buildSharedTripHoverContext(tripPathPoints)
-
-const refreshTripHoverContextProjection = (context, map) => {
-  if (!context || !isMapLibreMap(map)) {
-    return
-  }
-
-  projectTripHoverContext(context, {
-    project: (point) => map.project([point.longitude, point.latitude])
-  })
-}
-
-const resolveTripHoverTiming = (context, lngLat, map) => {
-  if (!context || !lngLat || !isMapLibreMap(map) || !context.projectedPoints.length) {
-    return null
-  }
-
-  const resolved = resolveSharedTripHoverTiming(context, lngLat, {
-    toProjectedPoint: (cursorLngLat) => map.project([cursorLngLat.lng, cursorLngLat.lat]),
-    unproject: ({ x, y }) => {
-      const lngLatValue = map.unproject([x, y])
-      return {
-        latitude: lngLatValue.lat,
-        longitude: lngLatValue.lng
-      }
-    }
-  })
-
-  if (!resolved) {
-    return null
-  }
-
-  return {
-    ...resolved,
-    snappedLngLat: {
-      lng: resolved.snappedPoint.longitude,
-      lat: resolved.snappedPoint.latitude
-    }
-  }
-}
-
-const buildTripHoverTooltipContent = (trip, hoverTiming) => (
-  buildTripHoverTooltipHtml(trip, hoverTiming, { formatDateTimeDisplay })
 )
 
-const showTripHoverTooltip = (trip, hoverTiming) => {
-  if (!isMapLibreMap(props.map) || !hoverTiming) {
-    return
-  }
+const hoverController = createVectorPathHoverController({
+  getMap: () => props.map,
+  formatDateTimeDisplay
+})
 
-  if (!state.highlightedHoverPopup) {
-    state.highlightedHoverPopup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      closeOnMove: false,
-      offset: 14,
-      className: 'trip-hover-tooltip-container'
-    })
-  }
+const replayController = createVectorPathReplayController({
+  getMap: () => props.map
+})
 
-  state.highlightedHoverPopup
-    .setLngLat([hoverTiming.snappedLngLat.lng, hoverTiming.snappedLngLat.lat])
-    .setHTML(buildTripHoverTooltipContent(trip, hoverTiming))
-    .addTo(props.map)
-}
-
-const hideTripHoverTooltip = () => {
-  if (state.highlightedHoverPopup) {
-    state.highlightedHoverPopup.remove()
-    state.highlightedHoverPopup = null
-  }
-}
-
-const clearTripHoverState = () => {
-  hideTripHoverTooltip()
-
-  if (state.highlightedHoverMapHandler && isMapLibreMap(props.map)) {
-    props.map.off('zoom', state.highlightedHoverMapHandler)
-    props.map.off('move', state.highlightedHoverMapHandler)
-  }
-
-  state.highlightedHoverMapHandler = null
-  state.highlightedHoverContext = null
-}
-
-const syncTripHoverContext = (tripPathPoints) => {
-  clearTripHoverState()
-
-  if (!isMapLibreMap(props.map) || !props.highlightedTrip || props.highlightedTrip.type !== 'trip') {
-    return
-  }
-
-  state.highlightedHoverContext = buildTripHoverContext(tripPathPoints)
-  if (!state.highlightedHoverContext) {
-    return
-  }
-
-  refreshTripHoverContextProjection(state.highlightedHoverContext, props.map)
-  state.highlightedHoverMapHandler = () => {
-    if (state.highlightedHoverContext && isMapLibreMap(props.map)) {
-      refreshTripHoverContextProjection(state.highlightedHoverContext, props.map)
-    }
-  }
-  props.map.on('zoom', state.highlightedHoverMapHandler)
-  props.map.on('move', state.highlightedHoverMapHandler)
-}
-
-const getHighlightedTripKey = (trip) => {
-  if (!trip) {
-    return ''
-  }
-
-  if (trip.id) {
-    return String(trip.id)
-  }
-
-  return [
-    trip.timestamp,
-    trip.latitude,
-    trip.longitude,
-    trip.endLatitude,
-    trip.endLongitude,
-    trip.tripDuration,
-    trip.distanceMeters
-  ].join('|')
-}
+const buildTripPopupContent = (trip) => buildTripPopupHtml(trip, { formatDateTimeDisplay })
 
 const closeHighlightedTripPopup = () => {
   if (state.highlightedTripPopupTimeoutId !== null) {
@@ -279,394 +133,6 @@ const removeHighlightedEndpointMarkers = () => {
     markerEntry.cleanup?.()
     state[markerKey] = null
   })
-}
-
-const buildReplayMarkerElement = (movementType = 'UNKNOWN') => {
-  const iconClass = getTripMovementIconClass(movementType)
-  const markerElement = document.createElement('div')
-  markerElement.className = 'gp-trip-replay-marker'
-  markerElement.innerHTML = `
-    <div class="gp-trip-replay-marker-inner">
-      <i class="${iconClass}"></i>
-    </div>
-  `.trim()
-
-  return markerElement
-}
-
-const removeReplayMarker = () => {
-  state.replayWasPlaying = false
-  state.replayLastElapsedMs = 0
-  state.replayLastCameraSyncMs = 0
-
-  if (!state.replayMarkerEntry) {
-    return
-  }
-
-  state.replayMarkerEntry.marker.remove()
-  state.replayMarkerEntry = null
-  state.replayMarkerMovementType = ''
-}
-
-const markReplayUserCameraInteraction = (durationMs = 600) => {
-  const safeDuration = Number.isFinite(durationMs) ? Math.max(120, Number(durationMs)) : 600
-  state.replayUserCameraInteracting = true
-  state.replayUserCameraInteractionUntil = Math.max(
-    state.replayUserCameraInteractionUntil || 0,
-    Date.now() + safeDuration
-  )
-}
-
-const clearReplayUserCameraInteraction = (cooldownMs = 220) => {
-  const safeCooldown = Number.isFinite(cooldownMs) ? Math.max(0, Number(cooldownMs)) : 220
-  state.replayUserCameraInteractionUntil = Date.now() + safeCooldown
-  state.replayUserCameraInteracting = false
-  state.replayLastCameraSyncMs = 0
-}
-
-const isReplayUserCameraInteracting = () => {
-  if (Date.now() >= (state.replayUserCameraInteractionUntil || 0)) {
-    state.replayUserCameraInteracting = false
-    return false
-  }
-
-  state.replayUserCameraInteracting = true
-  return true
-}
-
-const registerReplayUserCameraHandlers = () => {
-  if (!isMapLibreMap(props.map) || state.replayUserCameraHandlers) {
-    return
-  }
-
-  const canvas = props.map.getCanvas?.()
-  if (!canvas) {
-    return
-  }
-
-  const handleWheel = () => markReplayUserCameraInteraction(1100)
-  const handleMouseDown = () => markReplayUserCameraInteraction(2200)
-  const handleMouseUp = () => clearReplayUserCameraInteraction(260)
-  const handleTouchStart = () => markReplayUserCameraInteraction(2400)
-  const handleTouchMove = () => markReplayUserCameraInteraction(900)
-  const handleTouchEnd = () => clearReplayUserCameraInteraction(320)
-
-  canvas.addEventListener('wheel', handleWheel, { passive: true })
-  canvas.addEventListener('mousedown', handleMouseDown, { passive: true })
-  canvas.addEventListener('touchstart', handleTouchStart, { passive: true })
-  canvas.addEventListener('touchmove', handleTouchMove, { passive: true })
-  window.addEventListener('mouseup', handleMouseUp, { passive: true })
-  window.addEventListener('touchend', handleTouchEnd, { passive: true })
-
-  state.replayUserCameraHandlers = {
-    canvas,
-    handleWheel,
-    handleMouseDown,
-    handleMouseUp,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd
-  }
-}
-
-const unregisterReplayUserCameraHandlers = () => {
-  const handlers = state.replayUserCameraHandlers
-  if (!handlers) {
-    return
-  }
-
-  handlers.canvas?.removeEventListener('wheel', handlers.handleWheel)
-  handlers.canvas?.removeEventListener('mousedown', handlers.handleMouseDown)
-  handlers.canvas?.removeEventListener('touchstart', handlers.handleTouchStart)
-  handlers.canvas?.removeEventListener('touchmove', handlers.handleTouchMove)
-  window.removeEventListener('mouseup', handlers.handleMouseUp)
-  window.removeEventListener('touchend', handlers.handleTouchEnd)
-
-  state.replayUserCameraHandlers = null
-  state.replayUserCameraInteracting = false
-  state.replayUserCameraInteractionUntil = 0
-}
-
-const normalizeBearingDegrees = (bearing) => {
-  if (!Number.isFinite(bearing)) {
-    return 0
-  }
-
-  let normalized = bearing % 360
-  if (normalized > 180) {
-    normalized -= 360
-  } else if (normalized < -180) {
-    normalized += 360
-  }
-
-  return normalized
-}
-
-const snapshotReplayCameraIfNeeded = () => {
-  if (!isMapLibreMap(props.map) || state.replayCameraSnapshot) {
-    return
-  }
-
-  const currentTerrain = props.map.getTerrain?.()
-  state.replayCameraSnapshot = {
-    pitch: props.map.getPitch?.() || 0,
-    bearing: props.map.getBearing?.() || 0,
-    terrain: currentTerrain && currentTerrain.source
-      ? { source: currentTerrain.source, exaggeration: currentTerrain.exaggeration }
-      : null
-  }
-}
-
-const restoreReplayCameraSnapshot = () => {
-  if (!isMapLibreMap(props.map) || !state.replayCameraSnapshot) {
-    state.replayCameraSnapshot = null
-    return
-  }
-
-  const snapshot = state.replayCameraSnapshot
-  state.replayCameraSnapshot = null
-  state.replay3dActive = false
-
-  try {
-    if (snapshot.terrain?.source) {
-      props.map.setTerrain(snapshot.terrain)
-    } else if (props.map.getTerrain?.()) {
-      props.map.setTerrain(null)
-    }
-  } catch {
-    // Terrain restoration is best-effort.
-  }
-
-  try {
-    props.map.easeTo({
-      pitch: Number.isFinite(snapshot.pitch) ? snapshot.pitch : 0,
-      bearing: Number.isFinite(snapshot.bearing) ? snapshot.bearing : props.map.getBearing?.() || 0,
-      duration: 250,
-      essential: true
-    })
-  } catch {
-    // Camera restoration is best-effort.
-  }
-}
-
-const resolveRasterDemSourceId = () => {
-  if (!isMapLibreMap(props.map)) {
-    return null
-  }
-
-  const style = props.map.getStyle?.()
-  const sources = style?.sources || {}
-
-  return Object.keys(sources).find((sourceId) => sources[sourceId]?.type === 'raster-dem') || null
-}
-
-const syncReplay3dMode = ({ enable3d, bearing = null, force = false } = {}) => {
-  if (!isMapLibreMap(props.map)) {
-    return
-  }
-
-  if (!enable3d) {
-    restoreReplayCameraSnapshot()
-    return
-  }
-
-  snapshotReplayCameraIfNeeded()
-
-  try {
-    const terrainSourceId = resolveRasterDemSourceId()
-    if (terrainSourceId) {
-      const activeTerrain = props.map.getTerrain?.()
-      if (!activeTerrain || activeTerrain.source !== terrainSourceId) {
-        props.map.setTerrain({ source: terrainSourceId, exaggeration: 1.2 })
-      }
-    }
-  } catch {
-    // Terrain enablement is best-effort.
-  }
-
-  const targetPitch = REPLAY_3D_PITCH
-  const currentPitch = props.map.getPitch?.() || 0
-  const shouldApplyPitch = Math.abs(currentPitch - targetPitch) > 0.45
-  const shouldApplyBearing = force && Number.isFinite(bearing)
-  if (!shouldApplyPitch && !shouldApplyBearing) {
-    state.replay3dActive = true
-    return
-  }
-
-  if (!force && isReplayUserCameraInteracting()) {
-    state.replay3dActive = true
-    return
-  }
-
-  try {
-    props.map.easeTo({
-      pitch: targetPitch,
-      ...(shouldApplyBearing ? { bearing } : {}),
-      duration: force ? 0 : 150,
-      essential: true
-    })
-  } catch {
-    // Pitch fallback is best-effort.
-  }
-
-  state.replay3dActive = true
-}
-
-const syncReplayCamera = ({
-  cursor,
-  followCamera = true,
-  playing = false,
-  enable3d = false,
-  force = false,
-  forceZoomTo3dDefault = false
-} = {}) => {
-  if (!isMapLibreMap(props.map) || !followCamera || !cursor) {
-    return
-  }
-
-  if (!playing && !force) {
-    return
-  }
-
-  if (!force && isReplayUserCameraInteracting()) {
-    return
-  }
-
-  const cursorLatitude = toFiniteNumber(cursor.latitude)
-  const cursorLongitude = toFiniteNumber(cursor.longitude)
-  if (cursorLatitude === null || cursorLongitude === null) {
-    return
-  }
-
-  const now = Date.now()
-  if (!force && playing && now - state.replayLastCameraSyncMs < 170) {
-    return
-  }
-  state.replayLastCameraSyncMs = now
-
-  const cameraUpdate = {
-    center: [cursorLongitude, cursorLatitude],
-    duration: force ? 0 : (playing ? 170 : 120),
-    essential: true
-  }
-
-  if (enable3d) {
-    cameraUpdate.pitch = REPLAY_3D_PITCH
-    if (Number.isFinite(cursor.bearing)) {
-      cameraUpdate.bearing = cursor.bearing
-    }
-
-    const currentZoom = Number(props.map.getZoom?.())
-    if (
-      (force || forceZoomTo3dDefault)
-      && (!Number.isFinite(currentZoom) || currentZoom < REPLAY_3D_MIN_ZOOM)
-    ) {
-      const currentZoomValue = Number.isFinite(currentZoom) ? currentZoom : REPLAY_3D_MIN_ZOOM
-      cameraUpdate.zoom = Math.min(
-        REPLAY_3D_TARGET_ZOOM_CAP,
-        Math.max(REPLAY_3D_MIN_ZOOM, currentZoomValue + REPLAY_3D_ZOOM_STEP)
-      )
-    }
-  }
-
-  try {
-    props.map.easeTo(cameraUpdate)
-  } catch {
-    // Camera follow is best-effort.
-  }
-}
-
-const syncReplayMarker = () => {
-  if (!isMapLibreMap(props.map) || !props.visible || props.highlightedTrip?.type !== 'trip') {
-    removeReplayMarker()
-    restoreReplayCameraSnapshot()
-    return
-  }
-
-  const replayState = props.replayState || {}
-  const replayEnabled = Boolean(replayState.enabled)
-  const replay3dEnabled = Boolean(replayState.enable3d)
-  const replayIsPlaying = Boolean(replayState.playing)
-  const replayElapsedMs = toFiniteNumber(replayState.elapsedMs) || 0
-  const cursor = replayState.cursor
-  const cursorLatitude = toFiniteNumber(cursor?.latitude)
-  const cursorLongitude = toFiniteNumber(cursor?.longitude)
-
-  if (!replayEnabled || cursorLatitude === null || cursorLongitude === null) {
-    removeReplayMarker()
-    restoreReplayCameraSnapshot()
-    return
-  }
-
-  const movementType = String(replayState.movementType || props.highlightedTrip?.movementType || 'UNKNOWN').toUpperCase()
-  if (!state.replayMarkerEntry || state.replayMarkerMovementType !== movementType) {
-    removeReplayMarker()
-
-    const markerElement = buildReplayMarkerElement(movementType)
-    const marker = new maplibregl.Marker({
-      element: markerElement,
-      anchor: 'center',
-      rotation: 0,
-      rotationAlignment: 'viewport',
-      pitchAlignment: 'viewport'
-    })
-      .setLngLat([cursorLongitude, cursorLatitude])
-      .addTo(props.map)
-
-    state.replayMarkerEntry = {
-      marker,
-      element: markerElement
-    }
-    state.replayMarkerMovementType = movementType
-  } else {
-    state.replayMarkerEntry.marker.setLngLat([cursorLongitude, cursorLatitude])
-  }
-
-  const iconElement = state.replayMarkerEntry.element.querySelector('i')
-  if (iconElement) {
-    iconElement.className = getTripMovementIconClass(movementType)
-  }
-
-  const cursorBearing = toFiniteNumber(cursor?.bearing)
-  const mapBearing = toFiniteNumber(props.map.getBearing?.()) || 0
-  const markerRotation = (
-    Boolean(replayState.enable3d) && Boolean(replayState.followCamera)
-      ? 0
-      : normalizeBearingDegrees((cursorBearing || 0) - mapBearing)
-  )
-  if (typeof state.replayMarkerEntry.marker.setRotation === 'function') {
-    state.replayMarkerEntry.marker.setRotation(markerRotation)
-  }
-
-  if (replayIsPlaying) {
-    closeHighlightedTripPopup()
-    hideTripHoverTooltip()
-  }
-
-  const replayStarted = replayIsPlaying && !state.replayWasPlaying
-  const replayRestarted = replayElapsedMs <= 1 && state.replayLastElapsedMs > 1
-  const replay3dJustEnabled = replay3dEnabled && !state.replay3dActive
-  const forceCameraSync = replayStarted || replayRestarted
-  if (forceCameraSync) {
-    state.replayLastCameraSyncMs = 0
-  }
-
-  syncReplay3dMode({
-    enable3d: replay3dEnabled,
-    bearing: cursorBearing !== null ? cursorBearing : null,
-    force: replayStarted || replayRestarted
-  })
-  syncReplayCamera({
-    cursor,
-    followCamera: Boolean(replayState.followCamera),
-    playing: replayIsPlaying,
-    enable3d: replay3dEnabled,
-    force: forceCameraSync,
-    forceZoomTo3dDefault: replayStarted || replayRestarted
-  })
-
-  state.replayWasPlaying = replayIsPlaying
-  state.replayLastElapsedMs = replayElapsedMs
 }
 
 const buildTripEndpointPopupContent = (trip, markerType) => {
@@ -818,14 +284,6 @@ const syncHighlightedEndpointMarkers = (endpointMarkers) => {
   })
 }
 
-const resolvePopupAnchorCoordinate = (lineCoordinates) => {
-  if (!Array.isArray(lineCoordinates) || lineCoordinates.length === 0) {
-    return null
-  }
-
-  return lineCoordinates[Math.floor(lineCoordinates.length / 2)] || lineCoordinates[0]
-}
-
 const fitHighlightedTripBounds = (lineCoordinates) => {
   if (!isMapLibreMap(props.map) || lineCoordinates.length < 2) {
     return
@@ -896,206 +354,6 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
   }, 120)
 }
 
-const normalizePathCoordinates = (pathGroup) => {
-  if (!Array.isArray(pathGroup)) {
-    return []
-  }
-
-  return pathGroup
-    .map((point) => {
-      const latitude = toFiniteNumber(point?.latitude)
-      const longitude = toFiniteNumber(point?.longitude)
-
-      if (latitude === null || longitude === null) {
-        return null
-      }
-
-      return [longitude, latitude]
-    })
-    .filter(Boolean)
-}
-
-const buildPathCollection = () => {
-  const features = []
-
-  props.pathData.forEach((pathGroup, pathIndex) => {
-    const coordinates = normalizePathCoordinates(pathGroup)
-    if (coordinates.length < 2) {
-      return
-    }
-
-    features.push({
-      type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates
-      },
-      properties: {
-        pathIndex,
-        pathRaw: JSON.stringify(pathGroup || [])
-      }
-    })
-  })
-
-  return createFeatureCollection(features)
-}
-
-const buildHighlightedData = () => {
-  if (!props.highlightedTrip) {
-    return {
-      lineCollection: createFeatureCollection([]),
-      endpointMarkers: [],
-      hoverPathPoints: [],
-      fullLineCoordinates: [],
-      replayPathPoints: []
-    }
-  }
-
-  const normalizedPath = normalizePathPoints(props.pathData)
-  const { points: reconstructedPoints } = reconstructTripPathPoints(props.highlightedTrip, normalizedPath)
-
-  let tripPoints = reconstructedPoints
-  if (!tripPoints || tripPoints.length < 2) {
-    const startLat = toFiniteNumber(props.highlightedTrip?.latitude)
-    const startLon = toFiniteNumber(props.highlightedTrip?.longitude)
-    const endLat = toFiniteNumber(props.highlightedTrip?.endLatitude)
-    const endLon = toFiniteNumber(props.highlightedTrip?.endLongitude)
-
-    if ([startLat, startLon, endLat, endLon].every((value) => value !== null)) {
-      tripPoints = [
-        { latitude: startLat, longitude: startLon },
-        { latitude: endLat, longitude: endLon }
-      ]
-    }
-  }
-
-  if (!tripPoints || tripPoints.length < 2) {
-    return {
-      lineCollection: createFeatureCollection([]),
-      endpointMarkers: [],
-      hoverPathPoints: [],
-      fullLineCoordinates: [],
-      replayPathPoints: []
-    }
-  }
-
-  const renderedTripPoints = tripPoints.map((point) => ({ ...point }))
-  const hoverPathPoints = renderedTripPoints.map((point) => ({
-    latitude: point.latitude,
-    longitude: point.longitude,
-    timestamp: point.timestamp || null
-  }))
-
-  const lineCoordinates = renderedTripPoints.map((point) => [point.longitude, point.latitude])
-
-  const startPoint = resolveTripMarkerPoint(props.highlightedTrip, 'start', {
-    latitude: renderedTripPoints[0].latitude,
-    longitude: renderedTripPoints[0].longitude
-  })
-
-  const endPoint = resolveTripMarkerPoint(props.highlightedTrip, 'end', {
-    latitude: renderedTripPoints[renderedTripPoints.length - 1].latitude,
-    longitude: renderedTripPoints[renderedTripPoints.length - 1].longitude
-  })
-
-  if (startPoint && !areSameCoordinate(renderedTripPoints[0], startPoint)) {
-    lineCoordinates[0] = [startPoint.longitude, startPoint.latitude]
-    renderedTripPoints[0] = {
-      ...renderedTripPoints[0],
-      latitude: startPoint.latitude,
-      longitude: startPoint.longitude
-    }
-    hoverPathPoints[0] = {
-      ...hoverPathPoints[0],
-      latitude: startPoint.latitude,
-      longitude: startPoint.longitude
-    }
-  }
-
-  if (endPoint && !areSameCoordinate(renderedTripPoints[renderedTripPoints.length - 1], endPoint)) {
-    lineCoordinates[lineCoordinates.length - 1] = [endPoint.longitude, endPoint.latitude]
-    renderedTripPoints[renderedTripPoints.length - 1] = {
-      ...renderedTripPoints[renderedTripPoints.length - 1],
-      latitude: endPoint.latitude,
-      longitude: endPoint.longitude
-    }
-    hoverPathPoints[hoverPathPoints.length - 1] = {
-      ...hoverPathPoints[hoverPathPoints.length - 1],
-      latitude: endPoint.latitude,
-      longitude: endPoint.longitude
-    }
-  }
-
-  const sameEndpoint = Boolean(startPoint && endPoint && areSameCoordinate(startPoint, endPoint))
-  const endpointMarkers = []
-
-  if (startPoint) {
-    endpointMarkers.push({
-      markerType: 'start',
-      latitude: startPoint.latitude,
-      longitude: startPoint.longitude,
-      zIndex: sameEndpoint ? 421 : 420,
-      styleOverrides: sameEndpoint ? { transform: 'translateX(-14px)' } : {}
-    })
-  }
-
-  if (endPoint) {
-    endpointMarkers.push({
-      markerType: 'end',
-      latitude: endPoint.latitude,
-      longitude: endPoint.longitude,
-      zIndex: sameEndpoint ? 420 : 410,
-      styleOverrides: sameEndpoint ? { transform: 'translateX(14px)' } : {}
-    })
-  }
-
-  const highlightedSegments = buildHighlightedTripSegments(renderedTripPoints)
-
-  const lineCollection = createFeatureCollection(highlightedSegments.segments.map((segment) => ({
-    type: 'Feature',
-    geometry: {
-      type: 'LineString',
-      coordinates: segment.coordinates
-    },
-    properties: {
-      speedBand: segment.speedBand,
-      tripRaw: JSON.stringify(props.highlightedTrip || {})
-    }
-  })))
-
-  return {
-    lineCollection,
-    endpointMarkers,
-    hoverPathPoints,
-    fullLineCoordinates: lineCoordinates,
-    replayPathPoints: renderedTripPoints
-  }
-}
-
-const normalizeReplayPathPoints = (tripPathPoints) => (
-  (Array.isArray(tripPathPoints) ? tripPathPoints : [])
-    .map((point) => {
-      const latitude = toFiniteNumber(point?.latitude)
-      const longitude = toFiniteNumber(point?.longitude)
-      if (latitude === null || longitude === null) {
-        return null
-      }
-
-      const timestamp = (
-        point?.timestamp
-        || (Number.isFinite(point?._timestampMs) ? new Date(point._timestampMs).toISOString() : null)
-      )
-
-      return {
-        latitude,
-        longitude,
-        altitude: toFiniteNumber(point?.altitude),
-        timestamp
-      }
-    })
-    .filter(Boolean)
-)
-
 const emitReplayPathData = (highlightedData) => {
   if (!props.highlightedTrip || props.highlightedTrip.type !== 'trip') {
     if (state.lastReplayEmissionKey !== '') {
@@ -1127,15 +385,17 @@ const emitReplayPathData = (highlightedData) => {
   })
 }
 
-const highlightedLineColorExpression = [
-  'match',
-  ['get', 'speedBand'],
-  'red', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.red,
-  'yellow', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.yellow,
-  'green', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.green,
-  'unknown', HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown,
-  HIGHLIGHTED_TRIP_SPEED_BAND_COLORS.unknown
-]
+const syncReplayMarker = () => {
+  replayController.syncReplayMarker({
+    visible: props.visible,
+    highlightedTrip: props.highlightedTrip,
+    replayState: props.replayState,
+    onReplayPlaying: () => {
+      closeHighlightedTripPopup()
+      hoverController.hideTripHoverTooltip()
+    }
+  })
+}
 
 const registerEvents = () => {
   if (!isMapLibreMap(props.map)) {
@@ -1183,25 +443,17 @@ const registerEvents = () => {
 
   const handleHighlightedLineMouseMove = (event) => {
     props.map.getCanvas().style.cursor = 'pointer'
-    closeHighlightedTripPopup()
 
-    if (!state.highlightedHoverContext || !props.highlightedTrip) {
-      hideTripHoverTooltip()
-      return
-    }
-
-    const hoverTiming = resolveTripHoverTiming(state.highlightedHoverContext, event?.lngLat, props.map)
-    if (!hoverTiming) {
-      hideTripHoverTooltip()
-      return
-    }
-
-    showTripHoverTooltip(props.highlightedTrip, hoverTiming)
+    hoverController.handleHighlightedLineMouseMove({
+      event,
+      trip: props.highlightedTrip,
+      onBeforeTooltipUpdate: closeHighlightedTripPopup
+    })
   }
 
   const handleHighlightedLineMouseLeave = () => {
     props.map.getCanvas().style.cursor = ''
-    hideTripHoverTooltip()
+    hoverController.hideTripHoverTooltip()
   }
 
   props.map.on('click', state.lineLayerId, handlePathClick)
@@ -1253,10 +505,13 @@ const renderLayer = () => {
     return
   }
 
-  registerReplayUserCameraHandlers()
+  replayController.registerReplayUserCameraHandlers()
 
-  const pathCollection = buildPathCollection()
-  const highlighted = buildHighlightedData()
+  const pathCollection = buildPathCollection(props.pathData)
+  const highlighted = buildHighlightedData({
+    highlightedTrip: props.highlightedTrip,
+    pathData: props.pathData
+  })
   const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
@@ -1292,7 +547,7 @@ const renderLayer = () => {
 
   syncHighlightedTripPopup(highlightedLineCoordinates)
   syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
-  syncTripHoverContext(highlighted.hoverPathPoints)
+  hoverController.syncTripHoverContext(props.highlightedTrip, highlighted.hoverPathPoints)
   emitReplayPathData(highlighted)
   syncReplayMarker()
 
@@ -1302,12 +557,10 @@ const renderLayer = () => {
 
 const clearLayer = () => {
   unregisterEvents()
-  unregisterReplayUserCameraHandlers()
-  clearTripHoverState()
+  hoverController.clearTripHoverState()
   closeHighlightedTripPopup()
   removeHighlightedEndpointMarkers()
-  removeReplayMarker()
-  restoreReplayCameraSnapshot()
+  replayController.cleanupReplay()
 
   if (state.lastReplayEmissionKey !== '') {
     state.lastReplayEmissionKey = ''
@@ -1325,10 +578,7 @@ const clearLayer = () => {
     return
   }
 
-  removeLayers(
-    targetMap,
-    [state.highlightedLineLayerId, state.lineLayerId]
-  )
+  removeLayers(targetMap, [state.highlightedLineLayerId, state.lineLayerId])
   removeSources(targetMap, [state.highlightedSourceId, state.sourceId])
   state.boundMap = null
 }
