@@ -37,6 +37,7 @@ import {
   buildHighlightedTripSegments,
   HIGHLIGHTED_TRIP_SPEED_BAND_COLORS
 } from '@/maps/shared/highlightedTripSpeedBands'
+import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 
 const timezone = useTimezone()
 
@@ -65,10 +66,20 @@ const props = defineProps({
       opacity: 0.8,
       smoothFactor: 1
     })
+  },
+  replayState: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['path-click', 'path-hover', 'trip-marker-click', 'highlighted-trip-click'])
+const emit = defineEmits([
+  'path-click',
+  'path-hover',
+  'trip-marker-click',
+  'highlighted-trip-click',
+  'highlighted-trip-replay-data'
+])
 
 const state = {
   token: nextLayerToken('gp-path'),
@@ -86,7 +97,15 @@ const state = {
   highlightedTripPopupTimeoutId: null,
   highlightedHoverPopup: null,
   highlightedHoverContext: null,
-  highlightedHoverMapHandler: null
+  highlightedHoverMapHandler: null,
+  replayMarkerEntry: null,
+  replayMarkerMovementType: '',
+  replayLastCameraSyncMs: 0,
+  replayCameraSnapshot: null,
+  replay3dActive: false,
+  replayWasPlaying: false,
+  replayLastElapsedMs: 0,
+  lastReplayEmissionKey: ''
 }
 
 state.sourceId = `${state.token}-source`
@@ -254,6 +273,274 @@ const removeHighlightedEndpointMarkers = () => {
   })
 }
 
+const buildReplayMarkerElement = (movementType = 'UNKNOWN') => {
+  const iconClass = getTripMovementIconClass(movementType)
+  const markerElement = document.createElement('div')
+  markerElement.className = 'gp-trip-replay-marker'
+  markerElement.innerHTML = `
+    <div class="gp-trip-replay-marker-inner">
+      <i class="${iconClass}"></i>
+    </div>
+  `.trim()
+
+  return markerElement
+}
+
+const removeReplayMarker = () => {
+  state.replayWasPlaying = false
+  state.replayLastElapsedMs = 0
+  state.replayLastCameraSyncMs = 0
+
+  if (!state.replayMarkerEntry) {
+    return
+  }
+
+  state.replayMarkerEntry.marker.remove()
+  state.replayMarkerEntry = null
+  state.replayMarkerMovementType = ''
+}
+
+const normalizeBearingDegrees = (bearing) => {
+  if (!Number.isFinite(bearing)) {
+    return 0
+  }
+
+  let normalized = bearing % 360
+  if (normalized > 180) {
+    normalized -= 360
+  } else if (normalized < -180) {
+    normalized += 360
+  }
+
+  return normalized
+}
+
+const snapshotReplayCameraIfNeeded = () => {
+  if (!isMapLibreMap(props.map) || state.replayCameraSnapshot) {
+    return
+  }
+
+  const currentTerrain = props.map.getTerrain?.()
+  state.replayCameraSnapshot = {
+    pitch: props.map.getPitch?.() || 0,
+    bearing: props.map.getBearing?.() || 0,
+    terrain: currentTerrain && currentTerrain.source
+      ? { source: currentTerrain.source, exaggeration: currentTerrain.exaggeration }
+      : null
+  }
+}
+
+const restoreReplayCameraSnapshot = () => {
+  if (!isMapLibreMap(props.map) || !state.replayCameraSnapshot) {
+    state.replayCameraSnapshot = null
+    return
+  }
+
+  const snapshot = state.replayCameraSnapshot
+  state.replayCameraSnapshot = null
+  state.replay3dActive = false
+
+  try {
+    if (snapshot.terrain?.source) {
+      props.map.setTerrain(snapshot.terrain)
+    } else if (props.map.getTerrain?.()) {
+      props.map.setTerrain(null)
+    }
+  } catch {
+    // Terrain restoration is best-effort.
+  }
+
+  try {
+    props.map.easeTo({
+      pitch: Number.isFinite(snapshot.pitch) ? snapshot.pitch : 0,
+      bearing: Number.isFinite(snapshot.bearing) ? snapshot.bearing : props.map.getBearing?.() || 0,
+      duration: 250,
+      essential: true
+    })
+  } catch {
+    // Camera restoration is best-effort.
+  }
+}
+
+const resolveRasterDemSourceId = () => {
+  if (!isMapLibreMap(props.map)) {
+    return null
+  }
+
+  const style = props.map.getStyle?.()
+  const sources = style?.sources || {}
+
+  return Object.keys(sources).find((sourceId) => sources[sourceId]?.type === 'raster-dem') || null
+}
+
+const syncReplay3dMode = ({ enable3d, bearing = null } = {}) => {
+  if (!isMapLibreMap(props.map)) {
+    return
+  }
+
+  if (!enable3d) {
+    restoreReplayCameraSnapshot()
+    return
+  }
+
+  snapshotReplayCameraIfNeeded()
+
+  try {
+    const terrainSourceId = resolveRasterDemSourceId()
+    if (terrainSourceId) {
+      const activeTerrain = props.map.getTerrain?.()
+      if (!activeTerrain || activeTerrain.source !== terrainSourceId) {
+        props.map.setTerrain({ source: terrainSourceId, exaggeration: 1.2 })
+      }
+    }
+  } catch {
+    // Terrain enablement is best-effort.
+  }
+
+  try {
+    props.map.easeTo({
+      pitch: 55,
+      bearing: Number.isFinite(bearing) ? bearing : props.map.getBearing?.() || 0,
+      duration: 150,
+      essential: true
+    })
+  } catch {
+    // Pitch fallback is best-effort.
+  }
+
+  state.replay3dActive = true
+}
+
+const syncReplayCamera = ({ cursor, followCamera = true, playing = false, enable3d = false, force = false } = {}) => {
+  if (!isMapLibreMap(props.map) || !followCamera || !cursor) {
+    return
+  }
+
+  if (!playing && !force) {
+    return
+  }
+
+  const cursorLatitude = toFiniteNumber(cursor.latitude)
+  const cursorLongitude = toFiniteNumber(cursor.longitude)
+  if (cursorLatitude === null || cursorLongitude === null) {
+    return
+  }
+
+  const now = Date.now()
+  if (!force && playing && now - state.replayLastCameraSyncMs < 170) {
+    return
+  }
+  state.replayLastCameraSyncMs = now
+
+  const cameraUpdate = {
+    center: [cursorLongitude, cursorLatitude],
+    duration: force ? 0 : (playing ? 170 : 120),
+    essential: true
+  }
+
+  if (enable3d) {
+    cameraUpdate.pitch = 55
+    if (Number.isFinite(cursor.bearing)) {
+      cameraUpdate.bearing = cursor.bearing
+    }
+  }
+
+  try {
+    props.map.easeTo(cameraUpdate)
+  } catch {
+    // Camera follow is best-effort.
+  }
+}
+
+const syncReplayMarker = () => {
+  if (!isMapLibreMap(props.map) || !props.visible || props.highlightedTrip?.type !== 'trip') {
+    removeReplayMarker()
+    restoreReplayCameraSnapshot()
+    return
+  }
+
+  const replayState = props.replayState || {}
+  const replayEnabled = Boolean(replayState.enabled)
+  const replayIsPlaying = Boolean(replayState.playing)
+  const replayElapsedMs = toFiniteNumber(replayState.elapsedMs) || 0
+  const cursor = replayState.cursor
+  const cursorLatitude = toFiniteNumber(cursor?.latitude)
+  const cursorLongitude = toFiniteNumber(cursor?.longitude)
+
+  if (!replayEnabled || cursorLatitude === null || cursorLongitude === null) {
+    removeReplayMarker()
+    restoreReplayCameraSnapshot()
+    return
+  }
+
+  const movementType = String(replayState.movementType || props.highlightedTrip?.movementType || 'UNKNOWN').toUpperCase()
+  if (!state.replayMarkerEntry || state.replayMarkerMovementType !== movementType) {
+    removeReplayMarker()
+
+    const markerElement = buildReplayMarkerElement(movementType)
+    const marker = new maplibregl.Marker({
+      element: markerElement,
+      anchor: 'center',
+      rotation: 0,
+      rotationAlignment: 'viewport',
+      pitchAlignment: 'viewport'
+    })
+      .setLngLat([cursorLongitude, cursorLatitude])
+      .addTo(props.map)
+
+    state.replayMarkerEntry = {
+      marker,
+      element: markerElement
+    }
+    state.replayMarkerMovementType = movementType
+  } else {
+    state.replayMarkerEntry.marker.setLngLat([cursorLongitude, cursorLatitude])
+  }
+
+  const iconElement = state.replayMarkerEntry.element.querySelector('i')
+  if (iconElement) {
+    iconElement.className = getTripMovementIconClass(movementType)
+  }
+
+  const cursorBearing = toFiniteNumber(cursor?.bearing)
+  const mapBearing = toFiniteNumber(props.map.getBearing?.()) || 0
+  const markerRotation = (
+    Boolean(replayState.enable3d) && Boolean(replayState.followCamera)
+      ? 0
+      : normalizeBearingDegrees((cursorBearing || 0) - mapBearing)
+  )
+  if (typeof state.replayMarkerEntry.marker.setRotation === 'function') {
+    state.replayMarkerEntry.marker.setRotation(markerRotation)
+  }
+
+  if (replayIsPlaying) {
+    closeHighlightedTripPopup()
+    hideTripHoverTooltip()
+  }
+
+  const replayStarted = replayIsPlaying && !state.replayWasPlaying
+  const replayRestarted = replayElapsedMs <= 1 && state.replayLastElapsedMs > 1
+  const forceCameraSync = replayStarted || replayRestarted
+  if (forceCameraSync) {
+    state.replayLastCameraSyncMs = 0
+  }
+
+  syncReplay3dMode({
+    enable3d: Boolean(replayState.enable3d),
+    bearing: cursorBearing !== null ? cursorBearing : null
+  })
+  syncReplayCamera({
+    cursor,
+    followCamera: Boolean(replayState.followCamera),
+    playing: replayIsPlaying,
+    enable3d: Boolean(replayState.enable3d),
+    force: forceCameraSync
+  })
+
+  state.replayWasPlaying = replayIsPlaying
+  state.replayLastElapsedMs = replayElapsedMs
+}
+
 const buildTripEndpointPopupContent = (trip, markerType) => {
   const startTime = timezone.fromUtc(trip.timestamp)
   const endTime = startTime.add(trip.tripDuration, 'second')
@@ -341,6 +628,9 @@ const createHighlightedEndpointMarker = ({
   }).setHTML(buildTripEndpointPopupContent(props.highlightedTrip, markerType))
 
   const openPopup = () => {
+    if (props.replayState?.playing) {
+      return
+    }
     popup.setLngLat([longitude, latitude]).addTo(props.map)
   }
   const closePopup = () => {
@@ -420,11 +710,17 @@ const fitHighlightedTripBounds = (lineCoordinates) => {
 
   props.map.fitBounds(bounds, {
     padding: 20,
+    maxZoom: 16,
     animate: false
   })
 }
 
 const syncHighlightedTripPopup = (lineCoordinates) => {
+  if (props.replayState?.suppressTripPopup) {
+    closeHighlightedTripPopup()
+    return
+  }
+
   if (!isMapLibreMap(props.map) || !props.highlightedTrip || !props.visible || lineCoordinates.length < 2) {
     closeHighlightedTripPopup()
     return
@@ -522,7 +818,8 @@ const buildHighlightedData = () => {
       lineCollection: createFeatureCollection([]),
       endpointMarkers: [],
       hoverPathPoints: [],
-      fullLineCoordinates: []
+      fullLineCoordinates: [],
+      replayPathPoints: []
     }
   }
 
@@ -549,7 +846,8 @@ const buildHighlightedData = () => {
       lineCollection: createFeatureCollection([]),
       endpointMarkers: [],
       hoverPathPoints: [],
-      fullLineCoordinates: []
+      fullLineCoordinates: [],
+      replayPathPoints: []
     }
   }
 
@@ -641,8 +939,64 @@ const buildHighlightedData = () => {
     lineCollection,
     endpointMarkers,
     hoverPathPoints,
-    fullLineCoordinates: lineCoordinates
+    fullLineCoordinates: lineCoordinates,
+    replayPathPoints: renderedTripPoints
   }
+}
+
+const normalizeReplayPathPoints = (tripPathPoints) => (
+  (Array.isArray(tripPathPoints) ? tripPathPoints : [])
+    .map((point) => {
+      const latitude = toFiniteNumber(point?.latitude)
+      const longitude = toFiniteNumber(point?.longitude)
+      if (latitude === null || longitude === null) {
+        return null
+      }
+
+      const timestamp = (
+        point?.timestamp
+        || (Number.isFinite(point?._timestampMs) ? new Date(point._timestampMs).toISOString() : null)
+      )
+
+      return {
+        latitude,
+        longitude,
+        altitude: toFiniteNumber(point?.altitude),
+        timestamp
+      }
+    })
+    .filter(Boolean)
+)
+
+const emitReplayPathData = (highlightedData) => {
+  if (!props.highlightedTrip || props.highlightedTrip.type !== 'trip') {
+    if (state.lastReplayEmissionKey !== '') {
+      state.lastReplayEmissionKey = ''
+      emit('highlighted-trip-replay-data', { tripKey: '', points: [] })
+    }
+    return
+  }
+
+  const tripKey = getHighlightedTripKey(props.highlightedTrip)
+  const replayPathPoints = normalizeReplayPathPoints(highlightedData?.replayPathPoints)
+  const firstPoint = replayPathPoints[0]
+  const lastPoint = replayPathPoints[replayPathPoints.length - 1]
+  const emissionKey = [
+    tripKey,
+    replayPathPoints.length,
+    firstPoint?.timestamp || '',
+    lastPoint?.timestamp || ''
+  ].join('|')
+
+  if (state.lastReplayEmissionKey === emissionKey) {
+    return
+  }
+
+  state.lastReplayEmissionKey = emissionKey
+  emit('highlighted-trip-replay-data', {
+    tripKey,
+    points: replayPathPoints
+  })
 }
 
 const highlightedLineColorExpression = [
@@ -740,6 +1094,16 @@ const registerEvents = () => {
   ]
 }
 
+const syncReplayFocusLayerVisibility = () => {
+  if (!isMapLibreMap(props.map)) {
+    return
+  }
+
+  const replayFocusMode = Boolean(props.replayState?.playing)
+  setLayerVisibility(props.map, [state.lineLayerId], props.visible && !replayFocusMode)
+  setLayerVisibility(props.map, [state.highlightedLineLayerId], props.visible)
+}
+
 const unregisterEvents = () => {
   if (!isMapLibreMap(props.map)) {
     state.listeners = []
@@ -794,18 +1158,13 @@ const renderLayer = () => {
     }
   })
 
-  setLayerVisibility(
-    props.map,
-    [
-      state.lineLayerId,
-      state.highlightedLineLayerId
-    ],
-    props.visible
-  )
+  syncReplayFocusLayerVisibility()
 
   syncHighlightedTripPopup(highlightedLineCoordinates)
   syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
   syncTripHoverContext(highlighted.hoverPathPoints)
+  emitReplayPathData(highlighted)
+  syncReplayMarker()
 
   unregisterEvents()
   registerEvents()
@@ -816,6 +1175,13 @@ const clearLayer = () => {
   clearTripHoverState()
   closeHighlightedTripPopup()
   removeHighlightedEndpointMarkers()
+  removeReplayMarker()
+  restoreReplayCameraSnapshot()
+
+  if (state.lastReplayEmissionKey !== '') {
+    state.lastReplayEmissionKey = ''
+    emit('highlighted-trip-replay-data', { tripKey: '', points: [] })
+  }
 
   if (state.boundMap && state.styleLoadHandler) {
     state.boundMap.off('style.load', state.styleLoadHandler)
@@ -866,6 +1232,15 @@ watch(
   { immediate: true, deep: true }
 )
 
+watch(
+  () => props.replayState,
+  () => {
+    syncReplayFocusLayerVisibility()
+    syncReplayMarker()
+  },
+  { immediate: true, deep: true }
+)
+
 onBeforeUnmount(() => {
   clearLayer()
 })
@@ -892,5 +1267,42 @@ onBeforeUnmount(() => {
 
 .p-dark .gp-trip-popup-container .maplibregl-popup-tip {
   border-top-color: rgba(15, 23, 42, 0.95);
+}
+
+.gp-trip-replay-marker {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 450;
+}
+
+.gp-trip-replay-marker-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35), 0 0 0 2px rgba(37, 99, 235, 0.3);
+  transform-origin: center center;
+  transition: transform 0.14s linear;
+}
+
+.gp-trip-replay-marker-inner i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.p-dark .gp-trip-replay-marker-inner {
+  border-color: rgba(241, 245, 249, 0.92);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.58), 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 </style>

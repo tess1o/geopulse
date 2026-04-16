@@ -60,6 +60,10 @@ const props = defineProps({
       opacity: 0.8,
       smoothFactor: 1
     })
+  },
+  replayState: {
+    type: Object,
+    default: null
   }
 })
 
