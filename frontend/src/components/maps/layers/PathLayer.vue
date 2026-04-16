@@ -7,10 +7,12 @@
     :visible="visible"
     :highlighted-trip="highlightedTrip"
     :path-options="pathOptions"
+    :replay-state="replayState"
     @path-click="(payload) => emit('path-click', payload)"
     @path-hover="(payload) => emit('path-hover', payload)"
     @trip-marker-click="(payload) => emit('trip-marker-click', payload)"
     @highlighted-trip-click="(payload) => emit('highlighted-trip-click', payload)"
+    @highlighted-trip-replay-data="(payload) => emit('highlighted-trip-replay-data', payload)"
   />
 </template>
 
@@ -45,10 +47,20 @@ const props = defineProps({
       opacity: 0.8,
       smoothFactor: 1
     })
+  },
+  replayState: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['path-click', 'path-hover', 'trip-marker-click', 'highlighted-trip-click'])
+const emit = defineEmits([
+  'path-click',
+  'path-hover',
+  'trip-marker-click',
+  'highlighted-trip-click',
+  'highlighted-trip-replay-data'
+])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))

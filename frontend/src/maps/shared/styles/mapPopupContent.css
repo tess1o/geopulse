@@ -441,3 +441,13 @@
 .trip-popup .trip-detail {
   color: #475569 !important;
 }
+
+/* Keep all tooltips/popups above markers for both engines */
+.maplibregl-popup {
+  z-index: 1200 !important;
+}
+
+.leaflet-popup-pane,
+.leaflet-tooltip-pane {
+  z-index: 1200 !important;
+}

@@ -48,6 +48,7 @@
             :custom-tile-url="customMapTileUrl"
             :custom-style-url="customMapStyleUrl"
             :map-render-mode="mapRenderMode"
+            :enable-trip-replay="true"
             @timeline-marker-click="handleTimelineMarkerClick"
             @highlighted-path-click="handleHighlightedPathClick"
             @edit-favorite="handleEditFavorite"

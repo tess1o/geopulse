@@ -70,9 +70,11 @@
           :path-data="processedPathData"
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
+          :replay-state="pathReplayState"
           @path-click="handlePathClick"
           @trip-marker-click="handleTripMarkerClick"
           @highlighted-trip-click="handleHighlightedTripClick"
+          @highlighted-trip-replay-data="handleHighlightedTripReplayData"
         />
         
 
@@ -83,7 +85,7 @@
           :map="map"
           :timeline-data="processedTimelineData"
           :highlighted-item="activeTimelineHighlight"
-          :visible="showTimeline"
+          :visible="timelineLayerVisible"
           @marker-click="handleTimelineMarkerClick"
         />
 
@@ -185,6 +187,115 @@
 
       </template>
     </MapContainer>
+
+    <div
+      v-if="showTripReplayBar"
+      class="trip-replay-bar"
+      @mousedown.stop
+      @touchstart.stop
+      @click.stop
+    >
+      <div class="trip-replay-bar-main">
+        <button
+          type="button"
+          class="trip-replay-btn"
+          :title="isReplayPlaying ? 'Pause replay' : 'Play replay'"
+          @click="toggleReplayPlayback"
+        >
+          <i :class="isReplayPlaying ? 'pi pi-pause' : 'pi pi-play'"></i>
+        </button>
+
+        <button
+          type="button"
+          class="trip-replay-btn"
+          title="Stop replay"
+          @click="stopTripReplay"
+        >
+          <i class="pi pi-stop"></i>
+        </button>
+
+        <span class="trip-replay-time">{{ replayElapsedLabel }}</span>
+
+        <input
+          class="trip-replay-slider"
+          type="range"
+          min="0"
+          max="1000"
+          step="1"
+          :value="replaySliderValue"
+          @input="handleReplaySliderInput"
+        />
+
+        <span class="trip-replay-time">{{ replayDurationLabel }}</span>
+      </div>
+
+      <div class="trip-replay-bar-options">
+        <div class="trip-replay-speeds">
+          <button
+            v-for="speed in replaySpeedPresets"
+            :key="speed"
+            type="button"
+            class="trip-replay-speed-btn"
+            :class="{ active: replaySpeedMultiplier === speed }"
+            :title="`Set speed ${speed}x`"
+            @click="setReplaySpeed(speed)"
+          >
+            {{ speed }}x
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="trip-replay-toggle-btn"
+          :class="{ active: replayFollowCamera }"
+          title="Follow camera"
+          @click="toggleReplayFollowCamera"
+        >
+          <i class="pi pi-compass"></i>
+          Follow
+        </button>
+
+        <button
+          type="button"
+          class="trip-replay-toggle-btn"
+          :class="{ active: replayEnable3d }"
+          title="Enable 3D camera"
+          @click="toggleReplay3d"
+        >
+          <i class="pi pi-box"></i>
+          3D
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="trip-replay-btn trip-replay-dismiss-btn"
+        title="Hide replay controls"
+        aria-label="Hide replay controls"
+        @click="dismissTripReplayControls"
+      >
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
+    <div
+      v-if="showTripReplayRestoreButton"
+      class="trip-replay-restore"
+      @mousedown.stop
+      @touchstart.stop
+      @click.stop
+    >
+      <button
+        type="button"
+        class="trip-replay-restore-btn"
+        title="Show replay controls"
+        aria-label="Show replay controls"
+        @click="restoreTripReplayControls"
+      >
+        <i class="pi pi-play-circle"></i>
+        Replay
+      </button>
+    </div>
   </div>
 </template>
 
@@ -198,6 +309,15 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import {
+  DEFAULT_TRIP_REPLAY_SPEED,
+  TRIP_REPLAY_SPEED_PRESETS,
+  advanceTripReplayElapsed,
+  buildTripReplayTimeline,
+  clampTripReplayElapsed,
+  resolveTripReplayCursor
+} from '@/maps/shared/tripReplayMath'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
@@ -293,6 +413,10 @@ const props = defineProps({
   enableFavoriteContextMenu: {
     type: Boolean,
     default: true
+  },
+  enableTripReplay: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -388,6 +512,15 @@ const heatmapPoints = ref([])
 let heatmapRequestId = 0
 const heatmapPrefetches = new Map()
 let mapContextMenuShowTimeoutId = null
+const replayPathPayload = ref({ tripKey: '', points: [] })
+const replayElapsedMs = ref(0)
+const replaySpeedMultiplier = ref(DEFAULT_TRIP_REPLAY_SPEED)
+const replayFollowCamera = ref(true)
+const replayEnable3d = ref(false)
+const replayIsPlaying = ref(false)
+const replayControlsDismissed = ref(false)
+let replayAnimationFrameId = null
+let replayLastFrameTimestamp = null
 
 // Dialog state
 const dialogState = ref({
@@ -494,6 +627,271 @@ const heatmapGradient = {
   0.6: '#eab308',
   0.8: '#f97316',
   1.0: '#dc2626',
+}
+
+const getHighlightedTripKey = (trip) => {
+  if (!trip) {
+    return ''
+  }
+
+  if (trip.id) {
+    return String(trip.id)
+  }
+
+  return [
+    trip.timestamp,
+    trip.latitude,
+    trip.longitude,
+    trip.endLatitude,
+    trip.endLongitude,
+    trip.tripDuration,
+    trip.distanceMeters
+  ].join('|')
+}
+
+const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
+const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+const replaySpeedPresets = TRIP_REPLAY_SPEED_PRESETS
+const activeHighlightedTrip = computed(() => {
+  if (!activeTimelineHighlight.value || activeTimelineHighlight.value.type !== 'trip') {
+    return null
+  }
+
+  return activeTimelineHighlight.value
+})
+const activeHighlightedTripKey = computed(() => getHighlightedTripKey(activeHighlightedTrip.value))
+
+const activeReplayPathPoints = computed(() => {
+  const payload = replayPathPayload.value
+  if (!payload || payload.tripKey !== activeHighlightedTripKey.value) {
+    return []
+  }
+
+  return Array.isArray(payload.points) ? payload.points : []
+})
+
+const replayTimeline = computed(() => {
+  if (!activeHighlightedTrip.value || activeReplayPathPoints.value.length < 2) {
+    return null
+  }
+
+  const preferredDurationMs = (
+    Number.isFinite(Number(activeHighlightedTrip.value.tripDuration))
+      ? Number(activeHighlightedTrip.value.tripDuration) * 1000
+      : null
+  )
+  const timeline = buildTripReplayTimeline(activeReplayPathPoints.value, { preferredDurationMs })
+  return Number.isFinite(timeline.durationMs) && timeline.durationMs > 0 ? timeline : null
+})
+
+const replayDurationMs = computed(() => replayTimeline.value?.durationMs || 0)
+const replayCursor = computed(() => {
+  if (!replayTimeline.value) {
+    return null
+  }
+
+  return resolveTripReplayCursor(replayTimeline.value, replayElapsedMs.value)
+})
+
+const showTripReplayBarAvailable = computed(() => (
+  Boolean(props.enableTripReplay)
+  && isVectorMapMode.value
+  && showPath.value
+  && Boolean(activeHighlightedTrip.value)
+  && Boolean(replayTimeline.value)
+))
+const showTripReplayBar = computed(() => showTripReplayBarAvailable.value && !replayControlsDismissed.value)
+const showTripReplayRestoreButton = computed(() => (
+  showTripReplayBarAvailable.value && replayControlsDismissed.value
+))
+const hideTimelineMarkersForReplay = computed(() => showTripReplayBar.value && replayIsPlaying.value)
+const timelineLayerVisible = computed(() => showTimeline.value && !hideTimelineMarkersForReplay.value)
+
+const pathReplayState = computed(() => ({
+  enabled: showTripReplayBar.value,
+  playing: replayIsPlaying.value,
+  elapsedMs: replayElapsedMs.value,
+  movementType: activeHighlightedTrip.value?.movementType || 'UNKNOWN',
+  followCamera: replayFollowCamera.value,
+  enable3d: replayEnable3d.value,
+  suppressTripPopup: replayIsPlaying.value,
+  cursor: replayCursor.value
+}))
+
+const replaySliderValue = computed(() => {
+  if (!replayDurationMs.value) {
+    return 0
+  }
+
+  return Math.round((replayElapsedMs.value / replayDurationMs.value) * 1000)
+})
+
+const formatReplayClock = (durationMs) => {
+  const totalSeconds = Math.max(0, Math.floor((durationMs || 0) / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+const replayElapsedLabel = computed(() => formatReplayClock(replayElapsedMs.value))
+const replayDurationLabel = computed(() => formatReplayClock(replayDurationMs.value))
+const isReplayPlaying = computed(() => replayIsPlaying.value)
+
+const cancelReplayAnimationFrame = () => {
+  if (replayAnimationFrameId !== null && typeof window !== 'undefined') {
+    window.cancelAnimationFrame(replayAnimationFrameId)
+  }
+  replayAnimationFrameId = null
+}
+
+const replayTick = (timestamp) => {
+  if (!replayIsPlaying.value || !showTripReplayBar.value || !replayTimeline.value) {
+    replayIsPlaying.value = false
+    replayLastFrameTimestamp = null
+    cancelReplayAnimationFrame()
+    return
+  }
+
+  if (replayLastFrameTimestamp === null) {
+    replayLastFrameTimestamp = timestamp
+  }
+
+  const deltaMs = Math.max(0, timestamp - replayLastFrameTimestamp)
+  replayLastFrameTimestamp = timestamp
+
+  const advancedReplay = advanceTripReplayElapsed({
+    elapsedMs: replayElapsedMs.value,
+    deltaMs,
+    speed: replaySpeedMultiplier.value,
+    durationMs: replayDurationMs.value
+  })
+
+  replayElapsedMs.value = advancedReplay.elapsedMs
+
+  if (advancedReplay.ended) {
+    replayIsPlaying.value = false
+    replayLastFrameTimestamp = null
+    cancelReplayAnimationFrame()
+    return
+  }
+
+  if (typeof window !== 'undefined') {
+    replayAnimationFrameId = window.requestAnimationFrame(replayTick)
+  }
+}
+
+const pauseTripReplay = () => {
+  replayIsPlaying.value = false
+  replayLastFrameTimestamp = null
+  cancelReplayAnimationFrame()
+}
+
+const stopTripReplay = () => {
+  pauseTripReplay()
+  replayElapsedMs.value = 0
+}
+
+const dismissTripReplayControls = () => {
+  pauseTripReplay()
+  replayControlsDismissed.value = true
+}
+
+const restoreTripReplayControls = () => {
+  replayControlsDismissed.value = false
+}
+
+const startTripReplay = () => {
+  if (!showTripReplayBar.value || !replayTimeline.value) {
+    return
+  }
+
+  if (replayElapsedMs.value >= replayDurationMs.value) {
+    replayElapsedMs.value = 0
+  }
+
+  if (replayIsPlaying.value) {
+    return
+  }
+
+  replayIsPlaying.value = true
+  replayLastFrameTimestamp = null
+
+  if (typeof window !== 'undefined') {
+    replayAnimationFrameId = window.requestAnimationFrame(replayTick)
+  }
+}
+
+const toggleReplayPlayback = () => {
+  if (replayIsPlaying.value) {
+    pauseTripReplay()
+    return
+  }
+
+  startTripReplay()
+}
+
+const seekTripReplayByRatio = (ratio) => {
+  if (!replayTimeline.value) {
+    return
+  }
+
+  const safeRatio = Math.max(0, Math.min(1, Number(ratio) || 0))
+  replayElapsedMs.value = clampTripReplayElapsed(safeRatio * replayDurationMs.value, replayDurationMs.value)
+  replayLastFrameTimestamp = null
+}
+
+const handleReplaySliderInput = (event) => {
+  const rawValue = Number(event?.target?.value)
+  if (!Number.isFinite(rawValue)) {
+    return
+  }
+
+  seekTripReplayByRatio(rawValue / 1000)
+}
+
+const setReplaySpeed = (speed) => {
+  const normalizedSpeed = Number(speed)
+  if (!replaySpeedPresets.includes(normalizedSpeed)) {
+    return
+  }
+
+  replaySpeedMultiplier.value = normalizedSpeed
+}
+
+const toggleReplayFollowCamera = () => {
+  replayFollowCamera.value = !replayFollowCamera.value
+}
+
+const toggleReplay3d = () => {
+  replayEnable3d.value = !replayEnable3d.value
+}
+
+const resetTripReplay = ({ resetPreferences = true } = {}) => {
+  pauseTripReplay()
+  replayElapsedMs.value = 0
+
+  if (resetPreferences) {
+    replayFollowCamera.value = true
+    replayEnable3d.value = false
+  }
+}
+
+const handleHighlightedTripReplayData = (payload) => {
+  if (!payload || typeof payload !== 'object') {
+    replayPathPayload.value = { tripKey: '', points: [] }
+    return
+  }
+
+  replayPathPayload.value = {
+    tripKey: payload.tripKey || '',
+    points: Array.isArray(payload.points) ? payload.points : []
+  }
 }
 
 // Context menu items
@@ -1217,6 +1615,31 @@ watch(
   { immediate: true }
 )
 
+watch(activeHighlightedTripKey, (newTripKey, previousTripKey) => {
+  if (newTripKey === previousTripKey) {
+    return
+  }
+
+  replayControlsDismissed.value = false
+  replayPathPayload.value = { tripKey: '', points: [] }
+  resetTripReplay({ resetPreferences: true })
+})
+
+watch(showTripReplayBarAvailable, (available) => {
+  if (!available) {
+    replayControlsDismissed.value = false
+    resetTripReplay({ resetPreferences: true })
+  }
+})
+
+watch(replayDurationMs, (durationMs) => {
+  replayElapsedMs.value = clampTripReplayElapsed(replayElapsedMs.value, durationMs)
+
+  if (durationMs <= 0) {
+    pauseTripReplay()
+  }
+})
+
 // Lifecycle
 onMounted(() => {
   if (props.showFavoritesByDefault) {
@@ -1232,6 +1655,8 @@ onUnmounted(() => {
     clearTimeout(mapContextMenuShowTimeoutId)
     mapContextMenuShowTimeoutId = null
   }
+  pauseTripReplay()
+  replayPathPayload.value = { tripKey: '', points: [] }
   clearFocusedPhotoMarker()
 })
 
@@ -1278,6 +1703,189 @@ defineExpose({
   z-index: 900;
 }
 
+.trip-replay-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  width: min(900px, calc(100% - 1.25rem));
+  z-index: 920;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 2.95rem 0.7rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(2px);
+}
+
+.trip-replay-bar-main {
+  flex: 1 1 440px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 260px;
+}
+
+.trip-replay-bar-options {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.trip-replay-speeds {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.trip-replay-btn,
+.trip-replay-speed-btn,
+.trip-replay-toggle-btn {
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.trip-replay-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trip-replay-dismiss-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.trip-replay-btn:hover,
+.trip-replay-speed-btn:hover,
+.trip-replay-toggle-btn:hover {
+  background: rgba(226, 232, 240, 0.96);
+}
+
+.trip-replay-speed-btn {
+  min-width: 2.5rem;
+  height: 2rem;
+  padding: 0 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.trip-replay-toggle-btn {
+  height: 2rem;
+  padding: 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.trip-replay-slider {
+  flex: 1;
+  min-width: 140px;
+  accent-color: #2563eb;
+}
+
+.trip-replay-time {
+  min-width: 2.9rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-replay-restore {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 920;
+}
+
+.trip-replay-restore-btn {
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  background: rgba(248, 250, 252, 0.96);
+  color: #0f172a;
+  cursor: pointer;
+  border-radius: 999px;
+  height: 2.2rem;
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.p-dark .trip-replay-bar {
+  border-color: rgba(100, 116, 139, 0.6);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.92));
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.58);
+}
+
+.p-dark .trip-replay-btn,
+.p-dark .trip-replay-speed-btn,
+.p-dark .trip-replay-toggle-btn {
+  border-color: rgba(100, 116, 139, 0.62);
+  background: rgba(30, 41, 59, 0.94);
+  color: rgba(226, 232, 240, 0.97);
+}
+
+.p-dark .trip-replay-btn:hover,
+.p-dark .trip-replay-speed-btn:hover,
+.p-dark .trip-replay-toggle-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+}
+
+.trip-replay-speed-btn.active,
+.trip-replay-toggle-btn.active {
+  border-color: rgba(30, 64, 175, 0.88);
+  background: rgba(37, 99, 235, 0.95);
+  color: #ffffff;
+}
+
+.p-dark .trip-replay-speed-btn.active,
+.p-dark .trip-replay-toggle-btn.active {
+  border-color: rgba(56, 189, 248, 0.98) !important;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.99), rgba(14, 165, 233, 0.97)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.45), 0 6px 16px rgba(14, 116, 144, 0.45);
+}
+
+.p-dark .trip-replay-speed-btn.active:hover,
+.p-dark .trip-replay-toggle-btn.active:hover,
+.p-dark .trip-replay-speed-btn.active:focus-visible,
+.p-dark .trip-replay-toggle-btn.active:focus-visible {
+  border-color: rgba(125, 211, 252, 1) !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(6, 182, 212, 0.98)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.5), 0 8px 18px rgba(14, 116, 144, 0.5);
+}
+
+.p-dark .trip-replay-time {
+  color: rgba(226, 232, 240, 0.93);
+}
+
+.p-dark .trip-replay-restore-btn {
+  border-color: rgba(100, 116, 139, 0.62);
+  background: rgba(30, 41, 59, 0.94);
+  color: rgba(226, 232, 240, 0.97);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .map-controls {
@@ -1289,6 +1897,67 @@ defineExpose({
     width: 100%;
     height: 100%;
     min-height: 300px;
+  }
+
+  .trip-replay-bar {
+    bottom: 0.5rem;
+    width: calc(100% - 0.75rem);
+    padding: 0.5rem 2.7rem 0.5rem 0.55rem;
+    gap: 0.4rem;
+  }
+
+  .trip-replay-bar-main {
+    flex: 1 1 100%;
+    min-width: 0;
+    gap: 0.35rem;
+  }
+
+  .trip-replay-bar-options {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .trip-replay-speeds {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .trip-replay-speed-btn {
+    min-width: 0;
+    width: 100%;
+    height: 2.05rem;
+    font-size: 0.74rem;
+    padding: 0;
+  }
+
+  .trip-replay-toggle-btn {
+    min-width: 4.3rem;
+    height: 2.05rem;
+    justify-content: center;
+    font-size: 0.72rem;
+    padding: 0 0.5rem;
+    white-space: nowrap;
+  }
+
+  .trip-replay-dismiss-btn {
+    top: 0.34rem;
+    right: 0.34rem;
+  }
+
+  .trip-replay-restore {
+    right: 0.55rem;
+    bottom: 0.55rem;
+  }
+
+  .trip-replay-restore-btn {
+    height: 2.05rem;
+    padding: 0 0.62rem;
+    font-size: 0.72rem;
   }
 }
 </style>
