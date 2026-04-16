@@ -103,10 +103,18 @@ const state = {
   replayLastCameraSyncMs: 0,
   replayCameraSnapshot: null,
   replay3dActive: false,
+  replayUserCameraInteracting: false,
+  replayUserCameraInteractionUntil: 0,
+  replayUserCameraHandlers: null,
   replayWasPlaying: false,
   replayLastElapsedMs: 0,
   lastReplayEmissionKey: ''
 }
+
+const REPLAY_3D_PITCH = 50
+const REPLAY_3D_MIN_ZOOM = 16.5
+const REPLAY_3D_TARGET_ZOOM_CAP = 17.5
+const REPLAY_3D_ZOOM_STEP = 2.4
 
 state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
@@ -300,6 +308,85 @@ const removeReplayMarker = () => {
   state.replayMarkerMovementType = ''
 }
 
+const markReplayUserCameraInteraction = (durationMs = 600) => {
+  const safeDuration = Number.isFinite(durationMs) ? Math.max(120, Number(durationMs)) : 600
+  state.replayUserCameraInteracting = true
+  state.replayUserCameraInteractionUntil = Math.max(
+    state.replayUserCameraInteractionUntil || 0,
+    Date.now() + safeDuration
+  )
+}
+
+const clearReplayUserCameraInteraction = (cooldownMs = 220) => {
+  const safeCooldown = Number.isFinite(cooldownMs) ? Math.max(0, Number(cooldownMs)) : 220
+  state.replayUserCameraInteractionUntil = Date.now() + safeCooldown
+  state.replayUserCameraInteracting = false
+  state.replayLastCameraSyncMs = 0
+}
+
+const isReplayUserCameraInteracting = () => {
+  if (Date.now() >= (state.replayUserCameraInteractionUntil || 0)) {
+    state.replayUserCameraInteracting = false
+    return false
+  }
+
+  state.replayUserCameraInteracting = true
+  return true
+}
+
+const registerReplayUserCameraHandlers = () => {
+  if (!isMapLibreMap(props.map) || state.replayUserCameraHandlers) {
+    return
+  }
+
+  const canvas = props.map.getCanvas?.()
+  if (!canvas) {
+    return
+  }
+
+  const handleWheel = () => markReplayUserCameraInteraction(1100)
+  const handleMouseDown = () => markReplayUserCameraInteraction(2200)
+  const handleMouseUp = () => clearReplayUserCameraInteraction(260)
+  const handleTouchStart = () => markReplayUserCameraInteraction(2400)
+  const handleTouchMove = () => markReplayUserCameraInteraction(900)
+  const handleTouchEnd = () => clearReplayUserCameraInteraction(320)
+
+  canvas.addEventListener('wheel', handleWheel, { passive: true })
+  canvas.addEventListener('mousedown', handleMouseDown, { passive: true })
+  canvas.addEventListener('touchstart', handleTouchStart, { passive: true })
+  canvas.addEventListener('touchmove', handleTouchMove, { passive: true })
+  window.addEventListener('mouseup', handleMouseUp, { passive: true })
+  window.addEventListener('touchend', handleTouchEnd, { passive: true })
+
+  state.replayUserCameraHandlers = {
+    canvas,
+    handleWheel,
+    handleMouseDown,
+    handleMouseUp,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd
+  }
+}
+
+const unregisterReplayUserCameraHandlers = () => {
+  const handlers = state.replayUserCameraHandlers
+  if (!handlers) {
+    return
+  }
+
+  handlers.canvas?.removeEventListener('wheel', handlers.handleWheel)
+  handlers.canvas?.removeEventListener('mousedown', handlers.handleMouseDown)
+  handlers.canvas?.removeEventListener('touchstart', handlers.handleTouchStart)
+  handlers.canvas?.removeEventListener('touchmove', handlers.handleTouchMove)
+  window.removeEventListener('mouseup', handlers.handleMouseUp)
+  window.removeEventListener('touchend', handlers.handleTouchEnd)
+
+  state.replayUserCameraHandlers = null
+  state.replayUserCameraInteracting = false
+  state.replayUserCameraInteractionUntil = 0
+}
+
 const normalizeBearingDegrees = (bearing) => {
   if (!Number.isFinite(bearing)) {
     return 0
@@ -373,7 +460,7 @@ const resolveRasterDemSourceId = () => {
   return Object.keys(sources).find((sourceId) => sources[sourceId]?.type === 'raster-dem') || null
 }
 
-const syncReplay3dMode = ({ enable3d, bearing = null } = {}) => {
+const syncReplay3dMode = ({ enable3d, bearing = null, force = false } = {}) => {
   if (!isMapLibreMap(props.map)) {
     return
   }
@@ -397,11 +484,25 @@ const syncReplay3dMode = ({ enable3d, bearing = null } = {}) => {
     // Terrain enablement is best-effort.
   }
 
+  const targetPitch = REPLAY_3D_PITCH
+  const currentPitch = props.map.getPitch?.() || 0
+  const shouldApplyPitch = Math.abs(currentPitch - targetPitch) > 0.45
+  const shouldApplyBearing = force && Number.isFinite(bearing)
+  if (!shouldApplyPitch && !shouldApplyBearing) {
+    state.replay3dActive = true
+    return
+  }
+
+  if (!force && isReplayUserCameraInteracting()) {
+    state.replay3dActive = true
+    return
+  }
+
   try {
     props.map.easeTo({
-      pitch: 55,
-      bearing: Number.isFinite(bearing) ? bearing : props.map.getBearing?.() || 0,
-      duration: 150,
+      pitch: targetPitch,
+      ...(shouldApplyBearing ? { bearing } : {}),
+      duration: force ? 0 : 150,
       essential: true
     })
   } catch {
@@ -411,12 +512,23 @@ const syncReplay3dMode = ({ enable3d, bearing = null } = {}) => {
   state.replay3dActive = true
 }
 
-const syncReplayCamera = ({ cursor, followCamera = true, playing = false, enable3d = false, force = false } = {}) => {
+const syncReplayCamera = ({
+  cursor,
+  followCamera = true,
+  playing = false,
+  enable3d = false,
+  force = false,
+  forceZoomTo3dDefault = false
+} = {}) => {
   if (!isMapLibreMap(props.map) || !followCamera || !cursor) {
     return
   }
 
   if (!playing && !force) {
+    return
+  }
+
+  if (!force && isReplayUserCameraInteracting()) {
     return
   }
 
@@ -439,9 +551,21 @@ const syncReplayCamera = ({ cursor, followCamera = true, playing = false, enable
   }
 
   if (enable3d) {
-    cameraUpdate.pitch = 55
+    cameraUpdate.pitch = REPLAY_3D_PITCH
     if (Number.isFinite(cursor.bearing)) {
       cameraUpdate.bearing = cursor.bearing
+    }
+
+    const currentZoom = Number(props.map.getZoom?.())
+    if (
+      (force || forceZoomTo3dDefault)
+      && (!Number.isFinite(currentZoom) || currentZoom < REPLAY_3D_MIN_ZOOM)
+    ) {
+      const currentZoomValue = Number.isFinite(currentZoom) ? currentZoom : REPLAY_3D_MIN_ZOOM
+      cameraUpdate.zoom = Math.min(
+        REPLAY_3D_TARGET_ZOOM_CAP,
+        Math.max(REPLAY_3D_MIN_ZOOM, currentZoomValue + REPLAY_3D_ZOOM_STEP)
+      )
     }
   }
 
@@ -461,6 +585,7 @@ const syncReplayMarker = () => {
 
   const replayState = props.replayState || {}
   const replayEnabled = Boolean(replayState.enabled)
+  const replay3dEnabled = Boolean(replayState.enable3d)
   const replayIsPlaying = Boolean(replayState.playing)
   const replayElapsedMs = toFiniteNumber(replayState.elapsedMs) || 0
   const cursor = replayState.cursor
@@ -520,21 +645,24 @@ const syncReplayMarker = () => {
 
   const replayStarted = replayIsPlaying && !state.replayWasPlaying
   const replayRestarted = replayElapsedMs <= 1 && state.replayLastElapsedMs > 1
+  const replay3dJustEnabled = replay3dEnabled && !state.replay3dActive
   const forceCameraSync = replayStarted || replayRestarted
   if (forceCameraSync) {
     state.replayLastCameraSyncMs = 0
   }
 
   syncReplay3dMode({
-    enable3d: Boolean(replayState.enable3d),
-    bearing: cursorBearing !== null ? cursorBearing : null
+    enable3d: replay3dEnabled,
+    bearing: cursorBearing !== null ? cursorBearing : null,
+    force: replayStarted || replayRestarted
   })
   syncReplayCamera({
     cursor,
     followCamera: Boolean(replayState.followCamera),
     playing: replayIsPlaying,
-    enable3d: Boolean(replayState.enable3d),
-    force: forceCameraSync
+    enable3d: replay3dEnabled,
+    force: forceCameraSync,
+    forceZoomTo3dDefault: replayStarted || replayRestarted
   })
 
   state.replayWasPlaying = replayIsPlaying
@@ -1125,6 +1253,8 @@ const renderLayer = () => {
     return
   }
 
+  registerReplayUserCameraHandlers()
+
   const pathCollection = buildPathCollection()
   const highlighted = buildHighlightedData()
   const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
@@ -1172,6 +1302,7 @@ const renderLayer = () => {
 
 const clearLayer = () => {
   unregisterEvents()
+  unregisterReplayUserCameraHandlers()
   clearTripHoverState()
   closeHighlightedTripPopup()
   removeHighlightedEndpointMarkers()
