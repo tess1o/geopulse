@@ -49,7 +49,7 @@ export class FavoritesManagementPage {
       mapButton: 'button.map-button',
 
       // Dialogs
-      addDialog: '.p-dialog:has(input[placeholder="Location name"])',
+      addDialog: '.p-dialog',
       editDialog: '.p-dialog:has(.p-dialog-title:text("Edit Favorite Location"))',
       bulkEditDialog: '.p-dialog:has(.p-dialog-title:text("Bulk Edit"))',
       bulkSaveDialog: '.p-dialog:has(.p-dialog-title:text("Confirm Bulk Save"))',
@@ -58,7 +58,6 @@ export class FavoritesManagementPage {
       timelineRegenerationModal: '.p-dialog:has(.p-dialog-title:text-matches("Timeline"))',
 
       // Dialog inputs
-      addFavoriteNameInput: 'input[placeholder="Location name"]',
       editFavoriteNameInput: '#name',
       dialogSaveButton: '.p-dialog button:has-text("Save")',
       dialogCancelButton: '.p-dialog button:has-text("Cancel")',
@@ -413,7 +412,10 @@ export class FavoritesManagementPage {
   // ===========================================
 
   getAddDialog() {
-    return this.page.locator(this.selectors.addDialog).first();
+    return this.page
+      .getByRole('dialog')
+      .filter({ hasText: /Add (Point|Area) to Favorites/ })
+      .last();
   }
 
   async waitForAddDialog() {
@@ -423,17 +425,22 @@ export class FavoritesManagementPage {
   async fillAddDialog(name) {
     await this.waitForAddDialog();
     const dialog = this.getAddDialog();
-    await dialog.locator(this.selectors.addFavoriteNameInput).fill(name);
+    const input = dialog.locator('input').first();
+    await expect(input).toBeVisible({ timeout: 10000 });
+    await expect(input).toBeEditable({ timeout: 10000 });
+    await input.fill(name);
   }
 
   async submitAddDialog() {
     const dialog = this.getAddDialog();
     await dialog.locator('button:has-text("Save")').click();
+    await dialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   }
 
   async closeAddDialog() {
     const dialog = this.getAddDialog();
     await dialog.locator('button:has-text("Cancel")').click();
+    await dialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
   }
 
   async waitForEditDialog() {
