@@ -1,14 +1,15 @@
 [
   {
-    "version": "1.26.0",
-    "title": "GeoPulse 1.26.0",
+    "version": "1.27.0",
+    "title": "GeoPulse 1.27.0",
     "highlights": [
-      "Added Vector map support. Existing Raster maps are also supported",
-      "Added 12h/24h time format support",
-      "Added device.uniqueId support for the Traccar integration",
-      "Added Regenerate Coverage button and automatic coverage regeneration after file import",
-      "Fixed chart labels being sorted incorrectly",
-      "Fixed geofences alerts concurrency issue"
+      "Added Trip replay on Timeline page (for Vector maps only)",
+      "Added coloring (green, yellow, red) for selected trips - like traffic speed",
+      "Added option to select friend trail duration (1h, 6h, today)",
+      "Added language support for Google Maps Reverse Geocoding",
+      "Fixed Google Map Api key env variables",
+      "Fixed time picker on GPS Data page",
+      "Several fixes for Vector maps"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
