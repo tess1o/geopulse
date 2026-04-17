@@ -114,6 +114,15 @@ public class GeocodingConfigurationService {
     }
 
     /**
+     * Get Google Maps language preference for reverse geocoding.
+     * @return Language code (e.g., "en", "uk", "pt-BR") or empty if not configured
+     */
+    public Optional<String> getGoogleMapsLanguage() {
+        String language = settingsService.getString("geocoding.googlemaps.language");
+        return language.isEmpty() ? Optional.empty() : Optional.of(language);
+    }
+
+    /**
      * Check if Mapbox provider is enabled.
      */
     public boolean isMapboxEnabled() {

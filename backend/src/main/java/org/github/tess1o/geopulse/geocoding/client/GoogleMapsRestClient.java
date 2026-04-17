@@ -19,5 +19,6 @@ public interface GoogleMapsRestClient {
     Uni<GoogleMapsResponse> reverseGeocode(
             @QueryParam("latlng") String latlng,
             @QueryParam("key") String apiKey,
-            @QueryParam("result_type") String resultType);
+            @QueryParam("result_type") String resultType,
+            @QueryParam("language") String language);
 }

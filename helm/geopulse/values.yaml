@@ -461,6 +461,7 @@ config:
     googleMaps:
       enabled: false
       apiKey: ""  # Stored in secret if provided
+      language: ""  # Optional: Google supported language code (e.g., "en", "uk", "pt-BR", "zh-CN")
 
     # Mapbox - Requires access token
     mapbox:

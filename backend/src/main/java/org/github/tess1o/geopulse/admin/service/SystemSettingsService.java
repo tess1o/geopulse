@@ -84,6 +84,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.googlemaps.api-key",
                 new SettingDefinition("geocoding.provider.googlemaps.api-key", "", ValueType.ENCRYPTED, "geocoding", "Google Maps API key (encrypted)"));
+        SETTING_DEFINITIONS.put("geocoding.googlemaps.language",
+                new SettingDefinition("geocoding.provider.googlemaps.language", "", ValueType.STRING, "geocoding", "Google Maps language preference (supported Google language code, e.g., en, uk, pt-BR, zh-CN)"));
 
         SETTING_DEFINITIONS.put("geocoding.mapbox.enabled",
                 new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox geocoding provider"));

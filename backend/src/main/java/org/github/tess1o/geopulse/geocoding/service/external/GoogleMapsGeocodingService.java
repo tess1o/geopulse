@@ -62,10 +62,17 @@ public class GoogleMapsGeocodingService {
         double longitude = requestCoordinates.getX();
         double latitude = requestCoordinates.getY();
 
-        log.debug("Calling Google Maps for coordinates: lon={}, lat={}", longitude, latitude);
+        String language = configService.getGoogleMapsLanguage().orElse(null);
+        if (language != null) {
+            log.debug("Calling Google Maps for coordinates: lon={}, lat={}, language={}",
+                    longitude, latitude, language);
+        } else {
+            log.debug("Calling Google Maps for coordinates: lon={}, lat={} (default language behavior)",
+                    longitude, latitude);
+        }
 
         String latlng = String.format("%.6f,%.6f", latitude, longitude);
-        return googleMapsClient.reverseGeocode(latlng, apiKey, "street_address|establishment")
+        return googleMapsClient.reverseGeocode(latlng, apiKey, "street_address|establishment", language)
                 .map(response -> {
                     String summary = response.getResults().isEmpty() ? "No results" :
                             response.getResults().getFirst().getFormattedAddress();

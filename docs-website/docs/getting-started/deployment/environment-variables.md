@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **190** distinct env vars.
+Backend runtime currently includes **191** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -86,7 +86,7 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 
-### Geocoding and GeoNames (37)
+### Geocoding and GeoNames (38)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -104,6 +104,7 @@ Notes:
 | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `(empty)` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `(empty)` | API Keys (can also be set via encrypted storage in admin panel) Property: \`geocoding.googlemaps.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false` | Property: \`geocoding.provider.googlemaps.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | `(empty)` | Google Maps reverse geocoding language preference sent as the `language` query param. Property: \`geocoding.googlemaps.language\`. | Google supported language code (for example \`en\`, \`uk\`, \`pt-BR\`, \`zh-CN\`) or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | `(empty)` | Property: \`geocoding.mapbox.access-token\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED` | `false` | Property: \`geocoding.provider.mapbox.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED` | `true` | Provider availability flags Property: \`geocoding.provider.nominatim.enabled\`. | \`true\` or \`false\`. | Backend restart |

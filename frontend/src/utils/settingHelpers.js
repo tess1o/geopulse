@@ -48,6 +48,10 @@ export function parseSettingValue(setting) {
  * @returns {string} Placeholder text
  */
 export function getPlaceholder(setting) {
+  if (setting.key === 'geocoding.googlemaps.language') {
+    return 'e.g., en, uk, pt-BR, zh-CN, ja (optional)'
+  }
+
   if (setting.key.includes('.language')) {
     return 'e.g., en-US, de, uk, ja (optional)'
   }

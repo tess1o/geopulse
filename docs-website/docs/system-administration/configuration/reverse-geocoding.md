@@ -46,9 +46,10 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 | `GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE`  | _(empty)_                             | Nominatim language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent |
 | `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               | Enable Photon geocoding service                                           |
 | `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            | Photon url                                                                |
-| `GEOPULSE_GEOCODING_PHOTON_LANGUAGE`     | _(empty)_                             | Photon language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent    |                                                                 |
+| `GEOPULSE_GEOCODING_PHOTON_LANGUAGE`     | _(empty)_                             | Photon language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                                      |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                            |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | _(empty)_                             | Google Maps language code for reverse geocoding responses (optional, query param `language`) |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                           |
 | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                                 |
 
@@ -78,6 +79,53 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 1. Get API key from [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable Geocoding API
 3. Set billing account (free tier available)
+4. Optional: set `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` to force localized reverse geocoding results (Google `language` query param)
+
+Supported Google Maps language codes:
+
+| Language Code | Language | Language Code | Language |
+|---------------|----------|---------------|----------|
+| `af` | Afrikaans | `ja` | Japanese |
+| `sq` | Albanian | `kn` | Kannada |
+| `am` | Amharic | `kk` | Kazakh |
+| `ar` | Arabic | `km` | Khmer |
+| `hy` | Armenian | `ko` | Korean |
+| `az` | Azerbaijani | `ky` | Kyrgyz |
+| `eu` | Basque | `lo` | Lao |
+| `be` | Belarusian | `lv` | Latvian |
+| `bn` | Bengali | `lt` | Lithuanian |
+| `bs` | Bosnian | `mk` | Macedonian |
+| `bg` | Bulgarian | `ms` | Malay |
+| `my` | Burmese | `ml` | Malayalam |
+| `ca` | Catalan | `mr` | Marathi |
+| `zh` | Chinese | `mn` | Mongolian |
+| `zh-CN` | Chinese (Simplified) | `ne` | Nepali |
+| `zh-HK` | Chinese (Hong Kong) | `no` | Norwegian |
+| `zh-TW` | Chinese (Traditional) | `pl` | Polish |
+| `hr` | Croatian | `pt` | Portuguese |
+| `cs` | Czech | `pt-BR` | Portuguese (Brazil) |
+| `da` | Danish | `pt-PT` | Portuguese (Portugal) |
+| `nl` | Dutch | `pa` | Punjabi |
+| `en` | English | `ro` | Romanian |
+| `en-AU` | English (Australian) | `ru` | Russian |
+| `en-GB` | English (Great Britain) | `sr` | Serbian (Cyrillic) |
+| `et` | Estonian | `sr-Latn` | Serbian (Latin script) |
+| `fa` | Farsi | `si` | Sinhalese |
+| `fi` | Finnish | `sk` | Slovak |
+| `fil` | Filipino | `sl` | Slovenian |
+| `fr` | French | `es` | Spanish |
+| `fr-CA` | French (Canada) | `es-419` | Spanish (Latin America) |
+| `gl` | Galician | `sw` | Swahili |
+| `ka` | Georgian | `sv` | Swedish |
+| `de` | German | `ta` | Tamil |
+| `el` | Greek | `te` | Telugu |
+| `gu` | Gujarati | `th` | Thai |
+| `iw` | Hebrew | `tr` | Turkish |
+| `hi` | Hindi | `uk` | Ukrainian |
+| `hu` | Hungarian | `ur` | Urdu |
+| `is` | Icelandic | `uz` | Uzbek |
+| `id` | Indonesian | `vi` | Vietnamese |
+| `it` | Italian | `zu` | Zulu |
 
 **Mapbox**
 
@@ -120,6 +168,7 @@ GEOPULSE_GEOCODING_PHOTON_URL=https://photon.komoot.io
 # Language preferences (optional - if not set, providers return local language)
 GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE=en-US
 GEOPULSE_GEOCODING_PHOTON_LANGUAGE=en-US
+GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE=en
 
 # API Credentials (if using paid services)
 GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY=your_google_api_key_here
@@ -162,6 +211,7 @@ config:
     googleMaps:
       enabled: true
       apiKey: "your-api-key"  # Stored as Kubernetes Secret
+      language: "en"  # Optional (Google supported language code)
     mapbox:
       enabled: false
       accessToken: ""

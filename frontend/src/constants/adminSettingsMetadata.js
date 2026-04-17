@@ -105,6 +105,10 @@ export const SETTING_METADATA = {
     label: 'Google Maps API Key',
     description: 'API key for Google Maps (encrypted, enter to update)'
   },
+  'geocoding.googlemaps.language': {
+    label: 'Google Maps Language',
+    description: 'See supported languages: https://developers.google.com/maps/faq#languagesupport'
+  },
   'geocoding.mapbox.access-token': {
     label: 'Mapbox Access Token',
     description: 'Access token for Mapbox (encrypted, enter to update)'

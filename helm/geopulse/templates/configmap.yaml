@@ -62,6 +62,7 @@ data:
   GEOPULSE_GEOCODING_PHOTON_URL: {{ .Values.config.geocoding.photon.url | quote }}
   GEOPULSE_GEOCODING_PHOTON_LANGUAGE: {{ .Values.config.geocoding.photon.language | quote }}
   GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED: {{ .Values.config.geocoding.googleMaps.enabled | quote }}
+  GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE: {{ .Values.config.geocoding.googleMaps.language | quote }}
   GEOPULSE_GEOCODING_MAPBOX_ENABLED: {{ .Values.config.geocoding.mapbox.enabled | quote }}
 
   # Location Sharing
