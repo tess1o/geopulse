@@ -19,6 +19,14 @@ const setupMultipleFriendsMapTest = async (page, dbManager, isolatedUsers, frien
 
 const getVisibleLiveFriendFeatures = async (page, mapHarness, mapMode) => {
   if (mapMode === 'VECTOR') {
+    const vectorMarkerCount = await page
+      .locator('.friends-map-container .gp-vector-friend-marker')
+      .count()
+
+    if (vectorMarkerCount > 0) {
+      return vectorMarkerCount
+    }
+
     const rendered = await mapHarness.countVectorRenderedFeatures({
       rootSelector: '.friends-map-container',
       layerIncludes: ['gp-friends']

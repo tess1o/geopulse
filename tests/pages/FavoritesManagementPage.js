@@ -49,7 +49,7 @@ export class FavoritesManagementPage {
       mapButton: 'button.map-button',
 
       // Dialogs
-      addDialog: '.p-dialog:has(.p-dialog-title:text("Add Point to Favorites")), .p-dialog:has(.p-dialog-title:text("Add Area to Favorites"))',
+      addDialog: '.p-dialog:has(input[placeholder="Location name"])',
       editDialog: '.p-dialog:has(.p-dialog-title:text("Edit Favorite Location"))',
       bulkEditDialog: '.p-dialog:has(.p-dialog-title:text("Bulk Edit"))',
       bulkSaveDialog: '.p-dialog:has(.p-dialog-title:text("Confirm Bulk Save"))',
@@ -58,7 +58,8 @@ export class FavoritesManagementPage {
       timelineRegenerationModal: '.p-dialog:has(.p-dialog-title:text-matches("Timeline"))',
 
       // Dialog inputs
-      favoriteNameInput: '.p-dialog input[placeholder*="name"]',
+      addFavoriteNameInput: 'input[placeholder="Location name"]',
+      editFavoriteNameInput: '#name',
       dialogSaveButton: '.p-dialog button:has-text("Save")',
       dialogCancelButton: '.p-dialog button:has-text("Cancel")',
       dialogConfirmButton: '.p-confirmdialog-accept-button',
@@ -150,12 +151,44 @@ export class FavoritesManagementPage {
   async clickContextMenuItem(text) {
     const menuItem = this.page.locator(this.selectors.contextMenuItem, { hasText: text });
     await menuItem.click();
+    await this.page.waitForSelector(this.selectors.contextMenu, {
+      state: 'hidden',
+      timeout: 5000
+    }).catch(() => {});
   }
 
   async drawRectangle(startX, startY, endX, endY, mapId = null) {
+    const resolvedMapId = mapId || 'favorites-map';
+    await this.waitForDrawingMode(resolvedMapId, { required: false });
+    await this.page.waitForTimeout(120);
     await this.mapHarness.drawRectangle(startX, startY, endX, endY, {
-      mapId: mapId || 'favorites-map'
+      mapId: resolvedMapId
     });
+  }
+
+  async waitForDrawingMode(mapId = 'favorites-map', options = {}) {
+    const mapHost = this.mapHarness.getMapHostLocator({ mapId });
+    const timeout = options.timeout ?? 3500;
+    const required = options.required ?? false;
+
+    try {
+      await expect.poll(async () => {
+        return mapHost.evaluate((element) => {
+          const nodes = [element, ...element.querySelectorAll('*')];
+          return nodes.some((node) => {
+            const cursor = window.getComputedStyle(node).cursor || '';
+            return cursor.includes('crosshair') || cursor.includes('cell');
+          });
+        }).catch(() => false);
+      }, { timeout }).toBe(true);
+
+      return true;
+    } catch (error) {
+      if (required) {
+        throw error;
+      }
+      return false;
+    }
   }
 
   async cancelDrawing() {
@@ -379,36 +412,47 @@ export class FavoritesManagementPage {
   // DIALOGS
   // ===========================================
 
+  getAddDialog() {
+    return this.page.locator(this.selectors.addDialog).first();
+  }
+
   async waitForAddDialog() {
-    await this.page.waitForSelector(this.selectors.addDialog, { timeout: 5000 });
+    await this.getAddDialog().waitFor({ state: 'visible', timeout: 10000 });
   }
 
   async fillAddDialog(name) {
     await this.waitForAddDialog();
-    await this.page.fill(this.selectors.favoriteNameInput, name);
+    const dialog = this.getAddDialog();
+    await dialog.locator(this.selectors.addFavoriteNameInput).fill(name);
   }
 
   async submitAddDialog() {
-    await this.page.click(this.selectors.dialogSaveButton);
+    const dialog = this.getAddDialog();
+    await dialog.locator('button:has-text("Save")').click();
   }
 
   async closeAddDialog() {
-    await this.page.click(this.selectors.dialogCancelButton);
+    const dialog = this.getAddDialog();
+    await dialog.locator('button:has-text("Cancel")').click();
   }
 
   async waitForEditDialog() {
-    await this.page.waitForSelector(this.selectors.editDialog, { timeout: 5000 });
+    await this.page.waitForSelector(this.selectors.editDialog, {
+      state: 'visible',
+      timeout: 10000
+    });
   }
 
   async fillEditDialog(newName) {
     await this.waitForEditDialog();
-    const input = this.page.locator(this.selectors.favoriteNameInput);
-    await input.clear();
+    const dialog = this.page.locator(this.selectors.editDialog).first();
+    const input = dialog.locator(this.selectors.editFavoriteNameInput).first();
     await input.fill(newName);
   }
 
   async submitEditDialog() {
-    await this.page.click(this.selectors.dialogSaveButton);
+    const dialog = this.page.locator(this.selectors.editDialog).first();
+    await dialog.locator('button:has-text("Save")').click();
   }
 
   async waitForBulkEditDialog() {

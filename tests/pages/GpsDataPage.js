@@ -283,9 +283,11 @@ export class GpsDataPage {
     
     // Select start date
     await this.selectDateInPicker(startDate);
+    await this.setPickerTime(startDate);
     
     // Select end date  
     await this.selectDateInPicker(endDate);
+    await this.setPickerTime(endDate);
     
     // Wait for the filter to be applied
     await this.page.waitForTimeout(1000);
@@ -306,6 +308,76 @@ export class GpsDataPage {
     // Click on the day using aria-label
     const daySelector = `.p-datepicker-calendar td[aria-label="${day}"]`;
     await this.page.locator(daySelector).click();
+  }
+
+  /**
+   * Set hour/minute in the open date picker using time controls.
+   */
+  async setPickerTime(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      console.log('returning');
+      return;
+    }
+
+    await this.adjustTimePickerValue({
+      pickerSelector: '.p-datepicker-hour-picker',
+      valueSelector: '[data-pc-section="hour"]',
+      incrementButtonSelector: 'button[aria-label="Next Hour"]',
+      decrementButtonSelector: 'button[aria-label="Previous Hour"]',
+      targetValue: date.getHours(),
+      cycle: 24
+    });
+
+    await this.adjustTimePickerValue({
+      pickerSelector: '.p-datepicker-minute-picker',
+      valueSelector: '[data-pc-section="minute"]',
+      incrementButtonSelector: 'button[aria-label="Next Minute"]',
+      decrementButtonSelector: 'button[aria-label="Previous Minute"]',
+      targetValue: date.getMinutes(),
+      cycle: 60
+    });
+  }
+
+  /**
+   * Adjust a date picker unit (hours/minutes) to the target value.
+   */
+  async adjustTimePickerValue({
+    pickerSelector,
+    valueSelector,
+    incrementButtonSelector,
+    decrementButtonSelector,
+    targetValue,
+    cycle
+  }) {
+    const picker = this.page
+      .locator(`.p-datepicker-panel:visible .p-datepicker-time-picker ${pickerSelector}`)
+      .first();
+    const pickerVisible = await picker.isVisible().catch(() => false);
+    if (!pickerVisible) {
+      return;
+    }
+
+    const valueLabel = picker.locator(valueSelector).first();
+    const currentText = (await valueLabel.textContent())?.trim() || '';
+    const currentValue = parseInt(currentText, 10);
+
+    if (!Number.isFinite(currentValue)) {
+      return;
+    }
+
+    const normalizedTarget = ((targetValue % cycle) + cycle) % cycle;
+    const forwardSteps = (normalizedTarget - currentValue + cycle) % cycle;
+    const backwardSteps = (currentValue - normalizedTarget + cycle) % cycle;
+
+    const useIncrement = forwardSteps <= backwardSteps;
+    const steps = useIncrement ? forwardSteps : backwardSteps;
+    const button = picker.locator(
+      useIncrement ? incrementButtonSelector : decrementButtonSelector
+    ).first();
+
+    for (let i = 0; i < steps; i += 1) {
+      await button.click();
+    }
   }
 
   /**

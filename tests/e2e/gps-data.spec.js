@@ -58,6 +58,19 @@ const findTelemetryRowByKey = async (page, keyToFind) => {
     throw new Error(`Telemetry mapping row not found for key: ${keyToFind}`);
 };
 
+const isGpsDateRangeRequest = (request) => {
+    if (!request.url().includes('/api/gps')) {
+        return false;
+    }
+
+    if (request.method() !== 'GET') {
+        return false;
+    }
+
+    const requestUrl = new URL(request.url());
+    return requestUrl.searchParams.has('startTime') && requestUrl.searchParams.has('endTime');
+};
+
 test.describe('GPS Data Page', () => {
 
     test.describe('Basic GPS Data Viewing', () => {
@@ -510,8 +523,8 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.waitForPageLoad();
 
             // Apply date filter for August 10-12, 2025 (should include Aug 10 and Aug 12)
-            const startDate = new Date(2025, 7, 10); // Month is 0-indexed: 7 = August
-            const endDate = new Date(2025, 7, 12);
+            const startDate = new Date(2025, 7, 10, 0, 0, 0, 0); // Month is 0-indexed: 7 = August
+            const endDate = new Date(2025, 7, 12, 23, 59, 0, 0);
 
             await gpsDataPage.setDateRangeFilter(startDate, endDate);
             await gpsDataPage.waitForTableReload();
@@ -934,8 +947,8 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.waitForPageLoad();
 
             // Apply date filter
-            const startDate = new Date(2025, 7, 10); // Month is 0-indexed: 7 = August
-            const endDate = new Date(2025, 7, 10);
+            const startDate = new Date(2025, 7, 10, 0, 0, 0, 0); // Month is 0-indexed: 7 = August
+            const endDate = new Date(2025, 7, 10, 23, 59, 0, 0);
 
             await gpsDataPage.setDateRangeFilter(startDate, endDate);
             await gpsDataPage.waitForTableReload();
@@ -1079,25 +1092,25 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
 
-            const expectedStartTime = '2025-09-22T04:00:00.000Z';
-            const expectedEndTime = '2025-09-23T03:59:59.999Z';
+            const expectedStartPrefix = '2025-09-22T04:00:';
+            const expectedEndPrefix = '2025-09-23T03:59:';
 
             // Wait for the exact API request to avoid races with unrelated GPS requests
             const apiRequestPromise = page.waitForRequest(request => {
-                if (!request.url().includes('/api/gps')) {
+                if (!isGpsDateRangeRequest(request)) {
                     return false;
                 }
 
                 const requestUrl = new URL(request.url());
-                return (
-                    requestUrl.searchParams.get('startTime') === expectedStartTime
-                    && requestUrl.searchParams.get('endTime') === expectedEndTime
-                );
+                const startTime = requestUrl.searchParams.get('startTime') || '';
+                const endTime = requestUrl.searchParams.get('endTime') || '';
+                return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
 
-            // Select single day: 09/22/2025 - 09/22/2025
-            const selectedDate = new Date(2025, 8, 22); // September 22, 2025 (month is 0-indexed)
-            await gpsDataPage.setDateRangeFilter(selectedDate, selectedDate);
+            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
+            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
+            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
             await gpsDataPage.waitForTableReload();
             const apiRequest = await apiRequestPromise;
 
@@ -1108,15 +1121,11 @@ test.describe('GPS Data Page', () => {
             const endTime = url.searchParams.get('endTime');
 
             // Expected for America/New_York (EDT = UTC-4 in September):
-            // 09/22/2025 00:00:00 EDT = 2025-09-22T04:00:00.000Z
-            // 09/22/2025 23:59:59 EDT = 2025-09-23T03:59:59.999Z
-            
-            // THE BUG: Currently sends 2025-09-21T04:00:00.000Z (wrong day!)
-            // SHOULD BE: 2025-09-22T04:00:00.000Z (correct day)
-            
-            // This test will fail initially, demonstrating the bug
-            expect(startTime).toBe(expectedStartTime); // Should be 09/22, NOT 09/21!
-            expect(endTime).toBe(expectedEndTime);   // Should be 09/23 (end of 09/22 NY time)
+            // 09/22/2025 00:00 EDT => 2025-09-22T04:00:xx.xxxZ
+            // 09/22/2025 23:59 EDT => 2025-09-23T03:59:xx.xxxZ
+            // Seconds can vary with DatePicker's internal seconds state, so assert prefix.
+            expect(startTime).toMatch(/^2025-09-22T04:00:\d{2}\.\d{3}Z$/);
+            expect(endTime).toMatch(/^2025-09-23T03:59:\d{2}\.\d{3}Z$/);
 
             // Additional verification: check that start date represents the correct day
             const startDateObj = new Date(startTime);
@@ -1148,23 +1157,26 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
 
-            // Set up request interception
-            let apiRequest = null;
-            await page.route('**/api/gps*', route => {
-                const url = route.request().url();
-                if (url.includes('startTime') && url.includes('endTime')) {
-                    apiRequest = route.request();
+            const expectedStartPrefix = '2025-09-21T23:00:';
+            const expectedEndPrefix = '2025-09-22T22:59:';
+
+            const apiRequestPromise = page.waitForRequest(request => {
+                if (!isGpsDateRangeRequest(request)) {
+                    return false;
                 }
-                route.continue();
+
+                const requestUrl = new URL(request.url());
+                const startTime = requestUrl.searchParams.get('startTime') || '';
+                const endTime = requestUrl.searchParams.get('endTime') || '';
+                return startTime.startsWith(expectedStartPrefix) && endTime.startsWith(expectedEndPrefix);
             });
 
-            // Select single day: 09/22/2025 - 09/22/2025
-            const selectedDate = new Date(2025, 8, 22); // September 22, 2025
-            await gpsDataPage.setDateRangeFilter(selectedDate, selectedDate);
+            // Select full single day: 09/22/2025 00:00 -> 09/22/2025 23:59
+            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0);
+            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
             await gpsDataPage.waitForTableReload();
-
-            // Wait for API request
-            await page.waitForTimeout(2000);
+            const apiRequest = await apiRequestPromise;
 
             // Verify the API request parameters
             expect(apiRequest).not.toBeNull();
@@ -1173,10 +1185,11 @@ test.describe('GPS Data Page', () => {
             const endTime = url.searchParams.get('endTime');
 
             // Expected for Europe/London (BST = UTC+1 in September):
-            // 09/22/2025 00:00:00 BST = 2025-09-21T23:00:00.000Z
-            // 09/22/2025 23:59:59 BST = 2025-09-22T22:59:59.999Z
-            expect(startTime).toBe('2025-09-21T23:00:00.000Z');
-            expect(endTime).toBe('2025-09-22T22:59:59.999Z');
+            // 09/22/2025 00:00 BST => 2025-09-21T23:00:xx.xxxZ
+            // 09/22/2025 23:59 BST => 2025-09-22T22:59:xx.xxxZ
+            // Seconds can vary with DatePicker's internal seconds state, so assert prefix.
+            expect(startTime).toMatch(/^2025-09-21T23:00:\d{2}\.\d{3}Z$/);
+            expect(endTime).toMatch(/^2025-09-22T22:59:\d{2}\.\d{3}Z$/);
 
             // Verify the start time represents the correct day in London timezone
             const startDateObj = new Date(startTime);
@@ -1207,21 +1220,13 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
 
-            // Track API requests
-            const apiRequests = [];
-            await page.route('**/api/gps*', route => {
-                const url = route.request().url();
-                if (url.includes('startTime') && url.includes('endTime')) {
-                    apiRequests.push(route.request());
-                }
-                route.continue();
-            });
-
             // Select date in UTC timezone
-            const selectedDate = new Date(2025, 8, 22); // September 22, 2025
-            await gpsDataPage.setDateRangeFilter(selectedDate, selectedDate);
+            const selectedStartDate = new Date(2025, 8, 22, 0, 0, 0, 0); // September 22, 2025
+            const selectedEndDate = new Date(2025, 8, 22, 23, 59, 0, 0);
+            const utcRequestPromise = page.waitForRequest(request => isGpsDateRangeRequest(request));
+            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
             await gpsDataPage.waitForTableReload();
-            await page.waitForTimeout(1000);
+            const utcRequestRaw = await utcRequestPromise;
 
             // Switch to America/New_York timezone
             await page.evaluate(() => {
@@ -1235,16 +1240,14 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.waitForPageLoad();
 
             // Select same date again (should now be interpreted as NY time)
-            await gpsDataPage.setDateRangeFilter(selectedDate, selectedDate);
+            const nyRequestPromise = page.waitForRequest(request => isGpsDateRangeRequest(request));
+            await gpsDataPage.setDateRangeFilter(selectedStartDate, selectedEndDate);
             await gpsDataPage.waitForTableReload();
-            await page.waitForTimeout(1000);
-
-            // Verify we have at least 2 API requests
-            expect(apiRequests.length).toBeGreaterThanOrEqual(2);
+            const nyRequestRaw = await nyRequestPromise;
 
             // Check the difference between UTC and NY timezone requests
-            const utcRequest = new URL(apiRequests[0].url());
-            const nyRequest = new URL(apiRequests[apiRequests.length - 1].url());
+            const utcRequest = new URL(utcRequestRaw.url());
+            const nyRequest = new URL(nyRequestRaw.url());
 
             const utcStartTime = utcRequest.searchParams.get('startTime');
             const nyStartTime = nyRequest.searchParams.get('startTime');
@@ -1252,10 +1255,11 @@ test.describe('GPS Data Page', () => {
             // Times should be different due to timezone offset
             expect(utcStartTime).not.toBe(nyStartTime);
 
-            // UTC: 09/22/2025 00:00:00 UTC = 2025-09-22T00:00:00.000Z
-            // NY: 09/22/2025 00:00:00 EDT = 2025-09-22T04:00:00.000Z
-            expect(utcStartTime).toBe('2025-09-22T00:00:00.000Z');
-            expect(nyStartTime).toBe('2025-09-22T04:00:00.000Z');
+            // UTC: 09/22/2025 00:00 UTC => 2025-09-22T00:00:xx.xxxZ
+            // NY: 09/22/2025 00:00 EDT => 2025-09-22T04:00:xx.xxxZ
+            // Seconds can vary with DatePicker's internal seconds state, so assert prefix.
+            expect(utcStartTime).toMatch(/^2025-09-22T00:00:\d{2}\.\d{3}Z$/);
+            expect(nyStartTime).toMatch(/^2025-09-22T04:00:\d{2}\.\d{3}Z$/);
         });
     });
 });
