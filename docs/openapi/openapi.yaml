@@ -7943,7 +7943,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.26.0
+  version: 1.27.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
