@@ -94,12 +94,19 @@ spec:
             timeoutSeconds: {{ .Values.backend.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.backend.readinessProbe.failureThreshold }}
           {{- end }}
+          {{- with .Values.backend.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: keys
               mountPath: /app/keys
               readOnly: true
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
+      {{- if ne .Values.backend.terminationGracePeriodSeconds nil }}
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
+      {{- end }}
       volumes:
         - name: keys
           {{- if .Values.keygen.persistence.enabled }}
