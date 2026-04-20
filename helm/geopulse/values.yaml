@@ -51,6 +51,19 @@ backend:
     timeoutSeconds: 3
     failureThreshold: 3
 
+  # Graceful shutdown configuration.
+  # terminationGracePeriodSeconds should be longer than the preStop sleep so
+  # Kubernetes can let in-flight requests drain before SIGTERM lands.
+  # Leave both unset to fall back to Kubernetes defaults.
+  # Example:
+  #   terminationGracePeriodSeconds: 60
+  #   lifecycle:
+  #     preStop:
+  #       exec:
+  #         command: ["sh", "-c", "sleep 15"]
+  terminationGracePeriodSeconds: null
+  lifecycle: {}
+
   # Security context
   # Both JVM and native images support running as non-root with arbitrary UIDs
   # Using fsGroup: 0 (root group) enables OpenShift compatibility
