@@ -104,8 +104,8 @@ spec:
               readOnly: true
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
-      {{- with .Values.backend.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ . }}
+      {{- if ne .Values.backend.terminationGracePeriodSeconds nil }}
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
       {{- end }}
       volumes:
         - name: keys
