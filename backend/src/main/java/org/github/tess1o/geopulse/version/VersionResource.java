@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.version;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -16,9 +17,19 @@ public class VersionResource {
     @StaticInitSafe
     String version;
 
+    @Inject
+    VersionStatusService versionStatusService;
+
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getVersion() {
         return Response.ok(Map.of("version", version)).build();
+    }
+
+    @GET
+    @Path("/status")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getVersionStatus() {
+        return Response.ok(versionStatusService.getVersionStatus()).build();
     }
 }

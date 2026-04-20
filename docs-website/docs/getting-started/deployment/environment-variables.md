@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **191** distinct env vars.
+Backend runtime currently includes **196** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -40,6 +40,16 @@ Notes:
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
 | `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
+
+### Version Update Check (5)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_VERSION_CHECK_GITHUB_API_URL` | `https://api.github.com/repos/tess1o/geopulse/releases/latest` | GitHub Releases API endpoint used to resolve the latest public GeoPulse release. Property: `geopulse.version-check.github-api-url`. | Valid URL returning GitHub release JSON. | Backend restart |
+| `GEOPULSE_VERSION_CHECK_RELEASE_URL` | `https://github.com/tess1o/geopulse/releases` | Fallback/public release page URL shown to users when an update is available. Property: `geopulse.version-check.release-url`. | Valid URL. | Backend restart |
+| `GEOPULSE_VERSION_CHECK_CACHE_TTL_MINUTES` | `60` | Cache TTL for latest-release metadata to reduce GitHub API calls. Property: `geopulse.version-check.cache-ttl-minutes`. | Positive integer minutes. | Backend restart |
+| `GEOPULSE_VERSION_CHECK_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.connect-timeout-seconds`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_VERSION_CHECK_READ_TIMEOUT_SECONDS` | `8` | HTTP read timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.read-timeout-seconds`. | Positive integer seconds. | Backend restart |
 
 ### Authentication and Access (18)
 

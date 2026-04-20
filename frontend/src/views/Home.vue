@@ -25,8 +25,30 @@
               <span>GitHub</span>
             </a>
             <button class="nav-version-badge" aria-label="What's new" @click="toggleVersionPopover">{{ navVersionBadge }} <i class="pi pi-chevron-down" style="font-size:0.55rem;opacity:0.55;margin-left:2px;"></i></button>
+            <a
+                v-if="updateAvailable && latestVersion"
+                :href="releaseUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="nav-update-pill">
+              <i class="pi pi-arrow-circle-up"></i>
+              <span>New: {{ latestVersion }} available</span>
+            </a>
           </div>
-          <button class="nav-version-badge nav-version-badge-mobile" aria-label="What's new" @click="toggleVersionPopover">{{ navVersionBadge }}</button>
+          <button
+              v-if="!(updateAvailable && latestVersion)"
+              class="nav-version-badge nav-version-badge-mobile"
+              aria-label="What's new"
+              @click="toggleVersionPopover">{{ navVersionBadge }}</button>
+          <a
+              v-if="updateAvailable && latestVersion"
+              :href="releaseUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="nav-update-pill nav-update-pill-mobile">
+            <i class="pi pi-arrow-circle-up"></i>
+            <span>New: {{ latestVersion }}</span>
+          </a>
 
           <Popover ref="versionPopover" class="home-wn-popover">
             <div class="home-wn-header">
@@ -263,12 +285,15 @@ const toggleVersionPopover = (event) => versionPopover.value?.toggle(event)
 const isMobileViewport = ref(false)
 const continueDestination = ref({ path: '/app/timeline' })
 const appVersion = ref('')
+const defaultReleaseNotesUrl = 'https://github.com/tess1o/geopulse/releases'
+const latestVersion = ref('')
+const updateAvailable = ref(false)
+const releaseUrl = ref(defaultReleaseNotesUrl)
 const mobileShowcaseTab = ref('features')
 const githubStars = ref(null)
 const githubForks = ref(null)
 const homeContent = ref({ tips: [], whatsNew: [] })
 const activeTipIndex = ref(0)
-const defaultReleaseNotesUrl = 'https://github.com/tess1o/geopulse/releases'
 
 const filteredTips = computed(() => filterTipsByAudience(homeContent.value?.tips || [], authStore.isAdmin))
 const activeTip = computed(() => filteredTips.value[activeTipIndex.value] || null)
@@ -379,16 +404,32 @@ const fetchGithubStats = async () => {
   }
 }
 
-const fetchVersion = async () => {
+const fetchVersionStatus = async () => {
   try {
-    const response = await fetch('/api/version')
+    const response = await fetch('/api/version/status')
     if (!response.ok) {
-      throw new Error('Failed to fetch app version')
+      throw new Error('Failed to fetch app version status')
     }
     const payload = await response.json()
-    appVersion.value = payload?.version || 'Unknown'
+    appVersion.value = payload?.currentVersion || payload?.version || 'Unknown'
+    latestVersion.value = payload?.latestVersion || ''
+    updateAvailable.value = payload?.updateAvailable === true
+    releaseUrl.value = payload?.releaseUrl || defaultReleaseNotesUrl
   } catch (error) {
-    appVersion.value = 'Unknown'
+    latestVersion.value = ''
+    updateAvailable.value = false
+    releaseUrl.value = defaultReleaseNotesUrl
+
+    try {
+      const response = await fetch('/api/version')
+      if (!response.ok) {
+        throw new Error('Failed to fetch app version fallback')
+      }
+      const payload = await response.json()
+      appVersion.value = payload?.version || 'Unknown'
+    } catch (fallbackError) {
+      appVersion.value = 'Unknown'
+    }
   }
 }
 
@@ -412,7 +453,7 @@ const fetchHomeContent = async () => {
 onMounted(async () => {
   updateViewportState()
   window.addEventListener('resize', updateViewportState)
-  void fetchVersion()
+  void fetchVersionStatus()
   void fetchHomeContent()
   void fetchGithubStats()
 
@@ -504,7 +545,11 @@ onBeforeUnmount(() => {
 .nav-version-badge { display: inline-flex; align-items: center; padding: 0.3rem 0.56rem; border-radius: 999px; border: 1px solid rgba(203, 213, 225, 0.9); background: rgba(255, 255, 255, 0.96); color: #7c3aed; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.03em; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); cursor: pointer; transition: background 0.15s ease, box-shadow 0.15s ease; }
 button.nav-version-badge { font-family: inherit; }
 button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shadow: 0 2px 6px rgba(124, 58, 237, 0.15); }
+.nav-update-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.56rem; border-radius: 999px; border: 1px solid rgba(245, 158, 11, 0.45); background: rgba(255, 251, 235, 0.95); color: #b45309; text-decoration: none; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em; box-shadow: 0 1px 3px rgba(180, 83, 9, 0.1); transition: all 0.15s ease; }
+.nav-update-pill i { font-size: 0.8rem; }
+.nav-update-pill:hover { background: rgba(255, 247, 220, 0.98); box-shadow: 0 2px 6px rgba(180, 83, 9, 0.16); transform: translateY(-1px); }
 .nav-version-badge-mobile { display: none; }
+.nav-update-pill-mobile { display: none; }
 
 /* Home page What's New popover */
 .home-wn-popover :deep(.p-popover-content) { padding: 0; min-width: 18rem; max-width: 22rem; }
@@ -532,12 +577,23 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 @media (max-width: 860px) {
   .nav-resource-links { display: none; }
   .nav-version-badge-mobile { display: inline-flex; }
+  .nav-update-pill-mobile { display: inline-flex; }
 }
 
 @media (max-width: 560px) {
   .nav-version-badge-mobile {
     padding: 0.26rem 0.48rem;
     font-size: 0.72rem;
+  }
+  .nav-update-pill-mobile {
+    padding: 0.25rem 0.46rem;
+    font-size: 0.7rem;
+  }
+  .nav-update-pill-mobile span {
+    max-width: 7.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 .landing-main { flex: 1; }
@@ -760,6 +816,8 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .p-dark .nav-link-pill:hover { background: rgba(30, 41, 59, 0.82); border-color: rgba(148, 163, 184, 0.55); color: #e2e8f0; }
 .p-dark .nav-version-badge { background: rgba(255, 255, 255, 0.92); border-color: rgba(255, 255, 255, 0.45); color: #6d28d9; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
 .p-dark button.nav-version-badge:hover { background: rgba(237, 233, 254, 0.92); }
+.p-dark .nav-update-pill { background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.45); color: #fbbf24; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.24); }
+.p-dark .nav-update-pill:hover { background: rgba(245, 158, 11, 0.2); }
 .p-dark .home-wn-header { border-bottom-color: rgba(255,255,255,0.08); }
 .p-dark .home-wn-title { color: #f1f5f9; }
 .p-dark .home-wn-list li { color: #94a3b8; }

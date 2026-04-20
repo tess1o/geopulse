@@ -110,7 +110,7 @@ const resolveTripPoints = ({ highlightedTrip, pathData }) => {
 }
 
 export const buildHighlightedData = ({ highlightedTrip, pathData }) => {
-  if (!highlightedTrip) {
+  if (!highlightedTrip || highlightedTrip.type !== 'trip') {
     return createEmptyHighlightedData()
   }
 

@@ -84,6 +84,16 @@
             <div class="gp-nav-version">
               <span class="gp-nav-version-label">Version</span>
               <span class="gp-nav-version-number">{{ appVersion }}</span>
+              <a
+                v-if="updateAvailable && latestVersion"
+                :href="releaseUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="gp-nav-version-update"
+              >
+                <i class="pi pi-arrow-circle-up" />
+                <span>New: {{ latestVersion }} available</span>
+              </a>
             </div>
           </nav>
         </div>
@@ -142,6 +152,10 @@ const { unreadCount: geofenceUnreadCount } = storeToRefs(notificationsStore)
 // Local state
 const visible = ref(false)
 const appVersion = ref('')
+const latestVersion = ref('')
+const updateAvailable = ref(false)
+const DEFAULT_RELEASE_URL = 'https://github.com/tess1o/geopulse/releases'
+const releaseUrl = ref(DEFAULT_RELEASE_URL)
 
 // Computed
 const drawerClasses = computed(() => ({
@@ -356,17 +370,30 @@ const handleLogout = async () => {
 }
 
 // Version fetching
-const fetchVersion = async () => {
+const fetchVersionStatus = async () => {
   try {
-    const response = await apiService.get('/version')
-    appVersion.value = response.version || 'Unknown'
+    const response = await apiService.get('/version/status')
+    appVersion.value = response.currentVersion || response.version || 'Unknown'
+    latestVersion.value = response.latestVersion || ''
+    updateAvailable.value = response.updateAvailable === true
+    releaseUrl.value = response.releaseUrl || DEFAULT_RELEASE_URL
   } catch (error) {
-    console.warn('Failed to fetch app version:', error)
-    appVersion.value = 'Unknown'
+    console.warn('Failed to fetch version status:', error)
+    latestVersion.value = ''
+    updateAvailable.value = false
+    releaseUrl.value = DEFAULT_RELEASE_URL
+
+    try {
+      const response = await apiService.get('/version')
+      appVersion.value = response.version || 'Unknown'
+    } catch (fallbackError) {
+      console.warn('Failed to fetch app version fallback:', fallbackError)
+      appVersion.value = 'Unknown'
+    }
   }
 }
 
-// Load friends data and version
+// Load friends data and version status
 onMounted(async () => {
   // Load received invitations count for badge display
   try {
@@ -377,8 +404,8 @@ onMounted(async () => {
     handleError(error, { life: 2000, severity: 'warn' })
   }
 
-  // Load app version
-  await fetchVersion()
+  // Load app version status
+  await fetchVersionStatus()
 })
 </script>
 
@@ -548,6 +575,25 @@ onMounted(async () => {
   font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
+.gp-nav-version-update {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  margin-top: var(--gp-spacing-xs);
+  padding: 2px 8px;
+  border-radius: var(--gp-radius-pill);
+  background: var(--gp-warning-light);
+  color: var(--gp-warning-dark);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.gp-nav-version-update:hover {
+  opacity: 0.85;
+}
+
 /* Dark Mode */
 .p-dark .gp-nav-container {
   background: var(--gp-surface-dark);
@@ -598,6 +644,11 @@ onMounted(async () => {
 
 .p-dark .gp-nav-version-number {
   color: var(--gp-text-secondary);
+}
+
+.p-dark .gp-nav-version-update {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
 }
 
 /* Compact variant */
