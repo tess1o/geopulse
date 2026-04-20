@@ -7941,9 +7941,17 @@ paths:
       summary: Get Version
       tags:
       - Version Resource
+  /api/version/status:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Get Version Status
+      tags:
+      - Version Resource
 info:
   title: GeoPulse API
-  version: 1.27.0
+  version: 1.27.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
