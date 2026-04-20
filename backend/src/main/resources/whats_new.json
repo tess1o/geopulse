@@ -1,15 +1,13 @@
 [
   {
-    "version": "1.27.0",
-    "title": "GeoPulse 1.27.0",
+    "version": "1.27.1",
+    "title": "GeoPulse 1.27.1",
     "highlights": [
-      "Added Trip replay on Timeline page (for Vector maps only)",
-      "Added coloring (green, yellow, red) for selected trips - like traffic speed",
-      "Added option to select friend trail duration (1h, 6h, today)",
-      "Added language support for Google Maps Reverse Geocoding",
-      "Fixed Google Map Api key env variables",
-      "Fixed time picker on GPS Data page",
-      "Several fixes for Vector maps"
+      "Added New Version information in main menu and Home page",
+      "Improved k8s helm charts with respect to termination/grace period",
+      "Improved highlighted trip tooltip and coloring the path",
+      "Fixed several issues related to Vector maps",
+      "Fixed wrong longtitude when a new trip is planned (edge case)"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
