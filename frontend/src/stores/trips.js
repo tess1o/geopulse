@@ -52,6 +52,8 @@ const normalizePathData = (pathPayload) => {
   }
 }
 
+const normalizeLongitude = (longitude) => ((longitude + 180) % 360 + 360) % 360 - 180
+
 export const useTripsStore = defineStore('trips', {
   state: () => ({
     trips: [],
@@ -326,9 +328,10 @@ export const useTripsStore = defineStore('trips', {
     async getPlanSuggestion(lat, lon) {
       this.error = null
       try {
+        const normalizedLon = Number.isFinite(lon) ? normalizeLongitude(lon) : lon
         const response = await apiService.get('/trips/plan-suggestion', {
           lat,
-          lon
+          lon: normalizedLon
         })
         return response.data || null
       } catch (error) {
