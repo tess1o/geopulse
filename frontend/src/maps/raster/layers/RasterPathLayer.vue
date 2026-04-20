@@ -34,6 +34,25 @@ import {
 } from '@/maps/shared/highlightedTripSpeedBands'
 
 const timezone = useTimezone()
+const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
+const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
+const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
+const HIGHLIGHTED_TRIP_NON_CAR_DASH = '1 8'
+
+const isCarMovementType = (movementType) => String(movementType || '').trim().toUpperCase() === 'CAR'
+
+const resolveHighlightedTripPopupAutoHideMs = () => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
+  }
+
+  const isMobileViewport = window.matchMedia('(max-width: 768px)').matches
+  const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches
+
+  return (isMobileViewport || isTouchPrimary)
+    ? HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS
+    : HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
+}
 
 const props = defineProps({
   map: {
@@ -252,11 +271,19 @@ let tripHoverContext = null
 let refreshTripHoverContext = null
 let tripHoverContextMapHandler = null
 let tripPopupTimeoutId = null
+let tripPopupAutoHideTimeoutId = null
 
 const clearTripPopupTimeout = () => {
   if (tripPopupTimeoutId) {
     clearTimeout(tripPopupTimeoutId)
     tripPopupTimeoutId = null
+  }
+}
+
+const clearTripPopupAutoHideTimeout = () => {
+  if (tripPopupAutoHideTimeoutId) {
+    clearTimeout(tripPopupAutoHideTimeoutId)
+    tripPopupAutoHideTimeoutId = null
   }
 }
 
@@ -277,6 +304,7 @@ const clearTripHoverState = () => {
 
 const clearHighlightedTripLayers = () => {
   clearTripPopupTimeout()
+  clearTripPopupAutoHideTimeout()
   clearTripHoverState()
 
   // Stop in-progress zoom/pan animations before removing layers.
@@ -329,16 +357,27 @@ watch(() => props.highlightedTrip, (newTrip) => {
     const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
 
-    const highlightedSegments = buildHighlightedTripSegments(tripPath)
-
-    tripVisualPathLayers.value = highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
-      color: segment.color,
-      weight: 6,
-      opacity: 1,
-      lineCap: 'round',
-      lineJoin: 'round',
-      interactive: false
-    }))
+    if (isCarMovementType(newTrip.movementType)) {
+      const highlightedSegments = buildHighlightedTripSegments(tripPath)
+      tripVisualPathLayers.value = highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
+        color: segment.color,
+        weight: 6,
+        opacity: 1,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false
+      }))
+    } else {
+      tripVisualPathLayers.value = [L.polyline(tripCoords, {
+        color: HIGHLIGHTED_TRIP_NON_CAR_COLOR,
+        dashArray: HIGHLIGHTED_TRIP_NON_CAR_DASH,
+        weight: 6,
+        opacity: 1,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false
+      })]
+    }
 
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#000000',
@@ -463,6 +502,7 @@ watch(() => props.highlightedTrip, (newTrip) => {
     tripPathLayer.value.on('mousemove', (e) => {
       // While inspecting hover timing, hide the static highlighted-trip popup.
       clearTripPopupTimeout()
+      clearTripPopupAutoHideTimeout()
       tripPathLayer.value?.closePopup?.()
 
       const hoverTiming = resolveTripHoverTiming(tripHoverContext, e.latlng, props.map)
@@ -511,7 +551,12 @@ watch(() => props.highlightedTrip, (newTrip) => {
 
       tripPopupTimeoutId = setTimeout(() => {
         tripPopupTimeoutId = null
-        tripPathLayer.value?.openPopup()
+        tripPathLayer.value?.openPopup?.()
+        clearTripPopupAutoHideTimeout()
+        tripPopupAutoHideTimeoutId = setTimeout(() => {
+          tripPopupAutoHideTimeoutId = null
+          tripPathLayer.value?.closePopup?.()
+        }, resolveHighlightedTripPopupAutoHideMs())
       }, 500)
     }
   }

@@ -84,6 +84,7 @@ const state = {
   highlightedTripPopup: null,
   highlightedTripPopupKey: '',
   highlightedTripPopupTimeoutId: null,
+  highlightedTripPopupAutoHideTimeoutId: null,
   lastReplayEmissionKey: ''
 }
 
@@ -107,11 +108,55 @@ const replayController = createVectorPathReplayController({
 
 const buildTripPopupContent = (trip) => buildTripPopupHtml(trip, { formatDateTimeDisplay })
 
+const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
+const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
+const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
+const HIGHLIGHTED_TRIP_NON_CAR_DASH = [0.6, 1.8]
+const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
+
+const isCarMovementType = (movementType) => String(movementType || '').trim().toUpperCase() === 'CAR'
+const isTripItem = (item) => item?.type === 'trip'
+
+const resolveHighlightedTripPopupAutoHideMs = () => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
+  }
+
+  const isMobileViewport = window.matchMedia('(max-width: 768px)').matches
+  const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches
+
+  return (isMobileViewport || isTouchPrimary)
+    ? HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS
+    : HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
+}
+
+const clearHighlightedTripPopupAutoHideTimeout = () => {
+  if (state.highlightedTripPopupAutoHideTimeoutId !== null) {
+    clearTimeout(state.highlightedTripPopupAutoHideTimeoutId)
+    state.highlightedTripPopupAutoHideTimeoutId = null
+  }
+}
+
+const scheduleHighlightedTripPopupAutoHide = (tripKey) => {
+  clearHighlightedTripPopupAutoHideTimeout()
+
+  state.highlightedTripPopupAutoHideTimeoutId = setTimeout(() => {
+    state.highlightedTripPopupAutoHideTimeoutId = null
+
+    if (state.highlightedTripPopupKey !== tripKey) {
+      return
+    }
+
+    closeHighlightedTripPopup()
+  }, resolveHighlightedTripPopupAutoHideMs())
+}
+
 const closeHighlightedTripPopup = () => {
   if (state.highlightedTripPopupTimeoutId !== null) {
     clearTimeout(state.highlightedTripPopupTimeoutId)
     state.highlightedTripPopupTimeoutId = null
   }
+  clearHighlightedTripPopupAutoHideTimeout()
 
   if (state.highlightedTripPopup) {
     state.highlightedTripPopup.remove()
@@ -204,7 +249,7 @@ const createHighlightedEndpointMarker = ({
   styleOverrides = {},
   zIndex = null
 }) => {
-  if (!isMapLibreMap(props.map) || !props.highlightedTrip) {
+  if (!isMapLibreMap(props.map) || !isTripItem(props.highlightedTrip)) {
     return null
   }
 
@@ -280,7 +325,7 @@ const createHighlightedEndpointMarker = ({
 const syncHighlightedEndpointMarkers = (endpointMarkers) => {
   removeHighlightedEndpointMarkers()
 
-  if (!isMapLibreMap(props.map) || !props.visible || !props.highlightedTrip) {
+  if (!isMapLibreMap(props.map) || !props.visible || !isTripItem(props.highlightedTrip)) {
     return
   }
 
@@ -322,7 +367,7 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
     return
   }
 
-  if (!isMapLibreMap(props.map) || !props.highlightedTrip || !props.visible || lineCoordinates.length < 2) {
+  if (!isMapLibreMap(props.map) || !isTripItem(props.highlightedTrip) || !props.visible || lineCoordinates.length < 2) {
     closeHighlightedTripPopup()
     return
   }
@@ -343,6 +388,7 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
     state.highlightedTripPopup
       .setLngLat(popupCoordinate)
       .setHTML(buildTripPopupContent(props.highlightedTrip))
+    scheduleHighlightedTripPopupAutoHide(tripKey)
     return
   }
 
@@ -366,6 +412,8 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
       .setLngLat(popupCoordinate)
       .setHTML(buildTripPopupContent(props.highlightedTrip))
       .addTo(props.map)
+
+    scheduleHighlightedTripPopupAutoHide(tripKey)
   }, 120)
 }
 
@@ -451,6 +499,10 @@ const registerEvents = () => {
   }
 
   const handleHighlightedLineClick = () => {
+    if (!isTripItem(props.highlightedTrip)) {
+      return
+    }
+
     emit('highlighted-trip-click', {
       tripData: props.highlightedTrip
     })
@@ -461,7 +513,7 @@ const registerEvents = () => {
 
     hoverController.handleHighlightedLineMouseMove({
       event,
-      trip: props.highlightedTrip,
+      trip: isTripItem(props.highlightedTrip) ? props.highlightedTrip : null,
       onBeforeTooltipUpdate: closeHighlightedTripPopup
     })
   }
@@ -521,10 +573,18 @@ const renderLayer = () => {
   }
 
   replayController.registerReplayUserCameraHandlers()
+  const highlightedTrip = isTripItem(props.highlightedTrip) ? props.highlightedTrip : null
+  const highlightedTripUsesSpeedBands = isCarMovementType(highlightedTrip?.movementType)
+  const highlightedLineColor = highlightedTripUsesSpeedBands
+    ? highlightedLineColorExpression
+    : HIGHLIGHTED_TRIP_NON_CAR_COLOR
+  const highlightedLineDashArray = highlightedTripUsesSpeedBands
+    ? HIGHLIGHTED_TRIP_CAR_SOLID_DASH
+    : HIGHLIGHTED_TRIP_NON_CAR_DASH
 
   const pathCollection = buildPathCollection(props.pathData)
   const highlighted = buildHighlightedData({
-    highlightedTrip: props.highlightedTrip,
+    highlightedTrip,
     pathData: props.pathData
   })
   const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
@@ -552,17 +612,27 @@ const renderLayer = () => {
       'line-cap': 'round'
     },
     paint: {
-      'line-color': highlightedLineColorExpression,
+      'line-color': highlightedLineColor,
+      'line-dasharray': highlightedLineDashArray,
       'line-width': 6,
       'line-opacity': 1
     }
   })
 
+  if (props.map.getLayer(state.highlightedLineLayerId)) {
+    props.map.setPaintProperty(
+      state.highlightedLineLayerId,
+      'line-color',
+      highlightedLineColor
+    )
+    props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
+  }
+
   syncReplayFocusLayerVisibility()
 
   syncHighlightedTripPopup(highlightedLineCoordinates)
   syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
-  hoverController.syncTripHoverContext(props.highlightedTrip, highlighted.hoverPathPoints)
+  hoverController.syncTripHoverContext(highlightedTrip, highlighted.hoverPathPoints)
   emitReplayPathData(highlighted)
   syncReplayMarker()
 

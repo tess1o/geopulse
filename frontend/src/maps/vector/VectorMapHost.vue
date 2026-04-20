@@ -70,6 +70,10 @@ const map = shallowRef(null)
 const isReady = ref(false)
 const isInitializing = ref(false)
 const appliedStyleUrl = ref('')
+const LONG_PRESS_DURATION_MS = 550
+const LONG_PRESS_MOVE_THRESHOLD_PX = 12
+let lastSyntheticContextMenuTs = 0
+let touchLongPressCleanup = null
 
 const shouldExposeMapForE2E = () => {
   if (typeof window === 'undefined') {
@@ -161,6 +165,209 @@ const buildMapClickPayload = (event) => {
   }
 }
 
+const buildLongPressOriginalEvent = (touchMeta, touchPoint) => {
+  const basePoint = touchPoint || null
+  const clientX = Number.isFinite(basePoint?.clientX) ? basePoint.clientX : 0
+  const clientY = Number.isFinite(basePoint?.clientY) ? basePoint.clientY : 0
+  const pageX = Number.isFinite(basePoint?.pageX) ? basePoint.pageX : clientX
+  const pageY = Number.isFinite(basePoint?.pageY) ? basePoint.pageY : clientY
+  const screenX = Number.isFinite(basePoint?.screenX) ? basePoint.screenX : clientX
+  const screenY = Number.isFinite(basePoint?.screenY) ? basePoint.screenY : clientY
+
+  return {
+    type: 'contextmenu',
+    target: touchMeta?.target || null,
+    currentTarget: touchMeta?.currentTarget || null,
+    clientX,
+    clientY,
+    pageX,
+    pageY,
+    screenX,
+    screenY,
+    timeStamp: Date.now(),
+    preventDefault: () => {},
+    stopPropagation: () => {}
+  }
+}
+
+const buildLongPressPayload = (mapInstance, touchMeta, touchPoint) => {
+  const canvas = mapInstance?.getCanvas?.()
+  const rect = canvas?.getBoundingClientRect?.()
+  if (!rect) {
+    return null
+  }
+
+  const clientX = Number.isFinite(touchPoint?.clientX) ? touchPoint.clientX : null
+  const clientY = Number.isFinite(touchPoint?.clientY) ? touchPoint.clientY : null
+  if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+    return null
+  }
+
+  const pointX = clientX - rect.left
+  const pointY = clientY - rect.top
+  const lngLat = mapInstance?.unproject?.([pointX, pointY])
+  if (!lngLat || !Number.isFinite(lngLat.lat) || !Number.isFinite(lngLat.lng)) {
+    return null
+  }
+
+  return {
+    latlng: {
+      lat: lngLat.lat,
+      lng: lngLat.lng
+    },
+    lngLat,
+    point: {
+      x: pointX,
+      y: pointY
+    },
+    containerPoint: {
+      x: pointX,
+      y: pointY
+    },
+    layerPoint: {
+      x: pointX,
+      y: pointY
+    },
+    originalEvent: buildLongPressOriginalEvent(touchMeta, touchPoint),
+    target: mapInstance
+  }
+}
+
+const createTouchLongPressContextMenuBridge = (mapInstance) => {
+  const canvas = mapInstance?.getCanvas?.()
+  if (!canvas) {
+    return () => {}
+  }
+
+  let pressTimerId = null
+  let trackedTouchId = null
+  let startX = 0
+  let startY = 0
+  let pressTriggered = false
+  let startTouchMeta = null
+  let startTouchPoint = null
+
+  const resetState = () => {
+    if (pressTimerId !== null) {
+      window.clearTimeout(pressTimerId)
+      pressTimerId = null
+    }
+
+    trackedTouchId = null
+    pressTriggered = false
+    startTouchMeta = null
+    startTouchPoint = null
+  }
+
+  const findTouchById = (touchList, touchId) => {
+    if (!touchList || touchId === null) {
+      return null
+    }
+
+    for (let index = 0; index < touchList.length; index += 1) {
+      const touch = touchList[index]
+      if (touch?.identifier === touchId) {
+        return touch
+      }
+    }
+
+    return null
+  }
+
+  const cancelLongPress = () => {
+    if (pressTimerId !== null) {
+      window.clearTimeout(pressTimerId)
+      pressTimerId = null
+    }
+  }
+
+  const onTouchStart = (event) => {
+    if (!event?.touches || event.touches.length !== 1) {
+      resetState()
+      return
+    }
+
+    const touch = event.touches[0]
+    if (!touch) {
+      resetState()
+      return
+    }
+
+    trackedTouchId = touch.identifier
+    startX = touch.clientX
+    startY = touch.clientY
+    startTouchMeta = {
+      target: event?.target || null,
+      currentTarget: event?.currentTarget || null
+    }
+    startTouchPoint = touch
+    pressTriggered = false
+    cancelLongPress()
+
+    pressTimerId = window.setTimeout(() => {
+      const payload = buildLongPressPayload(mapInstance, startTouchMeta, startTouchPoint)
+      if (!payload) {
+        resetState()
+        return
+      }
+
+      pressTriggered = true
+      lastSyntheticContextMenuTs = Date.now()
+      emit('map-contextmenu', payload)
+    }, LONG_PRESS_DURATION_MS)
+  }
+
+  const onTouchMove = (event) => {
+    if (trackedTouchId === null) {
+      return
+    }
+
+    const touch = findTouchById(event?.touches, trackedTouchId)
+    if (!touch) {
+      cancelLongPress()
+      return
+    }
+
+    startTouchPoint = touch
+    const deltaX = Math.abs(touch.clientX - startX)
+    const deltaY = Math.abs(touch.clientY - startY)
+    if (deltaX > LONG_PRESS_MOVE_THRESHOLD_PX || deltaY > LONG_PRESS_MOVE_THRESHOLD_PX) {
+      cancelLongPress()
+    }
+  }
+
+  const onTouchEnd = (event) => {
+    if (trackedTouchId === null) {
+      resetState()
+      return
+    }
+
+    const changedTouch = findTouchById(event?.changedTouches, trackedTouchId)
+    if (changedTouch) {
+      startTouchPoint = changedTouch
+    }
+
+    if (pressTriggered) {
+      event?.preventDefault?.()
+    }
+
+    resetState()
+  }
+
+  canvas.addEventListener('touchstart', onTouchStart, { passive: true })
+  canvas.addEventListener('touchmove', onTouchMove, { passive: true })
+  canvas.addEventListener('touchend', onTouchEnd, { passive: false })
+  canvas.addEventListener('touchcancel', onTouchEnd, { passive: false })
+
+  return () => {
+    resetState()
+    canvas.removeEventListener('touchstart', onTouchStart)
+    canvas.removeEventListener('touchmove', onTouchMove)
+    canvas.removeEventListener('touchend', onTouchEnd)
+    canvas.removeEventListener('touchcancel', onTouchEnd)
+  }
+}
+
 const applyCenterAndZoom = (mapInstance) => {
   const center = toLngLatTuple(props.center)
   if (center) {
@@ -189,6 +396,8 @@ const createMapInstance = () => {
   const vectorMap = new maplibregl.Map(options)
   const originalJumpTo = vectorMap.jumpTo.bind(vectorMap)
   appliedStyleUrl.value = source.styleUrl
+  touchLongPressCleanup?.()
+  touchLongPressCleanup = createTouchLongPressContextMenuBridge(vectorMap)
 
   // Leaflet-style compatibility surface for existing read-only consumers.
   vectorMap.setView = (center, zoom, setViewOptions = {}) => {
@@ -243,6 +452,10 @@ const createMapInstance = () => {
   })
 
   vectorMap.on('contextmenu', (event) => {
+    if (Date.now() - lastSyntheticContextMenuTs < 400) {
+      return
+    }
+
     event?.originalEvent?.preventDefault?.()
     emit('map-contextmenu', buildMapClickPayload(event))
   })
@@ -530,6 +743,9 @@ onMounted(() => {
 onUnmounted(() => {
   isInitializing.value = false
   isReady.value = false
+
+  touchLongPressCleanup?.()
+  touchLongPressCleanup = null
 
   if (resizeObserver) {
     resizeObserver.disconnect()
