@@ -103,6 +103,23 @@
             :job-id="currentJobId"
             :job-progress="jobProgress"
         />
+
+        <TripReconstructionDialog
+            :visible="showReconstructionDialog"
+            mode="timeline"
+            :context-start-time="timelineReconstructionStart"
+            :context-end-time="timelineReconstructionEnd"
+            :fallback-center="timelineReconstructionFallbackCenter"
+            @close="showReconstructionDialog = false"
+            @committed="handleReconstructionCommitted"
+        />
+
+        <TimelineRegenerationModal
+            v-model:visible="showReconstructionRegenerationModal"
+            type="general"
+            :job-id="reconstructionJobId"
+            :job-progress="reconstructionJobProgress"
+        />
       </div>
     </template>
   </div>
@@ -126,7 +143,9 @@ import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
+import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
+import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -187,6 +206,17 @@ const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
 const showGeocodingEditDialog = ref(false)
 const editGeocodingData = ref(null)
+const showReconstructionDialog = ref(false)
+const showReconstructionRegenerationModal = ref(false)
+const reconstructionJobId = ref(null)
+const reconstructionJobCompletionHandled = ref(false)
+const reconstructionJobFailureHandled = ref(false)
+const {
+  jobProgress: reconstructionJobProgress,
+  error: reconstructionJobError,
+  startPolling: startReconstructionPolling,
+  reset: resetReconstructionPolling
+} = useTimelineJobProgress()
 
 // Large dataset warning state
 const showLargeDatasetWarning = ref(false)
@@ -195,10 +225,35 @@ const forceLoadLargeDataset = ref(false)
 
 // Share dialog state - injected from MainAppPage
 const showShareDialog = inject('shareDialogVisible', ref(false))
+const timelineReconstructionRequestToken = inject('timelineReconstructionRequestToken', ref(0))
 const shareDates = computed(() => ({
   start: dateRangeStore.startDate,
   end: dateRangeStore.endDate
 }))
+const canReconstructTimeline = computed(() => (
+  Array.isArray(dateRange.value) && dateRange.value.length === 2 && Boolean(dateRange.value[0]) && Boolean(dateRange.value[1])
+))
+const timelineReconstructionStart = computed(() => dateRange.value?.[0] || null)
+const timelineReconstructionEnd = computed(() => dateRange.value?.[1] || null)
+const timelineReconstructionFallbackCenter = computed(() => {
+  const firstPathPoint = pathData.value?.points?.[0]
+  if (
+    firstPathPoint
+    && Number.isFinite(firstPathPoint.latitude)
+    && Number.isFinite(firstPathPoint.longitude)
+  ) {
+    return [firstPathPoint.latitude, firstPathPoint.longitude]
+  }
+
+  const firstTimelinePoint = (timelineDataWithStayTelemetry.value || []).find((item) => (
+    Number.isFinite(item?.latitude) && Number.isFinite(item?.longitude)
+  ))
+  if (firstTimelinePoint) {
+    return [firstTimelinePoint.latitude, firstTimelinePoint.longitude]
+  }
+
+  return [37.7749, -122.4194]
+})
 
 // Methods
 const triggerMapResize = () => {
@@ -592,6 +647,30 @@ const handleTimelinePhotoShowOnMap = (photo) => {
   mapViewRef.value?.focusOnPhoto?.(photo)
 }
 
+const openTimelineReconstructionDialog = () => {
+  if (!canReconstructTimeline.value) {
+    return
+  }
+  showReconstructionDialog.value = true
+}
+
+const handleReconstructionCommitted = async (result) => {
+  showReconstructionDialog.value = false
+
+  const jobId = result?.jobId
+  if (!jobId) {
+    await reloadCurrentRange()
+    return
+  }
+
+  reconstructionJobCompletionHandled.value = false
+  reconstructionJobFailureHandled.value = false
+  reconstructionJobId.value = String(jobId)
+  showReconstructionRegenerationModal.value = true
+  resetReconstructionPolling()
+  await startReconstructionPolling(reconstructionJobId.value)
+}
+
 const loadTimelineDisplaySettings = async () => {
   try {
     const response = await apiService.get('/users/preferences/timeline/display')
@@ -869,6 +948,62 @@ watch(showCurrentLocationTelemetry, () => {
   if (isToday.value) {
     getCurrentLocation()
   }
+})
+
+watch(() => timelineReconstructionRequestToken.value, () => {
+  openTimelineReconstructionDialog()
+})
+
+watch(() => reconstructionJobProgress.value?.status, async (status) => {
+  if (!status) {
+    return
+  }
+
+  if (status === 'FAILED' && !reconstructionJobFailureHandled.value) {
+    reconstructionJobFailureHandled.value = true
+    showReconstructionRegenerationModal.value = false
+    reconstructionJobId.value = null
+    resetReconstructionPolling()
+    toast.add({
+      severity: 'error',
+      summary: 'Timeline Generation Failed',
+      detail: reconstructionJobProgress.value?.errorMessage || reconstructionJobError.value || 'Timeline generation job failed.',
+      life: 5000
+    })
+    return
+  }
+
+  if (status !== 'COMPLETED' || reconstructionJobCompletionHandled.value) {
+    return
+  }
+
+  reconstructionJobCompletionHandled.value = true
+  await reloadCurrentRange()
+  showReconstructionRegenerationModal.value = false
+  reconstructionJobId.value = null
+  resetReconstructionPolling()
+  toast.add({
+    severity: 'success',
+    summary: 'Timeline Updated',
+    detail: 'Missing timeline data has been added.',
+    life: 3200
+  })
+})
+
+watch(reconstructionJobError, (error) => {
+  if (!error) {
+    return
+  }
+
+  showReconstructionRegenerationModal.value = false
+  reconstructionJobId.value = null
+  resetReconstructionPolling()
+  toast.add({
+    severity: 'error',
+    summary: 'Timeline Job Tracking Failed',
+    detail: error,
+    life: 5000
+  })
 })
 </script>
 
