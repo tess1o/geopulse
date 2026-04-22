@@ -15,9 +15,22 @@ export function useTimelineRegeneration() {
   const timelineRegenerationType = ref('general')
   const modalShowStartTime = ref(null)
   const currentJobId = ref(null)
+  const trackingCallbacks = ref(null)
+  const trackingLifecycle = ref({
+    completedHandled: false,
+    failedHandled: false,
+    trackingErrorHandled: false
+  })
 
   // Composables
-  const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
+  const {
+    jobProgress,
+    error: jobError,
+    startPolling,
+    stopPolling,
+    fetchProgress,
+    reset: resetJobProgress
+  } = useTimelineJobProgress()
   const { checkActiveJob } = useTimelineJobCheck()
 
   // Watch for currentJobId changes to start polling
@@ -29,23 +42,93 @@ export function useTimelineRegeneration() {
     }
   })
 
-  // Watch for job completion to auto-close modal
-  watch(() => jobProgress.value?.status, (status) => {
-    if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
-      const elapsed = Date.now() - (modalShowStartTime.value || 0)
-      const minimumDisplayTime = 3000 // 3 seconds
-      const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+  const resetTrackingLifecycle = () => {
+    trackingLifecycle.value = {
+      completedHandled: false,
+      failedHandled: false,
+      trackingErrorHandled: false
+    }
+  }
 
-      setTimeout(() => {
-        timelineRegenerationVisible.value = false
-        modalShowStartTime.value = null
-        currentJobId.value = null
-      }, remainingTime)
-    } else if (status === 'FAILED' && timelineRegenerationVisible.value) {
-      // Close immediately on failure
-      timelineRegenerationVisible.value = false
-      modalShowStartTime.value = null
+  const clearTrackingCallbacks = () => {
+    trackingCallbacks.value = null
+    resetTrackingLifecycle()
+  }
+
+  const closeTrackingModal = ({ clearJob = true } = {}) => {
+    timelineRegenerationVisible.value = false
+    modalShowStartTime.value = null
+    if (clearJob) {
       currentJobId.value = null
+    }
+  }
+
+  const callTrackingCallback = async (callback, ...args) => {
+    if (typeof callback !== 'function') return
+    try {
+      await callback(...args)
+    } catch (error) {
+      console.error('Timeline regeneration tracking callback failed:', error)
+    }
+  }
+
+  // Watch for job completion to auto-close modal
+  watch(() => jobProgress.value?.status, async (status) => {
+    if (!status) return
+
+    const callbacks = trackingCallbacks.value
+
+    if (status === 'COMPLETED') {
+      if (callbacks && !trackingLifecycle.value.completedHandled) {
+        trackingLifecycle.value.completedHandled = true
+        await callTrackingCallback(callbacks.onCompleted, jobProgress.value, currentJobId.value)
+      }
+
+      const shouldAutoClose = timelineRegenerationVisible.value
+        && (callbacks?.autoCloseOnCompleted ?? true)
+      if (shouldAutoClose) {
+        const elapsed = Date.now() - (modalShowStartTime.value || 0)
+        const minimumDisplayTime = callbacks?.minimumDisplayTimeMs ?? 3000
+        const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+
+        setTimeout(() => {
+          closeTrackingModal({ clearJob: true })
+          clearTrackingCallbacks()
+        }, remainingTime)
+      }
+      return
+    }
+
+    if (status === 'FAILED') {
+      if (callbacks && !trackingLifecycle.value.failedHandled) {
+        trackingLifecycle.value.failedHandled = true
+        await callTrackingCallback(callbacks.onFailed, jobProgress.value, currentJobId.value)
+      }
+
+      const shouldAutoClose = timelineRegenerationVisible.value
+        && (callbacks?.autoCloseOnFailed ?? true)
+      if (shouldAutoClose) {
+        closeTrackingModal({ clearJob: true })
+        clearTrackingCallbacks()
+      }
+    }
+  })
+
+  watch(jobError, async (error) => {
+    if (!error || !trackingCallbacks.value) {
+      return
+    }
+
+    if (!trackingLifecycle.value.trackingErrorHandled) {
+      trackingLifecycle.value.trackingErrorHandled = true
+      await callTrackingCallback(trackingCallbacks.value.onTrackingError, error, currentJobId.value)
+    }
+
+    const shouldAutoClose = timelineRegenerationVisible.value
+      && (trackingCallbacks.value.autoCloseOnTrackingError ?? trackingCallbacks.value.autoCloseOnFailed ?? true)
+    if (shouldAutoClose) {
+      closeTrackingModal({ clearJob: true })
+      clearTrackingCallbacks()
     }
   })
 
@@ -82,6 +165,8 @@ export function useTimelineRegeneration() {
       return
     }
 
+    clearTrackingCallbacks()
+
     // 2. Show the regeneration modal
     showTimelineRegenerationModal(options.modalType)
 
@@ -105,9 +190,59 @@ export function useTimelineRegeneration() {
       toast.add({ severity: 'error', summary: 'Error', detail: error.message || options.errorMessage, life: 5000 })
       
       // Close modal immediately on error
-      timelineRegenerationVisible.value = false
-      currentJobId.value = null
+      closeTrackingModal({ clearJob: true })
+      clearTrackingCallbacks()
     }
+  }
+
+  const trackExistingTimelineJob = async (jobId, options = {}) => {
+    if (!jobId) {
+      return
+    }
+
+    const {
+      modalType = 'general',
+      showModal = true,
+      onCompleted,
+      onFailed,
+      onTrackingError,
+      autoCloseOnCompleted = showModal,
+      autoCloseOnFailed = showModal,
+      autoCloseOnTrackingError = showModal,
+      minimumDisplayTimeMs = 3000
+    } = options
+
+    trackingCallbacks.value = {
+      onCompleted,
+      onFailed,
+      onTrackingError,
+      autoCloseOnCompleted,
+      autoCloseOnFailed,
+      autoCloseOnTrackingError,
+      minimumDisplayTimeMs
+    }
+    resetTrackingLifecycle()
+    resetJobProgress()
+
+    timelineRegenerationType.value = modalType
+    if (showModal) {
+      showTimelineRegenerationModal(modalType)
+    }
+
+    currentJobId.value = String(jobId)
+  }
+
+  const refreshCurrentJobProgress = async () => {
+    if (!currentJobId.value) {
+      return
+    }
+    await fetchProgress(currentJobId.value)
+  }
+
+  const clearTrackedTimelineJob = () => {
+    closeTrackingModal({ clearJob: true })
+    clearTrackingCallbacks()
+    resetJobProgress()
   }
 
   return {
@@ -115,6 +250,10 @@ export function useTimelineRegeneration() {
     timelineRegenerationType,
     currentJobId,
     jobProgress,
-    withTimelineRegeneration
+    jobError,
+    withTimelineRegeneration,
+    trackExistingTimelineJob,
+    refreshCurrentJobProgress,
+    clearTrackedTimelineJob
   }
 }

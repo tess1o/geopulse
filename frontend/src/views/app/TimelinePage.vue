@@ -115,8 +115,8 @@
         />
 
         <TimelineRegenerationModal
-            v-model:visible="showReconstructionRegenerationModal"
-            type="general"
+            v-model:visible="reconstructionRegenerationVisible"
+            :type="reconstructionRegenerationType"
             :job-id="reconstructionJobId"
             :job-progress="reconstructionJobProgress"
         />
@@ -145,7 +145,7 @@ import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
-import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -207,16 +207,13 @@ const queuedFetchRange = ref(null) // Keep latest requested range while a fetch 
 const showGeocodingEditDialog = ref(false)
 const editGeocodingData = ref(null)
 const showReconstructionDialog = ref(false)
-const showReconstructionRegenerationModal = ref(false)
-const reconstructionJobId = ref(null)
-const reconstructionJobCompletionHandled = ref(false)
-const reconstructionJobFailureHandled = ref(false)
 const {
+  timelineRegenerationVisible: reconstructionRegenerationVisible,
+  timelineRegenerationType: reconstructionRegenerationType,
+  currentJobId: reconstructionJobId,
   jobProgress: reconstructionJobProgress,
-  error: reconstructionJobError,
-  startPolling: startReconstructionPolling,
-  reset: resetReconstructionPolling
-} = useTimelineJobProgress()
+  trackExistingTimelineJob
+} = useTimelineRegeneration()
 
 // Large dataset warning state
 const showLargeDatasetWarning = ref(false)
@@ -663,12 +660,34 @@ const handleReconstructionCommitted = async (result) => {
     return
   }
 
-  reconstructionJobCompletionHandled.value = false
-  reconstructionJobFailureHandled.value = false
-  reconstructionJobId.value = String(jobId)
-  showReconstructionRegenerationModal.value = true
-  resetReconstructionPolling()
-  await startReconstructionPolling(reconstructionJobId.value)
+  await trackExistingTimelineJob(String(jobId), {
+    modalType: 'reconstruction',
+    onCompleted: async () => {
+      await reloadCurrentRange()
+      toast.add({
+        severity: 'success',
+        summary: 'Timeline Updated',
+        detail: 'Missing timeline data has been added.',
+        life: 3200
+      })
+    },
+    onFailed: (progress) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Generation Failed',
+        detail: progress?.errorMessage || 'Timeline generation job failed.',
+        life: 5000
+      })
+    },
+    onTrackingError: (error) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Job Tracking Failed',
+        detail: error,
+        life: 5000
+      })
+    }
+  })
 }
 
 const loadTimelineDisplaySettings = async () => {
@@ -952,58 +971,6 @@ watch(showCurrentLocationTelemetry, () => {
 
 watch(() => timelineReconstructionRequestToken.value, () => {
   openTimelineReconstructionDialog()
-})
-
-watch(() => reconstructionJobProgress.value?.status, async (status) => {
-  if (!status) {
-    return
-  }
-
-  if (status === 'FAILED' && !reconstructionJobFailureHandled.value) {
-    reconstructionJobFailureHandled.value = true
-    showReconstructionRegenerationModal.value = false
-    reconstructionJobId.value = null
-    resetReconstructionPolling()
-    toast.add({
-      severity: 'error',
-      summary: 'Timeline Generation Failed',
-      detail: reconstructionJobProgress.value?.errorMessage || reconstructionJobError.value || 'Timeline generation job failed.',
-      life: 5000
-    })
-    return
-  }
-
-  if (status !== 'COMPLETED' || reconstructionJobCompletionHandled.value) {
-    return
-  }
-
-  reconstructionJobCompletionHandled.value = true
-  await reloadCurrentRange()
-  showReconstructionRegenerationModal.value = false
-  reconstructionJobId.value = null
-  resetReconstructionPolling()
-  toast.add({
-    severity: 'success',
-    summary: 'Timeline Updated',
-    detail: 'Missing timeline data has been added.',
-    life: 3200
-  })
-})
-
-watch(reconstructionJobError, (error) => {
-  if (!error) {
-    return
-  }
-
-  showReconstructionRegenerationModal.value = false
-  reconstructionJobId.value = null
-  resetReconstructionPolling()
-  toast.add({
-    severity: 'error',
-    summary: 'Timeline Job Tracking Failed',
-    detail: error,
-    life: 5000
-  })
 })
 </script>
 

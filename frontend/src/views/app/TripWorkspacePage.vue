@@ -482,7 +482,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
-import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { useTripsStore } from '@/stores/trips'
 import { useImmichStore } from '@/stores/immich'
@@ -541,10 +541,7 @@ const isResolvingPlanSuggestion = ref(false)
 const showCollaboratorsDialog = ref(false)
 const showReconstructionDialog = ref(false)
 const showTimelineGenerationDialog = ref(false)
-const trackedTimelineJobId = ref(null)
 const isRefreshingAfterTimelineJob = ref(false)
-const timelineJobCompletionHandled = ref(false)
-const timelineJobFailureHandled = ref(false)
 const collaboratorsLoading = ref(false)
 const isSavingCollaborator = ref(false)
 const collaborators = ref([])
@@ -552,13 +549,13 @@ const availableFriends = ref([])
 const newCollaboratorFriendId = ref(null)
 const newCollaboratorRole = ref('VIEW')
 const {
+  currentJobId: trackedTimelineJobId,
   jobProgress: timelineJobProgress,
-  error: timelineJobError,
-  startPolling: startTimelineJobPolling,
-  stopPolling: stopTimelineJobPolling,
-  fetchProgress: fetchTimelineJobProgress,
-  reset: resetTimelineJobProgress
-} = useTimelineJobProgress()
+  jobError: timelineJobError,
+  trackExistingTimelineJob,
+  refreshCurrentJobProgress,
+  clearTrackedTimelineJob
+} = useTimelineRegeneration()
 
 const planItemForm = ref({
   title: '',
@@ -1448,18 +1445,70 @@ const applyVisitOverride = async (item, action) => {
 const openTimelineGenerationDialogForJob = async (jobId) => {
   if (!jobId) return
 
-  trackedTimelineJobId.value = String(jobId)
-  timelineJobCompletionHandled.value = false
-  timelineJobFailureHandled.value = false
   isRefreshingAfterTimelineJob.value = false
   showTimelineGenerationDialog.value = true
-  resetTimelineJobProgress()
-  await startTimelineJobPolling(trackedTimelineJobId.value)
+
+  await trackExistingTimelineJob(String(jobId), {
+    modalType: 'reconstruction',
+    showModal: false,
+    autoCloseOnCompleted: false,
+    autoCloseOnFailed: false,
+    autoCloseOnTrackingError: false,
+    onCompleted: async () => {
+      isRefreshingAfterTimelineJob.value = true
+
+      try {
+        await Promise.all([
+          tripsStore.fetchTrip(tripId.value),
+          tripsStore.fetchTripSummary(tripId.value),
+          tripsStore.fetchTripPlanItems(tripId.value)
+        ])
+
+        if (!isUnplannedTrip.value && activeRange.value?.start && activeRange.value?.end) {
+          await fetchWorkspaceRange(activeRange.value, false)
+        }
+
+        await refreshVisitComparisons()
+
+        toast.add({
+          severity: 'success',
+          summary: 'Timeline Generation Complete',
+          detail: 'Trip workspace was refreshed with regenerated data.',
+          life: 3200
+        })
+      } catch (error) {
+        toast.add({
+          severity: 'warn',
+          summary: 'Refresh Incomplete',
+          detail: error.response?.data?.message || error.message || 'Timeline completed, but workspace refresh failed.',
+          life: 5000
+        })
+      } finally {
+        isRefreshingAfterTimelineJob.value = false
+      }
+    },
+    onFailed: (progress) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Generation Failed',
+        detail: progress?.errorMessage || timelineJobError.value || 'Job failed.',
+        life: 5000
+      })
+    },
+    onTrackingError: (error) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Job Tracking Failed',
+        detail: error,
+        life: 5000
+      })
+    }
+  })
 }
 
 const retryTimelineJobProgress = async () => {
   if (!trackedTimelineJobId.value) return
-  await fetchTimelineJobProgress(trackedTimelineJobId.value)
+  await refreshCurrentJobProgress()
 }
 
 const handleTimelineGenerationDialogHide = () => {
@@ -1467,8 +1516,7 @@ const handleTimelineGenerationDialogHide = () => {
     showTimelineGenerationDialog.value = true
     return
   }
-  resetTimelineJobProgress()
-  trackedTimelineJobId.value = null
+  clearTrackedTimelineJob()
   isRefreshingAfterTimelineJob.value = false
 }
 
@@ -1495,56 +1543,6 @@ onMounted(async () => {
 watch(workspaceTabs, () => {
   ensureActiveWorkspaceTab()
 }, { deep: true })
-
-watch(timelineJobStatus, async (status) => {
-  if (status === 'FAILED' && !timelineJobFailureHandled.value) {
-    timelineJobFailureHandled.value = true
-    toast.add({
-      severity: 'error',
-      summary: 'Timeline Generation Failed',
-      detail: timelineJobProgress.value?.errorMessage || timelineJobError.value || 'Job failed.',
-      life: 5000
-    })
-    return
-  }
-
-  if (status !== 'COMPLETED' || timelineJobCompletionHandled.value) {
-    return
-  }
-
-  timelineJobCompletionHandled.value = true
-  isRefreshingAfterTimelineJob.value = true
-
-  try {
-    await Promise.all([
-      tripsStore.fetchTrip(tripId.value),
-      tripsStore.fetchTripSummary(tripId.value),
-      tripsStore.fetchTripPlanItems(tripId.value)
-    ])
-
-    if (!isUnplannedTrip.value && activeRange.value?.start && activeRange.value?.end) {
-      await fetchWorkspaceRange(activeRange.value, false)
-    }
-
-    await refreshVisitComparisons()
-
-    toast.add({
-      severity: 'success',
-      summary: 'Timeline Generation Complete',
-      detail: 'Trip workspace was refreshed with regenerated data.',
-      life: 3200
-    })
-  } catch (error) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Refresh Incomplete',
-      detail: error.response?.data?.message || error.message || 'Timeline completed, but workspace refresh failed.',
-      life: 5000
-    })
-  } finally {
-    isRefreshingAfterTimelineJob.value = false
-  }
-})
 </script>
 
 <style scoped>
