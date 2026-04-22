@@ -1,0 +1,73 @@
+.trip-reconstruction-waypoint-icon-wrapper,
+.trip-reconstruction-waypoint-marker {
+  box-sizing: border-box;
+}
+
+.trip-reconstruction-waypoint-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+
+.trip-reconstruction-context-icon,
+.trip-reconstruction-context-marker {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #6b7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  user-select: none;
+}
+
+.trip-reconstruction-waypoint-icon--start,
+.trip-reconstruction-waypoint-marker--start {
+  background: #16a34a;
+}
+
+.trip-reconstruction-waypoint-icon--end,
+.trip-reconstruction-waypoint-marker--end {
+  background: #dc2626;
+}
+
+.trip-reconstruction-waypoint-icon--mid,
+.trip-reconstruction-waypoint-marker--mid {
+  background: #2563eb;
+}
+
+.trip-reconstruction-waypoint-icon--stay,
+.trip-reconstruction-waypoint-marker--stay {
+  background: #d97706;
+}
+
+.trip-reconstruction-waypoint-marker {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+  cursor: grab;
+  user-select: none;
+}
