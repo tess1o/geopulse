@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.service.filter;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
@@ -16,6 +17,9 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 @Slf4j
 public class GpsDataFilteringService {
 
+    @ConfigProperty(name = "geopulse.gps.filter.negative-accuracy.enabled", defaultValue = "true")
+    boolean negativeAccuracyFilterEnabled = true;
+
     /**
      * Filter GPS point entity based on source configuration.
      * <p>
@@ -30,6 +34,12 @@ public class GpsDataFilteringService {
      * @return FilterResult indicating whether the point was accepted or rejected
      */
     public GpsFilterResult filter(GpsPointEntity entity, GpsSourceConfigEntity config) {
+        Double accuracy = entity.getAccuracy();
+        if (negativeAccuracyFilterEnabled && accuracy != null && accuracy < 0) {
+            log.info("Rejected GPS point for user {} source {} - negative accuracy {}m is not allowed",
+                    entity.getUser().getId(), entity.getSourceType(), accuracy);
+            return GpsFilterResult.rejectedByNegativeAccuracy(accuracy);
+        }
 
         // If filtering is not enabled for this source, accept all points
         if (!config.isFilterInaccurateData()) {
@@ -37,7 +47,6 @@ public class GpsDataFilteringService {
         }
 
         // Extract values from entity
-        Double accuracy = entity.getAccuracy();
         Double speedKmh = entity.getVelocity(); // Already in km/h from mapper
 
         // Check accuracy threshold
@@ -60,5 +69,9 @@ public class GpsDataFilteringService {
 
         // All checks passed
         return GpsFilterResult.accepted();
+    }
+
+    void setNegativeAccuracyFilterEnabled(boolean enabled) {
+        this.negativeAccuracyFilterEnabled = enabled;
     }
 }

@@ -231,6 +231,28 @@ class GpsDataFilteringServiceTest {
         // Then: Point is accepted
         assertTrue(result.isAccepted());
     }
+    @Test
+    void testNegativeAccuracy_RejectsEvenWhenPerSourceFilteringDisabled() {
+        // Given: Per-source filtering disabled
+        config.setFilterInaccurateData(false);
+        // When: Point with invalid negative accuracy
+        GpsPointEntity entity = createGpsPoint(-3.0, null);
+        GpsFilterResult result = filteringService.filter(entity, config);
+        // Then: Point is rejected by global negative-accuracy filter
+        assertTrue(result.isRejected());
+        assertTrue(result.getRejectionReason().toLowerCase(Locale.ROOT).contains("negative"));
+    }
+    @Test
+    void testNegativeAccuracy_AcceptedWhenGlobalFilterDisabled() {
+        // Given: Global negative-accuracy filter disabled via environment-backed toggle
+        filteringService.setNegativeAccuracyFilterEnabled(false);
+        config.setFilterInaccurateData(false);
+        // When: Point with negative accuracy
+        GpsPointEntity entity = createGpsPoint(-3.0, null);
+        GpsFilterResult result = filteringService.filter(entity, config);
+        // Then: Point is accepted because both filters are disabled
+        assertTrue(result.isAccepted());
+    }
     /**
      * Helper method to create a GPS point entity for testing
      */

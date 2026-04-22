@@ -37,6 +37,16 @@ public class GpsFilterResult {
     }
 
     /**
+     * Create a result indicating the GPS point was rejected due to invalid negative accuracy.
+     *
+     * @param actual The actual accuracy value in meters
+     */
+    public static GpsFilterResult rejectedByNegativeAccuracy(double actual) {
+        String reason = String.format("Accuracy %.1fm is invalid (negative values are not allowed)", actual);
+        return new GpsFilterResult(false, reason);
+    }
+
+    /**
      * Create a result indicating the GPS point was rejected due to excessive speed
      *
      * @param actual    The actual speed value in km/h

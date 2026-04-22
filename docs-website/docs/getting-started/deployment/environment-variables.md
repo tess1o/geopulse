@@ -259,13 +259,14 @@ Notes:
 | `GEOPULSE_TRIP_VISIT_MATCHING_MAX_DISTANCE_METERS` | `400` | Trip visit auto-matching Property: \`geopulse.trip.visit-matching.max-distance-meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TRIP_VISIT_MATCHING_SUGGEST_THRESHOLD` | `0.55` | Trip visit auto-matching Property: \`geopulse.trip.visit-matching.suggest-threshold\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### GPS Filtering and Deduplication (6)
+### GPS Filtering and Deduplication (7)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_GPS_DUPLICATE_DETECTION_ENABLED` | `false` | Per-source duplicate detection defaults (for new sources) Property: \`geopulse.gps.duplicate-detection.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GPS_DUPLICATE_DETECTION_LOCATION_TIME_THRESHOLD_MINUTES` | `2` | GPS Point Duplicate Detection Configuration DEPRECATED: This setting is used for fallback when per-source threshold is NULL For new sources, use the per-source settings below in... Property: \`geopulse.gps.duplicate-detection.location-time-threshold-minutes\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GPS_DUPLICATE_DETECTION_THRESHOLD_MINUTES` | `2` | Per-source duplicate detection defaults (for new sources) Property: \`geopulse.gps.duplicate-detection.threshold-minutes\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GPS_FILTER_NEGATIVE_ACCURACY_ENABLED` | `true` | Reject GPS points with negative accuracy values before applying per-source filtering rules Property: \`geopulse.gps.filter.negative-accuracy.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GPS_FILTER_INACCURATE_DATA_ENABLED` | `false` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.filter.inaccurate-data.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-accuracy\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |

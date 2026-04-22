@@ -415,6 +415,9 @@ config:
 
   # GPS Filtering Configuration
   gps:
+    # Reject GPS points with negative accuracy values
+    # Default: true (can be disabled for legacy integrations)
+    filterNegativeAccuracy: true
     # Enable filtering of inaccurate GPS data (default: true)
     filterInaccurateData: true
     # Maximum allowed accuracy in meters (points with worse accuracy are filtered)

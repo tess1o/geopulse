@@ -37,6 +37,7 @@ data:
   GEOPULSE_JWT_PRIVATE_KEY_LOCATION: {{ .Values.config.jwt.privateKeyLocation | quote }}
 
   # GPS Filtering
+  GEOPULSE_GPS_FILTER_NEGATIVE_ACCURACY_ENABLED: {{ .Values.config.gps.filterNegativeAccuracy | quote }}
   GEOPULSE_GPS_FILTER_INACCURATE_DATA_ENABLED: {{ .Values.config.gps.filterInaccurateData | quote }}
   GEOPULSE_GPS_MAX_ALLOWED_ACCURACY: {{ .Values.config.gps.maxAllowedAccuracy | quote }}
   GEOPULSE_GPS_MAX_ALLOWED_SPEED: {{ .Values.config.gps.maxAllowedSpeed | quote }}
