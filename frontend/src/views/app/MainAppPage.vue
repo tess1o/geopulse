@@ -15,6 +15,15 @@
             outlined
             class="share-btn"
           />
+          <Button
+            v-if="isTimelinePage"
+            v-tooltip.bottom="'Generate GPS points from manual stays and trips. Existing GPS points are preserved.'"
+            label="Add Missing Timeline Data"
+            icon="pi pi-map"
+            @click="requestTimelineReconstruction"
+            outlined
+            class="share-btn"
+          />
         </template>
       </AppNavbarWithDatePicker>
     </template>
@@ -66,6 +75,7 @@ const { defaultDateRangePreset } = storeToRefs(authStore)
 // Reactive state
 const activeIndex = ref(0)
 const shareDialogVisible = ref(false)
+const timelineReconstructionRequestToken = ref(0)
 const isUpdatingUrl = ref(false)
 
 const tabItems = ref([
@@ -96,6 +106,7 @@ const shouldShowSearch = computed(() => route.path === '/app/timeline' || route.
 
 // Provide share dialog state for child components
 provide('shareDialogVisible', shareDialogVisible)
+provide('timelineReconstructionRequestToken', timelineReconstructionRequestToken)
 
 // Methods
 const onTabChange = (e) => {
@@ -119,6 +130,10 @@ const handleNavigate = (item) => {
 const showShareDialog = () => {
   // Open share dialog via provided state
   shareDialogVisible.value = true
+}
+
+const requestTimelineReconstruction = () => {
+  timelineReconstructionRequestToken.value += 1
 }
 
 const getRangeForDefaultPreset = () => {

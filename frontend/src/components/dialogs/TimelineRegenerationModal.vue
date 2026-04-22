@@ -129,8 +129,8 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: 'general', // 'favorite', 'favorite-delete', 'preferences', 'general', 'classification'
-    validator: (value) => ['favorite', 'favorite-delete', 'preferences', 'general', 'classification'].includes(value)
+    default: 'general', // 'favorite', 'favorite-delete', 'preferences', 'general', 'classification', 'reconstruction'
+    validator: (value) => ['favorite', 'favorite-delete', 'preferences', 'general', 'classification', 'reconstruction'].includes(value)
   },
   jobId: {
     type: String,
@@ -162,6 +162,8 @@ const title = computed(() => {
       return 'Applying Preferences & Regenerating Timeline'
     case 'classification':
       return 'Updating Trip Classifications'
+    case 'reconstruction':
+      return 'Applying Missing Timeline Data'
     default:
       return 'Regenerating Timeline'
   }
@@ -177,6 +179,8 @@ const message = computed(() => {
       return 'We\'re applying your new preferences and regenerating your complete timeline based on the updated settings. This ensures optimal timeline accuracy with your preferences.'
     case 'classification':
       return 'We\'re recalculating movement types for your existing trips based on your updated speed thresholds. This process will update how your trips are classified without changing the underlying timeline structure.'
+    case 'reconstruction':
+      return 'We\'re applying generated GPS points from your stays and trips, then updating the affected timeline portion. Existing timeline data is not replaced.'
     default:
       return 'We\'re regenerating your complete timeline from your GPS data. This process ensures your timeline is accurate and reflects all available location information.'
   }

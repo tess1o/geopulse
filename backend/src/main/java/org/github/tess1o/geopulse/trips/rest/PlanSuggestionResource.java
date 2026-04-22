@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoritePointDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -31,13 +32,16 @@ public class PlanSuggestionResource {
     private final CurrentUserService currentUserService;
     private final FavoriteLocationService favoriteLocationService;
     private final GeocodingService geocodingService;
+    private final CacheGeocodingService cacheGeocodingService;
 
     public PlanSuggestionResource(CurrentUserService currentUserService,
                                   FavoriteLocationService favoriteLocationService,
-                                  GeocodingService geocodingService) {
+                                  GeocodingService geocodingService,
+                                  CacheGeocodingService cacheGeocodingService) {
         this.currentUserService = currentUserService;
         this.favoriteLocationService = favoriteLocationService;
         this.geocodingService = geocodingService;
+        this.cacheGeocodingService = cacheGeocodingService;
     }
 
     @GET
@@ -85,6 +89,8 @@ public class PlanSuggestionResource {
                 if (geocoding != null && !isBlank(geocoding.getFormattedDisplayName())) {
                     suggestion.setTitle(geocoding.getFormattedDisplayName());
                     suggestion.setSourceType("geocoding");
+                    cacheGeocodingService.getCachedGeocodingResultId(userId, point)
+                            .ifPresent(suggestion::setGeocodingId);
                 }
             }
 

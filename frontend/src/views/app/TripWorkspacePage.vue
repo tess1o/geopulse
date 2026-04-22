@@ -14,6 +14,13 @@
       <template #actions>
         <div class="workspace-header-actions">
           <Button
+            v-if="canReconstructTrip"
+            icon="pi pi-map"
+            outlined
+            label="Add Missing Trip Data"
+            @click="openReconstructionDialog"
+          />
+          <Button
             v-if="isUnplannedTrip && isOwner"
             icon="pi pi-calendar-plus"
             label="Set Trip Dates"
@@ -389,6 +396,81 @@
       </div>
     </Dialog>
 
+    <TripReconstructionDialog
+      :visible="showReconstructionDialog"
+      mode="trip"
+      :trip-id="tripId"
+      :trip="currentTrip"
+      :fallback-center="workspaceFallbackCenter"
+      @close="showReconstructionDialog = false"
+      @committed="handleReconstructionCommitted"
+    />
+
+    <Dialog
+      v-model:visible="showTimelineGenerationDialog"
+      modal
+      header="Timeline Generation"
+      class="gp-dialog-md timeline-generation-dialog"
+      :closable="timelineJobCanClose"
+      :dismissableMask="timelineJobCanClose"
+      @hide="handleTimelineGenerationDialogHide"
+    >
+      <div class="timeline-generation-content">
+        <div class="timeline-generation-status-row">
+          <Tag :value="timelineJobStatusLabel" :severity="timelineJobStatusSeverity" />
+          <small v-if="trackedTimelineJobId" class="timeline-generation-job-id">
+            Job: {{ trackedTimelineJobId }}
+          </small>
+        </div>
+
+        <p class="timeline-generation-step">
+          {{ timelineJobCurrentStep }}
+        </p>
+
+        <ProgressBar
+          :value="timelineJobProgressValue"
+          :showValue="false"
+        />
+
+        <div class="timeline-generation-meta">
+          <span>{{ timelineJobProgressValue }}%</span>
+          <span>{{ timelineJobDurationLabel }}</span>
+        </div>
+
+        <Message
+          v-if="timelineJobProgress?.errorMessage || timelineJobError"
+          severity="error"
+          :closable="false"
+        >
+          {{ timelineJobProgress?.errorMessage || timelineJobError }}
+        </Message>
+        <Message
+          v-else-if="isRefreshingAfterTimelineJob"
+          severity="info"
+          :closable="false"
+        >
+          Refreshing workspace data...
+        </Message>
+      </div>
+
+      <template #footer>
+        <Button
+          v-if="timelineJobStatus === 'FAILED'"
+          label="Retry Status"
+          icon="pi pi-refresh"
+          outlined
+          :disabled="!trackedTimelineJobId"
+          @click="retryTimelineJobProgress"
+        />
+        <Button
+          label="Close"
+          icon="pi pi-times"
+          :disabled="!timelineJobCanClose"
+          @click="showTimelineGenerationDialog = false"
+        />
+      </template>
+    </Dialog>
+
     <ConfirmDialog group="trip-workspace-plan-item" />
   </AppLayout>
 </template>
@@ -400,6 +482,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { useTripsStore } from '@/stores/trips'
 import { useImmichStore } from '@/stores/immich'
@@ -411,11 +494,13 @@ import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import TripPlanItemsTable from '@/components/trips/TripPlanItemsTable.vue'
+import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import ProgressBar from 'primevue/progressbar'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -454,12 +539,23 @@ const isSubmittingPlanItem = ref(false)
 const planItemErrors = ref({})
 const isResolvingPlanSuggestion = ref(false)
 const showCollaboratorsDialog = ref(false)
+const showReconstructionDialog = ref(false)
+const showTimelineGenerationDialog = ref(false)
+const isRefreshingAfterTimelineJob = ref(false)
 const collaboratorsLoading = ref(false)
 const isSavingCollaborator = ref(false)
 const collaborators = ref([])
 const availableFriends = ref([])
 const newCollaboratorFriendId = ref(null)
 const newCollaboratorRole = ref('VIEW')
+const {
+  currentJobId: trackedTimelineJobId,
+  jobProgress: timelineJobProgress,
+  jobError: timelineJobError,
+  trackExistingTimelineJob,
+  refreshCurrentJobProgress,
+  clearTrackedTimelineJob
+} = useTimelineRegeneration()
 
 const planItemForm = ref({
   title: '',
@@ -485,6 +581,7 @@ const tripId = computed(() => Number(route.params.tripId))
 const isOwner = computed(() => Boolean(currentTrip.value?.isOwner) || String(currentTrip.value?.accessRole || '').toUpperCase() === 'OWNER')
 const accessRole = computed(() => String(currentTrip.value?.accessRole || (isOwner.value ? 'OWNER' : 'VIEW')).toUpperCase())
 const canEditPlanItems = computed(() => isOwner.value || accessRole.value === 'EDIT')
+const canReconstructTrip = computed(() => isOwner.value && !isUnplannedTrip.value)
 const showAccessModeBanner = computed(() => !isOwner.value)
 const accessModeBannerText = computed(() => {
   if (accessRole.value === 'EDIT') {
@@ -597,6 +694,25 @@ const tripPlanMapItems = computed(() => {
       longitude: item.longitude
     }))
 })
+const workspaceFallbackCenter = computed(() => {
+  const firstPathPoint = workspacePath.value?.points?.[0]
+  if (
+    firstPathPoint
+    && typeof firstPathPoint.latitude === 'number'
+    && typeof firstPathPoint.longitude === 'number'
+  ) {
+    return [firstPathPoint.latitude, firstPathPoint.longitude]
+  }
+
+  const firstPlanPoint = (tripPlanItems.value || []).find((item) => (
+    typeof item.latitude === 'number' && typeof item.longitude === 'number'
+  ))
+  if (firstPlanPoint) {
+    return [firstPlanPoint.latitude, firstPlanPoint.longitude]
+  }
+
+  return [37.7749, -122.4194]
+})
 const tripMinDate = computed(() => {
   if (isUnplannedTrip.value) return null
   if (!currentTrip.value?.startTime || !currentTrip.value?.endTime) return null
@@ -640,10 +756,75 @@ const availableFriendOptions = computed(() => {
       label: friend.fullName || friend.email || String(friend.friendId)
     }))
 })
+const timelineJobStatus = computed(() => String(timelineJobProgress.value?.status || '').toUpperCase())
+const timelineJobCanClose = computed(() => {
+  if (timelineJobError.value) return true
+  if (!trackedTimelineJobId.value) return true
+  return timelineJobStatus.value === 'COMPLETED' || timelineJobStatus.value === 'FAILED'
+})
+const timelineJobStatusLabel = computed(() => {
+  switch (timelineJobStatus.value) {
+    case 'QUEUED':
+      return 'Queued'
+    case 'RUNNING':
+      return 'Running'
+    case 'COMPLETED':
+      return 'Completed'
+    case 'FAILED':
+      return 'Failed'
+    default:
+      return 'Starting'
+  }
+})
+const timelineJobStatusSeverity = computed(() => {
+  switch (timelineJobStatus.value) {
+    case 'QUEUED':
+      return 'info'
+    case 'RUNNING':
+      return 'warn'
+    case 'COMPLETED':
+      return 'success'
+    case 'FAILED':
+      return 'danger'
+    default:
+      return 'secondary'
+  }
+})
+const timelineJobCurrentStep = computed(() => (
+  timelineJobProgress.value?.currentStep
+  || (timelineJobStatus.value === 'FAILED' ? 'Timeline generation failed.' : 'Preparing timeline generation...')
+))
+const timelineJobProgressValue = computed(() => {
+  const raw = Number(timelineJobProgress.value?.progressPercentage)
+  if (!Number.isFinite(raw)) return 0
+  return Math.min(100, Math.max(0, Math.round(raw)))
+})
+const timelineJobDurationLabel = computed(() => {
+  const durationMs = Number(timelineJobProgress.value?.durationMs)
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    return 'Duration: —'
+  }
+  return `Duration: ${formatJobDuration(durationMs)}`
+})
 
 const formatDateTime = (value) => {
   if (!value) return '—'
   return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value)}`
+}
+
+const formatJobDuration = (durationMs) => {
+  const totalSeconds = Math.floor(durationMs / 1000)
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`
+  }
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  if (minutes < 60) {
+    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+  }
+  const hours = Math.floor(minutes / 60)
+  const minutesRemainder = minutes % 60
+  return minutesRemainder > 0 ? `${hours}h ${minutesRemainder}m` : `${hours}h`
 }
 
 const formatPlannedDay = (plannedDay) => {
@@ -705,6 +886,11 @@ const openTripScheduling = () => {
 const openCollaboratorsDialog = () => {
   if (!isOwner.value) return
   showCollaboratorsDialog.value = true
+}
+
+const openReconstructionDialog = () => {
+  if (!canReconstructTrip.value) return
+  showReconstructionDialog.value = true
 }
 
 const loadCollaboratorsData = async () => {
@@ -1256,6 +1442,99 @@ const applyVisitOverride = async (item, action) => {
   }
 }
 
+const openTimelineGenerationDialogForJob = async (jobId) => {
+  if (!jobId) return
+
+  isRefreshingAfterTimelineJob.value = false
+  showTimelineGenerationDialog.value = true
+
+  await trackExistingTimelineJob(String(jobId), {
+    modalType: 'reconstruction',
+    showModal: false,
+    autoCloseOnCompleted: false,
+    autoCloseOnFailed: false,
+    autoCloseOnTrackingError: false,
+    onCompleted: async () => {
+      isRefreshingAfterTimelineJob.value = true
+
+      try {
+        await Promise.all([
+          tripsStore.fetchTrip(tripId.value),
+          tripsStore.fetchTripSummary(tripId.value),
+          tripsStore.fetchTripPlanItems(tripId.value)
+        ])
+
+        if (!isUnplannedTrip.value && activeRange.value?.start && activeRange.value?.end) {
+          await fetchWorkspaceRange(activeRange.value, false)
+        }
+
+        await refreshVisitComparisons()
+
+        toast.add({
+          severity: 'success',
+          summary: 'Timeline Generation Complete',
+          detail: 'Trip workspace was refreshed with regenerated data.',
+          life: 3200
+        })
+      } catch (error) {
+        toast.add({
+          severity: 'warn',
+          summary: 'Refresh Incomplete',
+          detail: error.response?.data?.message || error.message || 'Timeline completed, but workspace refresh failed.',
+          life: 5000
+        })
+      } finally {
+        isRefreshingAfterTimelineJob.value = false
+      }
+    },
+    onFailed: (progress) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Generation Failed',
+        detail: progress?.errorMessage || timelineJobError.value || 'Job failed.',
+        life: 5000
+      })
+    },
+    onTrackingError: (error) => {
+      toast.add({
+        severity: 'error',
+        summary: 'Timeline Job Tracking Failed',
+        detail: error,
+        life: 5000
+      })
+    }
+  })
+}
+
+const retryTimelineJobProgress = async () => {
+  if (!trackedTimelineJobId.value) return
+  await refreshCurrentJobProgress()
+}
+
+const handleTimelineGenerationDialogHide = () => {
+  if (!timelineJobCanClose.value) {
+    showTimelineGenerationDialog.value = true
+    return
+  }
+  clearTrackedTimelineJob()
+  isRefreshingAfterTimelineJob.value = false
+}
+
+const handleReconstructionCommitted = async (result) => {
+  showReconstructionDialog.value = false
+  const jobId = result?.jobId
+
+  if (jobId) {
+    await openTimelineGenerationDialogForJob(jobId)
+    return
+  }
+
+  // No job was started (e.g. all points were duplicates or an active job already exists).
+  if (!isUnplannedTrip.value && activeRange.value?.start && activeRange.value?.end) {
+    fetchWorkspaceRange(activeRange.value, false)
+  }
+}
+
 onMounted(async () => {
   await loadWorkspace()
   ensureActiveWorkspaceTab()
@@ -1646,6 +1925,37 @@ watch(workspaceTabs, () => {
   margin-bottom: var(--gp-spacing-xs);
   color: var(--gp-text-secondary);
   font-weight: 500;
+}
+
+.timeline-generation-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.timeline-generation-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+}
+
+.timeline-generation-job-id {
+  color: var(--gp-text-secondary);
+}
+
+.timeline-generation-step {
+  margin: 0;
+  color: var(--gp-text-primary);
+  font-weight: 500;
+}
+
+.timeline-generation-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 1279px) {

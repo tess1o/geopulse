@@ -16,4 +16,5 @@ public class PlanSuggestionDto {
     private String sourceType;
     private Long favoriteId;
     private String favoriteType;
+    private Long geocodingId;
 }

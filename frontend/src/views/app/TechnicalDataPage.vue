@@ -751,7 +751,8 @@ const sourceTypeOptions = ref([
   { label: 'Home Assistant', value: 'HOME_ASSISTANT' },
   { label: 'Colota', value: 'COLOTA' },
   { label: 'GeoJSON', value: 'GEOJSON' },
-  { label: 'CSV', value: 'CSV' }
+  { label: 'CSV', value: 'CSV' },
+  { label: 'Manual Reconstruction', value: 'MANUAL' }
 ])
 
 // Page size options
