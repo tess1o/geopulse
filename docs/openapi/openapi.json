@@ -1038,7 +1038,7 @@
         }
       },
       "GpsSourceType" : {
-        "enum" : [ "OWNTRACKS", "GPSLOGGER", "OVERLAND", "TRACCAR", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV", "COLOTA" ],
+        "enum" : [ "OWNTRACKS", "GPSLOGGER", "OVERLAND", "TRACCAR", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV", "COLOTA", "MANUAL" ],
         "type" : "string"
       },
       "GpsTelemetryMappingEntry" : {
@@ -1693,6 +1693,82 @@
       "TripPlanItemVisitSource" : {
         "enum" : [ "AUTO", "MANUAL" ],
         "type" : "string"
+      },
+      "TripReconstructionRequestDto" : {
+        "required" : [ "segments" ],
+        "type" : "object",
+        "properties" : {
+          "tripId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "segments" : {
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TripReconstructionSegmentDto"
+            }
+          }
+        }
+      },
+      "TripReconstructionSegmentDto" : {
+        "required" : [ "segmentType", "startTime", "endTime" ],
+        "type" : "object",
+        "properties" : {
+          "segmentType" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "locationName" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "movementType" : {
+            "type" : "string"
+          },
+          "waypoints" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TripReconstructionWaypointDto"
+            }
+          }
+        }
+      },
+      "TripReconstructionWaypointDto" : {
+        "required" : [ "latitude", "longitude" ],
+        "type" : "object",
+        "properties" : {
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          }
+        }
       },
       "TripStatus" : {
         "enum" : [ "UNPLANNED", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
@@ -8478,6 +8554,72 @@
         } ]
       }
     },
+    "/api/reconstruction/commit" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TripReconstructionRequestDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Commit",
+        "tags" : [ "Reconstruction Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/reconstruction/preview" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TripReconstructionRequestDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Preview",
+        "tags" : [ "Reconstruction Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/share-links" : {
       "get" : {
         "responses" : {
@@ -11127,7 +11269,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.27.1",
+    "version" : "1.28.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
