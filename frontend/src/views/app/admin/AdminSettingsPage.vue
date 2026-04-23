@@ -4,8 +4,19 @@
       <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
 
       <div class="page-header">
-        <h1>System Settings</h1>
-        <p class="text-muted">Configure system-wide settings</p>
+        <div class="header-content">
+          <div class="header-text">
+            <h1>System Settings</h1>
+            <p class="text-muted">Configure system-wide settings</p>
+          </div>
+          <div class="header-actions">
+            <SettingsSearchTrigger
+              page-key="admin"
+              placeholder="Search system settings..."
+              @navigate="handleSettingsSearchNavigate"
+            />
+          </div>
+        </div>
       </div>
 
       <TabContainer
@@ -28,9 +39,12 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
 import Breadcrumb from 'primevue/breadcrumb'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
+import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
+import { jumpToSetting } from '@/utils/settingJump'
 
 // Import tab components
 import AuthenticationSettingsTab from '@/components/admin/settings/tabs/AuthenticationSettingsTab.vue'
@@ -44,6 +58,7 @@ import SystemSettingsTab from '@/components/admin/settings/tabs/SystemSettingsTa
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',
@@ -133,12 +148,63 @@ const handleTabChange = (event) => {
   }
 }
 
+const jumpToRouteSetting = async (settingKey, hintOverride = null) => {
+  if (!settingKey || route.path !== '/app/admin/settings') return false
+
+  return jumpToSetting(settingKey, {
+    onMissing: () => {
+      toast.add({
+        severity: 'info',
+        summary: 'Setting not visible',
+        detail: hintOverride || 'This setting is not currently visible. Open the correct settings tab and try again.',
+        life: 4000
+      })
+    }
+  })
+}
+
+const handleSettingsSearchNavigate = async (item) => {
+  if (!item?.setting) return
+
+  const nextTab = item.tab || activeTab.value
+  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : activeTab.value
+  const currentSetting = typeof route.query.setting === 'string' ? route.query.setting : ''
+
+  if (currentTab === nextTab && currentSetting === item.setting) {
+    await jumpToRouteSetting(item.setting)
+    return
+  }
+
+  const nextQuery = {
+    ...route.query,
+    tab: nextTab,
+    setting: item.setting
+  }
+
+  router.replace({ query: nextQuery })
+}
+
 // Watch for route changes to update active tab
 watch(() => route.query.tab, (newTab) => {
   if (newTab && validTabs.includes(newTab) && newTab !== activeTab.value) {
     activeTab.value = newTab
   }
 })
+
+watch(
+  () => [route.query.tab, route.query.setting],
+  ([tab, setting]) => {
+    if (route.path !== '/app/admin/settings') return
+    if (!setting || typeof setting !== 'string') return
+
+    const tabChanged = typeof tab === 'string' && tab !== activeTab.value
+    const delayMs = tabChanged ? 240 : 80
+    window.setTimeout(() => {
+      void jumpToRouteSetting(setting)
+    }, delayMs)
+  },
+  { immediate: true }
+)
 
 // Initialize tab from URL on mount
 onMounted(() => {
@@ -162,6 +228,17 @@ onMounted(() => {
   margin-bottom: 1.5rem;
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.header-text {
+  flex: 1;
+}
+
 .page-header h1 {
   margin: 0;
   font-size: 1.75rem;
@@ -169,6 +246,10 @@ onMounted(() => {
 
 .text-muted {
   color: var(--text-color-secondary);
+}
+
+.header-actions {
+  flex-shrink: 0;
 }
 
 /* Mobile Responsive Styles */
@@ -187,6 +268,17 @@ onMounted(() => {
 
   .page-header h1 {
     font-size: 1.5rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
   }
 
   /* Override TabContainer for horizontal scroll */

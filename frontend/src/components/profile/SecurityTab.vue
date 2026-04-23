@@ -16,7 +16,7 @@
           </div>
 
           <div class="form-section">
-            <div v-if="hasPassword" class="form-field">
+            <div v-if="hasPassword" class="form-field" data-setting-id="currentPassword">
               <label for="currentPassword" class="form-label">Current Password</label>
               <Password
                 id="currentPassword"
@@ -32,7 +32,7 @@
               </small>
             </div>
 
-            <div class="form-field">
+            <div class="form-field" data-setting-id="newPassword">
               <label for="newPassword" class="form-label">New Password</label>
               <Password
                 id="newPassword"
@@ -48,7 +48,7 @@
               </small>
             </div>
 
-            <div class="form-field">
+            <div class="form-field" data-setting-id="confirmPassword">
               <label for="confirmPassword" class="form-label">Confirm New Password</label>
               <Password
                 id="confirmPassword"

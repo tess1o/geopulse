@@ -1,5 +1,5 @@
 <template>
-  <div class="setting-item">
+  <div class="setting-item" :data-setting-id="setting.key">
     <div class="setting-info">
       <label>{{ setting.label }}</label>
       <small class="text-muted">{{ setting.description }}</small>

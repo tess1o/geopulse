@@ -1,5 +1,9 @@
 <template>
-  <Card :class="['transport-type-card', `type-${type}`, { 'is-disabled': !isEnabled, 'has-warnings': hasWarnings }]">
+  <Card
+    :class="['transport-type-card', `type-${type}`, { 'is-disabled': !isEnabled, 'has-warnings': hasWarnings }]"
+    :id="settingId ? `setting-${settingId}` : undefined"
+    :data-setting-id="settingId || undefined"
+  >
     <template #content>
       <div class="transport-card-content">
         <!-- Header Section -->
@@ -121,6 +125,10 @@ const props = defineProps({
   validationMessages: {
     type: Array,
     default: () => []
+  },
+  settingId: {
+    type: String,
+    default: ''
   }
 })
 

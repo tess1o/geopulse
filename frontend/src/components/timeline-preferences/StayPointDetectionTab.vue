@@ -11,6 +11,7 @@
         'Lower values': 'More sensitive stay detection, separate nearby locations',
         'Higher values': 'Less sensitive, merge nearby locations into single stays'
       }"
+      setting-id="staypointRadiusMeters"
     >
       <template #control>
         <div class="control-value">{{ modelValue.staypointRadiusMeters }}m</div>
@@ -38,6 +39,7 @@
         'Lower values': 'Too short stays can be false positives',
         'Higher values': 'Longer stays are more likely to be real'
       }"
+      setting-id="staypointMinDurationMinutes"
     >
       <template #control>
         <div class="control-value">{{ modelValue.staypointMinDurationMinutes }} minutes</div>
@@ -62,6 +64,7 @@
       title="Enhanced Filtering"
       description="Use velocity and accuracy data for better stay point detection"
       details="Filters out poor quality GPS points and improves timeline accuracy"
+      setting-id="useVelocityAccuracy"
     >
       <template #control>
         <div class="control-value">{{ modelValue.useVelocityAccuracy ? 'Enabled' : 'Disabled' }}</div>
@@ -82,6 +85,7 @@
         'Lower values': 'More strict filtering',
         'Higher values': 'Allow more movement within stays'
       }"
+      setting-id="staypointVelocityThreshold"
     >
       <template #control>
         <div class="control-value">{{ modelValue.staypointVelocityThreshold }} km/h</div>
@@ -110,6 +114,7 @@
         'Lower values': 'Require more accurate GPS',
         'Higher values': 'Accept less accurate GPS points'
       }"
+      setting-id="staypointMaxAccuracyThreshold"
     >
       <template #control>
         <div class="control-value">{{ modelValue.staypointMaxAccuracyThreshold }}m</div>
@@ -135,6 +140,7 @@
       title="Minimum Accuracy Ratio"
       description="Minimum ratio of accurate GPS points required in a stay point cluster"
       details="Higher values ensure more reliable stay point detection by requiring a higher percentage of accurate GPS points"
+      setting-id="staypointMinAccuracyRatio"
     >
       <template #control>
         <div class="control-value">{{ Math.round(modelValue.staypointMinAccuracyRatio * 100) }}%</div>

@@ -16,7 +16,7 @@
 
         <div class="form-section">
           <!-- Enable/Disable Toggle -->
-          <div class="form-field">
+          <div class="form-field" data-setting-id="immich-enabled">
             <label class="form-label">Enable Immich Integration</label>
             <ToggleSwitch
               v-model="form.enabled"
@@ -26,7 +26,7 @@
           </div>
 
           <!-- Server URL Field -->
-          <div class="form-field">
+          <div class="form-field" data-setting-id="immichServerUrl">
             <label for="immichServerUrl" class="form-label">Server URL</label>
             <InputText
               id="immichServerUrl"
@@ -45,7 +45,7 @@
           </div>
 
           <!-- API Key Field -->
-          <div class="form-field">
+          <div class="form-field" data-setting-id="immichApiKey">
             <label for="immichApiKey" class="form-label">API Key</label>
             <Password
               id="immichApiKey"

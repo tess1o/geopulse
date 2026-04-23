@@ -8,6 +8,7 @@
       title="Data Gap Threshold"
       description="Maximum time gap in seconds allowed between GPS points before considering it a GPS data gap"
       details="When the time difference between two consecutive GPS points exceeds this threshold, a GPS Data Gap entity will be created instead of extending the current stay or trip. This prevents artificial extension of activities during periods of missing GPS data."
+      setting-id="dataGapThresholdSeconds"
     >
       <template #control>
         <div class="control-value">{{ Math.floor(modelValue.dataGapThresholdSeconds / 60) }} minutes ({{ modelValue.dataGapThresholdSeconds }}s)</div>
@@ -32,6 +33,7 @@
       title="Minimum Gap Duration"
       description="Minimum duration in seconds for a gap to be recorded as a GPS Data Gap"
       details="Gaps shorter than this threshold will be ignored to reduce noise. This prevents very short connectivity issues from creating unnecessary gap records."
+      setting-id="dataGapMinDurationSeconds"
     >
       <template #control>
         <div class="control-value">{{ Math.floor(modelValue.dataGapMinDurationSeconds / 60) }} minutes ({{ modelValue.dataGapMinDurationSeconds }}s)</div>
@@ -59,6 +61,7 @@
         'When enabled': 'If you were at a location and GPS data stops, then resumes at the same location, the system infers you stayed there',
         'Use case': 'Overnight gaps at home will show as a stay instead of a data gap'
       }"
+      setting-id="gapStayInferenceEnabled"
     >
       <template #control>
         <div class="control-value">{{ modelValue.gapStayInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -79,6 +82,7 @@
         'Lower values': 'Only infer stays for shorter gaps (e.g., brief phone downtime)',
         'Higher values': 'Infer stays for longer gaps (e.g., overnight, full day)'
       }"
+      setting-id="gapStayInferenceMaxGapHours"
     >
       <template #control>
         <div class="control-value">{{ modelValue.gapStayInferenceMaxGapHours }} hours</div>
@@ -107,6 +111,7 @@
         'Use case': 'Overnight flights or long drives where phone was off will show as inferred trips instead of data gaps',
         'Trip classification': 'Trip mode is automatically determined by distance, duration, and speed (e.g., flight, car, train)'
       }"
+      setting-id="gapTripInferenceEnabled"
     >
       <template #control>
         <div class="control-value">{{ modelValue.gapTripInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -127,6 +132,7 @@
         'Lower values': 'Infer trips for shorter movements (e.g., 10km city trips)',
         'Higher values': 'Only infer trips for longer movements (e.g., 100km+ intercity travel)'
       }"
+      setting-id="gapTripInferenceMinDistanceMeters"
     >
       <template #control>
         <div class="control-value">{{ (modelValue.gapTripInferenceMinDistanceMeters / 1000).toFixed(0) }} km</div>
@@ -156,6 +162,7 @@
         'Lower values': 'Infer trips for brief gaps (e.g., 30 minutes)',
         'Higher values': 'Only infer trips for longer gaps (e.g., several hours)'
       }"
+      setting-id="gapTripInferenceMinGapHours"
     >
       <template #control>
         <div class="control-value">{{ modelValue.gapTripInferenceMinGapHours }} hour{{ modelValue.gapTripInferenceMinGapHours !== 1 ? 's' : '' }}</div>
@@ -184,6 +191,7 @@
         'Lower values': 'Only infer trips for shorter gaps (e.g., 12 hours)',
         'Higher values': 'Infer trips for longer gaps (e.g., multi-day trips)'
       }"
+      setting-id="gapTripInferenceMaxGapHours"
     >
       <template #control>
         <div class="control-value">{{ modelValue.gapTripInferenceMaxGapHours }} hour{{ modelValue.gapTripInferenceMaxGapHours !== 1 ? 's' : '' }}</div>

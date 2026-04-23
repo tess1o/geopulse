@@ -23,7 +23,7 @@
             Choose rendering mode and configure both raster and vector map sources
           </p>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="mapRenderMode">
             <label for="mapRenderMode" class="form-label">
               Map Render Mode
             </label>
@@ -40,7 +40,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="customMapTileUrl">
             <label for="customMapTileUrl" class="form-label">
               Custom Raster Tile URL
               <i class="pi pi-info-circle" v-tooltip.right="'Optional: Raster tile template. Must include {z}, {x}, and {y} placeholders.'"></i>
@@ -60,7 +60,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="customMapStyleUrl">
             <label for="customMapStyleUrl" class="form-label">
               Custom Vector Style URL
               <i class="pi pi-info-circle" v-tooltip.right="'Optional: Vector style URL (style.json). Must use HTTP or HTTPS.'"></i>
@@ -88,7 +88,7 @@
             Choose the preset used by default on Timeline, Dashboard, and Timeline Reports
           </p>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="defaultDateRangePreset">
             <label for="defaultDateRangePreset" class="form-label">
               Default Date Range Preset
               <i class="pi pi-info-circle" v-tooltip.right="'If not set, GeoPulse keeps the current default behavior (Today).'"></i>
@@ -116,6 +116,7 @@
             title="Show Telemetry In Current Location Popup"
             description="Display mapped telemetry values in the map popup for your current location"
             details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
+            setting-id="showCurrentLocationTelemetry"
           >
             <template #control>
               <div class="control-value">{{ form.showCurrentLocationTelemetry ? 'Enabled' : 'Hidden' }}</div>
@@ -139,6 +140,7 @@
             title="Enable Path Simplification"
             description="Reduce the number of GPS points displayed while preserving route accuracy"
             details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data"
+            setting-id="pathSimplificationEnabled"
           >
             <template #control>
               <div class="control-value">{{ form.pathSimplificationEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -156,8 +158,9 @@
             description="Distance threshold in meters for simplifying paths"
             :details="{
               'Lower values (1-10m)': 'Preserve more detail, show more points',
-              'Higher values (20-100m)': 'More compression, show fewer points'
+                'Higher values (20-100m)': 'More compression, show fewer points'
             }"
+            setting-id="pathSimplificationTolerance"
           >
             <template #control>
               <div class="control-value">{{ form.pathSimplificationTolerance }}m</div>
@@ -181,6 +184,7 @@
             title="Maximum Points"
             description="Maximum number of GPS points to display in a path"
             details="If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit"
+            setting-id="pathMaxPoints"
           >
             <template #control>
               <div class="control-value">{{ form.pathMaxPoints === 0 ? 'No limit' : form.pathMaxPoints + ' points' }}</div>
@@ -204,6 +208,7 @@
             title="Adaptive Simplification"
             description="Automatically adjust simplification based on trip length"
             details="Longer trips use higher tolerance for better performance, shorter trips maintain higher detail"
+            setting-id="pathAdaptiveSimplification"
           >
             <template #control>
               <div class="control-value">{{ form.pathAdaptiveSimplification ? 'Enabled' : 'Disabled' }}</div>

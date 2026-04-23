@@ -8,6 +8,7 @@
       title="Enable Stay Point Merging"
       description="Whether to merge nearby stay points that are close in time and distance"
       details="Helps consolidate multiple GPS clusters at the same general location into single stay points"
+      setting-id="isMergeEnabled"
     >
       <template #control>
         <div class="control-value">{{ modelValue.isMergeEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -28,6 +29,7 @@
         'Lower values': 'Only merge very close points',
         'Higher values': 'Merge points further apart'
       }"
+      setting-id="mergeMaxDistanceMeters"
     >
       <template #control>
         <div class="control-value">{{ modelValue.mergeMaxDistanceMeters }}m</div>
@@ -56,6 +58,7 @@
         'Lower values': 'Only merge consecutive stays',
         'Higher values': 'Merge stays separated by longer gaps'
       }"
+      setting-id="mergeMaxTimeGapMinutes"
     >
       <template #control>
         <div class="control-value">{{ modelValue.mergeMaxTimeGapMinutes }} minutes</div>

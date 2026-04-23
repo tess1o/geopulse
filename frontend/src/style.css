@@ -1433,3 +1433,11 @@ html body .p-dark .p-tooltip .p-tooltip-arrow::before {
     width: 95vw !important;
   }
 }
+
+.gp-setting-highlight {
+  outline: 2px solid color-mix(in srgb, var(--gp-primary) 65%, white);
+  outline-offset: 3px;
+  border-radius: var(--gp-radius-medium);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--gp-primary) 14%, transparent);
+  transition: box-shadow 0.2s ease, outline-color 0.2s ease;
+}

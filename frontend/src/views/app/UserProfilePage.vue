@@ -11,6 +11,13 @@
                 Manage your personal information and security settings
               </p>
             </div>
+            <div class="header-actions">
+              <SettingsSearchTrigger
+                page-key="profile"
+                placeholder="Search profile settings..."
+                @navigate="handleSettingsSearchNavigate"
+              />
+            </div>
           </div>
         </div>
 
@@ -40,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useRoute, useRouter } from 'vue-router'
@@ -56,11 +63,14 @@ import SecurityTab from '@/components/profile/SecurityTab.vue'
 import AIAssistantTab from '@/components/profile/AIAssistantTab.vue'
 import ImmichTab from '@/components/profile/ImmichTab.vue'
 import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
+import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
 
 // Store
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import apiService from "@/utils/apiService"
+import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
+import { jumpToSetting } from '@/utils/settingJump'
 
 // Composables
 const toast = useToast()
@@ -75,6 +85,12 @@ const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immic
 
 // State
 const activeTab = ref('profile')
+const validTabs = ['profile', 'security', 'timelineDisplay', 'ai', 'immich']
+const settingHintsById = Object.fromEntries(
+  PROFILE_SETTINGS_SEARCH_INDEX
+    .filter((item) => item.visibilityHint)
+    .map((item) => [item.id, item.visibilityHint])
+)
 
 // AI Settings state
 const aiSettings = ref({
@@ -188,7 +204,9 @@ const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
   if (selectedTab) {
     activeTab.value = selectedTab.key
-    router.replace({ query: { ...route.query, tab: selectedTab.key } })
+    const nextQuery = { ...route.query, tab: selectedTab.key }
+    delete nextQuery.setting
+    router.replace({ query: nextQuery })
   }
 }
 
@@ -206,6 +224,43 @@ const getErrorMessage = (error) => {
   }
 
   return error.message || 'An unexpected error occurred'
+}
+
+const jumpToRouteSetting = async (settingId, hintOverride = null) => {
+  if (!settingId || route.path !== '/app/profile') return false
+
+  const hint = hintOverride || settingHintsById[settingId]
+  return jumpToSetting(settingId, {
+    onMissing: () => {
+      toast.add({
+        severity: 'info',
+        summary: 'Setting not visible',
+        detail: hint || 'This setting is not currently visible. Enable related options to edit it.',
+        life: 4000
+      })
+    }
+  })
+}
+
+const handleSettingsSearchNavigate = async (item) => {
+  if (!item?.setting) return
+
+  const nextTab = item.tab || activeTab.value
+  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : activeTab.value
+  const currentSetting = typeof route.query.setting === 'string' ? route.query.setting : ''
+
+  if (currentTab === nextTab && currentSetting === item.setting) {
+    await jumpToRouteSetting(item.setting)
+    return
+  }
+
+  const nextQuery = {
+    ...route.query,
+    tab: nextTab,
+    setting: item.setting
+  }
+
+  router.replace({ query: nextQuery })
 }
 
 // Profile Save Handler
@@ -398,6 +453,27 @@ const loadTimelineDisplayPreferences = async () => {
   }
 }
 
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && validTabs.includes(newTab)) {
+    activeTab.value = newTab
+  }
+})
+
+watch(
+  () => [route.query.tab, route.query.setting],
+  ([tab, setting]) => {
+    if (route.path !== '/app/profile') return
+    if (!setting || typeof setting !== 'string') return
+
+    const tabChanged = typeof tab === 'string' && tab !== activeTab.value
+    const delayMs = tabChanged ? 240 : 80
+    window.setTimeout(() => {
+      void jumpToRouteSetting(setting)
+    }, delayMs)
+  },
+  { immediate: true }
+)
+
 // Lifecycle
 onMounted(async () => {
   // Fetch fresh profile data from backend first
@@ -429,7 +505,7 @@ onMounted(async () => {
 
   // Handle tab query parameter
   const tabParam = route.query.tab
-  if (tabParam && ['profile', 'security', 'timelineDisplay', 'ai', 'immich'].includes(tabParam)) {
+  if (tabParam && validTabs.includes(tabParam)) {
     activeTab.value = tabParam
   }
 })
@@ -456,6 +532,10 @@ onMounted(async () => {
 
 .header-text {
   flex: 1;
+}
+
+.header-actions {
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -496,6 +576,17 @@ onMounted(async () => {
 
   .page-title {
     font-size: 1.5rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
   }
 }
 

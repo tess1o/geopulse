@@ -44,6 +44,7 @@
         'Single': 'Always one trip between stay points',
         'Multiple': 'Based on velocity one or more trips between stay points (like CAR → WALK, WALK → CAR, etc)'
       }"
+      setting-id="tripDetectionAlgorithm"
     >
       <template #control>
         <div class="control-value">{{ modelValue.tripDetectionAlgorithm }}</div>
@@ -68,9 +69,10 @@
       description="Detects slow-speed movement on foot (0-8 km/h typical)"
       :mandatory="true"
       :validation-messages="getWarningMessagesForType('walk').value"
+      setting-id="walkingMaxAvgSpeed"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="walkingMaxAvgSpeed">
           <label class="parameter-label">Maximum Average Speed</label>
           <p class="parameter-description">
             Trips with average speeds above this will be classified as non-walking
@@ -86,7 +88,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="walkingMaxMaxSpeed">
           <label class="parameter-label">Maximum Peak Speed</label>
           <p class="parameter-description">
             Brief speed bursts above this will reclassify the trip
@@ -115,9 +117,10 @@
       @update:enabled="updatePref('bicycleEnabled', $event)"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('bicycle').value"
+      setting-id="bicycleEnabled"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="bicycleMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
             Trips slower than this will be classified as running or walking
@@ -133,7 +136,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="bicycleMaxAvgSpeed">
           <label class="parameter-label">Maximum Average Speed</label>
           <p class="parameter-description">
             Trips faster than this will be classified as motorized transport
@@ -149,7 +152,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="bicycleMaxMaxSpeed">
           <label class="parameter-label">Maximum Peak Speed</label>
           <p class="parameter-description">
             Allows for downhill segments or e-bikes, but below car speeds
@@ -178,9 +181,10 @@
       @update:enabled="updatePref('runningEnabled', $event)"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('running').value"
+      setting-id="runningEnabled"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="runningMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
             Trips slower than this will be classified as walking
@@ -196,7 +200,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="runningMaxAvgSpeed">
           <label class="parameter-label">Maximum Average Speed</label>
           <p class="parameter-description">
             Trips faster than this will be classified as cycling or motorized transport
@@ -212,7 +216,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="runningMaxMaxSpeed">
           <label class="parameter-label">Maximum Peak Speed</label>
           <p class="parameter-description">
             Allows for sprint segments while staying below cycling speeds
@@ -241,9 +245,10 @@
       @update:enabled="updatePref('carEnabled', $event)"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('car').value"
+      setting-id="carEnabled"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="carMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
             Trips with average speeds below this will be classified as walking or bicycle (if enabled)
@@ -259,7 +264,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="carMinMaxSpeed">
           <label class="parameter-label">Minimum Peak Speed</label>
           <p class="parameter-description">
             Trips that never reach this speed will not be classified as driving
@@ -288,9 +293,10 @@
       @update:enabled="updatePref('trainEnabled', $event)"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('train').value"
+      setting-id="trainEnabled"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="trainMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
             Separates from cars in heavy traffic
@@ -306,7 +312,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="trainMaxAvgSpeed">
           <label class="parameter-label">Maximum Average Speed</label>
           <p class="parameter-description">
             Covers regional and intercity trains
@@ -322,7 +328,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="trainMinMaxSpeed">
           <label class="parameter-label">Minimum Peak Speed (Station Filter)</label>
           <p class="parameter-description">
             Filters out trips with only station waiting time (critical!)
@@ -338,7 +344,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="trainMaxMaxSpeed">
           <label class="parameter-label">Maximum Peak Speed</label>
           <p class="parameter-description">
             Upper limit for train speeds
@@ -354,7 +360,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="trainMaxSpeedVariance">
           <label class="parameter-label">Maximum Speed Variance (Key Discriminator)</label>
           <p class="parameter-description">
             Trains have low variance (&lt; 15), cars have high variance (&gt; 25). This is the key to distinguishing trains from cars!
@@ -383,9 +389,10 @@
       @update:enabled="updatePref('flightEnabled', $event)"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('flight').value"
+      setting-id="flightEnabled"
     >
       <template #parameters>
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="flightMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
             Conservative default for typical flights (including taxi/takeoff/landing time)
@@ -401,7 +408,7 @@
           />
         </div>
 
-        <div class="parameter-group">
+        <div class="parameter-group" data-setting-id="flightMinMaxSpeed">
           <label class="parameter-label">Minimum Peak Speed</label>
           <p class="parameter-description">
             Catches flights with long taxi/wait time (OR logic with avg speed)
@@ -424,6 +431,7 @@
       title="Short Trip Distance Threshold"
       description="Distance threshold for applying relaxed walking speed detection"
       details="Trips shorter than this distance get slightly more lenient walking speed classification to account for GPS inaccuracies"
+      setting-id="shortDistanceKm"
     >
       <template #control>
         <div class="control-value">{{ modelValue.shortDistanceKm }} km</div>
@@ -446,6 +454,7 @@
         'Lower values': 'More sensitive arrival detection, may catch brief stops',
         'Higher values': 'More conservative, only detect sustained arrivals'
       }"
+      setting-id="tripArrivalDetectionMinDurationSeconds"
     >
       <template #control>
         <div class="control-value">{{ modelValue.tripArrivalDetectionMinDurationSeconds }} seconds</div>
@@ -468,6 +477,7 @@
         'Lower values': 'Detect shorter stops, may include traffic delays',
         'Higher values': 'Only detect longer stops, better traffic filtering'
       }"
+      setting-id="tripSustainedStopMinDurationSeconds"
     >
       <template #control>
         <div class="control-value">{{ modelValue.tripSustainedStopMinDurationSeconds }} seconds</div>
@@ -490,6 +500,7 @@
         'Lower values (2)': 'Faster detection, ideal for infrequent GPS (10-15 min intervals)',
         'Higher values (3-4)': 'More reliable, ideal for frequent GPS (30-60 sec intervals)'
       }"
+      setting-id="tripArrivalMinPoints"
     >
       <template #control>
         <div class="control-value">{{ modelValue.tripArrivalMinPoints }} points</div>

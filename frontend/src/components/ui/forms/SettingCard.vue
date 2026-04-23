@@ -1,5 +1,9 @@
 <template>
-  <Card class="setting-card">
+  <Card
+    class="setting-card"
+    :id="settingId ? `setting-${settingId}` : undefined"
+    :data-setting-id="settingId || undefined"
+  >
     <template #content>
       <div class="setting-layout">
         <div class="setting-info">
@@ -43,6 +47,10 @@ defineProps({
     type: [String, Object],
     default: null
   },
+  settingId: {
+    type: String,
+    default: ''
+  }
 })
 </script>
 

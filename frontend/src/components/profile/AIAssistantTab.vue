@@ -16,7 +16,7 @@
 
         <div class="ai-form-grid">
           <!-- Enable/Disable Toggle -->
-          <div class="form-group">
+          <div class="form-group" data-setting-id="ai-enabled">
             <label for="ai-enabled" class="form-label">Enable AI Assistant</label>
             <ToggleSwitch
               id="ai-enabled"
@@ -30,7 +30,7 @@
 
           <!-- OpenAI Settings -->
           <div class="provider-settings">
-            <div class="form-group">
+            <div class="form-group" data-setting-id="api-key-required">
               <label for="api-key-required" class="form-label">API Key Required</label>
               <ToggleSwitch
                 id="api-key-required"
@@ -41,7 +41,7 @@
                 Disable if your self-hosted LLM does not require an API key
               </small>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-setting-id="openai-api-key">
               <label for="openai-api-key" class="form-label">OpenAI API Key</label>
               <Password
                 id="openai-api-key"
@@ -66,7 +66,7 @@
                 Enter your OpenAI API key to enable the assistant
               </small>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-setting-id="openai-api-url">
               <label for="openai-api-url" class="form-label">API Base URL</label>
               <InputText
                 id="openai-api-url"
@@ -78,7 +78,7 @@
                 Use default OpenAI URL or enter a custom OpenAI-compatible API endpoint
               </small>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-setting-id="openai-model">
               <label for="openai-model" class="form-label">Model</label>
               <div class="model-select-row">
                 <Dropdown
@@ -101,7 +101,7 @@
                 Choose from common models or enter a custom model name
               </small>
             </div>
-            <div class="form-group">
+            <div class="form-group" data-setting-id="custom-system-message">
               <label for="custom-system-message" class="form-label">
                 System Message
                 <Button

@@ -52,7 +52,7 @@
 
         <!-- Full Name Field -->
         <div class="form-section">
-          <div class="form-field">
+          <div class="form-field" data-setting-id="fullName">
             <label for="fullName" class="form-label">Full Name</label>
             <InputText
               id="fullName"
@@ -66,7 +66,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="email">
             <label for="email" class="form-label">Email Address</label>
             <InputText
               id="email"
@@ -77,7 +77,7 @@
             <small class="help-text">Email cannot be changed</small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="timezone">
             <label for="timezone" class="form-label">Timezone</label>
             <Dropdown
               id="timezone"
@@ -100,7 +100,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="dateFormat">
             <label for="dateFormat" class="form-label">
               Date Format
               <i class="pi pi-info-circle" v-tooltip.right="'Choose how dates are shown across the app (for example in the timeline date range picker).'"></i>
@@ -119,7 +119,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="timeFormat">
             <label for="timeFormat" class="form-label">
               Time Format
               <i class="pi pi-info-circle" v-tooltip.right="'Choose whether times are shown in 24-hour or 12-hour format.'"></i>
@@ -138,7 +138,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="measureUnit">
             <label for="measureUnit" class="form-label">
               Measurement Unit
               <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
@@ -157,7 +157,7 @@
             </small>
           </div>
 
-          <div class="form-field">
+          <div class="form-field" data-setting-id="defaultRedirectUrl">
             <label for="defaultRedirectUrl" class="form-label">
               Default Home Page
               <i class="pi pi-info-circle" v-tooltip.right="'Choose where you want to land after login or when you visit the homepage.'"></i>
@@ -181,7 +181,7 @@
             </small>
 
             <!-- Custom URL input (shown when Custom option is selected) -->
-            <div v-if="form.defaultRedirectUrl === 'custom'" class="custom-url-field">
+            <div v-if="form.defaultRedirectUrl === 'custom'" class="custom-url-field" data-setting-id="customRedirectUrl">
               <label for="customRedirectUrl" class="form-label">Custom URL</label>
               <InputText
                 id="customRedirectUrl"

@@ -4,46 +4,24 @@
       <div class="timeline-preferences-page">
         <!-- Page Header -->
         <div class="page-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h1 class="page-title">Timeline Preferences</h1>
-              <p class="page-description">
-                Fine-tune how your location timeline is generated from GPS data
-              </p>
+          <div class="header-text">
+            <h1 class="page-title">Timeline Preferences</h1>
+            <p class="page-description">
+              Fine-tune how your location timeline is generated from GPS data
+            </p>
+          </div>
+
+          <div class="header-toolbar">
+            <div class="toolbar-search-group">
+              <SettingsSearchTrigger
+                class="toolbar-search timeline-search-trigger"
+                page-key="timeline"
+                placeholder="Search timeline settings..."
+                @navigate="handleSettingsSearchNavigate"
+              />
             </div>
-            <div class="header-actions">
-              <Button
-                label="Export Config"
-                icon="pi pi-download"
-                severity="secondary"
-                outlined
-                @click="exportPreferences"
-              />
-              <Button
-                label="Import Config"
-                icon="pi pi-upload"
-                severity="secondary"
-                outlined
-                @click="openImportPicker"
-                :disabled="timelineRegenerationVisible"
-              />
-              <Button
-                v-if="hasActiveJob"
-                label="View Active Job"
-                icon="pi pi-eye"
-                severity="info"
-                outlined
-                @click="goToActiveJob"
-                title="Check if timeline generation is currently running"
-              />
-              <Button
-                label="Reset to Defaults"
-                icon="pi pi-refresh"
-                severity="secondary"
-                outlined
-                @click="confirmResetDefaults"
-                :disabled="timelineRegenerationVisible"
-              />
+
+            <div class="toolbar-action-group">
               <Button
                 label="Regenerate Timeline"
                 icon="pi pi-replay"
@@ -58,6 +36,23 @@
                 @click="confirmSavePreferences"
                 :disabled="!hasUnsavedChanges || !isFormValid || timelineRegenerationVisible"
               />
+
+              <div class="toolbar-secondary-actions">
+                <Button
+                  label="More"
+                  icon="pi pi-ellipsis-h"
+                  severity="secondary"
+                  outlined
+                  class="toolbar-more-button"
+                  aria-haspopup="true"
+                  @click="toggleActionsMenu"
+                />
+                <Menu
+                  ref="actionsMenuRef"
+                  :model="headerSecondaryActionsMenu"
+                  popup
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -235,6 +230,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import Menu from 'primevue/menu'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -246,6 +242,7 @@ import StayPointDetectionTab from '@/components/timeline-preferences/StayPointDe
 import TripClassificationTab from '@/components/timeline-preferences/TripClassificationTab.vue'
 import GpsGapsDetectionTab from '@/components/timeline-preferences/GpsGapsDetectionTab.vue'
 import StayPointMergingTab from '@/components/timeline-preferences/StayPointMergingTab.vue'
+import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
 
 // Custom components
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -255,55 +252,12 @@ import { useTimelineStore } from '@/stores/timeline'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useClassificationValidation } from '@/composables/useClassificationValidation'
 import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
-
-const TIMELINE_PREFERENCES_SCHEMA_VERSION = 'timeline-preferences.v1'
-
-const TIMELINE_PREFERENCE_LABELS = {
-  staypointRadiusMeters: 'Stay Detection Radius',
-  staypointMinDurationMinutes: 'Minimum Stay Duration',
-  useVelocityAccuracy: 'Enhanced Filtering',
-  staypointVelocityThreshold: 'Velocity Threshold',
-  staypointMaxAccuracyThreshold: 'GPS Accuracy Threshold',
-  staypointMinAccuracyRatio: 'Minimum Accuracy Ratio',
-  tripDetectionAlgorithm: 'Trip Detection Algorithm',
-  walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
-  walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
-  carEnabled: 'Car Detection Enabled',
-  carMinAvgSpeed: 'Car Minimum Average Speed',
-  carMinMaxSpeed: 'Car Minimum Peak Speed',
-  shortDistanceKm: 'Short Trip Distance Threshold',
-  bicycleEnabled: 'Bicycle Detection Enabled',
-  bicycleMinAvgSpeed: 'Bicycle Minimum Average Speed',
-  bicycleMaxAvgSpeed: 'Bicycle Maximum Average Speed',
-  bicycleMaxMaxSpeed: 'Bicycle Maximum Peak Speed',
-  runningEnabled: 'Running Detection Enabled',
-  runningMinAvgSpeed: 'Running Minimum Average Speed',
-  runningMaxAvgSpeed: 'Running Maximum Average Speed',
-  runningMaxMaxSpeed: 'Running Maximum Peak Speed',
-  trainEnabled: 'Train Detection Enabled',
-  trainMinAvgSpeed: 'Train Minimum Average Speed',
-  trainMaxAvgSpeed: 'Train Maximum Average Speed',
-  trainMinMaxSpeed: 'Train Minimum Peak Speed',
-  trainMaxMaxSpeed: 'Train Maximum Peak Speed',
-  trainMaxSpeedVariance: 'Train Maximum Speed Variance',
-  flightEnabled: 'Flight Detection Enabled',
-  flightMinAvgSpeed: 'Flight Minimum Average Speed',
-  flightMinMaxSpeed: 'Flight Minimum Peak Speed',
-  tripArrivalDetectionMinDurationSeconds: 'Arrival Detection Duration',
-  tripSustainedStopMinDurationSeconds: 'Sustained Stop Duration',
-  tripArrivalMinPoints: 'Minimum Stop Points for Arrival Detection',
-  isMergeEnabled: 'Stay Point Merging Enabled',
-  mergeMaxDistanceMeters: 'Maximum Merge Distance',
-  mergeMaxTimeGapMinutes: 'Maximum Merge Time Gap',
-  dataGapThresholdSeconds: 'Data Gap Threshold',
-  dataGapMinDurationSeconds: 'Minimum Gap Duration',
-  gapStayInferenceEnabled: 'Gap Stay Inference',
-  gapStayInferenceMaxGapHours: 'Gap Stay Inference Max Gap Duration',
-  gapTripInferenceEnabled: 'Gap Trip Inference',
-  gapTripInferenceMinDistanceMeters: 'Gap Trip Inference Minimum Distance',
-  gapTripInferenceMinGapHours: 'Gap Trip Inference Minimum Gap Duration',
-  gapTripInferenceMaxGapHours: 'Gap Trip Inference Maximum Gap Duration'
-}
+import {
+  TIMELINE_PREFERENCES_SCHEMA_VERSION,
+  TIMELINE_PREFERENCE_LABELS,
+  TIMELINE_PREFERENCE_VISIBILITY_HINTS
+} from '@/constants/timelinePreferencesMetadata'
+import { jumpToSetting } from '@/utils/settingJump'
 
 const CLASSIFICATION_FIELDS = [
   'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
@@ -481,6 +435,7 @@ const importSaveType = ref('full')
 const isImportApplying = ref(false)
 const detectedActiveJobId = ref(null)
 const checkingActiveJob = ref(false)
+const actionsMenuRef = ref(null)
 let activeJobPollingTimer = null
 
 // Computed
@@ -497,13 +452,50 @@ const hasActiveJob = computed(() => {
   return Boolean(currentJobId.value || detectedActiveJobId.value)
 })
 
+const headerSecondaryActionsMenu = computed(() => {
+  const items = [
+    {
+      label: 'Export Config',
+      icon: 'pi pi-download',
+      command: () => exportPreferences()
+    },
+    {
+      label: 'Import Config',
+      icon: 'pi pi-upload',
+      disabled: timelineRegenerationVisible.value,
+      command: () => openImportPicker()
+    },
+    {
+      label: 'Reset to Defaults',
+      icon: 'pi pi-refresh',
+      disabled: timelineRegenerationVisible.value,
+      command: () => confirmResetDefaults()
+    }
+  ]
+
+  if (hasActiveJob.value) {
+    items.push({
+      separator: true
+    })
+    items.push({
+      label: 'View Active Job',
+      icon: 'pi pi-eye',
+      command: () => goToActiveJob()
+    })
+  }
+
+  return items
+})
+
 // Methods
 const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
   if (selectedTab) {
     activeTab.value = selectedTab.key
     // Update URL with tab query parameter
-    router.push({ query: { ...route.query, tab: selectedTab.key } })
+    const nextQuery = { ...route.query, tab: selectedTab.key }
+    delete nextQuery.setting
+    router.push({ query: nextQuery })
   }
 }
 
@@ -581,6 +573,10 @@ const buildSaveTypeForChanges = (changes) => {
   const hasClassificationChanges = hasClassificationParameters(changes)
   const hasStructuralChanges = hasStructuralParameters(changes)
   return hasClassificationChanges && !hasStructuralChanges ? 'classification' : 'full'
+}
+
+const toggleActionsMenu = (event) => {
+  actionsMenuRef.value?.toggle(event)
 }
 
 const openImportPicker = () => {
@@ -977,6 +973,45 @@ const goToActiveJob = () => {
   router.push('/app/timeline/jobs')
 }
 
+const jumpToRouteSetting = async (settingKey, hintOverride = null) => {
+  if (!settingKey) return
+
+  const hint = hintOverride || TIMELINE_PREFERENCE_VISIBILITY_HINTS[settingKey]
+  const jumped = await jumpToSetting(settingKey, {
+    onMissing: () => {
+      toast.add({
+        severity: 'info',
+        summary: 'Setting not visible',
+        detail: hint || 'This setting is not currently visible. Enable related options to edit it.',
+        life: 4000
+      })
+    }
+  })
+
+  return jumped
+}
+
+const handleSettingsSearchNavigate = async (item) => {
+  if (!item?.setting) return
+
+  const nextTab = item.tab || activeTab.value
+  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : activeTab.value
+  const currentSetting = typeof route.query.setting === 'string' ? route.query.setting : ''
+
+  if (currentTab === nextTab && currentSetting === item.setting) {
+    await jumpToRouteSetting(item.setting)
+    return
+  }
+
+  const nextQuery = {
+    ...route.query,
+    tab: nextTab,
+    setting: item.setting
+  }
+
+  router.replace({ query: nextQuery })
+}
+
 watch(originalPrefs, (newVal) => {
   if (newVal) {
     prefs.value = { ...newVal }
@@ -1002,6 +1037,22 @@ watch(() => route.query.tab, (newTab) => {
     activeTab.value = 'staypoints'
   }
 })
+
+watch(
+  () => [route.query.tab, route.query.setting],
+  ([tab, setting]) => {
+    if (route.path !== '/app/timeline/preferences') return
+    if (!setting || typeof setting !== 'string') return
+
+    const tabChanged = typeof tab === 'string' && tab !== activeTab.value
+    const delayMs = tabChanged ? 240 : 80
+
+    window.setTimeout(() => {
+      void jumpToRouteSetting(setting)
+    }, delayMs)
+  },
+  { immediate: true }
+)
 
 // Lifecycle
 onMounted(() => {
@@ -1050,15 +1101,8 @@ onUnmounted(() => {
   margin-bottom: 2rem;
 }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
 .header-text {
-  flex: 1;
+  margin-bottom: 1rem;
 }
 
 .page-title {
@@ -1075,12 +1119,70 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-.header-actions {
+.header-toolbar {
   display: flex;
-  gap: 1rem;
-  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
+  width: 100%;
+  gap: 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.toolbar-search-group {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.toolbar-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-left: auto;
   justify-content: flex-end;
+}
+
+.toolbar-search {
+  min-width: 14rem;
+}
+
+.toolbar-secondary-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.toolbar-action-group :deep(.p-button),
+.toolbar-secondary-actions :deep(.p-button),
+.toolbar-search :deep(.settings-search-trigger) {
+  min-height: 3.1rem;
+}
+
+.timeline-search-trigger :deep(.settings-search-trigger.p-button.p-button-outlined) {
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+  background: transparent;
+}
+
+.timeline-search-trigger :deep(.settings-search-trigger.p-button.p-button-outlined:hover) {
+  border-color: var(--gp-primary);
+  color: var(--gp-primary);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.toolbar-more-button.p-button.p-button-outlined {
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+}
+
+.toolbar-more-button.p-button.p-button-outlined:hover {
+  border-color: var(--gp-primary);
+  color: var(--gp-primary);
+  background: rgba(59, 130, 246, 0.08);
 }
 
 /* Info Banner */
@@ -1328,19 +1430,38 @@ onUnmounted(() => {
     font-size: 1.5rem;
   }
   
-  .header-content {
-    flex-direction: column;
+  .header-toolbar {
+    width: 100%;
     align-items: stretch;
-    gap: 1.5rem;
+    justify-content: flex-start;
+    gap: 0.65rem;
   }
-  
-  .header-actions {
-    justify-content: stretch;
-    flex-wrap: wrap;
+
+  .toolbar-search-group {
+    width: 100%;
   }
-  
-  .header-actions .p-button {
+
+  .toolbar-action-group {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .toolbar-search {
+    width: 100%;
+  }
+
+  .toolbar-action-group .p-button {
     flex: 1;
+    min-width: 12rem;
+    min-height: 44px;
+  }
+
+  .toolbar-secondary-actions {
+    justify-content: flex-start;
+  }
+
+  .toolbar-secondary-actions .p-button {
     min-height: 44px;
   }
 
@@ -1450,12 +1571,24 @@ onUnmounted(() => {
     font-size: 1rem;
   }
   
-  .header-actions {
+  .toolbar-action-group {
     flex-direction: column;
-    gap: 0.75rem;
+    align-items: stretch;
   }
-  
-  .header-actions .p-button {
+
+  .toolbar-action-group .p-button {
+    width: 100%;
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
+
+  .toolbar-secondary-actions {
+    width: 100%;
+    justify-content: stretch;
+    margin-left: 0;
+  }
+
+  .toolbar-secondary-actions .p-button {
     width: 100%;
     min-height: 48px;
     font-size: 0.95rem;
