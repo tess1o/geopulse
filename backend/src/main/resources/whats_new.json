@@ -1,13 +1,11 @@
 [
   {
-    "version": "1.27.1",
-    "title": "GeoPulse 1.27.1",
+    "version": "1.28.0",
+    "title": "GeoPulse 1.28.0",
     "highlights": [
-      "Added New Version information in main menu and Home page",
-      "Improved k8s helm charts with respect to termination/grace period",
-      "Improved highlighted trip tooltip and coloring the path",
-      "Fixed several issues related to Vector maps",
-      "Fixed wrong longtitude when a new trip is planned (edge case)"
+      "Added button [Add Mising Timeline Data] to manually create Stays/Trips when you didn't have GPS data available",
+      "Added Settings search to main search input and on Profile/Timeline Preferences/Admin Settings pages. Allows to quicker find settings accross the app",
+      "Added rejecting GPS points with negative accuracy (enabled by default)"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
