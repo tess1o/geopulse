@@ -96,7 +96,7 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 
-### Geocoding and GeoNames (38)
+### Geocoding and GeoNames (39)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -111,16 +111,17 @@ Notes:
 | `GEOPULSE_GEOCODING_RECONCILE_ITEM_MAX_ATTEMPTS` | `4` | Maximum attempts per record during geocoding reconciliation jobs Property: \`geocoding.reconcile.item.max-attempts\`. | Positive numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RECONCILE_CIRCUIT_OPEN_WAIT_MS` | `20000` | Wait before retrying reconciliation when circuit breaker is open (milliseconds) Property: \`geocoding.reconcile.circuit-open-wait.ms\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RECONCILE_INTER_ITEM_DELAY_MS` | `1000` | Delay between reconciliation job items (milliseconds) Property: \`geocoding.reconcile.inter-item-delay.ms\`. | Non-negative numeric value. | Backend restart |
-| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `(empty)` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
+| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `photon` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `(empty)` | API Keys (can also be set via encrypted storage in admin panel) Property: \`geocoding.googlemaps.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false` | Property: \`geocoding.provider.googlemaps.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | `(empty)` | Google Maps reverse geocoding language preference sent as the `language` query param. Property: \`geocoding.googlemaps.language\`. | Google supported language code (for example \`en\`, \`uk\`, \`pt-BR\`, \`zh-CN\`) or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | `(empty)` | Property: \`geocoding.mapbox.access-token\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED` | `false` | Property: \`geocoding.provider.mapbox.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED` | `true` | Provider availability flags Property: \`geocoding.provider.nominatim.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_GEOCODING_NOMINATIM_PUBLIC_HOST_FORWARD_SEARCH_ENABLED` | `false` | Allow Nominatim forward search/autocomplete on public \`nominatim.openstreetmap.org\` (self-hosted Nominatim is allowed even when this is \`false\`). Property: \`geocoding.nominatim.public-host-forward-search-enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE` | `(empty)` | Provider availability flags Nominatim geocoding language preference (BCP 47 format: en-US, de, uk, ja, etc.) If not set, no Accept-Language header will be sent (existing behavior) Property: \`geocoding.nominatim.language\`. | BCP 47 language tag (for example \`en-US\`) or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_NOMINATIM_URL` | `https://nominatim.openstreetmap.org` | Provider availability flags Property: \`quarkus.rest-client.nominatim-api.url\`. | Valid URL. | Backend restart |
-| `GEOPULSE_GEOCODING_PHOTON_ENABLED` | `false` | Property: \`geocoding.provider.photon.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_GEOCODING_PHOTON_ENABLED` | `true` | Property: \`geocoding.provider.photon.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` | `(empty)` | Photon geocoding language preference (BCP 47 format: en-US, de, uk, ja, etc.) If not set, no Accept-Language header will be sent (existing behavior) Property: \`geocoding.photon.language\`. | BCP 47 language tag (for example \`en-US\`) or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_PHOTON_URL` | `https://photon.komoot.io` | Property: \`quarkus.rest-client.photon-api.url\`. | Valid URL. | Backend restart |
 | `GEOPULSE_GEOCODING_PRIMARY_PROVIDER` | `nominatim` | Primary geocoding provider (nominatim, photon, googlemaps, mapbox) Property: \`geocoding.provider.primary\`. | One of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |

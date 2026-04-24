@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.googlemaps.*;
 import org.github.tess1o.geopulse.geocoding.model.mapbox.*;
@@ -27,6 +28,7 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         ReverseGeocodingLocationEntity.class,
         FormattableGeocodingResult.class,
         SimpleFormattableResult.class,
+        GeocodingSearchResult.class,
         GoogleMapsAddressComponent.class,
         GoogleMapsGeometry.class,
         GoogleMapsLocation.class,

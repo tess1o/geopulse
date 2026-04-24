@@ -47,6 +47,8 @@ export function useTripReconstructionLocationSync({ segments, tripsStore, favori
         return 'Favorite area'
       case 'geocoding':
         return 'Reverse geocoding'
+      case 'external-search':
+        return 'Search result'
       case 'coordinates':
         return 'Coordinates'
       default:

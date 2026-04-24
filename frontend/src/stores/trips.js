@@ -360,6 +360,30 @@ export const useTripsStore = defineStore('trips', {
         this.error = error.message || 'Failed to resolve plan suggestion'
         throw error
       }
+    },
+
+    async searchPlanLocations(query, options = {}) {
+      this.error = null
+      try {
+        const params = {
+          q: query
+        }
+
+        if (Number.isFinite(options?.lat) && Number.isFinite(options?.lon)) {
+          params.lat = options.lat
+          params.lon = normalizeLongitude(options.lon)
+        }
+
+        if (Number.isFinite(options?.limit)) {
+          params.limit = options.limit
+        }
+
+        const response = await apiService.get('/trips/plan-search', params)
+        return Array.isArray(response?.data) ? response.data : []
+      } catch (error) {
+        this.error = error.message || 'Failed to search locations'
+        throw error
+      }
     }
   }
 })

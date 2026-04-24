@@ -13,7 +13,14 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.github.tess1o.geopulse.geocoding.adapter.MapboxResponseAdapter;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
+import org.github.tess1o.geopulse.geocoding.model.mapbox.MapboxFeature;
+import org.github.tess1o.geopulse.geocoding.model.mapbox.MapboxResponse;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Mapbox geocoding service that handles API calls and response transformation.
@@ -98,5 +105,97 @@ public class MapboxGeocodingService {
      */
     public String getProviderName() {
         return "Mapbox";
+    }
+
+    @Retry
+    @Bulkhead(value = 3, waitingTaskQueue = 15)
+    @CircuitBreaker
+    public Uni<List<GeocodingSearchResult>> forwardSearch(String query, Point biasCenter, int limit) {
+        if (!isEnabled()) {
+            return Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled"));
+        }
+
+        String accessToken = configService.getMapboxAccessToken();
+        if (accessToken.isEmpty()) {
+            return Uni.createFrom().failure(new GeocodingException("Mapbox access token not configured"));
+        }
+
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.length() < 2) {
+            return Uni.createFrom().item(List.of());
+        }
+
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        String proximity = biasCenter == null
+                ? null
+                : String.format("%.6f,%.6f", biasCenter.getX(), biasCenter.getY());
+
+        return mapboxClient.forwardGeocode(safeQuery, accessToken, "poi,address,place,postcode", safeLimit, proximity)
+                .map(response -> mapSearchResponse(response, biasCenter, safeLimit))
+                .onFailure().transform(failure -> {
+                    log.error("Mapbox forward search failed for query='{}'", safeQuery, failure);
+                    return new GeocodingException("Mapbox forward search failed", failure);
+                });
+    }
+
+    private List<GeocodingSearchResult> mapSearchResponse(MapboxResponse response, Point fallbackPoint, int limit) {
+        List<GeocodingSearchResult> mapped = new ArrayList<>();
+        if (response == null || response.getFeatures() == null || response.getFeatures().isEmpty()) {
+            return mapped;
+        }
+
+        for (MapboxFeature feature : response.getFeatures()) {
+            if (mapped.size() >= limit) {
+                break;
+            }
+
+            Point requestPoint = createPoint(feature, fallbackPoint);
+            if (requestPoint == null) {
+                continue;
+            }
+
+            MapboxResponse single = new MapboxResponse();
+            single.setType(response.getType());
+            single.setAttribution(response.getAttribution());
+            single.setFeatures(List.of(feature));
+            single.setQuery(response.getQuery());
+
+            FormattableGeocodingResult adapted = adapter.adapt(single, requestPoint, getProviderName());
+            Point resultPoint = adapted.getResultCoordinates() != null
+                    ? adapted.getResultCoordinates()
+                    : requestPoint;
+
+            if (resultPoint == null) {
+                continue;
+            }
+
+            mapped.add(GeocodingSearchResult.builder()
+                    .title(adapted.getFormattedDisplayName())
+                    .latitude(resultPoint.getY())
+                    .longitude(resultPoint.getX())
+                    .city(adapted.getCity())
+                    .country(adapted.getCountry())
+                    .providerName(getProviderName())
+                    .build());
+        }
+
+        return mapped;
+    }
+
+    private Point createPoint(MapboxFeature feature, Point fallbackPoint) {
+        if (feature != null
+                && feature.getGeometry() != null
+                && feature.getGeometry().getCoordinates() != null
+                && feature.getGeometry().getCoordinates().size() >= 2) {
+            try {
+                return GeoUtils.createPoint(
+                        feature.getGeometry().getCoordinates().get(0),
+                        feature.getGeometry().getCoordinates().get(1)
+                );
+            } catch (Exception ignored) {
+                // Fall through to fallback point.
+            }
+        }
+        return fallbackPoint;
     }
 }

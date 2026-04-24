@@ -7,11 +7,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.service.external.GoogleMapsGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
 import org.locationtech.jts.geom.Point;
+
+import java.util.List;
 
 /**
  * Factory service to handle multiple geocoding providers with failover.
@@ -129,5 +132,59 @@ public class GeocodingProviderFactory {
                 providerName, requestCoordinates.getX(), requestCoordinates.getY());
 
         return callProvider(providerName, requestCoordinates);
+    }
+
+    /**
+     * Forward search by query text using primary provider with optional fallback.
+     */
+    public Uni<List<GeocodingSearchResult>> forwardSearch(String query, Point biasCenter, int limit) {
+        String primaryProvider = configService.getPrimaryProvider();
+        log.info("Primary provider: {}", primaryProvider);
+        Uni<List<GeocodingSearchResult>> primaryResult = callProviderForward(primaryProvider, query, biasCenter, limit);
+
+        String fallbackProvider = configService.getFallbackProvider();
+        if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(primaryProvider)) {
+            return primaryResult.onFailure().recoverWithUni(failure -> {
+                log.warn("Primary provider '{}' forward search failed, trying fallback provider '{}'",
+                        primaryProvider, fallbackProvider, failure);
+                log.warn("Forward search failure details: type={}, message={}",
+                        failure.getClass().getName(),
+                        failure.getMessage());
+                return callProviderForward(fallbackProvider, query, biasCenter, limit);
+            });
+        }
+
+        return primaryResult;
+    }
+
+    private Uni<List<GeocodingSearchResult>> callProviderForward(String providerName, String query, Point biasCenter, int limit) {
+        log.info("Calling {} with query {}", providerName, query);
+        return switch (providerName.toLowerCase()) {
+            case "nominatim" -> {
+                if (!nominatimService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
+                }
+                yield nominatimService.forwardSearch(query, biasCenter, limit);
+            }
+            case "googlemaps" -> {
+                if (!googleMapsService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled or not configured"));
+                }
+                yield googleMapsService.forwardSearch(query, biasCenter, limit);
+            }
+            case "mapbox" -> {
+                if (!mapboxService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled or not configured"));
+                }
+                yield mapboxService.forwardSearch(query, biasCenter, limit);
+            }
+            case "photon" -> {
+                if (!photonService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Photon provider is disabled or not configured"));
+                }
+                yield photonService.forwardSearch(query, biasCenter, limit);
+            }
+            default -> Uni.createFrom().failure(new GeocodingException("Unknown provider: " + providerName));
+        };
     }
 }

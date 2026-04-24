@@ -37,11 +37,18 @@
         :context-points="contextPoints"
         :context-trip-lines="contextTripLines"
         :id-prefix="`trip-reconstruction-${mapId}`"
+        :search-query="searchQuery"
+        :search-suggestions="searchSuggestions"
+        :search-loading="isSearchLoading"
+        :search-error="searchError"
         @map-ready="handleMapReady"
         @map-click="handleMapClick"
         @stay-dragged="handleStayDragged"
         @waypoint-dragged="handleWaypointDragged"
         @waypoint-removed="handleWaypointRemoved"
+        @search-complete="handleSearchComplete"
+        @search-select="handleSearchSelect"
+        @update:search-query="searchQuery = $event"
       >
         <TripReconstructionPreviewSummary
           :preview-result="previewResult"
@@ -143,6 +150,11 @@ const isPreviewLoading = ref(false)
 const isCommitLoading = ref(false)
 const previewResult = ref(null)
 const previewWarnings = ref([])
+const searchQuery = ref('')
+const searchSuggestions = ref([])
+const isSearchLoading = ref(false)
+const searchError = ref('')
+const searchRequestToken = ref(0)
 
 const dialogHeader = computed(() => (props.mode === 'trip' ? 'Add Missing Trip Data' : 'Add Missing Timeline Data'))
 const reconstructionHelpMessage = computed(() => (
@@ -236,6 +248,84 @@ const locationSourceLabel = (segment) => {
 const contextPoints = computed(() => getContextPoints())
 const contextTripLines = computed(() => getContextTripLines())
 
+const normalizeSuggestionId = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null
+}
+
+const isLocalSearchSource = (sourceType) => {
+  return sourceType === 'favorite-point' || sourceType === 'favorite-area' || sourceType === 'geocoding'
+}
+
+const buildProviderMetaLine = (subtitle, providerName) => {
+  const safeSubtitle = subtitle?.trim()
+  if (!safeSubtitle) {
+    return null
+  }
+
+  const safeProviderName = providerName?.trim()
+  if (!safeProviderName) {
+    return safeSubtitle
+  }
+
+  const providerLower = safeProviderName.toLowerCase()
+  const parts = safeSubtitle
+    .split('•')
+    .map((part) => part.trim())
+    .filter((part) => part && part.toLowerCase() !== providerLower)
+
+  return parts.length > 0 ? parts.join(' • ') : null
+}
+
+const getSearchBias = () => {
+  const active = activeSegment.value
+  if (active?.segmentType === 'STAY' && Number.isFinite(active.latitude) && Number.isFinite(active.longitude)) {
+    return { lat: active.latitude, lon: active.longitude }
+  }
+
+  if (active?.segmentType === 'TRIP' && Array.isArray(active.waypoints) && active.waypoints.length > 0) {
+    const waypoint = active.waypoints[active.waypoints.length - 1]
+    if (Number.isFinite(waypoint?.latitude) && Number.isFinite(waypoint?.longitude)) {
+      return { lat: waypoint.latitude, lon: waypoint.longitude }
+    }
+  }
+
+  const center = mapInstance.value?.getCenter?.()
+  if (Number.isFinite(center?.lat) && Number.isFinite(center?.lng)) {
+    return { lat: center.lat, lon: center.lng }
+  }
+
+  if (Array.isArray(mapCenter.value) && mapCenter.value.length >= 2) {
+    const [lat, lon] = mapCenter.value
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { lat, lon }
+    }
+  }
+
+  return null
+}
+
+const buildSuggestionDisplayMeta = (suggestion) => {
+  const sourceType = suggestion?.sourceType || ''
+  if (isLocalSearchSource(sourceType)) {
+    const subtitle = suggestion?.subtitle?.trim() || null
+    return { groupLabel: 'Saved place', metaLine: subtitle }
+  }
+
+  const providerName = suggestion?.providerName?.trim() || ''
+  const groupLabel = providerName ? `Provider: ${providerName}` : 'Provider'
+  const metaLine = buildProviderMetaLine(suggestion?.subtitle, providerName)
+  return { groupLabel, metaLine }
+}
+
+const resetSearchState = () => {
+  searchQuery.value = ''
+  searchSuggestions.value = []
+  isSearchLoading.value = false
+  searchError.value = ''
+  searchRequestToken.value += 1
+}
+
 const handleMapReady = (map) => {
   mapInstance.value = map
   renderActiveViewport()
@@ -267,6 +357,120 @@ const handleWaypointDragged = ({ segmentIndex, waypointIndex, latitude, longitud
 
 const handleWaypointRemoved = ({ segmentIndex, waypointIndex }) => {
   removeWaypoint(segmentIndex, waypointIndex)
+}
+
+const handleSearchComplete = async (event) => {
+  const query = event?.query?.trim() || ''
+  searchError.value = ''
+
+  if (query.length < 2) {
+    searchSuggestions.value = []
+    isSearchLoading.value = false
+    searchRequestToken.value += 1
+    return
+  }
+
+  const requestToken = ++searchRequestToken.value
+  isSearchLoading.value = true
+
+  try {
+    const bias = getSearchBias()
+    const results = await tripsStore.searchPlanLocations(query, {
+      lat: bias?.lat,
+      lon: bias?.lon,
+      limit: 12
+    })
+
+    if (requestToken !== searchRequestToken.value) {
+      return
+    }
+
+    searchSuggestions.value = (Array.isArray(results) ? results : []).map((result) => {
+      const title = result?.title?.trim()
+      const latitude = Number(result?.latitude)
+      const longitude = Number(result?.longitude)
+      const displayName = title || (Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? `Planned place (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`
+        : 'Planned place')
+
+      const { groupLabel, metaLine } = buildSuggestionDisplayMeta(result)
+
+      return {
+        ...result,
+        displayName,
+        groupLabel,
+        metaLine
+      }
+    })
+  } catch (error) {
+    if (requestToken !== searchRequestToken.value) {
+      return
+    }
+    searchError.value = error.response?.data?.message || error.message || 'Failed to search places.'
+  } finally {
+    if (requestToken === searchRequestToken.value) {
+      isSearchLoading.value = false
+    }
+  }
+}
+
+const applySelectedSuggestionToStay = (segmentIndex, suggestion) => {
+  const latitude = Number(suggestion?.latitude)
+  const longitude = Number(suggestion?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  const sourceType = suggestion?.sourceType || 'coordinates'
+  const shouldResolveName = !isLocalSearchSource(sourceType)
+
+  updateStayLocation(segmentIndex, latitude, longitude, {
+    reframe: true,
+    resolveName: shouldResolveName
+  })
+
+  const segment = segments.value[segmentIndex]
+  if (!segment || segment.segmentType !== 'STAY') {
+    return
+  }
+
+  if (shouldResolveName) {
+    return
+  }
+
+  segment.locationName = suggestion?.title?.trim() || segment.locationName
+  segment.locationSourceType = sourceType
+  segment.locationFavoriteId = normalizeSuggestionId(suggestion?.favoriteId)
+  segment.locationFavoriteType = suggestion?.favoriteType || null
+  segment.locationGeocodingId = normalizeSuggestionId(suggestion?.geocodingId)
+  segment.locationResolvedName = suggestion?.title?.trim() || null
+  segment.locationNameEdited = false
+}
+
+const handleSearchSelect = (suggestion) => {
+  if (!activeSegment.value) {
+    return
+  }
+
+  const latitude = Number(suggestion?.latitude)
+  const longitude = Number(suggestion?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  const segmentIndex = activeSegmentIndex.value
+
+  if (activeSegment.value.segmentType === 'STAY') {
+    applySelectedSuggestionToStay(segmentIndex, suggestion)
+  } else if (activeSegment.value.segmentType === 'TRIP') {
+    addWaypoint(segmentIndex, latitude, longitude)
+    nextTick(() => {
+      renderActiveViewport()
+    })
+  }
+
+  searchQuery.value = ''
+  searchSuggestions.value = []
 }
 
 const previewReconstruction = async () => {
@@ -399,6 +603,7 @@ watch(() => props.visible, (nextVisible) => {
   locationSync?.resetLocationResolutionState?.()
   previewResult.value = null
   previewWarnings.value = []
+  resetSearchState()
 
   nextTick(() => {
     renderActiveViewport()
@@ -408,11 +613,15 @@ watch(() => props.visible, (nextVisible) => {
 watch(internalVisible, (nextVisible) => {
   if (!nextVisible) {
     previewWarnings.value = []
+    resetSearchState()
     emit('close')
   }
 })
 
 watch(activeSegmentId, () => {
+  searchSuggestions.value = []
+  searchError.value = ''
+
   const shouldReframe = consumeActiveSegmentReframeFlag()
   if (!shouldReframe) {
     return

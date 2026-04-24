@@ -56,6 +56,13 @@ public class GeocodingConfigurationService {
     }
 
     /**
+     * Check if Nominatim forward search is allowed for the public nominatim.openstreetmap.org host.
+     */
+    public boolean isNominatimPublicHostForwardSearchEnabled() {
+        return settingsService.getBoolean("geocoding.nominatim.public-host-forward-search-enabled");
+    }
+
+    /**
      * Get custom Nominatim URL if configured.
      * @return Custom URL or empty if using default
      */

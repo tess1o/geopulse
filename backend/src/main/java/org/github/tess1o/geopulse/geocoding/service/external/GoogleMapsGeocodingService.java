@@ -13,7 +13,14 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.github.tess1o.geopulse.geocoding.adapter.GoogleMapsResponseAdapter;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
+import org.github.tess1o.geopulse.geocoding.model.googlemaps.GoogleMapsResponse;
+import org.github.tess1o.geopulse.geocoding.model.googlemaps.GoogleMapsResult;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Google Maps geocoding service that handles API calls and response transformation.
@@ -106,5 +113,112 @@ public class GoogleMapsGeocodingService {
      */
     public String getProviderName() {
         return "GoogleMaps";
+    }
+
+    @Retry
+    @Bulkhead(value = 5, waitingTaskQueue = 20)
+    @CircuitBreaker
+    public Uni<List<GeocodingSearchResult>> forwardSearch(String query, Point biasCenter, int limit) {
+        if (!isEnabled()) {
+            return Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled"));
+        }
+
+        String apiKey = configService.getGoogleMapsApiKey();
+        if (apiKey.isEmpty()) {
+            return Uni.createFrom().failure(new GeocodingException("Google Maps API key not configured"));
+        }
+
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.length() < 2) {
+            return Uni.createFrom().item(List.of());
+        }
+
+        String language = configService.getGoogleMapsLanguage().orElse(null);
+        String bounds = buildBiasBounds(biasCenter);
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+
+        return googleMapsClient.forwardGeocode(safeQuery, apiKey, language, bounds)
+                .map(response -> mapSearchResponse(response, biasCenter, safeLimit))
+                .onFailure().transform(failure -> {
+                    log.error("Google Maps forward search failed for query='{}'", safeQuery, failure);
+                    return new GeocodingException("Google Maps forward search failed", failure);
+                });
+    }
+
+    private List<GeocodingSearchResult> mapSearchResponse(GoogleMapsResponse response, Point fallbackPoint, int limit) {
+        List<GeocodingSearchResult> mapped = new ArrayList<>();
+        if (response == null || response.getResults() == null || response.getResults().isEmpty()) {
+            return mapped;
+        }
+
+        for (GoogleMapsResult result : response.getResults()) {
+            if (mapped.size() >= limit) {
+                break;
+            }
+
+            Point requestPoint = createPoint(result, fallbackPoint);
+            if (requestPoint == null) {
+                continue;
+            }
+
+            GoogleMapsResponse single = new GoogleMapsResponse();
+            single.setStatus(response.getStatus());
+            single.setErrorMessage(response.getErrorMessage());
+            single.setResults(List.of(result));
+
+            FormattableGeocodingResult adapted = adapter.adapt(single, requestPoint, getProviderName());
+            Point resultPoint = adapted.getResultCoordinates() != null
+                    ? adapted.getResultCoordinates()
+                    : requestPoint;
+
+            if (resultPoint == null) {
+                continue;
+            }
+
+            mapped.add(GeocodingSearchResult.builder()
+                    .title(adapted.getFormattedDisplayName())
+                    .latitude(resultPoint.getY())
+                    .longitude(resultPoint.getX())
+                    .city(adapted.getCity())
+                    .country(adapted.getCountry())
+                    .providerName(getProviderName())
+                    .build());
+        }
+
+        return mapped;
+    }
+
+    private Point createPoint(GoogleMapsResult result, Point fallbackPoint) {
+        if (result != null
+                && result.getGeometry() != null
+                && result.getGeometry().getLocation() != null) {
+            try {
+                return GeoUtils.createPoint(
+                        result.getGeometry().getLocation().getLng(),
+                        result.getGeometry().getLocation().getLat()
+                );
+            } catch (Exception ignored) {
+                // Fall through to fallback point.
+            }
+        }
+        return fallbackPoint;
+    }
+
+    private String buildBiasBounds(Point biasCenter) {
+        if (biasCenter == null) {
+            return null;
+        }
+
+        double lat = biasCenter.getY();
+        double lon = biasCenter.getX();
+        double latDelta = 0.35;
+        double lonDelta = 0.35;
+
+        double south = Math.max(-90.0, lat - latDelta);
+        double west = Math.max(-180.0, lon - lonDelta);
+        double north = Math.min(90.0, lat + latDelta);
+        double east = Math.min(180.0, lon + lonDelta);
+
+        return String.format("%.6f,%.6f|%.6f,%.6f", south, west, north, east);
     }
 }

@@ -73,6 +73,10 @@ export const SETTING_METADATA = {
     label: 'Nominatim',
     description: 'Enable Nominatim geocoding provider'
   },
+  'geocoding.nominatim.public-host-forward-search-enabled': {
+    label: 'Nominatim Forward Search',
+    description: 'Allow Nominatim search/autocomplete on public nominatim.openstreetmap.org (self-hosted Nominatim is always allowed)',
+  },
   'geocoding.photon.enabled': {
     label: 'Photon',
     description: 'Enable Photon geocoding provider'

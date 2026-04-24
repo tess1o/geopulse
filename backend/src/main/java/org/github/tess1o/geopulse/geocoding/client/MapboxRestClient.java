@@ -13,7 +13,7 @@ import org.github.tess1o.geopulse.geocoding.model.mapbox.MapboxResponse;
 @Path("/geocoding/v5/mapbox.places")
 @RegisterRestClient(configKey = "mapbox-api")
 public interface MapboxRestClient {
-    
+
     @GET
     @Path("/{longitude},{latitude}.json")
     @Produces(MediaType.APPLICATION_JSON)
@@ -22,4 +22,14 @@ public interface MapboxRestClient {
             @PathParam("latitude") double latitude,
             @QueryParam("access_token") String accessToken,
             @QueryParam("types") String types);
+
+    @GET
+    @Path("/{query}.json")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<MapboxResponse> forwardGeocode(
+            @PathParam("query") String query,
+            @QueryParam("access_token") String accessToken,
+            @QueryParam("types") String types,
+            @QueryParam("limit") int limit,
+            @QueryParam("proximity") String proximity);
 }

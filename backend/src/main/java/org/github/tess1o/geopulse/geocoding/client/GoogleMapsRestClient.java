@@ -12,7 +12,7 @@ import org.github.tess1o.geopulse.geocoding.model.googlemaps.GoogleMapsResponse;
 @Path("/geocode")
 @RegisterRestClient(configKey = "googlemaps-api")
 public interface GoogleMapsRestClient {
-    
+
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON)
@@ -21,4 +21,13 @@ public interface GoogleMapsRestClient {
             @QueryParam("key") String apiKey,
             @QueryParam("result_type") String resultType,
             @QueryParam("language") String language);
+
+    @GET
+    @Path("/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    Uni<GoogleMapsResponse> forwardGeocode(
+            @QueryParam("address") String address,
+            @QueryParam("key") String apiKey,
+            @QueryParam("language") String language,
+            @QueryParam("bounds") String bounds);
 }

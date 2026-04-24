@@ -166,7 +166,9 @@ const generalSettings = computed(() =>
 )
 
 const providerAvailabilitySettings = computed(() =>
-  geocodingSettings.value.filter(s => s.key.includes('.enabled'))
+  geocodingSettings.value.filter(s =>
+    s.key.includes('.enabled') || s.key === 'geocoding.nominatim.public-host-forward-search-enabled'
+  )
 )
 
 const providerConfigSettings = computed(() =>

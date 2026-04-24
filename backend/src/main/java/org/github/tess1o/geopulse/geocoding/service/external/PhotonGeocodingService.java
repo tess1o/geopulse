@@ -14,9 +14,14 @@ import org.github.tess1o.geopulse.geocoding.client.PhotonRestClient;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
+import org.github.tess1o.geopulse.geocoding.model.photon.PhotonResponse;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -123,5 +128,93 @@ public class PhotonGeocodingService {
      */
     public String getProviderName() {
         return "Photon";
+    }
+
+    @Retry
+    @Bulkhead(value = 2, waitingTaskQueue = 10)
+    @CircuitBreaker
+    public Uni<List<GeocodingSearchResult>> forwardSearch(String query, Point biasCenter, int limit) {
+        if (!isEnabled()) {
+            return Uni.createFrom().failure(new GeocodingException("Photon provider is disabled"));
+        }
+
+        String safeQuery = query == null ? "" : query.trim();
+        if (safeQuery.length() < 2) {
+            return Uni.createFrom().item(List.of());
+        }
+
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        String language = configService.getPhotonLanguage().orElse(null);
+        Double biasLat = biasCenter == null ? null : biasCenter.getY();
+        Double biasLon = biasCenter == null ? null : biasCenter.getX();
+
+        return getClient().search(
+                        safeQuery,
+                        safeLimit,
+                        biasLat,
+                        biasLon,
+                        biasCenter == null ? null : 12,
+                        language,
+                        language
+                )
+                .map(response -> mapSearchResponse(response, biasCenter))
+                .onFailure().transform(failure -> {
+                    log.error("Photon forward search failed for query='{}'", safeQuery, failure);
+                    return new GeocodingException("Photon forward search failed", failure);
+                });
+    }
+
+    private List<GeocodingSearchResult> mapSearchResponse(PhotonResponse response, Point fallbackPoint) {
+        List<GeocodingSearchResult> mapped = new ArrayList<>();
+        if (response == null || response.getFeatures() == null || response.getFeatures().isEmpty()) {
+            return mapped;
+        }
+
+        for (PhotonResponse.Feature feature : response.getFeatures()) {
+            if (feature == null) {
+                continue;
+            }
+
+            Point requestPoint = createPoint(feature, fallbackPoint);
+            if (requestPoint == null) {
+                continue;
+            }
+
+            PhotonResponse single = new PhotonResponse();
+            single.setType(response.getType());
+            single.setFeatures(List.of(feature));
+
+            FormattableGeocodingResult adapted = adapter.adapt(single, requestPoint, getProviderName());
+            Point resultPoint = adapted.getResultCoordinates() != null
+                    ? adapted.getResultCoordinates()
+                    : requestPoint;
+
+            if (resultPoint == null) {
+                continue;
+            }
+
+            mapped.add(GeocodingSearchResult.builder()
+                    .title(adapted.getFormattedDisplayName())
+                    .latitude(resultPoint.getY())
+                    .longitude(resultPoint.getX())
+                    .city(adapted.getCity())
+                    .country(adapted.getCountry())
+                    .providerName(getProviderName())
+                    .build());
+        }
+
+        return mapped;
+    }
+
+    private Point createPoint(PhotonResponse.Feature feature, Point fallbackPoint) {
+        PhotonResponse.Geometry geometry = feature.getGeometry();
+        if (geometry != null && geometry.getLongitude() != null && geometry.getLatitude() != null) {
+            try {
+                return GeoUtils.createPoint(geometry.getLongitude(), geometry.getLatitude());
+            } catch (Exception ignored) {
+                // Fall through to fallback point.
+            }
+        }
+        return fallbackPoint;
     }
 }

@@ -68,6 +68,8 @@ public class SystemSettingsService {
         // Geocoding settings - Provider Availability
         SETTING_DEFINITIONS.put("geocoding.nominatim.enabled",
                 new SettingDefinition("geocoding.provider.nominatim.enabled", "true", ValueType.BOOLEAN, "geocoding", "Enable Nominatim geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.nominatim.public-host-forward-search-enabled",
+                new SettingDefinition("geocoding.nominatim.public-host-forward-search-enabled", "false", ValueType.BOOLEAN, "geocoding", "Allow Nominatim forward search on public nominatim.openstreetmap.org (self-hosted remains allowed)"));
         SETTING_DEFINITIONS.put("geocoding.nominatim.url",
                 new SettingDefinition("quarkus.rest-client.nominatim-api.url", "", ValueType.STRING, "geocoding", "Custom Nominatim server URL (optional)"));
         SETTING_DEFINITIONS.put("geocoding.nominatim.language",
