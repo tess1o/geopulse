@@ -426,10 +426,14 @@
               <Password
                   id="password"
                   v-model="linkForm.password"
-                  placeholder="Enter password"
+                  placeholder="Enter password (6-100 characters)"
                   class="form-input"
                   :feedback="false"
+                  :class="{'p-invalid': formErrors.password}"
               />
+              <small v-if="formErrors.password" class="p-error">
+                {{ formErrors.password }}
+              </small>
             </div>
 
             <div class="form-group">
@@ -646,6 +650,7 @@ const linkForm = reactive({
 })
 
 const formErrors = reactive({
+  password: null,
   custom_map_tile_url: null,
   custom_map_style_url: null
 })
@@ -685,6 +690,13 @@ watch(() => linkForm.use_custom_style, (enabled) => {
   }
 })
 
+watch(() => linkForm.has_password, (enabled) => {
+  if (!enabled) {
+    linkForm.password = ''
+    formErrors.password = null
+  }
+})
+
 // Methods
 const resetForm = () => {
   linkForm.name = ''
@@ -698,6 +710,7 @@ const resetForm = () => {
   linkForm.custom_map_tile_url = ''
   linkForm.use_custom_style = false
   linkForm.custom_map_style_url = ''
+  formErrors.password = null
   formErrors.custom_map_tile_url = null
   formErrors.custom_map_style_url = null
 }
@@ -734,8 +747,17 @@ const editLink = (link) => {
 
 const submitLinkForm = async () => {
   // Clear previous errors
+  formErrors.password = null
   formErrors.custom_map_tile_url = null
   formErrors.custom_map_style_url = null
+
+  if (linkForm.has_password) {
+    const passwordLength = (linkForm.password || '').length
+    if (passwordLength < 6 || passwordLength > 100) {
+      formErrors.password = 'Password must be between 6 and 100 characters'
+      return
+    }
+  }
 
   // Validate custom tiles if enabled
   if (linkForm.use_custom_tiles) {
@@ -818,7 +840,7 @@ const submitLinkForm = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to save share link',
+      detail: error.userMessage || error.message || 'Failed to save share link',
       life: 5000
     })
   }
@@ -844,7 +866,7 @@ const deleteLink = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to delete share link',
+      detail: error.userMessage || error.message || 'Failed to delete share link',
       life: 5000
     })
   }
@@ -1285,6 +1307,11 @@ onMounted(async () => {
 
 .form-input {
   width: 100%;
+}
+
+.p-error {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .checkbox-wrapper {

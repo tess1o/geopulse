@@ -17,6 +17,22 @@ function getErrorText(value) {
   return String(value)
 }
 
+function getConstraintViolationMessage(data) {
+  if (!data || !Array.isArray(data.violations)) {
+    return null
+  }
+
+  const violationMessages = data.violations
+    .map((violation) => violation?.message)
+    .filter((message) => typeof message === 'string' && message.trim().length > 0)
+
+  if (violationMessages.length === 0) {
+    return null
+  }
+
+  return [...new Set(violationMessages)].join(' ')
+}
+
 /**
  * Convert API/Network errors into user-friendly messages
  * @param {Error} error - The original error object
@@ -64,10 +80,15 @@ export function formatError(error) {
 
     switch (status) {
       case 400:
-        formattedError.title = 'Invalid Request'
-        formattedError.message = data?.message || 'The request could not be processed. Please check your input and try again.'
-        formattedError.canRetry = true
-        break
+        {
+          const constraintViolationMessage = getConstraintViolationMessage(data)
+          formattedError.title = 'Invalid Request'
+          formattedError.message = constraintViolationMessage ||
+            data?.message ||
+            'The request could not be processed. Please check your input and try again.'
+          formattedError.canRetry = true
+          break
+        }
 
       case 401:
         formattedError.title = 'Authentication Required'

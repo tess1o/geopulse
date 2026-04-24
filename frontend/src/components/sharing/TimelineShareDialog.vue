@@ -152,7 +152,7 @@
         <Password id="password" v-model="formData.password" toggleMask
                   :feedback="false" class="w-full"
                   :class="{'p-invalid': errors.password}"
-                  placeholder="Enter password (min 6 characters)" />
+                  placeholder="Enter password (6-100 characters)" />
         <small v-if="errors.password" class="p-error">{{ errors.password }}</small>
       </div>
     </div>
@@ -346,6 +346,13 @@ watch(() => formData.value.use_custom_style, (enabled) => {
   }
 })
 
+watch(() => formData.value.has_password, (enabled) => {
+  if (!enabled) {
+    formData.value.password = ''
+    errors.value.password = null
+  }
+})
+
 function validateForm() {
   errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
   let isValid = true
@@ -367,9 +374,12 @@ function validateForm() {
     }
   }
 
-  if (formData.value.has_password && (!formData.value.password || formData.value.password.length < 2)) {
-    errors.value.password = 'Password must be at least 2 characters'
-    isValid = false
+  if (formData.value.has_password) {
+    const passwordLength = (formData.value.password || '').length
+    if (passwordLength < 6 || passwordLength > 100) {
+      errors.value.password = 'Password must be between 6 and 100 characters'
+      isValid = false
+    }
   }
 
   if (formData.value.use_custom_tiles) {
@@ -527,6 +537,11 @@ function onHide() {
 .field label {
   font-weight: 600;
   font-size: 0.95rem;
+}
+
+.p-error {
+  color: #dc2626;
+  font-weight: 600;
 }
 
 .field-checkbox {

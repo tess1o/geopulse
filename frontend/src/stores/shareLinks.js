@@ -88,7 +88,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length;
             } catch (error) {
                 console.error('Failed to fetch share links:', error);
-                this.setError(error.message || 'Failed to fetch share links');
+                this.setError(error.userMessage || error.message || 'Failed to fetch share links');
                 throw error;
             } finally {
                 this.setLoading(false);
@@ -122,7 +122,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 }
                 return response
             } catch (error) {
-                this.setError(error.message || 'Failed to create share link')
+                this.setError(error.userMessage || error.message || 'Failed to create share link')
                 throw error
             } finally {
                 this.setLoading(false)
@@ -142,7 +142,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 }
                 return response
             } catch (error) {
-                this.setError(error.message || 'Failed to update share link')
+                this.setError(error.userMessage || error.message || 'Failed to update share link')
                 throw error
             } finally {
                 this.setLoading(false)
@@ -165,7 +165,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                     }
                 }
             } catch (error) {
-                this.setError(error.message || 'Failed to delete share link')
+                this.setError(error.userMessage || error.message || 'Failed to delete share link')
                 throw error
             } finally {
                 this.setLoading(false)
@@ -181,7 +181,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedLocationInfo = response
                 return response
             } catch (error) {
-                this.setError(error.message || 'Link not found or expired')
+                this.setError(error.userMessage || error.message || 'Link not found or expired')
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -219,7 +219,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedLocationData = response
                 return response
             } catch (error) {
-                this.setError(error.message || 'Failed to fetch location data')
+                this.setError(error.userMessage || error.message || 'Failed to fetch location data')
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -320,7 +320,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedTimelineData = timelineArray
                 return timelineArray
             } catch (error) {
-                this.setError(error.message || 'Failed to fetch timeline data')
+                this.setError(error.userMessage || error.message || 'Failed to fetch timeline data')
                 throw error
             } finally {
                 this.sharedLocationLoading = false
