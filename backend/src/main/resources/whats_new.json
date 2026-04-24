@@ -1,11 +1,11 @@
 [
   {
-    "version": "1.28.0",
-    "title": "GeoPulse 1.28.0",
+    "version": "1.28.1",
+    "title": "GeoPulse 1.28.1",
     "highlights": [
-      "Added button [Add Mising Timeline Data] to manually create Stays/Trips when you didn't have GPS data available",
-      "Added Settings search to main search input and on Profile/Timeline Preferences/Admin Settings pages. Allows to quicker find settings accross the app",
-      "Added rejecting GPS points with negative accuracy (enabled by default)"
+      "Added Search option on the [Add Missing Timeline Data] journey. You can search for the place from your selected Geocoding provider",
+      "Improved UI/UX for [Edit Trip] dialog",
+      "Improved UI validations on [Create Share Links] journey"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
