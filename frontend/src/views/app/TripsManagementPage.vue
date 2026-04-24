@@ -177,7 +177,7 @@
       v-model:visible="showTripDialog"
       modal
       :header="isEditMode ? 'Edit Trip Plan' : 'Create Trip Plan'"
-      class="gp-dialog-md"
+      class="gp-dialog-lg"
       @hide="resetTripForm"
     >
       <div class="grid">
@@ -200,12 +200,21 @@
             v-model="tripDateRange"
             selectionMode="range"
             class="w-full"
-            :manualInput="false"
+            :manualInput="true"
+            iconDisplay="input"
             :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+            :placeholder="tripDateRangePlaceholder"
+            append-to="body"
+            panel-class="trip-date-range-panel"
             :class="{ 'p-invalid': formErrors.dateRange }"
           />
-          <small v-if="formErrors.dateRange" class="p-error">{{ formErrors.dateRange }}</small>
-          <small v-else class="field-hint">{{ tripDateRangeHint }}</small>
+          <div class="date-range-help">
+            <small v-if="formErrors.dateRange" class="p-error">{{ formErrors.dateRange }}</small>
+            <template v-else>
+              <small class="field-hint">{{ tripDateRangeHint }}</small>
+              <small class="field-hint field-hint-strong">Tip: click month or year in the calendar header to jump faster.</small>
+            </template>
+          </div>
         </div>
 
         <div class="col-12">
@@ -429,6 +438,15 @@ const tripDateRangeHint = computed(() => {
   if (!isEditMode.value) return 'Leave empty to create this plan as unplanned.'
   if (editingTripWasUnplanned.value) return 'Add both dates to schedule this trip.'
   return 'Date range is required for scheduled trips.'
+})
+const tripDateRangePlaceholder = computed(() => {
+  const dateTokenByFormat = {
+    MDY: 'MM/DD/YYYY',
+    DMY: 'DD/MM/YYYY',
+    YMD: 'YYYY-MM-DD'
+  }
+  const token = dateTokenByFormat[timezone.getDateFormat()] || 'MM/DD/YYYY'
+  return `${token} - ${token}`
 })
 
 const filteredTrips = computed(() => {
@@ -971,6 +989,24 @@ onMounted(async () => {
   display: block;
   margin-top: var(--gp-spacing-xs);
   color: var(--gp-text-secondary);
+}
+
+.field-hint-strong {
+  color: var(--gp-text-primary);
+}
+
+.date-range-help {
+  margin-top: var(--gp-spacing-xs);
+  margin-bottom: var(--gp-spacing-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.date-range-help .field-hint,
+.date-range-help .p-error {
+  margin-top: 0;
+  line-height: 1.35;
 }
 
 .color-row {

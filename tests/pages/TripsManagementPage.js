@@ -66,6 +66,61 @@ export class TripsManagementPage {
     await this.closeDatePickerPanelIfOpen();
   }
 
+  async expectDateRangeInputEditable() {
+    const input = this.page.locator(this.selectors.dateRangeInput).first();
+    const isReadOnly = await input.evaluate((element) => element.readOnly);
+    expect(isReadOnly).toBe(false);
+  }
+
+  async selectDateRangeByYearAndDay({ targetYear, monthIndex = 0, startDay = 10, endDay = 15 }) {
+    await this.page.locator(this.selectors.dateRangeInput).first().click({ force: true });
+    const pickerPanel = this.page.locator('.p-datepicker-panel:visible').first();
+    await pickerPanel.waitFor({ state: 'visible', timeout: 5000 });
+
+    const yearButton = pickerPanel.locator('.p-datepicker-select-year').first();
+    await yearButton.click();
+
+    while (true) {
+      const yearCell = pickerPanel
+        .locator('.p-datepicker-year-view .p-datepicker-year', { hasText: String(targetYear) })
+        .first();
+      if (await yearCell.isVisible().catch(() => false)) {
+        await yearCell.click();
+        break;
+      }
+
+      const decadeLabel = (await pickerPanel.locator('.p-datepicker-decade').first().innerText()).trim();
+      const match = decadeLabel.match(/(\d{4})\s*-\s*(\d{4})/);
+      if (!match) throw new Error(`Unexpected decade label in DatePicker: ${decadeLabel}`);
+
+      const start = Number(match[1]);
+      const end = Number(match[2]);
+      if (targetYear < start) {
+        await pickerPanel.locator('.p-datepicker-prev-button').first().click();
+      } else if (targetYear > end) {
+        await pickerPanel.locator('.p-datepicker-next-button').first().click();
+      } else {
+        throw new Error(`Year ${targetYear} should be visible but was not found.`);
+      }
+    }
+
+    const monthCell = pickerPanel
+      .locator('.p-datepicker-month-view .p-datepicker-month:not(.p-disabled)')
+      .nth(monthIndex);
+    await monthCell.click();
+
+    const startButton = pickerPanel
+      .locator('.p-datepicker-day-view td .p-datepicker-day[aria-disabled="false"]', { hasText: String(startDay) })
+      .first();
+    const endButton = pickerPanel
+      .locator('.p-datepicker-day-view td .p-datepicker-day[aria-disabled="false"]', { hasText: String(endDay) })
+      .first();
+
+    await startButton.click();
+    await endButton.click();
+    await this.closeDatePickerPanelIfOpen();
+  }
+
   async closeDatePickerPanelIfOpen() {
     const panel = this.page.locator('.p-datepicker-panel:visible').first();
     const isVisible = await panel.isVisible().catch(() => false);

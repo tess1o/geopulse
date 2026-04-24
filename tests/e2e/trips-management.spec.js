@@ -23,6 +23,33 @@ test.describe('Trip Plans Management Page', () => {
     expect(linkedTag.source).toBe('trip');
   });
 
+  test('allows editable date input and fast year jump in create dialog', async ({ page, isolatedUsers, dbManager }) => {
+    const { tripsPage } = await TestSetupHelper.loginAndNavigateToTripsPage(
+      page,
+      dbManager,
+      createManagedUser(isolatedUsers)
+    );
+
+    const tripName = `Year Jump ${Date.now()}`;
+    const targetYear = new Date().getFullYear() - 2;
+
+    await page.click(tripsPage.selectors.createButton);
+    await page.waitForSelector('.p-dialog:visible:has-text("Create Trip Plan")', { timeout: 5000 });
+
+    await page.fill(tripsPage.selectors.tripNameInput, tripName);
+    await tripsPage.expectDateRangeInputEditable();
+    await tripsPage.selectDateRangeByYearAndDay({
+      targetYear,
+      monthIndex: 5,
+      startDay: 10,
+      endDay: 15
+    });
+
+    await page.locator('.p-dialog:visible button:has-text("Create Trip")').click();
+    await page.waitForSelector('.p-dialog:has-text("Create Trip Plan")', { state: 'hidden', timeout: 10000 });
+    await expect(tripsPage.rowByTripName(tripName)).toBeVisible({ timeout: 10000 });
+  });
+
   test('edits trip and synchronizes linked label fields', async ({ page, isolatedUsers, dbManager }) => {
     const { tripsPage, user } = await TestSetupHelper.loginAndNavigateToTripsPage(
       page,

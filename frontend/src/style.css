@@ -641,6 +641,71 @@ body {
         opacity: 0.4 !important;
     }
 
+    /* Month/Year Views */
+    .p-dark .p-datepicker-month-view,
+    .p-dark .p-datepicker-year-view {
+        background: var(--gp-surface-dark) !important;
+    }
+
+    .p-dark .p-datepicker-month,
+    .p-dark .p-datepicker-year {
+        color: var(--gp-text-primary) !important;
+        border-radius: var(--gp-radius-small) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .p-dark .p-datepicker-month:hover,
+    .p-dark .p-datepicker-year:hover {
+        background: var(--gp-surface-light) !important;
+        color: var(--gp-text-primary) !important;
+    }
+
+    .p-dark .p-datepicker-month-selected,
+    .p-dark .p-datepicker-year-selected {
+        background: var(--gp-primary) !important;
+        color: white !important;
+        font-weight: 600 !important;
+    }
+
+    .p-dark .p-datepicker-month.p-disabled,
+    .p-dark .p-datepicker-year.p-disabled {
+        color: var(--gp-text-muted) !important;
+        opacity: 0.4 !important;
+    }
+
+    /* DatePicker Footer Buttons (Today/Clear) */
+    .p-dark .p-datepicker-buttonbar {
+        background: var(--gp-surface-dark) !important;
+        border-top: 1px solid var(--gp-border-dark) !important;
+        gap: var(--gp-spacing-xs) !important;
+    }
+
+    .p-dark .p-datepicker-today-button,
+    .p-dark .p-datepicker-clear-button {
+        color: var(--gp-text-primary) !important;
+        border: 1px solid var(--gp-border-dark) !important;
+        background: var(--gp-surface-light) !important;
+        border-radius: var(--gp-radius-small) !important;
+    }
+
+    .p-dark .p-datepicker-today-button .p-button-label,
+    .p-dark .p-datepicker-clear-button .p-button-label {
+        color: var(--gp-text-primary) !important;
+    }
+
+    .p-dark .p-datepicker-today-button:hover,
+    .p-dark .p-datepicker-clear-button:hover {
+        background: color-mix(in srgb, var(--gp-primary) 20%, var(--gp-surface-light)) !important;
+        border-color: var(--gp-primary-light) !important;
+        color: var(--gp-text-primary) !important;
+    }
+
+    .p-dark .p-datepicker-today-button:focus-visible,
+    .p-dark .p-datepicker-clear-button:focus-visible {
+        outline: 2px solid var(--gp-primary-light) !important;
+        outline-offset: 1px !important;
+    }
+
     .p-dark .p-datepicker-time-picker {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
@@ -1440,4 +1505,38 @@ html body .p-dark .p-tooltip .p-tooltip-arrow::before {
   border-radius: var(--gp-radius-medium);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--gp-primary) 14%, transparent);
   transition: box-shadow 0.2s ease, outline-color 0.2s ease;
+}
+
+.trip-date-range-panel {
+  --p-datepicker-date-width: 2.2rem;
+  --p-datepicker-date-height: 2.2rem;
+  width: min(92vw, 22rem) !important;
+  min-width: min(92vw, 22rem) !important;
+  max-width: min(92vw, 22rem) !important;
+}
+
+.trip-date-range-panel .p-datepicker-calendar-container {
+  width: 100% !important;
+}
+
+.trip-date-range-panel .p-datepicker-header {
+  padding: var(--gp-spacing-sm) !important;
+}
+
+.trip-date-range-panel .p-datepicker-day,
+.trip-date-range-panel .p-datepicker-weekday {
+  font-size: 0.95rem !important;
+}
+
+.trip-date-range-panel .p-datepicker-month,
+.trip-date-range-panel .p-datepicker-year {
+  padding: 0.35rem 0.45rem !important;
+}
+
+@media (max-width: 640px) {
+  .trip-date-range-panel {
+    width: min(92vw, 19rem) !important;
+    min-width: min(92vw, 19rem) !important;
+    max-width: min(92vw, 19rem) !important;
+  }
 }
