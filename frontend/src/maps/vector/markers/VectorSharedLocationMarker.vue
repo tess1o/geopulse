@@ -110,7 +110,10 @@ const createMarker = () => {
   removeMarker()
 
   const markerConfig = createMarkerElement()
-  popup = new maplibregl.Popup({ offset: 18 }).setHTML(`
+  popup = new maplibregl.Popup({
+    offset: 18,
+    className: 'gp-shared-location-popup-container'
+  }).setHTML(`
     <div class="shared-marker-popup">
       <strong>${escapeHtml(props.shareData.sharedBy)}</strong><br/>
       ${props.shareData.description ? `<em>${escapeHtml(props.shareData.description)}</em><br/>` : ''}
@@ -165,11 +168,30 @@ onUnmounted(() => {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
 }
 
-.shared-marker-popup {
+.gp-shared-location-popup-container .maplibregl-popup-content {
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  color: #0f172a;
+}
+
+.gp-shared-location-popup-container .maplibregl-popup-tip {
+  border-top-color: rgba(255, 255, 255, 0.97);
+}
+
+.gp-shared-location-popup-container .maplibregl-popup-close-button {
+  color: #64748b;
+}
+
+.gp-shared-location-popup-container .maplibregl-popup-close-button:hover {
+  color: #0f172a;
+}
+
+.gp-shared-location-popup-container .shared-marker-popup {
   text-align: center;
 }
 
-.shared-telemetry {
+.gp-shared-location-popup-container .shared-telemetry {
   margin-top: 0.5rem;
   padding-top: 0.4rem;
   border-top: 1px solid #e5e7eb;
@@ -177,7 +199,7 @@ onUnmounted(() => {
   min-width: 180px;
 }
 
-.shared-telemetry-title {
+.gp-shared-location-popup-container .shared-telemetry-title {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -185,18 +207,50 @@ onUnmounted(() => {
   margin-bottom: 0.25rem;
 }
 
-.shared-telemetry-row {
+.gp-shared-location-popup-container .shared-telemetry-row {
   font-size: 0.75rem;
   line-height: 1.25;
 }
 
-.shared-telemetry-label {
+.gp-shared-location-popup-container .shared-telemetry-label {
   color: #4b5563;
   margin-right: 0.25rem;
 }
 
-.shared-telemetry-value {
+.gp-shared-location-popup-container .shared-telemetry-value {
   color: #111827;
   font-weight: 600;
+}
+
+.p-dark .gp-shared-location-popup-container .maplibregl-popup-content {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));
+  border: 1px solid rgba(71, 85, 105, 0.55);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
+}
+
+.p-dark .gp-shared-location-popup-container .maplibregl-popup-tip {
+  border-top-color: rgba(15, 23, 42, 0.95);
+}
+
+.p-dark .gp-shared-location-popup-container .maplibregl-popup-close-button {
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.p-dark .gp-shared-location-popup-container .maplibregl-popup-close-button:hover {
+  color: #ffffff;
+}
+
+.p-dark .gp-shared-location-popup-container .shared-telemetry {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.p-dark .gp-shared-location-popup-container .shared-telemetry-title,
+.p-dark .gp-shared-location-popup-container .shared-telemetry-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.p-dark .gp-shared-location-popup-container .shared-telemetry-value {
+  color: rgba(255, 255, 255, 0.95);
 }
 </style>
