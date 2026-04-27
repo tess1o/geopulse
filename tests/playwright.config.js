@@ -33,6 +33,7 @@ const isolatedSpecs = [
   '**/health.spec.js',
   '**/error-handling.spec.js',
   '**/notifications.spec.js',
+  '**/admin-invitations.spec.js',
 ];
 
 const parallelWorkers = Number.parseInt(

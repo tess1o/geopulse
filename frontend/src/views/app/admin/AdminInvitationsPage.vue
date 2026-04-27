@@ -86,7 +86,7 @@
 
           <Column field="usedBy.email" header="Used By">
             <template #body="{ data }">
-              {{ data.usedBy?.email || '-' }}
+              {{ getUsedByDisplay(data) }}
             </template>
           </Column>
 
@@ -154,9 +154,9 @@
               </div>
             </div>
 
-            <div v-if="invitation.usedBy" class="invitation-used">
+            <div v-if="getUsedByDisplay(invitation) !== '-'" class="invitation-used">
               <i class="pi pi-user"></i>
-              <span>Used by: {{ invitation.usedBy.email }}</span>
+              <span>Used by: {{ getUsedByDisplay(invitation) }}</span>
             </div>
 
             <div class="invitation-card-actions">
@@ -551,6 +551,18 @@ const getStatusSeverity = (status) => {
     REVOKED: 'danger'
   }
   return severityMap[status] || 'secondary'
+}
+
+const getUsedByDisplay = (invitation) => {
+  if (invitation?.usedBy?.email) {
+    return invitation.usedBy.email
+  }
+
+  if (invitation?.status === 'USED') {
+    return 'Deleted user'
+  }
+
+  return '-'
 }
 
 const formatDateTime = (dateStr) => {

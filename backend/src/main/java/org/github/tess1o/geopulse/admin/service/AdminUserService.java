@@ -257,6 +257,17 @@ public class AdminUserService {
                 .setParameter("userId", userId)
                 .executeUpdate();
 
+        // Break invitation-user references before deleting the user.
+        // `usedBy` is nullable, so we can preserve the invitation record.
+        entityManager.createQuery("UPDATE UserInvitationEntity i SET i.usedBy = null WHERE i.usedBy = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        // `createdBy` is NOT NULL, so invitations created by this user must be removed.
+        entityManager.createQuery("DELETE FROM UserInvitationEntity i WHERE i.createdBy = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
         // Delete badges
         entityManager.createQuery("DELETE FROM UserBadgeEntity b WHERE b.user.id = :userId")
                 .setParameter("userId", userId)
