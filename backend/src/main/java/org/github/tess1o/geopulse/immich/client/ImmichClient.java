@@ -8,6 +8,7 @@ import io.vertx.ext.web.client.WebClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.immich.model.ImmichAsset;
 import org.github.tess1o.geopulse.immich.model.ImmichSearchRequest;
 import org.github.tess1o.geopulse.immich.model.ImmichSearchResponse;
@@ -29,6 +30,9 @@ public class ImmichClient {
     @Inject
     ObjectMapper objectMapper;
 
+    @ConfigProperty(name = "immich.photos.search-timeout-seconds", defaultValue = "15")
+    int searchTimeoutSeconds;
+
     public CompletableFuture<ImmichSearchResponse> searchAssetsAllPages(String baseUrl, String apiKey, ImmichSearchRequest request) {
         return searchAssets(baseUrl, apiKey, request)
                 .thenCompose(firstPage -> {
@@ -40,6 +44,7 @@ public class ImmichClient {
 
     public CompletableFuture<ImmichSearchResponse> searchAssets(String baseUrl, String apiKey, ImmichSearchRequest request) {
         CompletableFuture<ImmichSearchResponse> future = new CompletableFuture<>();
+        long requestTimeoutMs = Math.max(searchTimeoutSeconds, 1) * 1000L;
 
         try {
             WebClient client = WebClient.create(vertx);
@@ -51,6 +56,7 @@ public class ImmichClient {
                     .post(uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort(),
                             uri.getHost(), "/api/search/metadata")
                     .ssl(uri.getScheme().equals("https"))
+                    .timeout(requestTimeoutMs)
                     .putHeader("Content-Type", "application/json")
                     .putHeader("x-api-key", apiKey)
                     .sendBuffer(Buffer.buffer(requestBody))

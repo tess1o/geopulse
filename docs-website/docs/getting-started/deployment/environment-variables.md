@@ -84,7 +84,7 @@ Notes:
 | `GEOPULSE_OIDC_ENABLED` | `false` | OIDC Configuration Property: \`geopulse.oidc.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS` | `24` | JWKS (signing keys) caching Lower TTL recommended to handle provider key rotation Property: \`geopulse.oidc.jwks-cache.ttl-hours\`. | Non-negative numeric value. | Backend restart |
 
-### AI and Immich (7)
+### AI and Immich (8)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -95,6 +95,7 @@ Notes:
 | `GEOPULSE_IMMICH_GEONAMES_NORMALIZATION_MAX_DISTANCE_METERS` | `50000` | Immich search cache Property: \`immich.photos.geonames-normalization.max-distance-meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_IMMICH_PHOTO_SEARCH_TIMEOUT_SECONDS` | `15` | Immich search timeout Property: \`immich.photos.search-timeout-seconds\`. | Positive numeric value. | Backend restart |
 
 ### Geocoding and GeoNames (39)
 
