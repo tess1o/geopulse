@@ -214,7 +214,15 @@
           <template #header>
             <div class="workspace-card-header">
               <h3 class="workspace-title">{{ comparisonCardTitle }}</h3>
-              <div class="workspace-header-actions"></div>
+              <div class="workspace-header-actions">
+                <Button
+                  v-if="canEditPlanItems && hasPlanItems"
+                  icon="pi pi-plus"
+                  label="Add Place"
+                  class="gp-btn-primary"
+                  @click="openCreatePlanItemDialog"
+                />
+              </div>
             </div>
           </template>
 
@@ -230,6 +238,7 @@
                 @override="handlePlanItemOverrideFromTable"
                 @edit-item="openEditPlanItemDialog"
                 @delete-item="confirmDeletePlanItem"
+                @add-item="openCreatePlanItemDialog"
               />
             </div>
           </div>
@@ -242,69 +251,147 @@
       v-model:visible="showPlanItemDialog"
       modal
       :header="editingPlanItemId ? 'Edit Plan Item' : 'Add Plan Item'"
-      class="gp-dialog-md"
+      class="gp-dialog-xl plan-item-dialog"
       @hide="resetPlanItemForm"
     >
-      <div class="grid">
-        <div class="col-12">
-          <label for="planTitle" class="field-label">Title *</label>
-          <InputText
-            id="planTitle"
-            v-model="planItemForm.title"
-            class="w-full"
-            placeholder="e.g., Sagrada Familia"
-            :class="{ 'p-invalid': planItemErrors.title }"
-          />
-          <small v-if="planItemErrors.title" class="p-error">{{ planItemErrors.title }}</small>
+      <div class="plan-item-dialog-layout">
+        <div class="plan-item-dialog-form">
+          <div v-if="isResolvingPlanSuggestion">
+            <Message severity="info" :closable="false">Resolving place details...</Message>
+          </div>
+          <div v-if="planItemMapSourceHint">
+            <Message severity="info" :closable="false">{{ planItemMapSourceHint }}</Message>
+          </div>
+
+          <div>
+            <label for="planTitle" class="field-label">Title *</label>
+            <InputText
+              id="planTitle"
+              v-model="planItemForm.title"
+              class="w-full"
+              placeholder="e.g., Sagrada Familia"
+              :class="{ 'p-invalid': planItemErrors.title }"
+            />
+            <small v-if="planItemErrors.title" class="p-error">{{ planItemErrors.title }}</small>
+          </div>
+
+          <div>
+            <label for="planNotes" class="field-label">Notes</label>
+            <Textarea
+              id="planNotes"
+              v-model="planItemForm.notes"
+              rows="3"
+              class="w-full"
+              placeholder="Optional context..."
+            />
+          </div>
+
+          <div class="plan-item-dialog-row">
+            <div>
+              <label for="planDate" class="field-label">Planned Day</label>
+              <DatePicker
+                id="planDate"
+                v-model="planItemForm.plannedDay"
+                :manualInput="false"
+                :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label for="planPriority" class="field-label">Priority</label>
+              <Select
+                id="planPriority"
+                v-model="planItemForm.priority"
+                :options="priorityOptions"
+                optionLabel="label"
+                optionValue="value"
+                class="w-full"
+              />
+            </div>
+          </div>
+
+          <div class="plan-item-dialog-row">
+            <div>
+              <label for="planOrder" class="field-label">Order</label>
+              <InputNumber
+                id="planOrder"
+                v-model="planItemForm.orderIndex"
+                :min="0"
+                :maxFractionDigits="0"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label class="field-label">Coordinates</label>
+              <div class="plan-item-coordinate-pill">
+                <span v-if="hasPlanItemCoordinates">
+                  {{ Number(planItemForm.latitude).toFixed(5) }}, {{ Number(planItemForm.longitude).toFixed(5) }}
+                </span>
+                <span v-else>Not selected yet</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="col-12" v-if="isResolvingPlanSuggestion">
-          <Message severity="info" :closable="false">Resolving place details...</Message>
-        </div>
+        <div class="plan-item-dialog-map-pane">
+          <div>
+            <label for="planLocationSearch" class="field-label">Search place</label>
+            <AutoComplete
+              id="planLocationSearch"
+              ref="planLocationSearchRef"
+              v-model="planItemLocationSearchQuery"
+              :suggestions="planItemLocationSearchSuggestions"
+              optionLabel="displayName"
+              placeholder="Search saved places or providers..."
+              :minLength="2"
+              :delay="300"
+              :loading="false"
+              :showEmptyMessage="!isPlanItemLocationSearchLoading"
+              class="plan-item-location-search"
+              @complete="handlePlanItemLocationSearchComplete"
+              @item-select="handlePlanItemLocationSearchSelect"
+            >
+              <template #option="{ option }">
+                <div class="plan-item-location-option">
+                  <div class="plan-item-location-option-title">{{ option.displayName }}</div>
+                  <div class="plan-item-location-option-meta">
+                    <span
+                      v-if="option.groupLabel"
+                      class="plan-item-location-source-chip"
+                      :class="option.groupLabel === 'Saved place' ? 'plan-item-location-source-chip--saved' : 'plan-item-location-source-chip--provider'"
+                    >
+                      {{ option.groupLabel }}
+                    </span>
+                    <span v-if="option.metaLine" class="plan-item-location-option-subtitle">{{ option.metaLine }}</span>
+                  </div>
+                </div>
+              </template>
+            </AutoComplete>
+            <div v-if="isPlanItemLocationSearchLoading" class="plan-item-location-search-loading" aria-live="polite">
+              <i class="pi pi-spin pi-spinner plan-item-location-search-loading-icon" />
+              <span>Searching places...</span>
+            </div>
+            <small v-if="planItemLocationSearchError" class="p-error">{{ planItemLocationSearchError }}</small>
+          </div>
 
-        <div class="col-12">
-          <label for="planNotes" class="field-label">Notes</label>
-          <Textarea
-            id="planNotes"
-            v-model="planItemForm.notes"
-            rows="3"
-            class="w-full"
-            placeholder="Optional context..."
-          />
-        </div>
+          <div class="plan-item-dialog-map-wrap">
+            <MapContainer
+              ref="planItemDialogMapRef"
+              :map-id="`trip-plan-item-dialog-map-${planItemDialogMapId}`"
+              :center="planItemDialogMapCenter"
+              :zoom="planItemDialogMapZoom"
+              :show-controls="false"
+              :enable-fullscreen="false"
+              height="420px"
+              width="100%"
+              @map-ready="handlePlanItemDialogMapReady"
+              @map-click="handlePlanItemDialogMapClick"
+            />
+          </div>
 
-        <div class="col-12 md:col-6">
-          <label for="planDate" class="field-label">Planned Day</label>
-          <DatePicker
-            id="planDate"
-            v-model="planItemForm.plannedDay"
-            :manualInput="false"
-            :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-            class="w-full"
-          />
-        </div>
-
-        <div class="col-12 md:col-6">
-          <label for="planPriority" class="field-label">Priority</label>
-          <Select
-            id="planPriority"
-            v-model="planItemForm.priority"
-            :options="priorityOptions"
-            optionLabel="label"
-            optionValue="value"
-            class="w-full"
-          />
-        </div>
-
-        <div class="col-12 md:col-6">
-          <label for="planOrder" class="field-label">Order</label>
-          <InputNumber
-            id="planOrder"
-            v-model="planItemForm.orderIndex"
-            :min="0"
-            :maxFractionDigits="0"
-            class="w-full"
-          />
+          <small class="plan-item-dialog-map-hint">
+            Search by place name or click the map to pin this stop.
+          </small>
         </div>
       </div>
 
@@ -476,7 +563,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -491,10 +578,14 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
+import MapContainer from '@/components/maps/MapContainer.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import TripPlanItemsTable from '@/components/trips/TripPlanItemsTable.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
+import L from 'leaflet'
+import maplibregl from 'maplibre-gl'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
@@ -506,6 +597,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import AutoComplete from 'primevue/autocomplete'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 const route = useRoute()
@@ -531,6 +623,8 @@ const pageError = ref(null)
 const selectedDateRange = ref(null)
 const activeRange = ref({ start: null, end: null })
 const timelineMapRef = ref(null)
+const planItemDialogMapRef = ref(null)
+const planLocationSearchRef = ref(null)
 const activeWorkspaceTab = ref('overview')
 
 const showPlanItemDialog = ref(false)
@@ -538,6 +632,18 @@ const editingPlanItemId = ref(null)
 const isSubmittingPlanItem = ref(false)
 const planItemErrors = ref({})
 const isResolvingPlanSuggestion = ref(false)
+const planItemLocationSource = ref(null)
+const planItemLocationSearchQuery = ref('')
+const planItemLocationSearchSuggestions = ref([])
+const isPlanItemLocationSearchLoading = ref(false)
+const planItemLocationSearchError = ref('')
+const planItemLocationSearchRequestToken = ref(0)
+const planItemSuggestionRequestToken = ref(0)
+const planItemDialogMapId = ref(Math.random().toString(36).slice(2, 10))
+const planItemDialogMapCenter = ref([37.7749, -122.4194])
+const planItemDialogMapZoom = ref(13)
+const planItemDialogMapInstance = ref(null)
+const planItemDialogMapAdapter = ref(null)
 const showCollaboratorsDialog = ref(false)
 const showReconstructionDialog = ref(false)
 const showTimelineGenerationDialog = ref(false)
@@ -661,7 +767,7 @@ const planningPanelHintText = computed(() => {
   if (!canEditPlanItems.value) {
     return 'You have read-only access to this trip plan.'
   }
-  return 'Right-click on the map and use Plan to visit here to add planned stops.'
+  return 'Use Add Place to search and add planned stops quickly, or right-click the map as a shortcut.'
 })
 const sortPlanItems = (items) => {
   const safeItems = Array.isArray(items) ? items : []
@@ -676,6 +782,52 @@ const sortPlanItems = (items) => {
   })
 }
 const sortedTripPlanItems = computed(() => sortPlanItems(tripPlanItems.value))
+const hasPlanItems = computed(() => sortedTripPlanItems.value.length > 0)
+
+const parsePlanItemCoordinate = (value, min, max) => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
+
+  if (Number.isFinite(min) && parsed < min) {
+    return null
+  }
+
+  if (Number.isFinite(max) && parsed > max) {
+    return null
+  }
+
+  return parsed
+}
+
+const hasPlanItemCoordinates = computed(() => {
+  const latitude = parsePlanItemCoordinate(planItemForm.value.latitude, -90, 90)
+  const longitude = parsePlanItemCoordinate(planItemForm.value.longitude, -180, 180)
+  return latitude !== null && longitude !== null
+})
+const planItemMapSourceHint = computed(() => {
+  if (!planItemLocationSource.value) return ''
+
+  const latitude = Number(planItemLocationSource.value.latitude)
+  const longitude = Number(planItemLocationSource.value.longitude)
+  const source = planItemLocationSource.value.source
+  const sourceLabel = source === 'context-menu'
+    ? 'Pinned from map (context menu)'
+    : source === 'dialog-map'
+      ? 'Pinned from map (dialog)'
+      : 'Pinned from map'
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return `${sourceLabel}.`
+  }
+
+  return `${sourceLabel}: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+})
 const planningPanelItems = computed(() => {
   return sortPlanItems(tripPlanItems.value)
     .filter((item) => typeof item.latitude === 'number' && typeof item.longitude === 'number')
@@ -1178,26 +1330,238 @@ const applyPlanSuggestionToForm = async (suggestion) => {
   planItemForm.value.longitude = typeof suggestion.longitude === 'number' ? suggestion.longitude : planItemForm.value.longitude
 }
 
-const handlePlanToVisit = async (event) => {
-  if (!ensurePlanEditAccess()) return
-  const lat = event?.latlng?.lat
-  const lon = event?.latlng?.lng
-  if (typeof lat !== 'number' || typeof lon !== 'number') {
+const isLocalSearchSource = (sourceType) => (
+  sourceType === 'favorite-point' || sourceType === 'favorite-area' || sourceType === 'geocoding'
+)
+
+const buildProviderMetaLine = (subtitle, providerName) => {
+  const safeSubtitle = subtitle?.trim()
+  if (!safeSubtitle) {
+    return null
+  }
+
+  const safeProviderName = providerName?.trim()
+  if (!safeProviderName) {
+    return safeSubtitle
+  }
+
+  const providerLower = safeProviderName.toLowerCase()
+  const parts = safeSubtitle
+    .split('•')
+    .map((part) => part.trim())
+    .filter((part) => part && part.toLowerCase() !== providerLower)
+
+  return parts.length > 0 ? parts.join(' • ') : null
+}
+
+const buildPlanItemLocationMeta = (suggestion) => {
+  const sourceType = suggestion?.sourceType || ''
+  if (isLocalSearchSource(sourceType)) {
+    return {
+      groupLabel: 'Saved place',
+      metaLine: suggestion?.subtitle?.trim() || null
+    }
+  }
+
+  const providerName = suggestion?.providerName?.trim() || ''
+  return {
+    groupLabel: providerName ? `Provider: ${providerName}` : 'Provider',
+    metaLine: buildProviderMetaLine(suggestion?.subtitle, providerName)
+  }
+}
+
+const resetPlanItemLocationSearchState = () => {
+  planItemLocationSearchQuery.value = ''
+  planItemLocationSearchSuggestions.value = []
+  isPlanItemLocationSearchLoading.value = false
+  planItemLocationSearchError.value = ''
+  planItemLocationSearchRequestToken.value += 1
+}
+
+const PLAN_ITEM_DIALOG_MARKER_HTML = `
+  <span class="plan-item-dialog-marker-pin" aria-hidden="true">
+    <svg viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 1.5C9.2 1.5 4.5 6.2 4.5 12c0 8.1 10.5 19.6 10.5 19.6S25.5 20.1 25.5 12c0-5.8-4.7-10.5-10.5-10.5z" fill="#f43f5e" stroke="#0f172a" stroke-width="1.4" />
+      <circle cx="15" cy="12" r="4.2" fill="#fef08a" stroke="#0f172a" stroke-width="1.2" />
+    </svg>
+  </span>
+`
+
+const resolvePlanItemCoordinates = () => {
+  const latitude = parsePlanItemCoordinate(planItemForm.value.latitude, -90, 90)
+  const longitude = parsePlanItemCoordinate(planItemForm.value.longitude, -180, 180)
+  if (latitude === null || longitude === null) {
+    return null
+  }
+
+  return { lat: latitude, lon: longitude }
+}
+
+const resolvePlanItemDialogMapCenter = () => {
+  const coordinates = resolvePlanItemCoordinates()
+  if (coordinates) {
+    return [coordinates.lat, coordinates.lon]
+  }
+
+  const workspaceMapInstance = timelineMapRef.value?.map?.value || timelineMapRef.value?.map
+  const workspaceCenter = workspaceMapInstance?.getCenter?.()
+  if (Number.isFinite(workspaceCenter?.lat) && Number.isFinite(workspaceCenter?.lng)) {
+    return [workspaceCenter.lat, workspaceCenter.lng]
+  }
+
+  return Array.isArray(workspaceFallbackCenter.value) ? [...workspaceFallbackCenter.value] : [37.7749, -122.4194]
+}
+
+const setPlanItemDialogMapCenter = ({ zoom = null, centerFromSelection = false } = {}) => {
+  if (centerFromSelection) {
+    const coordinates = resolvePlanItemCoordinates()
+    if (coordinates) {
+      planItemDialogMapCenter.value = [coordinates.lat, coordinates.lon]
+    } else {
+      planItemDialogMapCenter.value = resolvePlanItemDialogMapCenter()
+    }
+  } else {
+    planItemDialogMapCenter.value = resolvePlanItemDialogMapCenter()
+  }
+
+  if (Number.isFinite(zoom)) {
+    planItemDialogMapZoom.value = zoom
+  } else if (!hasPlanItemCoordinates.value) {
+    planItemDialogMapZoom.value = 13
+  }
+}
+
+const createRasterPlanItemDialogMapAdapter = (map) => {
+  let marker = null
+
+  const clear = () => {
+    if (marker) {
+      map.removeLayer(marker)
+      marker = null
+    }
+  }
+
+  const render = (coords) => {
+    clear()
+    if (!coords) return
+
+    const markerIcon = L.divIcon({
+      className: 'plan-item-dialog-marker-icon',
+      html: PLAN_ITEM_DIALOG_MARKER_HTML,
+      iconSize: [30, 40],
+      iconAnchor: [15, 38]
+    })
+
+    marker = L.marker([coords.lat, coords.lon], { icon: markerIcon }).addTo(map)
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createVectorPlanItemDialogMarkerElement = () => {
+  const markerElement = document.createElement('div')
+  markerElement.className = 'plan-item-dialog-marker-icon plan-item-dialog-marker-icon--vector'
+  markerElement.innerHTML = PLAN_ITEM_DIALOG_MARKER_HTML
+  return markerElement
+}
+
+const createVectorPlanItemDialogMapAdapter = (map) => {
+  let marker = null
+
+  const clear = () => {
+    if (marker) {
+      marker.remove()
+      marker = null
+    }
+  }
+
+  const render = (coords) => {
+    clear()
+    if (!coords) return
+
+    marker = new maplibregl.Marker({
+      element: createVectorPlanItemDialogMarkerElement(),
+      anchor: 'bottom'
+    })
+      .setLngLat([coords.lon, coords.lat])
+      .addTo(map)
+  }
+
+  return {
+    render,
+    cleanup: clear
+  }
+}
+
+const createPlanItemDialogMapAdapter = (map) => {
+  const mapMode = resolveMapEngineModeFromInstance(map, MAP_RENDER_MODES.RASTER)
+  if (mapMode === MAP_RENDER_MODES.VECTOR) {
+    return createVectorPlanItemDialogMapAdapter(map)
+  }
+  return createRasterPlanItemDialogMapAdapter(map)
+}
+
+const syncPlanItemDialogMapLocation = ({ recenter = false, zoom = null } = {}) => {
+  if (recenter) {
+    setPlanItemDialogMapCenter({ centerFromSelection: true, zoom })
+  }
+
+  if (!planItemDialogMapAdapter.value) {
     return
   }
 
-  resetPlanItemForm()
-  showPlanItemDialog.value = true
-  planItemForm.value.latitude = lat
-  planItemForm.value.longitude = lon
+  const coordinates = resolvePlanItemCoordinates()
+  planItemDialogMapAdapter.value.render(coordinates)
 
+  if (!planItemDialogMapInstance.value || !coordinates || !recenter) {
+    return
+  }
+
+  const nextZoom = Number.isFinite(zoom) ? zoom : planItemDialogMapInstance.value.getZoom?.() || 13
+  planItemDialogMapInstance.value.setView([coordinates.lat, coordinates.lon], nextZoom, { animate: true })
+}
+
+const handlePlanItemDialogMapReady = (map) => {
+  planItemDialogMapInstance.value = map
+  planItemDialogMapAdapter.value?.cleanup?.()
+  planItemDialogMapAdapter.value = createPlanItemDialogMapAdapter(map)
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: hasPlanItemCoordinates.value ? 16 : planItemDialogMapZoom.value })
+}
+
+const cleanupPlanItemDialogMap = () => {
+  planItemDialogMapAdapter.value?.cleanup?.()
+  planItemDialogMapAdapter.value = null
+  planItemDialogMapInstance.value = null
+}
+
+const resolvePlanSuggestionForCoordinates = async (latitude, longitude, {
+  source = 'dialog-map',
+  showUnavailableWarning = true
+} = {}) => {
+  const requestToken = ++planItemSuggestionRequestToken.value
   isResolvingPlanSuggestion.value = true
+  planItemLocationSource.value = {
+    source,
+    latitude,
+    longitude
+  }
+
   try {
-    const suggestion = await tripsStore.getPlanSuggestion(lat, lon)
+    const suggestion = await tripsStore.getPlanSuggestion(latitude, longitude)
+    if (requestToken !== planItemSuggestionRequestToken.value) {
+      return
+    }
     if (suggestion) {
       await applyPlanSuggestionToForm(suggestion)
+      syncPlanItemDialogMapLocation({ recenter: true, zoom: 16 })
     }
   } catch (error) {
+    if (requestToken !== planItemSuggestionRequestToken.value || !showUnavailableWarning) {
+      return
+    }
     toast.add({
       severity: 'warn',
       summary: 'Plan suggestion unavailable',
@@ -1205,8 +1569,149 @@ const handlePlanToVisit = async (event) => {
       life: 3000
     })
   } finally {
-    isResolvingPlanSuggestion.value = false
+    if (requestToken === planItemSuggestionRequestToken.value) {
+      isResolvingPlanSuggestion.value = false
+    }
   }
+}
+
+const handlePlanItemDialogMapClick = async (event) => {
+  const latitude = Number(event?.latlng?.lat)
+  const longitude = Number(event?.latlng?.lng)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  planItemForm.value.latitude = latitude
+  planItemForm.value.longitude = longitude
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: 16 })
+  await resolvePlanSuggestionForCoordinates(latitude, longitude, { source: 'dialog-map' })
+}
+
+const resolvePlanItemLocationSearchBias = () => {
+  const coordinates = resolvePlanItemCoordinates()
+  if (coordinates) {
+    return { lat: coordinates.lat, lon: coordinates.lon }
+  }
+
+  const planItemMapCenter = planItemDialogMapInstance.value?.getCenter?.()
+  if (Number.isFinite(planItemMapCenter?.lat) && Number.isFinite(planItemMapCenter?.lng)) {
+    return { lat: planItemMapCenter.lat, lon: planItemMapCenter.lng }
+  }
+
+  const mapInstance = timelineMapRef.value?.map?.value || timelineMapRef.value?.map
+  const mapCenter = mapInstance?.getCenter?.()
+  if (Number.isFinite(mapCenter?.lat) && Number.isFinite(mapCenter?.lng)) {
+    return { lat: mapCenter.lat, lon: mapCenter.lng }
+  }
+
+  if (Array.isArray(workspaceFallbackCenter.value) && workspaceFallbackCenter.value.length >= 2) {
+    const [fallbackLat, fallbackLon] = workspaceFallbackCenter.value
+    if (Number.isFinite(fallbackLat) && Number.isFinite(fallbackLon)) {
+      return { lat: fallbackLat, lon: fallbackLon }
+    }
+  }
+
+  return null
+}
+
+const handlePlanItemLocationSearchComplete = async (event) => {
+  const query = event?.query?.trim() || ''
+  planItemLocationSearchError.value = ''
+
+  if (query.length < 2) {
+    planItemLocationSearchSuggestions.value = []
+    isPlanItemLocationSearchLoading.value = false
+    planItemLocationSearchRequestToken.value += 1
+    return
+  }
+
+  const requestToken = ++planItemLocationSearchRequestToken.value
+  isPlanItemLocationSearchLoading.value = true
+
+  try {
+    const bias = resolvePlanItemLocationSearchBias()
+    const results = await tripsStore.searchPlanLocations(query, {
+      lat: bias?.lat,
+      lon: bias?.lon,
+      limit: 12
+    })
+
+    if (requestToken !== planItemLocationSearchRequestToken.value) {
+      return
+    }
+
+    planItemLocationSearchSuggestions.value = (Array.isArray(results) ? results : []).map((result) => {
+      const title = result?.title?.trim()
+      const latitude = Number(result?.latitude)
+      const longitude = Number(result?.longitude)
+      const displayName = title || (Number.isFinite(latitude) && Number.isFinite(longitude)
+        ? `Planned place (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`
+        : 'Planned place')
+
+      const { groupLabel, metaLine } = buildPlanItemLocationMeta(result)
+
+      return {
+        ...result,
+        displayName,
+        groupLabel,
+        metaLine
+      }
+    })
+  } catch (error) {
+    if (requestToken !== planItemLocationSearchRequestToken.value) {
+      return
+    }
+    planItemLocationSearchError.value = error.response?.data?.message || error.message || 'Failed to search places.'
+  } finally {
+    if (requestToken === planItemLocationSearchRequestToken.value) {
+      isPlanItemLocationSearchLoading.value = false
+    }
+  }
+}
+
+const handlePlanItemLocationSearchSelect = (event) => {
+  const suggestion = event?.value || event
+  const latitude = Number(suggestion?.latitude)
+  const longitude = Number(suggestion?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  planItemForm.value.latitude = latitude
+  planItemForm.value.longitude = longitude
+
+  const selectedTitle = suggestion?.title?.trim() || suggestion?.displayName?.trim()
+  if (selectedTitle) {
+    planItemForm.value.title = selectedTitle
+  }
+
+  planItemLocationSource.value = null
+  planItemLocationSearchQuery.value = ''
+  planItemLocationSearchSuggestions.value = []
+  planItemLocationSearchError.value = ''
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: 16 })
+}
+
+const openPlanItemDialogFromCoordinates = async (lat, lon, source = 'map') => {
+  resetPlanItemForm()
+  planItemForm.value.latitude = lat
+  planItemForm.value.longitude = lon
+  setPlanItemDialogMapCenter({ centerFromSelection: true, zoom: 16 })
+  showPlanItemDialog.value = true
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: 16 })
+  await resolvePlanSuggestionForCoordinates(lat, lon, { source, showUnavailableWarning: true })
+  await focusPlanLocationSearch()
+}
+
+const handlePlanToVisit = async (event) => {
+  if (!ensurePlanEditAccess()) return
+  const lat = event?.latlng?.lat
+  const lon = event?.latlng?.lng
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    return
+  }
+  await openPlanItemDialogFromCoordinates(lat, lon, 'context-menu')
 }
 
 const focusPlannedItemOnMap = (item) => {
@@ -1274,6 +1779,23 @@ const handlePlanItemOverrideFromTable = (payload) => {
   applyVisitOverride(item, action)
 }
 
+const focusPlanLocationSearch = async () => {
+  await nextTick()
+  const autocompleteInput = planLocationSearchRef.value?.$el?.querySelector?.('input')
+  if (autocompleteInput && typeof autocompleteInput.focus === 'function') {
+    autocompleteInput.focus()
+  }
+}
+
+const openCreatePlanItemDialog = async () => {
+  if (!ensurePlanEditAccess()) return
+  resetPlanItemForm()
+  setPlanItemDialogMapCenter({ centerFromSelection: false, zoom: 13 })
+  showPlanItemDialog.value = true
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: 13 })
+  await focusPlanLocationSearch()
+}
+
 const resetPlanItemForm = () => {
   planItemForm.value = {
     title: '',
@@ -1286,6 +1808,10 @@ const resetPlanItemForm = () => {
   }
   planItemErrors.value = {}
   editingPlanItemId.value = null
+  planItemLocationSource.value = null
+  planItemSuggestionRequestToken.value += 1
+  isResolvingPlanSuggestion.value = false
+  resetPlanItemLocationSearchState()
 }
 
 const parsePlannedDayToDate = (plannedDay) => {
@@ -1315,7 +1841,9 @@ const openEditPlanItemDialog = (item) => {
     orderIndex: item.orderIndex ?? 0
   }
 
+  setPlanItemDialogMapCenter({ centerFromSelection: true, zoom: hasPlanItemCoordinates.value ? 16 : 13 })
   showPlanItemDialog.value = true
+  syncPlanItemDialogMapLocation({ recenter: true, zoom: hasPlanItemCoordinates.value ? 16 : 13 })
 }
 
 const validatePlanItem = () => {
@@ -1540,9 +2068,27 @@ onMounted(async () => {
   ensureActiveWorkspaceTab()
 })
 
+onUnmounted(() => {
+  cleanupPlanItemDialogMap()
+})
+
 watch(workspaceTabs, () => {
   ensureActiveWorkspaceTab()
 }, { deep: true })
+
+watch(showPlanItemDialog, async (nextVisible) => {
+  if (!nextVisible) {
+    cleanupPlanItemDialogMap()
+    return
+  }
+
+  await nextTick()
+  planItemDialogMapRef.value?.invalidateSize?.()
+  syncPlanItemDialogMapLocation({
+    recenter: true,
+    zoom: hasPlanItemCoordinates.value ? 16 : planItemDialogMapZoom.value
+  })
+})
 </script>
 
 <style scoped>
@@ -1927,6 +2473,125 @@ watch(workspaceTabs, () => {
   font-weight: 500;
 }
 
+.plan-item-dialog-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.35fr);
+  gap: var(--gp-spacing-md);
+}
+
+.plan-item-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.plan-item-dialog-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gp-spacing-sm);
+}
+
+.plan-item-coordinate-pill {
+  min-height: 2.5rem;
+  border-radius: var(--gp-radius-small);
+  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-light);
+  padding: 0.55rem 0.7rem;
+  color: var(--gp-text-secondary);
+  font-size: 0.83rem;
+  display: flex;
+  align-items: center;
+}
+
+.plan-item-dialog-map-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+}
+
+.plan-item-dialog-map-wrap {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  overflow: hidden;
+  background: var(--gp-surface-light);
+}
+
+.plan-item-dialog-map-hint {
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+}
+
+.plan-item-location-search {
+  width: 100%;
+}
+
+.plan-item-location-search :deep(.p-autocomplete-loader) {
+  display: none !important;
+}
+
+.plan-item-location-search :deep(.p-autocomplete-input) {
+  width: 100%;
+}
+
+.plan-item-location-search-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: var(--gp-spacing-xs);
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+}
+
+.plan-item-location-search-loading-icon {
+  font-size: 0.95rem;
+}
+
+.plan-item-location-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.plan-item-location-option-title {
+  font-size: 0.88rem;
+  color: var(--gp-text-primary);
+}
+
+.plan-item-location-option-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.plan-item-location-source-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.plan-item-location-source-chip--saved {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.plan-item-location-source-chip--provider {
+  color: #1e3a8a;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.plan-item-location-option-subtitle {
+  font-size: 0.75rem;
+  color: var(--gp-text-secondary);
+}
+
 .timeline-generation-content {
   display: flex;
   flex-direction: column;
@@ -2000,6 +2665,10 @@ watch(workspaceTabs, () => {
     min-height: auto;
   }
 
+  .plan-item-dialog-layout {
+    grid-template-columns: 1fr;
+  }
+
   .workspace-map,
   .workspace-timeline {
     min-height: 460px;
@@ -2040,5 +2709,42 @@ watch(workspaceTabs, () => {
   .collaborator-row {
     grid-template-columns: 1fr;
   }
+
+  .plan-item-dialog-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<style>
+.plan-item-dialog {
+  width: 95vw !important;
+  max-width: 1480px !important;
+}
+
+.plan-item-dialog-marker-icon {
+  background: transparent;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-item-dialog-marker-pin {
+  display: inline-flex;
+  width: 30px;
+  height: 40px;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.plan-item-dialog-marker-pin svg {
+  width: 30px;
+  height: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.plan-item-dialog-marker-icon--vector .plan-item-dialog-marker-pin svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 </style>

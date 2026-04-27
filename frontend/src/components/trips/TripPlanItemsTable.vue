@@ -1,5 +1,6 @@
 <template>
   <DataTable
+    v-if="items.length > 0"
     :value="items"
     :paginator="true"
     :rows="10"
@@ -110,14 +111,20 @@
       </template>
     </Column>
 
-    <template #empty>
-      <div class="empty-state">
-        <i class="pi pi-list-check empty-state-icon"></i>
-        <p>No plan items yet.</p>
-        <small>Add places from map context menu to compare planned vs actual visits.</small>
-      </div>
-    </template>
   </DataTable>
+
+  <div v-else class="empty-state">
+    <i class="pi pi-list-check empty-state-icon"></i>
+    <h4 class="empty-state-title">No plan items yet</h4>
+    <p class="empty-state-text">Start with Add Place, then search by name or click on the map in the dialog.</p>
+    <Button
+      v-if="canEdit"
+      icon="pi pi-plus"
+      label="Add Place"
+      class="empty-state-add-btn"
+      @click="emitAddItem"
+    />
+  </div>
 </template>
 
 <script setup>
@@ -151,7 +158,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['focus-item', 'override', 'edit-item', 'delete-item'])
+const emit = defineEmits(['focus-item', 'override', 'edit-item', 'delete-item', 'add-item'])
 const timezone = useTimezone()
 
 const visitSuggestionsByPlanItem = computed(() => {
@@ -273,6 +280,7 @@ const emitFocusItem = (item) => emit('focus-item', item)
 const emitEditItem = (item) => emit('edit-item', item)
 const emitDeleteItem = (item) => emit('delete-item', item)
 const emitOverride = (item, action) => emit('override', { item, action })
+const emitAddItem = (event) => emit('add-item', event)
 
 const hasCoordinates = (item) => {
   return typeof item?.latitude === 'number' &&
@@ -348,11 +356,29 @@ const openGoogleMaps = (item) => {
   text-align: center;
   padding: var(--gp-spacing-xl);
   color: var(--gp-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
 }
 
 .empty-state-icon {
   font-size: 2.5rem;
   margin-bottom: var(--gp-spacing-sm);
   color: var(--gp-text-muted);
+}
+
+.empty-state-title {
+  margin: 0;
+  color: var(--gp-text-primary);
+}
+
+.empty-state-text {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.empty-state-add-btn {
+  margin-top: var(--gp-spacing-sm);
 }
 </style>
