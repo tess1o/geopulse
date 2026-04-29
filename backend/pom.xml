@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.28.1</version>
+        <version>1.28.2</version>
     </parent>
     <artifactId>backend</artifactId>
     <properties>
