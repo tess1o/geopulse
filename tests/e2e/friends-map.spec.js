@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/isolated-fixture.js'
 import { TestSetupHelper } from '../utils/test-setup-helper.js'
 import { buildManagedUser as createManagedUser } from '../utils/isolated-user-helper.js'
-import { MapEngineHarness } from '../utils/map-engine-harness.js'
+import { MAP_POPUP_CONTENT_SELECTOR, MapEngineHarness } from '../utils/map-engine-harness.js'
 
 const setupMultipleFriendsMapTest = async (page, dbManager, isolatedUsers, friendCount, mapMode) => {
   const state = await TestSetupHelper.setupMultipleFriendsTest(
@@ -72,6 +72,40 @@ const getVisibleLiveFriendFeatures = async (page, mapHarness, mapMode) => {
     '.friends-map-container .avatar-marker'
   )
   return rasterMarkers.count()
+}
+
+const openAnyFriendPopup = async (page, mapMode) => {
+  if (mapMode === 'VECTOR') {
+    const marker = page.locator('.friends-map-container .gp-vector-friend-marker').first()
+    await expect(marker).toBeVisible({ timeout: 15000 })
+    await marker.click()
+    return true
+  }
+
+  const popupOpened = await page.evaluate(() => {
+    const root = document.querySelector('.friends-map-container')
+    const host = root?.querySelector('[data-testid="map-host-raster"]')
+    const mapId = host?.id || null
+    const registry = window.__GP_E2E_MAPS || {}
+    const map = mapId ? registry[mapId] : null
+
+    if (!map || typeof map.eachLayer !== 'function') {
+      return false
+    }
+
+    let opened = false
+    map.eachLayer((layer) => {
+      if (opened) return
+      if (!layer || layer?.options?.friend == null) return
+      if (typeof layer.openPopup !== 'function') return
+      layer.openPopup()
+      opened = true
+    })
+
+    return opened
+  })
+
+  return popupOpened
 }
 
 test.describe('Friends Map Coverage', () => {
@@ -193,6 +227,62 @@ test.describe('Friends Map Coverage', () => {
       return `${Number(last.lat).toFixed(4)},${Number(last.lon).toFixed(4)}`
     }, { timeout: 45000 }).toBe('50.4601,30.5334')
 
+  })
+
+  test('should show battery percentage in Live friend popup from latest point', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+    const mapHarness = new MapEngineHarness(page)
+    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
+    const friendId = friends[0].dbUser.id
+
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friendId, 50.4501, 30.5234, true)
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
+
+    expect(await friendsPage.isTabActive('live')).toBe(true)
+    expect(await mapHarness.waitForMapReady({ rootSelector: '.friends-map-container', timeout: 20000 })).toBe(mapMode)
+
+    const popupOpened = await openAnyFriendPopup(page, mapMode)
+    expect(popupOpened).toBe(true)
+
+    const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first()
+    await expect(popup).toBeVisible({ timeout: 10000 })
+    await expect(popup).toContainText('Battery: 100%')
+  })
+
+  test('should hide battery row in Live friend popup when latest point has no battery', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+    const mapHarness = new MapEngineHarness(page)
+    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
+    const friendId = friends[0].dbUser.id
+
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friendId, 50.4501, 30.5234, true)
+
+    const latestTimestamp = new Date(Date.now() + 60_000).toISOString()
+    await dbManager.client.query(`
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [
+      'friends-map-null-battery-device',
+      friendId,
+      'POINT (30.5235 50.4502)',
+      latestTimestamp,
+      10,
+      null,
+      0,
+      0,
+      'TEST',
+      latestTimestamp
+    ])
+
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
+
+    expect(await friendsPage.isTabActive('live')).toBe(true)
+    expect(await mapHarness.waitForMapReady({ rootSelector: '.friends-map-container', timeout: 20000 })).toBe(mapMode)
+
+    const popupOpened = await openAnyFriendPopup(page, mapMode)
+    expect(popupOpened).toBe(true)
+
+    const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first()
+    await expect(popup).toBeVisible({ timeout: 10000 })
+    await expect(popup).not.toContainText('Battery:')
   })
 
   test('should render Timeline tab map in selected mode with timeline permission filtering', async ({ page, isolatedUsers, dbManager, mapMode }) => {

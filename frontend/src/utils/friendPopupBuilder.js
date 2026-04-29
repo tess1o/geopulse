@@ -121,6 +121,17 @@ const createLastActivitySection = (friend) => {
     return null;
 }
 
+const createBatterySection = (friend) => {
+    const batteryValue = Number(friend?.lastBattery)
+    if (!Number.isFinite(batteryValue)) {
+        return null
+    }
+
+    const battery = createElement('div', 'popup-last-seen')
+    battery.textContent = `Battery: ${Math.round(batteryValue)}%`
+    return battery
+}
+
 /**
  * Creates action buttons section
  */
@@ -181,9 +192,11 @@ export const createFriendPopupContent = (friend, options = {}) => {
     const lastActivity = createLastActivitySection(friend)
     if (lastActivity) container.appendChild(lastActivity)
 
-        // Add actions
-    const
-    actions = createActionsSection(friend, config)
+    const battery = createBatterySection(friend)
+    if (battery) container.appendChild(battery)
+
+    // Add actions
+    const actions = createActionsSection(friend, config)
     if (actions) container.appendChild(actions)
 
     return container.outerHTML

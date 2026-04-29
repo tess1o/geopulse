@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -49,6 +50,7 @@ class FriendshipRepositoryTimestampTest {
                 null,
                 Timestamp.from(ts),
                 null,
+                76.0,
                 "TRIP",
                 120,
                 true,
@@ -63,6 +65,7 @@ class FriendshipRepositoryTimestampTest {
 
         assertEquals(1, result.size());
         assertEquals("2026-03-06T17:05:34Z", result.getFirst().getLastSeen());
+        assertEquals(76.0, result.getFirst().getLastBattery());
     }
 
     @Test
@@ -79,6 +82,7 @@ class FriendshipRepositoryTimestampTest {
                 null,
                 ts,
                 null,
+                null,
                 "STAY",
                 300,
                 true,
@@ -93,5 +97,6 @@ class FriendshipRepositoryTimestampTest {
 
         assertEquals(1, result.size());
         assertEquals("2026-03-06T17:05:34Z", result.getFirst().getLastSeen());
+        assertNull(result.getFirst().getLastBattery());
     }
 }

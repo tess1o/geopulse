@@ -62,6 +62,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                        u.avatar,
                        CASE WHEN ufp.share_live_location = true THEN latest_gps.timestamp ELSE NULL END as gps_timestamp,
                        CASE WHEN ufp.share_live_location = true THEN latest_gps.coordinates ELSE NULL END as coordinates,
+                       CASE WHEN ufp.share_live_location = true THEN latest_gps.battery ELSE NULL END as battery,
                        CASE
                            WHEN ufp.share_live_location = false OR ufp.share_live_location IS NULL THEN NULL
                            WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
@@ -84,7 +85,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                 JOIN users u ON f.friend_id = u.id
                 LEFT JOIN user_friend_permissions ufp ON (ufp.user_id = u.id AND ufp.friend_id = f.user_id)
                 LEFT JOIN LATERAL (
-                    SELECT timestamp, coordinates
+                    SELECT timestamp, coordinates, battery
                     FROM gps_points
                     WHERE user_id = u.id
                     ORDER BY timestamp DESC
@@ -125,10 +126,11 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                         .lastSeen(getLastSeen(record[5]))
                         .lastLongitude(getCoordinate(record[6], 0))
                         .lastLatitude(getCoordinate(record[6], 1))
-                        .latestActivityType(record[7] == null ? null : record[7].toString())
-                        .latestActivityDurationSeconds(record[8] == null ? 0 : ((Number) record[8]).intValue())
-                        .friendSharesLiveLocation(record[9] == null ? false : (Boolean) record[9])
-                        .friendSharesTimeline(record[10] == null ? false : (Boolean) record[10])
+                        .lastBattery(getNullableDouble(record[7]))
+                        .latestActivityType(record[8] == null ? null : record[8].toString())
+                        .latestActivityDurationSeconds(record[9] == null ? 0 : ((Number) record[9]).intValue())
+                        .friendSharesLiveLocation(record[10] == null ? false : (Boolean) record[10])
+                        .friendSharesTimeline(record[11] == null ? false : (Boolean) record[11])
                         .build())
                 .toList();
     }
@@ -146,5 +148,13 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
             return null;
         }
         return ((Point) value).getPosition().getCoordinate(index);
+    }
+
+    private static Double getNullableDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        return ((Number) value).doubleValue();
     }
 }
