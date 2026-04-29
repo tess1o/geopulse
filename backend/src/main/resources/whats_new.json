@@ -1,11 +1,12 @@
 [
   {
-    "version": "1.28.1",
-    "title": "GeoPulse 1.28.1",
+    "version": "1.28.2",
+    "title": "GeoPulse 1.28.2",
     "highlights": [
-      "Added Search option on the [Add Missing Timeline Data] journey. You can search for the place from your selected Geocoding provider",
-      "Improved UI/UX for [Edit Trip] dialog",
-      "Improved UI validations on [Create Share Links] journey"
+      "Re-implemented how we add new places during Trip planning",
+      "Improved Immich timeout handling",
+      "Added last known battery level on Friends Live tab",
+      "Do not fail when Admin deletes an invited user",
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
