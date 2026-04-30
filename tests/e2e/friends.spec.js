@@ -535,6 +535,35 @@ test.describe('Friends Page', () => {
 
       // Should switch to Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
+
+      const googleMapsLink = page.locator('.friend-popup .popup-google-maps-link').first();
+      await expect(googleMapsLink).toBeVisible();
+      await expect(googleMapsLink).toHaveAttribute('href', /https:\/\/www\.google\.com\/maps\?q=50\.4501,30\.5234/);
+      await expect(googleMapsLink).toHaveAttribute('target', '_blank');
+      await expect(googleMapsLink).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    test('should not show Google Maps action when friend has no valid coordinates', async ({page, isolatedUsers, dbManager}) => {
+      const {testUser, user, friend, friendUser, friendsPage} =
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
+
+      // Create friendship where friend shares live location permission but has no location data.
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id, {
+        friendToUser: { shareLive: true, shareTimeline: false }
+      });
+
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
+
+      // Switch to Friends tab.
+      await friendsPage.switchToTab('friends');
+      await page.waitForTimeout(1000);
+
+      // Live button should still be available, but there is no location marker/popup action.
+      await friendsPage.showFriendOnLiveMap(friendUser.email);
+      await page.waitForTimeout(1000);
+      expect(await friendsPage.isTabActive('live')).toBe(true);
+
+      await expect(page.locator('.friend-popup .popup-google-maps-link')).toHaveCount(0);
     });
 
     test('should navigate to timeline when clicking Timeline button', async ({page, isolatedUsers, dbManager}) => {

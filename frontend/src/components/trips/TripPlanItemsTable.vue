@@ -134,6 +134,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
+import { buildGoogleMapsUrl } from '@/utils/googleMaps'
 
 const props = defineProps({
   items: {
@@ -292,7 +293,8 @@ const hasCoordinates = (item) => {
 const openGoogleMaps = (item) => {
   if (!hasCoordinates(item)) return
 
-  const url = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`
+  const url = buildGoogleMapsUrl(item.latitude, item.longitude)
+  if (!url) return
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 </script>

@@ -11,6 +11,7 @@
 
 import {useTimezone} from '@/composables/useTimezone'
 import {formatDuration} from "@/utils/calculationsHelpers";
+import { buildGoogleMapsUrl } from '@/utils/googleMaps'
 
 const timezone = useTimezone()
 
@@ -132,6 +133,26 @@ const createBatterySection = (friend) => {
     return battery
 }
 
+const createGoogleMapsActionSection = (friend) => {
+    const latitude = friend?.latitude ?? friend?.lastLatitude
+    const longitude = friend?.longitude ?? friend?.lastLongitude
+    const googleMapsUrl = buildGoogleMapsUrl(latitude, longitude)
+
+    if (!googleMapsUrl) {
+        return null
+    }
+
+    const actionContainer = createElement('div', 'popup-external-action')
+    const actionLink = createElement('a', 'popup-google-maps-link')
+    actionLink.href = googleMapsUrl
+    actionLink.target = '_blank'
+    actionLink.rel = 'noopener noreferrer'
+    actionLink.textContent = 'Open in Google Maps'
+    actionContainer.appendChild(actionLink)
+
+    return actionContainer
+}
+
 /**
  * Creates action buttons section
  */
@@ -194,6 +215,9 @@ export const createFriendPopupContent = (friend, options = {}) => {
 
     const battery = createBatterySection(friend)
     if (battery) container.appendChild(battery)
+
+    const googleMapsAction = createGoogleMapsActionSection(friend)
+    if (googleMapsAction) container.appendChild(googleMapsAction)
 
     // Add actions
     const actions = createActionsSection(friend, config)
