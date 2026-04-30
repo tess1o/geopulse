@@ -3,6 +3,9 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
@@ -110,5 +113,93 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
      */
     protected TripType classifyMergedTrip(double totalDistance, Duration tripDuration, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
         return travelClassification.classifyTravelType(tripGpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
+    }
+
+    /**
+     * Check if two stays represent the same location.
+     * Uses favorite/geocoding references first, then falls back to location names.
+     */
+    protected boolean isSameLocation(Stay stay1, Stay stay2) {
+        if (stay1 == null || stay2 == null) {
+            return false;
+        }
+
+        if (stay1.getFavoriteId() != null && stay2.getFavoriteId() != null) {
+            return stay1.getFavoriteId().equals(stay2.getFavoriteId());
+        }
+
+        if (stay1.getGeocodingId() != null && stay2.getGeocodingId() != null) {
+            return stay1.getGeocodingId().equals(stay2.getGeocodingId());
+        }
+
+        if (stay1.getLocationName() != null && stay2.getLocationName() != null) {
+            return stay1.getLocationName().equals(stay2.getLocationName());
+        }
+
+        return false;
+    }
+
+    /**
+     * Create a synthetic continuity trip between two consecutive stays with no detected trip.
+     * Returns null when timestamps are missing or inconsistent.
+     */
+    protected Trip createContinuityTripBetweenStays(Stay previousStay, Stay nextStay, TimelineConfig config) {
+        if (previousStay == null || nextStay == null ||
+            previousStay.getStartTime() == null || previousStay.getDuration() == null || nextStay.getStartTime() == null) {
+            log.warn("Cannot create continuity trip - missing stay timing data");
+            return null;
+        }
+
+        Instant tripStart = previousStay.getEndTime();
+        Instant tripEnd = nextStay.getStartTime();
+
+        if (tripEnd.isBefore(tripStart)) {
+            log.warn("Cannot create continuity trip - inconsistent stay order: previous end {} after next start {}",
+                    tripStart, tripEnd);
+            return null;
+        }
+
+        Duration tripDuration = Duration.between(tripStart, tripEnd);
+        double distanceMeters = GeoUtils.haversine(
+                previousStay.getLatitude(), previousStay.getLongitude(),
+                nextStay.getLatitude(), nextStay.getLongitude());
+
+        GPSPoint startPoint = GPSPoint.builder()
+                .timestamp(tripStart)
+                .latitude(previousStay.getLatitude())
+                .longitude(previousStay.getLongitude())
+                .speed(0.0)
+                .accuracy(0.0)
+                .build();
+        GPSPoint endPoint = GPSPoint.builder()
+                .timestamp(tripEnd)
+                .latitude(nextStay.getLatitude())
+                .longitude(nextStay.getLongitude())
+                .speed(0.0)
+                .accuracy(0.0)
+                .build();
+
+        TripGpsStatistics stats = TripGpsStatistics.empty();
+        TripType tripType;
+        if (tripDuration.isZero() || distanceMeters <= 0) {
+            tripType = TripType.UNKNOWN;
+        } else {
+            tripType = travelClassification.classifyTravelType(
+                    stats,
+                    tripDuration,
+                    Double.valueOf(distanceMeters).longValue(),
+                    config
+            );
+        }
+
+        return Trip.builder()
+                .startTime(tripStart)
+                .duration(tripDuration)
+                .statistics(stats)
+                .startPoint(startPoint)
+                .endPoint(endPoint)
+                .distanceMeters(distanceMeters)
+                .tripType(tripType)
+                .build();
     }
 }

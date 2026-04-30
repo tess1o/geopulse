@@ -122,8 +122,11 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
     /**
      * Find a group of consecutive stays that can be merged together.
      * Uses two merge strategies:
-     * 1. INTEGRITY MERGE (always applied): Same location + NO trips = force merge (timeline integrity)
+     * 1. INTEGRITY MERGE (inside this merge pass): Same location + NO trips/gaps = merge for timeline consistency
      * 2. USER PREFERENCE MERGE (conditional): Same location + short trip = respect config settings
+     *
+     * Note: this method runs only when the upstream generation flow invokes merger processing,
+     * which is currently gated by merge-enabled configuration.
      */
     private List<Integer> findMergeGroup(TimelineConfig timelineConfig,
                                          List<Stay> stays,
@@ -145,16 +148,16 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
             Stay lastMergedStay = stays.get(mergeGroup.getLast());
             Stay candidateStay = stays.get(j);
 
-            // INTEGRITY CHECK: If there are NO trips between these same-location stays,
-            // this is a timeline integrity issue and must ALWAYS be merged
+            // INTEGRITY CHECK (within this merge pass): if there are NO trips/gaps between
+            // same-location stays, merge independent of distance/time thresholds.
             boolean hasNoTripsBetween = !hasAnyTripBetweenStays(lastMergedStay, candidateStay, trips);
             boolean hasNoDataGapBetween = !analysisService.hasDataGapBetweenStays(lastMergedStay, candidateStay, dataGaps);
 
             if (hasNoTripsBetween && hasNoDataGapBetween) {
-                // FORCE MERGE for timeline integrity (regardless of config)
+                // INTEGRITY MERGE: independent of merge distance/time threshold settings.
                 mergeGroup.add(j);
                 log.debug("INTEGRITY MERGE: Consecutive stays at '{}' with NO trips/gaps between them - " +
-                        "forcing merge to maintain timeline integrity (stay {} and {})",
+                        "merging for timeline consistency inside merge pass (stay {} and {})",
                         currentStay.getLocationName(), mergeGroup.getLast(), j);
             } else if (timelineConfig.getIsMergeEnabled() &&
                        analysisService.canMergeStays(timelineConfig, lastMergedStay, candidateStay, trips, dataGaps)) {

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag("unit")
@@ -127,6 +128,37 @@ class StreamingSingleTripAlgorithmTest {
     }
 
     @Test
+    void shouldCreateContinuityTripBetweenDifferentConsecutiveStays_SingleAlgorithm() {
+        Stay home = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:00:00Z"))
+                .duration(Duration.ofMinutes(30))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        Stay office = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:45:00Z"))
+                .duration(Duration.ofMinutes(45))
+                .locationName("Office")
+                .latitude(40.12)
+                .longitude(-74.2)
+                .build();
+
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config);
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof Stay);
+
+        Trip continuityTrip = (Trip) result.get(1);
+        assertNotNull(continuityTrip.getStartPoint());
+        assertNotNull(continuityTrip.getEndPoint());
+        assertTrue(!continuityTrip.getDuration().isNegative());
+    }
+
+    @Test
     void testConsecutiveStaysAtSameLocation_ShouldNotLogError_MultiAlgorithm() {
         // Same test for Multi algorithm
         Stay home1 = Stay.builder()
@@ -153,6 +185,37 @@ class StreamingSingleTripAlgorithmTest {
                 "Algorithm should pass through consecutive same-location stays");
         assertTrue(result.get(0) instanceof Stay);
         assertTrue(result.get(1) instanceof Stay);
+    }
+
+    @Test
+    void shouldCreateContinuityTripBetweenDifferentConsecutiveStays_MultiAlgorithm() {
+        Stay home = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:00:00Z"))
+                .duration(Duration.ofMinutes(30))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        Stay office = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:45:00Z"))
+                .duration(Duration.ofMinutes(45))
+                .locationName("Office")
+                .latitude(40.12)
+                .longitude(-74.2)
+                .build();
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config);
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof Stay);
+
+        Trip continuityTrip = (Trip) result.get(1);
+        assertNotNull(continuityTrip.getStartPoint());
+        assertNotNull(continuityTrip.getEndPoint());
+        assertTrue(!continuityTrip.getDuration().isNegative());
     }
 
     @Test

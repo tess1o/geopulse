@@ -170,7 +170,8 @@ public class StreamingTimelineGenerationService {
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
 
                 // Step 6: Merging and simplification (75%)
-                // Apply merging on raw objects
+                // Apply optional merge pass on raw objects (includes same-location integrity merge behavior)
+                // when merge is enabled by configuration.
                 if (config.getIsMergeEnabled()) {
                     updateProgress(jobId, "Merging timeline", 6, 75, null);
                     rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);

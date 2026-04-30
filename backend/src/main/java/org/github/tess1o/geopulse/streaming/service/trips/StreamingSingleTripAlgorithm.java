@@ -40,18 +40,24 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                         }
                     }
                 } else if (currentStay != null && tripsToMerge.isEmpty()) {
-                    // No trips between consecutive stays - this will be handled by the merger
-                    // The MovementTimelineMerger will force-merge consecutive same-location stays for timeline integrity
-                    if (currentStay.getLocationName() != null &&
-                        currentStay.getLocationName().equals(stay.getLocationName())) {
+                    // No detected trip between consecutive stays:
+                    // - same location -> keep as-is for optional downstream merge pass
+                    // - different location -> synthesize continuity trip here
+                    if (isSameLocation(currentStay, stay)) {
                         log.debug("Consecutive stays at same location '{}' with no trips detected - " +
-                                "will be merged by MovementTimelineMerger for timeline integrity",
+                                "left as-is in post-processing; downstream merge pass may consolidate when merge is enabled",
                                 stay.getLocationName());
                     } else {
-                        // Different locations with no trips - unusual but could happen with data gaps
-                        log.warn("No trips detected between different locations: '{}' and '{}' - " +
-                                "check for data gaps or GPS issues",
-                                currentStay.getLocationName(), stay.getLocationName());
+                        Trip continuityTrip = createContinuityTripBetweenStays(currentStay, stay, config);
+                        if (continuityTrip != null) {
+                            log.warn("Including continuity trip between consecutive stays: '{}' -> '{}' ({}m, {}min)",
+                                    currentStay.getLocationName(), stay.getLocationName(),
+                                    continuityTrip.getDistanceMeters(), continuityTrip.getDuration().toMinutes());
+                            processedEvents.add(continuityTrip);
+                        } else {
+                            log.warn("Could not create continuity trip between consecutive stays: '{}' -> '{}'",
+                                    currentStay.getLocationName(), stay.getLocationName());
+                        }
                     }
                 }
 
