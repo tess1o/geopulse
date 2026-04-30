@@ -84,12 +84,13 @@
 </template>
 
 <script setup>
-import {ref, computed, watch, onMounted, nextTick} from 'vue'
+import {ref, computed, watch, onMounted, onUnmounted, nextTick} from 'vue'
 import {useToast} from 'primevue/usetoast'
 import {ProgressSpinner} from 'primevue'
 
 // Map components
 import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
@@ -208,6 +209,10 @@ const isLoading = ref(false)
 const mapKey = ref(0) // Force re-render key
 const uniqueMapId = computed(() => `friends-map-${mapKey.value}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 const selectedFriendKey = ref(null)
+const isAutoFollowEnabled = ref(false)
+const isProgrammaticCameraMove = ref(false)
+let clearProgrammaticCameraMoveTimeoutId = null
+let detachMapInteractionListeners = null
 
 // Map configuration
 const mapCenter = ref((() => {
@@ -267,11 +272,92 @@ const findFriendByKey = (targetKey) => {
   return props.friends.find(friend => toFriendKey(friend) === String(targetKey)) || null
 }
 
+const clearProgrammaticCameraMoveTimeout = () => {
+  if (clearProgrammaticCameraMoveTimeoutId !== null) {
+    clearTimeout(clearProgrammaticCameraMoveTimeoutId)
+    clearProgrammaticCameraMoveTimeoutId = null
+  }
+}
+
+const beginProgrammaticCameraMove = (durationMs = 900) => {
+  isProgrammaticCameraMove.value = true
+  clearProgrammaticCameraMoveTimeout()
+  clearProgrammaticCameraMoveTimeoutId = setTimeout(() => {
+    isProgrammaticCameraMove.value = false
+    clearProgrammaticCameraMoveTimeoutId = null
+  }, durationMs)
+}
+
+const stopProgrammaticCameraMove = () => {
+  clearProgrammaticCameraMoveTimeout()
+  isProgrammaticCameraMove.value = false
+}
+
+const enableAutoFollow = () => {
+  if (!selectedFriendKey.value) {
+    return
+  }
+
+  isAutoFollowEnabled.value = true
+}
+
+const disableAutoFollow = () => {
+  isAutoFollowEnabled.value = false
+}
+
+const setSelectedFriend = (friend) => {
+  selectedFriendKey.value = toFriendKey(friend)
+  if (selectedFriendKey.value) {
+    enableAutoFollow()
+  } else {
+    disableAutoFollow()
+  }
+}
+
+const clearMapInteractionListeners = () => {
+  if (typeof detachMapInteractionListeners === 'function') {
+    detachMapInteractionListeners()
+    detachMapInteractionListeners = null
+  }
+}
+
+const registerMapInteractionListeners = (mapInstance) => {
+  clearMapInteractionListeners()
+
+  if (!mapInstance) {
+    return
+  }
+
+  const pauseAutoFollowFromManualMovement = () => {
+    if (!selectedFriendKey.value || !isAutoFollowEnabled.value || isProgrammaticCameraMove.value) {
+      return
+    }
+
+    disableAutoFollow()
+  }
+
+  const mapMode = resolveMapEngineModeFromInstance(mapInstance)
+  const listeners = mapMode === MAP_RENDER_MODES.RASTER
+      ? ['dragstart', 'zoomstart', 'movestart']
+      : ['dragstart', 'zoomstart', 'movestart', 'rotatestart', 'pitchstart']
+
+  listeners.forEach((eventName) => {
+    mapInstance.on?.(eventName, pauseAutoFollowFromManualMovement)
+  })
+
+  detachMapInteractionListeners = () => {
+    listeners.forEach((eventName) => {
+      mapInstance.off?.(eventName, pauseAutoFollowFromManualMovement)
+    })
+  }
+}
+
 const setMapView = (center, zoom, options = {}) => {
   if (typeof mapContainerRef.value?.setView !== 'function') {
     return false
   }
 
+  beginProgrammaticCameraMove(options?.animate ? 1200 : 900)
   mapContainerRef.value.setView(center, zoom, options)
   return true
 }
@@ -281,6 +367,7 @@ const fitMapBounds = (bounds, options = {}) => {
     return false
   }
 
+  beginProgrammaticCameraMove(1200)
   mapContainerRef.value.fitBounds(bounds, options)
   return true
 }
@@ -291,6 +378,7 @@ const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
   }
 
   if (friendsLayerRef.value?.focusOnFriend) {
+    beginProgrammaticCameraMove(1200)
     const focusedInLayer = friendsLayerRef.value.focusOnFriend(friend, { openPopup, zoom })
     if (focusedInLayer) {
       return true
@@ -307,9 +395,10 @@ const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
 // Methods
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
+  registerMapInteractionListeners(mapInstance)
 
   // Keep focus on selected friend when possible.
-  if (selectedFriendKey.value) {
+  if (selectedFriendKey.value && isAutoFollowEnabled.value) {
     const selectedFriend = findFriendByKey(selectedFriendKey.value)
     if (selectedFriend) {
       nextTick(() => {
@@ -335,7 +424,7 @@ const handleMapReady = (mapInstance) => {
 
 const handleFriendClick = (event) => {
   const {friend} = event
-  selectedFriendKey.value = toFriendKey(friend)
+  setSelectedFriend(friend)
   emit('friend-located', friend)
 }
 
@@ -371,6 +460,7 @@ const refreshLocations = () => {
 
 const resetFriendSelections = () => {
   selectedFriendKey.value = null
+  disableAutoFollow()
   emit('show-all')
 }
 
@@ -400,7 +490,7 @@ const zoomToFriend = (friend) => {
     return false
   }
 
-  selectedFriendKey.value = toFriendKey(friend)
+  setSelectedFriend(friend)
   focusOnFriend(friend, { openPopup: true, zoom: 17 })
 
   emit('friend-located', friend)
@@ -464,6 +554,10 @@ watch(() => props.friends, (newFriends) => {
   if (selectedFriendKey.value) {
     const selectedFriend = findFriendByKey(selectedFriendKey.value)
     if (selectedFriend) {
+      if (!isAutoFollowEnabled.value) {
+        return
+      }
+
       nextTick(() => {
         focusOnFriend(selectedFriend, { openPopup: false, zoom: 17 })
       })
@@ -471,6 +565,7 @@ watch(() => props.friends, (newFriends) => {
     }
 
     selectedFriendKey.value = null
+    disableAutoFollow()
   }
 
   if (props.initialFriendEmail) {
@@ -487,7 +582,7 @@ const tryZoomToInitialFriend = ({ openPopup = true } = {}) => {
         hasValidCoordinates(f?.lastLatitude, f?.lastLongitude)
     )
     if (friendToZoom) {
-      selectedFriendKey.value = toFriendKey(friendToZoom)
+      setSelectedFriend(friendToZoom)
       // Ensure map is ready before zooming
       nextTick(() => {
         focusOnFriend(friendToZoom, { openPopup, zoom: 17 })
@@ -507,6 +602,7 @@ watch(() => props.initialFriendEmail, (newEmail) => {
     })
   } else if (map.value && dataBounds.value) {
     selectedFriendKey.value = null
+    disableAutoFollow()
     // If the friend is deselected, fit the map to the data bounds
     nextTick(() => {
       fitMapBounds(dataBounds.value, { padding: [20, 20] })
@@ -525,6 +621,11 @@ onMounted(async () => {
   if (props.initialFriendEmail) {
     tryZoomToInitialFriend({ openPopup: true })
   }
+})
+
+onUnmounted(() => {
+  clearMapInteractionListeners()
+  stopProgrammaticCameraMove()
 })
 
 // Expose methods to parent
