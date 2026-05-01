@@ -3,7 +3,7 @@
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
-        <div class="table-title-section">
+        <div v-if="!isMobile" class="table-title-section">
           <h3 class="table-title">Data Gaps</h3>
           <span class="table-count">{{ filteredDataGapsData.length }} gaps</span>
         </div>
@@ -20,11 +20,13 @@
             />
           </div>
           <Button
-              label="Export CSV"
+              :label="isMobile ? null : 'Export CSV'"
+              :aria-label="'Export CSV'"
               icon="pi pi-download"
               @click="$emit('export')"
               outlined
               class="export-button"
+              :class="{ 'export-button--icon': isMobile }"
           />
         </div>
       </div>
@@ -32,6 +34,7 @@
 
     <!-- Data Gaps Data Table -->
     <DataTable
+        v-if="!isMobile"
         :value="filteredDataGapsData"
         :loading="loading"
         :paginator="false"
@@ -100,6 +103,35 @@
       </Column>
     </DataTable>
 
+    <div
+      v-else-if="!loading && filteredDataGapsData.length > 0"
+      class="mobile-gap-list"
+    >
+      <article
+        v-for="gap in filteredDataGapsData"
+        :key="gap.id || `${gap.startTime}-${gap.endTime}`"
+        class="mobile-gap-card"
+      >
+        <header class="mobile-gap-header">
+          <h4 class="mobile-gap-title">Data Gap</h4>
+          <span class="duration-badge mobile-gap-duration">{{ formatGapDuration(gap) }}</span>
+        </header>
+
+        <div class="mobile-gap-meta">
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-value">{{ formatDate(gap.startTime) }} {{ formatTime(gap.startTime) }}</span>
+          </div>
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-value">
+              <template v-if="!isSameDay(gap.startTime, gap.endTime)">{{ formatDate(gap.endTime) }} </template>{{ formatTime(gap.endTime) }}
+            </span>
+          </div>
+        </div>
+      </article>
+    </div>
+
     <!-- No Data State -->
     <div v-if="!loading && filteredDataGapsData.length === 0" class="no-data-state">
       <i class="pi pi-check-circle no-data-icon"></i>
@@ -113,7 +145,7 @@
 </template>
 
 <script setup>
-import {computed} from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
@@ -153,6 +185,7 @@ const {
 
 // Use shared filter logic
 const filteredDataGapsData = useDataGapsFilter(computed(() => props.dataGaps))
+const isMobile = ref(false)
 
 // Methods - Using memoized formatters for better performance
 const formatDate = (timestamp) => {
@@ -185,6 +218,27 @@ const formatGapDuration = (gap) => {
 const handleRowSelect = (event) => {
   emit('row-select', event.data)
 }
+
+const updateMobileFlag = () => {
+  if (typeof window === 'undefined') {
+    isMobile.value = false
+    return
+  }
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  updateMobileFlag()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateMobileFlag)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateMobileFlag)
+  }
+})
 
 </script>
 
@@ -333,6 +387,64 @@ const handleRowSelect = (event) => {
   height: 32px;
 }
 
+.mobile-gap-list {
+  display: grid;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-gap-card {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-gap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-gap-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--gp-text-primary);
+}
+
+.mobile-gap-duration {
+  white-space: nowrap;
+  padding: 3px 8px;
+}
+
+.mobile-gap-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-meta-label {
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mobile-meta-value {
+  color: var(--gp-text-primary);
+  font-size: 0.85rem;
+  text-align: right;
+  line-height: 1.35;
+}
+
 .no-data-state {
   text-align: center;
   padding: var(--gp-spacing-xxl);
@@ -386,22 +498,34 @@ const handleRowSelect = (event) => {
   color: var(--gp-success);
 }
 
+.p-dark .mobile-gap-card {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .data-gaps-table-card :deep(.gp-card-header) {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .data-gaps-table-card :deep(.gp-card-content) {
+    padding: 0.75rem;
+  }
+
   .table-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--gp-spacing-md);
+    margin-bottom: 0.5rem;
   }
 
   .table-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .filter-controls {
-    flex-wrap: wrap;
-    gap: var(--gp-spacing-sm);
+    flex: 1;
+    min-width: 0;
   }
 
   .gap-type-filter,
@@ -411,23 +535,39 @@ const handleRowSelect = (event) => {
   }
 
   .export-button {
-    width: 100%;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  .export-button--icon :deep(.p-button-label) {
+    display: none;
   }
 
   .location-address {
     max-width: 120px;
   }
+
+  .filter-controls :deep(.p-select-label) {
+    font-size: 0.9rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .filter-controls :deep(.p-select) {
+    min-height: 40px;
+  }
+
+  .filter-controls :deep(.p-select-dropdown) {
+    width: 2.1rem;
+  }
 }
 
 @media (max-width: 480px) {
-  .table-title-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--gp-spacing-xs);
-  }
-
-  .filter-controls {
-    flex-direction: column;
+  .table-header {
+    margin-bottom: 0.35rem;
   }
 }
 

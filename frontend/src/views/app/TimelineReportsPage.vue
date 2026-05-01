@@ -33,18 +33,21 @@
             :value="totalStays" 
             label="Stays" 
             icon="pi pi-map-marker"
+            size="small"
             class="stat-item"
           />
           <MetricItem 
             :value="totalTrips" 
             label="Trips" 
             icon="pi pi-car"
+            size="small"
             class="stat-item"
           />
           <MetricItem 
             :value="totalDataGaps" 
             label="Data Gaps" 
             icon="pi pi-exclamation-triangle"
+            size="small"
             class="stat-item"
           />
         </div>
@@ -384,16 +387,37 @@ watch(dateRange, async (newValue) => {
   flex: 1;
   min-width: 120px;
   max-width: 160px;
+  border: none !important;
 }
 
-/* Ensure all quick-stats metric items have underline */
-.quick-stats .stat-item {
-  border-bottom: 1px solid var(--gp-border-light);
+.quick-stats :deep(.gp-metric-item) {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  padding: 0.55rem 0.65rem;
+  align-items: center;
+  gap: 0.45rem;
+  background: color-mix(in srgb, var(--gp-surface-light) 90%, var(--gp-primary) 10%);
 }
 
-/* Dark mode support for quick-stats underlines */
-.p-dark .quick-stats .stat-item {
-  border-bottom-color: var(--gp-border-dark);
+.quick-stats :deep(.gp-metric-icon) {
+  width: 26px;
+  height: 26px;
+  font-size: 0.85rem;
+}
+
+.quick-stats :deep(.gp-metric-value) {
+  font-size: 1.05rem;
+  margin-bottom: 0.05rem;
+}
+
+.quick-stats :deep(.gp-metric-label) {
+  font-size: 0.72rem;
+  margin-bottom: 0;
+}
+
+.p-dark .quick-stats :deep(.gp-metric-item) {
+  background: color-mix(in srgb, var(--gp-surface-dark) 85%, var(--gp-primary) 15%);
+  border-color: var(--gp-border-dark);
 }
 
 /* Data Tables Tabs */
@@ -436,24 +460,37 @@ watch(dateRange, async (newValue) => {
   }
 
   .date-range-info {
-    justify-content: center;
+    justify-content: flex-start;
     min-width: auto;
+    font-size: 0.9rem;
   }
 
   .export-all-button {
-    align-self: center;
+    width: 100%;
   }
 
   .quick-stats {
-    justify-content: space-around;
-    gap: var(--gp-spacing-md);
-    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 0.45rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   
   .stat-item {
-    flex: 1 1 auto;
-    min-width: 100px;
+    min-width: 0;
     max-width: none;
+  }
+
+  .data-tables-tabs :deep(.gp-tab-menu .p-tabmenu-tablist) {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 0 var(--gp-spacing-sm);
+    gap: var(--gp-spacing-xs);
+  }
+
+  .data-tables-tabs :deep(.gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link) {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8rem;
   }
 }
 
@@ -463,8 +500,31 @@ watch(dateRange, async (newValue) => {
   }
 
   .quick-stats {
-    flex-direction: column;
-    gap: var(--gp-spacing-sm);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .date-range-info {
+    font-size: 0.85rem;
+  }
+
+  .quick-stats :deep(.gp-metric-item) {
+    padding: 0.45rem 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .quick-stats :deep(.gp-metric-icon) {
+    width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
+  }
+
+  .quick-stats :deep(.gp-metric-value) {
+    font-size: 0.95rem;
+  }
+
+  .quick-stats :deep(.gp-metric-label) {
+    font-size: 0.66rem;
   }
 }
 

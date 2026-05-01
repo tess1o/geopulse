@@ -3,7 +3,7 @@
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
-        <div class="table-title-section">
+        <div v-if="!isMobile" class="table-title-section">
           <h3 class="table-title">Stays</h3>
           <span class="table-count">{{ filteredStaysData.length }} stays</span>
         </div>
@@ -25,11 +25,13 @@
             />
           </div>
           <Button
-            label="Export CSV"
+            :label="isMobile ? null : 'Export CSV'"
+            :aria-label="'Export CSV'"
             icon="pi pi-download"
             @click="$emit('export')"
             outlined
             class="export-button"
+            :class="{ 'export-button--icon': isMobile }"
           />
         </div>
       </div>
@@ -37,7 +39,7 @@
 
     <!-- Stays Data Table -->
     <DataTable
-      v-if="!loading && filteredStaysData.length > 0"
+      v-if="!isMobile && !loading && filteredStaysData.length > 0"
       :value="filteredStaysData"
       :loading="loading"
       :paginator="false"
@@ -172,6 +174,63 @@
       </Column>
     </DataTable>
 
+    <div
+      v-else-if="isMobile && !loading && filteredStaysData.length > 0"
+      class="mobile-stay-list"
+    >
+      <article
+        v-for="stay in filteredStaysData"
+        :key="stay.id || `${stay.timestamp}-${stay.latitude}-${stay.longitude}`"
+        class="mobile-stay-card"
+      >
+        <header class="mobile-stay-card-header">
+          <div class="mobile-location-block">
+            <div class="mobile-location-title-row">
+              <h4 class="mobile-location-title">{{ stay.locationName || 'Unknown Location' }}</h4>
+              <Button
+                v-if="hasPlaceDetails(stay)"
+                icon="pi pi-external-link"
+                text
+                rounded
+                size="small"
+                @click="navigateToPlaceDetails(stay)"
+                class="place-details-link"
+              />
+            </div>
+            <p v-if="stay.address" class="mobile-location-address">{{ stay.address }}</p>
+          </div>
+          <span class="duration-badge mobile-duration-badge">
+            {{ formatDuration(stay.stayDuration) }}
+          </span>
+        </header>
+
+        <div class="mobile-stay-meta">
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-value">{{ formatDate(stay.timestamp) }} {{ formatTime(stay.timestamp) }}</span>
+          </div>
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-value">{{ getEndDate(stay) }} {{ getEndTime(stay) }}</span>
+          </div>
+          <div v-if="stay.latitude && stay.longitude" class="mobile-meta-row">
+            <span class="mobile-meta-label">Coords</span>
+            <span class="mobile-meta-value coordinates">{{ formatCoordinates(stay) }}</span>
+          </div>
+        </div>
+
+        <div class="mobile-stay-actions">
+          <Button
+            icon="pi pi-info-circle"
+            label="Details"
+            outlined
+            size="small"
+            @click="showDetails(stay)"
+          />
+        </div>
+      </article>
+    </div>
+
     <!-- No Data State -->
     <div v-if="!loading && filteredStaysData.length === 0" class="no-data-state">
       <i class="pi pi-map-marker no-data-icon"></i>
@@ -191,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, computed, defineAsyncComponent } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -242,6 +301,7 @@ const {
 const selectedStay = ref(null)
 const detailsDialogVisible = ref(false)
 const selectedStayForDetails = ref(null)
+const isMobile = ref(false)
 
 // Use shared filter logic
 const filteredStaysData = useStaysFilter(computed(() => props.stays))
@@ -316,6 +376,11 @@ const getEndTime = (stay) => {
   )
 }
 
+const formatCoordinates = (stay) => {
+  if (!stay?.latitude || !stay?.longitude) return 'N/A'
+  return `${stay.latitude.toFixed(4)}, ${stay.longitude.toFixed(4)}`
+}
+
 const handleRowSelect = (event) => {
   emit('row-select', event.data)
   // Also open the details dialog when a row is selected
@@ -343,6 +408,27 @@ const navigateToPlaceDetails = (stay) => {
     router.push(`/app/place-details/geocoding/${stay.geocodingId}`)
   }
 }
+
+const updateMobileFlag = () => {
+  if (typeof window === 'undefined') {
+    isMobile.value = false
+    return
+  }
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  updateMobileFlag()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateMobileFlag)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateMobileFlag)
+  }
+})
 
 </script>
 
@@ -502,6 +588,86 @@ const navigateToPlaceDetails = (stay) => {
   height: 32px;
 }
 
+.mobile-stay-list {
+  display: grid;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-stay-card {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-stay-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-location-block {
+  min-width: 0;
+}
+
+.mobile-location-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+}
+
+.mobile-location-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--gp-text-primary);
+}
+
+.mobile-location-address {
+  margin: var(--gp-spacing-xs) 0 0;
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.35;
+}
+
+.mobile-duration-badge {
+  white-space: nowrap;
+  padding: 3px 8px;
+}
+
+.mobile-stay-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-meta-label {
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mobile-meta-value {
+  color: var(--gp-text-primary);
+  font-size: 0.85rem;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.mobile-stay-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .no-data-state {
   text-align: center;
   padding: var(--gp-spacing-xxl);
@@ -533,53 +699,93 @@ const navigateToPlaceDetails = (stay) => {
   color: var(--gp-primary-300);
 }
 
+.p-dark .mobile-stay-card {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
 .p-dark .no-data-title {
   color: var(--gp-text-primary);
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .stays-table-card :deep(.gp-card-header) {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .stays-table-card :deep(.gp-card-content) {
+    padding: 0.75rem;
+  }
+
   .table-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--gp-spacing-md);
+    margin-bottom: 0.5rem;
   }
 
   .table-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .filter-controls {
-    flex-wrap: wrap;
-    gap: var(--gp-spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
   }
 
-  .search-input,
-  .place-type-filter,
+  .search-input {
+    flex: 1 0 170px;
+    min-width: 170px;
+  }
+
   .duration-filter {
-    width: 100%;
-    min-width: 0;
+    flex: 0 0 130px;
+    width: 130px;
+    min-width: 130px;
   }
 
   .export-button {
-    width: 100%;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  .export-button--icon :deep(.p-button-label) {
+    display: none;
   }
 
   .location-address {
     max-width: 150px;
   }
+
+  .filter-controls :deep(.p-inputtext),
+  .filter-controls :deep(.p-select-label) {
+    font-size: 0.9rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .filter-controls :deep(.p-inputtext),
+  .filter-controls :deep(.p-select) {
+    min-height: 40px;
+  }
+
+  .filter-controls :deep(.p-select-dropdown) {
+    width: 2.1rem;
+  }
 }
 
 @media (max-width: 480px) {
-  .table-title-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--gp-spacing-xs);
-  }
-
-  .filter-controls {
-    flex-direction: column;
+  .table-header {
+    margin-bottom: 0.35rem;
   }
 }
 

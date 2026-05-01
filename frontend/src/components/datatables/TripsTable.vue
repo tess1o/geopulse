@@ -3,7 +3,7 @@
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
-        <div class="table-title-section">
+        <div v-if="!isMobile" class="table-title-section">
           <h3 class="table-title">Trips</h3>
           <span class="table-count">{{ filteredTripsData.length }} trips</span>
         </div>
@@ -34,11 +34,13 @@
             />
           </div>
           <Button
-            label="Export CSV"
+            :label="isMobile ? null : 'Export CSV'"
+            :aria-label="'Export CSV'"
             icon="pi pi-download"
             @click="$emit('export')"
             outlined
             class="export-button"
+            :class="{ 'export-button--icon': isMobile }"
           />
         </div>
       </div>
@@ -46,6 +48,7 @@
 
     <!-- Trips Data Table -->
     <DataTable
+      v-if="!isMobile"
       :value="filteredTripsData"
       :loading="loading"
       :paginator="false"
@@ -238,6 +241,89 @@
       </Column>
     </DataTable>
 
+    <div
+      v-else-if="!loading && filteredTripsData.length > 0"
+      class="mobile-trip-list"
+    >
+      <article
+        v-for="trip in filteredTripsData"
+        :key="trip.id || `${trip.timestamp}-${trip.origin?.locationName}-${trip.destination?.locationName}`"
+        class="mobile-trip-card"
+      >
+        <header class="mobile-trip-header">
+          <div class="mobile-route">
+            <h4 class="mobile-route-title">
+              {{ trip.origin?.locationName || 'Unknown Origin' }} to {{ trip.destination?.locationName || 'Unknown Destination' }}
+            </h4>
+            <p v-if="trip.destination?.address" class="mobile-route-address">{{ trip.destination.address }}</p>
+          </div>
+          <span class="duration-badge mobile-duration-badge">{{ formatDuration(trip.tripDuration) }}</span>
+        </header>
+
+        <div class="mobile-trip-tags">
+          <Tag
+            v-if="trip.movementType"
+            :value="trip.movementType"
+            :severity="getTransportSeverity(trip.movementType)"
+            :icon="getTransportIcon(trip.movementType)"
+            class="transport-tag"
+          />
+          <Tag
+            v-if="trip.movementTypeSource === 'MANUAL'"
+            value="Manual"
+            severity="warn"
+            class="transport-tag transport-tag--manual"
+          />
+          <span class="distance-badge">{{ formatDistance(trip.distanceMeters) }}</span>
+        </div>
+
+        <div class="mobile-trip-meta">
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-value">{{ formatDate(trip.timestamp) }} {{ formatTime(trip.timestamp) }}</span>
+          </div>
+          <div class="mobile-meta-row">
+            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-value">{{ getEndDate(trip) }} {{ getEndTime(trip) }}</span>
+          </div>
+        </div>
+
+        <button
+          v-if="trip.movementType === 'UNKNOWN'"
+          class="transport-set-btn mobile-transport-set-btn"
+          @click.stop="openQuickEditDialog(trip)"
+        >
+          Set transport manually
+        </button>
+
+        <div class="mobile-trip-actions">
+          <Button
+            icon="pi pi-info-circle"
+            label="Details"
+            outlined
+            size="small"
+            @click="showDetails(trip)"
+          />
+          <Button
+            icon="pi pi-pencil"
+            label="Edit"
+            outlined
+            size="small"
+            severity="warning"
+            @click="openQuickEditDialog(trip)"
+          />
+          <Button
+            icon="pi pi-question-circle"
+            label="Why"
+            outlined
+            size="small"
+            severity="help"
+            @click="showClassification(trip)"
+          />
+        </div>
+      </article>
+    </div>
+
     <!-- No Data State -->
     <div v-if="!loading && filteredTripsData.length === 0" class="no-data-state">
       <i class="pi pi-car no-data-icon"></i>
@@ -272,7 +358,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, defineAsyncComponent, onMounted, onUnmounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -355,6 +441,7 @@ const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
 const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
+const isMobile = ref(false)
 
 // Use shared filter logic
 const filteredTripsData = useTripsFilter(
@@ -489,6 +576,27 @@ const handleMovementTypeUpdated = (updated) => {
     selectedTripForQuickEdit.value.movementTypeSource = updated.movementTypeSource
   }
 }
+
+const updateMobileFlag = () => {
+  if (typeof window === 'undefined') {
+    isMobile.value = false
+    return
+  }
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  updateMobileFlag()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateMobileFlag)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateMobileFlag)
+  }
+})
 
 // Search is handled reactively in the computed filteredTripsData
 </script>
@@ -639,6 +747,93 @@ const handleMovementTypeUpdated = (updated) => {
   height: 32px;
 }
 
+.mobile-trip-list {
+  display: grid;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-trip-card {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-trip-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+  align-items: flex-start;
+}
+
+.mobile-route {
+  min-width: 0;
+}
+
+.mobile-route-title {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--gp-text-primary);
+  line-height: 1.3;
+}
+
+.mobile-route-address {
+  margin: var(--gp-spacing-xs) 0 0;
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.35;
+}
+
+.mobile-duration-badge {
+  white-space: nowrap;
+  padding: 3px 8px;
+}
+
+.mobile-trip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mobile-trip-meta {
+  display: grid;
+  gap: 6px;
+}
+
+.mobile-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-meta-label {
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mobile-meta-value {
+  color: var(--gp-text-primary);
+  font-size: 0.85rem;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.mobile-transport-set-btn {
+  align-self: flex-start;
+}
+
+.mobile-trip-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gp-spacing-xs);
+}
+
 .no-data-state {
   text-align: center;
   padding: var(--gp-spacing-xxl);
@@ -675,29 +870,49 @@ const handleMovementTypeUpdated = (updated) => {
   color: var(--gp-info-300);
 }
 
+.p-dark .mobile-trip-card {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
 .p-dark .no-data-title {
   color: var(--gp-text-primary);
 }
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
+  .trips-table-card :deep(.gp-card-header) {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .trips-table-card :deep(.gp-card-content) {
+    padding: 0.75rem;
+  }
+
   .table-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--gp-spacing-md);
+    margin-bottom: 0.5rem;
   }
 
   .table-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.5rem;
   }
 
   .filter-controls {
-    flex-wrap: wrap;
-    gap: var(--gp-spacing-sm);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    min-width: 0;
   }
 
-  .search-input,
+  .search-input {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
   .transport-filter,
   .distance-filter {
     width: 100%;
@@ -705,27 +920,49 @@ const handleMovementTypeUpdated = (updated) => {
   }
 
   .export-button {
-    width: 100%;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    min-width: 40px;
+    padding: 0;
+  }
+
+  .export-button--icon :deep(.p-button-label) {
+    display: none;
   }
 
   .location-address {
     max-width: 120px;
   }
+
+  .filter-controls :deep(.p-inputtext),
+  .filter-controls :deep(.p-select-label) {
+    font-size: 0.9rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .filter-controls :deep(.p-inputtext),
+  .filter-controls :deep(.p-select) {
+    min-height: 40px;
+  }
+
+  .filter-controls :deep(.p-select-dropdown) {
+    width: 2.1rem;
+  }
 }
 
 @media (max-width: 480px) {
-  .table-title-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--gp-spacing-xs);
+  .table-header {
+    margin-bottom: 0.35rem;
+  }
+
+  .table-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .filter-controls {
-    flex-direction: column;
-  }
-
-  .search-input {
-    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
