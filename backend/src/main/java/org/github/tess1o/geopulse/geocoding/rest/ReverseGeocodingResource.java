@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
+import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -32,15 +33,18 @@ public class ReverseGeocodingResource {
     private final ReverseGeocodingManagementService managementService;
     private final CurrentUserService currentUserService;
     private final ReconciliationJobProgressService reconciliationProgressService;
+    private final UserLocationNormalizationService normalizationService;
 
     @Inject
     public ReverseGeocodingResource(
             ReverseGeocodingManagementService managementService,
             CurrentUserService currentUserService,
-            ReconciliationJobProgressService reconciliationProgressService) {
+            ReconciliationJobProgressService reconciliationProgressService,
+            UserLocationNormalizationService normalizationService) {
         this.managementService = managementService;
         this.currentUserService = currentUserService;
         this.reconciliationProgressService = reconciliationProgressService;
+        this.normalizationService = normalizationService;
     }
 
     /**
@@ -221,6 +225,148 @@ public class ReverseGeocodingResource {
             log.error("Failed to retrieve distinct values for user {}: {}", currentUserId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("error", "Failed to retrieve distinct values"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/normalization-rules")
+    public Response listNormalizationRules() {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            List<NormalizationRuleDto> rules = normalizationService.listRules(currentUserId);
+            return Response.ok(rules).build();
+        } catch (Exception e) {
+            log.error("Failed to list normalization rules for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to list normalization rules"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/normalization-rules")
+    public Response createNormalizationRule(@Valid CreateNormalizationRuleRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            NormalizationRuleDto created = normalizationService.createRule(currentUserId, request);
+            return Response.status(Response.Status.CREATED).entity(created).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create normalization rule for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to create normalization rule"))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/normalization-rules/{id}")
+    public Response updateNormalizationRule(@PathParam("id") Long id, @Valid UpdateNormalizationRuleRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            NormalizationRuleDto updated = normalizationService.updateRule(currentUserId, id, request);
+            return Response.ok(updated).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to update normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to update normalization rule"))
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/normalization-rules/{id}")
+    public Response deleteNormalizationRule(@PathParam("id") Long id) {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            normalizationService.deleteRule(currentUserId, id);
+            return Response.noContent().build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to delete normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to delete normalization rule"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/normalization-rules/apply")
+    public Response applyNormalizationRules(@Valid ApplyNormalizationRulesRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
+            if (activeJob.isPresent()) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(Map.of(
+                                "error", "You already have an active reconciliation job",
+                                "jobId", activeJob.get().getJobId().toString()
+                        ))
+                        .build();
+            }
+
+            UUID jobId = managementService.applyNormalizationRulesAsync(currentUserId, request);
+            return Response.ok(ApplyNormalizationRulesResponse.builder().jobId(jobId.toString()).build()).build();
+        } catch (Exception e) {
+            log.error("Failed to apply normalization rules for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to apply normalization rules"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/normalization-rules/{id}/apply")
+    public Response applyNormalizationRule(@PathParam("id") Long id, @Valid ApplyNormalizationRulesRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        try {
+            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
+            if (activeJob.isPresent()) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(Map.of(
+                                "error", "You already have an active reconciliation job",
+                                "jobId", activeJob.get().getJobId().toString()
+                        ))
+                        .build();
+            }
+
+            UUID jobId = managementService.applyNormalizationRuleAsync(currentUserId, id, request);
+            return Response.ok(ApplyNormalizationRulesResponse.builder().jobId(jobId.toString()).build()).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to apply normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to apply normalization rule"))
                     .build();
         }
     }

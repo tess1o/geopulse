@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
 import org.locationtech.jts.geom.Point;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +25,7 @@ public class LocationPointResolver {
     private final FavoriteLocationService favoriteLocationService;
     private final CacheGeocodingService cacheGeocodingService;
     private final CacheGeocodingBatchService batchService;
+    private final ReverseGeocodingManagementService geocodingManagementService;
 
     @Inject
     org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService jobProgressService;
@@ -35,11 +37,13 @@ public class LocationPointResolver {
     public LocationPointResolver(GeocodingService geocodingService,
                                  FavoriteLocationService favoriteLocationService,
                                  CacheGeocodingService cacheGeocodingService,
-                                 CacheGeocodingBatchService batchService) {
+                                 CacheGeocodingBatchService batchService,
+                                 ReverseGeocodingManagementService geocodingManagementService) {
         this.geocodingService = geocodingService;
         this.favoriteLocationService = favoriteLocationService;
         this.cacheGeocodingService = cacheGeocodingService;
         this.batchService = batchService;
+        this.geocodingManagementService = geocodingManagementService;
     }
 
     /**
@@ -70,6 +74,7 @@ public class LocationPointResolver {
 
         // Get the entity ID of the cached result (getLocationName already cached it)
         Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(userId, point).orElse(null);
+        geocodingId = normalizeGeocodingReference(userId, geocodingId);
 
         return LocationResolutionResult.fromGeocoding(
                 geocodingResult.getFormattedDisplayName(),
@@ -188,7 +193,7 @@ public class LocationPointResolver {
 
             if (cachedResults.containsKey(coordKey)) {
                 FormattableGeocodingResult cached = cachedResults.get(coordKey);
-                Long cachedId = cachedIds.get(coordKey);
+                Long cachedId = normalizeGeocodingReference(userId, cachedIds.get(coordKey));
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                         cached.getFormattedDisplayName(), cachedId));
             } else {
@@ -210,8 +215,9 @@ public class LocationPointResolver {
 
             if (individualResult.isPresent()) {
                 log.debug("Batch missed but individual found cache for user {} at: {}", userId, coordKey);
+                Long normalizedId = normalizeGeocodingReference(userId, individualId.orElse(null));
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
-                    individualResult.get().getFormattedDisplayName(), individualId.orElse(null)));
+                    individualResult.get().getFormattedDisplayName(), normalizedId));
             } else {
                 stillNeedExternal.add(point);
             }
@@ -324,6 +330,7 @@ public class LocationPointResolver {
                 }
 
                 Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(userId, point).orElse(null);
+                geocodingId = normalizeGeocodingReference(userId, geocodingId);
 
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                         geocodingResult.getFormattedDisplayName(), geocodingId));
@@ -358,6 +365,18 @@ public class LocationPointResolver {
             details.put("totalResolved", totalResolved);
 
             jobProgressService.updateProgress(jobId, message, 4, progress, details);
+        }
+    }
+
+    private Long normalizeGeocodingReference(UUID userId, Long geocodingId) {
+        if (geocodingId == null) {
+            return null;
+        }
+        try {
+            return geocodingManagementService.normalizeGeocodingForUser(userId, geocodingId).getId();
+        } catch (Exception e) {
+            log.debug("Failed to normalize geocoding {} for user {}: {}", geocodingId, userId, e.getMessage());
+            return geocodingId;
         }
     }
 }

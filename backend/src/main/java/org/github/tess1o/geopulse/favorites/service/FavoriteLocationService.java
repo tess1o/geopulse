@@ -11,9 +11,11 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.github.tess1o.geopulse.favorites.mapper.FavoriteLocationMapper;
 import org.github.tess1o.geopulse.favorites.model.*;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.geocoding.dto.NormalizationRuleDto;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
+import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
@@ -47,6 +49,7 @@ public class FavoriteLocationService {
     private final ReconciliationJobProgressService reconciliationProgressService;
     private final TimelineConfigurationProvider timelineConfigurationProvider;
     private final ManagedExecutor managedExecutor;
+    private final UserLocationNormalizationService userLocationNormalizationService;
 
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
@@ -56,7 +59,8 @@ public class FavoriteLocationService {
                                    org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService,
                                    ReconciliationJobProgressService reconciliationProgressService,
                                    TimelineConfigurationProvider timelineConfigurationProvider,
-                                   ManagedExecutor managedExecutor) {
+                                   ManagedExecutor managedExecutor,
+                                   UserLocationNormalizationService userLocationNormalizationService) {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;
@@ -66,6 +70,7 @@ public class FavoriteLocationService {
         this.reconciliationProgressService = reconciliationProgressService;
         this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.managedExecutor = managedExecutor;
+        this.userLocationNormalizationService = userLocationNormalizationService;
     }
 
     public FavoriteLocationsDto getFavorites(UUID userId) {
@@ -86,11 +91,13 @@ public class FavoriteLocationService {
         try {
             Point point = GeoUtils.createPoint(favorite.getLon(), favorite.getLat());
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
-            entity.setCity(geocodingResult.getCity());
-            entity.setCountry(geocodingResult.getCountry());
+            UserLocationNormalizationService.NormalizedLocation normalized =
+                    userLocationNormalizationService.normalizeForUser(userId, geocodingResult.getCity(), geocodingResult.getCountry());
+            entity.setCity(normalized.city());
+            entity.setCountry(normalized.country());
 
             log.debug("Populated geocoding data for favorite: city={}, country={}",
-                    geocodingResult.getCity(), geocodingResult.getCountry());
+                    normalized.city(), normalized.country());
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for favorite at [{}, {}]: {}",
                     favorite.getLat(), favorite.getLon(), e.getMessage());
@@ -120,11 +127,13 @@ public class FavoriteLocationService {
             Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
 
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
-            entity.setCity(geocodingResult.getCity());
-            entity.setCountry(geocodingResult.getCountry());
+            UserLocationNormalizationService.NormalizedLocation normalized =
+                    userLocationNormalizationService.normalizeForUser(userId, geocodingResult.getCity(), geocodingResult.getCountry());
+            entity.setCity(normalized.city());
+            entity.setCountry(normalized.country());
 
             log.debug("Populated geocoding data for area favorite using center point [{}, {}]: city={}, country={}",
-                    centerLat, centerLon, geocodingResult.getCity(), geocodingResult.getCountry());
+                    centerLat, centerLon, normalized.city(), normalized.country());
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for area favorite: {}", e.getMessage());
             // Continue without geocoding data - city and country will be null
@@ -156,8 +165,10 @@ public class FavoriteLocationService {
                 try {
                     Point point = GeoUtils.createPoint(pointDto.getLon(), pointDto.getLat());
                     FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
-                    entity.setCity(geocodingResult.getCity());
-                    entity.setCountry(geocodingResult.getCountry());
+                    UserLocationNormalizationService.NormalizedLocation normalized =
+                            userLocationNormalizationService.normalizeForUser(userId, geocodingResult.getCity(), geocodingResult.getCountry());
+                    entity.setCity(normalized.city());
+                    entity.setCountry(normalized.country());
                 } catch (Exception e) {
                     log.warn("Failed to get geocoding data for point favorite '{}' at [{}, {}]: {}",
                             pointDto.getName(), pointDto.getLat(), pointDto.getLon(), e.getMessage());
@@ -191,8 +202,10 @@ public class FavoriteLocationService {
                     Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
 
                     FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
-                    entity.setCity(geocodingResult.getCity());
-                    entity.setCountry(geocodingResult.getCountry());
+                    UserLocationNormalizationService.NormalizedLocation normalized =
+                            userLocationNormalizationService.normalizeForUser(userId, geocodingResult.getCity(), geocodingResult.getCountry());
+                    entity.setCity(normalized.city());
+                    entity.setCountry(normalized.country());
                 } catch (Exception e) {
                     log.warn("Failed to get geocoding data for area favorite '{}': {}",
                             areaDto.getName(), e.getMessage());
@@ -605,14 +618,16 @@ public class FavoriteLocationService {
 
             // Fetch fresh geocoding data
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
+            UserLocationNormalizationService.NormalizedLocation normalized =
+                    userLocationNormalizationService.normalizeForUser(userId, geocodingResult.getCity(), geocodingResult.getCountry());
 
             // Update ONLY city and country
-            favorite.setCity(geocodingResult.getCity());
-            favorite.setCountry(geocodingResult.getCountry());
+            favorite.setCity(normalized.city());
+            favorite.setCountry(normalized.country());
             repository.persistAndFlush(favorite);
 
             log.debug("Reconciled favorite {}: city='{}', country='{}'",
-                    favoriteId, geocodingResult.getCity(), geocodingResult.getCountry());
+                    favoriteId, normalized.city(), normalized.country());
 
         } catch (Exception e) {
             log.error("Failed to reconcile favorite {}: {}", favoriteId, e.getMessage(), e);
@@ -654,6 +669,63 @@ public class FavoriteLocationService {
             return request.getFavoriteIds();
         }
     }
+
+    @Transactional
+    public BulkDomainApplyResult applyNormalizationRulesToFavorites(UUID userId) {
+        int processed = 0;
+        int updated = 0;
+        int failed = 0;
+
+        List<FavoritesEntity> favorites = repository.findByUserId(userId);
+        for (FavoritesEntity favorite : favorites) {
+            processed++;
+            try {
+                UserLocationNormalizationService.NormalizedLocation normalized =
+                        userLocationNormalizationService.normalizeForUser(userId, favorite.getCity(), favorite.getCountry());
+                if (normalized.changed()) {
+                    favorite.setCity(normalized.city());
+                    favorite.setCountry(normalized.country());
+                    repository.persist(favorite);
+                    updated++;
+                }
+            } catch (Exception e) {
+                failed++;
+                log.warn("Failed to normalize favorite {} for user {}: {}", favorite.getId(), userId, e.getMessage());
+            }
+        }
+
+        return new BulkDomainApplyResult(processed, updated, failed);
+    }
+
+    @Transactional
+    public BulkDomainApplyResult applyNormalizationRuleToFavorites(UUID userId, NormalizationRuleDto rule) {
+        int processed = 0;
+        int updated = 0;
+        int failed = 0;
+
+        List<FavoritesEntity> favorites = repository.findByUserId(userId);
+        for (FavoritesEntity favorite : favorites) {
+            processed++;
+            try {
+                UserLocationNormalizationService.NormalizedLocation normalized =
+                        userLocationNormalizationService.applySingleRule(rule, favorite.getCity(), favorite.getCountry());
+                if (normalized.changed()) {
+                    favorite.setCity(normalized.city());
+                    favorite.setCountry(normalized.country());
+                    repository.persist(favorite);
+                    updated++;
+                }
+            } catch (Exception e) {
+                failed++;
+                log.warn("Failed to apply normalization rule {} to favorite {} for user {}: {}",
+                        rule.getId(), favorite.getId(), userId, e.getMessage());
+            }
+        }
+
+        return new BulkDomainApplyResult(processed, updated, failed);
+    }
+
+    public record BulkDomainApplyResult(int processed, int updated, int failed) {}
 
     // Validation methods
     private void validatePointFavorite(AddPointToFavoritesDto favorite) {

@@ -311,7 +311,6 @@
                 <configuration>
                     <argLine>
                         @{argLine} --add-opens java.base/java.lang=ALL-UNNAMED
-                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
                     <groups>unit</groups>
                     <excludedGroups>io.quarkus.test.junit.QuarkusTest</excludedGroups>

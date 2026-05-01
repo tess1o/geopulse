@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
+import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
@@ -18,7 +20,9 @@ import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationR
 import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.UpdateResult;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -48,6 +52,8 @@ public class ReverseGeocodingManagementService {
     private final GeocodingReconciliationService reconciliationService;
     private final ReconciliationJobProgressService reconciliationProgressService;
     private final ManagedExecutor managedExecutor;
+    private final UserLocationNormalizationService userLocationNormalizationService;
+    private final FavoriteLocationService favoriteLocationService;
 
     @ConfigProperty(name = "geocoding.reconcile.item.max-attempts", defaultValue = "3")
     int reconcileItemMaxAttempts;
@@ -67,7 +73,9 @@ public class ReverseGeocodingManagementService {
             GeocodingCopyOnWriteHandler copyOnWriteHandler,
             GeocodingReconciliationService reconciliationService,
             ReconciliationJobProgressService reconciliationProgressService,
-            ManagedExecutor managedExecutor) {
+            ManagedExecutor managedExecutor,
+            UserLocationNormalizationService userLocationNormalizationService,
+            FavoriteLocationService favoriteLocationService) {
         this.geocodingRepository = geocodingRepository;
         this.providerFactory = providerFactory;
         this.configService = configService;
@@ -76,6 +84,8 @@ public class ReverseGeocodingManagementService {
         this.reconciliationService = reconciliationService;
         this.reconciliationProgressService = reconciliationProgressService;
         this.managedExecutor = managedExecutor;
+        this.userLocationNormalizationService = userLocationNormalizationService;
+        this.favoriteLocationService = favoriteLocationService;
     }
 
     /**
@@ -239,6 +249,35 @@ public class ReverseGeocodingManagementService {
     }
 
     /**
+     * Normalize city/country of a single geocoding entity for a specific user.
+     * Uses copy-on-write semantics where needed.
+     */
+    @Transactional
+    public ReverseGeocodingDTO normalizeGeocodingForUser(UUID currentUserId, Long geocodingId) {
+        ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
+        if (entity == null) {
+            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+        }
+        if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
+            throw new ForbiddenException("Cannot modify another user's geocoding data");
+        }
+
+        UserLocationNormalizationService.NormalizedLocation normalized =
+                userLocationNormalizationService.normalizeForUser(currentUserId, entity.getCity(), entity.getCountry());
+        if (!normalized.changed()) {
+            return dtoMapper.toDTO(entity);
+        }
+
+        ReverseGeocodingUpdateDTO updateDTO = ReverseGeocodingUpdateDTO.builder()
+                .displayName(entity.getDisplayName())
+                .city(normalized.city())
+                .country(normalized.country())
+                .build();
+        UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
+        return dtoMapper.toDTO(result.entity());
+    }
+
+    /**
      * Reconcile geocoding results with a specific provider (batch operation).
      */
     public ReverseGeocodingReconcileResult reconcileWithProvider(UUID currentUserId, ReverseGeocodingReconcileRequest request) {
@@ -306,6 +345,105 @@ public class ReverseGeocodingManagementService {
         return jobId;
     }
 
+    public UUID applyNormalizationRulesAsync(UUID currentUserId, ApplyNormalizationRulesRequest request) {
+        boolean applyToGeocoding = Boolean.TRUE.equals(request.getApplyToGeocoding());
+        boolean applyToFavorites = Boolean.TRUE.equals(request.getApplyToFavorites());
+
+        int geocodingCount = 0;
+        int favoritesCount = 0;
+        List<Long> geocodingIds = List.of();
+        if (applyToGeocoding) {
+            geocodingIds = geocodingRepository.findForUserManagementPage(
+                    currentUserId, null, null, null, null, 1, Integer.MAX_VALUE, null, null)
+                    .stream()
+                    .map(ReverseGeocodingLocationEntity::getId)
+                    .collect(Collectors.toList());
+            geocodingCount = geocodingIds.size();
+        }
+        if (applyToFavorites) {
+            FavoriteLocationsDto favorites = favoriteLocationService.getFavorites(currentUserId);
+            favoritesCount = favorites.getPoints().size() + favorites.getAreas().size();
+        }
+
+        int totalItems = geocodingCount + favoritesCount;
+        UUID jobId = reconciliationProgressService.createJob(currentUserId, "normalization-rules", totalItems);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("mode", "normalization-rules");
+        metadata.put("applyToGeocoding", applyToGeocoding);
+        metadata.put("applyToFavorites", applyToFavorites);
+        metadata.put("geocodingProcessed", 0);
+        metadata.put("geocodingUpdated", 0);
+        metadata.put("geocodingFailed", 0);
+        metadata.put("favoritesProcessed", 0);
+        metadata.put("favoritesUpdated", 0);
+        metadata.put("favoritesFailed", 0);
+        reconciliationProgressService.updateMetadata(jobId, metadata);
+
+        List<Long> finalGeocodingIds = geocodingIds;
+        CompletableFuture.runAsync(() -> {
+            try {
+                processNormalizationJob(jobId, currentUserId, finalGeocodingIds, applyToFavorites, null);
+            } catch (Exception e) {
+                log.error("Failed to process normalization job {}", jobId, e);
+                reconciliationProgressService.failJob(jobId, e.getMessage());
+            }
+        }, managedExecutor);
+
+        return jobId;
+    }
+
+    public UUID applyNormalizationRuleAsync(UUID currentUserId, Long ruleId, ApplyNormalizationRulesRequest request) {
+        boolean applyToGeocoding = Boolean.TRUE.equals(request.getApplyToGeocoding());
+        boolean applyToFavorites = Boolean.TRUE.equals(request.getApplyToFavorites());
+        NormalizationRuleDto rule = userLocationNormalizationService.getRule(currentUserId, ruleId);
+
+        int geocodingCount = 0;
+        int favoritesCount = 0;
+        List<Long> geocodingIds = List.of();
+        if (applyToGeocoding) {
+            geocodingIds = geocodingRepository.findForUserManagementPage(
+                            currentUserId, null, null, null, null, 1, Integer.MAX_VALUE, null, null)
+                    .stream()
+                    .map(ReverseGeocodingLocationEntity::getId)
+                    .collect(Collectors.toList());
+            geocodingCount = geocodingIds.size();
+        }
+        if (applyToFavorites) {
+            FavoriteLocationsDto favorites = favoriteLocationService.getFavorites(currentUserId);
+            favoritesCount = favorites.getPoints().size() + favorites.getAreas().size();
+        }
+
+        int totalItems = geocodingCount + favoritesCount;
+        UUID jobId = reconciliationProgressService.createJob(currentUserId, "normalization-rules", totalItems);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("mode", "normalization-rules");
+        metadata.put("singleRule", true);
+        metadata.put("ruleId", rule.getId());
+        metadata.put("applyToGeocoding", applyToGeocoding);
+        metadata.put("applyToFavorites", applyToFavorites);
+        metadata.put("geocodingProcessed", 0);
+        metadata.put("geocodingUpdated", 0);
+        metadata.put("geocodingFailed", 0);
+        metadata.put("favoritesProcessed", 0);
+        metadata.put("favoritesUpdated", 0);
+        metadata.put("favoritesFailed", 0);
+        reconciliationProgressService.updateMetadata(jobId, metadata);
+
+        List<Long> finalGeocodingIds = geocodingIds;
+        CompletableFuture.runAsync(() -> {
+            try {
+                processNormalizationJob(jobId, currentUserId, finalGeocodingIds, applyToFavorites, rule);
+            } catch (Exception e) {
+                log.error("Failed to process single-rule normalization job {}", jobId, e);
+                reconciliationProgressService.failJob(jobId, e.getMessage());
+            }
+        }, managedExecutor);
+
+        return jobId;
+    }
+
     /**
      * Process reconciliation job with progress tracking.
      * This runs asynchronously and updates progress after each item.
@@ -338,6 +476,88 @@ public class ReverseGeocodingManagementService {
         // Mark complete
         reconciliationProgressService.completeJob(jobId);
         log.info("Reconciliation job {} completed: {} success, {} failed", jobId, successCount, failedCount);
+    }
+
+    @ActivateRequestContext
+    @Transactional
+    void processNormalizationJob(
+            UUID jobId,
+            UUID userId,
+            List<Long> geocodingIds,
+            boolean applyToFavorites,
+            NormalizationRuleDto singleRule) {
+        int processed = 0;
+        int successCount = 0;
+        int failedCount = 0;
+        int geocodingUpdated = 0;
+        int geocodingFailed = 0;
+
+        for (Long geocodingId : geocodingIds) {
+            processed++;
+            try {
+                ReverseGeocodingDTO before = getGeocodingResult(userId, geocodingId);
+                ReverseGeocodingDTO after = singleRule == null
+                        ? normalizeGeocodingForUser(userId, geocodingId)
+                        : applySingleNormalizationRuleToGeocoding(userId, geocodingId, singleRule);
+                successCount++;
+                if (!safeEquals(before.getCity(), after.getCity()) || !safeEquals(before.getCountry(), after.getCountry())) {
+                    geocodingUpdated++;
+                }
+            } catch (Exception e) {
+                failedCount++;
+                geocodingFailed++;
+                log.warn("Normalization failed for geocoding {} in job {}: {}", geocodingId, jobId, e.getMessage());
+            }
+
+            updateNormalizationMetadata(jobId, processed, successCount, failedCount,
+                    processed, geocodingUpdated, geocodingFailed, 0, 0, 0);
+        }
+
+        int favoritesProcessed = 0;
+        int favoritesUpdated = 0;
+        int favoritesFailed = 0;
+        if (applyToFavorites) {
+            FavoriteLocationService.BulkDomainApplyResult favoritesResult = singleRule == null
+                    ? favoriteLocationService.applyNormalizationRulesToFavorites(userId)
+                    : favoriteLocationService.applyNormalizationRuleToFavorites(userId, singleRule);
+            favoritesProcessed = favoritesResult.processed();
+            favoritesUpdated = favoritesResult.updated();
+            favoritesFailed = favoritesResult.failed();
+            processed += favoritesProcessed;
+            successCount += Math.max(0, favoritesProcessed - favoritesFailed);
+            failedCount += favoritesFailed;
+        }
+
+        updateNormalizationMetadata(jobId, processed, successCount, failedCount,
+                geocodingIds.size(), geocodingUpdated, geocodingFailed,
+                favoritesProcessed, favoritesUpdated, favoritesFailed);
+
+        reconciliationProgressService.completeJob(jobId);
+    }
+
+    @Transactional
+    ReverseGeocodingDTO applySingleNormalizationRuleToGeocoding(UUID currentUserId, Long geocodingId, NormalizationRuleDto rule) {
+        ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
+        if (entity == null) {
+            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+        }
+        if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
+            throw new ForbiddenException("Cannot modify another user's geocoding data");
+        }
+
+        UserLocationNormalizationService.NormalizedLocation normalized =
+                userLocationNormalizationService.applySingleRule(rule, entity.getCity(), entity.getCountry());
+        if (!normalized.changed()) {
+            return dtoMapper.toDTO(entity);
+        }
+
+        ReverseGeocodingUpdateDTO updateDTO = ReverseGeocodingUpdateDTO.builder()
+                .displayName(entity.getDisplayName())
+                .city(normalized.city())
+                .country(normalized.country())
+                .build();
+        UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
+        return dtoMapper.toDTO(result.entity());
     }
 
     /**
@@ -448,5 +668,34 @@ public class ReverseGeocodingManagementService {
      */
     public List<String> getProvidersWithData() {
         return geocodingRepository.findDistinctProviderNames();
+    }
+
+    private void updateNormalizationMetadata(
+            UUID jobId,
+            int processedItems,
+            int successCount,
+            int failedCount,
+            int geocodingProcessed,
+            int geocodingUpdated,
+            int geocodingFailed,
+            int favoritesProcessed,
+            int favoritesUpdated,
+            int favoritesFailed) {
+        reconciliationProgressService.updateProgress(jobId, processedItems, successCount, failedCount);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("geocodingProcessed", geocodingProcessed);
+        metadata.put("geocodingUpdated", geocodingUpdated);
+        metadata.put("geocodingFailed", geocodingFailed);
+        metadata.put("favoritesProcessed", favoritesProcessed);
+        metadata.put("favoritesUpdated", favoritesUpdated);
+        metadata.put("favoritesFailed", favoritesFailed);
+        reconciliationProgressService.updateMetadata(jobId, metadata);
+    }
+
+    private boolean safeEquals(String left, String right) {
+        if (left == null) {
+            return right == null;
+        }
+        return left.equals(right);
     }
 }

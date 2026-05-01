@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.service;
 
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
+import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
@@ -45,6 +46,10 @@ class ReverseGeocodingManagementServiceRetryTest {
     ReconciliationJobProgressService reconciliationProgressService;
     @Mock
     ManagedExecutor managedExecutor;
+    @Mock
+    UserLocationNormalizationService userLocationNormalizationService;
+    @Mock
+    FavoriteLocationService favoriteLocationService;
 
     ReverseGeocodingManagementService service;
 
@@ -58,7 +63,9 @@ class ReverseGeocodingManagementServiceRetryTest {
                 copyOnWriteHandler,
                 reconciliationService,
                 reconciliationProgressService,
-                managedExecutor
+                managedExecutor,
+                userLocationNormalizationService,
+                favoriteLocationService
         );
         service.reconcileItemMaxAttempts = 3;
         service.reconcileCircuitOpenWaitMs = 0;

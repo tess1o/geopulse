@@ -11,8 +11,10 @@ import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCityRecord;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCountryRecord;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
+import org.github.tess1o.geopulse.geocoding.model.NormalizationRuleType;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
+import org.github.tess1o.geopulse.geocoding.model.UserLocationNormalizationRuleEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
@@ -23,6 +25,7 @@ import org.github.tess1o.geopulse.geocoding.model.nominatim.NominatimResponse;
 import org.github.tess1o.geopulse.geocoding.model.photon.PhotonResponse;
 import org.github.tess1o.geopulse.geocoding.rest.ReverseGeocodingResource;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
+import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationService;
 
 @RegisterForReflection(targets = {
         ReverseGeocodingLocationEntity.class,
@@ -77,6 +80,15 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         BulkUpdateGeocodingDto.class,
         BulkUpdateGeocodingResult.class,
         DistinctValuesDto.class,
+        NormalizationRuleDto.class,
+        CreateNormalizationRuleRequest.class,
+        UpdateNormalizationRuleRequest.class,
+        ApplyNormalizationRulesRequest.class,
+        ApplyNormalizationRulesResponse.class,
+        UserLocationNormalizationRuleEntity.class,
+        NormalizationRuleType.class,
+        UserLocationNormalizationService.class,
+        UserLocationNormalizationService.NormalizedLocation.class,
         CircuitBreakerOpenException.class,
 })
 public class GeocodingNativeConfig {

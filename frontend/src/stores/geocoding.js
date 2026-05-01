@@ -7,6 +7,7 @@ export const useGeocodingStore = defineStore('geocoding', {
         totalRecords: 0,
         enabledProviders: [],
         availableProviders: [],
+        normalizationRules: [],
         loading: false
     }),
 
@@ -15,6 +16,7 @@ export const useGeocodingStore = defineStore('geocoding', {
         getTotalRecords: (state) => state.totalRecords,
         getEnabledProviders: (state) => state.enabledProviders,
         getAvailableProviders: (state) => state.availableProviders,
+        getNormalizationRules: (state) => state.normalizationRules,
         isLoading: (state) => state.loading,
         hasData: (state) => state.geocodingResults.length > 0
     },
@@ -33,6 +35,10 @@ export const useGeocodingStore = defineStore('geocoding', {
             this.availableProviders = providers
         },
 
+        setNormalizationRules(rules) {
+            this.normalizationRules = rules || []
+        },
+
         setLoading(loading) {
             this.loading = loading
         },
@@ -41,6 +47,7 @@ export const useGeocodingStore = defineStore('geocoding', {
             this.geocodingResults = []
             this.totalRecords = 0
             this.availableProviders = []
+            this.normalizationRules = []
         },
 
         // API Actions
@@ -171,6 +178,66 @@ export const useGeocodingStore = defineStore('geocoding', {
                 return response // { cities: [...], countries: [...] }
             } catch (error) {
                 console.error('Error fetching distinct values:', error)
+                throw error
+            }
+        },
+
+        async fetchNormalizationRules() {
+            try {
+                const response = await apiService.get('/geocoding/normalization-rules')
+                this.setNormalizationRules(response || [])
+                return response || []
+            } catch (error) {
+                console.error('Error fetching normalization rules:', error)
+                throw error
+            }
+        },
+
+        async createNormalizationRule(payload) {
+            try {
+                const response = await apiService.post('/geocoding/normalization-rules', payload)
+                return response
+            } catch (error) {
+                console.error('Error creating normalization rule:', error)
+                throw error
+            }
+        },
+
+        async updateNormalizationRule(ruleId, payload) {
+            try {
+                const response = await apiService.put(`/geocoding/normalization-rules/${ruleId}`, payload)
+                return response
+            } catch (error) {
+                console.error('Error updating normalization rule:', error)
+                throw error
+            }
+        },
+
+        async deleteNormalizationRule(ruleId) {
+            try {
+                await apiService.delete(`/geocoding/normalization-rules/${ruleId}`, {})
+            } catch (error) {
+                console.error('Error deleting normalization rule:', error)
+                throw error
+            }
+        },
+
+        async applyNormalizationRules(payload) {
+            try {
+                const response = await apiService.post('/geocoding/normalization-rules/apply', payload)
+                return response // { jobId }
+            } catch (error) {
+                console.error('Error applying normalization rules:', error)
+                throw error
+            }
+        },
+
+        async applySingleNormalizationRule(ruleId, payload) {
+            try {
+                const response = await apiService.post(`/geocoding/normalization-rules/${ruleId}/apply`, payload)
+                return response // { jobId }
+            } catch (error) {
+                console.error('Error applying single normalization rule:', error)
                 throw error
             }
         }

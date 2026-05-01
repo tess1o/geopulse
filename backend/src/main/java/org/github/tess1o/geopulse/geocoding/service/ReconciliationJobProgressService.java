@@ -48,6 +48,7 @@ public class ReconciliationJobProgressService {
                 .successCount(0)
                 .failedCount(0)
                 .startTime(Instant.now())
+                .metadata(new HashMap<>())
                 .build();
 
         jobStore.put(jobId, job);
@@ -131,6 +132,17 @@ public class ReconciliationJobProgressService {
         userActiveJobIndex.remove(job.getUserId());
 
         log.error("Job {} failed after {}ms: {}", jobId, job.getDurationMs(), errorMessage);
+    }
+
+    public void updateMetadata(UUID jobId, Map<String, Object> metadata) {
+        ReconciliationJobProgress job = jobStore.get(jobId);
+        if (job == null) {
+            return;
+        }
+        if (job.getMetadata() == null) {
+            job.setMetadata(new HashMap<>());
+        }
+        job.getMetadata().putAll(metadata);
     }
 
     /**

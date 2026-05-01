@@ -42,6 +42,103 @@
       <span>Provider changes affect new lookups only. Use Reconcile Selected/Reconcile All to refresh existing cached records.</span>
     </BaseCard>
 
+    <BaseCard class="normalization-rules-section">
+      <div class="normalization-header">
+        <div>
+          <h3 class="normalization-title">Normalization Rules</h3>
+          <p class="normalization-subtitle">Per-user mapping rules for country and city names. New geocoding results use these rules automatically; use Apply Rules Now to update existing saved geocoding and favorites.</p>
+        </div>
+        <div class="normalization-actions">
+          <Button
+            :label="rulesExpanded ? 'Collapse' : 'Expand'"
+            :icon="rulesExpanded ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+            severity="secondary"
+            size="small"
+            text
+            @click="rulesExpanded = !rulesExpanded"
+          />
+          <Button
+            label="Add Rule"
+            icon="pi pi-plus"
+            severity="secondary"
+            size="small"
+            @click="openCreateRuleDialog"
+            :disabled="!rulesExpanded"
+          />
+          <Button
+            label="Apply Rules Now"
+            icon="pi pi-play"
+            severity="primary"
+            size="small"
+            @click="openApplyRulesDialog()"
+            :disabled="!rulesExpanded || normalizationRules.length === 0"
+          />
+        </div>
+      </div>
+
+      <div v-if="!rulesExpanded" class="normalization-collapsed-hint">
+        Section collapsed. Expand to manage rules.
+      </div>
+      <template v-else>
+        <div v-if="normalizationRules.length === 0" class="normalization-empty">
+          No normalization rules yet.
+        </div>
+        <DataTable
+          v-else
+          :value="normalizationRules"
+          data-key="id"
+          responsive-layout="scroll"
+          class="normalization-table"
+        >
+          <Column field="ruleType" header="Type">
+            <template #body="slotProps">
+              <Tag
+                :value="slotProps.data.ruleType === 'COUNTRY' ? 'Country' : 'City'"
+                :severity="slotProps.data.ruleType === 'COUNTRY' ? 'info' : 'contrast'"
+              />
+            </template>
+          </Column>
+          <Column header="From">
+            <template #body="slotProps">
+              {{ formatRuleSource(slotProps.data) }}
+            </template>
+          </Column>
+          <Column header="To">
+            <template #body="slotProps">
+              {{ formatRuleTarget(slotProps.data) }}
+            </template>
+          </Column>
+          <Column header="Actions">
+            <template #body="slotProps">
+              <div class="actions-buttons">
+                <Button
+                  icon="pi pi-pencil"
+                  severity="secondary"
+                  size="small"
+                  text
+                  @click="openEditRuleDialog(slotProps.data)"
+                />
+                <Button
+                  icon="pi pi-play"
+                  severity="success"
+                  size="small"
+                  text
+                  @click="openApplyRulesDialog(slotProps.data)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  size="small"
+                  text
+                  @click="deleteRule(slotProps.data)"
+                />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </template>
+    </BaseCard>
+
     <!-- Filters -->
     <BaseCard class="filter-section">
       <div class="filter-controls">
@@ -227,6 +324,106 @@
       @reconcile="handleReconcile"
       @reconcile-complete="handleReconcileComplete"
     />
+
+    <Dialog
+      v-model:visible="showRuleDialog"
+      :header="editingRule ? 'Edit Normalization Rule' : 'Add Normalization Rule'"
+      modal
+      class="gp-dialog-md"
+    >
+      <div class="rule-dialog-content">
+        <div class="field-row">
+          <label class="filter-label">Rule Type</label>
+          <Select
+            v-model="ruleForm.ruleType"
+            :options="ruleTypeOptions"
+            optionLabel="label"
+            optionValue="value"
+            class="rule-input"
+          />
+        </div>
+
+        <template v-if="ruleForm.ruleType === 'COUNTRY'">
+          <div class="field-row">
+            <label class="filter-label">From Country</label>
+            <AutoComplete
+              v-model="ruleForm.sourceCountry"
+              :suggestions="countrySuggestions"
+              @complete="searchCountries"
+              class="rule-input"
+              placeholder="e.g. Болгарія"
+            />
+          </div>
+          <div class="field-row">
+            <label class="filter-label">To Country</label>
+            <AutoComplete
+              v-model="ruleForm.targetCountry"
+              :suggestions="countrySuggestions"
+              @complete="searchCountries"
+              class="rule-input"
+              placeholder="e.g. Bulgaria"
+            />
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="field-row">
+            <label class="filter-label">From City</label>
+            <AutoComplete
+              v-model="ruleForm.sourceCity"
+              :suggestions="citySuggestions"
+              @complete="searchCities"
+              class="rule-input"
+              placeholder="e.g. Sofia"
+            />
+          </div>
+          <div class="field-row">
+            <label class="filter-label">To City</label>
+            <AutoComplete
+              v-model="ruleForm.targetCity"
+              :suggestions="citySuggestions"
+              @complete="searchCities"
+              class="rule-input"
+              placeholder="e.g. Софія"
+            />
+          </div>
+        </template>
+      </div>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text @click="closeRuleDialog" />
+        <Button label="Save" severity="primary" :disabled="!isRuleFormValid" @click="saveRule" />
+      </template>
+    </Dialog>
+
+    <Dialog
+      v-model:visible="showApplyRulesDialog"
+      :header="selectedApplyRule ? 'Apply Selected Rule' : 'Apply Normalization Rules'"
+      modal
+      class="gp-dialog-sm"
+    >
+      <div class="rule-dialog-content">
+        <div v-if="selectedApplyRule" class="normalization-subtitle">
+          Applying: {{ formatRuleSource(selectedApplyRule) }} → {{ formatRuleTarget(selectedApplyRule) }}
+        </div>
+        <div class="field-row checkbox-row">
+          <Checkbox v-model="applyRulesForm.applyToGeocoding" :binary="true" inputId="applyGeo" />
+          <label for="applyGeo">Apply to reverse geocoding entities</label>
+        </div>
+        <div class="field-row checkbox-row">
+          <Checkbox v-model="applyRulesForm.applyToFavorites" :binary="true" inputId="applyFav" />
+          <label for="applyFav">Apply to favorites</label>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text @click="closeApplyRulesDialog" />
+        <Button
+          label="Apply"
+          severity="primary"
+          :disabled="!canApplyRules"
+          @click="applyRulesNow"
+        />
+      </template>
+    </Dialog>
     </PageContainer>
   </AppLayout>
 </template>
@@ -236,6 +433,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useGeocodingStore } from '@/stores/geocoding'
+import { useFavoritesStore } from '@/stores/favorites'
 import { useTimezone } from '@/composables/useTimezone'
 import { useReconciliationJobProgress } from '@/composables/useReconciliationJobProgress'
 
@@ -256,9 +454,13 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
+import Dialog from 'primevue/dialog'
+import Checkbox from 'primevue/checkbox'
+import AutoComplete from 'primevue/autocomplete'
 
 // Store and utils
 const geocodingStore = useGeocodingStore()
+const favoritesStore = useFavoritesStore()
 const toast = useToast()
 const router = useRouter()
 
@@ -283,15 +485,37 @@ const tableLoading = ref(false)
 const showEditDialog = ref(false)
 const showReconcileDialog = ref(false)
 const showBulkEditDialog = ref(false)
+const showRuleDialog = ref(false)
+const showApplyRulesDialog = ref(false)
+const rulesExpanded = ref(true)
 const selectedResult = ref(null)
 const selectedRows = ref([])
 const reconcileMode = ref('selected') // 'selected' | 'all'
+const editingRule = ref(null)
+const selectedApplyRule = ref(null)
+const activeJobMode = ref(null)
+const applyRulesForm = ref({
+  applyToGeocoding: true,
+  applyToFavorites: true
+})
+const ruleForm = ref({
+  ruleType: 'COUNTRY',
+  sourceCountry: '',
+  sourceCity: '',
+  targetCountry: '',
+  targetCity: ''
+})
+const allCities = ref([])
+const allCountries = ref([])
+const citySuggestions = ref([])
+const countrySuggestions = ref([])
 
 // Computed properties
 const geocodingResults = computed(() => geocodingStore.geocodingResults)
 const totalRecords = computed(() => geocodingStore.totalRecords)
 const enabledProviders = computed(() => geocodingStore.enabledProviders)
 const availableProviders = computed(() => geocodingStore.availableProviders)
+const normalizationRules = computed(() => geocodingStore.normalizationRules)
 
 const providerOptions = computed(() => {
   const options = [{ label: 'All Providers', value: null }]
@@ -313,10 +537,40 @@ const selectedReconcileResults = computed(() => {
   return selectedRows.value.length > 0 ? selectedRows.value : (selectedResult.value ? [selectedResult.value] : [])
 })
 
+const ruleTypeOptions = [
+  { label: 'Country', value: 'COUNTRY' },
+  { label: 'City', value: 'CITY' }
+]
+
+const isRuleFormValid = computed(() => {
+  if (ruleForm.value.ruleType === 'COUNTRY') {
+    return !!ruleForm.value.sourceCountry?.trim() && !!ruleForm.value.targetCountry?.trim()
+  }
+  return !!ruleForm.value.sourceCity?.trim() && !!ruleForm.value.targetCity?.trim()
+})
+
+const canApplyRules = computed(() => {
+  return applyRulesForm.value.applyToGeocoding || applyRulesForm.value.applyToFavorites
+})
+
 // Methods
 const formatNumber = (value) => {
   if (!value && value !== 0) return '0'
   return new Intl.NumberFormat().format(value)
+}
+
+const formatRuleSource = (rule) => {
+  if (rule.ruleType === 'COUNTRY') {
+    return rule.sourceCountry || '-'
+  }
+  return rule.sourceCity || '-'
+}
+
+const formatRuleTarget = (rule) => {
+  if (rule.ruleType === 'COUNTRY') {
+    return rule.targetCountry || '-'
+  }
+  return rule.targetCity || '-'
 }
 
 const getProviderSeverity = (providerName) => {
@@ -419,6 +673,212 @@ const loadAvailableProviders = async () => {
   }
 }
 
+const loadNormalizationRules = async () => {
+  try {
+    await geocodingStore.fetchNormalizationRules()
+  } catch (error) {
+    console.error('Error loading normalization rules:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load normalization rules',
+      life: 3000
+    })
+  }
+}
+
+const mergeDistinctStrings = (...arrays) => {
+  const merged = arrays
+      .flat()
+      .filter(v => typeof v === 'string')
+      .map(v => v.trim())
+      .filter(v => v.length > 0)
+  return [...new Set(merged)].sort((a, b) => a.localeCompare(b))
+}
+
+const normalizeDistinctResponse = (response) => {
+  if (!response) return { cities: [], countries: [] }
+  if (response.data && (Array.isArray(response.data.cities) || Array.isArray(response.data.countries))) {
+    return response.data
+  }
+  return response
+}
+
+const loadCombinedDistinctValues = async () => {
+  try {
+    const [geoRaw, favRaw] = await Promise.all([
+      geocodingStore.fetchDistinctValues(),
+      favoritesStore.fetchDistinctValues()
+    ])
+    const geo = normalizeDistinctResponse(geoRaw)
+    const fav = normalizeDistinctResponse(favRaw)
+
+    allCities.value = mergeDistinctStrings(geo.cities || [], fav.cities || [])
+    allCountries.value = mergeDistinctStrings(geo.countries || [], fav.countries || [])
+  } catch (error) {
+    console.error('Error loading combined distinct city/country values:', error)
+    allCities.value = []
+    allCountries.value = []
+  }
+}
+
+const searchCities = (event) => {
+  const query = (event?.query || '').toLowerCase()
+  citySuggestions.value = allCities.value.filter(city => city.toLowerCase().includes(query))
+}
+
+const searchCountries = (event) => {
+  const query = (event?.query || '').toLowerCase()
+  countrySuggestions.value = allCountries.value.filter(country => country.toLowerCase().includes(query))
+}
+
+const resetRuleForm = () => {
+  ruleForm.value = {
+    ruleType: 'COUNTRY',
+    sourceCountry: '',
+    sourceCity: '',
+    targetCountry: '',
+    targetCity: ''
+  }
+}
+
+const openCreateRuleDialog = () => {
+  editingRule.value = null
+  resetRuleForm()
+  loadCombinedDistinctValues()
+  showRuleDialog.value = true
+}
+
+const openEditRuleDialog = (rule) => {
+  editingRule.value = rule
+  ruleForm.value = {
+    ruleType: rule.ruleType,
+    sourceCountry: rule.sourceCountry || '',
+    sourceCity: rule.sourceCity || '',
+    targetCountry: rule.targetCountry || '',
+    targetCity: rule.targetCity || ''
+  }
+  loadCombinedDistinctValues()
+  showRuleDialog.value = true
+}
+
+const closeRuleDialog = () => {
+  showRuleDialog.value = false
+  editingRule.value = null
+  resetRuleForm()
+}
+
+const openApplyRulesDialog = (rule = null) => {
+  selectedApplyRule.value = rule
+  showApplyRulesDialog.value = true
+}
+
+const closeApplyRulesDialog = () => {
+  showApplyRulesDialog.value = false
+  selectedApplyRule.value = null
+}
+
+const saveRule = async () => {
+  if (!isRuleFormValid.value) return
+
+  const isCountryRule = ruleForm.value.ruleType === 'COUNTRY'
+  const payload = {
+    ruleType: ruleForm.value.ruleType,
+    sourceCountry: isCountryRule ? (ruleForm.value.sourceCountry?.trim() || null) : null,
+    sourceCity: isCountryRule ? null : (ruleForm.value.sourceCity?.trim() || null),
+    targetCountry: isCountryRule ? (ruleForm.value.targetCountry?.trim() || null) : null,
+    targetCity: isCountryRule ? null : (ruleForm.value.targetCity?.trim() || null)
+  }
+
+  try {
+    if (editingRule.value?.id) {
+      await geocodingStore.updateNormalizationRule(editingRule.value.id, payload)
+      toast.add({
+        severity: 'success',
+        summary: 'Rule Updated',
+        detail: 'Normalization rule updated successfully',
+        life: 3000
+      })
+    } else {
+      await geocodingStore.createNormalizationRule(payload)
+      toast.add({
+        severity: 'success',
+        summary: 'Rule Added',
+        detail: 'Normalization rule created successfully',
+        life: 3000
+      })
+    }
+
+    await loadNormalizationRules()
+    closeRuleDialog()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Save Failed',
+      detail: error.message || 'Failed to save normalization rule',
+      life: 5000
+    })
+  }
+}
+
+const deleteRule = async (rule) => {
+  if (!window.confirm(`Delete mapping "${formatRuleSource(rule)} → ${formatRuleTarget(rule)}"?`)) {
+    return
+  }
+
+  try {
+    await geocodingStore.deleteNormalizationRule(rule.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Rule Deleted',
+      detail: 'Normalization rule deleted successfully',
+      life: 3000
+    })
+    await loadNormalizationRules()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Delete Failed',
+      detail: error.message || 'Failed to delete normalization rule',
+      life: 5000
+    })
+  }
+}
+
+const applyRulesNow = async () => {
+  if (!canApplyRules.value) return
+
+  try {
+    activeJobMode.value = 'normalization'
+    const isSingleRuleApply = !!selectedApplyRule.value?.id
+    const payload = {
+      applyToGeocoding: applyRulesForm.value.applyToGeocoding,
+      applyToFavorites: applyRulesForm.value.applyToFavorites
+    }
+    const result = isSingleRuleApply
+      ? await geocodingStore.applySingleNormalizationRule(selectedApplyRule.value.id, payload)
+      : await geocodingStore.applyNormalizationRules(payload)
+    closeApplyRulesDialog()
+    toast.add({
+      severity: 'info',
+      summary: 'Normalization Started',
+      detail: isSingleRuleApply
+        ? 'Applying selected rule in background...'
+        : 'Applying rules in background...',
+      life: 2500
+    })
+    await startPolling(result.jobId)
+  } catch (error) {
+    activeJobMode.value = null
+    toast.add({
+      severity: 'error',
+      summary: 'Apply Failed',
+      detail: error.message || 'Failed to start normalization apply job',
+      life: 5000
+    })
+  }
+}
+
 const viewDetails = (result) => {
   router.push(`/app/place-details/geocoding/${result.id}`)
 }
@@ -488,6 +948,7 @@ const handleEditSave = async (updatedData) => {
 
 const handleReconcile = async (reconcileData) => {
   try {
+    activeJobMode.value = 'reconcile'
     // Start bulk reconciliation job
     const result = await geocodingStore.startBulkReconciliation(reconcileData)
     const jobId = result.jobId
@@ -499,6 +960,7 @@ const handleReconcile = async (reconcileData) => {
     // The reconcile-complete event will trigger data reload
 
   } catch (error) {
+    activeJobMode.value = null
     console.error('Error starting reconciliation:', error)
     toast.add({
       severity: 'error',
@@ -535,6 +997,33 @@ const handleReconcileComplete = async () => {
   // Close dialog
   showReconcileDialog.value = false
   selectedResult.value = null
+  activeJobMode.value = null
+}
+
+const handleNormalizationJobComplete = async () => {
+  const progress = jobProgress.value
+  const metadata = progress?.metadata || {}
+  const geocodingUpdated = metadata.geocodingUpdated || 0
+  const favoritesUpdated = metadata.favoritesUpdated || 0
+  const geocodingFailed = metadata.geocodingFailed || 0
+  const favoritesFailed = metadata.favoritesFailed || 0
+
+  const detail = `Updated ${geocodingUpdated} geocoding and ${favoritesUpdated} favorites` +
+      (geocodingFailed + favoritesFailed > 0 ? ` (${geocodingFailed + favoritesFailed} failed)` : '')
+
+  toast.add({
+    severity: geocodingFailed + favoritesFailed > 0 ? 'warn' : 'success',
+    summary: 'Normalization Apply Complete',
+    detail,
+    life: 6000
+  })
+
+  activeJobMode.value = null
+  resetProgress()
+  await Promise.all([
+    loadGeocodingResults(),
+    loadNormalizationRules()
+  ])
 }
 
 // Lifecycle
@@ -545,7 +1034,9 @@ onMounted(async () => {
   await Promise.all([
     loadGeocodingResults(),
     loadEnabledProviders(),
-    loadAvailableProviders()
+    loadAvailableProviders(),
+    loadNormalizationRules(),
+    loadCombinedDistinctValues()
   ])
 })
 
@@ -558,6 +1049,28 @@ onUnmounted(() => {
 watch(pageSize, async () => {
   currentPage.value = 0
   await loadGeocodingResults()
+})
+
+watch(() => ruleForm.value.ruleType, (ruleType) => {
+  if (ruleType === 'COUNTRY') {
+    ruleForm.value.sourceCity = ''
+    ruleForm.value.targetCity = ''
+  } else {
+    ruleForm.value.sourceCountry = ''
+    ruleForm.value.targetCountry = ''
+  }
+})
+
+watch(showApplyRulesDialog, (visible) => {
+  if (!visible) {
+    selectedApplyRule.value = null
+  }
+})
+
+watch(() => jobProgress.value?.status, async (status) => {
+  if (activeJobMode.value !== 'normalization') return
+  if (status !== 'COMPLETED' && status !== 'FAILED') return
+  await handleNormalizationJobComplete()
 })
 </script>
 
@@ -585,6 +1098,70 @@ watch(pageSize, async () => {
 .provider-switch-info i {
   margin-top: 0.1rem;
   color: var(--gp-primary);
+}
+
+.normalization-rules-section {
+  margin-bottom: var(--gp-spacing-lg);
+}
+
+.normalization-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gp-spacing-md);
+  margin-bottom: var(--gp-spacing-md);
+}
+
+.normalization-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.normalization-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.normalization-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  flex-wrap: wrap;
+}
+
+.normalization-empty {
+  color: var(--gp-text-secondary);
+  font-style: italic;
+}
+
+.normalization-collapsed-hint {
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.rule-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.rule-input {
+  width: 100%;
+}
+
+.checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .filter-controls {
@@ -806,6 +1383,19 @@ watch(pageSize, async () => {
 @media (max-width: 768px) {
   .filter-section {
     margin-bottom: var(--gp-spacing-md);
+  }
+
+  .normalization-header {
+    flex-direction: column;
+  }
+
+  .normalization-actions {
+    width: 100%;
+  }
+
+  .normalization-actions .p-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .filter-controls {

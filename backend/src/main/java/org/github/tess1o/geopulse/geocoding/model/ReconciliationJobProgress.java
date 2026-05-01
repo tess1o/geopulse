@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,6 +32,7 @@ public class ReconciliationJobProgress {
 
     // Error handling
     private String errorMessage;
+    private Map<String, Object> metadata;
 
     public enum JobStatus {
         QUEUED,
