@@ -16,23 +16,27 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.28.2</quarkus.platform.version>
+        <quarkus.platform.version>3.35.1</quarkus.platform.version>
         <skipITs>false</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <failsafe-plugin.version>3.5.4</failsafe-plugin.version>
         <jts-core.version>1.20.0</jts-core.version>
-        <lombok.version>1.18.42</lombok.version>
+        <lombok.version>1.18.46</lombok.version>
         <lombok.mapstruct-binding.version>0.2.0</lombok.mapstruct-binding.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <hibernate-spatial.version>7.1.2.Final</hibernate-spatial.version>
         <mockito.version>5.19.0</mockito.version>
         <jjwt-api.version>0.13.0</jjwt-api.version>
-        <testcontainers.version>1.21.3</testcontainers.version>
         <pmd.version>7.17.0</pmd.version>
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
-        <hypersistence-utils-hibernate-71.version>3.11.0</hypersistence-utils-hibernate-71.version>
+        <hypersistence-utils-hibernate-71.version>3.15.2</hypersistence-utils-hibernate-71.version>
         <extra.native.build.args></extra.native.build.args>
+        <assertj-core.version>3.27.7</assertj-core.version>
+        <testcontainers-junit-jupiter.version>2.0.5</testcontainers-junit-jupiter.version>
+        <jbcrypt.version>0.4</jbcrypt.version>
+        <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
+        <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -147,7 +151,6 @@
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-spatial</artifactId>
-            <version>${hibernate-spatial.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -193,7 +196,7 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -204,39 +207,37 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
-            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.24.2</version>
+            <version>${assertj-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
+            <version>${testcontainers-junit-jupiter.version}</version>
         </dependency>
         <!-- PostgreSQL container -->
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${testcontainers.version}</version>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
+            <version>${testcontainers-junit-jupiter.version}</version>
         </dependency>
         <!-- BCrypt for secure password hashing -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
-            <version>0.4</version>
+            <version>${jbcrypt.version}</version>
         </dependency>
         <!-- MQTT support for OwnTracks -->
         <dependency>
@@ -252,12 +253,12 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
-            <version>9.37.3</version>
+            <version>${nimbus-jose-jwt.version}</version>
         </dependency>
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>oauth2-oidc-sdk</artifactId>
-            <version>11.9.1</version>
+            <version>${oauth2-oidc-sdk.version}</version>
         </dependency>
     </dependencies>
     <build>
@@ -309,7 +310,7 @@
                 <version>${surefire-plugin.version}</version>
                 <configuration>
                     <argLine>
-                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        @{argLine} --add-opens java.base/java.lang=ALL-UNNAMED
                         -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
                     <groups>unit</groups>
@@ -343,7 +344,7 @@
                 <version>${failsafe-plugin.version}</version>
                 <configuration>
                     <argLine>
-                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        @{argLine} --add-opens java.base/java.lang=ALL-UNNAMED
                         -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
                     <excludedGroups>unit</excludedGroups>

@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,7 +45,7 @@ public class GpsPointMapper {
         entity.setCreatedAt(Instant.now());
         if ((sourceType == GpsSourceType.OWNTRACKS || sourceType == GpsSourceType.GPSLOGGER)
                 && message.getExt() != null && !message.getExt().isEmpty()) {
-            entity.setTelemetry(message.getExt());
+            entity.setTelemetry(new LinkedHashMap<>(message.getExt()));
         } else {
             entity.setTelemetry(null);
         }

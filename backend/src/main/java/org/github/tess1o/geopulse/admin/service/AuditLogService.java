@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.repository.AuditLogRepository;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -125,7 +126,7 @@ public class AuditLogService {
                 ActionType.USER_DELETED,
                 TargetType.USER,
                 targetUserId.toString(),
-                Map.of("email", userEmail),
+                new LinkedHashMap<>(Map.of("email", userEmail)),
                 ipAddress
         );
     }

@@ -238,7 +238,7 @@ export async function insertMapTestPathData(dbManager, userId) {
       100,
       5.0,
       20.0,
-      'TEST',
+      'OWNTRACKS',
       new Date(point.timestamp)
     ];
 
@@ -301,7 +301,7 @@ export async function insertSingleLocationMapTestData(dbManager, userId) {
     100,
     0.0,
     20.0,
-    'TEST',
+    'OWNTRACKS',
     stayTime
   ];
 

@@ -116,19 +116,19 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         return results.isEmpty() ? null : results.get(0);
     }
 
-    /**
-     * Find reverse geocoding locations by their IDs.
-     * Used for export functionality to collect referenced geocoding data.
-     *
-     * @param ids List of reverse geocoding location IDs
-     * @return List of found reverse geocoding locations
-     */
-    public List<ReverseGeocodingLocationEntity> findByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return List.of();
-        }
-        return find("id in ?1", ids).list();
-    }
+//    /**
+//     * Find reverse geocoding locations by their IDs.
+//     * Used for export functionality to collect referenced geocoding data.
+//     *
+//     * @param ids List of reverse geocoding location IDs
+//     * @return List of found reverse geocoding locations
+//     */
+//    public List<ReverseGeocodingLocationEntity> findByIds(List<Long> ids) {
+//        if (ids == null || ids.isEmpty()) {
+//            return List.of();
+//        }
+//        return find("id in ?1", ids).list();
+//    }
 
     /**
      * Update access timestamp asynchronously in a separate transaction to prevent deadlocks.

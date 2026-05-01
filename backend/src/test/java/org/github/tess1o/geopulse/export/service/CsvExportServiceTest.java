@@ -69,7 +69,7 @@ class CsvExportServiceTest {
         Map<String, Object> telemetry = new LinkedHashMap<>();
         telemetry.put("ignition", 1);
         telemetry.put("batt_v", 12.6);
-        firstPoint.setTelemetry(telemetry);
+        firstPoint.setTelemetry(new LinkedHashMap<>(telemetry));
         gpsPointRepository.persist(firstPoint);
         GpsPointEntity secondPoint = ExportTestFixtures.gpsPoint(
                 testUser,

@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.hibernate.annotations.Type;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserEntity extends PanacheEntityBase {
+public class UserEntity extends PanacheEntityBase implements Serializable {
 
     @Id
     @GeneratedValue

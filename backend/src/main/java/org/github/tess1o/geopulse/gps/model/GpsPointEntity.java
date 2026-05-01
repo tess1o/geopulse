@@ -11,7 +11,9 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.Type;
 import org.locationtech.jts.geom.Point;
 
+import java.io.Serializable;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 
@@ -20,7 +22,7 @@ import java.util.Map;
 @Setter
 @RequiredArgsConstructor
 @Table(name = "gps_points")
-public class GpsPointEntity implements GpsPoint {
+public class GpsPointEntity implements GpsPoint, Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,7 +53,7 @@ public class GpsPointEntity implements GpsPoint {
 
     @Type(JsonType.class)
     @Column(name = "telemetry", columnDefinition = "jsonb")
-    private Map<String, Object> telemetry;
+    private LinkedHashMap<String, Object> telemetry;
 
     // Implementation of GpsPoint interface
     @Override

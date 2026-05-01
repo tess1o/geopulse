@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.Type;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 
@@ -18,7 +19,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserNotificationEntity {
+public class UserNotificationEntity implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

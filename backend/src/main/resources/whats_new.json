@@ -6,7 +6,7 @@
       "Re-implemented how we add new places during Trip planning",
       "Improved Immich timeout handling",
       "Added last known battery level on Friends Live tab",
-      "Do not fail when Admin deletes an invited user",
+      "Do not fail when Admin deletes an invited user"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }

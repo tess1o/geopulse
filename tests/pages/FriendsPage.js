@@ -562,7 +562,7 @@ export class FriendsPage {
       battery: 100,
       velocity: 0,
       altitude: 0,
-      source_type: 'TEST',
+      source_type: 'OWNTRACKS',
       created_at: now
     };
 

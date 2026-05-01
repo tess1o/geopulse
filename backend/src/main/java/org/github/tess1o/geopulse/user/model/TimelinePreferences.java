@@ -6,12 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class TimelinePreferences {
+public class TimelinePreferences implements Serializable {
     private Boolean useVelocityAccuracy;
     private Double staypointVelocityThreshold;
     private Double staypointMaxAccuracyThreshold;

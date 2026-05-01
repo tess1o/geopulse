@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.export.service;
 
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -195,7 +196,7 @@ public class ExportDataCollectorService {
 
         log.debug("Collecting {} reverse geocoding locations", geocodingIds.size());
 
-        var locations = reverseGeocodingLocationRepository.findByIds(geocodingIds.stream().toList());
+        List<ReverseGeocodingLocationEntity> locations = reverseGeocodingLocationRepository.findByIds(geocodingIds.stream().toList());
 
         log.debug("Collected {} reverse geocoding locations", locations.size());
         return locations;

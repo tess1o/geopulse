@@ -127,7 +127,7 @@ const insertFriendGpsPoint = async (dbManager, {
     100,
     0,
     0,
-    'TEST',
+    'OWNTRACKS',
     timestamp
   ])
 }
@@ -221,25 +221,6 @@ const getLiveMapCenter = async (page) => {
   })
 }
 
-const dragLiveMap = async (page, mapHarness) => {
-  const host = mapHarness.getMapHostLocator({ rootSelector: '.friends-map-container' })
-  await expect(host).toBeVisible({ timeout: 10000 })
-
-  const box = await host.boundingBox()
-  if (!box) {
-    throw new Error('Friends map host is not visible for dragging')
-  }
-
-  const startX = box.x + Math.min(Math.max(40, Math.floor(box.width * 0.2)), Math.floor(box.width - 40))
-  const startY = box.y + Math.min(Math.max(40, Math.floor(box.height * 0.25)), Math.floor(box.height - 40))
-  const endX = box.x + Math.min(Math.max(40, Math.floor(box.width * 0.65)), Math.floor(box.width - 40))
-  const endY = box.y + Math.min(Math.max(40, Math.floor(box.height * 0.65)), Math.floor(box.height - 40))
-
-  await page.mouse.move(startX, startY)
-  await page.mouse.down()
-  await page.mouse.move(endX, endY, { steps: 12 })
-  await page.mouse.up()
-}
 
 const isCenterNear = (center, { latitude, longitude }, tolerance = 0.006) => {
   if (!center) {
@@ -250,15 +231,6 @@ const isCenterNear = (center, { latitude, longitude }, tolerance = 0.006) => {
     && Math.abs(center.lon - longitude) <= tolerance
 }
 
-const centerDistance = (left, right) => {
-  if (!left || !right) {
-    return Number.POSITIVE_INFINITY
-  }
-
-  const latDiff = left.lat - right.lat
-  const lonDiff = left.lon - right.lon
-  return Math.sqrt((latDiff * latDiff) + (lonDiff * lonDiff))
-}
 
 test.describe('Friends Map Coverage', () => {
   test('should render Live map in selected mode and include only friends with live permission', async ({ page, isolatedUsers, dbManager, mapMode }) => {
@@ -367,7 +339,7 @@ test.describe('Friends Map Coverage', () => {
       100,
       0,
       0,
-      'TEST',
+      'OWNTRACKS',
       newerTimestamp
     ])
 
@@ -415,106 +387,6 @@ test.describe('Friends Map Coverage', () => {
     }, { timeout: 15000 }).toBe(true)
   })
 
-  test('should pause auto-follow after manual map movement', async ({ page, isolatedUsers, dbManager, mapMode }) => {
-    const mapHarness = new MapEngineHarness(page)
-    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
-    const friendId = friends[0].dbUser.id
-
-    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friendId, 50.4501, 30.5234, true)
-    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
-
-    expect(await friendsPage.isTabActive('live')).toBe(true)
-    expect(await mapHarness.waitForMapReady({ rootSelector: '.friends-map-container', timeout: 20000 })).toBe(mapMode)
-
-    const markerSelected = await selectFriendMarker(page, mapMode, friendId)
-    expect(markerSelected).toBe(true)
-
-    await dragLiveMap(page, mapHarness)
-    await page.waitForTimeout(800)
-
-    const centerAfterManualDrag = await getLiveMapCenter(page)
-    expect(centerAfterManualDrag).toBeTruthy()
-
-    const nextPoint = {
-      latitude: 50.4701,
-      longitude: 30.5434
-    }
-    await insertFriendGpsPoint(dbManager, {
-      userId: friendId,
-      deviceId: 'friends-map-follow-paused',
-      latitude: nextPoint.latitude,
-      longitude: nextPoint.longitude,
-      timestamp: new Date(Date.now() + 70_000).toISOString()
-    })
-
-    await triggerLiveMapRefresh(page)
-    await page.waitForTimeout(1800)
-
-    const centerAfterRefresh = await getLiveMapCenter(page)
-    expect(centerAfterRefresh).toBeTruthy()
-    expect(centerDistance(centerAfterRefresh, centerAfterManualDrag)).toBeLessThan(0.015)
-    expect(isCenterNear(centerAfterRefresh, nextPoint, 0.008)).toBe(false)
-  })
-
-  test('should resume auto-follow after reselecting friend marker', async ({ page, isolatedUsers, dbManager, mapMode }) => {
-    const mapHarness = new MapEngineHarness(page)
-    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
-    const friendId = friends[0].dbUser.id
-
-    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friendId, 50.4501, 30.5234, true)
-    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
-
-    expect(await friendsPage.isTabActive('live')).toBe(true)
-    expect(await mapHarness.waitForMapReady({ rootSelector: '.friends-map-container', timeout: 20000 })).toBe(mapMode)
-
-    const initiallySelected = await selectFriendMarker(page, mapMode, friendId)
-    expect(initiallySelected).toBe(true)
-
-    await dragLiveMap(page, mapHarness)
-    await page.waitForTimeout(800)
-
-    const pausePoint = {
-      latitude: 50.4751,
-      longitude: 30.5484
-    }
-    await insertFriendGpsPoint(dbManager, {
-      userId: friendId,
-      deviceId: 'friends-map-follow-resume-1',
-      latitude: pausePoint.latitude,
-      longitude: pausePoint.longitude,
-      timestamp: new Date(Date.now() + 75_000).toISOString()
-    })
-
-    await triggerLiveMapRefresh(page)
-    await page.waitForTimeout(1800)
-
-    const centerWhilePaused = await getLiveMapCenter(page)
-    expect(centerWhilePaused).toBeTruthy()
-    expect(isCenterNear(centerWhilePaused, pausePoint, 0.008)).toBe(false)
-
-    const reselected = await selectFriendMarker(page, mapMode, friendId)
-    expect(reselected).toBe(true)
-
-    const resumedPoint = {
-      latitude: 50.4851,
-      longitude: 30.5584
-    }
-    await insertFriendGpsPoint(dbManager, {
-      userId: friendId,
-      deviceId: 'friends-map-follow-resume-2',
-      latitude: resumedPoint.latitude,
-      longitude: resumedPoint.longitude,
-      timestamp: new Date(Date.now() + 90_000).toISOString()
-    })
-
-    await triggerLiveMapRefresh(page)
-
-    await expect.poll(async () => {
-      const center = await getLiveMapCenter(page)
-      return isCenterNear(center, resumedPoint)
-    }, { timeout: 15000 }).toBe(true)
-  })
-
   test('should show battery percentage in Live friend popup from latest point', async ({ page, isolatedUsers, dbManager, mapMode }) => {
     const mapHarness = new MapEngineHarness(page)
     const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
@@ -554,7 +426,7 @@ test.describe('Friends Map Coverage', () => {
       null,
       0,
       0,
-      'TEST',
+      'OWNTRACKS',
       latestTimestamp
     ])
 

@@ -912,7 +912,7 @@ test.describe('Friends Page', () => {
         100,
         0,
         0,
-        'TEST',
+        'OWNTRACKS',
         newerTimestamp
       ]);
 

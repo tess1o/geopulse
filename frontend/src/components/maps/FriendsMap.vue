@@ -328,11 +328,26 @@ const registerMapInteractionListeners = (mapInstance) => {
     return
   }
 
-  const pauseAutoFollowFromManualMovement = () => {
-    if (!selectedFriendKey.value || !isAutoFollowEnabled.value || isProgrammaticCameraMove.value) {
+  const isUserInitiatedMapInteraction = (eventName, eventPayload) => {
+    // Drag/rotate/pitch start events represent direct user interaction.
+    if (eventName === 'dragstart' || eventName === 'rotatestart' || eventName === 'pitchstart') {
+      return true
+    }
+
+    // movestart/zoomstart can be programmatic; keep only DOM-originated interactions.
+    return Boolean(eventPayload?.originalEvent)
+  }
+
+  const pauseAutoFollowFromManualMovement = (eventName, eventPayload) => {
+    if (!selectedFriendKey.value || !isAutoFollowEnabled.value) {
       return
     }
 
+    if (!isUserInitiatedMapInteraction(eventName, eventPayload)) {
+      return
+    }
+
+    stopProgrammaticCameraMove()
     disableAutoFollow()
   }
 
@@ -341,13 +356,15 @@ const registerMapInteractionListeners = (mapInstance) => {
       ? ['dragstart', 'zoomstart', 'movestart']
       : ['dragstart', 'zoomstart', 'movestart', 'rotatestart', 'pitchstart']
 
-  listeners.forEach((eventName) => {
-    mapInstance.on?.(eventName, pauseAutoFollowFromManualMovement)
+  const listenerEntries = listeners.map((eventName) => {
+    const handler = (eventPayload) => pauseAutoFollowFromManualMovement(eventName, eventPayload)
+    mapInstance.on?.(eventName, handler)
+    return { eventName, handler }
   })
 
   detachMapInteractionListeners = () => {
-    listeners.forEach((eventName) => {
-      mapInstance.off?.(eventName, pauseAutoFollowFromManualMovement)
+    listenerEntries.forEach(({ eventName, handler }) => {
+      mapInstance.off?.(eventName, handler)
     })
   }
 }

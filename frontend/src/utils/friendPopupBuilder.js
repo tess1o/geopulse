@@ -123,7 +123,12 @@ const createLastActivitySection = (friend) => {
 }
 
 const createBatterySection = (friend) => {
-    const batteryValue = Number(friend?.lastBattery)
+    const rawBattery = friend?.lastBattery
+    if (rawBattery === null || rawBattery === undefined || rawBattery === '') {
+        return null
+    }
+
+    const batteryValue = Number(rawBattery)
     if (!Number.isFinite(batteryValue)) {
         return null
     }
