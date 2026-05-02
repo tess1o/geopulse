@@ -1,12 +1,15 @@
 [
   {
-    "version": "1.28.2",
-    "title": "GeoPulse 1.28.2",
+    "version": "1.29.0",
+    "title": "GeoPulse 1.29.0",
     "highlights": [
-      "Re-implemented how we add new places during Trip planning",
-      "Improved Immich timeout handling",
-      "Added last known battery level on Friends Live tab",
-      "Do not fail when Admin deletes an invited user"
+      "Added city/country normalization on Reverse Geocoding page",
+      "Added more achievements related to trains/flights",
+      "Add short trips between Stays even if they do not satisfy min requirements",
+      "Do not re-center Friend Live map when you moved to other place",
+      "Added Open in Google Maps button on Friend Live tooltip",
+      "Fixed styles on Timeline reports page on mobile",
+      "Upgraded backend framework/libraries to the latest stable versions"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases"
   }
