@@ -83,6 +83,20 @@
           "data" : { }
         }
       },
+      "ApplyNormalizationRulesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "applyToGeocoding" : {
+            "type" : "boolean"
+          },
+          "applyToFavorites" : {
+            "type" : "boolean"
+          },
+          "scopeValid" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "AppriseTestRequest" : {
         "type" : "object",
         "properties" : {
@@ -499,6 +513,37 @@
         "properties" : {
           "expiresAt" : {
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "CreateNormalizationRuleRequest" : {
+        "required" : [ "ruleType" ],
+        "type" : "object",
+        "properties" : {
+          "ruleType" : {
+            "$ref" : "#/components/schemas/NormalizationRuleType"
+          },
+          "sourceCountry" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "sourceCity" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "targetCountry" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "targetCity" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "countryRuleValid" : {
+            "type" : "boolean"
+          },
+          "cityRuleValid" : {
+            "type" : "boolean"
           }
         }
       },
@@ -1329,6 +1374,10 @@
         "enum" : [ "METRIC", "IMPERIAL" ],
         "type" : "string"
       },
+      "NormalizationRuleType" : {
+        "enum" : [ "COUNTRY", "CITY" ],
+        "type" : "string"
+      },
       "OidcCallbackRequest" : {
         "required" : [ "code", "state" ],
         "type" : "object",
@@ -1929,6 +1978,37 @@
         "type" : "object",
         "properties" : {
           "shareLiveLocation" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateNormalizationRuleRequest" : {
+        "required" : [ "ruleType" ],
+        "type" : "object",
+        "properties" : {
+          "ruleType" : {
+            "$ref" : "#/components/schemas/NormalizationRuleType"
+          },
+          "sourceCountry" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "sourceCity" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "targetCountry" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "targetCity" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "countryRuleValid" : {
+            "type" : "boolean"
+          },
+          "cityRuleValid" : {
             "type" : "boolean"
           }
         }
@@ -2664,7 +2744,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2676,7 +2761,7 @@
         "summary" : "Get Audit Logs",
         "tags" : [ "Admin Audit Log Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2684,7 +2769,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2696,7 +2786,7 @@
         "summary" : "Get Dashboard Stats",
         "tags" : [ "Admin Dashboard Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2727,7 +2817,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2739,7 +2834,7 @@
         "summary" : "Get Invitations",
         "tags" : [ "Admin Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "post" : {
@@ -2768,7 +2863,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2783,7 +2883,7 @@
         "summary" : "Create Invitation",
         "tags" : [ "Admin Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2791,7 +2891,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2803,7 +2908,7 @@
         "summary" : "Get Base Url",
         "tags" : [ "Admin Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2831,7 +2936,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2843,7 +2953,7 @@
         "summary" : "Revoke Invitation",
         "tags" : [ "Admin Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2851,7 +2961,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2863,7 +2978,7 @@
         "summary" : "Get All Providers",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "post" : {
@@ -2892,7 +3007,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2907,7 +3027,7 @@
         "summary" : "Create Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -2945,7 +3065,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2960,7 +3085,7 @@
         "summary" : "Update Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "get" : {
@@ -2974,7 +3099,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -2986,7 +3116,7 @@
         "summary" : "Get Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -3012,7 +3142,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3024,7 +3159,7 @@
         "summary" : "Delete Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3052,7 +3187,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3064,7 +3204,7 @@
         "summary" : "Reset Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3080,7 +3220,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3092,7 +3237,7 @@
         "summary" : "Test Provider",
         "tags" : [ "Admin Oidc Provider Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3100,7 +3245,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3112,7 +3262,7 @@
         "summary" : "Get All Settings",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3143,7 +3293,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3158,7 +3313,7 @@
         "summary" : "Bulk Update Settings",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3176,7 +3331,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3191,7 +3351,7 @@
         "summary" : "Test Apprise Connection",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3207,7 +3367,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3219,7 +3384,7 @@
         "summary" : "Get Settings By Category",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3257,7 +3422,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3272,7 +3442,7 @@
         "summary" : "Update Setting",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -3298,7 +3468,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3310,7 +3485,7 @@
         "summary" : "Reset Setting",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3355,7 +3530,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3367,7 +3547,7 @@
         "summary" : "Get Users",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3383,7 +3563,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3395,7 +3580,7 @@
         "summary" : "Get User By Id",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -3421,7 +3606,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3433,7 +3623,7 @@
         "summary" : "Delete User",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3461,7 +3651,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3473,7 +3668,7 @@
         "summary" : "Reset Password",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3511,7 +3706,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3526,7 +3726,7 @@
         "summary" : "Update User Role",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3564,7 +3764,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3579,7 +3784,7 @@
         "summary" : "Update User Status",
         "tags" : [ "Admin User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -3587,7 +3792,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Builtin System Message",
@@ -3629,7 +3839,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Default System Message",
@@ -3650,7 +3865,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3662,7 +3882,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get AI Settings",
@@ -3683,7 +3908,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3707,7 +3937,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3731,7 +3966,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3753,7 +3993,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Validate Token",
@@ -3774,7 +4019,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3788,7 +4038,12 @@
       "post" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Logout",
@@ -3809,7 +4064,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3823,7 +4083,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3835,7 +4100,7 @@
         "summary" : "Get User Connections",
         "tags" : [ "Oidc Authentication Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -3853,7 +4118,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3877,7 +4147,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -3906,7 +4181,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3918,7 +4198,7 @@
         "summary" : "Initiate Linking",
         "tags" : [ "Oidc Authentication Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -3941,7 +4221,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Initiate Login",
@@ -3952,7 +4237,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Enabled Providers",
@@ -3971,7 +4261,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -3983,7 +4278,7 @@
         "summary" : "Unlink Provider",
         "tags" : [ "Oidc Authentication Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4001,7 +4296,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -4022,7 +4322,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Refresh Token Cookie",
@@ -4033,7 +4338,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Auth Status",
@@ -4054,7 +4364,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -4090,7 +4405,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4102,7 +4422,7 @@
         "summary" : "Get Coverage Cells",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4110,7 +4430,12 @@
       "post" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4122,7 +4447,7 @@
         "summary" : "Recalculate Coverage",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4140,7 +4465,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4155,7 +4485,7 @@
         "summary" : "Update Coverage Settings",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4163,7 +4493,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4175,7 +4510,7 @@
         "summary" : "Get Coverage Status",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4191,7 +4526,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4203,7 +4543,7 @@
         "summary" : "Get Coverage Summary",
         "tags" : [ "Coverage Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4211,7 +4551,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Handle Dawarich Health",
@@ -4232,7 +4577,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -4253,7 +4603,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Handle Dawarich Stats",
@@ -4285,7 +4640,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4297,7 +4657,7 @@
         "summary" : "Get Monthly Heatmap",
         "tags" : [ "Digest Heatmap Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4324,7 +4684,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4336,7 +4701,7 @@
         "summary" : "Get Range Heatmap",
         "tags" : [ "Digest Heatmap Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4358,7 +4723,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4370,7 +4740,7 @@
         "summary" : "Get Yearly Heatmap",
         "tags" : [ "Digest Heatmap Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4393,7 +4763,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4405,7 +4780,7 @@
         "summary" : "Get Monthly Digest",
         "tags" : [ "Digest Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4421,7 +4796,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4433,7 +4813,7 @@
         "summary" : "Get Yearly Digest",
         "tags" : [ "Digest Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4451,7 +4831,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4485,7 +4870,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4508,7 +4898,10 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4538,7 +4931,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4569,7 +4967,15 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/zip" : { },
+              "application/json" : {
+                "schema" : { }
+              },
+              "application/gpx+xml" : { },
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4600,7 +5006,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4634,7 +5045,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4666,7 +5082,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/gpx+xml" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4695,7 +5114,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/gpx+xml" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4732,7 +5154,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4760,7 +5187,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4791,7 +5223,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4822,7 +5259,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4842,7 +5284,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4854,7 +5301,7 @@
         "summary" : "Get Favorites",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4872,7 +5319,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4887,7 +5339,7 @@
         "summary" : "Add Area To Favorites",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4905,7 +5357,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4920,7 +5377,7 @@
         "summary" : "Bulk Add Favorites",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4938,7 +5395,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4953,7 +5415,7 @@
         "summary" : "Bulk Update Favorites",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4961,7 +5423,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -4973,7 +5440,7 @@
         "summary" : "Get Distinct Values",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -4991,7 +5458,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5006,7 +5478,7 @@
         "summary" : "Add Point To Favorites",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5024,7 +5496,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5039,7 +5516,7 @@
         "summary" : "Reconcile Favorites Bulk",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5055,7 +5532,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5067,7 +5549,7 @@
         "summary" : "Get Reconciliation Job Progress",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5094,7 +5576,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5109,7 +5596,7 @@
         "summary" : "Update Favorite",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -5124,7 +5611,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5136,7 +5628,7 @@
         "summary" : "Delete Favorite",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5144,7 +5636,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5156,7 +5653,7 @@
         "summary" : "Get Friends",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5174,7 +5671,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5189,7 +5691,7 @@
         "summary" : "Send Invitation",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5197,7 +5699,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5209,7 +5716,7 @@
         "summary" : "Get Received Invitations",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5217,7 +5724,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5229,7 +5741,7 @@
         "summary" : "Get Sent Invitations",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5246,7 +5758,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5258,7 +5775,7 @@
         "summary" : "Accept Invitation",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5275,7 +5792,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5287,7 +5809,7 @@
         "summary" : "Cancel Invitation",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5304,7 +5826,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5316,7 +5843,7 @@
         "summary" : "Reject Invitation",
         "tags" : [ "Friend Invitation Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5339,7 +5866,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5351,7 +5883,7 @@
         "summary" : "Get Friends Location Trails",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5359,7 +5891,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5371,7 +5908,7 @@
         "summary" : "Get All Friend Permissions",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5387,7 +5924,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5399,7 +5941,7 @@
         "summary" : "Search Users To Invite",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5415,7 +5957,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5427,7 +5974,7 @@
         "summary" : "Remove Friend",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5443,7 +5990,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5455,7 +6007,7 @@
         "summary" : "Get Friend Location",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5481,7 +6033,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5496,7 +6053,7 @@
         "summary" : "Update Friend Permissions",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -5510,7 +6067,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5522,7 +6084,7 @@
         "summary" : "Get Friend Permissions",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5548,7 +6110,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5563,7 +6130,7 @@
         "summary" : "Update Live Location Permission",
         "tags" : [ "Friend Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5614,7 +6181,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5626,7 +6198,7 @@
         "summary" : "Get Geocoding Results",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5644,7 +6216,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5659,7 +6236,7 @@
         "summary" : "Bulk Update Geocoding",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5667,7 +6244,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5679,7 +6261,232 @@
         "summary" : "Get Distinct Values",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/geocoding/normalization-rules" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "List Normalization Rules",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateNormalizationRuleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Normalization Rule",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/geocoding/normalization-rules/apply" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApplyNormalizationRulesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Apply Normalization Rules",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/geocoding/normalization-rules/{id}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateNormalizationRuleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Normalization Rule",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete Normalization Rule",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/geocoding/normalization-rules/{id}/apply" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApplyNormalizationRulesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Apply Normalization Rule",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5687,7 +6494,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5699,7 +6511,7 @@
         "summary" : "Get Enabled Providers",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5707,7 +6519,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5719,7 +6536,7 @@
         "summary" : "Get Providers With Data",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5737,7 +6554,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5752,7 +6574,7 @@
         "summary" : "Reconcile With Provider Bulk",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5768,7 +6590,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5780,7 +6607,7 @@
         "summary" : "Get Reconciliation Job Progress",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5798,7 +6625,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5813,7 +6645,7 @@
         "summary" : "Reconcile Single",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5840,7 +6672,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5855,7 +6692,7 @@
         "summary" : "Update Geocoding Result",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -5870,7 +6707,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5882,7 +6724,7 @@
         "summary" : "Get Geocoding Result",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5952,7 +6794,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5964,7 +6811,7 @@
         "summary" : "Get Events",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5972,7 +6819,12 @@
       "post" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -5984,7 +6836,7 @@
         "summary" : "Mark All Events Seen",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -5992,7 +6844,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6004,7 +6861,7 @@
         "summary" : "Get Unread Event Count",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6021,7 +6878,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6033,7 +6895,7 @@
         "summary" : "Mark Event Seen",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6041,7 +6903,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6053,7 +6920,7 @@
         "summary" : "Get Rules",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -6069,7 +6936,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6084,7 +6956,7 @@
         "summary" : "Create Rule",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6111,7 +6983,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6123,7 +7000,7 @@
         "summary" : "Update Rule",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -6138,7 +7015,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6150,7 +7032,7 @@
         "summary" : "Delete Rule",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6158,7 +7040,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6170,7 +7057,7 @@
         "summary" : "Get Templates",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -6186,7 +7073,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6201,7 +7093,7 @@
         "summary" : "Create Template",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6209,7 +7101,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6221,7 +7118,7 @@
         "summary" : "Get Template Capabilities",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6239,7 +7136,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6254,7 +7156,7 @@
         "summary" : "Test Template Connection",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6281,7 +7183,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6293,7 +7200,7 @@
         "summary" : "Update Template",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -6308,7 +7215,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6320,7 +7232,7 @@
         "summary" : "Delete Template",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6417,7 +7329,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6429,7 +7346,7 @@
         "summary" : "Get Gps Points",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6437,7 +7354,12 @@
       "delete" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6449,7 +7371,7 @@
         "summary" : "Delete All Gps Data",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6467,7 +7389,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6482,7 +7409,7 @@
         "summary" : "Delete Gps Points",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6555,7 +7482,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6567,7 +7497,7 @@
         "summary" : "Export Gps Points",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6575,7 +7505,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6587,7 +7522,7 @@
         "summary" : "Get Last Known Position",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6608,7 +7543,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6620,7 +7560,7 @@
         "summary" : "Get Gps Point Path",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6638,7 +7578,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6653,13 +7598,18 @@
         "summary" : "Update Gps Config Source",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6671,7 +7621,7 @@
         "summary" : "Get Gps Source Configs",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -6687,7 +7637,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6702,7 +7657,7 @@
         "summary" : "Add Gps Source Cnfig",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6710,7 +7665,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6722,7 +7682,7 @@
         "summary" : "Get Default Filtering Values",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6730,7 +7690,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6742,7 +7707,7 @@
         "summary" : "Get Own Tracks Mqtt Config",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6771,7 +7736,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6786,7 +7756,7 @@
         "summary" : "Upsert Telemetry Mapping",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -6800,7 +7770,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6812,7 +7787,7 @@
         "summary" : "Reset Telemetry Mapping",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -6826,7 +7801,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6838,7 +7818,7 @@
         "summary" : "Get Telemetry Mapping",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6854,7 +7834,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6866,7 +7851,7 @@
         "summary" : "Delete Gps Source Config",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6892,7 +7877,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6907,7 +7897,7 @@
         "summary" : "Update Status",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -6962,7 +7952,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -6974,7 +7969,7 @@
         "summary" : "Get Gps Point Summary",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7001,7 +7996,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7016,7 +8016,7 @@
         "summary" : "Update Gps Point",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -7031,7 +8031,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7043,7 +8048,7 @@
         "summary" : "Delete Gps Point",
         "tags" : [ "Gps Point Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7069,7 +8074,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -7083,7 +8093,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Check Health",
@@ -7094,7 +8109,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Home Content",
@@ -7115,7 +8135,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -7153,7 +8178,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Upload Debug Data",
@@ -7181,7 +8211,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7209,7 +8244,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7237,7 +8277,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7284,7 +8329,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7314,7 +8364,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7345,7 +8400,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7393,7 +8453,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7421,7 +8486,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7449,7 +8519,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7488,7 +8563,7 @@
         "summary" : "Get Journey Insights",
         "tags" : [ "Journey Insight Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7496,7 +8571,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7508,7 +8588,7 @@
         "summary" : "Get Cities",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7524,7 +8604,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7536,7 +8621,7 @@
         "summary" : "Get City Details",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7582,7 +8667,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7594,7 +8684,7 @@
         "summary" : "Get City Visits",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7624,7 +8714,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7636,7 +8729,7 @@
         "summary" : "Export City Visits",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7644,7 +8737,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7656,7 +8754,7 @@
         "summary" : "Get Countries",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7672,7 +8770,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7684,7 +8787,7 @@
         "summary" : "Get Country Details",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7700,7 +8803,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7712,7 +8820,7 @@
         "summary" : "Get Cities In Country",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7758,7 +8866,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7770,7 +8883,7 @@
         "summary" : "Get Country Visits",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7800,7 +8913,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7812,7 +8928,7 @@
         "summary" : "Export Country Visits",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7877,7 +8993,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7889,7 +9010,7 @@
         "summary" : "Get Map Places",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7910,7 +9031,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7922,7 +9048,7 @@
         "summary" : "Search",
         "tags" : [ "Location Analytics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7939,7 +9065,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7951,7 +9082,7 @@
         "summary" : "Get Notifications",
         "tags" : [ "Notification Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7959,7 +9090,12 @@
       "post" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7971,7 +9107,7 @@
         "summary" : "Mark All Seen",
         "tags" : [ "Notification Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -7979,7 +9115,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -7991,7 +9132,7 @@
         "summary" : "Get Unread Count",
         "tags" : [ "Notification Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8008,7 +9149,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8020,7 +9166,7 @@
         "summary" : "Mark Seen",
         "tags" : [ "Notification Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8038,7 +9184,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -8070,7 +9221,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -8099,7 +9255,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8111,7 +9272,7 @@
         "summary" : "Get Period Tags",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -8127,7 +9288,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8142,7 +9308,7 @@
         "summary" : "Create Period Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8150,7 +9316,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8162,7 +9333,7 @@
         "summary" : "Get Active Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8190,7 +9361,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8202,7 +9378,7 @@
         "summary" : "Check Overlaps",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8229,7 +9405,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8244,7 +9425,7 @@
         "summary" : "Update Period Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -8266,7 +9447,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8278,7 +9464,7 @@
         "summary" : "Delete Period Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8295,7 +9481,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8307,7 +9498,7 @@
         "summary" : "Unlink Period Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8341,7 +9532,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8356,7 +9552,7 @@
         "summary" : "Update Place Name",
         "tags" : [ "Place Details Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -8378,7 +9574,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8390,7 +9591,7 @@
         "summary" : "Get Place Details",
         "tags" : [ "Place Details Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8422,7 +9623,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8434,7 +9640,7 @@
         "summary" : "Get Place Photo Search Window",
         "tags" : [ "Place Details Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8488,7 +9694,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8500,7 +9711,7 @@
         "summary" : "Get Place Visits",
         "tags" : [ "Place Details Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8538,7 +9749,10 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "text/csv" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8550,7 +9764,7 @@
         "summary" : "Export Place Visits",
         "tags" : [ "Place Details Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8568,7 +9782,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8583,7 +9802,7 @@
         "summary" : "Commit",
         "tags" : [ "Reconstruction Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8601,7 +9820,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8616,7 +9840,7 @@
         "summary" : "Preview",
         "tags" : [ "Reconstruction Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8624,7 +9848,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8636,7 +9865,7 @@
         "summary" : "Get Shared Links",
         "tags" : [ "Shared Link Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -8652,7 +9881,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8667,7 +9901,7 @@
         "summary" : "Create Share Link",
         "tags" : [ "Shared Link Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8693,7 +9927,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8708,7 +9947,7 @@
         "summary" : "Update Share Link",
         "tags" : [ "Shared Link Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -8722,7 +9961,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8734,7 +9978,7 @@
         "summary" : "Delete Share Link",
         "tags" : [ "Shared Link Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8750,7 +9994,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Shared Current Location",
@@ -8769,7 +10018,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Shared Location Info",
@@ -8788,7 +10042,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Shared Location",
@@ -8819,7 +10078,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Shared Path",
@@ -8850,7 +10114,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Shared Timeline",
@@ -8879,7 +10148,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -8906,7 +10180,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8918,7 +10197,7 @@
         "summary" : "Get Range Statistics",
         "tags" : [ "Statistics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8926,7 +10205,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8938,7 +10222,7 @@
         "summary" : "Get Monthly Statistics",
         "tags" : [ "Statistics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8946,7 +10230,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8958,7 +10247,7 @@
         "summary" : "Get Weekly Statistics",
         "tags" : [ "Statistics Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -8979,7 +10268,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -8991,7 +10285,7 @@
         "summary" : "Get Timeline",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9012,7 +10306,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9024,7 +10323,7 @@
         "summary" : "Get Timeline Count",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9041,7 +10340,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9053,7 +10357,7 @@
         "summary" : "Reset Data Gap Stay Override",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9080,7 +10384,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9095,7 +10404,7 @@
         "summary" : "Convert Data Gap To Stay",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9112,7 +10421,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9124,7 +10438,7 @@
         "summary" : "Get Data Gap Stay Conversion Preview",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9132,7 +10446,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9144,7 +10463,7 @@
         "summary" : "Get Active Job",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9152,7 +10471,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9164,7 +10488,7 @@
         "summary" : "Get Job History",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9180,7 +10504,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9192,7 +10521,7 @@
         "summary" : "Get Job Progress",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9219,7 +10548,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9231,7 +10565,7 @@
         "summary" : "Get Multi User Timeline",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9239,7 +10573,12 @@
       "post" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9251,7 +10590,7 @@
         "summary" : "Regenerate All Timeline",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9268,7 +10607,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9280,7 +10624,7 @@
         "summary" : "Get Trip Classification Details",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9307,7 +10651,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9322,7 +10671,7 @@
         "summary" : "Update Trip Movement Type",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -9337,7 +10686,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9349,7 +10703,7 @@
         "summary" : "Reset Trip Movement Type",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9357,7 +10711,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9369,7 +10728,7 @@
         "summary" : "Get User Preferences",
         "tags" : [ "Streaming Timeline Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9387,7 +10746,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -9408,7 +10772,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9420,7 +10789,7 @@
         "summary" : "Get Trips",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -9436,7 +10805,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9451,7 +10825,7 @@
         "summary" : "Create Trip",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9468,7 +10842,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9480,7 +10859,7 @@
         "summary" : "Create Trip From Period Tag",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9516,7 +10895,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9528,7 +10912,7 @@
         "summary" : "Search",
         "tags" : [ "Plan Search Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9551,7 +10935,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9563,7 +10952,7 @@
         "summary" : "Get Plan Suggestion",
         "tags" : [ "Plan Suggestion Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9590,7 +10979,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9605,7 +10999,7 @@
         "summary" : "Update Trip",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -9620,7 +11014,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9632,7 +11031,7 @@
         "summary" : "Get Trip",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -9654,7 +11053,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9666,7 +11070,7 @@
         "summary" : "Delete Trip",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9683,7 +11087,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9695,7 +11104,7 @@
         "summary" : "Get Trip Collaborators",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9729,7 +11138,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9744,7 +11158,7 @@
         "summary" : "Upsert Trip Collaborator",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -9766,7 +11180,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9778,7 +11197,7 @@
         "summary" : "Remove Trip Collaborator",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9795,7 +11214,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9807,7 +11231,7 @@
         "summary" : "Unlink Trip From Period Tag",
         "tags" : [ "Trip Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9836,7 +11260,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9848,7 +11277,7 @@
         "summary" : "Get Trip Path",
         "tags" : [ "Trip Workspace Data Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9865,7 +11294,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9877,7 +11311,7 @@
         "summary" : "Get Plan Items",
         "tags" : [ "Trip Plan Item Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "post" : {
@@ -9902,7 +11336,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9917,7 +11356,7 @@
         "summary" : "Create Plan Item",
         "tags" : [ "Trip Plan Item Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -9952,7 +11391,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -9967,7 +11411,7 @@
         "summary" : "Update Plan Item",
         "tags" : [ "Trip Plan Item Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
@@ -9990,7 +11434,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10002,7 +11451,7 @@
         "summary" : "Delete Plan Item",
         "tags" : [ "Trip Plan Item Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10037,7 +11486,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10052,7 +11506,7 @@
         "summary" : "Apply Visit Override",
         "tags" : [ "Trip Plan Item Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10069,7 +11523,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10081,7 +11540,7 @@
         "summary" : "Get Trip Summary",
         "tags" : [ "Trip Summary Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10110,7 +11569,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10122,7 +11586,7 @@
         "summary" : "Get Trip Timeline",
         "tags" : [ "Trip Workspace Data Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10139,7 +11603,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10151,7 +11620,7 @@
         "summary" : "Get Visit Suggestions",
         "tags" : [ "Trip Visit Matching Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10175,7 +11644,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10187,7 +11661,7 @@
         "summary" : "Upload Avatar",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10205,7 +11679,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10220,7 +11699,7 @@
         "summary" : "Change Password",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10228,7 +11707,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10240,7 +11724,7 @@
         "summary" : "Get Current User Profile",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10258,7 +11742,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10273,13 +11762,18 @@
         "summary" : "Update Current User Immich Config",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10291,7 +11785,7 @@
         "summary" : "Get Current User Immich Config",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10327,7 +11821,7 @@
         "summary" : "Test Current User Immich Connection",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10424,7 +11918,7 @@
         "summary" : "Get Current User Photos For Map Marker",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10500,7 +11994,7 @@
         "summary" : "Get Current User Photo Map Markers",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10576,7 +12070,7 @@
         "summary" : "Search Current User Photos",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10607,7 +12101,7 @@
         "summary" : "Download Current User Photo",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10638,7 +12132,7 @@
         "summary" : "Get Current User Photo Thumbnail",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10656,7 +12150,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10671,13 +12170,18 @@
         "summary" : "Update Timeline Preferences",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "delete" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10689,7 +12193,7 @@
         "summary" : "Reset Preferences To Defaults",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10707,7 +12211,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10722,13 +12231,18 @@
         "summary" : "Update Timeline Display Preferences",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10740,7 +12254,7 @@
         "summary" : "Get Timeline Display Preferences",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10758,7 +12272,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "400" : {
             "description" : "Bad Request"
@@ -10782,7 +12301,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10797,7 +12321,7 @@
         "summary" : "Update Profile",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10819,7 +12343,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "image/jpeg" : { },
+              "image/png" : { },
+              "image/webp" : { }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10831,7 +12360,7 @@
         "summary" : "Get User Avatar",
         "tags" : [ "User Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10857,7 +12386,12 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10872,7 +12406,7 @@
         "summary" : "Update Immich Config",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       },
       "get" : {
@@ -10886,7 +12420,12 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           },
           "401" : {
             "description" : "Not Authorized"
@@ -10898,7 +12437,7 @@
         "summary" : "Get Immich Config",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -10942,7 +12481,7 @@
         "summary" : "Test Immich Connection",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11046,7 +12585,7 @@
         "summary" : "Get Photos For Map Marker",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11129,7 +12668,7 @@
         "summary" : "Get Photo Map Markers",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11212,7 +12751,7 @@
         "summary" : "Search Photos",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11250,7 +12789,7 @@
         "summary" : "Download Photo",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11288,7 +12827,7 @@
         "summary" : "Get Photo Thumbnail",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
-          "jwt" : [ ]
+          "jwt" : [ "USER", "ADMIN" ]
         } ]
       }
     },
@@ -11296,7 +12835,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Version",
@@ -11307,7 +12851,12 @@
       "get" : {
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
           }
         },
         "summary" : "Get Version Status",
@@ -11317,7 +12866,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.28.2",
+    "version" : "1.29.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
