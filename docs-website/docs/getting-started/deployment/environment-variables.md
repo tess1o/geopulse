@@ -97,11 +97,12 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_TIMEOUT_SECONDS` | `15` | Immich search timeout Property: \`immich.photos.search-timeout-seconds\`. | Positive numeric value. | Backend restart |
 
-### Geocoding and GeoNames (39)
+### Geocoding and GeoNames (40)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_GEOCODING_DELAY_MS` | `1000` | Delay between geocoding requests (milliseconds) Property: \`geocoding.provider.delay.ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` | `5000` | Maximum provider bbox area accepted for cache containment matching. Oversized bboxes are dropped and matching falls back to coordinate tolerance. Property: \`geocoding.cache.max-bbox-area-km2\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RETRY_MAX_RETRIES` | `5` | Maximum retry attempts for geocoding provider calls Property: \`quarkus.fault-tolerance.global.retry.max-retries\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RETRY_DELAY_MS` | `1250` | Delay between geocoding provider retry attempts (milliseconds) Property: \`quarkus.fault-tolerance.global.retry.delay\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RETRY_JITTER_MS` | `250` | Retry delay jitter for geocoding provider calls (milliseconds) Property: \`quarkus.fault-tolerance.global.retry.jitter\`. | Non-negative numeric value. | Backend restart |

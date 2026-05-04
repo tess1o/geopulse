@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.github.tess1o.geopulse.testsupport.TestIds;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 
 import java.time.Instant;
 import java.util.List;
@@ -316,6 +318,76 @@ class ReverseGeocodingLocationRepositoryTest {
         }
     }
 
+    @Test
+    @Transactional
+    @DisplayName("Test 11b: Spatial query ignores oversized bounding boxes")
+    void testSpatialQueryIgnoresOversizedBoundingBox() {
+        Point requestCoords = coord(-73.9851, 40.7589);
+        Point queryCoords = coord(-73.9654, 40.7829);
+
+        // ~9,300km² around NYC, intentionally above the 5,000km² guard.
+        Polygon oversizedBbox = GeoUtils.buildBoundingBoxPolygon(40.60, 41.50, -74.30, -73.00);
+        ReverseGeocodingLocationEntity entity = createOriginalWithBoundingBox(requestCoords, "Oversized BBox", oversizedBbox);
+        repository.persist(entity);
+        entityManager.flush();
+
+        ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
+                USER_A_ID, queryCoords, 25.0, 5_000_000_000d);
+
+        if (result != null) {
+            assertNotEquals(entity.getId(), result.getId(),
+                    "Oversized bbox containment should be ignored");
+        }
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Test 11c: Spatial query uses safe bounding boxes")
+    void testSpatialQueryUsesSafeBoundingBox() {
+        // Use coordinates in a distinct area and force bbox-only matching:
+        // query point sits inside bbox, but outside distance tolerance from request/result coordinates.
+        Point requestCoords = coord(12.3000, 45.6000);
+        Point queryCoords = coord(12.3456, 45.6786);
+
+        Polygon safeBbox = GeoUtils.buildBoundingBoxPolygon(
+                queryCoords.getY() - 0.0001,
+                queryCoords.getY() + 0.0001,
+                queryCoords.getX() - 0.0001,
+                queryCoords.getX() + 0.0001);
+        ReverseGeocodingLocationEntity entity = createOriginalWithBoundingBox(requestCoords, "Safe BBox", safeBbox);
+        repository.persist(entity);
+        entityManager.flush();
+
+        ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
+                USER_A_ID, queryCoords, 1.0, 5_000_000_000d);
+
+        assertNotNull(result, "Safe bbox should still be usable for containment");
+        assertEquals(entity.getId(), result.getId());
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Test 11d: Distance match is prioritized over bbox-only match")
+    void testDistanceMatchPrioritizedOverBboxOnlyMatch() {
+        Point queryCoords = coord(-73.9851, 40.7589);
+        Point distanceMatchCoords = coord(-73.9851005, 40.7589005);
+        Point bboxOnlyCoords = coord(-73.9700, 40.7700);
+
+        ReverseGeocodingLocationEntity distanceMatch = createOriginal(distanceMatchCoords, "Distance Winner");
+        repository.persist(distanceMatch);
+
+        Polygon safeBbox = GeoUtils.buildBoundingBoxPolygon(40.7580, 40.7600, -73.9860, -73.9840);
+        ReverseGeocodingLocationEntity bboxOnly = createOriginalWithBoundingBox(bboxOnlyCoords, "BBox Candidate", safeBbox);
+        repository.persist(bboxOnly);
+        entityManager.flush();
+
+        ReverseGeocodingLocationEntity result = repository.findByRequestCoordinates(
+                USER_A_ID, queryCoords, 25.0, 5_000_000_000d);
+
+        assertNotNull(result);
+        assertEquals(distanceMatch.getId(), result.getId(), "Distance match must be ranked before bbox-only match");
+    }
+
     // ==================== Edge Case Tests ====================
     @Test
     @Transactional
@@ -395,6 +467,12 @@ class ReverseGeocodingLocationRepositoryTest {
         entity.setCountry("USA");
         entity.setCreatedAt(Instant.now());
         entity.setLastAccessedAt(Instant.now());
+        return entity;
+    }
+
+    private ReverseGeocodingLocationEntity createOriginalWithBoundingBox(Point coords, String displayName, Polygon boundingBox) {
+        ReverseGeocodingLocationEntity entity = createOriginal(coords, displayName);
+        entity.setBoundingBox(boundingBox);
         return entity;
     }
     private ReverseGeocodingLocationEntity createUserCopy(UUID userId, Point coords, String displayName) {

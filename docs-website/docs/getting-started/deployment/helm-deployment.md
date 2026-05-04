@@ -206,6 +206,7 @@ config:
 | Primary Provider    | `config.geocoding.primaryProvider`    | `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           |
 | Fallback Provider   | `config.geocoding.fallbackProvider`   | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | `""`                                  |
 | Delay (ms)          | `config.geocoding.delayMs`            | `GEOPULSE_GEOCODING_DELAY_MS`            | `1000`                                |
+| Max BBox Area (km²) | `config.geocoding.cacheMaxBboxAreaKm2` | `GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2` | `5000`                             |
 | Nominatim Enabled   | `config.geocoding.nominatim.enabled`  | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                |
 | Nominatim URL       | `config.geocoding.nominatim.url`      | `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` |
 | Photon Enabled      | `config.geocoding.photon.enabled`     | `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               |

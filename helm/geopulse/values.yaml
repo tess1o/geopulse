@@ -460,6 +460,9 @@ config:
     # Delay between geocoding requests in milliseconds (default: 1000)
     # Used for rate limiting to respect provider terms of service
     delayMs: 1000
+    # Maximum bounding box area in km² for cache containment matching.
+    # Oversized provider bboxes are dropped and matching falls back to coordinate tolerance.
+    cacheMaxBboxAreaKm2: 5000
 
     # Nominatim (OpenStreetMap) - Free, enabled by default
     nominatim:

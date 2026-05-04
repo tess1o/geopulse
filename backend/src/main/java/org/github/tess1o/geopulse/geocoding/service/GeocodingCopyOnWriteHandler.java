@@ -32,15 +32,18 @@ public class GeocodingCopyOnWriteHandler {
     private final GeocodingEntityMapper entityMapper;
     private final ReverseGeocodingLocationRepository repository;
     private final TimelineGeocodingSyncService timelineSyncService;
+    private final GeocodingBoundingBoxGuardService boundingBoxGuardService;
 
     @Inject
     public GeocodingCopyOnWriteHandler(
             GeocodingEntityMapper entityMapper,
             ReverseGeocodingLocationRepository repository,
-            TimelineGeocodingSyncService timelineSyncService) {
+            TimelineGeocodingSyncService timelineSyncService,
+            GeocodingBoundingBoxGuardService boundingBoxGuardService) {
         this.entityMapper = entityMapper;
         this.repository = repository;
         this.timelineSyncService = timelineSyncService;
+        this.boundingBoxGuardService = boundingBoxGuardService;
     }
 
     /**
@@ -146,6 +149,8 @@ public class GeocodingCopyOnWriteHandler {
         log.info("Reconciliation for geocoding {}: Updating user's copy with new data", entity.getId());
 
         entityMapper.updateEntityFromResult(entity, freshResult);
+        entity.setBoundingBox(boundingBoxGuardService.sanitizeForPersistence(
+                entity.getBoundingBox(), freshResult.getProviderName(), entity.getId()));
         repository.persist(entity);
 
         timelineSyncService.updateLocationNameForUser(userId, entity.getId(), freshResult.getFormattedDisplayName());
@@ -164,6 +169,8 @@ public class GeocodingCopyOnWriteHandler {
         log.info("Reconciliation for geocoding {}: Creating user copy with updated data", original.getId());
 
         ReverseGeocodingLocationEntity userCopy = entityMapper.createUserCopy(userId, original, freshResult);
+        userCopy.setBoundingBox(boundingBoxGuardService.sanitizeForPersistence(
+                userCopy.getBoundingBox(), freshResult.getProviderName(), null));
         repository.persist(userCopy);
 
         timelineSyncService.switchToNewGeocodingReference(

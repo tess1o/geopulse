@@ -29,17 +29,24 @@ public class CacheGeocodingService {
 
     private final ReverseGeocodingLocationRepository repository;
     private final GeocodingEntityMapper entityMapper;
+    private final GeocodingBoundingBoxGuardService boundingBoxGuardService;
 
     @ConfigProperty(name = "geocoding.cache.spatial-tolerance-meters", defaultValue = "25")
     @StaticInitSafe
     double spatialToleranceMeters;
 
+    @ConfigProperty(name = "geocoding.cache.max-bbox-area-km2", defaultValue = "5000")
+    @StaticInitSafe
+    double maxBboxAreaKm2;
+
     @Inject
     public CacheGeocodingService(
             ReverseGeocodingLocationRepository repository,
-            GeocodingEntityMapper entityMapper) {
+            GeocodingEntityMapper entityMapper,
+            GeocodingBoundingBoxGuardService boundingBoxGuardService) {
         this.repository = repository;
         this.entityMapper = entityMapper;
+        this.boundingBoxGuardService = boundingBoxGuardService;
     }
 
     /**
@@ -58,7 +65,7 @@ public class CacheGeocodingService {
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    userId, requestCoordinates, spatialToleranceMeters
+                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaSquareMeters()
             );
 
             if (match != null) {
@@ -96,7 +103,7 @@ public class CacheGeocodingService {
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    userId, requestCoordinates, spatialToleranceMeters
+                    userId, requestCoordinates, spatialToleranceMeters, getMaxBboxAreaSquareMeters()
             );
 
             if (match != null) {
@@ -140,6 +147,10 @@ public class CacheGeocodingService {
         try {
             // Convert to entity and save
             ReverseGeocodingLocationEntity entity = entityMapper.toEntity(geocodingResult);
+            entity.setBoundingBox(
+                    boundingBoxGuardService.sanitizeForPersistence(
+                            entity.getBoundingBox(), entity.getProviderName(), null)
+            );
             // CRITICAL: Always save as original (user_id = NULL) for shared cache
             entity.setUser(null);
 
@@ -225,5 +236,9 @@ public class CacheGeocodingService {
         return message.contains("unique constraint")
             || message.contains("idx_reverse_geocoding_unique_original_coords")
             || message.contains("duplicate key value");
+    }
+
+    private double getMaxBboxAreaSquareMeters() {
+        return Math.max(0d, maxBboxAreaKm2) * 1_000_000d;
     }
 }

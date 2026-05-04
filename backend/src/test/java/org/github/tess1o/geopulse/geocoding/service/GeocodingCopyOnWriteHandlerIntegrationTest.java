@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import java.time.Instant;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
@@ -340,6 +342,38 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertEquals("Updated Country", reloaded.getCountry());
         assertTrue(reloaded.isOwnedBy(testUserId));
         assertEquals(1, repository.count("user.id = ?1", testUserId));
+    }
+
+    @Test
+    @DisplayName("Should drop oversized bbox during reconciliation updates")
+    @Transactional
+    void testReconciliationDropsOversizedBoundingBox() {
+        ReverseGeocodingLocationEntity userCopy = createUserOwnedEntity(testUser);
+        repository.persist(userCopy);
+        entityManager.flush();
+        Long copyId = userCopy.getId();
+        entityManager.clear();
+
+        Polygon oversizedBbox = GeoUtils.buildBoundingBoxPolygon(0.0, 1.0, 0.0, 1.0);
+        FormattableGeocodingResult freshResult = SimpleFormattableResult.builder()
+                .requestCoordinates(point(TEST_LON, TEST_LAT))
+                .resultCoordinates(point(TEST_LON, TEST_LAT))
+                .boundingBox(oversizedBbox)
+                .formattedDisplayName("Updated Name With Oversized BBox")
+                .providerName("nominatim")
+                .city("Updated City")
+                .country("Updated Country")
+                .build();
+
+        ReverseGeocodingLocationEntity reloadedCopy = repository.findById(copyId);
+        handler.handleReconciliation(testUserId, reloadedCopy, freshResult);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        ReverseGeocodingLocationEntity updated = repository.findById(copyId);
+        assertNotNull(updated);
+        assertNull(updated.getBoundingBox(), "Oversized bbox should be dropped during reconciliation");
     }
     @Test
     @DisplayName("Should sync timeline when reconciling creates copy")

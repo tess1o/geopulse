@@ -35,6 +35,14 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
      * @return Best matching cached location or null
      */
     public ReverseGeocodingLocationEntity findByRequestCoordinates(UUID userId, Point requestCoordinates, double toleranceMeters) {
+        return findByRequestCoordinates(userId, requestCoordinates, toleranceMeters, Double.MAX_VALUE);
+    }
+
+    public ReverseGeocodingLocationEntity findByRequestCoordinates(
+            UUID userId,
+            Point requestCoordinates,
+            double toleranceMeters,
+            double maxBboxAreaSquareMeters) {
         // Handle null coordinates gracefully
         if (requestCoordinates == null) {
             log.debug("Received null coordinates for user {}, returning null", userId);
@@ -48,10 +56,20 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                   AND (
                     ST_DWithin(result_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
                     OR ST_DWithin(request_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
-                    OR ST_Contains(bounding_box, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
+                    OR (
+                      bounding_box IS NOT NULL
+                      AND ST_Area(bounding_box::geography) <= :maxBboxAreaSquareMeters
+                      AND ST_Contains(bounding_box, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
+                    )
                   )
                 ORDER BY
                   CASE WHEN user_id = :userId THEN 0 ELSE 1 END,
+                  CASE
+                    WHEN ST_DWithin(result_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
+                      OR ST_DWithin(request_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
+                    THEN 0
+                    ELSE 1
+                  END,
                   last_accessed_at DESC
                 LIMIT 1
                 """;
@@ -63,6 +81,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 .setParameter("lon", requestCoordinates.getX())
                 .setParameter("lat", requestCoordinates.getY())
                 .setParameter("tolerance", toleranceMeters)
+                .setParameter("maxBboxAreaSquareMeters", maxBboxAreaSquareMeters)
                 .getResultList();
 
         if (!results.isEmpty()) {
@@ -160,6 +179,11 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
      */
     public Map<String, ReverseGeocodingLocationEntity> findByCoordinatesBatchReal(
             UUID userId, List<Point> coordinates, double toleranceMeters) {
+        return findByCoordinatesBatchReal(userId, coordinates, toleranceMeters, Double.MAX_VALUE);
+    }
+
+    public Map<String, ReverseGeocodingLocationEntity> findByCoordinatesBatchReal(
+            UUID userId, List<Point> coordinates, double toleranceMeters, double maxBboxAreaSquareMeters) {
 
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
@@ -181,7 +205,12 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             log.debug("Processing geocoding batch {}/{} ({} coordinates) for user {}",
                     (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchPoints.size(), userId);
 
-            Map<String, ReverseGeocodingLocationEntity> batchResults = findForBatch(userId, batchPoints, toleranceMeters);
+            Map<String, ReverseGeocodingLocationEntity> batchResults = findForBatch(
+                    userId,
+                    batchPoints,
+                    toleranceMeters,
+                    maxBboxAreaSquareMeters
+            );
             finalResultMap.putAll(batchResults);
 
             log.debug("Batch {}/{} complete: found {} cached results for user {}",
@@ -195,7 +224,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     }
 
     private Map<String, ReverseGeocodingLocationEntity> findForBatch(
-            UUID userId, List<Point> batchPoints, double toleranceMeters) {
+            UUID userId, List<Point> batchPoints, double toleranceMeters, double maxBboxAreaSquareMeters) {
 
         // Build VALUES clause for input coordinates
         StringBuilder valuesClause = new StringBuilder();
@@ -220,27 +249,47 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 CROSS JOIN LATERAL (
                     SELECT candidate.id
                     FROM (
-                        SELECT r.id, 0 AS user_priority, r.last_accessed_at
+                        SELECT r.id, 0 AS user_priority, r.last_accessed_at,
+                               CASE
+                                 WHEN ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                                   OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                                 THEN 0
+                                 ELSE 1
+                               END AS match_priority
                         FROM reverse_geocoding_location r
                         WHERE r.user_id = :userId
                           AND (
                             ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
                             OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
-                            OR ST_Contains(r.bounding_box, ic.input_point)
+                            OR (
+                              r.bounding_box IS NOT NULL
+                              AND ST_Area(r.bounding_box::geography) <= :maxBboxAreaSquareMeters
+                              AND ST_Contains(r.bounding_box, ic.input_point)
+                            )
                           )
 
                         UNION ALL
 
-                        SELECT r.id, 1 AS user_priority, r.last_accessed_at
+                        SELECT r.id, 1 AS user_priority, r.last_accessed_at,
+                               CASE
+                                 WHEN ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                                   OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                                 THEN 0
+                                 ELSE 1
+                               END AS match_priority
                         FROM reverse_geocoding_location r
                         WHERE r.user_id IS NULL
                           AND (
                             ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
                             OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
-                            OR ST_Contains(r.bounding_box, ic.input_point)
+                            OR (
+                              r.bounding_box IS NOT NULL
+                              AND ST_Area(r.bounding_box::geography) <= :maxBboxAreaSquareMeters
+                              AND ST_Contains(r.bounding_box, ic.input_point)
+                            )
                           )
                     ) candidate
-                    ORDER BY candidate.user_priority, candidate.last_accessed_at DESC
+                    ORDER BY candidate.user_priority, candidate.match_priority, candidate.last_accessed_at DESC
                     LIMIT 1
                 ) r
                 ORDER BY ic.input_lon, ic.input_lat
@@ -248,7 +297,8 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
 
         var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
                 .setParameter("userId", userId)
-                .setParameter("tolerance", toleranceMeters);
+                .setParameter("tolerance", toleranceMeters)
+                .setParameter("maxBboxAreaSquareMeters", maxBboxAreaSquareMeters);
 
         // Set query timeout to 60 seconds (instead of default 7 minute transaction timeout)
         // This allows faster failure and retry if needed

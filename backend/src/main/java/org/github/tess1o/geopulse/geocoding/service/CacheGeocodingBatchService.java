@@ -37,6 +37,9 @@ public class CacheGeocodingBatchService {
     @ConfigProperty(name = "geocoding.cache.spatial-tolerance-meters", defaultValue = "25")
     double spatialToleranceMeters;
 
+    @ConfigProperty(name = "geocoding.cache.max-bbox-area-km2", defaultValue = "5000")
+    double maxBboxAreaKm2;
+
     @Inject
     public CacheGeocodingBatchService(
             ReverseGeocodingLocationRepository repository,
@@ -86,7 +89,12 @@ public class CacheGeocodingBatchService {
             log.debug("Starting batch geocoding results+ID lookup for user {} with {} coordinates", userId, coordinates.size());
 
             Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                    repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
+                    repository.findByCoordinatesBatchReal(
+                            userId,
+                            coordinates,
+                            spatialToleranceMeters,
+                            getMaxBboxAreaSquareMeters()
+                    );
 
             Map<String, FormattableGeocodingResult> resultMap = new HashMap<>(cachedResults.size());
             Map<String, Long> idMap = new HashMap<>(cachedResults.size());
@@ -115,5 +123,9 @@ public class CacheGeocodingBatchService {
                     userId, coordinates.size(), duration, e);
             return new BatchLookupResult(Map.of(), Map.of());
         }
+    }
+
+    private double getMaxBboxAreaSquareMeters() {
+        return Math.max(0d, maxBboxAreaKm2) * 1_000_000d;
     }
 }

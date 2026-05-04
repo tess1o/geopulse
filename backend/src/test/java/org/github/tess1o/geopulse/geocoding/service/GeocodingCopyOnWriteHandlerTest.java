@@ -37,6 +37,8 @@ class GeocodingCopyOnWriteHandlerTest {
     private ReverseGeocodingLocationRepository repository;
     @Mock
     private TimelineGeocodingSyncService timelineSyncService;
+    @Mock
+    private GeocodingBoundingBoxGuardService boundingBoxGuardService;
     private GeocodingCopyOnWriteHandler handler;
 
     private static final double TEST_LAT = 66.7589;
@@ -47,7 +49,7 @@ class GeocodingCopyOnWriteHandlerTest {
 
     @BeforeEach
     void setUp() {
-        handler = new GeocodingCopyOnWriteHandler(entityMapper, repository, timelineSyncService);
+        handler = new GeocodingCopyOnWriteHandler(entityMapper, repository, timelineSyncService, boundingBoxGuardService);
     }
     // ==================== Test Suite 1: handleUserUpdate() ====================
     @Nested
