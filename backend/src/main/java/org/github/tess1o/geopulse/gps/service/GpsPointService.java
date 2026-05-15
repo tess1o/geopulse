@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEvaluationService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
+import org.github.tess1o.geopulse.gps.model.MobileAppGpsPointRequest;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
@@ -307,6 +308,32 @@ public class GpsPointService {
         } else {
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
                 log.info("Skipping duplicate Traccar GPS point for user {} at timestamp {}", userId, timestamp);
+                return;
+            }
+        }
+
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
+        filterAndPersistGpsPoint(entity, config);
+    }
+
+    @Transactional
+    public void saveMobileAppGpsPoint(MobileAppGpsPointRequest data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        Instant timestamp = data.getTimestamp();
+
+        if (config.isEnableDuplicateDetection()) {
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                    ? config.getDuplicateDetectionThresholdMinutes()
+                    : globalDuplicateDetectionThresholdMinutes;
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, data.getLat(), data.getLon(), timestamp, sourceType, threshold)) {
+                log.info("Skipping Mobile App GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, data.getLat(), data.getLon(), threshold);
+                return;
+            }
+        } else {
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Mobile App GPS point for user {} at timestamp {}", userId, timestamp);
                 return;
             }
         }

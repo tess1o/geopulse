@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
+import org.github.tess1o.geopulse.gps.model.MobileAppGpsPointRequest;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -147,6 +148,24 @@ public class GpsPointMapper {
         entity.setVelocity(speedKnots != null ? speedKnots * 1.852 : null);
 
         entity.setAltitude(position.getAltitude());
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
+
+        return entity;
+    }
+
+    public GpsPointEntity toEntity(MobileAppGpsPointRequest message, UserEntity userId, GpsSourceType sourceType) {
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setDeviceId("Mobile App");
+        entity.setUser(userId);
+        entity.setCoordinates(GeoUtils.createPoint(message.getLon(), message.getLat()));
+        entity.setTimestamp(message.getTimestamp());
+        entity.setAccuracy(message.getAccuracy());
+        entity.setBattery(message.getBattery());
+        // Mobile app submits speed in m/s; store in km/h for consistency.
+        Double speedMs = message.getSpeed();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
+        entity.setAltitude(message.getAltitude());
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
 

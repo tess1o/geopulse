@@ -326,9 +326,11 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async initiateOidcLogin(providerName) {
+        async initiateOidcLogin(providerName, redirectUri = null) {
             try {
-                const response = await apiService.post(`/auth/oidc/login/${providerName}`)
+                const response = await apiService.post(`/auth/oidc/login/${providerName}`, {}, {
+                    params: redirectUri ? {redirectUri} : {}
+                })
                 window.location.href = response.data.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC login:', error)

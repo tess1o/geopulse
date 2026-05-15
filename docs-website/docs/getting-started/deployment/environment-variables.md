@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **196** distinct env vars.
+Backend runtime currently includes **200** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -51,13 +51,17 @@ Notes:
 | `GEOPULSE_VERSION_CHECK_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.connect-timeout-seconds`. | Positive integer seconds. | Backend restart |
 | `GEOPULSE_VERSION_CHECK_READ_TIMEOUT_SECONDS` | `8` | HTTP read timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.read-timeout-seconds`. | Positive integer seconds. | Backend restart |
 
-### Authentication and Access (18)
+### Authentication and Access (22)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_ADMIN_EMAIL` | `(empty)` | Admin configuration Property: \`geopulse.admin.email\`. | Valid email address. | Backend restart |
 | `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` | `true` | Property: \`geopulse.auth.admin-login-bypass.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED` | `false` | Redirect signed-out users from `/` to `/login` instead of rendering Home. Property: \`geopulse.auth.guest-root-redirect-to-login.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_AUTH_MOBILE_CODE_EXPIRY_SECONDS` | `5` | Lifetime of one-time mobile session exchange code in seconds. Property: \`geopulse.auth.mobile.code-expiry-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_AUTH_MOBILE_DEEPLINK_URL` | `app://auth/code/exchange` | Deep link URL used by web flow to open the mobile app for session exchange. Property: \`geopulse.auth.mobile.deeplink.url\`. | Valid mobile deep link URI. | Backend restart |
+| `GEOPULSE_AUTH_MOBILE_MOBILE_DEEPLINK_CLEANUP_CRON` | `0 0 3 1 * ?` | Cron expression for cleanup of expired mobile deep-link auth codes (default: day 1 of month at 03:00). Property: \`geopulse.auth.mobile.deeplink.cleanup.cron\`. | Valid Quarkus cron expression. | Backend restart |
+| `GEOPULSE_AUTH_MOBILE_DEEPLINK_CLEANUP_ENABLED` | `true` | Enables/disables scheduled cleanup of expired mobile deep-link auth codes. Property: \`geopulse.auth.mobile.deeplink.cleanup.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.oidc.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED` | `true` | Property: \`geopulse.auth.oidc.registration.enabled\`. | \`true\` or \`false\`. | Backend restart |

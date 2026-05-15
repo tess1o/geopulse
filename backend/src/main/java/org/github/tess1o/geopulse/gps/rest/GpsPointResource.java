@@ -14,6 +14,8 @@ import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -54,16 +56,49 @@ public class GpsPointResource {
     private final CurrentUserService currentUserService;
     private final PathSimplificationService pathSimplificationService;
     private final TimelineConfigurationProvider configurationProvider;
+    private final GpsSourceService gpsSourceService;
 
     @Inject
     public GpsPointResource(GpsPointService gpsPointService,
                             CurrentUserService currentUserService,
                             PathSimplificationService pathSimplificationService,
-                            TimelineConfigurationProvider configurationProvider) {
+                            TimelineConfigurationProvider configurationProvider,
+                            GpsSourceService gpsSourceService) {
         this.gpsPointService = gpsPointService;
         this.currentUserService = currentUserService;
         this.pathSimplificationService = pathSimplificationService;
         this.configurationProvider = configurationProvider;
+        this.gpsSourceService = gpsSourceService;
+    }
+
+    @POST
+    @Path("/point")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response ingestMobileAppPoint(@Valid MobileAppGpsPointRequest request) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
+
+            gpsPointService.saveMobileAppGpsPoint(request, userId, GpsSourceType.MOBILE_APP, config);
+            return Response.ok(ApiResponse.success(Map.of("accepted", true))).build();
+        } catch (Exception e) {
+            log.error("Failed to ingest mobile app GPS point", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to ingest GPS point"))
+                    .build();
+        }
+    }
+
+    private GpsSourceConfigEntity buildMobileAppDefaultConfig() {
+        GpsSourceConfigEntity config = new GpsSourceConfigEntity();
+        config.setSourceType(GpsSourceType.MOBILE_APP);
+        config.setActive(true);
+        config.setFilterInaccurateData(gpsSourceService.isDefaultFilterInaccurateDataEnabled());
+        config.setMaxAllowedAccuracy(gpsSourceService.getDefaultMaxAllowedAccuracy());
+        config.setMaxAllowedSpeed(gpsSourceService.getDefaultMaxAllowedSpeed());
+        config.setEnableDuplicateDetection(gpsSourceService.isDefaultDuplicateDetectionEnabled());
+        config.setDuplicateDetectionThresholdMinutes(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes());
+        return config;
     }
 
     /**
