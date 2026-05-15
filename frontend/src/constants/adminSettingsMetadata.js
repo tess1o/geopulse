@@ -103,7 +103,7 @@ export const SETTING_METADATA = {
   },
   'geocoding.photon.language': {
     label: 'Photon Language',
-    description: 'Language preference (BCP 47: en-US, de, uk, ja, etc.)'
+    description: 'Photon language code (allowed: de, pl, el, en, es, fa, fr, it, ja, ko). Leave empty for provider default'
   },
   'geocoding.googlemaps.api-key': {
     label: 'Google Maps API Key',

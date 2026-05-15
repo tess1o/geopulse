@@ -153,6 +153,9 @@ import apiService from '@/utils/apiService'
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const toast = useToast()
 const geocodingSettings = ref([])
+const ALLOWED_PHOTON_LANGUAGES = ['de', 'pl', 'el', 'en', 'es', 'fa', 'fr', 'it', 'ja', 'ko']
+const ALLOWED_PHOTON_LANGUAGE_SET = new Set(ALLOWED_PHOTON_LANGUAGES)
+const PHOTON_LANGUAGE_EXAMPLES = ALLOWED_PHOTON_LANGUAGES.join(', ')
 
 // Dirty state tracking
 const hasUnsavedChanges = ref(false)
@@ -225,6 +228,25 @@ const getPlaceholder = (setting) => {
   return getPlaceholderHelper(setting)
 }
 
+const validatePhotonLanguage = (value) => {
+  const raw = value == null ? '' : String(value)
+  const trimmed = raw.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const normalized = trimmed.toLowerCase()
+  if (ALLOWED_PHOTON_LANGUAGE_SET.has(normalized)) {
+    return null
+  }
+
+  const prefixMatch = normalized.match(/^([a-z]{2,3})[-_].*$/)
+  const suggestion = prefixMatch && ALLOWED_PHOTON_LANGUAGE_SET.has(prefixMatch[1]) ? prefixMatch[1] : null
+  const suggestionPart = suggestion ? ` Try "${suggestion}".` : ''
+
+  return `Invalid Photon language "${trimmed}". Use a simple language code (for example: ${PHOTON_LANGUAGE_EXAMPLES}) or leave empty for provider default.${suggestionPart}`
+}
+
 const reloadGeocodingSettings = async () => {
   geocodingSettings.value = await loadSettings('geocoding')
 }
@@ -252,6 +274,7 @@ const validateAllSettings = () => {
 
   const primaryProvider = geocodingSettings.value.find(s => s.key === 'geocoding.primary-provider')?.currentValue
   const fallbackProvider = geocodingSettings.value.find(s => s.key === 'geocoding.fallback-provider')?.currentValue
+  const photonLanguage = geocodingSettings.value.find(s => s.key === 'geocoding.photon.language')?.currentValue
 
   // 1. At least one provider must be enabled
   if (!nominatimEnabled && !photonEnabled && !googlemapsEnabled && !mapboxEnabled) {
@@ -289,6 +312,12 @@ const validateAllSettings = () => {
     if (fallbackProvider === primaryProvider) {
       return 'Fallback provider cannot be the same as primary provider'
     }
+  }
+
+  // 6. Photon language must follow provider-safe format
+  const photonLanguageError = validatePhotonLanguage(photonLanguage)
+  if (photonLanguageError) {
+    return photonLanguageError
   }
 
   return null // No errors

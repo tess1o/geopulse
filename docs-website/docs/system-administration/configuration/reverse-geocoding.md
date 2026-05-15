@@ -47,7 +47,7 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 | `GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE`  | _(empty)_                             | Nominatim language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent |
 | `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               | Enable Photon geocoding service                                           |
 | `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            | Photon url                                                                |
-| `GEOPULSE_GEOCODING_PHOTON_LANGUAGE`     | _(empty)_                             | Photon language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent |
+| `GEOPULSE_GEOCODING_PHOTON_LANGUAGE`     | _(empty)_                             | Photon language preference (allowed: de, pl, el, en, es, fa, fr, it, ja, ko). If not set, no Accept-Language header/lang query parameter is sent |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                                      |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                            |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | _(empty)_                             | Google Maps language code for reverse geocoding responses (optional, query param `language`) |
@@ -75,7 +75,7 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 - No API key required
 - Rate limited to 2 request per second
 - Possible to use self-hosted version
-- Language can be configured via `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` (e.g., "en-US", "de", "uk")
+- Language can be configured via `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` (allowed: "de", "pl", "el", "en", "es", "fa", "fr", "it", "ja", "ko")
 
 **Google Maps**
 
@@ -170,7 +170,7 @@ GEOPULSE_GEOCODING_PHOTON_URL=https://photon.komoot.io
 
 # Language preferences (optional - if not set, providers return local language)
 GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE=en-US
-GEOPULSE_GEOCODING_PHOTON_LANGUAGE=en-US
+GEOPULSE_GEOCODING_PHOTON_LANGUAGE=en
 GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE=en
 
 # API Credentials (if using paid services)

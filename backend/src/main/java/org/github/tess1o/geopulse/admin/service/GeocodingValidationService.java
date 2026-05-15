@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.admin.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
+import org.github.tess1o.geopulse.geocoding.service.external.PhotonLanguageValidator;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
 
 import java.util.ArrayList;
@@ -82,7 +83,31 @@ public class GeocodingValidationService {
             return validateFallbackProviderChange(newValue, context);
         }
 
+        // Validate Photon language format
+        if (key.equals("geocoding.photon.language")) {
+            return validatePhotonLanguage(newValue);
+        }
+
         return null;
+    }
+
+    private String validatePhotonLanguage(String newValue) {
+        if (newValue == null || newValue.isBlank()) {
+            return null;
+        }
+
+        String trimmedValue = newValue.trim();
+        if (PhotonLanguageValidator.isValidPhotonLanguage(trimmedValue)) {
+            return null;
+        }
+
+        String suggestion = PhotonLanguageValidator.suggestClosestLanguage(trimmedValue)
+                .map(value -> " Try '" + value + "'.")
+                .orElse("");
+
+        return "Invalid Photon language '" + trimmedValue + "'. " +
+                "Use a simple language code (for example: " + PhotonLanguageValidator.COMMON_LANGUAGE_EXAMPLES + ") " +
+                "or leave empty for provider default." + suggestion;
     }
 
     /**

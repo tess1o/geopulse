@@ -49,7 +49,7 @@ public class PhotonGeocodingService {
      * Get the Photon REST client with the current configured URL.
      * Builds client dynamically to support runtime URL changes.
      */
-    private PhotonRestClient getClient() {
+    PhotonRestClient getClient() {
         String url = configService.getPhotonUrl().orElse(defaultUrl);
         try {
             return RestClientBuilder.newBuilder()
@@ -86,7 +86,8 @@ public class PhotonGeocodingService {
         double latitude = requestCoordinates.getY();
 
         // Get language from global configuration (if set)
-        String language = configService.getPhotonLanguage().orElse(null);
+        String configuredLanguage = configService.getPhotonLanguage().orElse(null);
+        String language = sanitizePhotonLanguage(configuredLanguage, "reverse geocoding");
 
         if (language != null) {
             log.debug("Calling Photon for coordinates: lon={}, lat={}, language={}",
@@ -144,7 +145,8 @@ public class PhotonGeocodingService {
         }
 
         int safeLimit = Math.max(1, Math.min(limit, 20));
-        String language = configService.getPhotonLanguage().orElse(null);
+        String configuredLanguage = configService.getPhotonLanguage().orElse(null);
+        String language = sanitizePhotonLanguage(configuredLanguage, "forward search");
         Double biasLat = biasCenter == null ? null : biasCenter.getY();
         Double biasLon = biasCenter == null ? null : biasCenter.getX();
 
@@ -162,6 +164,23 @@ public class PhotonGeocodingService {
                     log.error("Photon forward search failed for query='{}'", safeQuery, failure);
                     return new GeocodingException("Photon forward search failed", failure);
                 });
+    }
+
+    String sanitizePhotonLanguage(String configuredLanguage, String operation) {
+        String sanitized = PhotonLanguageValidator.sanitizeForPhoton(configuredLanguage);
+        if (configuredLanguage != null && !configuredLanguage.isBlank() && sanitized == null) {
+            String suggestion = PhotonLanguageValidator.suggestClosestLanguage(configuredLanguage)
+                    .map(value -> " Try '" + value + "'.")
+                    .orElse("");
+            log.warn("Photon {} language '{}' is invalid for this provider. " +
+                            "Ignoring language parameter to prevent HTTP 400 responses. " +
+                            "Use a simple language code (for example: {}) or leave empty for provider default.{}",
+                    operation,
+                    configuredLanguage,
+                    PhotonLanguageValidator.COMMON_LANGUAGE_EXAMPLES,
+                    suggestion);
+        }
+        return sanitized;
     }
 
     private List<GeocodingSearchResult> mapSearchResponse(PhotonResponse response, Point fallbackPoint) {

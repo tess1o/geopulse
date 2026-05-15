@@ -80,7 +80,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("geocoding.photon.url",
                 new SettingDefinition("quarkus.rest-client.photon-api.url", "", ValueType.STRING, "geocoding", "Custom Photon server URL (optional)"));
         SETTING_DEFINITIONS.put("geocoding.photon.language",
-                new SettingDefinition("geocoding.photon.language", "", ValueType.STRING, "geocoding", "Photon language preference (BCP 47: en-US, de, uk, ja)"));
+                new SettingDefinition("geocoding.photon.language", "", ValueType.STRING, "geocoding", "Photon language preference (allowed: de, pl, el, en, es, fa, fr, it, ja, ko; empty = provider default)"));
 
         SETTING_DEFINITIONS.put("geocoding.googlemaps.enabled",
                 new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps geocoding provider"));

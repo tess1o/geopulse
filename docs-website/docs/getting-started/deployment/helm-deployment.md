@@ -231,7 +231,7 @@ config:
       enabled: true
       language: "en-US"  # Optional: BCP 47 language tag
     photon:
-      language: "en-US"  # Optional: BCP 47 language tag
+      language: "en"  # Optional: allowed Photon codes: de, pl, el, en, es, fa, fr, it, ja, ko
 ```
 
 #### Location Sharing
@@ -548,7 +548,7 @@ config:
     photon:
       enabled: true
       url: "https://photon.mycompany.internal"
-      language: "de"  # Optional: BCP 47 language tag
+      language: "de"  # Optional: allowed Photon codes: de, pl, el, en, es, fa, fr, it, ja, ko
 ```
 
 ### High-Performance Import Configuration
