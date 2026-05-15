@@ -55,6 +55,8 @@ onMounted(async () => {
       return
     }
 
+    await apiService.logoutStrict()
+
     message.value = 'Opening the app...'
     window.location.assign(`${deeplinkUrl}?code=${encodeURIComponent(code)}`)
 
@@ -68,7 +70,7 @@ onMounted(async () => {
     }, APP_OPEN_TIMEOUT_MS)
   } catch (error) {
     isLoading.value = false
-    message.value = 'Failed to get mobile authentication code.'
+    message.value = 'Failed to complete mobile authentication handoff.'
   }
 })
 

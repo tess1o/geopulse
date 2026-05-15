@@ -556,6 +556,21 @@ const apiService = {
             this.clearAuthData();
         }
     },
+
+    /**
+     * Logout user and require the server to confirm cookie invalidation.
+     * Used by security-sensitive flows that must not continue after logout failure.
+     */
+    async logoutStrict() {
+        try {
+            await this._performSecureRequest('post', '/auth/logout', {});
+        } catch (error) {
+            console.error('Logout request failed:', error);
+            throw error;
+        } finally {
+            this.clearAuthData();
+        }
+    },
     clearAuthData() {
         clearUserSnapshot();
         // Note: httpOnly cookies are cleared by the logout endpoint on the server
