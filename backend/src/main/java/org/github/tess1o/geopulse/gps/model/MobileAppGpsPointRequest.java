@@ -31,5 +31,4 @@ public class MobileAppGpsPointRequest {
     private Double altitude;
     private Double speed;
     private Double battery;
-    private Double bearing;
 }

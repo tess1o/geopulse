@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
@@ -327,15 +328,17 @@ public class GpsPointService {
                     : globalDuplicateDetectionThresholdMinutes;
 
             if (duplicateDetectionService.isLocationDuplicate(userId, data.getLat(), data.getLon(), timestamp, sourceType, threshold)) {
-                log.info("Skipping Mobile App GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, data.getLat(), data.getLon(), threshold);
-                return;
+                var message = String.format("Skipping Mobile App GPS point for user %s at coordinates (%.6f, %.6f): duplicate location detected within %d minutes window",
+                        userId.toString(), data.getLat(), data.getLon(), threshold);
+                log.info(message);
+                throw new GpsCoordinateDuplicateException(message);
             }
-        } else {
-            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Mobile App GPS point for user {} at timestamp {}", userId, timestamp);
-                return;
-            }
+        }
+
+        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+            var message = String.format("Skipping duplicate Mobile App GPS point for user %s at timestamp %s", userId.toString(), timestamp);
+            log.info(message);
+            throw new GpsCoordinateDuplicateException(message);
         }
 
         UserEntity user = em.getReference(UserEntity.class, userId);

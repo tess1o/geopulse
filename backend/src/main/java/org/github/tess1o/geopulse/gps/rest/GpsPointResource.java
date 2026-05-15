@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
@@ -80,7 +81,12 @@ public class GpsPointResource {
             GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
 
             gpsPointService.saveMobileAppGpsPoint(request, userId, GpsSourceType.MOBILE_APP, config);
-            return Response.ok(ApiResponse.success(Map.of("accepted", true))).build();
+            return Response.ok(ApiResponse.success(Map.of("accepted", true)))
+                    .build();
+        } catch (GpsCoordinateDuplicateException ex) {
+          return Response.status(Response.Status.CONFLICT)
+                  .entity(ApiResponse.error(ex.getMessage()))
+                  .build();
         } catch (Exception e) {
             log.error("Failed to ingest mobile app GPS point", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
