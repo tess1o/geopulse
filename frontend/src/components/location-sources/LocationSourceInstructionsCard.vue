@@ -240,8 +240,16 @@
                 <div class="step-content">
                   <div class="step-title">Headers</div>
                   <div class="step-value">
-                    Add <code>Content-Type: application/json</code><br>
-                    Optional: <code>X-Limit-D: my-android-phone</code>
+                    Add this required header:
+                  </div>
+                  <div class="copy-field">
+                    <code>Content-Type: application/json</code>
+                  </div>
+                  <small class="text-muted">
+                    Optional device ID header:
+                  </small>
+                  <div class="copy-field">
+                    <code>X-Limit-D: my-android-phone</code>
                   </div>
                 </div>
               </div>
