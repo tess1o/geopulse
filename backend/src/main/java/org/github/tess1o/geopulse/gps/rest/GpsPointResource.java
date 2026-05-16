@@ -25,6 +25,7 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.jboss.resteasy.reactive.RestHeader;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GpsPointResource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String OK_RESPONSE = "OK";
 
     private final GpsPointService gpsPointService;
     private final CurrentUserService currentUserService;
@@ -72,20 +74,31 @@ public class GpsPointResource {
         this.gpsSourceService = gpsSourceService;
     }
 
+    /**
+     * Allows to store GPS points for a user sent by the mobile app.
+     * This endpoint requires authentication.
+     *
+     * @param request Current locations from the mobile app.
+     * @return The HTTP code, (200, 409, 500)
+     */
     @POST
-    @Path("/point")
+    @Path("/points")
+    @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response ingestMobileAppPoint(@Valid MobileAppGpsPointRequest request) {
+    public Response ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
+                                             @RestHeader("X-Device-Id") String xDeviceId) {
+        var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
+
         try {
             UUID userId = currentUserService.getCurrentUserId();
             GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
 
-            gpsPointService.saveMobileAppGpsPoint(request, userId, GpsSourceType.MOBILE_APP, config);
-            return Response.ok(ApiResponse.success(Map.of("accepted", true)))
+            gpsPointService.saveMobileAppGpsPoints(request.getPoints(), deviceId, userId, GpsSourceType.MOBILE_APP, config);
+            return Response.ok(ApiResponse.success(OK_RESPONSE))
                     .build();
         } catch (GpsCoordinateDuplicateException ex) {
           return Response.status(Response.Status.CONFLICT)
-                  .entity(ApiResponse.error(ex.getMessage()))
+                  .entity(ApiResponse.error("Duplicate point"))
                   .build();
         } catch (Exception e) {
             log.error("Failed to ingest mobile app GPS point", e);
@@ -299,7 +312,7 @@ public class GpsPointResource {
 
             // Build filters
             GpsPointFilterDTO filters = buildFilters(startTime != null ? startTime : (startDate != null ? startDate : null),
-                    endTime != null ? endTime : (endDate != null ? endDate : null),
+                    endTime != null ? endTime : endDate,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
             GpsPointPageDTO result = gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
@@ -455,7 +468,7 @@ public class GpsPointResource {
     private String formatCsvRow(GpsPointEntity point, MeasureUnit measureUnit) {
         StringBuilder row = new StringBuilder();
 
-        Double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
+        double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
         if (measureUnit == MeasureUnit.IMPERIAL) {
             velocity = velocity * 0.621371; // Convert km/h to mph
         }
@@ -488,7 +501,7 @@ public class GpsPointResource {
     }
 
     private void appendCsvValue(StringBuilder row, Object value) {
-        if (row.length() > 0) {
+        if (!row.isEmpty()) {
             row.append(",");
         }
         String raw = value != null ? value.toString() : "";
@@ -704,6 +717,6 @@ public class GpsPointResource {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get last known position for user {}", userId);
         Optional<GpsPointDTO> lastPosition = gpsPointService.getLastKnownPosition(userId);
-        return Response.ok(ApiResponse.success(lastPosition.orElseGet(() -> null))).build();
+        return Response.ok(ApiResponse.success(lastPosition.orElse(null))).build();
     }
 }

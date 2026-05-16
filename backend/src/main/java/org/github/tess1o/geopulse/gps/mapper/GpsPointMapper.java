@@ -11,7 +11,6 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
-import org.github.tess1o.geopulse.gps.model.MobileAppGpsPointRequest;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -94,7 +93,7 @@ public class GpsPointMapper {
     public GpsPointEntity toEntity(HomeAssistantGpsData message, UserEntity userId, GpsSourceType sourceType) {
         GpsPointEntity entity = new GpsPointEntity();
         entity.setUser(userId);
-        entity.setTimestamp(message.getTimestamp());
+        entity.setTimestamp(message.getTimestamp() != null ? message.getTimestamp() : Instant.now());
         entity.setDeviceId(message.getDeviceId());
 
         HomeAssistantLocation location = message.getLocation();
@@ -154,16 +153,16 @@ public class GpsPointMapper {
         return entity;
     }
 
-    public GpsPointEntity toEntity(MobileAppGpsPointRequest message, UserEntity userId, GpsSourceType sourceType) {
+    public GpsPointEntity toEntity(GpsPointDTO message, String deviceId, UserEntity userId, GpsSourceType sourceType) {
         GpsPointEntity entity = new GpsPointEntity();
-        entity.setDeviceId("Mobile App");
+        entity.setDeviceId(deviceId);
         entity.setUser(userId);
-        entity.setCoordinates(GeoUtils.createPoint(message.getLon(), message.getLat()));
-        entity.setTimestamp(message.getTimestamp());
+        entity.setCoordinates(GeoUtils.createPoint(message.getCoordinates().getLng(), message.getCoordinates().getLat()));
+        entity.setTimestamp(message.getTimestamp() != null ? message.getTimestamp() : Instant.now());
         entity.setAccuracy(message.getAccuracy());
         entity.setBattery(message.getBattery());
         // Mobile app submits speed in m/s; store in km/h for consistency.
-        Double speedMs = message.getSpeed();
+        Double speedMs = message.getVelocity();
         entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
         entity.setAltitude(message.getAltitude());
         entity.setSourceType(sourceType);
