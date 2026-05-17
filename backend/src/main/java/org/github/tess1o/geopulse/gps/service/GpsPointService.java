@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
@@ -29,6 +30,7 @@ import jakarta.ws.rs.NotFoundException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.*;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -313,6 +315,41 @@ public class GpsPointService {
 
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
+        filterAndPersistGpsPoint(entity, config);
+    }
+
+    public void saveMobileAppGpsPoints(List<GpsPointDTO> data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        data.stream()
+                .filter(point -> point.getTimestamp() != null)
+                .sorted(Comparator.comparing(GpsPointDTO::getTimestamp))
+                .forEach(point -> saveMobileAppGpsPoint(point, deviceId, userId, sourceType, config));
+    }
+
+    @Transactional
+    public void saveMobileAppGpsPoint(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        Instant timestamp = data.getTimestamp();
+
+        double lat = data.getCoordinates().getLat();
+        double lon = data.getCoordinates().getLng();
+
+        if (config.isEnableDuplicateDetection()) {
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                    ? config.getDuplicateDetectionThresholdMinutes()
+                    : globalDuplicateDetectionThresholdMinutes;
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
+                log.info("Skipping Mobile App GPS point for user {} and device id {} at coordinates ({}, {}): duplicate location detected within {} minutes window", userId, deviceId, lat, lon, threshold);
+                return;
+            }
+        } else {
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Mobile App GPS point for user {} and device id {} at timestamp {}", userId, deviceId, timestamp);
+                return;
+            }
+        }
+
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, deviceId, user, sourceType);
         filterAndPersistGpsPoint(entity, config);
     }
 

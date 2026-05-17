@@ -424,6 +424,18 @@ dev-rebuild-all:
 	@echo "🔧 Rebuilding all development containers..."
 	./dev-rebuild.sh both
 
+# Run frontend in local dev mode
+.PHONY: dev-frontend
+dev-frontend:
+	@echo "Starting frontend dev server..."
+	cd frontend && npm run dev
+
+# Run backend in local dev mode
+.PHONY: dev-backend
+dev-backend:
+	@echo "Starting backend in Quarkus dev mode..."
+	./mvnw -pl backend clean quarkus:dev
+
 # Help
 .PHONY: help
 help:
@@ -475,6 +487,9 @@ help:
 	@echo "  dev-rebuild-backend    Rebuild development backend container"
 	@echo "  dev-rebuild-frontend   Rebuild development frontend container"
 	@echo "  dev-rebuild-all        Rebuild all development containers"
+	@echo "  dev-frontend           Run frontend locally (cd frontend && npm run dev)"
+	@echo "  dev-backend            Run backend locally (./mvnw -pl backend clean quarkus:dev)"
+	@echo "  dev-run-suite          Run frontend + backend together in local dev mode"
 	@echo ""
 	@echo "ℹ️  UTILITY TARGETS:"
 	@echo "  version                Show current version"

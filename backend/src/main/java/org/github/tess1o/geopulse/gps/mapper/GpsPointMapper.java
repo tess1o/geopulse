@@ -93,7 +93,7 @@ public class GpsPointMapper {
     public GpsPointEntity toEntity(HomeAssistantGpsData message, UserEntity userId, GpsSourceType sourceType) {
         GpsPointEntity entity = new GpsPointEntity();
         entity.setUser(userId);
-        entity.setTimestamp(message.getTimestamp());
+        entity.setTimestamp(message.getTimestamp() != null ? message.getTimestamp() : Instant.now());
         entity.setDeviceId(message.getDeviceId());
 
         HomeAssistantLocation location = message.getLocation();
@@ -147,6 +147,24 @@ public class GpsPointMapper {
         entity.setVelocity(speedKnots != null ? speedKnots * 1.852 : null);
 
         entity.setAltitude(position.getAltitude());
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
+
+        return entity;
+    }
+
+    public GpsPointEntity toEntity(GpsPointDTO message, String deviceId, UserEntity userId, GpsSourceType sourceType) {
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setDeviceId(deviceId);
+        entity.setUser(userId);
+        entity.setCoordinates(GeoUtils.createPoint(message.getCoordinates().getLng(), message.getCoordinates().getLat()));
+        entity.setTimestamp(message.getTimestamp() != null ? message.getTimestamp() : Instant.now());
+        entity.setAccuracy(message.getAccuracy());
+        entity.setBattery(message.getBattery());
+        // Mobile app submits speed in m/s; store in km/h for consistency.
+        Double speedMs = message.getVelocity();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
+        entity.setAltitude(message.getAltitude());
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
 

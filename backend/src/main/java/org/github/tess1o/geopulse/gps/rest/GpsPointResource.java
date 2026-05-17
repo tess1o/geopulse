@@ -10,10 +10,13 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -22,6 +25,7 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.jboss.resteasy.reactive.RestHeader;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -49,21 +53,71 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GpsPointResource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String OK_RESPONSE = "OK";
 
     private final GpsPointService gpsPointService;
     private final CurrentUserService currentUserService;
     private final PathSimplificationService pathSimplificationService;
     private final TimelineConfigurationProvider configurationProvider;
+    private final GpsSourceService gpsSourceService;
 
     @Inject
     public GpsPointResource(GpsPointService gpsPointService,
                             CurrentUserService currentUserService,
                             PathSimplificationService pathSimplificationService,
-                            TimelineConfigurationProvider configurationProvider) {
+                            TimelineConfigurationProvider configurationProvider,
+                            GpsSourceService gpsSourceService) {
         this.gpsPointService = gpsPointService;
         this.currentUserService = currentUserService;
         this.pathSimplificationService = pathSimplificationService;
         this.configurationProvider = configurationProvider;
+        this.gpsSourceService = gpsSourceService;
+    }
+
+    /**
+     * Allows to store GPS points for a user sent by the mobile app.
+     * This endpoint requires authentication.
+     *
+     * @param request Current locations from the mobile app.
+     * @return The HTTP code, (200, 409, 500)
+     */
+    @POST
+    @Path("/points")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
+                                             @RestHeader("X-Device-Id") String xDeviceId) {
+        var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
+
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
+
+            gpsPointService.saveMobileAppGpsPoints(request.getPoints(), deviceId, userId, GpsSourceType.MOBILE_APP, config);
+            return Response.ok(ApiResponse.success(OK_RESPONSE))
+                    .build();
+        } catch (GpsCoordinateDuplicateException ex) {
+          return Response.status(Response.Status.CONFLICT)
+                  .entity(ApiResponse.error("Duplicate point"))
+                  .build();
+        } catch (Exception e) {
+            log.error("Failed to ingest mobile app GPS point", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to ingest GPS point"))
+                    .build();
+        }
+    }
+
+    private GpsSourceConfigEntity buildMobileAppDefaultConfig() {
+        GpsSourceConfigEntity config = new GpsSourceConfigEntity();
+        config.setSourceType(GpsSourceType.MOBILE_APP);
+        config.setActive(true);
+        config.setFilterInaccurateData(gpsSourceService.isDefaultFilterInaccurateDataEnabled());
+        config.setMaxAllowedAccuracy(gpsSourceService.getDefaultMaxAllowedAccuracy());
+        config.setMaxAllowedSpeed(gpsSourceService.getDefaultMaxAllowedSpeed());
+        config.setEnableDuplicateDetection(gpsSourceService.isDefaultDuplicateDetectionEnabled());
+        config.setDuplicateDetectionThresholdMinutes(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes());
+        return config;
     }
 
     /**
@@ -258,7 +312,7 @@ public class GpsPointResource {
 
             // Build filters
             GpsPointFilterDTO filters = buildFilters(startTime != null ? startTime : (startDate != null ? startDate : null),
-                    endTime != null ? endTime : (endDate != null ? endDate : null),
+                    endTime != null ? endTime : endDate,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
             GpsPointPageDTO result = gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
@@ -414,7 +468,7 @@ public class GpsPointResource {
     private String formatCsvRow(GpsPointEntity point, MeasureUnit measureUnit) {
         StringBuilder row = new StringBuilder();
 
-        Double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
+        double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
         if (measureUnit == MeasureUnit.IMPERIAL) {
             velocity = velocity * 0.621371; // Convert km/h to mph
         }
@@ -447,7 +501,7 @@ public class GpsPointResource {
     }
 
     private void appendCsvValue(StringBuilder row, Object value) {
-        if (row.length() > 0) {
+        if (!row.isEmpty()) {
             row.append(",");
         }
         String raw = value != null ? value.toString() : "";
@@ -663,6 +717,6 @@ public class GpsPointResource {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get last known position for user {}", userId);
         Optional<GpsPointDTO> lastPosition = gpsPointService.getLastKnownPosition(userId);
-        return Response.ok(ApiResponse.success(lastPosition.orElseGet(() -> null))).build();
+        return Response.ok(ApiResponse.success(lastPosition.orElse(null))).build();
     }
 }

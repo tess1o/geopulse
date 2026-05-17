@@ -186,6 +186,13 @@ const routes = [
         meta: {title: 'Authenticating...'}
     },
     {
+        path: '/app/mobile',
+        name: 'Mobile',
+        component: () => import('@/views/MobilePage.vue'),
+        meta: {title: 'Mobile'},
+        beforeEnter: requireAuth
+    },
+    {
         path: '/app/friends/:tab?',
         name: 'Friends',
         component: FriendsPage,
