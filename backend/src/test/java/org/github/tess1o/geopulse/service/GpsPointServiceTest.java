@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
@@ -137,7 +136,7 @@ public class GpsPointServiceTest {
     }
     @Test
     @Transactional
-    public void testSaveMobileAppGpsPointDuplicate_ThrowsDomainExceptionNotFormatFlagsConversionMismatchException() {
+    public void testSaveMobileAppGpsPointDuplicate_SkipsDuplicateWithoutThrowing() {
         Instant timestamp = Instant.parse("2026-05-15T10:00:00Z");
         GpsPointDTO request = new GpsPointDTO(
                 0L,
@@ -162,17 +161,13 @@ public class GpsPointServiceTest {
 
         gpsPointService.saveMobileAppGpsPoint(request, "pixel-9-pro", userId, GpsSourceType.MOBILE_APP, mobileAppConfig);
 
-        RuntimeException exception = assertThrows(
-                RuntimeException.class,
-                () -> gpsPointService.saveMobileAppGpsPoint(request, "pixel-9-pro", userId, GpsSourceType.MOBILE_APP, mobileAppConfig)
-        );
+        assertDoesNotThrow(() -> gpsPointService.saveMobileAppGpsPoint(request, "pixel-9-pro", userId, GpsSourceType.MOBILE_APP, mobileAppConfig));
 
-        assertInstanceOf(GpsCoordinateDuplicateException.class, exception);
         assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
     }
 
     @Test
-    public void testSaveMobileAppGpsPointsDuplicate_RollsBackWholeBatch() {
+    public void testSaveMobileAppGpsPointsDuplicate_SkipsDuplicateAndKeepsFirstPoint() {
         Instant timestamp = Instant.parse("2026-05-15T10:00:00Z");
         GpsPointDTO first = new GpsPointDTO(
                 0L,
@@ -205,13 +200,9 @@ public class GpsPointServiceTest {
                 .enableDuplicateDetection(false)
                 .build();
 
-        RuntimeException exception = assertThrows(
-                RuntimeException.class,
-                () -> gpsPointService.saveMobileAppGpsPoints(List.of(first, duplicate), "pixel-9-pro", userId, GpsSourceType.MOBILE_APP, mobileAppConfig)
-        );
+        assertDoesNotThrow(() -> gpsPointService.saveMobileAppGpsPoints(List.of(first, duplicate), "pixel-9-pro", userId, GpsSourceType.MOBILE_APP, mobileAppConfig));
 
-        assertInstanceOf(GpsCoordinateDuplicateException.class, exception);
-        assertEquals(0, gpsPointRepository.count("user.id = ?1", userId));
+        assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
     }
 
     @Test
