@@ -78,6 +78,8 @@ public class GeofenceEvaluationService {
             return;
         }
 
+        log.info("Rules found for user: {}, {}", subjectUserId, rules);
+
         double latitude = point.getCoordinates().getY();
         double longitude = point.getCoordinates().getX();
 
@@ -112,7 +114,7 @@ public class GeofenceEvaluationService {
         return permissionRepository.hasLiveLocationPermission(subjectId, ownerId);
     }
 
-    private void evaluateRulePoint(GeofenceRuleEntity rule,
+    private void    evaluateRulePoint(GeofenceRuleEntity rule,
                                    UserEntity subject,
                                    GpsPointEntity point,
                                    double latitude,
@@ -291,10 +293,13 @@ public class GeofenceEvaluationService {
     }
 
     private boolean shouldQueueForApprise(NotificationTemplateEntity template) {
-        return template != null
-                && Boolean.TRUE.equals(template.getEnabled())
-                && template.getDestination() != null
-                && !template.getDestination().isBlank();
+        if (template == null || !Boolean.TRUE.equals(template.getEnabled())) {
+            return false;
+        }
+        if (template.getExternalRoutingMode() == AppriseExternalRoutingMode.KEY_TAG) {
+            return template.getAppriseConfigKey() != null && !template.getAppriseConfigKey().isBlank();
+        }
+        return template.getDestination() != null && !template.getDestination().isBlank();
     }
 
     private boolean shouldPublishInApp(NotificationTemplateEntity template) {

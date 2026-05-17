@@ -7,6 +7,8 @@ import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.client.AppriseHttpClient;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
+import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 
 @ApplicationScoped
 @Slf4j
@@ -57,6 +59,34 @@ public class AppriseNotificationService {
         }
 
         String destination = request != null ? request.getDestination() : null;
+        AppriseExternalRoutingMode routingMode = request != null && request.getExternalRoutingMode() != null
+                ? request.getExternalRoutingMode()
+                : AppriseExternalRoutingMode.URLS;
+
+        if (routingMode == AppriseExternalRoutingMode.KEY_TAG) {
+            String configKey = request != null ? safeTrim(request.getAppriseConfigKey()) : null;
+            String tag = request != null ? safeTrim(request.getAppriseTag()) : null;
+            if (configKey == null || configKey.isBlank()) {
+                return new AppriseClientResult(false, 0, "Apprise config key is required for KEY_TAG mode");
+            }
+            String title = request == null || request.getTitle() == null || request.getTitle().isBlank()
+                    ? "GeoPulse Apprise Test"
+                    : request.getTitle();
+            String body = request == null || request.getBody() == null || request.getBody().isBlank()
+                    ? "Apprise test notification from GeoPulse"
+                    : request.getBody();
+            return appriseHttpClient.notifyByConfigKey(
+                    apiUrl,
+                    getAuthToken(),
+                    getTimeoutMs(),
+                    isVerifyTls(),
+                    configKey,
+                    tag,
+                    title,
+                    body
+            );
+        }
+
         if (destination != null && !destination.isBlank()) {
             String title = request.getTitle() == null || request.getTitle().isBlank()
                     ? "GeoPulse Apprise Test"
@@ -68,6 +98,24 @@ public class AppriseNotificationService {
         }
 
         return appriseHttpClient.ping(apiUrl, getAuthToken(), getTimeoutMs(), isVerifyTls());
+    }
+
+    public AppriseClientResult sendToTemplate(NotificationTemplateEntity template, String title, String body) {
+        if (template == null) {
+            return new AppriseClientResult(false, 0, "No template configured");
+        }
+        log.info("Sending notification to Apprise template: mode={}, title={}, templateId={}",
+                template.getExternalRoutingMode(),
+                title,
+                template.getId());
+        AppriseExternalRoutingMode mode = template.getExternalRoutingMode() == null
+                ? AppriseExternalRoutingMode.URLS
+                : template.getExternalRoutingMode();
+
+        if (mode == AppriseExternalRoutingMode.KEY_TAG) {
+            return sendToConfigKey(template.getAppriseConfigKey(), template.getAppriseTag(), title, body);
+        }
+        return sendToDestination(template.getDestination(), title, body);
     }
 
     public AppriseClientResult sendToDestination(String destination, String title, String body) {
@@ -84,6 +132,46 @@ public class AppriseNotificationService {
         }
 
         return appriseHttpClient.notify(apiUrl, getAuthToken(), getTimeoutMs(), isVerifyTls(), destination, title, body);
+    }
+
+    public AppriseClientResult sendToConfigKey(String configKey, String tag, String title, String body) {
+        if (!isEnabled()) {
+            return new AppriseClientResult(false, 0, "Apprise notifications are disabled");
+        }
+        String apiUrl = getApiUrl();
+        if (apiUrl == null || apiUrl.isBlank()) {
+            return new AppriseClientResult(false, 0, "Apprise API URL is not configured");
+        }
+
+        if (!isVerifyTls()) {
+            log.warn("Apprise TLS verification is disabled in settings");
+        }
+
+        String normalizedKey = safeTrim(configKey);
+        if (normalizedKey == null || normalizedKey.isBlank()) {
+            return new AppriseClientResult(false, 0, "Apprise config key is not configured");
+        }
+
+        log.info("Sending Apprise notification to Apprise API URL: {}, key = {}, tag = {}", apiUrl, configKey, tag);
+
+        return appriseHttpClient.notifyByConfigKey(
+                apiUrl,
+                getAuthToken(),
+                getTimeoutMs(),
+                isVerifyTls(),
+                normalizedKey,
+                safeTrim(tag),
+                title,
+                body
+        );
+    }
+
+    private String safeTrim(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private String getApiUrl() {

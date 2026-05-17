@@ -31,6 +31,17 @@ public class NotificationTemplateEntity {
     @Column(name = "destination", nullable = false, columnDefinition = "text")
     private String destination;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "external_routing_mode", nullable = false, length = 32)
+    @Builder.Default
+    private AppriseExternalRoutingMode externalRoutingMode = AppriseExternalRoutingMode.URLS;
+
+    @Column(name = "apprise_config_key", length = 255)
+    private String appriseConfigKey;
+
+    @Column(name = "apprise_tag", length = 255)
+    private String appriseTag;
+
     @Column(name = "title_template", columnDefinition = "text")
     private String titleTemplate;
 
@@ -75,6 +86,9 @@ public class NotificationTemplateEntity {
         }
         if (sendInApp == null) {
             sendInApp = true;
+        }
+        if (externalRoutingMode == null) {
+            externalRoutingMode = AppriseExternalRoutingMode.URLS;
         }
     }
 

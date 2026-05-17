@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.geofencing.model.dto.CreateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
 import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
@@ -234,6 +235,50 @@ class NotificationTemplateServiceTest {
         assertThatThrownBy(() -> service.createTemplate(userId, request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("at least one active channel");
+    }
+
+    @Test
+    void shouldAllowKeyTagRoutingWithConfigKey() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(entityManager.getReference(eq(UserEntity.class), eq(userId))).thenReturn(user);
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("KeyTag");
+        request.setExternalRoutingMode(AppriseExternalRoutingMode.KEY_TAG);
+        request.setAppriseConfigKey("my-config");
+        request.setAppriseTag("critical");
+        request.setDestination("not-a-url-needed");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+        request.setEnabled(true);
+        request.setSendInApp(false);
+
+        NotificationTemplateDto result = service.createTemplate(userId, request);
+
+        assertThat(result.getExternalRoutingMode()).isEqualTo(AppriseExternalRoutingMode.KEY_TAG);
+        assertThat(result.getAppriseConfigKey()).isEqualTo("my-config");
+        assertThat(result.getAppriseTag()).isEqualTo("critical");
+        assertThat(result.getDestination()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectKeyTagRoutingWithoutConfigKey() {
+        UUID userId = UUID.randomUUID();
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("KeyTag Missing Key");
+        request.setExternalRoutingMode(AppriseExternalRoutingMode.KEY_TAG);
+        request.setDestination("");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+        request.setEnabled(true);
+        request.setSendInApp(false);
+
+        assertThatThrownBy(() -> service.createTemplate(userId, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Apprise config key is required");
     }
 
     @Test

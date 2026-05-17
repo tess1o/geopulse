@@ -79,7 +79,7 @@
 
             <div v-if="appriseEnabled && templateSendExternalModel" class="field">
               <div class="field-inline-header">
-                <label>Destination URL(s)</label>
+                <label>External Routing</label>
                 <Button
                   label="Test Connection"
                   icon="pi pi-send"
@@ -87,19 +87,69 @@
                   outlined
                   size="small"
                   :loading="testingTemplateConnection"
-                  :disabled="!appriseConfigured || !templateDestinationModel?.trim()"
+                  :disabled="!appriseConfigured"
                   @click="$emit('test-template-connection')"
                 />
               </div>
-              <Textarea
-                :ref="templateDestinationInput"
-                v-model="templateDestinationModel"
-                rows="3"
-                autoResize
-                placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
-                :class="{ 'p-invalid': !!templateFormErrors.destination }"
-              />
-              <small v-if="templateFormErrors.destination" class="error-text">{{ templateFormErrors.destination }}</small>
+
+              <div class="field routing-mode-field">
+                <label>Routing Mode</label>
+                <div class="routing-mode-options" role="radiogroup" aria-label="Routing Mode">
+                  <label
+                    v-for="option in appriseRoutingModeOptions"
+                    :key="option.value"
+                    class="routing-mode-option"
+                    :class="{ 'is-active': templateExternalRoutingModeModel === option.value }"
+                  >
+                    <input
+                      :id="`routing-mode-${option.value}`"
+                      v-model="templateExternalRoutingModeModel"
+                      class="routing-mode-input"
+                      type="radio"
+                      name="routing-mode"
+                      :value="option.value"
+                    />
+                    <span class="routing-mode-card">
+                      <span class="routing-mode-dot" />
+                      <span class="routing-mode-label">{{ option.label }}</span>
+                    </span>
+                  </label>
+                </div>
+                <small class="muted-text">Choose how GeoPulse should route this template through Apprise.</small>
+              </div>
+
+              <div v-if="templateExternalRoutingModeModel === 'KEY_TAG'" class="field">
+                <label>Config Key</label>
+                <InputText
+                  :ref="templateConfigKeyInput"
+                  v-model="templateAppriseConfigKeyModel"
+                  placeholder="my-apprise-config"
+                  :class="{ 'p-invalid': !!templateFormErrors.appriseConfigKey }"
+                />
+                <small v-if="templateFormErrors.appriseConfigKey" class="error-text">{{ templateFormErrors.appriseConfigKey }}</small>
+
+                <label>Tag (optional)</label>
+                <InputText
+                  v-model="templateAppriseTagModel"
+                  placeholder="critical"
+                  :class="{ 'p-invalid': !!templateFormErrors.appriseTag }"
+                />
+                <small v-if="templateFormErrors.appriseTag" class="error-text">{{ templateFormErrors.appriseTag }}</small>
+              </div>
+
+              <div v-else class="field">
+                <label>Destination URL(s)</label>
+                <Textarea
+                  :ref="templateDestinationInput"
+                  v-model="templateDestinationModel"
+                  rows="3"
+                  autoResize
+                  placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
+                  :class="{ 'p-invalid': !!templateFormErrors.destination }"
+                />
+                <small v-if="templateFormErrors.destination" class="error-text">{{ templateFormErrors.destination }}</small>
+              </div>
+
               <Message
                 v-if="templateConnectionTestResult"
                 :severity="templateConnectionTestResult.severity"
@@ -229,9 +279,9 @@
       </div>
       <DataTable :value="templates" dataKey="id" responsiveLayout="scroll">
         <Column field="name" header="Name" />
-        <Column header="Destination">
+        <Column header="External Route">
           <template #body="slotProps">
-            <span>{{ formatDestination(slotProps.data.destination) }}</span>
+            <span>{{ formatExternalRoute(slotProps.data) }}</span>
           </template>
         </Column>
         <Column header="Defaults">
@@ -291,6 +341,10 @@ const props = defineProps({
     type: [Object, Function],
     default: null
   },
+  templateConfigKeyInput: {
+    type: [Object, Function],
+    default: null
+  },
   templateTitleInput: {
     type: [Object, Function],
     default: null
@@ -304,6 +358,10 @@ const props = defineProps({
     required: true
   },
   templateMacros: {
+    type: Array,
+    required: true
+  },
+  appriseRoutingModeOptions: {
     type: Array,
     required: true
   },
@@ -339,7 +397,7 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  formatDestination: {
+  formatExternalRoute: {
     type: Function,
     required: true
   },
@@ -367,10 +425,12 @@ const {
   templateFormErrors,
   templateNameInput,
   templateDestinationInput,
+  templateConfigKeyInput,
   templateTitleInput,
   templateBodyInput,
   templatePreviewToasts,
   templateMacros,
+  appriseRoutingModeOptions,
   currentDefaultEnterName,
   currentDefaultLeaveName,
   appriseEnabled,
@@ -379,7 +439,7 @@ const {
   templateConnectionTestResult,
   savingTemplate,
   templates,
-  formatDestination,
+  formatExternalRoute,
   defaultSummary
 } = toRefs(props)
 
@@ -396,6 +456,9 @@ const templateTitleModel = createFieldModel('titleTemplate')
 const templateBodyModel = createFieldModel('bodyTemplate')
 const templateSendInAppModel = createFieldModel('sendInApp')
 const templateSendExternalModel = createFieldModel('sendExternal')
+const templateExternalRoutingModeModel = createFieldModel('externalRoutingMode')
+const templateAppriseConfigKeyModel = createFieldModel('appriseConfigKey')
+const templateAppriseTagModel = createFieldModel('appriseTag')
 const templateDefaultForEnterModel = createFieldModel('defaultForEnter')
 const templateDefaultForLeaveModel = createFieldModel('defaultForLeave')
 const templateEnabledModel = createFieldModel('enabled')
@@ -450,6 +513,78 @@ const templateEnabledModel = createFieldModel('enabled')
 .field label {
   font-weight: 600;
   font-size: 0.9rem;
+}
+
+.routing-mode-field {
+  border: 2px solid color-mix(in srgb, var(--primary-color, #3b82f6) 45%, var(--surface-border));
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 8%, var(--surface-card));
+}
+
+.routing-mode-options {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.routing-mode-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.routing-mode-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.routing-mode-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  border: 2px solid color-mix(in srgb, var(--surface-border) 85%, #000);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
+  color: var(--text-color);
+  font-weight: 600;
+  padding: 0.66rem 0.8rem;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.routing-mode-dot {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--text-color-secondary) 75%, transparent);
+  background: transparent;
+  flex: 0 0 auto;
+}
+
+.routing-mode-label {
+  line-height: 1.2;
+}
+
+.routing-mode-option:hover .routing-mode-card {
+  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 60%, var(--surface-border));
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, var(--surface-card));
+}
+
+.routing-mode-input:focus-visible + .routing-mode-card {
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 0.14rem color-mix(in srgb, var(--primary-color, #3b82f6) 32%, transparent);
+}
+
+.routing-mode-option.is-active .routing-mode-card {
+  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 88%, #1d4ed8);
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 24%, var(--surface-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color, #3b82f6) 45%, transparent);
+}
+
+.routing-mode-option.is-active .routing-mode-dot {
+  border-color: var(--primary-color, #3b82f6);
+  background: radial-gradient(circle, var(--primary-color, #3b82f6) 45%, transparent 48%);
 }
 
 .field-inline-header {

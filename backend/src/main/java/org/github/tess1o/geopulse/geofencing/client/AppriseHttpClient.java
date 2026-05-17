@@ -7,11 +7,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geofencing.util.NotificationDestinationParser;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import javax.net.ssl.*;
 import java.security.cert.X509Certificate;
@@ -113,6 +115,64 @@ public class AppriseHttpClient {
         }
     }
 
+    public AppriseClientResult notifyByConfigKey(String baseUrl,
+                                                 String authToken,
+                                                 int timeoutMs,
+                                                 boolean verifyTls,
+                                                 String configKey,
+                                                 String tag,
+                                                 String title,
+                                                 String body) {
+        try {
+            if (configKey == null || configKey.isBlank()) {
+                return new AppriseClientResult(false, 0, "No Apprise config key provided");
+            }
+
+            URI endpoint = normalizeConfigNotifyUrl(baseUrl, configKey);
+            HttpClient client = buildHttpClient(timeoutMs, verifyTls);
+
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("title", title != null ? title : "GeoPulse");
+            payload.put("body", body != null ? body : "GeoPulse geofence event");
+            payload.put("format", "text");
+            payload.put("type", "info");
+            if (tag != null && !tag.isBlank()) {
+                payload.put("tag", tag);
+            }
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(endpoint)
+                    .timeout(Duration.ofMillis(timeoutMs))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload));
+
+            if (authToken != null && !authToken.isBlank()) {
+                requestBuilder.header("X-API-Key", authToken.trim());
+            }
+
+            HttpResponse<String> response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status >= 200 && status < 300) {
+                return new AppriseClientResult(true, status, "Delivered");
+            }
+
+            String bodyText = response.body() == null ? "" : response.body();
+            if (bodyText.length() > 240) {
+                bodyText = bodyText.substring(0, 240) + "...";
+            }
+            return new AppriseClientResult(false, status, "HTTP " + status + ": " + bodyText);
+        } catch (Exception e) {
+            if (isUnexpectedContentLengthOn204(e)) {
+                log.info("Apprise notify-by-key returned HTTP 204 with invalid content-length header; treating as delivered");
+                return new AppriseClientResult(true, 204, "Delivered");
+            }
+            String detail = buildErrorMessage(e, "Apprise notify failed");
+            log.warn("Apprise notify-by-key failed: {}", detail);
+            return new AppriseClientResult(false, 0, detail);
+        }
+    }
+
     private String buildErrorMessage(Throwable error, String fallback) {
         if (error == null) {
             return fallback;
@@ -164,6 +224,14 @@ public class AppriseHttpClient {
             return URI.create(raw.substring(0, raw.length() - 1));
         }
         return URI.create(raw + "notify");
+    }
+
+    private URI normalizeConfigNotifyUrl(String baseUrl, String configKey) {
+        URI notifyBase = normalizeNotifyUrl(baseUrl);
+        String encodedKey = URLEncoder.encode(configKey.trim(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        String raw = notifyBase.toString();
+        return URI.create(raw.endsWith("/") ? raw + encodedKey : raw + "/" + encodedKey);
     }
 
     private HttpClient buildHttpClient(int timeoutMs, boolean verifyTls) throws Exception {

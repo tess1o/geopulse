@@ -46,10 +46,12 @@
           :templateFormErrors="templateFormErrors"
           :templateNameInput="templateNameInput"
           :templateDestinationInput="templateDestinationInput"
+          :templateConfigKeyInput="templateConfigKeyInput"
           :templateTitleInput="templateTitleInput"
           :templateBodyInput="templateBodyInput"
           :templatePreviewToasts="templatePreviewToasts"
           :templateMacros="templateMacros"
+          :appriseRoutingModeOptions="appriseRoutingModeOptions"
           :currentDefaultEnterName="currentDefaultEnterName"
           :currentDefaultLeaveName="currentDefaultLeaveName"
           :appriseEnabled="appriseEnabled"
@@ -58,7 +60,7 @@
           :templateConnectionTestResult="templateConnectionTestResult"
           :savingTemplate="savingTemplate"
           :templates="templates"
-          :formatDestination="formatDestination"
+          :formatExternalRoute="formatExternalRoute"
           :defaultSummary="defaultSummary"
           @update-template-field="updateTemplateField"
           @focus-template-field="setFocusedTemplateField"
@@ -168,6 +170,8 @@ const ruleFormErrors = ref({
 const templateFormErrors = ref({
   name: '',
   destination: '',
+  appriseConfigKey: '',
+  appriseTag: '',
   titleTemplate: '',
   bodyTemplate: '',
   defaultForEnter: '',
@@ -176,6 +180,7 @@ const templateFormErrors = ref({
 })
 const templateNameInput = ref(null)
 const templateDestinationInput = ref(null)
+const templateConfigKeyInput = ref(null)
 const templateTitleInput = ref(null)
 const templateBodyInput = ref(null)
 const templateConnectionTestResult = ref(null)
@@ -184,6 +189,10 @@ const suppressDefaultToggleWatch = ref(false)
 const TEMPLATE_MACRO_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*}}/g
 const DESTINATION_URL_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+$/
 const PREVIEW_TIMESTAMP_UTC = '2026-03-24T00:04:47Z'
+const APPRISE_EXTERNAL_ROUTING_MODES = {
+  URLS: 'URLS',
+  KEY_TAG: 'KEY_TAG'
+}
 
 const unreadCount = computed(() => geofenceUnreadCount.value)
 
@@ -449,6 +458,11 @@ const templatePreviewToasts = computed(() => {
   })
 })
 
+const appriseRoutingModeOptions = [
+  { label: 'Destination URL(s)', value: APPRISE_EXTERNAL_ROUTING_MODES.URLS },
+  { label: 'Config Key + Tag', value: APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG }
+]
+
 function defaultRuleForm() {
   return {
     name: '',
@@ -470,6 +484,9 @@ function defaultTemplateForm() {
   return {
     name: '',
     destination: '',
+    externalRoutingMode: APPRISE_EXTERNAL_ROUTING_MODES.URLS,
+    appriseConfigKey: '',
+    appriseTag: '',
     titleTemplate: '',
     bodyTemplate: '',
     sendInApp: true,
@@ -531,6 +548,8 @@ function clearTemplateFormErrors() {
   templateFormErrors.value = {
     name: '',
     destination: '',
+    appriseConfigKey: '',
+    appriseTag: '',
     titleTemplate: '',
     bodyTemplate: '',
     defaultForEnter: '',
@@ -654,7 +673,7 @@ function validateTemplateSyntax(template, fieldLabel) {
 }
 
 function focusFirstTemplateError(errors) {
-  const orderedFields = ['name', 'destination', 'titleTemplate', 'bodyTemplate']
+  const orderedFields = ['name', 'destination', 'appriseConfigKey', 'titleTemplate', 'bodyTemplate']
   const firstField = orderedFields.find(field => errors[field])
   if (!firstField) {
     return
@@ -668,6 +687,11 @@ function focusFirstTemplateError(errors) {
     }
     if (firstField === 'destination') {
       const target = templateDestinationInput.value?.$el || templateDestinationInput.value
+      target?.focus?.()
+      return
+    }
+    if (firstField === 'appriseConfigKey') {
+      const target = templateConfigKeyInput.value?.$el || templateConfigKeyInput.value
       target?.focus?.()
       return
     }
@@ -689,18 +713,37 @@ function validateTemplateForm() {
   }
 
   const externalEnabled = appriseEnabled.value && form.sendExternal
-  const hasAnyEnabledChannel = !!form.sendInApp || externalEnabled
+  const routingMode = form.externalRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    ? APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    : APPRISE_EXTERNAL_ROUTING_MODES.URLS
+  const hasExternalRoute = routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    ? !!form.appriseConfigKey?.trim()
+    : splitDestinationLines(form.destination).length > 0
+  const hasAnyEnabledChannel = !!form.sendInApp || (externalEnabled && hasExternalRoute)
   if (form.enabled && !hasAnyEnabledChannel) {
     errors.general = 'Enabled templates must have at least one active channel: in-app or external.'
   }
 
-  const requiresDestination = externalEnabled
-  if (requiresDestination) {
-    const destinationError = validateDestinationLines(form.destination)
-    if (destinationError) {
-      errors.destination = destinationError
-    } else if (splitDestinationLines(form.destination).length === 0) {
-      errors.destination = 'Add at least one destination URL or disable external providers.'
+  if (externalEnabled) {
+    if (routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
+      const configKey = form.appriseConfigKey?.trim() || ''
+      if (!configKey) {
+        errors.appriseConfigKey = 'Apprise config key is required in Config Key + Tag mode.'
+      } else if (configKey.length > 255) {
+        errors.appriseConfigKey = 'Apprise config key must be 255 characters or less.'
+      }
+
+      const tag = form.appriseTag?.trim() || ''
+      if (tag.length > 255) {
+        errors.appriseTag = 'Apprise tag must be 255 characters or less.'
+      }
+    } else {
+      const destinationError = validateDestinationLines(form.destination)
+      if (destinationError) {
+        errors.destination = destinationError
+      } else if (splitDestinationLines(form.destination).length === 0) {
+        errors.destination = 'Add at least one destination URL or disable external providers.'
+      }
     }
   }
 
@@ -984,28 +1027,56 @@ async function testTemplateConnection() {
     return
   }
 
-  const destinationError = validateDestinationLines(templateForm.value.destination)
-  const destinationLines = splitDestinationLines(templateForm.value.destination)
-  if (destinationError || destinationLines.length === 0) {
-    const detail = destinationError || 'Add at least one destination URL to test connection.'
-    templateFormErrors.value.destination = detail
-    templateConnectionTestResult.value = null
-    toast.add({
-      severity: 'error',
-      summary: 'Invalid Destination URL',
-      detail,
-      life: 4500
-    })
-    focusFirstTemplateError({ destination: detail })
-    return
+  const routingMode = templateForm.value.externalRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    ? APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    : APPRISE_EXTERNAL_ROUTING_MODES.URLS
+
+  if (routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
+    const configKey = templateForm.value.appriseConfigKey?.trim() || ''
+    if (!configKey) {
+      const detail = 'Add an Apprise config key to test connection.'
+      templateFormErrors.value.appriseConfigKey = detail
+      templateConnectionTestResult.value = null
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid Config Key',
+        detail,
+        life: 4500
+      })
+      focusFirstTemplateError({ appriseConfigKey: detail })
+      return
+    }
+  } else {
+    const destinationError = validateDestinationLines(templateForm.value.destination)
+    const destinationLines = splitDestinationLines(templateForm.value.destination)
+    if (destinationError || destinationLines.length === 0) {
+      const detail = destinationError || 'Add at least one destination URL to test connection.'
+      templateFormErrors.value.destination = detail
+      templateConnectionTestResult.value = null
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid Destination URL',
+        detail,
+        life: 4500
+      })
+      focusFirstTemplateError({ destination: detail })
+      return
+    }
   }
 
   templateConnectionTestResult.value = null
   testingTemplateConnection.value = true
   try {
     const enterPreview = templatePreviewToasts.value.find(item => item.id === 'enter')
+    const configKey = templateForm.value.appriseConfigKey?.trim() || ''
+    const tag = templateForm.value.appriseTag?.trim() || ''
     const payload = {
-      destination: normalizeDestination(templateForm.value.destination),
+      externalRoutingMode: routingMode,
+      destination: routingMode === APPRISE_EXTERNAL_ROUTING_MODES.URLS
+        ? normalizeDestination(templateForm.value.destination)
+        : null,
+      appriseConfigKey: routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG ? configKey : null,
+      appriseTag: routingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG ? tag : null,
       title: enterPreview?.title?.trim() ? enterPreview.title.trim() : null,
       body: enterPreview?.body?.trim() ? enterPreview.body.trim() : null
     }
@@ -1219,23 +1290,51 @@ async function saveTemplate() {
   savingTemplate.value = true
   try {
     const normalizedDestination = normalizeDestination(templateForm.value.destination)
+    const normalizedConfigKey = (templateForm.value.appriseConfigKey || '').trim()
+    const normalizedTag = (templateForm.value.appriseTag || '').trim()
+    const selectedRoutingMode = templateForm.value.externalRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+      ? APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+      : APPRISE_EXTERNAL_ROUTING_MODES.URLS
     let destination = ''
+    let externalRoutingMode = APPRISE_EXTERNAL_ROUTING_MODES.URLS
+    let appriseConfigKey = ''
+    let appriseTag = ''
     if (appriseEnabled.value) {
       if (templateForm.value.sendExternal) {
-        destination = normalizedDestination
+        externalRoutingMode = selectedRoutingMode
+        if (selectedRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
+          destination = ''
+          appriseConfigKey = normalizedConfigKey
+          appriseTag = normalizedTag
+        } else {
+          destination = normalizedDestination
+          appriseConfigKey = ''
+          appriseTag = ''
+        }
       } else if (editingTemplateId.value && !appriseConfigured.value) {
+        externalRoutingMode = selectedRoutingMode
         destination = normalizedDestination
+        appriseConfigKey = normalizedConfigKey
+        appriseTag = normalizedTag
       } else {
         destination = ''
+        appriseConfigKey = ''
+        appriseTag = ''
       }
     } else {
+      externalRoutingMode = selectedRoutingMode
       destination = editingTemplateId.value ? normalizedDestination : ''
+      appriseConfigKey = editingTemplateId.value ? normalizedConfigKey : ''
+      appriseTag = editingTemplateId.value ? normalizedTag : ''
     }
 
     const payload = {
       ...templateForm.value,
       name: templateForm.value.name.trim(),
       destination,
+      externalRoutingMode,
+      appriseConfigKey,
+      appriseTag,
       titleTemplate: templateForm.value.titleTemplate?.trim() || '',
       bodyTemplate: templateForm.value.bodyTemplate?.trim() || ''
     }
@@ -1270,14 +1369,24 @@ function editTemplate(template) {
   templateConnectionTestResult.value = null
   editingTemplateId.value = template.id
   const destination = template.destination || ''
+  const externalRoutingMode = template.externalRoutingMode || APPRISE_EXTERNAL_ROUTING_MODES.URLS
+  const appriseConfigKey = template.appriseConfigKey || ''
+  const appriseTag = template.appriseTag || ''
   const hasExternalDestination = splitDestinationLines(destination, true).length > 0
+  const hasKeyTagRoute = externalRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG && !!appriseConfigKey.trim()
+  const hasExternalRoute = externalRoutingMode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG
+    ? hasKeyTagRoute
+    : hasExternalDestination
   templateForm.value = {
     name: template.name,
     destination,
+    externalRoutingMode,
+    appriseConfigKey,
+    appriseTag,
     titleTemplate: template.titleTemplate || '',
     bodyTemplate: template.bodyTemplate || '',
     sendInApp: template.sendInApp !== false,
-    sendExternal: appriseEnabled.value ? hasExternalDestination : false,
+    sendExternal: appriseEnabled.value ? hasExternalRoute : false,
     defaultForEnter: !!template.defaultForEnter,
     defaultForLeave: !!template.defaultForLeave,
     enabled: !!template.enabled
@@ -1386,8 +1495,23 @@ function defaultSummary(template) {
   return flags.length ? flags.join(' + ') : 'No'
 }
 
-function formatDestination(destination) {
-  const destinations = splitDestinationLines(destination, true)
+function formatExternalRoute(template) {
+  if (!template || typeof template !== 'object') {
+    return 'In-app only'
+  }
+
+  const mode = template.externalRoutingMode || APPRISE_EXTERNAL_ROUTING_MODES.URLS
+  if (mode === APPRISE_EXTERNAL_ROUTING_MODES.KEY_TAG) {
+    const key = String(template.appriseConfigKey || '').trim()
+    if (!key) {
+      return 'In-app only'
+    }
+    const maskedKey = key.length <= 8 ? key : `${key.slice(0, 8)}***`
+    const tag = String(template.appriseTag || '').trim()
+    return tag ? `key:${maskedKey} tag:${tag}` : `key:${maskedKey}`
+  }
+
+  const destinations = splitDestinationLines(template.destination, true)
   if (destinations.length === 0) {
     return 'In-app only'
   }
@@ -1617,6 +1741,51 @@ watch(
 )
 
 watch(
+  () => templateForm.value.externalRoutingMode,
+  () => {
+    if (templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (templateFormErrors.value.appriseConfigKey) {
+      templateFormErrors.value.appriseConfigKey = ''
+    }
+    if (templateFormErrors.value.appriseTag) {
+      templateFormErrors.value.appriseTag = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => templateForm.value.appriseConfigKey,
+  () => {
+    if (templateFormErrors.value.appriseConfigKey) {
+      templateFormErrors.value.appriseConfigKey = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => templateForm.value.appriseTag,
+  () => {
+    if (templateFormErrors.value.appriseTag) {
+      templateFormErrors.value.appriseTag = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
   () => templateForm.value.titleTemplate,
   () => {
     if (templateFormErrors.value.titleTemplate) {
@@ -1657,6 +1826,12 @@ watch(
     if (!enabled && templateFormErrors.value.destination) {
       templateFormErrors.value.destination = ''
     }
+    if (!enabled && templateFormErrors.value.appriseConfigKey) {
+      templateFormErrors.value.appriseConfigKey = ''
+    }
+    if (!enabled && templateFormErrors.value.appriseTag) {
+      templateFormErrors.value.appriseTag = ''
+    }
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
     }
@@ -1672,6 +1847,12 @@ watch(
     }
     if (!enabled && templateFormErrors.value.destination) {
       templateFormErrors.value.destination = ''
+    }
+    if (!enabled && templateFormErrors.value.appriseConfigKey) {
+      templateFormErrors.value.appriseConfigKey = ''
+    }
+    if (!enabled && templateFormErrors.value.appriseTag) {
+      templateFormErrors.value.appriseTag = ''
     }
     if (!enabled) {
       templateConnectionTestResult.value = null

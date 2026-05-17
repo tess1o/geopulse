@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.geofencing.model.dto.CreateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
 import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
@@ -65,6 +66,9 @@ public class NotificationTemplateService {
         validateTemplateRequest(
                 writeInput.name(),
                 writeInput.destination(),
+                writeInput.externalRoutingMode(),
+                writeInput.appriseConfigKey(),
+                writeInput.appriseTag(),
                 writeInput.titleTemplate(),
                 writeInput.bodyTemplate(),
                 writeInput.enabled(),
@@ -87,6 +91,9 @@ public class NotificationTemplateService {
         validateTemplateRequest(
                 writeInput.name(),
                 writeInput.destination(),
+                writeInput.externalRoutingMode(),
+                writeInput.appriseConfigKey(),
+                writeInput.appriseTag(),
                 writeInput.titleTemplate(),
                 writeInput.bodyTemplate(),
                 writeInput.enabled(),
@@ -134,15 +141,18 @@ public class NotificationTemplateService {
 
     private void validateTemplateRequest(String name,
                                          String destination,
+                                         AppriseExternalRoutingMode externalRoutingMode,
+                                         String appriseConfigKey,
+                                         String appriseTag,
                                          String titleTemplate,
                                          String bodyTemplate,
                                          boolean enabled,
                                          boolean sendInApp) {
         validateName(name);
-        validateDestination(destination);
+        validateRoutingSettings(externalRoutingMode, destination, appriseConfigKey, appriseTag);
         validateTemplateSyntax("Title template", titleTemplate);
         validateTemplateSyntax("Body template", bodyTemplate);
-        validateEnabledChannels(enabled, sendInApp, destination);
+        validateEnabledChannels(enabled, sendInApp, externalRoutingMode, destination, appriseConfigKey);
     }
 
     private void validateName(String name) {
@@ -154,8 +164,22 @@ public class NotificationTemplateService {
         }
     }
 
-    private void validateDestination(String destination) {
-        NotificationDestinationParser.parseUrls(destination);
+    private void validateRoutingSettings(AppriseExternalRoutingMode mode,
+                                         String destination,
+                                         String appriseConfigKey,
+                                         String appriseTag) {
+        AppriseExternalRoutingMode resolvedMode = resolveRoutingMode(mode);
+        if (resolvedMode == AppriseExternalRoutingMode.URLS) {
+            NotificationDestinationParser.parseUrls(destination);
+            return;
+        }
+
+        if (appriseConfigKey != null && appriseConfigKey.length() > 255) {
+            throw new IllegalArgumentException("Apprise config key must be at most 255 characters.");
+        }
+        if (appriseTag != null && appriseTag.length() > 255) {
+            throw new IllegalArgumentException("Apprise tag must be at most 255 characters.");
+        }
     }
 
     private void validateTemplateSyntax(String fieldName, String template) {
@@ -183,17 +207,38 @@ public class NotificationTemplateService {
         }
     }
 
-    private void validateEnabledChannels(boolean enabled, boolean sendInApp, String destination) {
+    private void validateEnabledChannels(boolean enabled,
+                                         boolean sendInApp,
+                                         AppriseExternalRoutingMode mode,
+                                         String destination,
+                                         String appriseConfigKey) {
         if (!enabled) {
             return;
         }
 
-        boolean hasExternalDestination = destination != null && !destination.isBlank();
-        if (!sendInApp && !hasExternalDestination) {
+        boolean hasExternalRoute = hasExternalRouting(mode, destination, appriseConfigKey);
+        if (!sendInApp && !hasExternalRoute) {
+            if (resolveRoutingMode(mode) == AppriseExternalRoutingMode.KEY_TAG) {
+                throw new IllegalArgumentException(
+                        "Apprise config key is required when KEY_TAG routing mode is selected."
+                );
+            }
             throw new IllegalArgumentException(
-                    "Enabled template must have at least one active channel: in-app or external destination."
+                    "Enabled template must have at least one active channel: in-app or external routing."
             );
         }
+    }
+
+    private boolean hasExternalRouting(AppriseExternalRoutingMode mode, String destination, String appriseConfigKey) {
+        AppriseExternalRoutingMode resolvedMode = resolveRoutingMode(mode);
+        if (resolvedMode == AppriseExternalRoutingMode.KEY_TAG) {
+            return appriseConfigKey != null && !appriseConfigKey.isBlank();
+        }
+        return destination != null && !destination.isBlank();
+    }
+
+    private AppriseExternalRoutingMode resolveRoutingMode(AppriseExternalRoutingMode mode) {
+        return mode == null ? AppriseExternalRoutingMode.URLS : mode;
     }
 
     private IllegalArgumentException translatePersistenceException(PersistenceException exception) {
@@ -239,11 +284,30 @@ public class NotificationTemplateService {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    private String normalizeConfigKey(String configKey) {
+        if (configKey == null) {
+            return null;
+        }
+        String normalized = configKey.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeTag(String tag) {
+        if (tag == null) {
+            return null;
+        }
+        String normalized = tag.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     public NotificationTemplateDto toDto(NotificationTemplateEntity entity) {
         return NotificationTemplateDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
                 .destination(entity.getDestination())
+                .externalRoutingMode(resolveRoutingMode(entity.getExternalRoutingMode()))
+                .appriseConfigKey(entity.getAppriseConfigKey())
+                .appriseTag(entity.getAppriseTag())
                 .titleTemplate(entity.getTitleTemplate())
                 .bodyTemplate(entity.getBodyTemplate())
                 .defaultForEnter(entity.getDefaultForEnter())
@@ -256,9 +320,16 @@ public class NotificationTemplateService {
     }
 
     private TemplateWriteInput buildCreateWriteInput(CreateNotificationTemplateRequest request) {
+        AppriseExternalRoutingMode routingMode = resolveRoutingMode(request.getExternalRoutingMode());
+        String destination = routingMode == AppriseExternalRoutingMode.URLS
+                ? normalizeDestination(request.getDestination())
+                : "";
         return new TemplateWriteInput(
                 request.getName() == null ? null : request.getName().trim(),
-                normalizeDestination(request.getDestination()),
+                destination,
+                routingMode,
+                normalizeConfigKey(request.getAppriseConfigKey()),
+                normalizeTag(request.getAppriseTag()),
                 normalizeTemplate(request.getTitleTemplate()),
                 normalizeTemplate(request.getBodyTemplate()),
                 Boolean.TRUE.equals(request.getDefaultForEnter()),
@@ -270,9 +341,20 @@ public class NotificationTemplateService {
 
     private TemplateWriteInput buildUpdateWriteInput(NotificationTemplateEntity entity,
                                                      UpdateNotificationTemplateRequest request) {
+        AppriseExternalRoutingMode routingMode = request.getExternalRoutingMode() != null
+                ? resolveRoutingMode(request.getExternalRoutingMode())
+                : resolveRoutingMode(entity.getExternalRoutingMode());
+
+        String destination = request.getDestination() != null
+                ? (routingMode == AppriseExternalRoutingMode.URLS ? normalizeDestination(request.getDestination()) : "")
+                : entity.getDestination();
+
         return new TemplateWriteInput(
                 request.getName() != null ? request.getName().trim() : entity.getName(),
-                request.getDestination() != null ? normalizeDestination(request.getDestination()) : entity.getDestination(),
+                destination,
+                routingMode,
+                request.getAppriseConfigKey() != null ? normalizeConfigKey(request.getAppriseConfigKey()) : entity.getAppriseConfigKey(),
+                request.getAppriseTag() != null ? normalizeTag(request.getAppriseTag()) : entity.getAppriseTag(),
                 request.getTitleTemplate() != null ? normalizeTemplate(request.getTitleTemplate()) : entity.getTitleTemplate(),
                 request.getBodyTemplate() != null ? normalizeTemplate(request.getBodyTemplate()) : entity.getBodyTemplate(),
                 request.getDefaultForEnter() != null ? request.getDefaultForEnter() : Boolean.TRUE.equals(entity.getDefaultForEnter()),
@@ -309,8 +391,18 @@ public class NotificationTemplateService {
     }
 
     private void applyWriteInput(NotificationTemplateEntity entity, TemplateWriteInput writeInput) {
+        AppriseExternalRoutingMode routingMode = resolveRoutingMode(writeInput.externalRoutingMode());
         entity.setName(writeInput.name());
-        entity.setDestination(writeInput.destination());
+        entity.setExternalRoutingMode(routingMode);
+        if (routingMode == AppriseExternalRoutingMode.KEY_TAG) {
+            entity.setDestination(writeInput.destination() == null ? "" : writeInput.destination());
+            entity.setAppriseConfigKey(writeInput.appriseConfigKey());
+            entity.setAppriseTag(writeInput.appriseTag());
+        } else {
+            entity.setDestination(writeInput.destination());
+            entity.setAppriseConfigKey(null);
+            entity.setAppriseTag(null);
+        }
         entity.setTitleTemplate(writeInput.titleTemplate());
         entity.setBodyTemplate(writeInput.bodyTemplate());
         entity.setDefaultForEnter(writeInput.defaultForEnter());
@@ -321,6 +413,9 @@ public class NotificationTemplateService {
 
     private record TemplateWriteInput(String name,
                                       String destination,
+                                      AppriseExternalRoutingMode externalRoutingMode,
+                                      String appriseConfigKey,
+                                      String appriseTag,
                                       String titleTemplate,
                                       String bodyTemplate,
                                       boolean defaultForEnter,

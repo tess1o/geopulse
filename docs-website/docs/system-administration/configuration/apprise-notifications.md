@@ -61,12 +61,18 @@ Use **Test Apprise** to verify reachability/auth before enabling production deli
 Apprise config is split between admin and users:
 
 - **Admin (global transport):** endpoint/auth/timeout/TLS
-- **User templates (per user):** destination URLs + message templates
+- **User templates (per user):** routing settings + message templates
 
-Template destination rules:
+Template routing modes:
 
-- One Apprise URL per line
-- Leave destination empty for in-app only template
+- **`URLS` mode (existing behavior):**
+  - One Apprise URL per line
+  - GeoPulse sends to Apprise `/notify` with `urls`
+- **`KEY_TAG` mode (new):**
+  - Set `appriseConfigKey` (required)
+  - Set `appriseTag` (optional)
+  - GeoPulse sends to Apprise `/notify/{configKey}` with optional `tag`
+- Leave external routing empty for in-app-only templates
 
 ## 5. Delivery + In-App Behavior
 
@@ -94,6 +100,12 @@ Cleanup scheduler cadence is environment/property-based and requires backend res
 ## Troubleshooting
 
 - **Test fails with 401/403:** verify auth token and endpoint.
-- **No external messages:** verify `apprise.enabled`, API URL, and template destinations.
-- **Events are `SKIPPED`:** destination missing/disabled template/non-deliverable path for that event.
+- **No external messages:** verify `apprise.enabled`, API URL, and template routing fields.
+- **Events are `SKIPPED`:** external routing missing/disabled template/non-deliverable path for that event.
 - **Events are `FAILED`:** inspect delivery error details and Apprise service logs.
+
+## Migration / Backward Compatibility
+
+- Existing templates are **not** auto-converted.
+- Existing templates continue using `URLS` mode unchanged.
+- You can switch individual templates to `KEY_TAG` mode at any time.

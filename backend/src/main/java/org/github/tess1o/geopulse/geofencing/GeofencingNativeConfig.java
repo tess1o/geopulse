@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
         GeofenceRuleStateId.class,
         GeofenceEventEntity.class,
         NotificationTemplateEntity.class,
+        AppriseExternalRoutingMode.class,
         GeofenceRuleStatus.class,
         GeofenceEventType.class,
         GeofenceDeliveryStatus.class,

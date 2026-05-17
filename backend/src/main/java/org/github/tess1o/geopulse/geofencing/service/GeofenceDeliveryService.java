@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
@@ -14,6 +15,7 @@ import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProj
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 @Slf4j
@@ -55,17 +57,31 @@ public class GeofenceDeliveryService {
 
     private void processEvent(GeofenceEventEntity event) {
         NotificationTemplateEntity template = event.getTemplate();
-        if (template == null || !Boolean.TRUE.equals(template.getEnabled())
-                || template.getDestination() == null || template.getDestination().isBlank()) {
-            markSkipped(event, "No enabled template destination configured");
+        if (!isExternallyDeliverable(template)) {
+            markSkipped(event, "No enabled template external routing configured");
             return;
         }
 
-        AppriseClientResult result = appriseNotificationService.sendToDestination(
-                template.getDestination(),
-                event.getTitle(),
-                event.getMessage()
+        String consistencyError = validateEventOwnershipConsistency(event, template);
+        if (consistencyError != null) {
+            log.warn("Skipping geofence delivery for event {} due to ownership mismatch: {}",
+                    event != null ? event.getId() : null,
+                    consistencyError);
+            markSkipped(event, consistencyError);
+            return;
+        }
+
+        log.info("Processing geofence delivery eventId={} ownerUserId={} subjectUserId={} pointUserId={} templateId={} templateUserId={} ruleId={}",
+                event.getId(),
+                event.getOwnerUser() != null ? event.getOwnerUser().getId() : null,
+                event.getSubjectUser() != null ? event.getSubjectUser().getId() : null,
+                event.getPoint() != null && event.getPoint().getUser() != null ? event.getPoint().getUser().getId() : null,
+                template != null ? template.getId() : null,
+                template != null && template.getUser() != null ? template.getUser().getId() : null,
+                event.getRule() != null ? event.getRule().getId() : null
         );
+
+        AppriseClientResult result = appriseNotificationService.sendToTemplate(template, event.getTitle(), event.getMessage());
 
         int attempts = event.getDeliveryAttempts() == null ? 0 : event.getDeliveryAttempts();
         event.setDeliveryAttempts(attempts + 1);
@@ -85,6 +101,45 @@ public class GeofenceDeliveryService {
             event.setDeliveryStatus(GeofenceDeliveryStatus.PENDING);
         }
         syncNotificationDeliveryStatus(event);
+    }
+
+    private boolean isExternallyDeliverable(NotificationTemplateEntity template) {
+        if (template == null || !Boolean.TRUE.equals(template.getEnabled())) {
+            return false;
+        }
+        if (template.getExternalRoutingMode() == AppriseExternalRoutingMode.KEY_TAG) {
+            return template.getAppriseConfigKey() != null && !template.getAppriseConfigKey().isBlank();
+        }
+        return template.getDestination() != null && !template.getDestination().isBlank();
+    }
+
+    private String validateEventOwnershipConsistency(GeofenceEventEntity event, NotificationTemplateEntity template) {
+        if (event == null || event.getOwnerUser() == null || event.getOwnerUser().getId() == null
+                || event.getSubjectUser() == null || event.getSubjectUser().getId() == null) {
+            return "Event owner/subject metadata is missing";
+        }
+
+        UUID ownerUserId = event.getOwnerUser().getId();
+        UUID subjectUserId = event.getSubjectUser().getId();
+
+        if (template == null || template.getUser() == null || template.getUser().getId() == null) {
+            return "Template owner metadata is missing";
+        }
+        if (!ownerUserId.equals(template.getUser().getId())) {
+            return "Template owner does not match event owner";
+        }
+
+        if (event.getRule() != null && event.getRule().getOwnerUser() != null && event.getRule().getOwnerUser().getId() != null
+                && !ownerUserId.equals(event.getRule().getOwnerUser().getId())) {
+            return "Rule owner does not match event owner";
+        }
+
+        if (event.getPoint() != null && event.getPoint().getUser() != null && event.getPoint().getUser().getId() != null
+                && !subjectUserId.equals(event.getPoint().getUser().getId())) {
+            return "Point user does not match event subject";
+        }
+
+        return null;
     }
 
     private void markSkipped(GeofenceEventEntity event, String reason) {
