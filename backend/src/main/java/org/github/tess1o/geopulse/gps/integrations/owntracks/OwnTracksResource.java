@@ -29,6 +29,7 @@ public class OwnTracksResource {
     private boolean timestampOverride;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String EMPTY_JSON_ARRAY = "[]";
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
@@ -53,7 +54,7 @@ public class OwnTracksResource {
         log.info("Received payload: {}, device: {}", payload, deviceId);
 
         if (!"location".equals(payload.get("_type"))) {
-            return Response.ok().build();
+            return Response.ok(EMPTY_JSON_ARRAY).build();
         }
 
         var authResult = authRegistry.authenticate(GpsSourceType.OWNTRACKS, ownTrackAuth);
@@ -90,7 +91,7 @@ public class OwnTracksResource {
         }
 
         gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS, config);
-        return Response.ok("[]").build();
+        return Response.ok(EMPTY_JSON_ARRAY).build();
     }
 
 }
