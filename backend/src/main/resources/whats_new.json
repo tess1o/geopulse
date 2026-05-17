@@ -1,12 +1,14 @@
 [
   {
-    "version": "1.29.1",
-    "title": "GeoPulse 1.29.1",
+    "version": "1.30.0",
+    "title": "GeoPulse 1.30.0",
     "highlights": [
-      "Added safety guard for oversized reverse-geocoding bounding boxes to prevent broad location over-matching",
-      "Added automatic cleanup migration that nulls previously stored oversized geocoding bounding boxes",
-      "Added configurable geocoding bbox area limit via GEOPULSE_GEOCODING_CACHE_MAX_BBOX_AREA_KM2 (default: 5000 km²)"
+      "Added option to use Apprise Key/Tag notification system instead of raw URLs",
+      "Added a backend changes to allow mobile client to connect to the GeoPulse server",
+      "Fixed OwnTracks integration in some edge cases",
+      "Fixed issue with Photon when not supported language was used",
+      "Fixed UI instructions for GPSLogger"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.29.1"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.30.0"
   }
 ]
