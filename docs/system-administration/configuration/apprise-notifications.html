@@ -5,7 +5,7 @@
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Apprise Notifications | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/system-administration/configuration/apprise-notifications"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Apprise Notifications | GeoPulse documentation"><meta data-rh="true" name="description" content="GeoPulse can send geofence alerts to external channels through Apprise."><meta data-rh="true" property="og:description" content="GeoPulse can send geofence alerts to external channels through Apprise."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/apprise-notifications"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/apprise-notifications" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/apprise-notifications" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://99KWVB1VEW-dsn.algolia.net" crossorigin="anonymous"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Apprise Notifications","item":"https://tess1o.github.io/geopulse/docs/system-administration/configuration/apprise-notifications"}]}</script><link rel="search" type="application/opensearchdescription+xml" title="GeoPulse documentation" href="/geopulse/opensearch.xml">
 <meta name="algolia-site-verification" content="5FF05FBB6AA9D36D"><link rel="stylesheet" href="/geopulse/assets/css/styles.93d253be.css">
-<script src="/geopulse/assets/js/runtime~main.07a6f077.js" defer="defer"></script>
+<script src="/geopulse/assets/js/runtime~main.e7f93335.js" defer="defer"></script>
 <script src="/geopulse/assets/js/main.064c50aa.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -40,12 +40,24 @@
 <p>Apprise config is split between admin and users:</p>
 <ul>
 <li class=""><strong>Admin (global transport):</strong> endpoint/auth/timeout/TLS</li>
-<li class=""><strong>User templates (per user):</strong> destination URLs + message templates</li>
+<li class=""><strong>User templates (per user):</strong> routing settings + message templates</li>
 </ul>
-<p>Template destination rules:</p>
+<p>Template routing modes:</p>
+<ul>
+<li class=""><strong><code>URLS</code> mode (existing behavior):</strong>
 <ul>
 <li class="">One Apprise URL per line</li>
-<li class="">Leave destination empty for in-app only template</li>
+<li class="">GeoPulse sends to Apprise <code>/notify</code> with <code>urls</code></li>
+</ul>
+</li>
+<li class=""><strong><code>KEY_TAG</code> mode (new):</strong>
+<ul>
+<li class="">Set <code>appriseConfigKey</code> (required)</li>
+<li class="">Set <code>appriseTag</code> (optional)</li>
+<li class="">GeoPulse sends to Apprise <code>/notify/{configKey}</code> with optional <code>tag</code></li>
+</ul>
+</li>
+<li class="">Leave external routing empty for in-app-only templates</li>
 </ul>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="5-delivery--in-app-behavior">5. Delivery + In-App Behavior<a href="#5-delivery--in-app-behavior" class="hash-link" aria-label="Direct link to 5. Delivery + In-App Behavior" title="Direct link to 5. Delivery + In-App Behavior" translate="no">​</a></h2>
 <ul>
@@ -70,9 +82,15 @@
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="troubleshooting">Troubleshooting<a href="#troubleshooting" class="hash-link" aria-label="Direct link to Troubleshooting" title="Direct link to Troubleshooting" translate="no">​</a></h2>
 <ul>
 <li class=""><strong>Test fails with 401/403:</strong> verify auth token and endpoint.</li>
-<li class=""><strong>No external messages:</strong> verify <code>apprise.enabled</code>, API URL, and template destinations.</li>
-<li class=""><strong>Events are <code>SKIPPED</code>:</strong> destination missing/disabled template/non-deliverable path for that event.</li>
+<li class=""><strong>No external messages:</strong> verify <code>apprise.enabled</code>, API URL, and template routing fields.</li>
+<li class=""><strong>Events are <code>SKIPPED</code>:</strong> external routing missing/disabled template/non-deliverable path for that event.</li>
 <li class=""><strong>Events are <code>FAILED</code>:</strong> inspect delivery error details and Apprise service logs.</li>
-</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/system-administration/configuration/location-sharing"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Sharing</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/system-administration/configuration/frontend"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Frontend Nginx Configuration</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#1-install-apprise-docker-compose-overlay" class="table-of-contents__link toc-highlight">1. Install Apprise (Docker Compose Overlay)</a></li><li><a href="#2-choose-the-correct-apprise-api-url" class="table-of-contents__link toc-highlight">2. Choose the Correct Apprise API URL</a></li><li><a href="#3-configure-admin-settings" class="table-of-contents__link toc-highlight">3. Configure Admin Settings</a></li><li><a href="#4-user-templates-vs-admin-transport" class="table-of-contents__link toc-highlight">4. User Templates vs Admin Transport</a></li><li><a href="#5-delivery--in-app-behavior" class="table-of-contents__link toc-highlight">5. Delivery + In-App Behavior</a></li><li><a href="#6-geofence-event-cleanup-settings" class="table-of-contents__link toc-highlight">6. Geofence Event Cleanup Settings</a></li><li><a href="#troubleshooting" class="table-of-contents__link toc-highlight">Troubleshooting</a></li></ul></div></div></div></div></main></div></div></div></div>
+</ul>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="migration--backward-compatibility">Migration / Backward Compatibility<a href="#migration--backward-compatibility" class="hash-link" aria-label="Direct link to Migration / Backward Compatibility" title="Direct link to Migration / Backward Compatibility" translate="no">​</a></h2>
+<ul>
+<li class="">Existing templates are <strong>not</strong> auto-converted.</li>
+<li class="">Existing templates continue using <code>URLS</code> mode unchanged.</li>
+<li class="">You can switch individual templates to <code>KEY_TAG</code> mode at any time.</li>
+</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/system-administration/configuration/location-sharing"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Sharing</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/system-administration/configuration/frontend"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Frontend Nginx Configuration</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#1-install-apprise-docker-compose-overlay" class="table-of-contents__link toc-highlight">1. Install Apprise (Docker Compose Overlay)</a></li><li><a href="#2-choose-the-correct-apprise-api-url" class="table-of-contents__link toc-highlight">2. Choose the Correct Apprise API URL</a></li><li><a href="#3-configure-admin-settings" class="table-of-contents__link toc-highlight">3. Configure Admin Settings</a></li><li><a href="#4-user-templates-vs-admin-transport" class="table-of-contents__link toc-highlight">4. User Templates vs Admin Transport</a></li><li><a href="#5-delivery--in-app-behavior" class="table-of-contents__link toc-highlight">5. Delivery + In-App Behavior</a></li><li><a href="#6-geofence-event-cleanup-settings" class="table-of-contents__link toc-highlight">6. Geofence Event Cleanup Settings</a></li><li><a href="#troubleshooting" class="table-of-contents__link toc-highlight">Troubleshooting</a></li><li><a href="#migration--backward-compatibility" class="table-of-contents__link toc-highlight">Migration / Backward Compatibility</a></li></ul></div></div></div></div></main></div></div></div></div>
 </body>
 </html>
