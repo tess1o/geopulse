@@ -74,10 +74,21 @@ components:
           type: boolean
         scopeValid:
           type: boolean
+    AppriseExternalRoutingMode:
+      enum:
+      - URLS
+      - KEY_TAG
+      type: string
     AppriseTestRequest:
       type: object
       properties:
         destination:
+          type: string
+        externalRoutingMode:
+          $ref: "#/components/schemas/AppriseExternalRoutingMode"
+        appriseConfigKey:
+          type: string
+        appriseTag:
           type: string
         title:
           type: string
@@ -253,6 +264,15 @@ components:
       - HTTP
       - MQTT
       type: string
+    CoordinatesDTO:
+      type: object
+      properties:
+        lat:
+          format: double
+          type: number
+        lng:
+          format: double
+          type: number
     CoordinatesDto:
       required:
       - lat
@@ -423,6 +443,12 @@ components:
           pattern: \S
           type: string
         destination:
+          type: string
+        externalRoutingMode:
+          $ref: "#/components/schemas/AppriseExternalRoutingMode"
+        appriseConfigKey:
+          type: string
+        appriseTag:
           type: string
         titleTemplate:
           type: string
@@ -815,6 +841,45 @@ components:
           items:
             format: double
             type: number
+    GpsPointDTO:
+      type: object
+      properties:
+        id:
+          format: int64
+          type: integer
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+        coordinates:
+          $ref: "#/components/schemas/CoordinatesDTO"
+        accuracy:
+          format: double
+          type: number
+        battery:
+          format: double
+          type: number
+        velocity:
+          format: double
+          type: number
+        altitude:
+          format: double
+          type: number
+        sourceType:
+          type: string
+        telemetryGpsData:
+          type: array
+          items:
+            $ref: "#/components/schemas/GpsTelemetryDisplayDTO"
+        telemetryCurrentPopup:
+          type: array
+          items:
+            $ref: "#/components/schemas/GpsTelemetryDisplayDTO"
+    GpsPointsRetentionRequest:
+      type: object
+      properties:
+        points:
+          type: array
+          items:
+            $ref: "#/components/schemas/GpsPointDTO"
     GpsSourceType:
       enum:
       - OWNTRACKS
@@ -829,7 +894,21 @@ components:
       - CSV
       - COLOTA
       - MANUAL
+      - MOBILE_APP
       type: string
+    GpsTelemetryDisplayDTO:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+        unit:
+          type: string
+        type:
+          type: string
     GpsTelemetryMappingEntry:
       type: object
       properties:
@@ -1057,6 +1136,14 @@ components:
       - METRIC
       - IMPERIAL
       type: string
+    MobileSessionExchangeRequest:
+      required:
+      - sessionCode
+      type: object
+      properties:
+        sessionCode:
+          pattern: \S
+          type: string
     NormalizationRuleType:
       enum:
       - COUNTRY
@@ -1550,6 +1637,12 @@ components:
           maxLength: 120
           type: string
         destination:
+          type: string
+        externalRoutingMode:
+          $ref: "#/components/schemas/AppriseExternalRoutingMode"
+        appriseConfigKey:
+          type: string
+        appriseTag:
           type: string
         titleTemplate:
           type: string
@@ -3009,6 +3102,25 @@ paths:
       summary: Logout
       tags:
       - Authentication Resource
+  /api/auth/mobile:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Generate Code
+      tags:
+      - Mobile Authentication Resource
+      security:
+      - jwt:
+        - USER
+        - ADMIN
   /api/auth/oidc/callback:
     post:
       requestBody:
@@ -5562,6 +5674,38 @@ paths:
       - jwt:
         - USER
         - ADMIN
+  /api/gps/points:
+    post:
+      parameters:
+      - name: X-Device-Id
+        in: header
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GpsPointsRetentionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Ingest Mobile App Points
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt:
+        - USER
+        - ADMIN
   /api/gps/source:
     put:
       requestBody:
@@ -6639,6 +6783,25 @@ paths:
       - jwt:
         - USER
         - ADMIN
+  /api/mobile/session/exchange:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileSessionExchangeRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "400":
+          description: Bad Request
+      summary: Exchange Session Code
+      tags:
+      - Mobile Session Exchange Resource
   /api/notifications:
     get:
       parameters:
@@ -9448,7 +9611,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.29.1
+  version: 1.30.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
