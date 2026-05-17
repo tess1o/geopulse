@@ -308,9 +308,17 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.mockito</groupId>
+                        <artifactId>mockito-core</artifactId>
+                        <version>${mockito.version}</version>
+                    </dependency>
+                </dependencies>
                 <configuration>
                     <argLine>
                         @{argLine} --add-opens java.base/java.lang=ALL-UNNAMED
+                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
                     <groups>unit</groups>
                     <excludedGroups>io.quarkus.test.junit.QuarkusTest</excludedGroups>
@@ -341,6 +349,13 @@
             <plugin>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${failsafe-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.mockito</groupId>
+                        <artifactId>mockito-core</artifactId>
+                        <version>${mockito.version}</version>
+                    </dependency>
+                </dependencies>
                 <configuration>
                     <argLine>
                         @{argLine} --add-opens java.base/java.lang=ALL-UNNAMED
