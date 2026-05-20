@@ -41,6 +41,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -136,6 +137,24 @@ class GpsPointResourceMobilePointTest {
     }
 
     @Test
+    void ingestMobileAppPoints_replacesNullPointsWithEmptyList() {
+        UUID userId = UUID.randomUUID();
+        GpsPointsRetentionRequest request = new GpsPointsRetentionRequest(null);
+
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(gpsSourceService.isDefaultFilterInaccurateDataEnabled()).thenReturn(false);
+        when(gpsSourceService.getDefaultMaxAllowedAccuracy()).thenReturn(100);
+        when(gpsSourceService.getDefaultMaxAllowedSpeed()).thenReturn(250);
+        when(gpsSourceService.isDefaultDuplicateDetectionEnabled()).thenReturn(false);
+        when(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()).thenReturn(2);
+
+        Response response = resource.ingestMobileAppPoints(request, DEVICE_ID);
+
+        assertEquals(200, response.getStatus());
+        verify(gpsPointService).saveMobileAppGpsPoints(eq(List.of()), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
+    }
+
+    @Test
     void ingestMobileAppPoints_returnsConflictWhenPointIsDuplicate() {
         UUID userId = UUID.randomUUID();
         GpsPointDTO point = new GpsPointDTO(
@@ -227,5 +246,51 @@ class GpsPointResourceMobilePointTest {
         inOrder.verifyNoMoreInteractions();
 
         verify(mapper, never()).toEntity(eq(missingTimestampPoint), any(), any(), any());
+    }
+
+    @Test
+    void saveMobileAppGpsPoints_ignoresNullAndEmptyPayloads() {
+        GpsPointMapper mapper = mock(GpsPointMapper.class);
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
+        EntityManager entityManager = mock(EntityManager.class);
+        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
+        GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
+        GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
+        GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
+        GpsPointService service = new GpsPointService(
+                mapper,
+                repository,
+                duplicateDetectionService,
+                entityManager,
+                timelineService,
+                filteringService,
+                telemetryService,
+                geofenceService
+        );
+
+        UUID userId = UUID.randomUUID();
+        GpsSourceConfigEntity config = GpsSourceConfigEntity.builder()
+                .sourceType(GpsSourceType.MOBILE_APP)
+                .active(true)
+                .filterInaccurateData(false)
+                .maxAllowedAccuracy(100)
+                .maxAllowedSpeed(250)
+                .enableDuplicateDetection(false)
+                .build();
+
+        service.saveMobileAppGpsPoints(null, DEVICE_ID, userId, GpsSourceType.MOBILE_APP, config);
+        service.saveMobileAppGpsPoints(List.of(), DEVICE_ID, userId, GpsSourceType.MOBILE_APP, config);
+
+        verifyNoInteractions(
+                mapper,
+                repository,
+                duplicateDetectionService,
+                entityManager,
+                timelineService,
+                filteringService,
+                telemetryService,
+                geofenceService
+        );
     }
 }
