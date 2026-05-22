@@ -319,6 +319,11 @@ public class GpsPointService {
     }
 
     public void saveMobileAppGpsPoints(List<GpsPointDTO> data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (data == null || data.isEmpty()) {
+            log.warn("Gps points are empty");
+            return;
+        }
+
         data.stream()
                 .filter(point -> point.getTimestamp() != null)
                 .sorted(Comparator.comparing(GpsPointDTO::getTimestamp))

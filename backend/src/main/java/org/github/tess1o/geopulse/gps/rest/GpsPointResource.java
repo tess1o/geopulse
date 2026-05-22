@@ -36,12 +36,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -88,12 +83,13 @@ public class GpsPointResource {
     public Response ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
                                              @RestHeader("X-Device-Id") String xDeviceId) {
         var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
+        var points = request.getPoints() == null ? Collections.<GpsPointDTO>emptyList() : request.getPoints();
 
         try {
             UUID userId = currentUserService.getCurrentUserId();
             GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
 
-            gpsPointService.saveMobileAppGpsPoints(request.getPoints(), deviceId, userId, GpsSourceType.MOBILE_APP, config);
+            gpsPointService.saveMobileAppGpsPoints(points, deviceId, userId, GpsSourceType.MOBILE_APP, config);
             return Response.ok(ApiResponse.success(OK_RESPONSE))
                     .build();
         } catch (GpsCoordinateDuplicateException ex) {
