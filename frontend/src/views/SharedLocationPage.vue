@@ -138,6 +138,15 @@
                     :is-shared-view="true"
                     @map-ready="handleMapReady"
                 >
+                  <template #controls>
+                    <ViewerLocationControl
+                        :status="viewerLocationStatus"
+                        :active="viewerLocationActive"
+                        :message="viewerLocationMessage"
+                        @locate="handleViewerLocationRequest"
+                        @stop="viewerLocation.disable"
+                    />
+                  </template>
                   <template #overlays="{ map, isReady }">
                     <!-- Path Layer for history -->
                     <PathLayer
@@ -161,6 +170,12 @@
                         :longitude="shareData.longitude"
                         :share-data="shareData"
                         :open-popup="true"
+                    />
+
+                    <ViewerLocationMarker
+                        v-if="map && isReady && viewerLocationPoint"
+                        :map="map"
+                        :location="viewerLocationPoint"
                     />
                   </template>
                 </MapContainer>
@@ -202,15 +217,18 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {Button, Card, Password, ProgressSpinner} from 'primevue'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import {MapContainer} from '@/components/maps'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import SharedLocationMarker from '@/components/maps/SharedLocationMarker.vue'
+import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
+import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
+import { useViewerLocation } from '@/composables/useViewerLocation'
 
 const timezone = useTimezone()
 
@@ -218,6 +236,7 @@ const timezone = useTimezone()
 const route = useRoute()
 const linkId = route.params.linkId
 const shareLinksStore = useShareLinksStore()
+const viewerLocation = useViewerLocation()
 
 // State
 const loading = ref(true)
@@ -227,6 +246,7 @@ const needsPassword = ref(false)
 const password = ref('')
 const refreshing = ref(false)
 const pathData = ref([])
+const shouldFitViewerLocation = ref(false)
 
 // Template refs
 const mapContainerRef = ref(null)
@@ -250,6 +270,49 @@ const scopeLabel = computed(() => {
 
   return 'Location History';
 });
+
+const viewerLocationPoint = computed(() => viewerLocation.location.value)
+const viewerLocationStatus = computed(() => viewerLocation.status.value)
+const viewerLocationActive = computed(() => viewerLocation.isActive.value)
+const viewerLocationMessage = computed(() => viewerLocation.errorMessage.value)
+
+const hasValidCoordinate = (value) => Number.isFinite(Number(value))
+
+const fitOwnerAndViewer = () => {
+  if (!shareData.value || !viewerLocationPoint.value) return
+  if (!hasValidCoordinate(shareData.value.latitude) || !hasValidCoordinate(shareData.value.longitude)) return
+  if (!hasValidCoordinate(viewerLocationPoint.value.latitude) || !hasValidCoordinate(viewerLocationPoint.value.longitude)) return
+
+  const ownerLat = Number(shareData.value.latitude)
+  const ownerLng = Number(shareData.value.longitude)
+  const viewerLat = Number(viewerLocationPoint.value.latitude)
+  const viewerLng = Number(viewerLocationPoint.value.longitude)
+  const bounds = [
+    [Math.min(ownerLat, viewerLat), Math.min(ownerLng, viewerLng)],
+    [Math.max(ownerLat, viewerLat), Math.max(ownerLng, viewerLng)]
+  ]
+
+  mapContainerRef.value?.fitBounds?.([
+    ...bounds
+  ], { padding: [50, 50], maxZoom: 16 })
+}
+
+const handleViewerLocationRequest = async () => {
+  shouldFitViewerLocation.value = true
+  if (viewerLocationPoint.value) {
+    fitOwnerAndViewer()
+    shouldFitViewerLocation.value = false
+    return
+  }
+
+  await viewerLocation.enable()
+}
+
+watch(viewerLocationPoint, (location) => {
+  if (!location || !shouldFitViewerLocation.value) return
+  fitOwnerAndViewer()
+  shouldFitViewerLocation.value = false
+})
 
 // Check if we have a valid stored access token for this link
 const hasValidStoredToken = () => {

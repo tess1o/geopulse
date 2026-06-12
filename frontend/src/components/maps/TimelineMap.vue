@@ -41,6 +41,16 @@
           @zoom-to-data="handleZoomToData"
           class="map-controls"
         />
+        <ViewerLocationControl
+          v-if="map && isReady && showViewerLocationControl"
+          class="timeline-viewer-location-control"
+          style="top: 4.75rem;"
+          :status="viewerLocationStatus"
+          :active="viewerLocationActive"
+          :message="viewerLocationMessage"
+          @locate="handleViewerLocationRequest"
+          @stop="handleViewerLocationStop"
+        />
       </template>
 
       <!-- Map Layers -->
@@ -127,6 +137,12 @@
           v-if="map && isReady && showCurrentLocation && currentLocation"
           :map="map"
           :location="currentLocation"
+        />
+
+        <ViewerLocationMarker
+          v-if="map && isReady && viewerLocation"
+          :map="map"
+          :location="viewerLocation"
         />
       </template>
 
@@ -321,6 +337,8 @@ import {
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
+import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
+import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -357,6 +375,26 @@ const props = defineProps({
   currentLocation: {
     type: Object,
     default: () => null
+  },
+  viewerLocation: {
+    type: Object,
+    default: () => null
+  },
+  viewerLocationStatus: {
+    type: String,
+    default: 'idle'
+  },
+  viewerLocationActive: {
+    type: Boolean,
+    default: false
+  },
+  viewerLocationMessage: {
+    type: String,
+    default: ''
+  },
+  showViewerLocationControl: {
+    type: Boolean,
+    default: false
   },
   showCurrentLocation: {
     type: Boolean,
@@ -429,6 +467,8 @@ const emit = defineEmits([
   'highlighted-path-click',
   'timeline-marker-click',
   'map-click',
+  'viewer-location-request',
+  'viewer-location-stop',
   'plan-to-visit',
   'plan-item-edit',
   'plan-item-delete'
@@ -1241,6 +1281,14 @@ const handleZoomToData = () => {
       mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
     }
   }
+}
+
+const handleViewerLocationRequest = () => {
+  emit('viewer-location-request')
+}
+
+const handleViewerLocationStop = () => {
+  emit('viewer-location-stop')
 }
 
 const handleToggleHeatmap = (enabled) => {
