@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ALTER COLUMN map_render_mode SET DEFAULT 'VECTOR';

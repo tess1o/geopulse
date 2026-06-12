@@ -5,6 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
@@ -44,6 +45,7 @@ public class UserServiceTest {
         assertTrue(user.getCreatedAt().isAfter(startOfTheTest));
         assertNull(user.getUpdatedAt());
         assertTrue(passwordUtils.isPasswordValid("test", user.getPasswordHash()));
+        assertEquals(MapRenderMode.VECTOR, user.getMapRenderMode());
     }
     @Test
     @Transactional

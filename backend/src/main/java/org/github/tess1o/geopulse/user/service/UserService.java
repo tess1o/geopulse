@@ -873,7 +873,7 @@ public class UserService {
         return TimelineDisplayPreferences.builder()
                 .customMapTileUrl(user.getCustomMapTileUrl())
                 .customMapStyleUrl(user.getCustomMapStyleUrl())
-                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.RASTER)
+                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
                 .pathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled() != null
                         ? user.getTimelineDisplayPathSimplificationEnabled() : true)
                 .pathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance() != null

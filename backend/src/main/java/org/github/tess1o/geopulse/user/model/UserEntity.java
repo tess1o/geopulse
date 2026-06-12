@@ -101,7 +101,7 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Enumerated(EnumType.STRING)
     @Column(name = "map_render_mode", nullable = false, length = 32)
     @Builder.Default
-    private MapRenderMode mapRenderMode = MapRenderMode.RASTER;
+    private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "measure_unit", length = 1000)
