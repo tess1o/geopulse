@@ -50,6 +50,7 @@ RUN chmod 777 /work \
 
 # Copy the native runner
 COPY --from=build --chown=1001:0 --chmod=755 /app/backend/target/*-runner /work/application
+COPY --chmod=755 backend/src/main/docker/geopulse /usr/local/bin/geopulse
 
 # Expose port and switch to non-root (UID 1001)
 EXPOSE 8080
@@ -60,4 +61,4 @@ ENV GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT="-XX:MaximumHeapSizePercent=70 -X
 
 # Start native binary with optimized GC settings
 # Use NATIVE_IMAGE_OPTS if provided, otherwise use defaults
-ENTRYPOINT ["sh", "-c", "./application -Dquarkus.http.host=0.0.0.0 ${NATIVE_IMAGE_OPTS:-$GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT}"]
+ENTRYPOINT ["geopulse"]

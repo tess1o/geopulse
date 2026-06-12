@@ -45,6 +45,7 @@ RUN mkdir -p /app/dumps /app/logs && \
     chmod -R g+rwX /app
 
 COPY --from=app /app /app
+COPY --chmod=755 backend/src/main/docker/geopulse /usr/local/bin/geopulse
 
 # Default to appuser (UID 1001), but can be overridden with --user flag
 USER appuser
@@ -64,4 +65,4 @@ ENV JAVA_OPTS_DEFAULT="-XX:+UseContainerSupport \
                        -XX:+ExitOnOutOfMemoryError"
 
 # Use JAVA_OPTS if provided by user, otherwise use container-aware defaults
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS:-$JAVA_OPTS_DEFAULT} -jar /app/quarkus-run.jar"]
+ENTRYPOINT ["geopulse"]
