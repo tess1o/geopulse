@@ -185,10 +185,16 @@
             </div>
             <TimelineMap
                 v-else
+                ref="timelineMapRef"
                 :pathData="pathData"
                 :timelineData="timelineData"
                 :currentLocation="currentLocation"
                 :showCurrentLocation="shareInfo.show_current_location && shareInfo.timeline_status === 'active'"
+                :viewer-location="viewerLocationPoint"
+                :viewer-location-status="viewerLocationStatus"
+                :viewer-location-active="viewerLocationActive"
+                :viewer-location-message="viewerLocationMessage"
+                :show-viewer-location-control="true"
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
                 :custom-tile-url="shareInfo.custom_map_tile_url"
@@ -196,6 +202,8 @@
                 :map-render-mode="shareInfo.map_render_mode"
                 :is-shared-view="true"
                 @timeline-marker-click="handleTimelineItemClick"
+                @viewer-location-request="handleViewerLocationRequest"
+                @viewer-location-stop="viewerLocation.disable"
             />
           </div>
           <div class="timeline-sidebar">
@@ -227,6 +235,7 @@ import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
+import { useViewerLocation } from '@/composables/useViewerLocation'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -245,6 +254,7 @@ const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
 const tripsStore = useTripsStore()
 const timezone = useTimezone()
+const viewerLocation = useViewerLocation()
 
 const linkId = route.params.linkId
 const loading = ref(true)
@@ -259,6 +269,8 @@ const shareInfo = ref(null)
 const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
+const timelineMapRef = ref(null)
+const shouldCenterViewerLocation = ref(false)
 
 // Component refs
 // Date filter state
@@ -273,6 +285,32 @@ const hasTimelineData = computed(() => {
 const hasPathData = computed(() => {
   return pathData.value && pathData.value.points && pathData.value.points.length > 0
 })
+
+const viewerLocationPoint = computed(() => viewerLocation.location.value)
+const viewerLocationStatus = computed(() => viewerLocation.status.value)
+const viewerLocationActive = computed(() => viewerLocation.isActive.value)
+const viewerLocationMessage = computed(() => viewerLocation.errorMessage.value)
+
+const hasValidCoordinate = (value) => Number.isFinite(Number(value))
+
+const centerViewerLocation = () => {
+  const location = viewerLocationPoint.value
+  if (!location) return
+  if (!hasValidCoordinate(location.latitude) || !hasValidCoordinate(location.longitude)) return
+
+  timelineMapRef.value?.setView?.([location.latitude, location.longitude], 15, { animate: true })
+}
+
+const handleViewerLocationRequest = async () => {
+  shouldCenterViewerLocation.value = true
+  if (viewerLocationPoint.value) {
+    centerViewerLocation()
+    shouldCenterViewerLocation.value = false
+    return
+  }
+
+  await viewerLocation.enable()
+}
 
 const linkedTripWorkspace = computed(() => {
   if (!shareInfo.value || shareInfo.value.share_type !== 'TIMELINE') return null
@@ -339,6 +377,12 @@ watch([filterStartDate, filterEndDate], async ([newStart, newEnd], [oldStart, ol
 
   // Refetch timeline data with new date range
   await loadTimelineData()
+})
+
+watch(viewerLocationPoint, (location) => {
+  if (!location || !shouldCenterViewerLocation.value) return
+  centerViewerLocation()
+  shouldCenterViewerLocation.value = false
 })
 
 // Initialize date range store when timeline data loads
