@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.admin.service;
 
+import io.quarkus.arc.Unremovable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -13,6 +14,7 @@ import java.security.SecureRandom;
 import java.util.Optional;
 
 @ApplicationScoped
+@Unremovable
 @Slf4j
 public class AdminPasswordRecoveryService {
 
