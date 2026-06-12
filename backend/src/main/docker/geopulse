@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+if [ -x /work/application ]; then
+  if [ "$#" -eq 0 ]; then
+    exec /work/application -Dquarkus.http.host=0.0.0.0 ${NATIVE_IMAGE_OPTS:-${GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT:-}}
+  fi
+  exec /work/application -Dquarkus.http.port=0 "$@"
+fi
+
+if [ -f /app/quarkus-run.jar ]; then
+  if [ "$#" -eq 0 ]; then
+    exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} -jar /app/quarkus-run.jar
+  fi
+  exec java ${JAVA_OPTS:-${JAVA_OPTS_DEFAULT:-}} -Dquarkus.http.port=0 -jar /app/quarkus-run.jar "$@"
+fi
+
+echo "GeoPulse backend executable not found" >&2
+exit 127

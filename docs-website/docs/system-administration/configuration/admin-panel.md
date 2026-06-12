@@ -33,6 +33,47 @@ If you're already logged in when setting `GEOPULSE_ADMIN_EMAIL`, you must **log 
 Once you have an admin user, they can promote other users to `ADMIN` through the Admin Panel UI.
 :::
 
+### Emergency Password Recovery
+
+If an administrator forgets their password and no other admin can log in, reset it from the backend container:
+
+```bash
+docker compose exec geopulse-backend geopulse admin reset-password --email admin@example.com
+```
+
+For Kubernetes or Helm deployments:
+
+```bash
+kubectl exec deploy/<release-name>-geopulse-backend -- geopulse admin reset-password --email admin@example.com
+```
+
+By default, the command:
+
+- only resets users who already have the `ADMIN` role
+- generates a temporary password and prints it once
+- reactivates the account if it was disabled
+- uses the same bcrypt password hashing as normal GeoPulse authentication
+
+Set a specific password instead of generating one:
+
+```bash
+docker compose exec geopulse-backend geopulse admin reset-password \
+  --email admin@example.com \
+  --password 'new-secure-password'
+```
+
+If the target account is not currently an admin, explicitly promote it while resetting the password:
+
+```bash
+docker compose exec geopulse-backend geopulse admin reset-password \
+  --email admin@example.com \
+  --promote
+```
+
+:::warning
+Treat this as an emergency operator command. Anyone with shell access inside the backend container can reset administrator credentials. After logging in with a generated temporary password, change it from the user profile security settings.
+:::
+
 ### Docker Compose Example
 
 ```yaml
