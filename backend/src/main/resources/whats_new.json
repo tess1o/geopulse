@@ -1,14 +1,13 @@
 [
   {
-    "version": "1.30.0",
-    "title": "GeoPulse 1.30.0",
+    "version": "1.31.0",
+    "title": "GeoPulse 1.31.0",
     "highlights": [
-      "Added option to use Apprise Key/Tag notification system instead of raw URLs",
-      "Added a backend changes to allow mobile client to connect to the GeoPulse server",
-      "Fixed OwnTracks integration in some edge cases",
-      "Fixed issue with Photon when not supported language was used",
-      "Fixed UI instructions for GPSLogger"
+      "Made Vector maps default for new users. Existing users can update it manually via Profile -> Display -> Map Render Mode",
+      "Added viewer current location to Shared links page",
+      "Added CLI tool to reset admin password",
+      "Small bug fixes"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.30.0"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.31.0"
   }
 ]
