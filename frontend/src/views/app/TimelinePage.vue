@@ -1106,24 +1106,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   }
 }
 
-@media (min-width: 1024px) and (max-width: 1280px) {
-  .left-pane {
-    max-height: 68vh;
-  }
-}
-
-@media (min-width: 1280px) and (max-width: 1599px) {
-  .left-pane {
-    flex: 5;
-    max-height: 70vh;
-  }
-
-  .right-pane {
-    flex: 2;
-  }
-}
-
-@media (min-width: 1600px) {
+@media (min-width: 1024px) {
 
   .timeline-content-wrapper{
     position: relative;
@@ -1149,6 +1132,16 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     background-color: var(--gp-surface-white);
   }
 }
+
+
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .right-pane {
+    width: 350px;
+    right: calc(var(--gp-spacing-xl) * 4);
+  }
+}
+
+
 </style>
 
 <style>
