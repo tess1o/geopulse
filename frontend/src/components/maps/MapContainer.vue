@@ -201,6 +201,7 @@ defineExpose({
   height: 100%;
   overflow: hidden;
   background-color: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
 }
 
 .map-controls {
