@@ -286,7 +286,7 @@ const navigateToCountryDetails = () => {
 }
 
 .timeline-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(0px);
   box-shadow: var(--gp-shadow-medium);
 }
 
