@@ -545,9 +545,9 @@ watch(() => props.dateRange, () => {
   color: var(--gp-primary);
   font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: var(--gp-spacing-lg);
-  padding-bottom: var(--gp-spacing-xs);
-  border-bottom: 2px solid var(--gp-primary-light);
+  
+  padding-top: var(--gp-spacing-xl);
+  
 }
 
 /* Mobile optimizations */

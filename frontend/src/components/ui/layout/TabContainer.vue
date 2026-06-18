@@ -98,7 +98,7 @@ const handleTabClick = (index) => {
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  padding: var(--gp-spacing-xl) 0;
+  padding: 0;
   overflow: visible;
   background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);

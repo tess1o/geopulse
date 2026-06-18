@@ -1026,6 +1026,13 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   flex-direction: column;
 }
 
+.timeline-main .left-pane {
+    height: 100%;
+    margin: 0;
+    max-height: 100%;
+}
+
+
 .right-pane {
   flex: 1;
   overflow-y: auto !important;
@@ -1117,13 +1124,30 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 @media (min-width: 1600px) {
+
+  .timeline-content-wrapper{
+    position: relative;
+    height: 100%;
+  }
   .left-pane {
-    flex: 4;
-    max-height: 75vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 var(--gp-spacing-xl);
   }
 
   .right-pane {
-    flex: 1;
+    position: absolute;
+    top: calc(var(--gp-spacing-md) + 3px);
+    right: calc(var(--gp-spacing-xl) * 5);
+    width: 400px;
+    height: calc(100% - var(--gp-spacing-xl) * 2);
+    padding: 0 var(--gp-spacing-xl);
+    
+
+    background-color: var(--gp-surface-white);
   }
 }
 </style>
