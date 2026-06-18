@@ -59,7 +59,7 @@
         <div class="right-pane">
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
-            :timelineNoData="timelineNoData"
+
             :timelineDataLoading="timelineDataLoading"
             :dateRange="dateRange"
             @timeline-item-click="handleTimelineItemClick"
@@ -68,6 +68,7 @@
             @timeline-refresh-requested="handleTimelineRefreshRequested"
             @reset-data-gap-override="handleResetDataGapOverride"
             @photo-show-on-map="handleTimelinePhotoShowOnMap"
+            @navigate-date="handleNavigateDate"
         />
           </div>
         </div>
@@ -193,7 +194,6 @@ const mapViewRef = ref(null)
 // Reactive state
 const mapDataLoading = ref(false)
 const mapNoData = ref(false)
-const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
@@ -486,18 +486,17 @@ const checkDatasetSize = async (startDate, endDate) => {
 
 const fetchTimelineData = async (startDate, endDate) => {
   timelineDataLoading.value = true
-  timelineNoData.value = false
+
 
   try {
     await timelineStore.fetchMovementTimeline(startDate, endDate)
 
     if (timelineData.value == null || timelineData.value.length === 0) {
-      toast.add({
-        severity: 'info',
-        detail: 'No timeline data for given date range',
-        life: 3000
-      })
-      timelineNoData.value = true
+      timelineData.value = timezone.getDateRangeArray(startDate, endDate).map(date => ({
+        date,
+        dateLabel: timezone.formatDateLong(date),
+        items: []
+      }))
     }
   } catch (error) {
     console.error('Error fetching timeline data:', error)
@@ -508,7 +507,7 @@ const fetchTimelineData = async (startDate, endDate) => {
       detail: errorMessage,
       life: 3000
     })
-    timelineNoData.value = true
+    
   } finally {
     timelineDataLoading.value = false
   }
@@ -559,6 +558,12 @@ const handleForceLoad = async () => {
 const handleShareCreated = (share) => {
   // Dialog will stay open to show the success state with copy link
   // No need to show toast as the dialog already shows success message
+}
+
+const handleNavigateDate = (targetDate) => {
+  if (!targetDate) return
+  const { start, end } = timezone.createDateRangeUtc(targetDate, targetDate)
+  dateRangeStore.setDateRange([start, end])
 }
 
 const handleTagClicked = (tag) => {
