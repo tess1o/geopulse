@@ -1144,9 +1144,8 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     right: calc(var(--gp-spacing-xl) * 5);
     width: 400px;
     height: calc(100% - var(--gp-spacing-xl) * 2);
-    padding: 0 var(--gp-spacing-xl);
+    padding: 0 ;
     
-
     background-color: var(--gp-surface-white);
   }
 }
@@ -1164,6 +1163,9 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Adjust the content container */
 .p-timeline-left .p-timeline-event-content {
+  top: -10px;
+  position: relative;
   padding-left: 0.5rem !important; /* or 0 if you want no space */
 }
+
 </style>

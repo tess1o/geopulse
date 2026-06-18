@@ -87,6 +87,7 @@
     --gp-spacing-md: 0.75rem;
     --gp-spacing-lg: 1rem;
     --gp-spacing-xl: 1.5rem;
+    --p-card-body-padding: 0;
 }
 
 /* Dark Mode Override */

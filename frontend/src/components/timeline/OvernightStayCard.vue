@@ -250,7 +250,7 @@ const navigateToCountryDetails = () => {
   border-radius: var(--gp-radius-medium);
   border: 1px solid var(--gp-border-light);
   overflow: hidden;
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+  
 }
 
 /* Mobile optimizations */

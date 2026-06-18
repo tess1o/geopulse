@@ -538,16 +538,30 @@ watch(() => props.dateRange, () => {
   padding: 0 var(--gp-spacing-md);
 }
 
+
 .timeline-header {
   width: 100%;
   justify-content: center;
   text-align: center;
+  
+  font-size: 0.875rem;
+  font-weight: 700;
+
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--gp-primary);
-  font-size: 1.1rem;
-  font-weight: 600;
+
+  border-bottom: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-light);
+
+  padding:var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-md);
   
-  padding-top: var(--gp-spacing-xl);
-  
+}
+
+.p-dark .timeline-header {
+ 
+  background: var(--gp-surface-darker);
+  border-bottom-color: var(--gp-border-dark);
 }
 
 /* Mobile optimizations */
@@ -627,7 +641,7 @@ watch(() => props.dateRange, () => {
 
 /* Dark mode adjustments */
 .p-dark .timeline-header {
-  color: var(--gp-primary);
+  color: var(--gp-text-primary);
   border-bottom-color: var(--gp-border-medium);
 }
 
