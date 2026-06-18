@@ -200,6 +200,7 @@ const handleTabClick = (index) => {
 .gp-tab-menu .p-tabmenu-item {
   margin: 0;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
