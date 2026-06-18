@@ -188,29 +188,12 @@ const formattedTimestamp = computed(() => {
 })
 </script>
 
-<style scoped>
-.timeline-card {
-  margin-top: var(--gp-spacing-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  overflow: hidden;
-}
+<style src="./cards.css"></style>
 
+<style scoped>
 /* Mobile optimizations */
 @media (max-width: 768px) {
-  .timeline-card {
-    margin-top: var(--gp-spacing-sm);
-  }
-  
-  .timeline-timestamp {
-    font-size: 0.875rem;
-  }
-  
-  .timeline-subtitle {
-    margin: var(--gp-spacing-xs) 0 0 0;
-  }
+
   
   .transition-title {
     font-size: 0.875rem;
@@ -226,11 +209,6 @@ const formattedTimestamp = computed(() => {
   }
 }
 
-.timeline-card:hover {
-  transform: translateY(0px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
 .timeline-card--trip {
   background-color: var(--gp-timeline-green-light);
   border-left: 4px solid var(--gp-success);
@@ -238,23 +216,8 @@ const formattedTimestamp = computed(() => {
 
 .timeline-timestamp {
   color: var(--gp-primary);
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin: 0;
-  line-height: 1.2;
 }
 
-.timeline-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-sm);
-}
-
-.timeline-subtitle {
-  margin: var(--gp-spacing-xs) 0 0 0;
-  color: var(--gp-text-primary);
-}
 
 .transition-title {
   color: var(--gp-primary);
@@ -326,10 +289,6 @@ const formattedTimestamp = computed(() => {
 }
 
 /* Dark mode adjustments */
-.p-dark .timeline-card {
-  border-color: var(--gp-border-medium);
-}
-
 .p-dark .timeline-card--trip {
   background-color: var(--gp-timeline-green);
   border-left: 4px solid var(--gp-success);
@@ -348,9 +307,5 @@ const formattedTimestamp = computed(() => {
 .p-dark .trip-content,
 .p-dark .trip-detail {
   color: var(--gp-text-primary);
-}
-
-.p-dark .timeline-card:hover {
-  box-shadow: var(--gp-shadow-medium);
 }
 </style>

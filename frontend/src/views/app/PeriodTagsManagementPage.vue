@@ -875,19 +875,19 @@ onMounted(() => {
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 2.5rem;
+  height: var(--btn-default-size);
 }
 
 .source-select {
   flex: 0 0 auto;
   width: 180px;
-  height: 2.5rem;
+  height: var(--btn-default-size);
 }
 
 .link-select {
   flex: 0 0 auto;
   width: 180px;
-  height: 2.5rem;
+  height: var(--btn-default-size);
 }
 
 .bulk-actions {

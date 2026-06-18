@@ -132,8 +132,8 @@ const pendingItems = computed(() => favoritesStore.getAllPending)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--btn-default-size);
+  height: var(--btn-default-size);
   background: var(--yellow-100);
   border-radius: 50%;
   color: var(--yellow-700);

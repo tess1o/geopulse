@@ -244,6 +244,8 @@ watch(dates, (newValue) => {
 /* Share button styling */
 .share-btn {
   flex-shrink: 0;
+  min-width: var(--btn-default-size);
+  height: var(--btn-default-size);
 }
 
 /* Medium screens - reduce search bar width */

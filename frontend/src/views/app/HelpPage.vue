@@ -429,8 +429,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--btn-default-size);
+  height: var(--btn-default-size);
   background: var(--gp-primary);
   color: white;
   border-radius: 50%;
@@ -540,8 +540,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: var(--btn-default-size);
+  height: var(--btn-default-size);
   background: var(--gp-primary);
   color: white;
   border-radius: 50%;

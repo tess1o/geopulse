@@ -1440,8 +1440,8 @@ watch(() => jobProgress.value?.status, async (status) => {
 
   /* Adjust table column widths for mobile */
   .geocoding-table :deep(.selection-col) {
-    width: 2.5rem;
-    max-width: 2.5rem;
+    width: var(--btn-default-size);
+    max-width: var(--btn-default-size);
   }
 
   .geocoding-table :deep(.name-col) {
