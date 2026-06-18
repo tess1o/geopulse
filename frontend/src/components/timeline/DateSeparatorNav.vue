@@ -10,7 +10,12 @@
     >
       <i class="pi pi-chevron-left"></i>
     </button>
-    <div class="date-separator-text">{{ label }}</div>
+    <div
+      class="date-separator-text"
+      :class="{ 'date-separator-text--swipeable': showNav }"
+      @touchstart.passive="onTouchStart"
+      @touchend.passive="onTouchEnd"
+    >{{ label }}</div>
     <button
       v-if="showNav"
       type="button"
@@ -51,6 +56,32 @@ const navigateDay = (offset) => {
   const targetDate = timezone.add(timezone.create(props.date), offset, 'day').format('YYYY-MM-DD')
   emit('navigate-date', targetDate)
 }
+
+// Swipe handling: swipe left -> previous day, swipe right -> next day
+const SWIPE_THRESHOLD = 40;
+const touchStart = { x: 0, y: 0 };
+
+const onTouchStart = (event) => {
+  const touch = event.changedTouches[0];
+  touchStart.x = touch.clientX;
+  touchStart.y = touch.clientY;
+}
+
+const onTouchEnd = (event) => {
+  if (!props.showNav)
+   return;
+
+  const touch = event.changedTouches[0];
+  const deltaX = touch.clientX - touchStart.x;
+  const deltaY = touch.clientY - touchStart.y;
+
+  // Require a mostly-horizontal swipe past the threshold
+  if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY)) {
+    return;
+  }
+
+  navigateDay(deltaX < 0 ? -1 : 1); 
+}
 </script>
 
 <style scoped>
@@ -67,6 +98,11 @@ const navigateDay = (offset) => {
   padding: 0 var(--gp-spacing-sm);
   background: var(--gp-surface-white);
   white-space: nowrap;
+}
+
+.date-separator-text--swipeable {
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .date-nav-button {
