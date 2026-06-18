@@ -259,14 +259,18 @@ watch(dates, (newValue) => {
 /* Tablet - more compact search */
 @media (max-width: 1024px) {
   .navbar-search {
-    min-width: 200px;
-    max-width: 250px;
+    min-width: 150px;
+    max-width: 200px;
   }
 
   .navbar-search :deep(.p-autocomplete-input) {
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
     height: 36px;
+  }
+
+  .share-btn :deep(.p-button-label) {
+    display: none;
   }
 }
 
@@ -284,4 +288,5 @@ watch(dates, (newValue) => {
     padding: 0.5rem;
   }
 }
+
 </style>

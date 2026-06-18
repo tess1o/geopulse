@@ -95,15 +95,13 @@ const handleTabClick = (index) => {
 .gp-tab-content {
   flex: 1;
   /* Explicit width prevents any child (e.g. SettingCard) from pushing the container wider */
+  
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
   padding: 0;
   overflow: visible;
   background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-top: none;
-  border-radius: 0 0 var(--gp-radius-large) var(--gp-radius-large);
 }
 
 /* Ensure every direct child (tab card) fills width and can't exceed it */
@@ -149,7 +147,7 @@ const handleTabClick = (index) => {
 /* Responsive */
 @media (max-width: 768px) {
   .gp-tab-content {
-    padding: var(--gp-spacing-md) 0;
+    padding: 0;
     border-radius: 0;
   }
 
@@ -160,9 +158,7 @@ const handleTabClick = (index) => {
 
 @media (max-width: 480px) {
   .gp-tab-content {
-    padding: var(--gp-spacing-sm) 0;
-    border-left: none;
-    border-right: none;
+    padding: 0;
   }
 
   .gp-tab-content--padding-small {
@@ -174,8 +170,7 @@ const handleTabClick = (index) => {
 <style>
 /* Global Tab Menu Styling */
 .gp-tab-menu {
-  border: 1px solid var(--gp-border-light);
-  border-bottom: 1px solid var(--gp-border-light);
+  border: 0;
   background: var(--gp-surface-white);
   flex-shrink: 0;
   width: 100%;
@@ -428,15 +423,7 @@ const handleTabClick = (index) => {
     border-top-right-radius: var(--gp-radius-medium);
   }
 
-  .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-    padding: 0.5rem 0.625rem;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-  }
-
+ 
   .gp-tab-menu .p-tabmenu-item-icon {
     font-size: 0.75rem;
     margin-right: 0.25rem;

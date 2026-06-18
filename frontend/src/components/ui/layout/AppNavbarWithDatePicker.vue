@@ -271,7 +271,7 @@ const handleNavigate = (item) => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 485px) {
   .gp-navbar-logo-text {
     display: none;
   }
@@ -289,6 +289,14 @@ const handleNavigate = (item) => {
     min-width: 200px;
     max-width: 280px;
   }
+}
+
+@media (max-width: 430px) {
+  .gp-navbar-datepicker {
+    min-width: 150px;
+    max-width: 200px;
+  }
+  
 }
 </style>
 
@@ -452,8 +460,9 @@ const handleNavigate = (item) => {
     padding: 0 var(--gp-spacing-md) !important;
   }
 }
+/* Responsive */
 
-@media (max-width: 480px) {
+@media (max-width: 492px) {
   .gp-app-navbar-with-datepicker {
     padding: 0 var(--gp-spacing-sm) !important;
   }

@@ -426,7 +426,7 @@ watch(dateRange, async (newValue) => {
 }
 
 .table-tab-content {
-  padding-top: var(--gp-spacing-md);
+  padding-top: 0;
 }
 
 /* Loading Placeholders */
