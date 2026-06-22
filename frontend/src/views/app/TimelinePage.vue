@@ -83,6 +83,7 @@
             @timeline-refresh-requested="handleTimelineRefreshRequested"
             @reset-data-gap-override="handleResetDataGapOverride"
             @photo-show-on-map="handleTimelinePhotoShowOnMap"
+            @navigate-date="handleNavigateDate"
         />
           </div>
         </div>
@@ -710,6 +711,12 @@ const handleForceLoad = async () => {
 const handleShareCreated = (share) => {
   // Dialog will stay open to show the success state with copy link
   // No need to show toast as the dialog already shows success message
+}
+
+const handleNavigateDate = (targetDate) => {
+  if (!targetDate) return
+  const { start, end } = timezone.createDateRangeUtc(targetDate, targetDate)
+  dateRangeStore.setDateRange([start, end])
 }
 
 const handleTagClicked = (tag) => {

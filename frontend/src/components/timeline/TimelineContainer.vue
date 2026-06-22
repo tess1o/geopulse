@@ -8,8 +8,32 @@
       <ProgressSpinner />
     </div>
 
-    <div v-show="timelineNoData" class="loading-messages">
-      No timeline for the given date range.
+    <div v-show="timelineNoData" class="loading-messages timeline-no-data">
+      <div
+        v-if="isSingleDaySelected && selectedDateLabel"
+        class="date-separator date-separator--no-data"
+      >
+        <button
+          type="button"
+          class="date-nav-button"
+          title="Previous day"
+          aria-label="Previous day"
+          @click="navigateDay(-1)"
+        >
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <div class="date-separator-text">{{ selectedDateLabel }}</div>
+        <button
+          type="button"
+          class="date-nav-button"
+          title="Next day"
+          aria-label="Next day"
+          @click="navigateDay(1)"
+        >
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+      <div>No timeline for the given date range.</div>
     </div>
 
     <!-- Warning for large datasets -->
@@ -31,7 +55,27 @@
         <!-- Date Header Separator -->
         <div class="date-separator">
           <div class="date-separator-line"></div>
+          <button
+            v-if="isSingleDaySelected"
+            type="button"
+            class="date-nav-button"
+            title="Previous day"
+            aria-label="Previous day"
+            @click="navigateDay(-1)"
+          >
+            <i class="pi pi-chevron-left"></i>
+          </button>
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
+          <button
+            v-if="isSingleDaySelected"
+            type="button"
+            class="date-nav-button"
+            title="Next day"
+            aria-label="Next day"
+            @click="navigateDay(1)"
+          >
+            <i class="pi pi-chevron-right"></i>
+          </button>
           <template v-if="showTimelineLabels">
             <span
               v-for="tag in getPeriodsForDate(dateGroup.date)"
@@ -237,7 +281,8 @@ const emit = defineEmits([
   'photo-show-on-map',
   'rename-stay',
   'timeline-refresh-requested',
-  'reset-data-gap-override'
+  'reset-data-gap-override',
+  'navigate-date'
 ])
 
 // Composables
@@ -273,6 +318,21 @@ const getPeriodsForDate = (dateString) => {
   }
   return periodTagsStore.getPeriodsForDate(dateString)
 }
+
+const selectedSingleDayDate = computed(() => {
+  if (!props.dateRange || props.dateRange.length !== 2) {
+    return null
+  }
+
+  const dates = timezone.getDateRangeArray(props.dateRange[0], props.dateRange[1])
+  return dates.length === 1 ? dates[0] : null
+})
+
+const isSingleDaySelected = computed(() => Boolean(selectedSingleDayDate.value))
+
+const selectedDateLabel = computed(() => (
+  selectedSingleDayDate.value ? timezone.formatDateLong(selectedSingleDayDate.value) : ''
+))
 
 // Group timeline data by date with proper overnight stay handling
 const groupedTimelineData = computed(() => {
@@ -357,6 +417,17 @@ const getNextTimelineItem = (item) => {
 }
 
 // Methods
+const navigateDay = (offset) => {
+  if (!selectedSingleDayDate.value) {
+    return
+  }
+
+  const targetDate = timezone.create(selectedSingleDayDate.value)
+    .add(offset, 'day')
+    .format('YYYY-MM-DD')
+  emit('navigate-date', targetDate)
+}
+
 const loadMore = () => {
   // Load 100 more items each time
   displayLimit.value = Math.min(displayLimit.value + 100, props.timelineData.length)
@@ -637,6 +708,11 @@ watch(() => props.dateRange, () => {
   border-color: var(--gp-border-dark);
 }
 
+.timeline-no-data {
+  flex-direction: column;
+  gap: var(--gp-spacing-md);
+}
+
 /* Date separator styles */
 .date-group {
   margin-bottom: var(--gp-spacing-xl);
@@ -647,6 +723,11 @@ watch(() => props.dateRange, () => {
   align-items: center;
   margin: var(--gp-spacing-xl) 0 var(--gp-spacing-lg) 0;
   gap: var(--gp-spacing-md);
+}
+
+.date-separator--no-data {
+  width: 100%;
+  margin: 0;
 }
 
 .date-separator-line {
@@ -664,6 +745,36 @@ watch(() => props.dateRange, () => {
   white-space: nowrap;
 }
 
+.date-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--gp-border-medium);
+  border-radius: var(--gp-radius-small);
+  background: var(--gp-surface-white);
+  color: var(--gp-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.date-nav-button:hover {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: #fff;
+}
+
+.date-nav-button:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
+}
+
+.date-nav-button i {
+  font-size: 0.7rem;
+}
+
 .date-timeline {
   margin-top: 0;
 }
@@ -677,6 +788,10 @@ watch(() => props.dateRange, () => {
   .date-separator-text {
     font-size: 0.8rem;
     padding: 0 var(--gp-spacing-xs);
+  }
+
+  .date-separator {
+    gap: var(--gp-spacing-xs);
   }
   
   .date-group {
@@ -692,6 +807,12 @@ watch(() => props.dateRange, () => {
 .p-dark .date-separator-text {
   color: var(--gp-text-secondary);
   background: var(--gp-surface-white);
+}
+
+.p-dark .date-nav-button {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+  color: var(--gp-text-secondary);
 }
 
 /* Clickable period badge styles */
