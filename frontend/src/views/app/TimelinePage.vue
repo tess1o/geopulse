@@ -197,6 +197,7 @@ const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
+let currentLocationRequestToken = 0
 const showCurrentLocationTelemetry = ref(true)
 const customMapTileUrl = ref(null)
 const customMapStyleUrl = ref(null)
@@ -514,28 +515,42 @@ const fetchTimelineData = async (startDate, endDate) => {
   }
 }
 
-const getCurrentLocation = () => {
-  if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
+const refreshCurrentLocation = async () => {
+  const requestToken = ++currentLocationRequestToken
+
+  if (!isToday.value) {
     currentLocation.value = null
     return
   }
 
-  // Get the latest location from pathData (last point in the array)
-  const latestPoint = pathData.value.points[pathData.value.points.length - 1]
-  
-  if (latestPoint &&
-    latestPoint.latitude !== null && latestPoint.latitude !== undefined &&
-    latestPoint.longitude !== null && latestPoint.longitude !== undefined) {
+  try {
+    const latestPoint = await locationStore.getLastKnownPosition()
+
+    if (requestToken !== currentLocationRequestToken || !isToday.value) {
+      return
+    }
+
+    const latitude = Number(latestPoint?.lat)
+    const longitude = Number(latestPoint?.lon)
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      currentLocation.value = null
+      return
+    }
+
     currentLocation.value = {
-      latitude: latestPoint.latitude,
-      longitude: latestPoint.longitude,
+      latitude,
+      longitude,
       timestamp: latestPoint.timestamp,
       telemetryCurrentPopup: showCurrentLocationTelemetry.value
         ? (latestPoint.telemetryCurrentPopup || [])
         : []
     }
-  } else {
-    currentLocation.value = null
+  } catch (error) {
+    if (requestToken === currentLocationRequestToken) {
+      currentLocation.value = null
+      console.warn('Failed to load current location:', error)
+    }
   }
 }
 
@@ -742,6 +757,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
       fetchLocationData(startDate, endDate),
       fetchTimelineData(startDate, endDate),
     ])
+    await refreshCurrentLocation()
   } finally {
     isFetching.value = false
     pendingFetchKey.value = null
@@ -759,6 +775,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 // Lifecycle
 onMounted(async () => {
   await loadTimelineDisplaySettings()
+  await refreshCurrentLocation()
   await favoritesStore.fetchFavoritePlaces()
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
@@ -950,23 +967,12 @@ watch(dateRange, async (newValue) => {
 }, { immediate: true })
 
 // Watch for today's date and get current location
-watch(isToday, (newValue) => {
-  if (newValue) {
-    getCurrentLocation()
-  }
+watch(isToday, () => {
+  refreshCurrentLocation()
 }, { immediate: true })
 
-// Watch for pathData changes to update current location
-watch(pathData, () => {
-  if (isToday.value) {
-    getCurrentLocation()
-  }
-}, { deep: true })
-
 watch(showCurrentLocationTelemetry, () => {
-  if (isToday.value) {
-    getCurrentLocation()
-  }
+  refreshCurrentLocation()
 })
 
 watch(() => timelineReconstructionRequestToken.value, () => {
