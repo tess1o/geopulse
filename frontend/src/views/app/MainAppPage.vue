@@ -15,7 +15,7 @@
             icon="pi pi-share-alt"
             @click="showShareDialog"
             outlined
-            class="share-btn"
+            class="share-btn timeline-share-btn"
           />
           <Button
             v-if="isTimelinePage"
@@ -26,7 +26,7 @@
             icon="pi pi-map"
             @click="requestTimelineReconstruction"
             outlined
-            class="share-btn"
+            class="share-btn timeline-reconstruct-btn"
           />
         </template>
       </AppNavbarWithDatePicker>
@@ -287,6 +287,12 @@ watch(dates, (newValue) => {
     height: 2rem;
     padding: 0;
     flex: 0 0 2rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .timeline-share-btn {
+    display: none;
   }
 }
 </style>
