@@ -26,17 +26,20 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                 Stay stay = (Stay) event;
 
                 // If we have accumulated trips, merge them into one
-                if (!tripsToMerge.isEmpty() && currentStay != null) {
+                if (!tripsToMerge.isEmpty()) {
                     Trip mergedTrip = mergeTripSegments(userd, tripsToMerge, config);
                     if (mergedTrip != null) {
                         if (isValidTrip(mergedTrip, config)) {
                             processedEvents.add(mergedTrip);
-                        } else {
+                        } else if (currentStay != null) {
                             // CRITICAL: Always include trip between stays to maintain timeline continuity
                             // Even if it's very short, we need SOME movement between different locations
                             log.warn("Including short trip between stays for continuity: {}m, {}min (below normal thresholds)",
                                     mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                             processedEvents.add(mergedTrip);
+                        } else {
+                            log.debug("Dropping leading trip below normal thresholds before first stay: {}m, {}min",
+                                    mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                         }
                     }
                 } else if (currentStay != null && tripsToMerge.isEmpty()) {

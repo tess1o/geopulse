@@ -41,7 +41,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 Stay stay = (Stay) event;
 
                 // Process accumulated trips for multi-modal analysis
-                if (!tripSegment.isEmpty() && currentStay != null) {
+                if (!tripSegment.isEmpty()) {
                     List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
 
                     // Ensure at least one trip between stays for continuity
@@ -49,7 +49,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                             .filter(trip -> isValidTrip(trip, config))
                             .collect(Collectors.toList());
 
-                    if (validTrips.isEmpty() && !processedTrips.isEmpty()) {
+                    if (validTrips.isEmpty() && !processedTrips.isEmpty() && currentStay != null) {
                         // No valid trips but we have movement between stays - include the best one
                         Trip bestTrip = processedTrips.stream()
                                 .max((t1, t2) -> Double.compare(t1.getDistanceMeters(), t2.getDistanceMeters()))
@@ -59,6 +59,10 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                         processedEvents.add(bestTrip);
                     } else {
                         validTrips.forEach(processedEvents::add);
+                        if (validTrips.isEmpty() && currentStay == null) {
+                            log.debug("Dropping leading trips below normal thresholds before first stay: count={}",
+                                    processedTrips.size());
+                        }
                     }
                 } else if (currentStay != null && tripSegment.isEmpty()) {
                     // No detected trip between consecutive stays:

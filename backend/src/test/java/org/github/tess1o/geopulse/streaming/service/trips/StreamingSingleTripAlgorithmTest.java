@@ -5,6 +5,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -159,6 +160,30 @@ class StreamingSingleTripAlgorithmTest {
     }
 
     @Test
+    void shouldPreserveLeadingTripBeforeFirstStay_SingleAlgorithm() {
+        Trip leadingTrip = Trip.builder()
+                .startTime(Instant.parse("2026-06-20T01:27:32Z"))
+                .duration(Duration.ofMinutes(60))
+                .distanceMeters(12000)
+                .build();
+
+        Stay firstStay = Stay.builder()
+                .startTime(Instant.parse("2026-06-20T03:17:57Z"))
+                .duration(Duration.ofMinutes(12))
+                .locationName("First detected stay")
+                .latitude(43.7576)
+                .longitude(130.8258)
+                .build();
+
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config);
+
+        assertEquals(2, result.size());
+        assertTrue(result.get(0) instanceof Trip);
+        assertTrue(result.get(1) instanceof Stay);
+        assertEquals(Instant.parse("2026-06-20T01:27:32Z"), result.get(0).getStartTime());
+    }
+
+    @Test
     void testConsecutiveStaysAtSameLocation_ShouldNotLogError_MultiAlgorithm() {
         // Same test for Multi algorithm
         Stay home1 = Stay.builder()
@@ -216,6 +241,68 @@ class StreamingSingleTripAlgorithmTest {
         assertNotNull(continuityTrip.getStartPoint());
         assertNotNull(continuityTrip.getEndPoint());
         assertTrue(!continuityTrip.getDuration().isNegative());
+    }
+
+    @Test
+    void shouldPreserveLeadingTripBeforeFirstStay_MultiAlgorithm() {
+        Trip leadingTrip = Trip.builder()
+                .startTime(Instant.parse("2026-06-20T01:27:32Z"))
+                .duration(Duration.ofMinutes(60))
+                .distanceMeters(12000)
+                .build();
+
+        Stay firstStay = Stay.builder()
+                .startTime(Instant.parse("2026-06-20T03:17:57Z"))
+                .duration(Duration.ofMinutes(12))
+                .locationName("First detected stay")
+                .latitude(43.7576)
+                .longitude(130.8258)
+                .build();
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config);
+
+        assertEquals(2, result.size());
+        assertTrue(result.get(0) instanceof Trip);
+        assertTrue(result.get(1) instanceof Stay);
+        assertEquals(Instant.parse("2026-06-20T01:27:32Z"), result.get(0).getStartTime());
+    }
+
+    @Test
+    void shouldPreserveMultipleLeadingTripsBeforeFirstStay_MultiAlgorithm() {
+        Trip leadingTrip1 = Trip.builder()
+                .startTime(Instant.parse("2026-06-20T01:27:32Z"))
+                .duration(Duration.ofMinutes(30))
+                .distanceMeters(6000)
+                .tripType(TripType.WALK)
+                .build();
+
+        Trip leadingTrip2 = Trip.builder()
+                .startTime(Instant.parse("2026-06-20T01:57:32Z"))
+                .duration(Duration.ofMinutes(35))
+                .distanceMeters(12000)
+                .tripType(TripType.CAR)
+                .build();
+
+        Stay firstStay = Stay.builder()
+                .startTime(Instant.parse("2026-06-20T03:17:57Z"))
+                .duration(Duration.ofMinutes(12))
+                .locationName("First detected stay")
+                .latitude(43.7576)
+                .longitude(130.8258)
+                .build();
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(leadingTrip1, leadingTrip2, firstStay),
+                config
+        );
+
+        assertEquals(3, result.size());
+        assertTrue(result.get(0) instanceof Trip);
+        assertTrue(result.get(1) instanceof Trip);
+        assertTrue(result.get(2) instanceof Stay);
+        assertEquals(Instant.parse("2026-06-20T01:27:32Z"), result.get(0).getStartTime());
+        assertEquals(Instant.parse("2026-06-20T01:57:32Z"), result.get(1).getStartTime());
     }
 
     @Test
