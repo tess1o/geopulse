@@ -1,4 +1,5 @@
 import "primeicons/primeicons.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import "leaflet/dist/leaflet.css";
 import "./mapStyles.css"
 import "./style.css";
