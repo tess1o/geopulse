@@ -354,8 +354,8 @@
             v-if="modelValue.trainMaxMaxSpeed !== undefined"
             :model-value="modelValue.trainMaxMaxSpeed"
             @update:model-value="updatePref('trainMaxMaxSpeed', $event)"
-            :min="100.0" :max="250.0" :step="10.0"
-            :labels="['100.0 km/h (Regional)', '180.0 km/h (Default)', '250.0 km/h (High-speed)']"
+            :min="100.0" :max="500.0" :step="10.0"
+            :labels="['100.0 km/h (Regional)', '180.0 km/h (Default)', '500.0 km/h (High-speed)']"
             suffix=" km/h" :decimal-places="1"
           />
         </div>

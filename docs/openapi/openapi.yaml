@@ -1987,7 +1987,7 @@ components:
           type: number
         trainMaxMaxSpeed:
           format: double
-          maximum: 250.0
+          maximum: 500.0
           minimum: 100.0
           type: number
         trainMaxSpeedVariance:
