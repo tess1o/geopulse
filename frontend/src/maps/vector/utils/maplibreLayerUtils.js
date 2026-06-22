@@ -178,7 +178,8 @@ export function ensureClusterSource(map, sourceId, data, options = {}) {
     data,
     cluster: Boolean(options.cluster),
     clusterRadius: Number.isFinite(options.clusterRadius) ? options.clusterRadius : 40,
-    clusterMaxZoom: Number.isFinite(options.clusterMaxZoom) ? options.clusterMaxZoom : 14
+    clusterMaxZoom: Number.isFinite(options.clusterMaxZoom) ? options.clusterMaxZoom : 14,
+    ...(options.clusterProperties ? { clusterProperties: options.clusterProperties } : {})
   })
 }
 

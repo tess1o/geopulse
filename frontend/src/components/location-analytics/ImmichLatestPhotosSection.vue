@@ -997,36 +997,30 @@ const handleShowOnMap = async (photo) => {
   emit('show-on-map', photo)
 }
 
-const openPhotoViewerForMarker = async (markerGroup) => {
+const loadPhotosForMarkerGroup = async (markerGroup) => {
   if (Array.isArray(markerGroup?.photos) && markerGroup.photos.length > 0) {
-    openPhotoViewer(markerGroup.photos, 0)
-    return
+    return markerGroup.photos
   }
 
   const markerLatitude = Number(markerGroup?.latitude)
   const markerLongitude = Number(markerGroup?.longitude)
   if (!Number.isFinite(markerLatitude) || !Number.isFinite(markerLongitude)) {
-    return
+    return []
   }
 
   const markerKey = markerGroup?.markerKey || buildMarkerKey(markerLatitude, markerLongitude)
   if (!markerKey) {
-    return
+    return []
   }
 
   const cachedMarkerPhotos = mapMarkerPhotosCache.get(markerKey)
   if (Array.isArray(cachedMarkerPhotos) && cachedMarkerPhotos.length > 0) {
-    openPhotoViewer(cachedMarkerPhotos, 0)
-    return
+    return cachedMarkerPhotos
   }
 
   const existingInFlight = mapMarkerPhotosInFlight.get(markerKey)
   if (existingInFlight) {
-    const photos = await existingInFlight
-    if (Array.isArray(photos) && photos.length > 0) {
-      openPhotoViewer(photos, 0)
-    }
-    return
+    return await existingInFlight
   }
 
   const loadPromise = (async () => {
@@ -1044,10 +1038,7 @@ const openPhotoViewerForMarker = async (markerGroup) => {
 
   mapMarkerPhotosInFlight.set(markerKey, loadPromise)
   try {
-    const photos = await loadPromise
-    if (Array.isArray(photos) && photos.length > 0) {
-      openPhotoViewer(photos, 0)
-    }
+    return await loadPromise
   } catch (err) {
     console.error('Failed to load marker photos:', err)
     toast.add({
@@ -1056,10 +1047,44 @@ const openPhotoViewerForMarker = async (markerGroup) => {
       detail: err.response?.data?.message || 'Failed to load photos for this map marker',
       life: 4000
     })
+    return []
   } finally {
     if (mapMarkerPhotosInFlight.get(markerKey) === loadPromise) {
       mapMarkerPhotosInFlight.delete(markerKey)
     }
+  }
+}
+
+const openPhotoViewerForMarker = async (markerGroup) => {
+  const childMarkerGroups = Array.isArray(markerGroup?.childMarkerGroups)
+    ? markerGroup.childMarkerGroups
+    : []
+
+  if (childMarkerGroups.length > 1) {
+    const photoCollections = await Promise.all(childMarkerGroups.map((childGroup) => loadPhotosForMarkerGroup(childGroup)))
+    const photosById = new Map()
+    photoCollections.flat().forEach((photo) => {
+      if (photo?.id) {
+        photosById.set(photo.id, photo)
+      }
+    })
+    const photos = Array.from(photosById.values())
+      .sort((a, b) => {
+        if (!a.takenAt && !b.takenAt) return 0
+        if (!a.takenAt) return 1
+        if (!b.takenAt) return -1
+        return a.takenAt < b.takenAt ? 1 : -1
+      })
+
+    if (photos.length > 0) {
+      openPhotoViewer(photos, 0)
+    }
+    return
+  }
+
+  const photos = await loadPhotosForMarkerGroup(markerGroup)
+  if (Array.isArray(photos) && photos.length > 0) {
+    openPhotoViewer(photos, 0)
   }
 }
 

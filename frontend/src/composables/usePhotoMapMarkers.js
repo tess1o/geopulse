@@ -1,7 +1,17 @@
 import { ref } from 'vue'
 import L from 'leaflet'
+import 'leaflet.markercluster'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
+import {
+  buildPhotoGroupsFromPhotos,
+  buildPhotoMarkerClickPayload,
+  getPhotoMarkerCount,
+  normalizePhotoMarkerGroups
+} from '@/maps/shared/photoMarkerGroups'
 
-const MARKER_KEY_FACTOR = 10000
+const PHOTO_CLUSTER_MAX_RADIUS = 48
+const PHOTO_CLUSTER_DISABLE_ZOOM = 16
 
 const createPhotoMarkerIcon = (count) => {
   const badgeHtml = count > 1
@@ -21,6 +31,24 @@ const createPhotoMarkerIcon = (count) => {
   })
 }
 
+const createPhotoClusterIcon = (count) => {
+  const badgeHtml = count > 1
+    ? `<span class="gp-photo-map-marker-count">${count}</span>`
+    : ''
+
+  return L.divIcon({
+    className: 'gp-photo-map-marker-wrapper',
+    html: `
+      <div class="gp-photo-map-marker">
+        <i class="pi pi-camera"></i>
+        ${badgeHtml}
+      </div>
+    `,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  })
+}
+
 const createFocusedPhotoMarkerIcon = () => {
   return L.divIcon({
     className: 'gp-photo-map-focused-marker-wrapper',
@@ -34,56 +62,9 @@ const createFocusedPhotoMarkerIcon = () => {
   })
 }
 
-const buildPhotoGroups = (photos) => {
-  const groups = new Map()
-
-  photos.forEach((photo, index) => {
-    if (typeof photo?.latitude !== 'number' || typeof photo?.longitude !== 'number') {
-      return
-    }
-
-    const roundedLat = Math.round(photo.latitude * MARKER_KEY_FACTOR) / MARKER_KEY_FACTOR
-    const roundedLng = Math.round(photo.longitude * MARKER_KEY_FACTOR) / MARKER_KEY_FACTOR
-    const key = `${roundedLat},${roundedLng}`
-
-    if (!groups.has(key)) {
-      groups.set(key, {
-        latitude: roundedLat,
-        longitude: roundedLng,
-        photos: [],
-        indices: []
-      })
-    }
-
-    const group = groups.get(key)
-    group.photos.push(photo)
-    group.indices.push(index)
-  })
-
-  return Array.from(groups.values())
-}
-
-const normalizeProvidedGroups = (markerGroups = []) => {
-  if (!Array.isArray(markerGroups)) {
-    return []
-  }
-
-  return markerGroups
-    .filter((group) => typeof group?.latitude === 'number' && typeof group?.longitude === 'number')
-    .map((group) => ({
-      latitude: group.latitude,
-      longitude: group.longitude,
-      photos: Array.isArray(group.photos) ? group.photos : [],
-      indices: Array.isArray(group.indices) ? group.indices : [],
-      markerKey: group.markerKey || `${group.latitude},${group.longitude}`,
-      count: Number.isFinite(group.count) ? Number(group.count) : (
-        Number.isFinite(group.photoCount) ? Number(group.photoCount) : (Array.isArray(group.photos) ? group.photos.length : 1)
-      )
-    }))
-}
-
 export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500 } = {}) => {
   const photoMarkers = ref([])
+  const markerClusterGroup = ref(null)
   const focusMarker = ref(null)
 
   const emitPhotoClick = (payload) => {
@@ -93,6 +74,12 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
   }
 
   const clearPhotoMarkers = () => {
+    if (markerClusterGroup.value) {
+      markerClusterGroup.value.clearLayers()
+      markerClusterGroup.value.remove()
+      markerClusterGroup.value = null
+    }
+
     photoMarkers.value.forEach((photoMarker) => {
       photoMarker.remove()
     })
@@ -106,78 +93,76 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
   }
 
-  const renderPhotoMarkers = (mapInstance, photos = []) => {
+  const createClusterGroup = () => {
+    if (typeof L.markerClusterGroup !== 'function') {
+      return null
+    }
+
+    return L.markerClusterGroup({
+      maxClusterRadius: PHOTO_CLUSTER_MAX_RADIUS,
+      disableClusteringAtZoom: PHOTO_CLUSTER_DISABLE_ZOOM,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      chunkedLoading: true,
+      chunkInterval: 200,
+      chunkDelay: 50,
+      animate: false,
+      removeOutsideVisibleBounds: true,
+      iconCreateFunction: (cluster) => {
+        const totalPhotos = cluster.getAllChildMarkers()
+          .reduce((sum, marker) => sum + Number(marker.options?.photoCount || 1), 0)
+
+        return createPhotoClusterIcon(totalPhotos)
+      }
+    })
+  }
+
+  const addPhotoMarker = (mapInstance, group) => {
+    const count = getPhotoMarkerCount(group)
+    const marker = L.marker([group.latitude, group.longitude], {
+      icon: createPhotoMarkerIcon(count),
+      zIndexOffset: markerZIndexOffset,
+      photoCount: count
+    })
+
+    marker.on('click', () => {
+      emitPhotoClick(buildPhotoMarkerClickPayload(group))
+    })
+
+    if (markerClusterGroup.value) {
+      markerClusterGroup.value.addLayer(marker)
+    } else {
+      marker.addTo(mapInstance)
+    }
+
+    photoMarkers.value.push(marker)
+  }
+
+  const renderGroups = (mapInstance, groups = []) => {
     if (!mapInstance) {
       return []
     }
 
     clearPhotoMarkers()
-    const groups = buildPhotoGroups(Array.isArray(photos) ? photos : [])
+    markerClusterGroup.value = createClusterGroup()
+    if (markerClusterGroup.value) {
+      mapInstance.addLayer(markerClusterGroup.value)
+    }
 
     groups.forEach((group) => {
-      const marker = L.marker([group.latitude, group.longitude], {
-        icon: createPhotoMarkerIcon(group.photos.length),
-        zIndexOffset: markerZIndexOffset
-      }).addTo(mapInstance)
-
-      marker.on('click', () => {
-        emitPhotoClick({
-          photos: group.photos,
-          indices: group.indices,
-          initialIndex: 0
-        })
-      })
-
-      photoMarkers.value.push(marker)
+      addPhotoMarker(mapInstance, group)
     })
 
     return groups
   }
 
+  const renderPhotoMarkers = (mapInstance, photos = []) => {
+    return renderGroups(mapInstance, buildPhotoGroupsFromPhotos(photos))
+  }
+
   const renderPhotoMarkerGroups = (mapInstance, markerGroups = []) => {
-    if (!mapInstance) {
-      return []
-    }
-
-    clearPhotoMarkers()
-    const groups = normalizeProvidedGroups(markerGroups)
-
-    groups.forEach((group) => {
-      const marker = L.marker([group.latitude, group.longitude], {
-        icon: createPhotoMarkerIcon(Math.max(group.count || 1, 1)),
-        zIndexOffset: markerZIndexOffset
-      }).addTo(mapInstance)
-
-      marker.on('click', () => {
-        if (group.photos.length > 0) {
-          emitPhotoClick({
-            photos: group.photos,
-            indices: group.indices,
-            initialIndex: 0,
-            markerGroup: {
-              latitude: group.latitude,
-              longitude: group.longitude,
-              markerKey: group.markerKey,
-              count: group.count
-            }
-          })
-          return
-        }
-
-        emitPhotoClick({
-          markerGroup: {
-            latitude: group.latitude,
-            longitude: group.longitude,
-            markerKey: group.markerKey,
-            count: group.count
-          }
-        })
-      })
-
-      photoMarkers.value.push(marker)
-    })
-
-    return groups
+    return renderGroups(mapInstance, normalizePhotoMarkerGroups(markerGroups))
   }
 
   const focusOnCoordinates = (mapInstance, latitude, longitude, zoom = 16) => {
