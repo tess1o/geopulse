@@ -29,7 +29,7 @@
     <!-- Normal Timeline View -->
     <template v-else>
       <div class="timeline-content-wrapper">
-        <div class="timeline-main">
+        <div class="timeline-main" :class="{ 'timeline-main--panel-hidden': !timelinePanelVisible }">
           <div class="left-pane">
         <div v-if="mapNoData" class="loading-messages">
           No data to show on the map. Try to select different date range.
@@ -56,10 +56,31 @@
         />
       </div>
 
-        <div class="right-pane">
+        <button
+          v-if="!timelinePanelVisible"
+          type="button"
+          class="timeline-panel-restore"
+          title="Show Movement Timeline"
+          aria-label="Show Movement Timeline"
+          @click="showTimelinePanel"
+        >
+          <i class="pi pi-list"></i>
+          <span>Timeline</span>
+        </button>
+
+        <div v-show="timelinePanelVisible" class="right-pane timeline-overlay-panel">
+          <button
+            type="button"
+            class="timeline-panel-close"
+            title="Hide Movement Timeline"
+            aria-label="Hide Movement Timeline"
+            @click="hideTimelinePanel"
+          >
+            <i class="pi pi-times"></i>
+          </button>
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
-
+            :timelineNoData="timelineNoData"
             :timelineDataLoading="timelineDataLoading"
             :dateRange="dateRange"
             @timeline-item-click="handleTimelineItemClick"
@@ -194,9 +215,12 @@ const mapViewRef = ref(null)
 // Reactive state
 const mapDataLoading = ref(false)
 const mapNoData = ref(false)
+const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
+const timelinePanelVisible = ref(true)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
+let currentLocationRequestToken = 0
 const showCurrentLocationTelemetry = ref(true)
 const customMapTileUrl = ref(null)
 const customMapStyleUrl = ref(null)
@@ -256,9 +280,37 @@ const timelineReconstructionFallbackCenter = computed(() => {
 const triggerMapResize = () => {
   nextTick(() => {
     setTimeout(() => {
-      mapViewRef.value?.invalidateMapSize?.()
+      if (typeof mapViewRef.value?.invalidateSize === 'function') {
+        mapViewRef.value.invalidateSize()
+        return
+      }
+
+      if (typeof mapViewRef.value?.invalidateMapSize === 'function') {
+        mapViewRef.value.invalidateMapSize()
+        return
+      }
+
+      const rawMap = mapViewRef.value?.map?.value || mapViewRef.value?.map
+      if (typeof rawMap?.invalidateSize === 'function') {
+        rawMap.invalidateSize()
+        return
+      }
+
+      if (typeof rawMap?.resize === 'function') {
+        rawMap.resize()
+      }
     }, 250)
   })
+}
+
+const hideTimelinePanel = () => {
+  timelinePanelVisible.value = false
+  triggerMapResize()
+}
+
+const showTimelinePanel = () => {
+  timelinePanelVisible.value = true
+  triggerMapResize()
 }
 
 const handleTimelineMarkerClick = (itemOrEvent) => {
@@ -486,17 +538,18 @@ const checkDatasetSize = async (startDate, endDate) => {
 
 const fetchTimelineData = async (startDate, endDate) => {
   timelineDataLoading.value = true
-
+  timelineNoData.value = false
 
   try {
     await timelineStore.fetchMovementTimeline(startDate, endDate)
 
     if (timelineData.value == null || timelineData.value.length === 0) {
-      timelineData.value = timezone.getDateRangeArray(startDate, endDate).map(date => ({
-        date,
-        dateLabel: timezone.formatDateLong(date),
-        items: []
-      }))
+      toast.add({
+        severity: 'info',
+        detail: 'No timeline data for given date range',
+        life: 3000
+      })
+      timelineNoData.value = true
     }
   } catch (error) {
     console.error('Error fetching timeline data:', error)
@@ -507,34 +560,48 @@ const fetchTimelineData = async (startDate, endDate) => {
       detail: errorMessage,
       life: 3000
     })
-    
+    timelineNoData.value = true
   } finally {
     timelineDataLoading.value = false
   }
 }
 
-const getCurrentLocation = () => {
-  if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
+const refreshCurrentLocation = async () => {
+  const requestToken = ++currentLocationRequestToken
+
+  if (!isToday.value) {
     currentLocation.value = null
     return
   }
 
-  // Get the latest location from pathData (last point in the array)
-  const latestPoint = pathData.value.points[pathData.value.points.length - 1]
-  
-  if (latestPoint &&
-    latestPoint.latitude !== null && latestPoint.latitude !== undefined &&
-    latestPoint.longitude !== null && latestPoint.longitude !== undefined) {
+  try {
+    const latestPoint = await locationStore.getLastKnownPosition()
+
+    if (requestToken !== currentLocationRequestToken || !isToday.value) {
+      return
+    }
+
+    const latitude = Number(latestPoint?.lat)
+    const longitude = Number(latestPoint?.lon)
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      currentLocation.value = null
+      return
+    }
+
     currentLocation.value = {
-      latitude: latestPoint.latitude,
-      longitude: latestPoint.longitude,
+      latitude,
+      longitude,
       timestamp: latestPoint.timestamp,
       telemetryCurrentPopup: showCurrentLocationTelemetry.value
         ? (latestPoint.telemetryCurrentPopup || [])
         : []
     }
-  } else {
-    currentLocation.value = null
+  } catch (error) {
+    if (requestToken === currentLocationRequestToken) {
+      currentLocation.value = null
+      console.warn('Failed to load current location:', error)
+    }
   }
 }
 
@@ -747,6 +814,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
       fetchLocationData(startDate, endDate),
       fetchTimelineData(startDate, endDate),
     ])
+    await refreshCurrentLocation()
   } finally {
     isFetching.value = false
     pendingFetchKey.value = null
@@ -764,6 +832,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 // Lifecycle
 onMounted(async () => {
   await loadTimelineDisplaySettings()
+  await refreshCurrentLocation()
   await favoritesStore.fetchFavoritePlaces()
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
@@ -955,23 +1024,12 @@ watch(dateRange, async (newValue) => {
 }, { immediate: true })
 
 // Watch for today's date and get current location
-watch(isToday, (newValue) => {
-  if (newValue) {
-    getCurrentLocation()
-  }
+watch(isToday, () => {
+  refreshCurrentLocation()
 }, { immediate: true })
 
-// Watch for pathData changes to update current location
-watch(pathData, () => {
-  if (isToday.value) {
-    getCurrentLocation()
-  }
-}, { deep: true })
-
 watch(showCurrentLocationTelemetry, () => {
-  if (isToday.value) {
-    getCurrentLocation()
-  }
+  refreshCurrentLocation()
 })
 
 watch(() => timelineReconstructionRequestToken.value, () => {
@@ -1011,39 +1069,98 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .timeline-main {
   flex: 1;
-  display: flex;
+  position: relative;
   overflow: hidden;
+  min-height: 350px;
 }
 
 .left-pane {
-  flex: 5;
+  position: absolute;
+  inset: 0;
   display: flex;
-  margin-top: 0.5rem;
-  margin-left: 0.5rem;
-  margin-right: 1rem;
-  height: 100%;
-  max-height: 70vh; /* Reduced map height to prevent page scrolling */
-  min-height: 350px;
   flex-direction: column;
+  min-height: 0;
 }
-
-.timeline-main .left-pane {
-    height: 100%;
-    margin: 0;
-    max-height: 100%;
-}
-
 
 .right-pane {
-  flex: 1;
+  position: absolute;
   overflow-y: auto !important;
-  height: 100%;
-  min-height: 350px;
+  min-height: 0;
   border-radius: var(--gp-radius-medium);
+}
+
+.timeline-overlay-panel {
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  box-shadow: var(--gp-shadow-medium);
+  z-index: 850;
+}
+
+.p-dark .timeline-overlay-panel {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
+.timeline-panel-close,
+.timeline-panel-restore {
+  border: 1px solid var(--gp-border-light);
+  background: var(--gp-surface-white);
+  color: var(--gp-text-primary);
+  cursor: pointer;
+  box-shadow: var(--gp-shadow-light);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.timeline-panel-close:hover,
+.timeline-panel-restore:hover {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: #fff;
+}
+
+.timeline-panel-close:focus-visible,
+.timeline-panel-restore:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
+}
+
+.timeline-panel-close {
+  position: absolute;
+  top: var(--gp-spacing-sm);
+  right: var(--gp-spacing-sm);
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--gp-radius-small);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-panel-restore {
+  position: absolute;
+  top: var(--gp-spacing-lg);
+  right: calc(var(--gp-spacing-lg) + 3.5rem);
+  z-index: 910;
+  height: 2.5rem;
+  padding: 0 var(--gp-spacing-md);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  font-weight: 600;
+}
+
+.p-dark .timeline-panel-close,
+.p-dark .timeline-panel-restore {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+  color: var(--gp-text-primary);
 }
 
 .loading-messages {
@@ -1070,83 +1187,71 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .timeline-main {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
   .timeline-page {
     height: calc(100vh - 140px); /* Adjust for mobile navbar height */
   }
 
-  .left-pane {
-    flex: 1;
-    width: 100%;
-    margin-right: 0;
-    margin-top: 0.5rem;
-    margin-bottom: 0;
+  .timeline-main {
+    min-height: 0;
   }
 
-  .right-pane {
-    flex: 1;
+  .timeline-overlay-panel {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 45%;
     width: 100%;
-    min-height: 0;
-    margin-top: 0;
-    overflow-y: auto !important;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: var(--gp-radius-medium) var(--gp-radius-medium) 0 0;
+  }
+
+  .timeline-panel-restore {
+    top: var(--gp-spacing-sm);
+    left: var(--gp-spacing-sm);
+    right: auto;
+    height: 2.25rem;
+    max-width: calc(100% - var(--gp-spacing-sm) * 2 - 3.5rem);
+    padding: 0 var(--gp-spacing-sm);
   }
 }
 
-@media (min-width: 768px) and (max-width: 1024px) {
+@media (min-width: 769px) and (max-width: 1023px) {
   .timeline-page {
     height: calc(100vh - 150px);
   }
 
-  .left-pane {
-    flex: 3;
-    max-height: 65vh;
-  }
-
-  .right-pane {
-    flex: 2;
+  .timeline-overlay-panel {
+    left: var(--gp-spacing-lg);
+    right: var(--gp-spacing-lg);
+    bottom: var(--gp-spacing-lg);
+    max-height: 42%;
   }
 }
 
 @media (min-width: 1024px) {
-
-  .timeline-content-wrapper{
-    position: relative;
-    height: 100%;
-  }
-  .left-pane {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    padding: 0 var(--gp-spacing-xl);
-  }
-
-  .right-pane {
-    position: absolute;
-    top: calc(var(--gp-spacing-md) + 3px);
-    right: calc(var(--gp-spacing-xl) * 5);
+  .timeline-overlay-panel {
+    top: var(--gp-spacing-lg);
+    right: var(--gp-spacing-lg);
     width: 400px;
-    height: calc(100% - var(--gp-spacing-xl) * 2);
-    padding: 0 ;
-    
-    background-color: var(--gp-surface-white);
+    max-height: calc(100% - var(--gp-spacing-lg) * 2);
+  }
+
+  .timeline-main:not(.timeline-main--panel-hidden) :deep(.map-controls) {
+    right: calc(400px + var(--gp-spacing-lg) * 2);
   }
 }
-
 
 @media (min-width: 1024px) and (max-width: 1280px) {
-  .right-pane {
+  .timeline-overlay-panel {
     width: 350px;
-    right: calc(var(--gp-spacing-xl) * 4);
+  }
+
+  .timeline-main:not(.timeline-main--panel-hidden) :deep(.map-controls) {
+    right: calc(350px + var(--gp-spacing-lg) * 2);
   }
 }
-
-
 </style>
 
 <style>
@@ -1161,9 +1266,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Adjust the content container */
 .p-timeline-left .p-timeline-event-content {
-  top: -10px;
-  position: relative;
   padding-left: 0.5rem !important; /* or 0 if you want no space */
 }
-
 </style>

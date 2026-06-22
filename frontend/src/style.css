@@ -87,9 +87,6 @@
     --gp-spacing-md: 0.75rem;
     --gp-spacing-lg: 1rem;
     --gp-spacing-xl: 1.5rem;
-    --p-card-body-padding: 0;
-
-    --btn-default-size: 2.5rem !important;
 }
 
 /* Dark Mode Override */
@@ -775,8 +772,8 @@ body {
         border: none !important;
         border-radius: var(--gp-radius-medium) !important;
         transition: all 0.2s ease !important;
-        width: var(--btn-default-size);
-        height: var(--btn-default-size);
+        width: 2.5rem !important;
+        height: 2.5rem !important;
         padding: 0.5rem !important;
         font-size: 1rem !important;
         display: flex !important;
@@ -896,8 +893,8 @@ body {
     }
 
     .p-dark .p-confirmdialog .p-dialog-header-close {
-        width: var(--btn-default-size);
-        height: var(--btn-default-size);
+        width: 2.5rem !important;
+        height: 2.5rem !important;
         padding: 0.5rem !important;
         font-size: 1rem !important;
         display: flex !important;

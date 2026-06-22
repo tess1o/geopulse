@@ -268,15 +268,13 @@ const handleBlur = (event) => {
 
 /* Icon Only Buttons */
 .p-button.p-button-icon-only {
-  width: var(--btn-default-size);
-  height: var(--btn-default-size);
+  width: 2.5rem !important;
+  height: 2.5rem !important;
 }
 
 .p-button.p-button-icon-only.p-button-sm {
-  width: var(--btn-default-size) ;
-  height: var(--btn-default-size);
-
-  margin-right: 0.5rem;
+  width: 2rem !important;
+  height: 2rem !important;
 }
 
 .p-button.p-button-icon-only.p-button-lg {

@@ -2492,7 +2492,7 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .plan-item-coordinate-pill {
-  min-height: var(--btn-default-size);
+  min-height: 2.5rem;
   border-radius: var(--gp-radius-small);
   border: 1px solid var(--gp-border-light);
   background: var(--gp-surface-light);

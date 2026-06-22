@@ -1212,8 +1212,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--btn-default-size);
-  height: var(--btn-default-size);
+  width: 2.5rem;
+  height: 2.5rem;
   background: var(--gp-primary);
   color: white;
   border-radius: 50%;

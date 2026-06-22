@@ -244,8 +244,6 @@ watch(dates, (newValue) => {
 /* Share button styling */
 .share-btn {
   flex-shrink: 0;
-  min-width: var(--btn-default-size);
-  height: var(--btn-default-size);
 }
 
 /* Medium screens - reduce search bar width */
@@ -259,18 +257,14 @@ watch(dates, (newValue) => {
 /* Tablet - more compact search */
 @media (max-width: 1024px) {
   .navbar-search {
-    min-width: 150px;
-    max-width: 200px;
+    min-width: 200px;
+    max-width: 250px;
   }
 
   .navbar-search :deep(.p-autocomplete-input) {
     padding: 0.4rem 0.6rem;
     font-size: 0.85rem;
     height: 36px;
-  }
-
-  .share-btn :deep(.p-button-label) {
-    display: none;
   }
 }
 
@@ -288,5 +282,4 @@ watch(dates, (newValue) => {
     padding: 0.5rem;
   }
 }
-
 </style>

@@ -87,12 +87,10 @@ const contentClasses = computed(() => ({
   flex-direction: column;
   height: 100%;
   max-width: 1200px;
-  margin: 0 var(--gp-spacing-lg);
+  margin: 0 auto;
   padding: var(--gp-spacing-lg);
-  border-radius: var(--gp-radius-large);
   box-sizing: border-box;
   width: 100%;
-  border: 1px solid var(--gp-border-light);
 }
 
 .gp-page-container > * {
@@ -353,8 +351,7 @@ const contentClasses = computed(() => ({
 
 @media (max-width: 480px) {
   .gp-page-container {
-    padding: var(--gp-spacing-md);
-    margin: 0;
+    padding: var(--gp-spacing-xs);
   }
 
   .gp-page-container--card {

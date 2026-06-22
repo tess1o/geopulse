@@ -1826,7 +1826,7 @@ defineExpose({
 }
 
 .trip-replay-speed-btn {
-  min-width: var(--btn-default-size);
+  min-width: 2.5rem;
   height: 2rem;
   padding: 0 0.45rem;
   font-size: 0.8rem;

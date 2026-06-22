@@ -2435,8 +2435,8 @@ watch(filters, async () => {
 }
 
 .gps-data-table :deep(.p-paginator .p-paginator-page) {
-  min-width: var(--btn-default-size);
-  height: var(--btn-default-size);
+  min-width: 2.5rem;
+  height: 2.5rem;
 }
 
 .paginator-info {
@@ -2520,8 +2520,8 @@ watch(filters, async () => {
 /* Mobile Actions */
 @media (max-width: 768px) {
   .gps-data-table :deep(.selection-col) {
-    width: var(--btn-default-size);
-    min-width: var(--btn-default-size);
+    width: 2.5rem;
+    min-width: 2.5rem;
   }
 
   .gps-data-table :deep(.actions-col) {

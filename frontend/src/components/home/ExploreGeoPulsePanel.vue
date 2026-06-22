@@ -243,7 +243,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.9);
   color: #334155;
   border-radius: 0.75rem;
-  height: var(--btn-default-size);
+  height: 2.5rem;
   padding: 0 0.8rem;
   display: inline-flex;
   align-items: center;

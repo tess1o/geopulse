@@ -167,7 +167,6 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
   padding-top: env(safe-area-inset-top);
-  margin-bottom: 0.6rem;
   height: calc(60px + env(safe-area-inset-top));
 }
 

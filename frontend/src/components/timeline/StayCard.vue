@@ -249,26 +249,51 @@ const formattedTimestamp = computed(() => {
 })
 </script>
 
-<style src="./cards.css"></style>
-
 <style scoped>
+.timeline-card {
+  margin-top: var(--gp-spacing-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--gp-radius-medium);
+  border: 1px solid var(--gp-border-light);
+  overflow: hidden;
+  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
+  .timeline-card {
+    margin-top: var(--gp-spacing-sm);
+    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+  }
 
-  
+  .timeline-timestamp {
+    font-size: 0.875rem;
+  }
+
+  .timeline-subtitle {
+    margin: var(--gp-spacing-xs) 0 0 0;
+    font-size: 0.875rem;
+  }
+
   .stay-content {
     margin-top: var(--gp-spacing-xs);
     font-size: 0.875rem;
   }
-  
+
   .overnight-stay-content {
     margin-top: var(--gp-spacing-xs);
   }
-  
+
   .duration-detail {
     margin: 2px 0;
     font-size: 0.8rem;
   }
+}
+
+.timeline-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--gp-shadow-medium);
 }
 
 .timeline-card--stay {
@@ -278,9 +303,22 @@ const formattedTimestamp = computed(() => {
 
 .timeline-timestamp {
   color: var(--gp-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.timeline-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
 }
 
 .timeline-subtitle {
+  margin: var(--gp-spacing-xs) 0 0 0;
+  color: var(--gp-text-primary);
   font-size: 0.9rem;
   line-height: 1.3;
 }
@@ -358,6 +396,10 @@ const formattedTimestamp = computed(() => {
 }
 
 /* Dark mode adjustments */
+.p-dark .timeline-card {
+  border-color: var(--gp-border-medium);
+}
+
 .p-dark .timeline-card--stay {
   background-color: var(--gp-timeline-blue);
   border-left: 4px solid var(--gp-primary);
@@ -375,6 +417,10 @@ const formattedTimestamp = computed(() => {
 .p-dark .timeline-subtitle,
 .p-dark .stay-content {
   color: var(--gp-text-primary);
+}
+
+.p-dark .timeline-card:hover {
+  box-shadow: var(--gp-shadow-medium);
 }
 
 .p-dark .overnight-stay-content,

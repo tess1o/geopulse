@@ -1004,8 +1004,8 @@ onMounted(() => {
   }
 
   .large-theme-toggle :deep(.p-button) {
-    width: var(--btn-default-size);
-    height: var(--btn-default-size);
+    width: 2.5rem;
+    height: 2.5rem;
     font-size: 1.25rem;
   }
 }
