@@ -10,6 +10,8 @@
           <Button
             v-if="isTimelinePage"
             label="Share"
+            aria-label="Share timeline"
+            title="Share timeline"
             icon="pi pi-share-alt"
             @click="showShareDialog"
             outlined
@@ -19,6 +21,8 @@
             v-if="isTimelinePage"
             v-tooltip.bottom="'Generate GPS points from manual stays and trips. Existing GPS points are preserved.'"
             label="Add Missing Timeline Data"
+            aria-label="Add missing timeline data"
+            title="Add missing timeline data"
             icon="pi pi-map"
             @click="requestTimelineReconstruction"
             outlined
@@ -279,7 +283,10 @@ watch(dates, (newValue) => {
   }
 
   .share-btn {
-    padding: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    flex: 0 0 2rem;
   }
 }
 </style>

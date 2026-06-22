@@ -99,7 +99,7 @@ const datePickerClasses = computed(() => ({
 }))
 
 const datePickerStyle = computed(() => ({
-  width: props.datePickerWidth
+  '--gp-navbar-datepicker-width': props.datePickerWidth
 }))
 
 // Methods
@@ -161,6 +161,7 @@ const handleNavigate = (item) => {
 .gp-navbar-datepicker {
   flex-shrink: 0;
   position: relative;
+  width: var(--gp-navbar-datepicker-width);
 }
 
 .gp-datepicker-label {
@@ -233,11 +234,15 @@ const handleNavigate = (item) => {
 
 @media (max-width: 768px) {
   .gp-navbar-start {
-    gap: var(--gp-spacing-md);
+    gap: var(--gp-spacing-sm);
+    flex-shrink: 0;
   }
 
   .gp-navbar-end {
-    gap: var(--gp-spacing-md);
+    gap: 0.375rem;
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
   }
 
   .gp-navbar-logo-text {
@@ -245,9 +250,9 @@ const handleNavigate = (item) => {
   }
 
   .gp-navbar-datepicker {
-    min-width: 200px;
-    flex: 1;
-    max-width: 240px;
+    min-width: 0;
+    width: clamp(200px, 48vw, 240px);
+    flex: 0 1 clamp(200px, 48vw, 240px);
   }
 }
 
@@ -257,7 +262,7 @@ const handleNavigate = (item) => {
   }
 
   .gp-navbar-end {
-    gap: var(--gp-spacing-sm);
+    gap: 0.25rem;
   }
 
   .gp-navbar-logo-text {
@@ -265,9 +270,8 @@ const handleNavigate = (item) => {
   }
 
   .gp-navbar-datepicker {
-    min-width: 180px;
-    flex: 1;
-    max-width: 220px;
+    width: clamp(195px, 50vw, 225px);
+    flex-basis: clamp(195px, 50vw, 225px);
   }
 }
 
@@ -277,17 +281,16 @@ const handleNavigate = (item) => {
   }
 
   .gp-navbar-datepicker {
-    min-width: 180px;
-    flex: 1;
-    max-width: 220px;
+    width: clamp(205px, 55vw, 220px);
+    flex-basis: clamp(205px, 55vw, 220px);
   }
 }
 
 /* iPhone 16 Pro Max and similar large phones */
 @media (max-width: 480px) and (min-width: 430px) {
   .gp-navbar-datepicker {
-    min-width: 200px;
-    max-width: 280px;
+    width: clamp(215px, 52vw, 230px);
+    flex-basis: clamp(215px, 52vw, 230px);
   }
 }
 </style>
@@ -449,7 +452,12 @@ const handleNavigate = (item) => {
 /* Responsive */
 @media (max-width: 768px) {
   .gp-app-navbar-with-datepicker {
-    padding: 0 var(--gp-spacing-md) !important;
+    padding: 0 var(--gp-spacing-sm) !important;
+  }
+
+  .gp-app-navbar-with-datepicker .p-toolbar-group-start,
+  .gp-app-navbar-with-datepicker .p-toolbar-group-end {
+    min-width: 0;
   }
 }
 
@@ -460,9 +468,15 @@ const handleNavigate = (item) => {
 
   .gp-navbar-datepicker .gp-datepicker {
     font-size: 0.8rem !important;
-    padding: var(--gp-spacing-sm) !important;
+    padding: 0.25rem 0.35rem !important;
     min-height: 44px;
     width: 100% !important;
+  }
+
+  .gp-app-navbar-with-datepicker .gp-bell-trigger {
+    width: 2rem !important;
+    height: 2rem !important;
+    padding: 0 !important;
   }
 
   .gp-navbar-datepicker .p-floatlabel label {

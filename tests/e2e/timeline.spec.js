@@ -104,6 +104,57 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Timeline with Data', () => {
+    test('should keep mobile controls usable and expose a draggable timeline sheet', async ({ page, isolatedUsers, dbManager}) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+
+      const timelinePage = new TimelinePage(page);
+      await timelinePage.setupTimelineWithData(
+        dbManager,
+        async (db, userId) => {
+          await TimelineTestData.insertRegularStaysTestData(db, userId);
+          await TimelineTestData.insertRegularTripsTestData(db, userId);
+          await TimelineTestData.insertVerifiableDataGapsTestData(db, userId);
+          return [];
+        },
+        createTimelineUser(isolatedUsers),
+        testDateRange
+      );
+
+      await timelinePage.waitForTimelineContent();
+
+      const navbarControls = page.locator('.gp-navbar-end').first();
+      const navbarBox = await navbarControls.boundingBox();
+      expect(navbarBox.width).toBeLessThanOrEqual(390);
+
+      const dateRangeInput = page.locator('.date-range-picker .p-datepicker-input').first();
+      await expect(dateRangeInput).toBeVisible();
+      const dateRangeFontSize = await dateRangeInput.evaluate((el) => getComputedStyle(el).fontSize);
+      expect(parseFloat(dateRangeFontSize)).toBeGreaterThanOrEqual(16);
+
+      const sheet = page.locator('.right-pane').first();
+      const handle = page.locator('.timeline-sheet-handle').first();
+      await expect(handle).toBeVisible();
+
+      const initialBox = await sheet.boundingBox();
+      const handleBox = await handle.boundingBox();
+      expect(initialBox.height).toBeGreaterThan(250);
+
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y - 360, { steps: 8 });
+      await page.mouse.up();
+
+      await expect.poll(async () => {
+        const box = await sheet.boundingBox();
+        return Math.round(box.height);
+      }).toBeGreaterThan(Math.round(initialBox.height + 100));
+
+      const timelineContentCanScroll = await page.locator('.timeline-content').first().evaluate((el) => (
+        el.scrollHeight > el.clientHeight
+      ));
+      expect(timelineContentCanScroll).toBe(true);
+    });
+
     test('should display timeline date range and card timestamps using user date format', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const testUser = createTimelineUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });

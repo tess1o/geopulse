@@ -377,12 +377,13 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .date-picker-input :deep(.p-datepicker-input) {
     min-height: 44px; /* Touch-friendly size */
+    font-size: 16px;
   }
 }
 
 @media (max-width: 480px) {
   .date-picker-input :deep(.p-datepicker-input) {
-    font-size: 0.85rem;
+    font-size: 16px;
     padding: 0.5rem;
   }
 

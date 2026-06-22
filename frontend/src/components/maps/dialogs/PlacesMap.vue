@@ -3,7 +3,8 @@
     v-model:visible="internalVisible"
     :header="title || 'Place Location'"
     :modal="true"
-    :style="{ width: '50vw' }"
+    :style="dialogStyle"
+    class="places-map-dialog"
     @hide="$emit('close')"
   >
     <div class="places-map-content">
@@ -13,7 +14,7 @@
         :center="coordinates"
         :zoom="16"
         :show-controls="false"
-        height="400px"
+        :height="mapHeight"
         width="100%"
         @map-ready="handleMapReady"
       >
@@ -61,6 +62,11 @@ const emit = defineEmits(['close'])
 const internalVisible = ref(props.showMap)
 const mapId = ref(Math.random().toString(36).substr(2, 9))
 const mapContainerRef = ref(null)
+const dialogStyle = {
+  width: 'min(92vw, 760px)',
+  maxWidth: '760px'
+}
+const mapHeight = 'min(60vh, 420px)'
 
 // Computed
 const favoriteData = computed(() => {
@@ -107,20 +113,33 @@ export default {
 <style scoped>
 .places-map-content {
   width: 100%;
-  height: 400px;
+  height: min(60vh, 420px);
+  min-height: 280px;
   border-radius: 8px;
   overflow: hidden;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  :deep(.p-dialog) {
-    width: 95vw !important;
-    margin: 1rem;
+  :global(.places-map-dialog.p-dialog) {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    margin: 0.5rem;
   }
-  
+
+  :global(.places-map-dialog .p-dialog-content) {
+    padding: var(--gp-spacing-sm);
+  }
+
   .places-map-content {
-    height: 300px;
+    height: min(58vh, 380px);
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 420px) {
+  .places-map-content {
+    height: min(55vh, 340px);
   }
 }
 </style>

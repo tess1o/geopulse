@@ -191,6 +191,41 @@ test.describe('Dashboard', () => {
       }
     });
 
+    test('should fit the top place map dialog within a mobile viewport', async ({ page, isolatedUsers, dbManager}) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+
+      const loginPage = new LoginPage(page);
+      const dashboardPage = new DashboardPage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await insertDashboardTestDataWithPlaces(dbManager, user.id);
+
+      await dashboardPage.navigate();
+      await dashboardPage.waitForPageLoad();
+      await dashboardPage.waitForLoadingComplete();
+
+      const firstPlace = page.locator('.place-item').first();
+      await expect(firstPlace).toBeVisible();
+      await firstPlace.click();
+
+      const dialog = page.locator('.places-map-dialog').first();
+      await expect(dialog).toBeVisible();
+
+      const dialogBox = await dialog.boundingBox();
+      expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+      expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+      expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(390);
+      expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(844);
+
+      const mapContentBox = await page.locator('.places-map-content').first().boundingBox();
+      expect(mapContentBox.width).toBeGreaterThan(300);
+      expect(mapContentBox.height).toBeGreaterThan(250);
+    });
+
     test('should display route analysis cards with statistics', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);

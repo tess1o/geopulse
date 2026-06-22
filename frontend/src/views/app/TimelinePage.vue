@@ -1,5 +1,5 @@
 <template>
-  <div class="timeline-page">
+  <div ref="timelinePageRef" class="timeline-page">
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
@@ -56,7 +56,22 @@
         />
       </div>
 
-        <div class="right-pane">
+        <div
+          ref="timelineSheetRef"
+          class="right-pane"
+          :class="timelineSheetClasses"
+          :style="timelineSheetStyle"
+        >
+          <button
+            type="button"
+            class="timeline-sheet-handle"
+            :aria-label="`Timeline panel ${timelineSheetState}. Tap to change size.`"
+            @click="cycleTimelineSheetState"
+            @pointerdown="handleTimelineSheetPointerDown"
+          >
+            <span class="timeline-sheet-grip"></span>
+            <span class="timeline-sheet-label">Movement Timeline</span>
+          </button>
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
             :timelineNoData="timelineNoData"
@@ -126,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted, computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -195,6 +210,14 @@ const mapDataLoading = ref(false)
 const mapNoData = ref(false)
 const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
+const timelinePageRef = ref(null)
+const timelineSheetRef = ref(null)
+const timelineSheetState = ref('half')
+const timelineSheetHeight = ref(null)
+const isTimelineSheetDragging = ref(false)
+const timelineSheetDidDrag = ref(false)
+const timelineSheetDragStartY = ref(0)
+const timelineSheetDragStartHeight = ref(0)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 let currentLocationRequestToken = 0
@@ -252,6 +275,119 @@ const timelineReconstructionFallbackCenter = computed(() => {
 
   return [37.7749, -122.4194]
 })
+
+const timelineSheetClasses = computed(() => ({
+  [`timeline-sheet--${timelineSheetState.value}`]: true,
+  'timeline-sheet--dragging': isTimelineSheetDragging.value
+}))
+
+const timelineSheetStyle = computed(() => (
+  timelineSheetHeight.value
+    ? { '--timeline-sheet-height': `${timelineSheetHeight.value}px` }
+    : {}
+))
+
+const isMobileTimelineViewport = () => (
+  typeof window !== 'undefined'
+  && window.matchMedia('(max-width: 768px)').matches
+)
+
+const getTimelineSheetHeights = () => {
+  const containerHeight = timelinePageRef.value?.getBoundingClientRect().height || window.innerHeight || 800
+  const collapsed = 52
+  const half = Math.max(collapsed + 64, containerHeight * 0.5)
+  const expanded = Math.max(half + 64, containerHeight * 0.88)
+  return {
+    collapsed,
+    half: Math.min(half, containerHeight - 48),
+    expanded: Math.min(expanded, containerHeight - 24)
+  }
+}
+
+const syncTimelineSheetHeight = () => {
+  if (!isMobileTimelineViewport()) {
+    timelineSheetHeight.value = null
+    return
+  }
+
+  timelineSheetHeight.value = getTimelineSheetHeights()[timelineSheetState.value]
+}
+
+const setTimelineSheetState = (state) => {
+  timelineSheetState.value = state
+  syncTimelineSheetHeight()
+}
+
+const cycleTimelineSheetState = () => {
+  if (timelineSheetDidDrag.value) {
+    timelineSheetDidDrag.value = false
+    return
+  }
+
+  const nextState = timelineSheetState.value === 'collapsed'
+    ? 'half'
+    : timelineSheetState.value === 'half'
+      ? 'expanded'
+      : 'collapsed'
+  setTimelineSheetState(nextState)
+}
+
+const handleTimelineSheetPointerMove = (event) => {
+  if (!isTimelineSheetDragging.value) return
+  const heights = getTimelineSheetHeights()
+  const deltaY = timelineSheetDragStartY.value - event.clientY
+  if (Math.abs(deltaY) > 4) {
+    timelineSheetDidDrag.value = true
+  }
+  const nextHeight = Math.min(
+    heights.expanded,
+    Math.max(heights.collapsed, timelineSheetDragStartHeight.value + deltaY)
+  )
+  timelineSheetHeight.value = nextHeight
+}
+
+const handleTimelineSheetPointerUp = () => {
+  if (!isTimelineSheetDragging.value) return
+
+  const heights = getTimelineSheetHeights()
+  const currentHeight = timelineSheetHeight.value || heights.collapsed
+  const candidates = [
+    ['collapsed', heights.collapsed],
+    ['half', heights.half],
+    ['expanded', heights.expanded]
+  ]
+  const [nearestState] = candidates.reduce((best, candidate) => (
+    Math.abs(candidate[1] - currentHeight) < Math.abs(best[1] - currentHeight)
+      ? candidate
+      : best
+  ))
+
+  isTimelineSheetDragging.value = false
+  setTimelineSheetState(nearestState)
+  window.removeEventListener('pointermove', handleTimelineSheetPointerMove)
+  window.removeEventListener('pointerup', handleTimelineSheetPointerUp)
+  window.removeEventListener('pointercancel', handleTimelineSheetPointerUp)
+}
+
+const handleTimelineSheetPointerDown = (event) => {
+  if (!isMobileTimelineViewport()) return
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+
+  event.preventDefault()
+  isTimelineSheetDragging.value = true
+  timelineSheetDidDrag.value = false
+  timelineSheetDragStartY.value = event.clientY
+  timelineSheetDragStartHeight.value = timelineSheetRef.value?.getBoundingClientRect().height
+    || getTimelineSheetHeights()[timelineSheetState.value]
+
+  window.addEventListener('pointermove', handleTimelineSheetPointerMove)
+  window.addEventListener('pointerup', handleTimelineSheetPointerUp)
+  window.addEventListener('pointercancel', handleTimelineSheetPointerUp)
+}
+
+const handleTimelineViewportResize = () => {
+  syncTimelineSheetHeight()
+}
 
 // Methods
 const triggerMapResize = () => {
@@ -774,12 +910,22 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
 // Lifecycle
 onMounted(async () => {
+  syncTimelineSheetHeight()
+  window.addEventListener('resize', handleTimelineViewportResize)
+
   await loadTimelineDisplaySettings()
   await refreshCurrentLocation()
   await favoritesStore.fetchFavoritePlaces()
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
   })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleTimelineViewportResize)
+  window.removeEventListener('pointermove', handleTimelineSheetPointerMove)
+  window.removeEventListener('pointerup', handleTimelineSheetPointerUp)
+  window.removeEventListener('pointercancel', handleTimelineSheetPointerUp)
 })
 
 // Watchers
@@ -1040,6 +1186,10 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   border-radius: var(--gp-radius-medium);
 }
 
+.timeline-sheet-handle {
+  display: none;
+}
+
 .loading-messages {
   color: var(--gp-text-secondary);
   background: var(--gp-surface-light);
@@ -1065,28 +1215,110 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 /* Responsive design */
 @media (max-width: 768px) {
   .timeline-main {
+    position: relative;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0;
+    height: 100%;
   }
 
   .timeline-page {
-    height: calc(100vh - 140px); /* Adjust for mobile navbar height */
+    height: calc(100dvh - 112px); /* Mobile navbar + tab bar */
+    min-height: 480px;
   }
 
   .left-pane {
-    flex: 1;
+    position: absolute;
+    inset: 0;
+    flex: none;
     width: 100%;
-    margin-right: 0;
-    margin-top: 0.5rem;
-    margin-bottom: 0;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
   }
 
   .right-pane {
-    flex: 1;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    flex: none;
     width: 100%;
+    height: var(--timeline-sheet-height, 168px);
+    max-height: calc(100% - 24px);
     min-height: 0;
-    margin-top: 0;
-    overflow-y: auto !important;
+    margin: 0;
+    overflow: hidden !important;
+    background: var(--gp-surface-white);
+    border: 1px solid var(--gp-border-light);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
+    transition: height 0.22s ease;
+  }
+
+  .timeline-sheet--dragging {
+    transition: none;
+  }
+
+  .timeline-sheet-handle {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    border-bottom: 1px solid var(--gp-border-light);
+    background: var(--gp-surface-white);
+    color: var(--gp-text-secondary);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+  }
+
+  .timeline-sheet--dragging .timeline-sheet-handle {
+    cursor: grabbing;
+  }
+
+  .timeline-sheet-grip {
+    position: absolute;
+    top: 7px;
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--gp-border-medium);
+  }
+
+  .timeline-sheet-label {
+    padding-top: 8px;
+  }
+
+  .right-pane :deep(.timeline-container) {
+    height: calc(100% - 44px);
+  }
+
+  .right-pane :deep(.timeline-header) {
+    display: none;
+  }
+
+  .right-pane :deep(.timeline-content) {
+    padding: 0 var(--gp-spacing-sm) var(--gp-spacing-md);
+  }
+
+  .p-dark .right-pane,
+  .p-dark .timeline-sheet-handle {
+    background: var(--gp-surface-dark);
+    border-color: var(--gp-border-dark);
+  }
+
+  .p-dark .timeline-sheet-grip {
+    background: var(--gp-border-medium);
   }
 }
 
