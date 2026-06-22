@@ -111,7 +111,8 @@ const {
   formatColorWithHash,
   createDisplayColor,
   validateTagName,
-  validateDateRange
+  validateDateRange,
+  normalizeDateRangeForPayload
 } = usePeriodTag()
 
 // State
@@ -157,10 +158,12 @@ const createPeriodTag = async () => {
   isLoading.value = true
 
   try {
+    const normalizedRange = normalizeDateRangeForPayload(dateRange.value)
+
     // Check for overlaps first
     const overlappingTags = await store.checkOverlaps(
-      dateRange.value[0].toISOString(),
-      dateRange.value[1].toISOString()
+      normalizedRange.start,
+      normalizedRange.end
     )
 
     // If overlaps found, show confirmation dialog
@@ -176,14 +179,14 @@ const createPeriodTag = async () => {
         acceptLabel: 'Create Anyway',
         rejectLabel: 'Cancel',
         accept: async () => {
-          await performCreate()
+          await performCreate(normalizedRange)
         }
       })
       return
     }
 
     // No overlaps, proceed with creation
-    await performCreate()
+    await performCreate(normalizedRange)
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -195,14 +198,14 @@ const createPeriodTag = async () => {
   }
 }
 
-const performCreate = async () => {
+const performCreate = async (normalizedRange) => {
   isLoading.value = true
 
   try {
     const payload = {
       tagName: form.value.tagName.trim(),
-      startTime: dateRange.value[0].toISOString(),
-      endTime: dateRange.value[1].toISOString(),
+      startTime: normalizedRange.start,
+      endTime: normalizedRange.end,
       color: formatColorWithHash(form.value.color)
     }
 

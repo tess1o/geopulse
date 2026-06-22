@@ -126,7 +126,8 @@ const {
   formatColorWithHash,
   createDisplayColor,
   validateTagName,
-  validateDateRange
+  validateDateRange,
+  normalizeDateRangeForPayload
 } = usePeriodTag()
 
 // State
@@ -195,10 +196,11 @@ const updatePeriodTag = async () => {
   isLoading.value = true
 
   try {
+    const normalizedRange = normalizeDateRangeForPayload(dateRange.value)
     const data = {
       tagName: form.value.tagName.trim(),
-      startTime: dateRange.value[0].toISOString(),
-      endTime: dateRange.value[1].toISOString(),
+      startTime: normalizedRange.start,
+      endTime: normalizedRange.end,
       color: formatColorWithHash(form.value.color)
     }
 

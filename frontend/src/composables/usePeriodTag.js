@@ -1,11 +1,11 @@
-import { ref, computed } from 'vue'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { computed } from 'vue'
+import { useTimezone } from '@/composables/useTimezone'
 
 /**
  * Composable for shared period tag functionality
  */
 export function usePeriodTag() {
-  const store = usePeriodTagsStore()
+  const timezone = useTimezone()
 
   // Color palette for period tags
   const COLOR_PALETTE = [
@@ -64,12 +64,21 @@ export function usePeriodTag() {
     return null
   }
 
+  const normalizeDateRangeForPayload = (dateRange) => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) {
+      return null
+    }
+
+    return timezone.createDateRangeFromPicker(dateRange[0], dateRange[1])
+  }
+
   return {
     COLOR_PALETTE,
     getRandomColor,
     formatColorWithHash,
     createDisplayColor,
     validateTagName,
-    validateDateRange
+    validateDateRange,
+    normalizeDateRangeForPayload
   }
 }
