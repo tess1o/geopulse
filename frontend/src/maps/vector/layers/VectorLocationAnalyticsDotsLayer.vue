@@ -108,7 +108,7 @@ const registerEvents = () => {
     return
   }
 
-  const handleClusterClick = (event) => {
+  const handleClusterClick = async (event) => {
     const clusterId = event?.features?.[0]?.properties?.cluster_id
     if (clusterId === undefined || clusterId === null) {
       return
@@ -119,18 +119,17 @@ const registerEvents = () => {
       return
     }
 
-    source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-      if (error) {
-        return
-      }
-
+    try {
+      const zoom = await source.getClusterExpansionZoom(clusterId)
       const center = event?.features?.[0]?.geometry?.coordinates
       if (!Array.isArray(center)) {
         return
       }
 
       props.map.easeTo({ center, zoom, duration: 280 })
-    })
+    } catch {
+      // Ignore stale cluster ids while source data is refreshing.
+    }
   }
 
   const handleMarkerClick = (event) => {

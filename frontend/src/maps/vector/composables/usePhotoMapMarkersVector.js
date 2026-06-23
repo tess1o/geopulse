@@ -20,6 +20,11 @@ import {
 const PHOTO_CLUSTER_RADIUS = 48
 const PHOTO_CLUSTER_MAX_ZOOM = 16
 const PHOTO_CLUSTER_LABEL_MIN_ZOOM = 4
+const PHOTO_CLUSTER_CAMERA_ICON_SIZE = 0.52
+const PHOTO_POINT_CAMERA_ICON_SIZE = 0.44
+const PHOTO_CLUSTER_EVENT_HANDLED_KEY = '__gpImmichClusterHandled'
+const PHOTO_CLUSTER_DOUBLE_CLICK_EVENT_HANDLED_KEY = '__gpImmichClusterDoubleClickHandled'
+const PHOTO_POINT_EVENT_HANDLED_KEY = '__gpImmichPointHandled'
 
 function createFocusedMarkerElement() {
   const wrapper = document.createElement('div')
@@ -154,6 +159,9 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     canvas.width = size
     canvas.height = size
     const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      return null
+    }
 
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(14, 22, 36, 26)
@@ -170,17 +178,23 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     ctx.arc(32, 35, 5, 0, Math.PI * 2)
     ctx.fill()
 
-    return canvas
+    return ctx.getImageData(0, 0, size, size)
   }
 
   const ensureCameraImage = (mapInstance) => {
     if (typeof mapInstance.hasImage !== 'function' || typeof mapInstance.addImage !== 'function') {
-      return
+      return false
     }
 
     if (!mapInstance.hasImage(state.cameraImageId)) {
-      mapInstance.addImage(state.cameraImageId, createCameraImage(), { pixelRatio: 2 })
+      const imageData = createCameraImage()
+      if (!imageData) {
+        return false
+      }
+      mapInstance.addImage(state.cameraImageId, imageData, { pixelRatio: 2 })
     }
+
+    return mapInstance.hasImage(state.cameraImageId)
   }
 
   const registerEvents = (mapInstance) => {
@@ -188,8 +202,38 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       return
     }
 
-    const handleClusterClick = (event) => {
-      const clusterId = event?.features?.[0]?.properties?.cluster_id
+    const clusterLayerIds = [
+      state.clusterLayerId,
+      state.clusterIconLayerId,
+      state.clusterCountLayerId
+    ].filter((layerId) => mapInstance.getLayer(layerId))
+    const pointLayerIds = [
+      state.pointLayerId,
+      state.pointIconLayerId,
+      state.pointCountLayerId
+    ].filter((layerId) => mapInstance.getLayer(layerId))
+
+    const findFeatureFromEvent = (event, layerIds, predicate = () => true) => {
+      const eventFeature = event?.features?.find?.(predicate)
+      if (eventFeature) {
+        return eventFeature
+      }
+
+      if (!event?.point || layerIds.length === 0 || typeof mapInstance.queryRenderedFeatures !== 'function') {
+        return null
+      }
+
+      return mapInstance.queryRenderedFeatures(event.point, { layers: layerIds })
+        .find(predicate) || null
+    }
+
+    const expandCluster = async (event) => {
+      const clusterFeature = findFeatureFromEvent(
+        event,
+        clusterLayerIds,
+        (feature) => feature?.properties?.cluster_id !== undefined && feature?.properties?.cluster_id !== null
+      )
+      const clusterId = clusterFeature?.properties?.cluster_id
       if (clusterId === undefined || clusterId === null) {
         return
       }
@@ -199,20 +243,61 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         return
       }
 
-      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-        if (error) {
-          return
-        }
-
-        const center = event?.features?.[0]?.geometry?.coordinates
+      try {
+        const expansionZoom = await source.getClusterExpansionZoom(clusterId)
+        const currentZoom = mapInstance.getZoom?.() ?? 0
+        const zoom = Math.max(expansionZoom, Math.floor(currentZoom) + 1)
+        const center = clusterFeature?.geometry?.coordinates
         if (Array.isArray(center)) {
           mapInstance.easeTo({ center, zoom, duration: 280 })
         }
-      })
+      } catch {
+        // Ignore stale cluster ids while source data is refreshing.
+      }
+    }
+
+    const isAlreadyHandled = (event, key) => {
+      const originalEvent = event?.originalEvent
+      if (!originalEvent) {
+        return false
+      }
+
+      if (originalEvent[key]) {
+        return true
+      }
+
+      originalEvent[key] = true
+      return false
+    }
+
+    const handleClusterClick = (event) => {
+      if (isAlreadyHandled(event, PHOTO_CLUSTER_EVENT_HANDLED_KEY)) {
+        return
+      }
+      expandCluster(event)
+    }
+
+    const handleClusterDoubleClick = (event) => {
+      event?.preventDefault?.()
+      event?.originalEvent?.preventDefault?.()
+      event?.originalEvent?.stopPropagation?.()
+      if (isAlreadyHandled(event, PHOTO_CLUSTER_DOUBLE_CLICK_EVENT_HANDLED_KEY)) {
+        return
+      }
+      expandCluster(event)
     }
 
     const handlePointClick = (event) => {
-      const featureId = event?.features?.[0]?.properties?.featureId
+      if (isAlreadyHandled(event, PHOTO_POINT_EVENT_HANDLED_KEY)) {
+        return
+      }
+
+      const pointFeature = findFeatureFromEvent(
+        event,
+        pointLayerIds,
+        (feature) => feature?.properties?.featureId
+      )
+      const featureId = pointFeature?.properties?.featureId
       const group = state.groupsByFeatureId.get(featureId)
       if (group) {
         emitGroupClick(group)
@@ -227,21 +312,31 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       mapInstance.getCanvas().style.cursor = ''
     }
 
-    mapInstance.on('click', state.clusterLayerId, handleClusterClick)
-    mapInstance.on('click', state.pointLayerId, handlePointClick)
-    mapInstance.on('mousemove', state.clusterLayerId, handleHover)
-    mapInstance.on('mousemove', state.pointLayerId, handleHover)
-    mapInstance.on('mouseleave', state.clusterLayerId, handleLeave)
-    mapInstance.on('mouseleave', state.pointLayerId, handleLeave)
+    state.listeners = []
 
-    state.listeners = [
-      { event: 'click', layerId: state.clusterLayerId, handler: handleClusterClick },
-      { event: 'click', layerId: state.pointLayerId, handler: handlePointClick },
-      { event: 'mousemove', layerId: state.clusterLayerId, handler: handleHover },
-      { event: 'mousemove', layerId: state.pointLayerId, handler: handleHover },
-      { event: 'mouseleave', layerId: state.clusterLayerId, handler: handleLeave },
-      { event: 'mouseleave', layerId: state.pointLayerId, handler: handleLeave }
-    ]
+    clusterLayerIds.forEach((layerId) => {
+      mapInstance.on('click', layerId, handleClusterClick)
+      mapInstance.on('dblclick', layerId, handleClusterDoubleClick)
+      mapInstance.on('mousemove', layerId, handleHover)
+      mapInstance.on('mouseleave', layerId, handleLeave)
+      state.listeners.push(
+        { event: 'click', layerId, handler: handleClusterClick },
+        { event: 'dblclick', layerId, handler: handleClusterDoubleClick },
+        { event: 'mousemove', layerId, handler: handleHover },
+        { event: 'mouseleave', layerId, handler: handleLeave }
+      )
+    })
+
+    pointLayerIds.forEach((layerId) => {
+      mapInstance.on('click', layerId, handlePointClick)
+      mapInstance.on('mousemove', layerId, handleHover)
+      mapInstance.on('mouseleave', layerId, handleLeave)
+      state.listeners.push(
+        { event: 'click', layerId, handler: handlePointClick },
+        { event: 'mousemove', layerId, handler: handleHover },
+        { event: 'mouseleave', layerId, handler: handleLeave }
+      )
+    })
   }
 
   const renderLayers = (mapInstance) => {
@@ -257,7 +352,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         photo_count: ['+', ['get', 'photoCount']]
       }
     })
-    ensureCameraImage(mapInstance)
+    const hasCameraImage = ensureCameraImage(mapInstance)
 
     ensureLayer(mapInstance, {
       id: state.clusterLayerId,
@@ -273,18 +368,20 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       }
     })
 
-    ensureLayer(mapInstance, {
-      id: state.clusterIconLayerId,
-      type: 'symbol',
-      source: state.sourceId,
-      filter: ['has', 'point_count'],
-      layout: {
-        'icon-image': state.cameraImageId,
-        'icon-size': 0.34,
-        'icon-offset': [0, -5],
-        'icon-allow-overlap': true
-      }
-    })
+    if (hasCameraImage) {
+      ensureLayer(mapInstance, {
+        id: state.clusterIconLayerId,
+        type: 'symbol',
+        source: state.sourceId,
+        filter: ['has', 'point_count'],
+        layout: {
+          'icon-image': state.cameraImageId,
+          'icon-size': PHOTO_CLUSTER_CAMERA_ICON_SIZE,
+          'icon-offset': [0, -8],
+          'icon-allow-overlap': true
+        }
+      })
+    }
 
     ensureLayer(mapInstance, {
       id: state.clusterCountLayerId,
@@ -322,17 +419,19 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       }
     })
 
-    ensureLayer(mapInstance, {
-      id: state.pointIconLayerId,
-      type: 'symbol',
-      source: state.sourceId,
-      filter: ['!', ['has', 'point_count']],
-      layout: {
-        'icon-image': state.cameraImageId,
-        'icon-size': 0.32,
-        'icon-allow-overlap': true
-      }
-    })
+    if (hasCameraImage) {
+      ensureLayer(mapInstance, {
+        id: state.pointIconLayerId,
+        type: 'symbol',
+        source: state.sourceId,
+        filter: ['!', ['has', 'point_count']],
+        layout: {
+          'icon-image': state.cameraImageId,
+          'icon-size': PHOTO_POINT_CAMERA_ICON_SIZE,
+          'icon-allow-overlap': true
+        }
+      })
+    }
 
     ensureLayer(mapInstance, {
       id: state.pointCountLayerId,
@@ -352,14 +451,18 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       }
     })
 
-    setLayerVisibility(mapInstance, [
+    const layerIds = [
       state.clusterLayerId,
-      state.clusterIconLayerId,
       state.clusterCountLayerId,
       state.pointLayerId,
-      state.pointIconLayerId,
       state.pointCountLayerId
-    ], state.visible)
+    ]
+
+    if (hasCameraImage) {
+      layerIds.push(state.clusterIconLayerId, state.pointIconLayerId)
+    }
+
+    setLayerVisibility(mapInstance, layerIds, state.visible)
 
     unregisterEvents()
     registerEvents(mapInstance)
