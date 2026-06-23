@@ -84,9 +84,6 @@ export default defineConfig({
     server: {
         host: true,
         port: 5555, // or any port you like
-        allowedHosts: [
-            'f72f-5-58-105-166.ngrok-free.app'
-        ],
         proxy: {
             '/osm/tiles': {
                 configure: (proxy, options) => {
