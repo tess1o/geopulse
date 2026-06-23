@@ -149,7 +149,7 @@ public class UpdateTimelinePreferencesRequest {
     private Double trainMinAvgSpeed;
 
     @DecimalMin(value = "80.0", message = "Train max avg speed must be at least 80.0 km/h")
-    @DecimalMax(value = "200.0", message = "Train max avg speed must be at most 200.0 km/h")
+    @DecimalMax(value = "400.0", message = "Train max avg speed must be at most 400.0 km/h")
     private Double trainMaxAvgSpeed;
 
     @DecimalMin(value = "60.0", message = "Train min max speed must be at least 60.0 km/h")
