@@ -59,7 +59,7 @@ public class GpsPointMapper {
         entity.setUser(userId);
         entity.setCoordinates(GeoUtils.createPoint(message.getGeometry().getCoordinates()[0], message.getGeometry().getCoordinates()[1]));
         entity.setTimestamp(message.getProperties().getTimestamp());
-        entity.setAccuracy(message.getProperties().getVerticalAccuracy());
+        entity.setAccuracy(message.getProperties().getHorizontalAccuracy());
         entity.setBattery(message.getProperties().getBatteryLevel() * 100);
         // Convert speed from m/s to km/h for consistent storage (Overland sends m/s)
         Double speedMs = message.getProperties().getSpeed();
@@ -77,7 +77,7 @@ public class GpsPointMapper {
         entity.setUser(userId);
         entity.setCoordinates(GeoUtils.createPoint(message.getGeometry().getLongitude(), message.getGeometry().getLatitude()));
         entity.setTimestamp(message.getProperties().getTimestamp());
-        entity.setAccuracy(message.getProperties().getVerticalAccuracy());
+        entity.setAccuracy(message.getProperties().getHorizontalAccuracy());
         // Convert speed from m/s to km/h for consistent storage (Dawarich sends m/s)
         Double speedMs = message.getProperties().getSpeed();
         entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
