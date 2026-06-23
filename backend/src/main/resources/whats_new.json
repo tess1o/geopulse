@@ -1,13 +1,15 @@
 [
   {
-    "version": "1.31.0",
-    "title": "GeoPulse 1.31.0",
+    "version": "1.32.0",
+    "title": "GeoPulse 1.32.0",
     "highlights": [
-      "Made Vector maps default for new users. Existing users can update it manually via Profile -> Display -> Map Render Mode",
-      "Added viewer current location to Shared links page",
-      "Added CLI tool to reset admin password",
-      "Small bug fixes"
+      "GeoPulse can now be installed as a Progressive Web App on supported desktop and mobile browsers",
+      "Added previous and next day navigation buttons to the Timeline page",
+      "Improved Timeline accuracy for period tag date ranges, last known position, and trip detection around stays",
+      "Improved the mobile layout on narrow phones",
+      "Imroved Immich photo groupping",
+      "Raised the train speed preference limit to 500 km/h for high-speed rail"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.31.0"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.0"
   }
 ]
