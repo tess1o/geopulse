@@ -232,7 +232,7 @@ const handleNavigate = (item) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .gp-navbar-start {
     gap: var(--gp-spacing-sm);
     flex-shrink: 0;
@@ -251,8 +251,8 @@ const handleNavigate = (item) => {
 
   .gp-navbar-datepicker {
     min-width: 0;
-    width: clamp(200px, 48vw, 240px);
-    flex: 0 1 clamp(200px, 48vw, 240px);
+    width: clamp(190px, 32vw, 240px);
+    flex: 0 1 clamp(190px, 32vw, 240px);
   }
 }
 
@@ -303,6 +303,8 @@ const handleNavigate = (item) => {
   border-bottom: 1px solid var(--gp-border-light) !important;
   border-radius: 0 !important;
   padding: 0 var(--gp-spacing-lg) !important;
+  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left)) !important;
+  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right)) !important;
   height: 60px !important;
   box-shadow: var(--gp-shadow-light) !important;
 }
@@ -352,6 +354,8 @@ const handleNavigate = (item) => {
 .gp-navbar--compact.gp-app-navbar-with-datepicker {
   height: 50px !important;
   padding: 0 var(--gp-spacing-md) !important;
+  padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
+  padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
 }
 
 /* Minimal variant */
@@ -450,20 +454,35 @@ const handleNavigate = (item) => {
 /* Date range highlighting is now handled in global styles with correct PrimeVue classes */
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .gp-app-navbar-with-datepicker {
     padding: 0 var(--gp-spacing-sm) !important;
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
   }
 
   .gp-app-navbar-with-datepicker .p-toolbar-group-start,
   .gp-app-navbar-with-datepicker .p-toolbar-group-end {
     min-width: 0;
   }
+
+  .gp-app-navbar-with-datepicker .p-toolbar-group-end {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  .gp-app-navbar-with-datepicker .gp-bell-trigger {
+    width: 2rem !important;
+    height: 2rem !important;
+    padding: 0 !important;
+  }
 }
 
 @media (max-width: 480px) {
   .gp-app-navbar-with-datepicker {
     padding: 0 var(--gp-spacing-sm) !important;
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
   }
 
   .gp-navbar-datepicker .gp-datepicker {

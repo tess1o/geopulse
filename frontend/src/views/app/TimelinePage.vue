@@ -288,9 +288,11 @@ const timelineSheetStyle = computed(() => (
     : {}
 ))
 
+const MOBILE_TIMELINE_MEDIA = '(max-width: 768px), (max-height: 520px) and (pointer: coarse)'
+
 const isMobileTimelineViewport = () => (
   typeof window !== 'undefined'
-  && window.matchMedia('(max-width: 768px)').matches
+  && window.matchMedia(MOBILE_TIMELINE_MEDIA).matches
 )
 
 const getTimelineSheetHeights = () => {
@@ -1220,7 +1222,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 /* Responsive design */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .timeline-main {
     position: relative;
     flex-direction: column;
@@ -1230,7 +1232,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
   .timeline-page {
     height: calc(100dvh - 112px); /* Mobile navbar + tab bar */
-    min-height: 480px;
+    min-height: 0;
   }
 
   .left-pane {
@@ -1246,12 +1248,12 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
   .right-pane {
     position: absolute;
-    left: 0;
-    right: 0;
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
     bottom: 0;
-    z-index: 20;
+    z-index: 1050;
     flex: none;
-    width: 100%;
+    width: auto;
     height: var(--timeline-sheet-height, 168px);
     max-height: calc(100% - 24px);
     min-height: 0;
@@ -1369,6 +1371,46 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
   .right-pane {
     flex: 1;
+  }
+}
+
+@media (max-height: 520px) and (pointer: coarse) {
+  .timeline-main {
+    position: relative;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+  }
+
+  .timeline-page {
+    height: calc(100dvh - 112px);
+    min-height: 0;
+  }
+
+  .left-pane {
+    position: absolute;
+    inset: 0;
+    flex: none;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+  }
+
+  .right-pane {
+    position: absolute;
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
+    bottom: 0;
+    z-index: 1050;
+    flex: none;
+    width: auto;
+    height: var(--timeline-sheet-height, 168px);
+    max-height: calc(100% - 24px);
+    min-height: 0;
+    margin: 0;
+    overflow: hidden !important;
   }
 }
 </style>

@@ -1746,15 +1746,15 @@ defineExpose({
 
 .map-controls {
   position: absolute;
-  top: var(--gp-spacing-lg, 1rem);
-  right: var(--gp-spacing-lg, 1rem);
+  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
+  right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
   z-index: 900;
 }
 
 .trip-replay-bar {
   position: absolute;
   left: 50%;
-  bottom: 0.75rem;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   width: min(900px, calc(100% - 1.25rem));
   z-index: 920;
@@ -1859,8 +1859,8 @@ defineExpose({
 
 .trip-replay-restore {
   position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
+  right: calc(0.75rem + env(safe-area-inset-right));
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
   z-index: 920;
 }
 
@@ -1935,10 +1935,10 @@ defineExpose({
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .map-controls {
-    top: var(--gp-spacing-md, 0.75rem);
-    right: var(--gp-spacing-md, 0.75rem);
+    top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
+    right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
   }
 
   .map-view-container {
@@ -1948,8 +1948,8 @@ defineExpose({
   }
 
   .trip-replay-bar {
-    bottom: 0.5rem;
-    width: calc(100% - 0.75rem);
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    width: calc(100% - 0.75rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     padding: 0.5rem 2.7rem 0.5rem 0.55rem;
     gap: 0.4rem;
   }
@@ -1998,8 +1998,8 @@ defineExpose({
   }
 
   .trip-replay-restore {
-    right: 0.55rem;
-    bottom: 0.55rem;
+    right: calc(0.55rem + env(safe-area-inset-right));
+    bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
   .trip-replay-restore-btn {

@@ -272,8 +272,8 @@ watch(dates, (newValue) => {
   }
 }
 
-/* Mobile - hide search bar completely */
-@media (max-width: 768px) {
+/* Mobile and phone landscape - keep the navbar to one row */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .navbar-search {
     display: none;
   }
@@ -288,9 +288,14 @@ watch(dates, (newValue) => {
     padding: 0;
     flex: 0 0 2rem;
   }
+
+  .timeline-reconstruct-btn,
+  .timeline-share-btn {
+    min-width: 2rem;
+  }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 380px), (max-height: 420px) and (pointer: coarse) {
   .timeline-share-btn {
     display: none;
   }

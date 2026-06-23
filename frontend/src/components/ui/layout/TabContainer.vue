@@ -147,7 +147,7 @@ const handleTabClick = (index) => {
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .gp-tab-content {
     padding: var(--gp-spacing-md) 0;
     border-radius: 0;
@@ -379,7 +379,7 @@ const handleTabClick = (index) => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 var(--gp-spacing-md);
     gap: 0.25rem;
@@ -397,6 +397,31 @@ const handleTabClick = (index) => {
 
   .gp-tab-menu .p-tabmenu-item-icon {
     font-size: 0.8rem;
+    margin-right: 0.25rem;
+  }
+}
+
+@media (max-height: 520px) and (pointer: coarse) {
+  .gp-tab-menu .p-tabmenu-tablist {
+    padding: 0 0.5rem;
+    gap: 0.25rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .gp-tab-menu .p-tabmenu-tablist::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
+    min-height: 36px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.76rem;
+  }
+
+  .gp-tab-menu .p-tabmenu-item-icon {
+    font-size: 0.76rem;
     margin-right: 0.25rem;
   }
 }

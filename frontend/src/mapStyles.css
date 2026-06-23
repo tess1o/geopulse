@@ -308,6 +308,37 @@
     backdrop-filter: blur(5px);
 }
 
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+    .timeline-page .maplibregl-control-container {
+        z-index: auto !important;
+    }
+
+    .timeline-page .leaflet-bottom,
+    .timeline-page .maplibregl-ctrl-bottom-left,
+    .timeline-page .maplibregl-ctrl-bottom-right {
+        bottom: calc(56px + env(safe-area-inset-bottom)) !important;
+        z-index: 1060 !important;
+        pointer-events: auto !important;
+    }
+
+    .timeline-page .leaflet-bottom.leaflet-left,
+    .timeline-page .maplibregl-ctrl-bottom-left {
+        left: calc(0.5rem + env(safe-area-inset-left)) !important;
+    }
+
+    .timeline-page .leaflet-bottom.leaflet-right,
+    .timeline-page .maplibregl-ctrl-bottom-right {
+        right: calc(0.5rem + env(safe-area-inset-right)) !important;
+    }
+
+    .timeline-page .leaflet-control-attribution,
+    .timeline-page .maplibregl-ctrl-attrib {
+        max-width: calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+        box-sizing: border-box;
+        pointer-events: auto !important;
+    }
+}
+
 /* ================================
    TOOLTIPS
    ================================ */
