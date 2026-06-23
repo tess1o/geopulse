@@ -272,6 +272,29 @@ watch(dates, (newValue) => {
   }
 }
 
+/* Tablet desktop - prevent navbar controls from wrapping into the tab row */
+@media (min-width: 769px) and (max-width: 971px) {
+  .navbar-search {
+    display: none;
+  }
+
+  .share-btn :deep(.p-button-label) {
+    display: none;
+  }
+
+  .share-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    flex: 0 0 2.25rem;
+  }
+
+  .timeline-reconstruct-btn,
+  .timeline-share-btn {
+    min-width: 2.25rem;
+  }
+}
+
 /* Mobile and phone landscape - keep the navbar to one row */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .navbar-search {

@@ -389,7 +389,11 @@ const handleTimelineSheetPointerDown = (event) => {
 }
 
 const handleTimelineViewportResize = () => {
+  const isMobileViewport = isMobileTimelineViewport()
   syncTimelineSheetHeight()
+  if (!isMobileViewport) {
+    triggerMapResize()
+  }
 }
 
 // Methods
@@ -1176,7 +1180,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 .left-pane {
-  flex: 5;
+  flex: 1 1 auto;
   display: flex;
   margin-top: 0.5rem;
   margin-left: 0.5rem;
@@ -1184,14 +1188,16 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   height: 100%;
   max-height: 70vh; /* Reduced map height to prevent page scrolling */
   min-height: 350px;
+  min-width: 0;
   flex-direction: column;
 }
 
 .right-pane {
-  flex: 1;
+  flex: 0 0 clamp(360px, 32vw, 520px);
   overflow-y: auto !important;
   height: 100%;
   min-height: 350px;
+  min-width: 320px;
   border-radius: var(--gp-radius-medium);
 }
 
@@ -1337,12 +1343,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   }
 
   .left-pane {
-    flex: 3;
     max-height: 65vh;
-  }
-
-  .right-pane {
-    flex: 2;
   }
 }
 
@@ -1354,23 +1355,13 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 @media (min-width: 1280px) and (max-width: 1599px) {
   .left-pane {
-    flex: 5;
     max-height: 70vh;
-  }
-
-  .right-pane {
-    flex: 2;
   }
 }
 
 @media (min-width: 1600px) {
   .left-pane {
-    flex: 4;
     max-height: 75vh;
-  }
-
-  .right-pane {
-    flex: 1;
   }
 }
 
