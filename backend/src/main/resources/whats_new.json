@@ -1,15 +1,13 @@
 [
   {
-    "version": "1.32.0",
-    "title": "GeoPulse 1.32.0",
+    "version": "1.32.1",
+    "title": "GeoPulse 1.32.1",
     "highlights": [
-      "GeoPulse can now be installed as a Progressive Web App on supported desktop and mobile browsers",
-      "Added previous and next day navigation buttons to the Timeline page",
-      "Improved Timeline accuracy for period tag date ranges, last known position, and trip detection around stays",
-      "Improved the mobile layout on narrow phones",
-      "Imroved Immich photo groupping",
-      "Raised the train speed preference limit to 500 km/h for high-speed rail"
+      "Fixed Immich photo markers on vector maps, including cluster expansion and click handling",
+      "Raised the train maximum average speed preference limit to 400 km/h",
+      "Timeline labels can now be hidden from DatePicker presets while remaining visible on timelines",
+      "Improved Timeline layout and PWA across mobile, tablet, and phone landscape viewports"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.0"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.1"
   }
 ]
