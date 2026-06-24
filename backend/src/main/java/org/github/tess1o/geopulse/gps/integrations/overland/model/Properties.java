@@ -22,9 +22,9 @@ public class Properties {
     @JsonProperty("speed_accuracy")
     private double speedAccuracy;
     @JsonProperty("horizontal_accuracy")
-    private double horizontalAccuracy;
+    private Double horizontalAccuracy;
     @JsonProperty("vertical_accuracy")
-    private double verticalAccuracy;
+    private Double verticalAccuracy;
     private String wifi;
     private int course;
     private int altitude;

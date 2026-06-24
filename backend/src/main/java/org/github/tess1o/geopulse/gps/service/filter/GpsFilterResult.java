@@ -26,6 +26,17 @@ public class GpsFilterResult {
     }
 
     /**
+     * Create a result indicating the GPS point was rejected because accuracy is absent
+     * and a maximum accuracy threshold is configured.
+     *
+     * @param threshold The maximum allowed accuracy in meters
+     */
+    public static GpsFilterResult rejectedByMissingAccuracy(int threshold) {
+        String reason = String.format("No accuracy value provided; threshold is %dm", threshold);
+        return new GpsFilterResult(false, reason);
+    }
+
+    /**
      * Create a result indicating the GPS point was rejected due to poor accuracy
      *
      * @param actual    The actual accuracy value in meters
