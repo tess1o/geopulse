@@ -1,4 +1,5 @@
 import { useTimezone } from '@/composables/useTimezone'
+import { formatDurationCompact } from '@/utils/calculationsHelpers'
 
 const timezone = useTimezone()
 const FALLBACK_TRIP_COLOR = '#0ea5e9'
@@ -31,6 +32,16 @@ const getTripRange = (trip) => {
   if (endMs === null) return null
 
   return { startMs, endMs }
+}
+
+const isLocalStartOfDay = (value) => {
+  const localValue = timezone.fromUtc(value)
+  return localValue.valueOf() === localValue.startOf('day').valueOf()
+}
+
+const isLocalEndOfDay = (value) => {
+  const localValue = timezone.fromUtc(value)
+  return localValue.valueOf() === localValue.endOf('day').valueOf()
 }
 
 const selectBestTrip = (trips = []) => {
@@ -106,6 +117,21 @@ export const normalizeTripColor = (color) => {
     return color
   }
   return `#${color}`
+}
+
+export const formatTripRangeDuration = (startTime, endTime) => {
+  if (!startTime || !endTime) return '—'
+
+  const start = timezone.fromUtc(startTime)
+  const end = timezone.fromUtc(endTime)
+  if (!end.isAfter(start)) return '—'
+
+  if (isLocalStartOfDay(startTime) && isLocalEndOfDay(endTime)) {
+    const days = end.startOf('day').diff(start.startOf('day'), 'day') + 1
+    return days === 1 ? '1 day' : `${days} days`
+  }
+
+  return formatDurationCompact(end.diff(start, 'second'))
 }
 
 export const findMatchingTripForInterval = (startTime, endTime, trips = []) => {

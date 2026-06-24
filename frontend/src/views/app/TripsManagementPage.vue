@@ -351,7 +351,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
 import { usePeriodTag } from '@/composables/usePeriodTag'
-import { formatDurationCompact } from '@/utils/calculationsHelpers'
+import { formatTripRangeDuration } from '@/utils/tripHelpers'
 import { useTripsStore } from '@/stores/trips'
 import { usePeriodTagsStore } from '@/stores/periodTags'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -526,11 +526,7 @@ const formatDateTime = (value) => {
 }
 
 const formatDurationLabel = (startTime, endTime) => {
-  if (!startTime || !endTime) return '—'
-  const start = timezone.fromUtc(startTime)
-  const end = timezone.fromUtc(endTime)
-  if (!end.isAfter(start)) return '—'
-  return formatDurationCompact(end.diff(start, 'second'))
+  return formatTripRangeDuration(startTime, endTime)
 }
 
 const refreshTrips = async () => {
