@@ -521,6 +521,8 @@ components:
         color:
           pattern: "^#[0-9A-Fa-f]{6}$"
           type: string
+        showAsPreset:
+          type: boolean
     CreateShareLinkRequest:
       required:
       - name
@@ -1707,6 +1709,8 @@ components:
         color:
           pattern: "^#[0-9A-Fa-f]{6}$"
           type: string
+        showAsPreset:
+          type: boolean
     UpdatePermissionRequest:
       type: object
       properties:
@@ -1977,7 +1981,7 @@ components:
           type: number
         trainMaxAvgSpeed:
           format: double
-          maximum: 200.0
+          maximum: 400.0
           minimum: 80.0
           type: number
         trainMinMaxSpeed:
@@ -9611,7 +9615,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.32.0
+  version: 1.32.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o

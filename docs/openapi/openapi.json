@@ -681,6 +681,9 @@
           "color" : {
             "pattern" : "^#[0-9A-Fa-f]{6}$",
             "type" : "string"
+          },
+          "showAsPreset" : {
+            "type" : "boolean"
           }
         }
       },
@@ -2234,6 +2237,9 @@
           "color" : {
             "pattern" : "^#[0-9A-Fa-f]{6}$",
             "type" : "string"
+          },
+          "showAsPreset" : {
+            "type" : "boolean"
           }
         }
       },
@@ -2590,7 +2596,7 @@
           },
           "trainMaxAvgSpeed" : {
             "format" : "double",
-            "maximum" : 200.0,
+            "maximum" : 400.0,
             "minimum" : 80.0,
             "type" : "number"
           },
@@ -13096,7 +13102,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.32.0",
+    "version" : "1.32.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
