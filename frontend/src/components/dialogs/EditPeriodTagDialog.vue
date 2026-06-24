@@ -75,6 +75,23 @@
           />
         </div>
       </div>
+
+      <div class="col-12">
+        <div class="preset-toggle">
+          <Checkbox
+            id="editShowAsPreset"
+            v-model="form.showAsPreset"
+            :binary="true"
+            :disabled="isActiveOwnTracksTag"
+          />
+          <label for="editShowAsPreset" class="gp-text-secondary">
+            Show as date preset
+          </label>
+        </div>
+        <small class="gp-text-secondary">
+          When enabled, this label appears in DatePicker preset dropdowns.
+        </small>
+      </div>
     </div>
 
     <template #footer>
@@ -106,6 +123,7 @@ import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import ColorPicker from 'primevue/colorpicker'
 import Message from 'primevue/message'
+import Checkbox from 'primevue/checkbox'
 
 const props = defineProps({
   visible: Boolean,
@@ -162,7 +180,8 @@ const loadForm = () => {
   // Load form data
   form.value = {
     tagName: props.periodTag.tagName,
-    color: props.periodTag.color || '#FF6B6B'
+    color: props.periodTag.color || '#FF6B6B',
+    showAsPreset: props.periodTag.showAsPreset !== false
   }
 
   // Set date range
@@ -201,7 +220,8 @@ const updatePeriodTag = async () => {
       tagName: form.value.tagName.trim(),
       startTime: normalizedRange.start,
       endTime: normalizedRange.end,
-      color: formatColorWithHash(form.value.color)
+      color: formatColorWithHash(form.value.color),
+      showAsPreset: form.value.showAsPreset !== false
     }
 
     await store.updatePeriodTag(props.periodTag.id, data)
@@ -236,4 +256,9 @@ watch(() => props.periodTag, (newVal) => {
 
 <style scoped>
 /* Dialog uses global styles */
+.preset-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
 </style>

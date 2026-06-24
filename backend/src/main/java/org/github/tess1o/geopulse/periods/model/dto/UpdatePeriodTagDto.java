@@ -27,4 +27,6 @@ public class UpdatePeriodTagDto {
 
     @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Color must be a valid hex color code (e.g., #FF6B6B)")
     private String color;
+
+    private Boolean showAsPreset;
 }

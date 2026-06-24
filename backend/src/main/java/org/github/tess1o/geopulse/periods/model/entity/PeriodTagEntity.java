@@ -43,6 +43,10 @@ public class PeriodTagEntity {
     @Column(name = "color", length = 7)
     private String color;
 
+    @Builder.Default
+    @Column(name = "show_as_preset", nullable = false)
+    private Boolean showAsPreset = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

@@ -298,6 +298,7 @@ public class TripService {
                 .source(TRIP_PERIOD_SOURCE)
                 .isActive(false)
                 .color(color)
+                .showAsPreset(true)
                 .build();
 
         periodTagRepository.persist(tag);

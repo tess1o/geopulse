@@ -76,6 +76,7 @@ import { normalizePeriodTagColor } from '@/utils/periodTagHelpers'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import DateRangePresetSelect from '@/components/ui/DateRangePresetSelect.vue'
+import { shouldShowPeriodTagAsPreset } from '@/utils/dateRangePresetOptions'
 
 const props = defineProps({
   variant: {
@@ -168,6 +169,7 @@ const periodPresets = computed(() => {
 
   const sorted = [...tags]
       .filter((tag) => tag && tag.startTime)
+      .filter(shouldShowPeriodTagAsPreset)
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
 
   return sorted.map((tag) => ({

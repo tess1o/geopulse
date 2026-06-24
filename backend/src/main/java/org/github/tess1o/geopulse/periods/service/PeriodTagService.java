@@ -86,6 +86,7 @@ public class PeriodTagService {
                 .source("manual")  // Manual tags created by user
                 .isActive(false)   // Manual tags are not active
                 .color(dto.getColor())
+                .showAsPreset(defaultShowAsPreset(dto.getShowAsPreset()))
                 .build();
 
         repository.persist(entity);
@@ -115,6 +116,9 @@ public class PeriodTagService {
         entity.setStartTime(dto.getStartTime());
         entity.setEndTime(dto.getEndTime());
         entity.setColor(dto.getColor());
+        if (dto.getShowAsPreset() != null) {
+            entity.setShowAsPreset(dto.getShowAsPreset());
+        }
 
         repository.persist(entity);
         syncLinkedTrip(userId, entity);
@@ -186,6 +190,10 @@ public class PeriodTagService {
             return TripStatus.COMPLETED;
         }
         return TripStatus.ACTIVE;
+    }
+
+    private boolean defaultShowAsPreset(Boolean showAsPreset) {
+        return showAsPreset == null || showAsPreset;
     }
 
     // Validation
@@ -267,6 +275,7 @@ public class PeriodTagService {
                 .source(entity.getSource())
                 .isActive(entity.getIsActive())
                 .color(entity.getColor())
+                .showAsPreset(entity.getShowAsPreset() == null || entity.getShowAsPreset())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

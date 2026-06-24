@@ -110,6 +110,7 @@ public class OwnTracksTagService {
                 .isActive(true)
                 .source("owntracks")
                 .color(null)     // OwnTracks tags don't use colors
+                .showAsPreset(true)
                 .build();
 
         periodTagRepository.persist(newTag);

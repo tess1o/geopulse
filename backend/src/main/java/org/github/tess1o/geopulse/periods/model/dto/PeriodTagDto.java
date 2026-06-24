@@ -21,6 +21,7 @@ public class PeriodTagDto {
     private String source;
     private Boolean isActive;
     private String color;
+    private Boolean showAsPreset;
     private Instant createdAt;
     private Instant updatedAt;
 }

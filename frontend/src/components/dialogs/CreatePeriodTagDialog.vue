@@ -64,6 +64,22 @@
         </div>
       </div>
 
+      <div class="col-12">
+        <div class="preset-toggle">
+          <Checkbox
+            id="showAsPreset"
+            v-model="form.showAsPreset"
+            :binary="true"
+          />
+          <label for="showAsPreset" class="gp-text-secondary">
+            Show as date preset
+          </label>
+        </div>
+        <small class="gp-text-secondary">
+          When enabled, this label appears in DatePicker preset dropdowns.
+        </small>
+      </div>
+
     </div>
 
     <template #footer>
@@ -94,6 +110,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import ColorPicker from 'primevue/colorpicker'
+import Checkbox from 'primevue/checkbox'
 
 const props = defineProps({
   visible: Boolean
@@ -123,7 +140,8 @@ const dialogVisible = computed({
 
 const form = ref({
   tagName: '',
-  color: getRandomColor()
+  color: getRandomColor(),
+  showAsPreset: true
 })
 
 const dateRange = ref(null)
@@ -206,7 +224,8 @@ const performCreate = async (normalizedRange) => {
       tagName: form.value.tagName.trim(),
       startTime: normalizedRange.start,
       endTime: normalizedRange.end,
-      color: formatColorWithHash(form.value.color)
+      color: formatColorWithHash(form.value.color),
+      showAsPreset: form.value.showAsPreset !== false
     }
 
     await store.createPeriodTag(payload)
@@ -235,7 +254,8 @@ const performCreate = async (normalizedRange) => {
 const resetForm = () => {
   form.value = {
     tagName: '',
-    color: getRandomColor()
+    color: getRandomColor(),
+    showAsPreset: true
   }
   dateRange.value = null
   errors.value = {}
@@ -245,4 +265,9 @@ const resetForm = () => {
 
 <style scoped>
 /* Dialog uses global styles from /frontend/src/style.css */
+.preset-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
 </style>

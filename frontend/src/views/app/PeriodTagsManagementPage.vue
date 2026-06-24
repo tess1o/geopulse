@@ -117,6 +117,15 @@
             </template>
           </Column>
 
+          <Column field="showAsPreset" header="Date Preset" sortable style="width: 10rem">
+            <template #body="{ data }">
+              <Tag
+                :severity="data.showAsPreset === false ? 'secondary' : 'success'"
+                :value="data.showAsPreset === false ? 'Hidden' : 'Preset'"
+              />
+            </template>
+          </Column>
+
           <Column field="startTime" header="Start Date" sortable>
             <template #body="{ data }">
               {{ formatDate(data.startTime) }}
@@ -264,6 +273,18 @@
                   <i class="pi pi-clock"></i>
                   <span class="info-label">Duration:</span>
                   <span class="info-value">{{ calculateDuration(tag.startTime, tag.endTime) }}</span>
+                </div>
+              </div>
+
+              <div class="card-info-row">
+                <div class="info-item">
+                  <i class="pi pi-filter"></i>
+                  <span class="info-label">Date Preset:</span>
+                  <Tag
+                    :severity="tag.showAsPreset === false ? 'secondary' : 'success'"
+                    :value="tag.showAsPreset === false ? 'Hidden' : 'Preset'"
+                    style="font-size: 0.65rem"
+                  />
                 </div>
               </div>
 
