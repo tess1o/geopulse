@@ -96,6 +96,18 @@ class GpsDataFilteringServiceTest {
         assertTrue(result.isAccepted());
     }
     @Test
+    void testAccuracyFilter_Overland_RejectsNullAccuracy() {
+        // Given: Filtering enabled with a threshold configured
+        config.setFilterInaccurateData(true);
+        config.setMaxAllowedAccuracy(100);
+        // When: Overland point with no accuracy value
+        GpsPointEntity entity = createGpsPoint(null, 50.0, GpsSourceType.OVERLAND);
+        GpsFilterResult result = filteringService.filter(entity, config);
+        // Then: Point is rejected, unlike other sources
+        assertTrue(result.isRejected());
+        assertTrue(result.getRejectionReason().toLowerCase(Locale.ROOT).contains("accuracy"));
+    }
+    @Test
     void testSpeedFilter_AcceptsPointUnderThreshold() {
         // Given: Filtering enabled with 250 km/h threshold
         config.setFilterInaccurateData(true);
@@ -257,9 +269,12 @@ class GpsDataFilteringServiceTest {
      * Helper method to create a GPS point entity for testing
      */
     private GpsPointEntity createGpsPoint(Double accuracy, Double speedKmh) {
+        return createGpsPoint(accuracy, speedKmh, GpsSourceType.OWNTRACKS);
+    }
+    private GpsPointEntity createGpsPoint(Double accuracy, Double speedKmh, GpsSourceType sourceType) {
         GpsPointEntity entity = new GpsPointEntity();
         entity.setUser(testUser);
-        entity.setSourceType(GpsSourceType.OWNTRACKS);
+        entity.setSourceType(sourceType);
         entity.setAccuracy(accuracy);
         entity.setVelocity(speedKmh); // Already in km/h
         entity.setTimestamp(Instant.now());

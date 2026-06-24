@@ -5,6 +5,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 /**
  * Service for filtering GPS data based on per-source configuration.
@@ -50,8 +51,13 @@ public class GpsDataFilteringService {
         Double speedKmh = entity.getVelocity(); // Already in km/h from mapper
 
         // Check accuracy threshold
-        if (config.getMaxAllowedAccuracy() != null && accuracy != null) {
-            if (accuracy > config.getMaxAllowedAccuracy()) {
+        if (config.getMaxAllowedAccuracy() != null) {
+            if (accuracy == null && entity.getSourceType() == GpsSourceType.OVERLAND) {
+                log.info("Rejected GPS point for user {} source {} - no accuracy value (maxAllowedAccuracy is {}m)",
+                        entity.getUser().getId(), entity.getSourceType(), config.getMaxAllowedAccuracy());
+                return GpsFilterResult.rejectedByMissingAccuracy(config.getMaxAllowedAccuracy());
+            }
+            if (accuracy != null && accuracy > config.getMaxAllowedAccuracy()) {
                 log.info("Rejected GPS point for user {} source {} - accuracy {}m exceeds limit {}m",
                         entity.getUser().getId(), entity.getSourceType(), accuracy, config.getMaxAllowedAccuracy());
                 return GpsFilterResult.rejectedByAccuracy(accuracy, config.getMaxAllowedAccuracy());
