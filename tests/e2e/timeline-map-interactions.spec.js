@@ -191,6 +191,70 @@ const setupTimelineWithMapMode = (
 };
 
 test.describe('Timeline Map Interactions', () => {
+  test.describe('Raster map loading', () => {
+    test.use({ mapMode: 'RASTER' });
+
+    test('should not request vector map assets when raster mode is selected on initial timeline load', async ({page, isolatedUsers, dbManager}) => {
+      const vectorRequests = [];
+      page.on('request', (request) => {
+        const url = request.url();
+        if (
+          url.includes('.pbf')
+          || url.includes('tiles.openfreemap.org')
+          || url.includes('maplibre')
+        ) {
+          vectorRequests.push(url);
+        }
+      });
+
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+
+      await setupTimelineWithMapMode(timelinePage, dbManager, TimelineTestData.insertRegularStaysTestData, createManagedUser(isolatedUsers), {
+        startDate: new Date('2025-09-21'),
+        endDate: new Date('2025-09-21')
+      }, 'RASTER');
+
+      await mapPage.waitForMapReady();
+
+      await expect(page.locator('.map-view-container [data-testid="map-host-raster"]')).toBeVisible();
+      await expect(page.locator('.map-view-container [data-testid="map-host-vector"]')).toHaveCount(0);
+      expect(vectorRequests).toEqual([]);
+    });
+
+    test('should keep raster mode from auth snapshot when display settings fail', async ({page, isolatedUsers, dbManager}) => {
+      const vectorRequests = [];
+      page.on('request', (request) => {
+        const url = request.url();
+        if (
+          url.includes('.pbf')
+          || url.includes('tiles.openfreemap.org')
+          || url.includes('maplibre')
+        ) {
+          vectorRequests.push(url);
+        }
+      });
+
+      await page.route('**/api/users/preferences/timeline/display', async (route) => {
+        await route.abort('failed');
+      });
+
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+
+      await setupTimelineWithMapMode(timelinePage, dbManager, TimelineTestData.insertRegularStaysTestData, createManagedUser(isolatedUsers), {
+        startDate: new Date('2025-09-21'),
+        endDate: new Date('2025-09-21')
+      }, 'RASTER');
+
+      await mapPage.waitForMapReady();
+
+      await expect(page.locator('.map-view-container [data-testid="map-host-raster"]')).toBeVisible();
+      await expect(page.locator('.map-view-container [data-testid="map-host-vector"]')).toHaveCount(0);
+      expect(vectorRequests).toEqual([]);
+    });
+  });
+
   test('should display timeline marker popup timestamps using user date format', async ({page, isolatedUsers, dbManager, mapMode}) => {
     const timelinePage = new TimelinePage(page);
     const mapPage = new TimelineMapPage(page);

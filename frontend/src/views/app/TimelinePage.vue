@@ -38,6 +38,7 @@
           <ProgressSpinner />
         </div>
         <TimelineMap
+            v-if="mapPreferencesLoaded"
             v-show="!mapNoData && !mapDataLoading"
             ref="mapViewRef"
             :pathData="pathData"
@@ -155,6 +156,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
+import { readUserSnapshot } from '@/utils/authSnapshotStorage'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
@@ -164,6 +166,7 @@ import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 
 const timezone = useTimezone()
+import { useAuthStore } from '@/stores/auth'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useGeocodingStore } from '@/stores/geocoding'
@@ -175,6 +178,7 @@ import { useTripsStore } from '@/stores/trips'
 const toast = useToast()
 const router = useRouter()
 
+const authStore = useAuthStore()
 const dateRangeStore = useDateRangeStore()
 const favoritesStore = useFavoritesStore()
 const geocodingStore = useGeocodingStore()
@@ -206,6 +210,36 @@ const { timelineData } = storeToRefs(timelineStore)
 // Template refs
 const mapViewRef = ref(null)
 
+const normalizeTimelineMapRenderMode = (mode) => (
+  mode === 'RASTER' ? 'RASTER' : 'VECTOR'
+)
+
+const hasOwnPreference = (source, key) => (
+  source && Object.prototype.hasOwnProperty.call(source, key)
+)
+
+const readTimelineDisplayFallback = () => {
+  const snapshot = readUserSnapshot()
+  const user = authStore.user || {}
+  const customMapTileUrlSource = hasOwnPreference(user, 'customMapTileUrl')
+    ? user.customMapTileUrl
+    : snapshot.customMapTileUrl
+  const customMapStyleUrlSource = hasOwnPreference(user, 'customMapStyleUrl')
+    ? user.customMapStyleUrl
+    : snapshot.customMapStyleUrl
+
+  return {
+    showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
+      ?? snapshot.showCurrentLocationTelemetry
+      ?? true,
+    customMapTileUrl: customMapTileUrlSource || null,
+    customMapStyleUrl: customMapStyleUrlSource || null,
+    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode)
+  }
+}
+
+const initialTimelineDisplaySettings = readTimelineDisplayFallback()
+
 // Reactive state
 const mapDataLoading = ref(false)
 const mapNoData = ref(false)
@@ -222,10 +256,11 @@ const timelineSheetDragStartHeight = ref(0)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 let currentLocationRequestToken = 0
-const showCurrentLocationTelemetry = ref(true)
-const customMapTileUrl = ref(null)
-const customMapStyleUrl = ref(null)
-const mapRenderMode = ref('VECTOR')
+const mapPreferencesLoaded = ref(false)
+const showCurrentLocationTelemetry = ref(initialTimelineDisplaySettings.showCurrentLocationTelemetry)
+const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
+const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
+const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -855,18 +890,26 @@ const handleReconstructionCommitted = async (result) => {
 }
 
 const loadTimelineDisplaySettings = async () => {
+  const fallback = readTimelineDisplayFallback()
+
   try {
     const response = await apiService.get('/users/preferences/timeline/display')
     const data = response?.data || response
-    showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? true
-    customMapTileUrl.value = data?.customMapTileUrl || null
-    customMapStyleUrl.value = data?.customMapStyleUrl || null
-    mapRenderMode.value = data?.mapRenderMode || 'VECTOR'
+    showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? fallback.showCurrentLocationTelemetry
+    customMapTileUrl.value = hasOwnPreference(data, 'customMapTileUrl')
+      ? data.customMapTileUrl || null
+      : fallback.customMapTileUrl
+    customMapStyleUrl.value = hasOwnPreference(data, 'customMapStyleUrl')
+      ? data.customMapStyleUrl || null
+      : fallback.customMapStyleUrl
+    mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
   } catch (error) {
-    showCurrentLocationTelemetry.value = true
-    customMapTileUrl.value = null
-    customMapStyleUrl.value = null
-    mapRenderMode.value = 'VECTOR'
+    showCurrentLocationTelemetry.value = fallback.showCurrentLocationTelemetry
+    customMapTileUrl.value = fallback.customMapTileUrl
+    customMapStyleUrl.value = fallback.customMapStyleUrl
+    mapRenderMode.value = fallback.mapRenderMode
+  } finally {
+    mapPreferencesLoaded.value = true
   }
 }
 
