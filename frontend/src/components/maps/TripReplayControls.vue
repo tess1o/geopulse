@@ -426,7 +426,7 @@ defineEmits([
 
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .trip-replay-bar {
-    --trip-replay-bottom-offset: calc(var(--timeline-mobile-sheet-height, 52px) + 2.25rem);
+    --trip-replay-bottom-offset: calc(var(--timeline-mobile-sheet-height, 44px) + 2.25rem);
     --trip-replay-width: calc(100% - 0.75rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     --trip-replay-padding: 0.5rem 2.7rem 0.5rem 0.55rem;
     --trip-replay-gap: 0.4rem;
@@ -470,7 +470,7 @@ defineEmits([
 
   .trip-replay-restore {
     --trip-replay-restore-right: 0.55rem;
-    --trip-replay-bottom-offset: calc(var(--timeline-mobile-sheet-height, 52px) + 2.25rem);
+    --trip-replay-bottom-offset: calc(var(--timeline-mobile-sheet-height, 44px) + 2.25rem);
   }
 
   .trip-replay-bar--compact {
