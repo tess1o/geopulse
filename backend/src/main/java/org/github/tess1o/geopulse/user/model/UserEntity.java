@@ -146,6 +146,10 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private Boolean timelineDisplayShowCurrentLocationTelemetry = true;
 
+    @Column(name = "timeline_display_auto_show_trip_replay_controls", nullable = false)
+    @Builder.Default
+    private Boolean timelineDisplayAutoShowTripReplayControls = true;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

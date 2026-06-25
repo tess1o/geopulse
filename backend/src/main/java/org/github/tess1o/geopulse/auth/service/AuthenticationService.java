@@ -168,6 +168,8 @@ public class AuthenticationService {
                 .dateFormat(user.getDateFormat())
                 .timeFormat(user.getTimeFormat())
                 .defaultDateRangePreset(user.getDefaultDateRangePreset())
+                .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
+                        ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
                 .build();
     }
 

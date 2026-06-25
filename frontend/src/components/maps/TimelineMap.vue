@@ -214,7 +214,10 @@
     <div
       v-if="showMobileTripSummary"
       class="mobile-trip-summary"
-      :class="{ 'mobile-trip-summary--above-replay': showTripReplayBar }"
+      :class="{
+        'mobile-trip-summary--above-replay': showTripReplayBar,
+        'mobile-trip-summary--above-restore': showTripReplayRestoreButton && !showTripReplayBar
+      }"
       @mousedown.stop
       @touchstart.stop
       @click.stop
@@ -243,7 +246,7 @@
 
     <TripReplayControls
       :show-bar="showTripReplayBar"
-      :show-restore-button="showTripReplayRestoreButton && !showMobileTripSummary"
+      :show-restore-button="showTripReplayRestoreButton"
       :is-playing="isReplayPlaying"
       :elapsed-label="replayElapsedLabel"
       :duration-label="replayDurationLabel"
@@ -401,6 +404,10 @@ const props = defineProps({
   enableTripReplay: {
     type: Boolean,
     default: false
+  },
+  autoShowTripReplayControls: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -674,7 +681,8 @@ const {
   enabled: computed(() => props.enableTripReplay),
   activeTrip: activeHighlightedTrip,
   showPath,
-  supports3d: isVectorMapMode
+  supports3d: isVectorMapMode,
+  autoShowControls: computed(() => props.autoShowTripReplayControls)
 })
 
 const hideTimelineMarkersForReplay = computed(() => showTripReplayBar.value && isReplayPlaying.value)
@@ -1509,6 +1517,10 @@ defineExpose({
 
 .mobile-trip-summary--above-replay {
   bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 9rem + env(safe-area-inset-bottom));
+}
+
+.mobile-trip-summary--above-restore {
+  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 5.75rem + env(safe-area-inset-bottom));
 }
 
 .mobile-trip-summary-icon {

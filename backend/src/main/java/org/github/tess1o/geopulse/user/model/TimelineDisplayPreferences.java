@@ -76,4 +76,10 @@ public class TimelineDisplayPreferences {
      * Default: true
      */
     private Boolean showCurrentLocationTelemetry;
+
+    /**
+     * Automatically show trip replay controls when a trip is selected.
+     * Default: true
+     */
+    private Boolean autoShowTripReplayControls;
 }

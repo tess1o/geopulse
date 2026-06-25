@@ -854,6 +854,9 @@ public class UserService {
         if (request.getShowCurrentLocationTelemetry() != null) {
             user.setTimelineDisplayShowCurrentLocationTelemetry(request.getShowCurrentLocationTelemetry());
         }
+        if (request.getAutoShowTripReplayControls() != null) {
+            user.setTimelineDisplayAutoShowTripReplayControls(request.getAutoShowTripReplayControls());
+        }
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
@@ -885,6 +888,8 @@ public class UserService {
                 .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .showCurrentLocationTelemetry(user.getTimelineDisplayShowCurrentLocationTelemetry() != null
                         ? user.getTimelineDisplayShowCurrentLocationTelemetry() : true)
+                .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
+                        ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
                 .build();
     }
 }

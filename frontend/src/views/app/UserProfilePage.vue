@@ -80,7 +80,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -112,7 +112,8 @@ const timelineDisplayPrefs = ref({
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   defaultDateRangePreset: defaultDateRangePreset.value || '',
-  showCurrentLocationTelemetry: true
+  showCurrentLocationTelemetry: true,
+  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true
 })
 
 // Tab configuration
@@ -445,7 +446,8 @@ const loadTimelineDisplayPreferences = async () => {
         pathMaxPoints: data.pathMaxPoints ?? 0,
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
         defaultDateRangePreset: data.defaultDateRangePreset || '',
-        showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true
+        showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
+        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true
       }
     }
   } catch (error) {

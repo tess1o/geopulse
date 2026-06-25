@@ -47,6 +47,7 @@ function normalizeUser(source) {
         dateFormat: raw.dateFormat || 'MDY',
         timeFormat: raw.timeFormat || '24h',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
+        autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
         role: raw.role || 'USER'
     }
 }
@@ -75,6 +76,7 @@ export const useAuthStore = defineStore('auth', {
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
         timeFormat: (state) => state.user?.timeFormat || '24h',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
+        autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
     },
@@ -221,6 +223,9 @@ export const useAuthStore = defineStore('auth', {
 
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultDateRangePreset')) {
                     userPatch.defaultDateRangePreset = updatedPreferences.defaultDateRangePreset || ''
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'autoShowTripReplayControls')) {
+                    userPatch.autoShowTripReplayControls = updatedPreferences.autoShowTripReplayControls ?? true
                 }
 
                 if (Object.keys(userPatch).length > 0) {

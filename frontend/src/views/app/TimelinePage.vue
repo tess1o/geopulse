@@ -50,6 +50,7 @@
             :custom-style-url="customMapStyleUrl"
             :map-render-mode="mapRenderMode"
             :enable-trip-replay="true"
+            :auto-show-trip-replay-controls="autoShowTripReplayControls"
             @timeline-marker-click="handleTimelineMarkerClick"
             @highlighted-path-click="handleHighlightedPathClick"
             @edit-favorite="handleEditFavorite"
@@ -234,7 +235,10 @@ const readTimelineDisplayFallback = () => {
       ?? true,
     customMapTileUrl: customMapTileUrlSource || null,
     customMapStyleUrl: customMapStyleUrlSource || null,
-    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode)
+    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode),
+    autoShowTripReplayControls: user.autoShowTripReplayControls
+      ?? snapshot.autoShowTripReplayControls
+      ?? true
   }
 }
 
@@ -261,6 +265,7 @@ const showCurrentLocationTelemetry = ref(initialTimelineDisplaySettings.showCurr
 const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
+const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -931,11 +936,13 @@ const loadTimelineDisplaySettings = async () => {
       ? data.customMapStyleUrl || null
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
+    autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
   } catch (error) {
     showCurrentLocationTelemetry.value = fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = fallback.customMapTileUrl
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
+    autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
   } finally {
     mapPreferencesLoaded.value = true
   }
