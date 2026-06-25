@@ -3,7 +3,7 @@ import { haversineDistanceMeters } from '@/utils/geoDistance'
 const DEFAULT_FALLBACK_DURATION_MS = 60_000
 const MIN_DURATION_MS = 1
 
-export const TRIP_REPLAY_SPEED_PRESETS = Object.freeze([2,4, 8, 16, 32])
+export const TRIP_REPLAY_SPEED_PRESETS = Object.freeze([2, 4, 8, 16, 32])
 export const DEFAULT_TRIP_REPLAY_SPEED = 4
 
 const toFiniteNumber = (value) => {
@@ -347,4 +347,3 @@ export const resolveTripReplayCursor = (timeline, elapsedMs) => {
     timeMs
   }
 }
-

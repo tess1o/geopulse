@@ -1,5 +1,5 @@
 <template>
-  <div ref="timelinePageRef" class="timeline-page">
+  <div ref="timelinePageRef" class="timeline-page" :style="timelinePageStyle">
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
@@ -323,6 +323,12 @@ const timelineSheetStyle = computed(() => (
     : {}
 ))
 
+const timelinePageStyle = computed(() => (
+  timelineSheetHeight.value
+    ? { '--timeline-mobile-sheet-height': `${timelineSheetHeight.value}px` }
+    : { '--timeline-mobile-sheet-height': '0px' }
+))
+
 const MOBILE_TIMELINE_MEDIA = '(max-width: 768px), (max-height: 520px) and (pointer: coarse)'
 
 const isMobileTimelineViewport = () => (
@@ -354,6 +360,15 @@ const syncTimelineSheetHeight = () => {
 const setTimelineSheetState = (state) => {
   timelineSheetState.value = state
   syncTimelineSheetHeight()
+}
+
+const revealMapForMobileTripSelection = () => {
+  if (!isMobileTimelineViewport() || timelineSheetState.value === 'collapsed') {
+    return
+  }
+
+  setTimelineSheetState('collapsed')
+  triggerMapResize()
 }
 
 const cycleTimelineSheetState = () => {
@@ -455,6 +470,10 @@ const handleTimelineItemClick = (item) => {
   if (highlightStore.isItemHighlighted(item)) {
     highlightStore.clearAllHighlights()
     return
+  }
+
+  if (item?.type === 'trip') {
+    revealMapForMobileTripSelection()
   }
 
   highlightStore.setHighlightedItem(item)
@@ -1229,7 +1248,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   margin-left: 0.5rem;
   margin-right: 1rem;
   height: 100%;
-  max-height: 70vh; /* Reduced map height to prevent page scrolling */
+  max-height: 82vh;
   min-height: 350px;
   min-width: 0;
   flex-direction: column;
@@ -1386,25 +1405,25 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   }
 
   .left-pane {
-    max-height: 65vh;
+    max-height: 76vh;
   }
 }
 
 @media (min-width: 1024px) and (max-width: 1280px) {
   .left-pane {
-    max-height: 68vh;
+    max-height: 80vh;
   }
 }
 
 @media (min-width: 1280px) and (max-width: 1599px) {
   .left-pane {
-    max-height: 70vh;
+    max-height: 82vh;
   }
 }
 
 @media (min-width: 1600px) {
   .left-pane {
-    max-height: 75vh;
+    max-height: 86vh;
   }
 }
 

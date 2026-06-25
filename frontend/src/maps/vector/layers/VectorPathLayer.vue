@@ -4,7 +4,6 @@
 import { onBeforeUnmount, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
-import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import '@/maps/shared/styles/mapPopupContent.css'
 import {
   ensureGeoJsonSource,
@@ -15,18 +14,25 @@ import {
   removeSources,
   setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
-import { buildTripPopupHtml } from '@/maps/shared/popupContentBuilders'
+import {
+  buildTripEndpointPopupHtml,
+  buildTripPopupHtml
+} from '@/maps/shared/popupContentBuilders'
 import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildHighlightedData,
   buildPathCollection,
-  getHighlightedTripKey,
   highlightedLineColorExpression,
-  normalizeReplayPathPoints,
   resolvePopupAnchorCoordinate
 } from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
+import {
+  HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+  HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
+  buildReplayEmission,
+  getHighlightedTripKey
+} from '@/maps/shared/highlightedTripData'
 
 const timezone = useTimezone()
 
@@ -59,6 +65,18 @@ const props = defineProps({
   replayState: {
     type: Object,
     default: null
+  },
+  focusHighlightedTrip: {
+    type: Boolean,
+    default: true
+  },
+  inspectionEnabled: {
+    type: Boolean,
+    default: true
+  },
+  allowPathDataTripFallback: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -76,6 +94,7 @@ const state = {
   lineLayerId: '',
   highlightedSourceId: '',
   highlightedLineLayerId: '',
+  highlightedHitLayerId: '',
   highlightedStartEndpointMarker: null,
   highlightedEndEndpointMarker: null,
   listeners: [],
@@ -85,13 +104,17 @@ const state = {
   highlightedTripPopupKey: '',
   highlightedTripPopupTimeoutId: null,
   highlightedTripPopupAutoHideTimeoutId: null,
-  lastReplayEmissionKey: ''
+  lastReplayEmissionKey: '',
+  highlightedTouchInspecting: false,
+  highlightedTouchMoveHandler: null,
+  highlightedTouchEndHandler: null
 }
 
 state.sourceId = `${state.token}-source`
 state.lineLayerId = `${state.token}-line`
 state.highlightedSourceId = `${state.token}-highlighted-source`
 state.highlightedLineLayerId = `${state.token}-highlighted-line`
+state.highlightedHitLayerId = `${state.token}-highlighted-hit`
 
 const formatDateTimeDisplay = (dateValue) => (
   `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
@@ -116,6 +139,10 @@ const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
 
 const isCarMovementType = (movementType) => String(movementType || '').trim().toUpperCase() === 'CAR'
 const isTripItem = (item) => item?.type === 'trip'
+const hasFocusedHighlightedTrip = () => (
+  props.focusHighlightedTrip
+  && isTripItem(props.highlightedTrip)
+)
 
 const resolveHighlightedTripPopupAutoHideMs = () => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -180,67 +207,9 @@ const removeHighlightedEndpointMarkers = () => {
   })
 }
 
-const buildTripEndpointPopupContent = (trip, markerType) => {
-  const parsedTripDurationSeconds = Number(trip?.tripDuration)
-  const tripDurationSeconds = (
-    Number.isFinite(parsedTripDurationSeconds) && parsedTripDurationSeconds > 0
-      ? parsedTripDurationSeconds
-      : 0
-  )
-  const startTime = timezone.fromUtc(trip?.timestamp)
-  const hasValidStartTime = Boolean(startTime?.isValid?.())
-  const endTime = hasValidStartTime ? startTime.add(tripDurationSeconds, 'second') : null
-  const hasValidEndTime = Boolean(endTime?.isValid?.())
-  const startTimeLabel = hasValidStartTime
-    ? formatDateTimeDisplay(startTime.toISOString())
-    : 'Unknown'
-  const endTimeLabel = hasValidEndTime
-    ? formatDateTimeDisplay(endTime.toISOString())
-    : 'Unknown'
-  const durationLabel = formatDuration(tripDurationSeconds)
-
-  if (markerType === 'start') {
-    return `
-      <div class="trip-popup">
-        <div class="trip-title trip-start">
-          🚀 Trip Start
-        </div>
-        <div class="trip-detail">
-          Start: ${startTimeLabel}
-        </div>
-        <div class="trip-detail">
-          Duration: ${durationLabel}
-        </div>
-        <div class="trip-detail">
-          Distance: ${formatDistance(trip.distanceMeters || 0)}
-        </div>
-        <div class="trip-detail">
-          Mode: ${trip.movementType || 'Unknown'}
-        </div>
-      </div>
-    `
-  }
-
-  return `
-    <div class="trip-popup">
-      <div class="trip-title trip-end">
-        🏁 Trip End
-      </div>
-      <div class="trip-detail">
-        End: ${endTimeLabel}
-      </div>
-      <div class="trip-detail">
-        Duration: ${durationLabel}
-      </div>
-      <div class="trip-detail">
-        Distance: ${formatDistance(trip.distanceMeters || 0)}
-      </div>
-      <div class="trip-detail">
-        Mode: ${trip.movementType || 'Unknown'}
-      </div>
-    </div>
-  `
-}
+const buildTripEndpointPopupContent = (trip, markerType) => (
+  buildTripEndpointPopupHtml(trip, markerType, { formatDateTimeDisplay })
+)
 
 const createHighlightedEndpointMarker = ({
   markerType,
@@ -418,34 +387,18 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
 }
 
 const emitReplayPathData = (highlightedData) => {
-  if (!props.highlightedTrip || props.highlightedTrip.type !== 'trip') {
-    if (state.lastReplayEmissionKey !== '') {
-      state.lastReplayEmissionKey = ''
-      emit('highlighted-trip-replay-data', { tripKey: '', points: [] })
-    }
-    return
-  }
-
-  const tripKey = getHighlightedTripKey(props.highlightedTrip)
-  const replayPathPoints = normalizeReplayPathPoints(highlightedData?.replayPathPoints)
-  const firstPoint = replayPathPoints[0]
-  const lastPoint = replayPathPoints[replayPathPoints.length - 1]
-  const emissionKey = [
-    tripKey,
-    replayPathPoints.length,
-    firstPoint?.timestamp || '',
-    lastPoint?.timestamp || ''
-  ].join('|')
-
-  if (state.lastReplayEmissionKey === emissionKey) {
-    return
-  }
-
-  state.lastReplayEmissionKey = emissionKey
-  emit('highlighted-trip-replay-data', {
-    tripKey,
-    points: replayPathPoints
+  const replayEmission = buildReplayEmission({
+    trip: props.highlightedTrip,
+    tripPathPoints: highlightedData?.replayPathPoints,
+    previousEmissionKey: state.lastReplayEmissionKey
   })
+
+  if (!replayEmission.changed) {
+    return
+  }
+
+  state.lastReplayEmissionKey = replayEmission.emissionKey
+  emit('highlighted-trip-replay-data', replayEmission.payload)
 }
 
 const syncReplayMarker = () => {
@@ -458,6 +411,24 @@ const syncReplayMarker = () => {
       hoverController.hideTripHoverTooltip()
     }
   })
+}
+
+const clearHighlightedTouchInspection = () => {
+  state.highlightedTouchInspecting = false
+
+  if (isMapLibreMap(props.map)) {
+    if (state.highlightedTouchMoveHandler) {
+      props.map.off('touchmove', state.highlightedTouchMoveHandler)
+    }
+    if (state.highlightedTouchEndHandler) {
+      props.map.off('touchend', state.highlightedTouchEndHandler)
+      props.map.off('touchcancel', state.highlightedTouchEndHandler)
+    }
+    props.map.dragPan?.enable?.()
+  }
+
+  state.highlightedTouchMoveHandler = null
+  state.highlightedTouchEndHandler = null
 }
 
 const registerEvents = () => {
@@ -509,6 +480,10 @@ const registerEvents = () => {
   }
 
   const handleHighlightedLineMouseMove = (event) => {
+    if (!props.inspectionEnabled) {
+      return
+    }
+
     props.map.getCanvas().style.cursor = 'pointer'
 
     hoverController.handleHighlightedLineMouseMove({
@@ -523,21 +498,74 @@ const registerEvents = () => {
     hoverController.hideTripHoverTooltip()
   }
 
-  props.map.on('click', state.lineLayerId, handlePathClick)
-  props.map.on('mousemove', state.lineLayerId, handlePathHover)
-  props.map.on('mouseleave', state.lineLayerId, handlePathLeave)
+  const handleHighlightedLineTouchStart = (event) => {
+    if (!props.inspectionEnabled || !isTripItem(props.highlightedTrip)) {
+      return
+    }
 
-  props.map.on('click', state.highlightedLineLayerId, handleHighlightedLineClick)
-  props.map.on('mousemove', state.highlightedLineLayerId, handleHighlightedLineMouseMove)
-  props.map.on('mouseleave', state.highlightedLineLayerId, handleHighlightedLineMouseLeave)
+    event?.preventDefault?.()
+    event?.originalEvent?.preventDefault?.()
+    event?.originalEvent?.stopPropagation?.()
+    state.highlightedTouchInspecting = true
+    props.map.dragPan?.disable?.()
+
+    hoverController.handleHighlightedLineMouseMove({
+      event,
+      trip: props.highlightedTrip,
+      onBeforeTooltipUpdate: closeHighlightedTripPopup
+    })
+
+    if (!state.highlightedTouchMoveHandler) {
+      state.highlightedTouchMoveHandler = (moveEvent) => {
+        if (!state.highlightedTouchInspecting) {
+          return
+        }
+
+        moveEvent?.preventDefault?.()
+        moveEvent?.originalEvent?.preventDefault?.()
+
+        hoverController.handleHighlightedLineMouseMove({
+          event: moveEvent,
+          trip: props.highlightedTrip,
+          onBeforeTooltipUpdate: closeHighlightedTripPopup
+        })
+      }
+      props.map.on('touchmove', state.highlightedTouchMoveHandler)
+    }
+
+    if (!state.highlightedTouchEndHandler) {
+      state.highlightedTouchEndHandler = () => {
+        clearHighlightedTouchInspection()
+        hoverController.hideTripHoverTooltip()
+      }
+      props.map.on('touchend', state.highlightedTouchEndHandler)
+      props.map.on('touchcancel', state.highlightedTouchEndHandler)
+    }
+  }
+
+  if (!hasFocusedHighlightedTrip()) {
+    props.map.on('click', state.lineLayerId, handlePathClick)
+    props.map.on('mousemove', state.lineLayerId, handlePathHover)
+    props.map.on('mouseleave', state.lineLayerId, handlePathLeave)
+  }
+
+  props.map.on('click', state.highlightedHitLayerId, handleHighlightedLineClick)
+  props.map.on('mousemove', state.highlightedHitLayerId, handleHighlightedLineMouseMove)
+  props.map.on('mouseleave', state.highlightedHitLayerId, handleHighlightedLineMouseLeave)
+  props.map.on('touchstart', state.highlightedHitLayerId, handleHighlightedLineTouchStart)
 
   state.listeners = [
-    { event: 'click', layerId: state.lineLayerId, handler: handlePathClick },
-    { event: 'mousemove', layerId: state.lineLayerId, handler: handlePathHover },
-    { event: 'mouseleave', layerId: state.lineLayerId, handler: handlePathLeave },
-    { event: 'click', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineClick },
-    { event: 'mousemove', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineMouseMove },
-    { event: 'mouseleave', layerId: state.highlightedLineLayerId, handler: handleHighlightedLineMouseLeave }
+    ...(!hasFocusedHighlightedTrip()
+      ? [
+          { event: 'click', layerId: state.lineLayerId, handler: handlePathClick },
+          { event: 'mousemove', layerId: state.lineLayerId, handler: handlePathHover },
+          { event: 'mouseleave', layerId: state.lineLayerId, handler: handlePathLeave }
+        ]
+      : []),
+    { event: 'click', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineClick },
+    { event: 'mousemove', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseMove },
+    { event: 'mouseleave', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseLeave },
+    { event: 'touchstart', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineTouchStart }
   ]
 }
 
@@ -548,10 +576,12 @@ const syncReplayFocusLayerVisibility = () => {
 
   const replayFocusMode = Boolean(props.replayState?.playing)
   setLayerVisibility(props.map, [state.lineLayerId], props.visible && !replayFocusMode)
-  setLayerVisibility(props.map, [state.highlightedLineLayerId], props.visible)
+  setLayerVisibility(props.map, [state.highlightedLineLayerId, state.highlightedHitLayerId], props.visible)
 }
 
 const unregisterEvents = () => {
+  clearHighlightedTouchInspection()
+
   if (!isMapLibreMap(props.map)) {
     state.listeners = []
     return
@@ -585,7 +615,8 @@ const renderLayer = () => {
   const pathCollection = buildPathCollection(props.pathData)
   const highlighted = buildHighlightedData({
     highlightedTrip,
-    pathData: props.pathData
+    pathData: props.pathData,
+    allowPathDataFallback: props.allowPathDataTripFallback
   })
   const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
 
@@ -599,7 +630,9 @@ const renderLayer = () => {
     paint: {
       'line-color': props.pathOptions.color || '#007bff',
       'line-width': props.pathOptions.weight || 4,
-      'line-opacity': props.pathOptions.opacity ?? 0.8
+      'line-opacity': hasFocusedHighlightedTrip()
+        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
+        : (props.pathOptions.opacity ?? 0.8)
     }
   })
 
@@ -619,6 +652,21 @@ const renderLayer = () => {
     }
   })
 
+  ensureLayer(props.map, {
+    id: state.highlightedHitLayerId,
+    type: 'line',
+    source: state.highlightedSourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round'
+    },
+    paint: {
+      'line-color': '#000000',
+      'line-width': HIGHLIGHTED_TRIP_VECTOR_HIT_WEIGHT,
+      'line-opacity': 0.01
+    }
+  })
+
   if (props.map.getLayer(state.highlightedLineLayerId)) {
     props.map.setPaintProperty(
       state.highlightedLineLayerId,
@@ -626,6 +674,16 @@ const renderLayer = () => {
       highlightedLineColor
     )
     props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
+  }
+
+  if (props.map.getLayer(state.lineLayerId)) {
+    props.map.setPaintProperty(
+      state.lineLayerId,
+      'line-opacity',
+      hasFocusedHighlightedTrip()
+        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
+        : (props.pathOptions.opacity ?? 0.8)
+    )
   }
 
   syncReplayFocusLayerVisibility()
@@ -663,7 +721,7 @@ const clearLayer = () => {
     return
   }
 
-  removeLayers(targetMap, [state.highlightedLineLayerId, state.lineLayerId])
+  removeLayers(targetMap, [state.highlightedHitLayerId, state.highlightedLineLayerId, state.lineLayerId])
   removeSources(targetMap, [state.highlightedSourceId, state.sourceId])
   state.boundMap = null
 }
@@ -674,7 +732,10 @@ watch(
     props.pathData,
     props.highlightedTrip,
     props.pathOptions,
-    props.visible
+    props.visible,
+    props.focusHighlightedTrip,
+    props.inspectionEnabled,
+    props.allowPathDataTripFallback
   ],
   () => {
     if (!isMapLibreMap(props.map)) {
@@ -735,40 +796,4 @@ onBeforeUnmount(() => {
   border-top-color: rgba(15, 23, 42, 0.95);
 }
 
-.gp-trip-replay-marker {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 450;
-}
-
-.gp-trip-replay-marker-inner {
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: #ffffff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35), 0 0 0 2px rgba(37, 99, 235, 0.3);
-  transform-origin: center center;
-  transition: transform 0.14s linear;
-}
-
-.gp-trip-replay-marker-inner i {
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.p-dark .gp-trip-replay-marker-inner {
-  border-color: rgba(241, 245, 249, 0.92);
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.58), 0 0 0 2px rgba(59, 130, 246, 0.35);
-}
 </style>
