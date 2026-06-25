@@ -77,6 +77,10 @@ const props = defineProps({
   allowPathDataTripFallback: {
     type: Boolean,
     default: false
+  },
+  showHighlightedTripPopup: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -331,7 +335,7 @@ const fitHighlightedTripBounds = (lineCoordinates) => {
 }
 
 const syncHighlightedTripPopup = (lineCoordinates) => {
-  if (props.replayState?.suppressTripPopup) {
+  if (!props.showHighlightedTripPopup || props.replayState?.suppressTripPopup) {
     closeHighlightedTripPopup()
     return
   }
@@ -735,7 +739,8 @@ watch(
     props.visible,
     props.focusHighlightedTrip,
     props.inspectionEnabled,
-    props.allowPathDataTripFallback
+    props.allowPathDataTripFallback,
+    props.showHighlightedTripPopup
   ],
   () => {
     if (!isMapLibreMap(props.map)) {

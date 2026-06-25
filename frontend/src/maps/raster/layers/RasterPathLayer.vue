@@ -97,6 +97,10 @@ const props = defineProps({
   allowPathDataTripFallback: {
     type: Boolean,
     default: false
+  },
+  showHighlightedTripPopup: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -614,7 +618,9 @@ const renderHighlightedTrip = (newTrip) => {
       }
     })
 
-    tripPathLayer.value.bindPopup(tripInfo)
+    if (props.showHighlightedTripPopup) {
+      tripPathLayer.value.bindPopup(tripInfo)
+    }
     tripStartMarker.value?.bindPopup(startInfo)
     tripEndMarker.value?.bindPopup(endInfo)
 
@@ -640,15 +646,19 @@ const renderHighlightedTrip = (newTrip) => {
         animate: false
       })
 
-      tripPopupTimeoutId = setTimeout(() => {
-        tripPopupTimeoutId = null
-        tripPathLayer.value?.openPopup?.()
+      if (props.showHighlightedTripPopup) {
+        tripPopupTimeoutId = setTimeout(() => {
+          tripPopupTimeoutId = null
+          tripPathLayer.value?.openPopup?.()
+          clearTripPopupAutoHideTimeout()
+          tripPopupAutoHideTimeoutId = setTimeout(() => {
+            tripPopupAutoHideTimeoutId = null
+            tripPathLayer.value?.closePopup?.()
+          }, resolveHighlightedTripPopupAutoHideMs())
+        }, 500)
+      } else {
         clearTripPopupAutoHideTimeout()
-        tripPopupAutoHideTimeoutId = setTimeout(() => {
-          tripPopupAutoHideTimeoutId = null
-          tripPathLayer.value?.closePopup?.()
-        }, resolveHighlightedTripPopupAutoHideMs())
-      }, 500)
+      }
     }
     return
   }
@@ -675,7 +685,8 @@ watch(
     props.highlightedTrip,
     props.pathOptions,
     props.focusHighlightedTrip,
-    props.allowPathDataTripFallback
+    props.allowPathDataTripFallback,
+    props.showHighlightedTripPopup
   ],
   renderAll,
   { deep: true }

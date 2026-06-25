@@ -87,6 +87,7 @@
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
           :replay-state="pathReplayState"
+          :show-highlighted-trip-popup="showHighlightedTripPopup"
           @path-click="handlePathClick"
           @trip-marker-click="handleTripMarkerClick"
           @highlighted-trip-click="handleHighlightedTripClick"
@@ -210,9 +211,39 @@
       </template>
     </MapContainer>
 
+    <div
+      v-if="showMobileTripSummary"
+      class="mobile-trip-summary"
+      :class="{ 'mobile-trip-summary--above-replay': showTripReplayBar }"
+      @mousedown.stop
+      @touchstart.stop
+      @click.stop
+    >
+      <div class="mobile-trip-summary-icon">
+        <i :class="mobileTripSummary.iconClass"></i>
+      </div>
+      <div class="mobile-trip-summary-content">
+        <div class="mobile-trip-summary-title">{{ mobileTripSummary.title }}</div>
+        <div class="mobile-trip-summary-meta">
+          <span>{{ mobileTripSummary.duration }}</span>
+          <span class="mobile-trip-summary-dot"></span>
+          <span>{{ mobileTripSummary.distance }}</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="mobile-trip-summary-close"
+        title="Clear trip selection"
+        aria-label="Clear trip selection"
+        @click="clearAllMapHighlights"
+      >
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+
     <TripReplayControls
       :show-bar="showTripReplayBar"
-      :show-restore-button="showTripReplayRestoreButton"
+      :show-restore-button="showTripReplayRestoreButton && !showMobileTripSummary"
       :is-playing="isReplayPlaying"
       :elapsed-label="replayElapsedLabel"
       :duration-label="replayDurationLabel"
@@ -246,6 +277,8 @@ import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRunt
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
+import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
+import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
@@ -389,6 +422,7 @@ const emit = defineEmits([
 
 // Router
 const router = useRouter()
+const MOBILE_TRIP_SELECTION_MEDIA = '(max-width: 768px), (pointer: coarse)'
 
 // Composables
 const {
@@ -452,6 +486,7 @@ const immichLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
 const plannedItemContextMenuRef = ref(null)
+const isMobileTripSelectionViewport = ref(false)
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -575,6 +610,7 @@ const heatmapGradient = {
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+const showHighlightedTripPopup = computed(() => !isMobileTripSelectionViewport.value)
 const activeHighlightedTrip = computed(() => {
   if (!activeTimelineHighlight.value || activeTimelineHighlight.value.type !== 'trip') {
     return null
@@ -582,6 +618,36 @@ const activeHighlightedTrip = computed(() => {
 
   return activeTimelineHighlight.value
 })
+
+const formatTripMovementTitle = (movementType) => {
+  const normalized = String(movementType || 'Movement')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .toLowerCase()
+
+  const label = normalized
+    ? normalized.replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : 'Movement'
+
+  return `${label} Trip`
+}
+
+const mobileTripSummary = computed(() => {
+  const trip = activeHighlightedTrip.value
+  if (!trip) return null
+
+  return {
+    iconClass: getTripMovementIconClass(trip.movementType),
+    title: formatTripMovementTitle(trip.movementType),
+    duration: formatDuration(Number(trip.tripDuration) || 0),
+    distance: formatDistance(Number(trip.distanceMeters) || 0)
+  }
+})
+
+const showMobileTripSummary = computed(() => (
+  isMobileTripSelectionViewport.value
+  && Boolean(mobileTripSummary.value)
+))
 const {
   showTripReplayBar,
   showTripReplayRestoreButton,
@@ -728,6 +794,15 @@ const handleMapReady = (mapInstance) => {
       }
     })
   }
+}
+
+const syncMobileTripSelectionViewport = () => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    isMobileTripSelectionViewport.value = false
+    return
+  }
+
+  isMobileTripSelectionViewport.value = window.matchMedia(MOBILE_TRIP_SELECTION_MEDIA).matches
 }
 
 const handleMapClick = (event) => {
@@ -1345,6 +1420,10 @@ watch(
 
 // Lifecycle
 onMounted(() => {
+  syncMobileTripSelectionViewport()
+  window.addEventListener('resize', syncMobileTripSelectionViewport)
+  window.visualViewport?.addEventListener?.('resize', syncMobileTripSelectionViewport)
+
   if (props.showFavoritesByDefault) {
     toggleFavorites(true)
   }
@@ -1354,6 +1433,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', syncMobileTripSelectionViewport)
+  window.visualViewport?.removeEventListener?.('resize', syncMobileTripSelectionViewport)
+
   if (mapContextMenuShowTimeoutId !== null) {
     clearTimeout(mapContextMenuShowTimeoutId)
     mapContextMenuShowTimeoutId = null
@@ -1405,6 +1487,121 @@ defineExpose({
   z-index: 900;
 }
 
+.mobile-trip-summary {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 940;
+  width: min(22rem, calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid rgba(148, 163, 184, 0.58);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.mobile-trip-summary--above-replay {
+  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 9rem + env(safe-area-inset-bottom));
+}
+
+.mobile-trip-summary-icon {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gp-primary, #1a56db);
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.mobile-trip-summary-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mobile-trip-summary-title {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-trip-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  overflow: hidden;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mobile-trip-summary-dot {
+  flex: 0 0 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.7);
+}
+
+.mobile-trip-summary-close {
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.98);
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.mobile-trip-summary-close:hover,
+.mobile-trip-summary-close:focus-visible {
+  border-color: var(--gp-primary-light, #60a5fa);
+  background: rgba(239, 246, 255, 0.98);
+  color: var(--gp-primary, #1a56db);
+}
+
+:global(.p-dark) .mobile-trip-summary {
+  border-color: rgba(100, 116, 139, 0.65);
+  background: rgba(15, 23, 42, 0.94);
+  color: rgba(248, 250, 252, 0.96);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.48);
+}
+
+:global(.p-dark) .mobile-trip-summary-title {
+  color: rgba(248, 250, 252, 0.96);
+}
+
+:global(.p-dark) .mobile-trip-summary-meta {
+  color: rgba(203, 213, 225, 0.88);
+}
+
+:global(.p-dark) .mobile-trip-summary-close {
+  border-color: rgba(100, 116, 139, 0.65);
+  background: rgba(30, 41, 59, 0.95);
+  color: rgba(203, 213, 225, 0.92);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .map-controls {
@@ -1416,6 +1613,11 @@ defineExpose({
     width: 100%;
     height: 100%;
     min-height: 300px;
+  }
+
+  .mobile-trip-summary {
+    width: calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+    max-width: 22rem;
   }
 }
 </style>
