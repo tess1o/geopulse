@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.32.2",
+    "title": "GeoPulse 1.32.2",
+    "highlights": [
+      "Added trip replay controls for raster maps and improved replay controls across Timeline and trip details",
+      "Improved the mobile Timeline with a compact collapsible sheet, clearer trip selection, and better trip popups",
+      "Added a Timeline display setting to keep trip replay controls collapsed until you open them",
+      "Improved trip duration labels and Overland GPS accuracy filtering"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.2"
+  },
+  {
     "version": "1.32.1",
     "title": "GeoPulse 1.32.1",
     "highlights": [
