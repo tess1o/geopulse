@@ -21,6 +21,11 @@ const DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE = {
   SIZE: 44
 }
 
+const TIMELINE_MARKER_DIMMED_STYLE = {
+  opacity: '0.28',
+  filter: 'grayscale(0.35) saturate(0.7)'
+}
+
 const toKebabCase = (value) => value.replace(/([A-Z])/g, '-$1').toLowerCase()
 
 const toStyleString = (styles) => Object.entries(styles)
@@ -120,31 +125,42 @@ const createCustomMarkerElement = ({
   }
 }
 
-export const createTimelineMarkerElement = ({ item, highlighted = false } = {}) => {
+export const createTimelineMarkerElement = ({ item, highlighted = false, dimmed = false } = {}) => {
   const markerVisual = resolveTimelineMarkerVisual(item)
   const markerSize = getResponsiveTimelineMarkerSize(highlighted)
+  const markerClassName = [
+    'custom-marker',
+    'timeline-marker',
+    highlighted ? 'highlighted' : '',
+    dimmed ? 'timeline-marker-dimmed' : ''
+  ].filter(Boolean).join(' ')
 
   return createCustomMarkerElement({
     color: markerVisual.color,
     icon: markerVisual.icon,
     size: markerSize,
-    className: highlighted
-      ? 'custom-marker timeline-marker highlighted'
-      : 'custom-marker timeline-marker',
+    className: markerClassName,
     customStyle: highlighted
       ? { boxShadow: `0 0 0 4px ${markerVisual.highlightRingColor}, 0 4px 10px rgba(15, 23, 42, 0.25)` }
-      : {},
+      : (dimmed ? TIMELINE_MARKER_DIMMED_STYLE : {}),
     shape: 'circle'
   })
 }
 
-export const createTimelineStackMarkerElement = ({ count, highlighted = false } = {}) => {
+export const createTimelineStackMarkerElement = ({ count, highlighted = false, dimmed = false } = {}) => {
   const root = document.createElement('div')
-  root.className = highlighted
-    ? 'timeline-stack-marker timeline-stack-marker-highlighted'
-    : 'timeline-stack-marker'
+  root.className = [
+    'timeline-stack-marker',
+    highlighted ? 'timeline-stack-marker-highlighted' : '',
+    dimmed ? 'timeline-stack-marker-dimmed' : ''
+  ].filter(Boolean).join(' ')
   root.style.transition = 'none'
   root.style.pointerEvents = 'auto'
+
+  if (dimmed) {
+    root.style.opacity = TIMELINE_MARKER_DIMMED_STYLE.opacity
+    root.style.filter = TIMELINE_MARKER_DIMMED_STYLE.filter
+  }
 
   const label = document.createElement('span')
   label.textContent = String(count)

@@ -362,6 +362,11 @@ const DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE = {
     ANCHOR: 22
 }
 
+const TIMELINE_MARKER_DIMMED_STYLE = {
+    opacity: '0.28',
+    filter: 'grayscale(0.35) saturate(0.7)'
+}
+
 /**
  * Create a custom div icon with icon and styling
  * @param {Object} config - Configuration object
@@ -683,7 +688,7 @@ export function createFavoriteLocationMarker(latitude, longitude) {
  * @param {Object|null} item - Timeline item (stay/trip/dataGap)
  * @returns {L.DivIcon} - Configured timeline icon
  */
-export function createTimelineIcon(item = null) {
+export function createTimelineIcon(item = null, { dimmed = false } = {}) {
     const markerVisual = resolveTimelineMarkerVisual(item)
 
     return createCustomDivIcon({
@@ -691,7 +696,8 @@ export function createTimelineIcon(item = null) {
         icon: markerVisual.icon,
         size: getResponsiveTimelineMarkerSize(false),
         className: 'custom-marker timeline-marker',
-        shape: 'circle'
+        shape: 'circle',
+        customStyle: dimmed ? TIMELINE_MARKER_DIMMED_STYLE : {}
     })
 }
 

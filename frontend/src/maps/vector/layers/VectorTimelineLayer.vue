@@ -350,6 +350,7 @@ const renderLayer = () => {
   }
 
   const groups = groupTimelineByCoordinate()
+  const hasActiveHighlight = Boolean(props.highlightedItem)
 
   groups.forEach((group) => {
     const primaryItem = group.items[0]
@@ -359,12 +360,13 @@ const renderLayer = () => {
       props.highlightedItem
       && group.items.some((item) => isSameTimelineItem(item, props.highlightedItem))
     )
+    const isDimmed = hasActiveHighlight && !isHighlighted
 
     const markerSpec = isStack
-      ? createTimelineStackMarkerElement({ count: group.items.length, highlighted: isHighlighted })
-      : createTimelineMarkerElement({ item: primaryItem, highlighted: isHighlighted })
+      ? createTimelineStackMarkerElement({ count: group.items.length, highlighted: isHighlighted, dimmed: isDimmed })
+      : createTimelineMarkerElement({ item: primaryItem, highlighted: isHighlighted, dimmed: isDimmed })
 
-    markerSpec.element.style.zIndex = isHighlighted ? '340' : '320'
+    markerSpec.element.style.zIndex = isHighlighted ? '340' : (isDimmed ? '300' : '320')
 
     const marker = new maplibregl.Marker({
       element: markerSpec.element,
@@ -560,6 +562,11 @@ onBeforeUnmount(() => {
   height: 34px;
   background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
   border-color: #9a3412;
+}
+
+.timeline-stack-marker-dimmed {
+  opacity: 0.28;
+  filter: grayscale(0.35) saturate(0.7);
 }
 
 .p-dark .timeline-stack-marker {

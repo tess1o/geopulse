@@ -81,10 +81,12 @@ const isSameTimelineItem = (left, right) => {
   )
 }
 
-const createStackTimelineIcon = (count, isHighlighted = false) => {
-  const markerClass = isHighlighted
-    ? 'timeline-stack-marker timeline-stack-marker-highlighted'
-    : 'timeline-stack-marker'
+const createStackTimelineIcon = (count, isHighlighted = false, isDimmed = false) => {
+  const markerClass = [
+    'timeline-stack-marker',
+    isHighlighted ? 'timeline-stack-marker-highlighted' : '',
+    isDimmed ? 'timeline-stack-marker-dimmed' : ''
+  ].filter(Boolean).join(' ')
 
   return L.divIcon({
     html: `<div class="${markerClass}"><span>${count}</span></div>`,
@@ -173,6 +175,44 @@ const groupTimelineItemsByCoordinates = () => {
   return Array.from(groupedItems.values())
 }
 
+const getClusterSizeClass = (count) => {
+  if (count > 100) return 'large'
+  if (count > 10) return 'medium'
+  return 'small'
+}
+
+const clusterContainsHighlightedItem = (cluster) => {
+  if (!props.highlightedItem || !cluster?.getAllChildMarkers) {
+    return false
+  }
+
+  return cluster.getAllChildMarkers().some((marker) => {
+    const timelineItems = Array.isArray(marker?.options?.timelineItems)
+      ? marker.options.timelineItems
+      : [marker?.options?.timelineItem].filter(Boolean)
+
+    return timelineItems.some((item) => isSameTimelineItem(props.highlightedItem, item))
+  })
+}
+
+const createClusterTimelineIcon = (cluster) => {
+  const count = cluster.getChildCount()
+  const sizeClass = getClusterSizeClass(count)
+  const containsHighlight = clusterContainsHighlightedItem(cluster)
+  const isDimmed = Boolean(props.highlightedItem) && !containsHighlight
+  const clusterClass = [
+    'cluster-marker',
+    `cluster-marker-${sizeClass}`,
+    isDimmed ? 'cluster-marker-dimmed' : ''
+  ].filter(Boolean).join(' ')
+
+  return L.divIcon({
+    html: `<div class="${clusterClass}"><span>${count}</span></div>`,
+    className: 'custom-cluster-icon',
+    iconSize: L.point(40, 40)
+  })
+}
+
 // Layer management
 const handleLayerReady = (layerGroup) => {
   // Only use clustering if we have many markers (50+)
@@ -194,18 +234,7 @@ const handleLayerReady = (layerGroup) => {
       animate: false, // Disable all cluster animations to prevent markers flying around
       animateAddingMarkers: false, // Disable animation when adding markers
       removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for better performance
-      iconCreateFunction: function(cluster) {
-        const count = cluster.getChildCount()
-        let sizeClass = 'small'
-        if (count > 100) sizeClass = 'large'
-        else if (count > 10) sizeClass = 'medium'
-
-        return L.divIcon({
-          html: `<div class="cluster-marker cluster-marker-${sizeClass}"><span>${count}</span></div>`,
-          className: 'custom-cluster-icon',
-          iconSize: L.point(40, 40)
-        })
-      }
+      iconCreateFunction: createClusterTimelineIcon
     })
 
     // Add cluster group to the map
@@ -233,15 +262,17 @@ const renderTimelineMarkers = () => {
   if (!hasTimelineData.value) return
 
   const groupedItems = groupTimelineItemsByCoordinates()
+  const hasActiveHighlight = Boolean(props.highlightedItem)
   groupedItems.forEach((markerItems) => {
     const [{ item: primaryItem, index: primaryIndex }] = markerItems
     const isStack = markerItems.length > 1
     const highlightedItem = markerItems.find(({ item }) => isSameTimelineItem(props.highlightedItem, item))
     const isHighlighted = Boolean(highlightedItem)
+    const isDimmed = hasActiveHighlight && !isHighlighted
 
     const icon = isStack
-      ? createStackTimelineIcon(markerItems.length, isHighlighted)
-      : (isHighlighted ? createHighlightedTimelineIcon(primaryItem) : createTimelineIcon(primaryItem))
+      ? createStackTimelineIcon(markerItems.length, isHighlighted, isDimmed)
+      : (isHighlighted ? createHighlightedTimelineIcon(primaryItem) : createTimelineIcon(primaryItem, { dimmed: isDimmed }))
 
     const marker = L.marker([primaryItem.latitude, primaryItem.longitude], {
       icon,
@@ -301,7 +332,8 @@ const renderTimelineMarkers = () => {
       items: markerItems.map(({ item }) => item),
       indexes: markerItems.map(({ index }) => index),
       isStack,
-      isHighlighted
+      isHighlighted,
+      isDimmed
     })
   })
 }
@@ -347,18 +379,7 @@ const reinitializeLayer = (shouldUseClustering) => {
       animate: false, // Disable all cluster animations to prevent markers flying around
       animateAddingMarkers: false, // Disable animation when adding markers
       removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for better performance
-      iconCreateFunction: function(cluster) {
-        const count = cluster.getChildCount()
-        let sizeClass = 'small'
-        if (count > 100) sizeClass = 'large'
-        else if (count > 10) sizeClass = 'medium'
-
-        return L.divIcon({
-          html: `<div class="cluster-marker cluster-marker-${sizeClass}"><span>${count}</span></div>`,
-          className: 'custom-cluster-icon',
-          iconSize: L.point(40, 40)
-        })
-      }
+      iconCreateFunction: createClusterTimelineIcon
     })
 
     if (props.map) {
@@ -375,17 +396,18 @@ const reinitializeLayer = (shouldUseClustering) => {
 }
 
 const updateHighlightedMarker = () => {
-  timelineMarkers.value.forEach(({ marker, items, isHighlighted, isStack }, index) => {
+  timelineMarkers.value.forEach(({ marker, items, isHighlighted, isDimmed, isStack }, index) => {
     const shouldBeHighlighted = Boolean(
       props.highlightedItem &&
       items.some((item) => isSameTimelineItem(props.highlightedItem, item))
     )
+    const shouldBeDimmed = Boolean(props.highlightedItem) && !shouldBeHighlighted
 
-    if (shouldBeHighlighted !== isHighlighted) {
+    if (shouldBeHighlighted !== isHighlighted || shouldBeDimmed !== isDimmed) {
       const focusedItem = items.find((item) => isSameTimelineItem(props.highlightedItem, item)) || items[0]
       const newIcon = isStack
-        ? createStackTimelineIcon(items.length, shouldBeHighlighted)
-        : (shouldBeHighlighted ? createHighlightedTimelineIcon(focusedItem) : createTimelineIcon(focusedItem))
+        ? createStackTimelineIcon(items.length, shouldBeHighlighted, shouldBeDimmed)
+        : (shouldBeHighlighted ? createHighlightedTimelineIcon(focusedItem) : createTimelineIcon(focusedItem, { dimmed: shouldBeDimmed }))
 
       marker.setIcon(newIcon)
 
@@ -420,9 +442,12 @@ const updateHighlightedMarker = () => {
       const markerData = timelineMarkers.value[index]
       if (markerData) {
         markerData.isHighlighted = shouldBeHighlighted
+        markerData.isDimmed = shouldBeDimmed
       }
     }
   })
+
+  markerClusterGroup.value?.refreshClusters?.()
 }
 
 const getMarkerByItem = (timelineItem) => {
@@ -533,6 +558,11 @@ defineExpose({
   border-color: #9a3412;
 }
 
+.timeline-stack-marker-dimmed {
+  opacity: 0.28;
+  filter: grayscale(0.35) saturate(0.7);
+}
+
 .p-dark .timeline-stack-marker {
   background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
   border-color: #134e4a;
@@ -571,6 +601,11 @@ defineExpose({
 
 .cluster-marker span {
   z-index: 1;
+}
+
+.cluster-marker-dimmed {
+  opacity: 0.28;
+  filter: grayscale(0.35) saturate(0.7);
 }
 
 /* Small clusters (2-10 items) */
