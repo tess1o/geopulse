@@ -8,14 +8,14 @@
 </template>
 
 <script setup>
-import {ref, watch, computed, readonly, onBeforeUnmount} from 'vue'
+import { ref, watch, computed, readonly, onBeforeUnmount } from 'vue'
 import L from 'leaflet'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
-import {createHighlightedPathStartMarker, createHighlightedPathEndMarker} from '@/utils/mapHelpers'
-import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
-import {useTimezone} from '@/composables/useTimezone'
+import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import {
+  buildTripEndpointPopupHtml,
   buildTripHoverTooltipHtml,
   buildTripPopupHtml
 } from '@/maps/shared/popupContentBuilders'
@@ -25,13 +25,15 @@ import {
   resolveTripHoverTiming as resolveSharedTripHoverTiming
 } from '@/maps/shared/tripHoverMath'
 import {
-  normalizePathPoints,
-  reconstructTripPathPoints,
-  areSameCoordinate
-} from '@/utils/tripPathReconstruction'
-import {
-  buildHighlightedTripSegments
-} from '@/maps/shared/highlightedTripSpeedBands'
+  HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+  HIGHLIGHTED_TRIP_LINE_WEIGHT,
+  HIGHLIGHTED_TRIP_RASTER_HIT_WEIGHT,
+  HIGHLIGHTED_TRIP_END_Z_INDEX,
+  HIGHLIGHTED_TRIP_START_Z_INDEX,
+  buildHighlightedTripData,
+  buildReplayEmission
+} from '@/maps/shared/highlightedTripData'
+import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
 
 const timezone = useTimezone()
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
@@ -83,10 +85,32 @@ const props = defineProps({
   replayState: {
     type: Object,
     default: null
+  },
+  focusHighlightedTrip: {
+    type: Boolean,
+    default: true
+  },
+  inspectionEnabled: {
+    type: Boolean,
+    default: true
+  },
+  allowPathDataTripFallback: {
+    type: Boolean,
+    default: false
+  },
+  showHighlightedTripPopup: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['path-click', 'path-hover', 'trip-marker-click', 'highlighted-trip-click'])
+const emit = defineEmits([
+  'path-click',
+  'path-hover',
+  'trip-marker-click',
+  'highlighted-trip-click',
+  'highlighted-trip-replay-data'
+])
 
 // State
 const baseLayerRef = ref(null)
@@ -94,12 +118,14 @@ const pathLayers = ref([])
 
 // Computed
 const hasPathData = computed(() => props.pathData && props.pathData.length > 0)
+const hasFocusedHighlightedTrip = computed(() => (
+  props.focusHighlightedTrip
+  && props.highlightedTrip?.type === 'trip'
+))
 
 // Layer management
 const handleLayerReady = () => {
-  if (hasPathData.value) {
-    renderPaths()
-  }
+  renderAll()
 }
 
 const renderPaths = () => {
@@ -113,35 +139,44 @@ const renderPaths = () => {
 
   props.pathData.forEach((pathGroup, groupIndex) => {
     const latlngs = pathGroup.map(point => [point.latitude, point.longitude])
+    const basePathOptions = hasFocusedHighlightedTrip.value
+      ? {
+          ...props.pathOptions,
+          opacity: HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
+          interactive: false
+        }
+      : props.pathOptions
 
     const polyline = L.polyline(latlngs, {
-      ...props.pathOptions,
+      ...basePathOptions,
       pathId: pathGroup.id || groupIndex
     })
 
-    polyline.on('click', (e) => {
-      emit('path-click', {
-        pathData: pathGroup,
-        pathIndex: groupIndex,
-        event: e
+    if (!hasFocusedHighlightedTrip.value) {
+      polyline.on('click', (e) => {
+        emit('path-click', {
+          pathData: pathGroup,
+          pathIndex: groupIndex,
+          event: e
+        })
       })
-    })
 
-    polyline.on('mouseover', (e) => {
-      polyline.setStyle({
-        weight: props.pathOptions.weight + 2,
-        opacity: 1
+      polyline.on('mouseover', (e) => {
+        polyline.setStyle({
+          weight: props.pathOptions.weight + 2,
+          opacity: 1
+        })
+        emit('path-hover', {
+          pathData: pathGroup,
+          pathIndex: groupIndex,
+          event: e
+        })
       })
-      emit('path-hover', {
-        pathData: pathGroup,
-        pathIndex: groupIndex,
-        event: e
-      })
-    })
 
-    polyline.on('mouseout', () => {
-      polyline.setStyle(props.pathOptions)
-    })
+      polyline.on('mouseout', () => {
+        polyline.setStyle(props.pathOptions)
+      })
+    }
 
     baseLayerRef.value.addToLayer(polyline)
     pathLayers.value.push(polyline)
@@ -256,12 +291,6 @@ const hideTripHoverTooltip = (tripLayer) => {
   tripLayer.closeTooltip()
 }
 
-watch(() => props.pathData, () => {
-  if (baseLayerRef.value?.isReady) {
-    renderPaths()
-  }
-}, {deep: true})
-
 // Trip-specific state
 const tripPathLayer = ref(null)
 const tripVisualPathLayers = ref([])
@@ -272,6 +301,20 @@ let refreshTripHoverContext = null
 let tripHoverContextMapHandler = null
 let tripPopupTimeoutId = null
 let tripPopupAutoHideTimeoutId = null
+let tripTouchInspecting = false
+let tripTouchMoveHandler = null
+let tripTouchEndHandler = null
+let lastReplayEmissionKey = ''
+const replayController = createRasterPathReplayController({
+  getMap: () => props.map,
+  getLayerHost: () => baseLayerRef.value,
+  getHighlightedTrip: () => props.highlightedTrip,
+  isVisible: () => props.visible,
+  onReplayPlaying: () => {
+    props.map?.closePopup?.()
+    hideTripHoverTooltip(tripPathLayer.value)
+  }
+})
 
 const clearTripPopupTimeout = () => {
   if (tripPopupTimeoutId) {
@@ -302,10 +345,26 @@ const clearTripHoverState = () => {
   tripHoverContextMapHandler = null
 }
 
+const clearTripTouchInspection = () => {
+  tripTouchInspecting = false
+  if (tripTouchMoveHandler && props.map) {
+    props.map.off('touchmove', tripTouchMoveHandler)
+  }
+  if (tripTouchEndHandler && props.map) {
+    props.map.off('touchend', tripTouchEndHandler)
+    props.map.off('touchcancel', tripTouchEndHandler)
+  }
+  tripTouchMoveHandler = null
+  tripTouchEndHandler = null
+  props.map?.dragging?.enable?.()
+}
+
 const clearHighlightedTripLayers = () => {
   clearTripPopupTimeout()
   clearTripPopupAutoHideTimeout()
   clearTripHoverState()
+  clearTripTouchInspection()
+  clearReplayMarker()
 
   // Stop in-progress zoom/pan animations before removing layers.
   // Leaflet can otherwise dispatch zoom animation callbacks to markers
@@ -340,28 +399,84 @@ const clearHighlightedTripLayers = () => {
   }
 }
 
-watch(() => props.highlightedTrip, (newTrip) => {
+const emitReplayPathData = (tripPath) => {
+  const replayEmission = buildReplayEmission({
+    trip: props.highlightedTrip,
+    tripPathPoints: tripPath,
+    previousEmissionKey: lastReplayEmissionKey
+  })
+
+  if (!replayEmission.changed) {
+    return
+  }
+
+  lastReplayEmissionKey = replayEmission.emissionKey
+  emit('highlighted-trip-replay-data', replayEmission.payload)
+}
+
+const clearReplayMarker = () => replayController.clearReplayMarker()
+
+const syncReplayMarker = () => {
+  replayController.syncReplayMarker({
+    replayState: props.replayState
+  })
+}
+
+const showInspectionTooltipAtLatLng = (latlng, trip) => {
+  if (!props.inspectionEnabled || !tripPathLayer.value) {
+    return
+  }
+
+  clearTripPopupTimeout()
+  clearTripPopupAutoHideTimeout()
+  tripPathLayer.value?.closePopup?.()
+
+  const hoverTiming = resolveTripHoverTiming(tripHoverContext, latlng, props.map)
+  if (!hoverTiming) {
+    hideTripHoverTooltip(tripPathLayer.value)
+    return
+  }
+
+  showTripHoverTooltip(tripPathLayer.value, props.map, trip, hoverTiming)
+}
+
+const resolveTouchLatLng = (event) => {
+  const originalEvent = event?.originalEvent
+  const touch = originalEvent?.touches?.[0] || originalEvent?.changedTouches?.[0]
+  if (!touch || !props.map?.mouseEventToLatLng) {
+    return event?.latlng || null
+  }
+  return props.map.mouseEventToLatLng(touch)
+}
+
+const renderHighlightedTrip = (newTrip) => {
   clearHighlightedTripLayers()
 
+  if (!baseLayerRef.value?.isReady) {
+    return
+  }
+
   if (newTrip && newTrip.type === 'trip') {
-    const tripPath = reconstructTripPath(newTrip)
+    const highlightedData = buildHighlightedTripData({
+      highlightedTrip: newTrip,
+      pathData: props.pathData,
+      allowPathDataFallback: props.allowPathDataTripFallback
+    })
+    const tripPath = highlightedData.renderedTripPoints
     if (!tripPath || tripPath.length < 2) {
       console.warn('Could not reconstruct trip path - insufficient GPS points')
+      emitReplayPathData([])
       return
     }
 
-    const tripStartPathPoint = tripPath[0]
-    const tripEndPathPoint = tripPath[tripPath.length - 1]
-    const startPoint = tripStartPathPoint
-    const endPoint = tripEndPathPoint
-    const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
+    const startEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'start')
+    const endEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'end')
 
     if (isCarMovementType(newTrip.movementType)) {
-      const highlightedSegments = buildHighlightedTripSegments(tripPath)
-      tripVisualPathLayers.value = highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
+      tripVisualPathLayers.value = highlightedData.highlightedSegments.segments.map((segment) => L.polyline(segment.latLngs, {
         color: segment.color,
-        weight: 6,
+        weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
         opacity: 1,
         lineCap: 'round',
         lineJoin: 'round',
@@ -371,7 +486,7 @@ watch(() => props.highlightedTrip, (newTrip) => {
       tripVisualPathLayers.value = [L.polyline(tripCoords, {
         color: HIGHLIGHTED_TRIP_NON_CAR_COLOR,
         dashArray: HIGHLIGHTED_TRIP_NON_CAR_DASH,
-        weight: 6,
+        weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
         opacity: 1,
         lineCap: 'round',
         lineJoin: 'round',
@@ -381,81 +496,39 @@ watch(() => props.highlightedTrip, (newTrip) => {
 
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#000000',
-      weight: 16,
+      weight: HIGHLIGHTED_TRIP_RASTER_HIT_WEIGHT,
       opacity: 0,
       lineCap: 'round',
       lineJoin: 'round'
     })
 
-    tripStartMarker.value = createHighlightedPathStartMarker(
-      startPoint.latitude,
-      startPoint.longitude,
-      true,
-      sameEndpoint ? { transform: 'translateX(-14px)' } : {}
-    )
-
-    tripEndMarker.value = createHighlightedPathEndMarker(
-      endPoint.latitude,
-      endPoint.longitude,
-      true,
-      sameEndpoint ? { transform: 'translateX(14px)' } : {}
-    )
-
-    // Keep start/end trip markers above timeline/cluster markers.
-    tripStartMarker.value.setZIndexOffset(4200)
-    tripEndMarker.value.setZIndexOffset(4100)
-
-    if (sameEndpoint) {
-      tripStartMarker.value.setZIndexOffset(4210)
-      tripEndMarker.value.setZIndexOffset(4200)
+    if (startEndpoint) {
+      tripStartMarker.value = createHighlightedPathStartMarker(
+        startEndpoint.latitude,
+        startEndpoint.longitude,
+        true,
+        startEndpoint.styleOverrides || {}
+      )
     }
 
+    if (endEndpoint) {
+      tripEndMarker.value = createHighlightedPathEndMarker(
+        endEndpoint.latitude,
+        endEndpoint.longitude,
+        true,
+        endEndpoint.styleOverrides || {}
+      )
+    }
+
+    // Keep start/end trip markers above timeline/cluster markers.
+    tripStartMarker.value?.setZIndexOffset((startEndpoint?.zIndex || HIGHLIGHTED_TRIP_START_Z_INDEX) * 10)
+    tripEndMarker.value?.setZIndexOffset((endEndpoint?.zIndex || HIGHLIGHTED_TRIP_END_Z_INDEX) * 10)
+
     const tripInfo = buildTripPopupContent(newTrip)
+    const startInfo = buildTripEndpointPopupHtml(newTrip, 'start', { formatDateTimeDisplay })
+    const endInfo = buildTripEndpointPopupHtml(newTrip, 'end', { formatDateTimeDisplay })
 
-    const startTime = timezone.fromUtc(newTrip.timestamp)
-    const endTime = startTime.add(newTrip.tripDuration, 'second')
-
-    const startInfo = `
-      <div class="trip-popup">
-        <div class="trip-title trip-start">
-          🚀 Trip Start
-        </div>
-        <div class="trip-detail">
-          Start: ${formatDateTimeDisplay(startTime.toISOString())}
-        </div>
-        <div class="trip-detail">
-          Duration: ${formatDuration(newTrip.tripDuration)}
-        </div>
-        <div class="trip-detail">
-          Distance: ${formatDistance(newTrip.distanceMeters || 0)}
-        </div>
-        <div class="trip-detail">
-          Mode: ${newTrip.movementType || 'Unknown'}
-        </div>
-      </div>
-    `
-
-    const endInfo = `
-      <div class="trip-popup">
-        <div class="trip-title trip-end">
-          🏁 Trip End
-        </div>
-        <div class="trip-detail">
-          End: ${formatDateTimeDisplay(endTime.toISOString())}
-        </div>
-        <div class="trip-detail">
-          Duration: ${formatDuration(newTrip.tripDuration)}
-        </div>
-        <div class="trip-detail">
-          Distance: ${formatDistance(newTrip.distanceMeters || 0)}
-        </div>
-        <div class="trip-detail">
-          Mode: ${newTrip.movementType || 'Unknown'}
-        </div>
-      </div>
-    `
-
-    tripStartMarker.value.on('click', (e) => {
+    tripStartMarker.value?.on('click', (e) => {
       emit('trip-marker-click', {
         tripData: newTrip,
         markerType: 'start',
@@ -463,14 +536,14 @@ watch(() => props.highlightedTrip, (newTrip) => {
       })
     })
 
-    tripStartMarker.value.on('mouseover', function () {
+    tripStartMarker.value?.on('mouseover', function () {
       this.openPopup()
     })
-    tripStartMarker.value.on('mouseout', function () {
+    tripStartMarker.value?.on('mouseout', function () {
       this.closePopup()
     })
 
-    tripEndMarker.value.on('click', (e) => {
+    tripEndMarker.value?.on('click', (e) => {
       emit('trip-marker-click', {
         tripData: newTrip,
         markerType: 'end',
@@ -478,10 +551,10 @@ watch(() => props.highlightedTrip, (newTrip) => {
       })
     })
 
-    tripEndMarker.value.on('mouseover', function () {
+    tripEndMarker.value?.on('mouseover', function () {
       this.openPopup()
     })
-    tripEndMarker.value.on('mouseout', function () {
+    tripEndMarker.value?.on('mouseout', function () {
       this.closePopup()
     })
 
@@ -492,6 +565,7 @@ watch(() => props.highlightedTrip, (newTrip) => {
       }
     }
     refreshTripHoverContext()
+    emitReplayPathData(tripPath)
 
     tripHoverContextMapHandler = () => {
       refreshTripHoverContext?.()
@@ -501,17 +575,7 @@ watch(() => props.highlightedTrip, (newTrip) => {
 
     tripPathLayer.value.on('mousemove', (e) => {
       // While inspecting hover timing, hide the static highlighted-trip popup.
-      clearTripPopupTimeout()
-      clearTripPopupAutoHideTimeout()
-      tripPathLayer.value?.closePopup?.()
-
-      const hoverTiming = resolveTripHoverTiming(tripHoverContext, e.latlng, props.map)
-      if (!hoverTiming) {
-        hideTripHoverTooltip(tripPathLayer.value)
-        return
-      }
-
-      showTripHoverTooltip(tripPathLayer.value, props.map, newTrip, hoverTiming)
+      showInspectionTooltipAtLatLng(e.latlng, newTrip)
     })
 
     tripPathLayer.value.on('mouseout', () => {
@@ -528,16 +592,49 @@ watch(() => props.highlightedTrip, (newTrip) => {
       })
     })
 
-    tripPathLayer.value.bindPopup(tripInfo)
-    tripStartMarker.value.bindPopup(startInfo)
-    tripEndMarker.value.bindPopup(endInfo)
+    tripPathLayer.value.on('touchstart', (e) => {
+      if (!props.inspectionEnabled) return
+      e?.originalEvent?.preventDefault?.()
+      e?.originalEvent?.stopPropagation?.()
+      tripTouchInspecting = true
+      props.map?.dragging?.disable?.()
+      showInspectionTooltipAtLatLng(resolveTouchLatLng(e), newTrip)
+
+      if (!tripTouchMoveHandler) {
+        tripTouchMoveHandler = (moveEvent) => {
+          if (!tripTouchInspecting) return
+          moveEvent?.originalEvent?.preventDefault?.()
+          showInspectionTooltipAtLatLng(resolveTouchLatLng(moveEvent), newTrip)
+        }
+        props.map?.on?.('touchmove', tripTouchMoveHandler)
+      }
+
+      if (!tripTouchEndHandler) {
+        tripTouchEndHandler = () => {
+          clearTripTouchInspection()
+        }
+        props.map?.on?.('touchend', tripTouchEndHandler)
+        props.map?.on?.('touchcancel', tripTouchEndHandler)
+      }
+    })
+
+    if (props.showHighlightedTripPopup) {
+      tripPathLayer.value.bindPopup(tripInfo)
+    }
+    tripStartMarker.value?.bindPopup(startInfo)
+    tripEndMarker.value?.bindPopup(endInfo)
 
     tripVisualPathLayers.value.forEach((visualLayer) => {
       baseLayerRef.value?.addToLayer(visualLayer)
     })
     baseLayerRef.value?.addToLayer(tripPathLayer.value)
-    baseLayerRef.value?.addToLayer(tripStartMarker.value)
-    baseLayerRef.value?.addToLayer(tripEndMarker.value)
+    if (tripStartMarker.value) {
+      baseLayerRef.value?.addToLayer(tripStartMarker.value)
+    }
+    if (tripEndMarker.value) {
+      baseLayerRef.value?.addToLayer(tripEndMarker.value)
+    }
+    syncReplayMarker()
 
     if (props.map) {
       const bounds = L.latLngBounds(tripCoords)
@@ -549,37 +646,57 @@ watch(() => props.highlightedTrip, (newTrip) => {
         animate: false
       })
 
-      tripPopupTimeoutId = setTimeout(() => {
-        tripPopupTimeoutId = null
-        tripPathLayer.value?.openPopup?.()
+      if (props.showHighlightedTripPopup) {
+        tripPopupTimeoutId = setTimeout(() => {
+          tripPopupTimeoutId = null
+          tripPathLayer.value?.openPopup?.()
+          clearTripPopupAutoHideTimeout()
+          tripPopupAutoHideTimeoutId = setTimeout(() => {
+            tripPopupAutoHideTimeoutId = null
+            tripPathLayer.value?.closePopup?.()
+          }, resolveHighlightedTripPopupAutoHideMs())
+        }, 500)
+      } else {
         clearTripPopupAutoHideTimeout()
-        tripPopupAutoHideTimeoutId = setTimeout(() => {
-          tripPopupAutoHideTimeoutId = null
-          tripPathLayer.value?.closePopup?.()
-        }, resolveHighlightedTripPopupAutoHideMs())
-      }, 500)
+      }
     }
-  }
-}, {deep: true})
-
-const reconstructTripPath = (trip) => {
-  if (!trip || !props.pathData || props.pathData.length === 0) {
-    return null
+    return
   }
 
-  const normalizedPoints = normalizePathPoints(props.pathData)
-  const { points } = reconstructTripPathPoints(trip, normalizedPoints)
-  return points
+  emitReplayPathData([])
 }
 
-watch(() => props.pathOptions, () => {
-  if (baseLayerRef.value?.isReady) {
-    renderPaths()
+const renderAll = () => {
+  if (!baseLayerRef.value?.isReady) {
+    return
   }
-}, {deep: true})
+
+  renderPaths()
+  renderHighlightedTrip(props.highlightedTrip)
+}
+
+watch(() => props.replayState, () => {
+  syncReplayMarker()
+}, { deep: true })
+
+watch(
+  () => [
+    props.pathData,
+    props.highlightedTrip,
+    props.pathOptions,
+    props.focusHighlightedTrip,
+    props.allowPathDataTripFallback,
+    props.showHighlightedTripPopup
+  ],
+  renderAll,
+  { deep: true }
+)
 
 onBeforeUnmount(() => {
   clearHighlightedTripLayers()
+  if (lastReplayEmissionKey !== '') {
+    emit('highlighted-trip-replay-data', { tripKey: '', points: [] })
+  }
 })
 
 // Expose methods

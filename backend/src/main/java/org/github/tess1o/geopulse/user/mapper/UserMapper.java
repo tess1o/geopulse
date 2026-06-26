@@ -38,6 +38,8 @@ public class UserMapper {
                 .dateFormat(entity.getDateFormat())
                 .timeFormat(entity.getTimeFormat())
                 .defaultDateRangePreset(entity.getDefaultDateRangePreset())
+                .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
+                        ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)
                 .build();
     }
 }

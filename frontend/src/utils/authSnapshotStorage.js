@@ -27,6 +27,7 @@ export function writeUserSnapshot(user) {
         dateFormat: user.dateFormat,
         timeFormat: user.timeFormat,
         defaultDateRangePreset: user.defaultDateRangePreset,
+        autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
         role: user.role
     }))
 }

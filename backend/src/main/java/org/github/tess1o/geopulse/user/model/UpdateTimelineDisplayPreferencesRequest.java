@@ -79,4 +79,9 @@ public class UpdateTimelineDisplayPreferencesRequest {
      * Show telemetry in the current-location popup on Timeline map.
      */
     private Boolean showCurrentLocationTelemetry;
+
+    /**
+     * Automatically show trip replay controls when a trip is selected.
+     */
+    private Boolean autoShowTripReplayControls;
 }

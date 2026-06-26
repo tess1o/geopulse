@@ -316,7 +316,7 @@
     .timeline-page .leaflet-bottom,
     .timeline-page .maplibregl-ctrl-bottom-left,
     .timeline-page .maplibregl-ctrl-bottom-right {
-        bottom: calc(56px + env(safe-area-inset-bottom)) !important;
+        bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 0.6rem + env(safe-area-inset-bottom)) !important;
         z-index: 1060 !important;
         pointer-events: auto !important;
     }

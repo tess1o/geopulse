@@ -110,6 +110,40 @@ export const buildTripPopupHtml = (trip, deps = {}) => {
   `.trim()
 }
 
+export const buildTripEndpointPopupHtml = (trip, markerType, deps = {}) => {
+  const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
+  const startMs = Date.parse(trip?.timestamp)
+  const durationSeconds = Number.isFinite(Number(trip?.tripDuration)) ? Number(trip.tripDuration) : 0
+  const endMs = Number.isFinite(startMs) ? startMs + Math.max(0, durationSeconds) * 1000 : null
+  const startText = Number.isFinite(startMs)
+    ? formatDateTimeDisplay(new Date(startMs).toISOString())
+    : 'Unknown'
+  const endText = Number.isFinite(endMs)
+    ? formatDateTimeDisplay(new Date(endMs).toISOString())
+    : 'Unknown'
+  const isStart = markerType === 'start'
+
+  return `
+    <div class="trip-popup">
+      <div class="trip-title ${isStart ? 'trip-start' : 'trip-end'}">
+        ${isStart ? 'Trip Start' : 'Trip End'}
+      </div>
+      <div class="trip-detail">
+        ${isStart ? 'Start' : 'End'}: ${escapeHtml(isStart ? startText : endText)}
+      </div>
+      <div class="trip-detail">
+        Duration: ${escapeHtml(formatDuration(durationSeconds))}
+      </div>
+      <div class="trip-detail">
+        Distance: ${escapeHtml(formatDistance(trip?.distanceMeters || 0))}
+      </div>
+      <div class="trip-detail">
+        Mode: ${escapeHtml(trip?.movementType || 'Unknown')}
+      </div>
+    </div>
+  `.trim()
+}
+
 export const buildDataGapPopupHtml = (item, deps = {}) => {
   const timestamp = item?.timestamp || item?.startTime
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)

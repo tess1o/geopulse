@@ -128,6 +128,28 @@
           </SettingCard>
         </div>
 
+        <div class="section">
+          <h3 class="section-title">Trip Selection</h3>
+          <p class="section-description">
+            Control what appears when a trip is selected on the map
+          </p>
+
+          <SettingCard
+            title="Auto-show Replay Controls"
+            description="Show the replay control bar automatically when a trip is selected"
+            details="When disabled, trip replay remains available from a compact Replay button."
+            setting-id="autoShowTripReplayControls"
+          >
+            <template #control>
+              <div class="control-value">{{ form.autoShowTripReplayControls ? 'Enabled' : 'Collapsed' }}</div>
+              <ToggleSwitch
+                v-model="form.autoShowTripReplayControls"
+                class="toggle-control"
+              />
+            </template>
+          </SettingCard>
+        </div>
+
         <!-- GPS Path Simplification Section -->
         <div class="section">
           <h3 class="section-title">GPS Path Simplification</h3>
@@ -271,7 +293,8 @@ const form = ref({
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
-  showCurrentLocationTelemetry: true
+  showCurrentLocationTelemetry: true,
+  autoShowTripReplayControls: true
 })
 
 const errors = ref({
@@ -305,7 +328,8 @@ watch(
         pathSimplificationTolerance: newPrefs.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: newPrefs.pathMaxPoints ?? 0,
         pathAdaptiveSimplification: newPrefs.pathAdaptiveSimplification ?? true,
-        showCurrentLocationTelemetry: newPrefs.showCurrentLocationTelemetry ?? true
+        showCurrentLocationTelemetry: newPrefs.showCurrentLocationTelemetry ?? true,
+        autoShowTripReplayControls: newPrefs.autoShowTripReplayControls ?? true
       }
     }
   },
@@ -402,7 +426,8 @@ const handleSubmit = async () => {
       pathSimplificationTolerance: form.value.pathSimplificationTolerance,
       pathMaxPoints: form.value.pathMaxPoints,
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
-      showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry
+      showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
+      autoShowTripReplayControls: form.value.autoShowTripReplayControls
     })
   } finally {
     loading.value = false
@@ -419,7 +444,8 @@ const handleReset = () => {
     pathSimplificationTolerance: 15.0,
     pathMaxPoints: 0,
     pathAdaptiveSimplification: true,
-    showCurrentLocationTelemetry: true
+    showCurrentLocationTelemetry: true,
+    autoShowTripReplayControls: true
   }
   errors.value = {
     customMapTileUrl: null,

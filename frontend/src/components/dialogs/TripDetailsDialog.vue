@@ -10,15 +10,55 @@
       <!-- Map Section -->
       <div class="map-section">
         <h4 class="section-title">Trip Route</h4>
-        <MapContainer
-          :map-id="`trip-details-map-${mapId}`"
-          :center="mapCenter"
-          :zoom="14"
-          :show-controls="false"
-          height="350px"
-          width="100%"
-          @map-ready="handleMapReady"
-        />
+        <div class="trip-details-map-shell">
+          <MapContainer
+            :map-id="`trip-details-map-${mapId}`"
+            :center="mapCenter"
+            :zoom="14"
+            :show-controls="false"
+            height="350px"
+            width="100%"
+            @map-ready="handleMapReady"
+          >
+            <template #overlays="{ map, isReady }">
+              <PathLayer
+                v-if="map && isReady && selectedTripForMap && tripPathData.length > 0"
+                :map="map"
+                :path-data="tripPathData"
+                :highlighted-trip="selectedTripForMap"
+                :visible="true"
+                :replay-state="pathReplayState"
+                :focus-highlighted-trip="false"
+                :inspection-enabled="true"
+                :allow-path-data-trip-fallback="true"
+                @highlighted-trip-replay-data="handleHighlightedTripReplayData"
+              />
+            </template>
+          </MapContainer>
+
+          <TripReplayControls
+            :show-bar="showTripReplayBar"
+            :show-restore-button="showTripReplayRestoreButton"
+            :is-playing="isReplayPlaying"
+            :elapsed-label="replayElapsedLabel"
+            :duration-label="replayDurationLabel"
+            :slider-value="replaySliderValue"
+            :speed-presets="replaySpeedPresets"
+            :speed-multiplier="replaySpeedMultiplier"
+            :follow-camera="replayFollowCamera"
+            :enable3d="replayEnable3d"
+            :show3d-toggle="isVectorMapMode"
+            :compact="true"
+            @toggle-playback="toggleReplayPlayback"
+            @stop="stopTripReplay"
+            @slider-input="handleReplaySliderInput"
+            @set-speed="setReplaySpeed"
+            @toggle-follow-camera="toggleReplayFollowCamera"
+            @toggle-3d="toggleReplay3d"
+            @dismiss="dismissTripReplayControls"
+            @restore="restoreTripReplayControls"
+          />
+        </div>
       </div>
 
       <!-- Details Section -->
@@ -111,17 +151,24 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, markRaw } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
+import PathLayer from '@/components/maps/layers/PathLayer.vue'
+import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { useLocationStore } from '@/stores/location'
-import { createDetailsMapAdapter } from '@/maps/details/runtime/createDetailsMapAdapter'
+import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import {
+  normalizeReplayPathPoints,
+  resolveHighlightedTripPoints
+} from '@/maps/shared/highlightedTripData'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -151,7 +198,6 @@ const internalVisible = computed({
 
 const mapId = ref(Date.now())
 const mapInstance = ref(null)
-const mapAdapter = ref(null)
 const tripGpsPoints = ref([])
 
 const dialogTitle = computed(() => {
@@ -164,6 +210,65 @@ const mapCenter = computed(() => {
     return [49.5472, 25.5951] // Default center
   }
   return [props.trip.latitude, props.trip.longitude]
+})
+
+const selectedTripForMap = computed(() => (
+  props.trip
+    ? {
+        ...props.trip,
+        type: 'trip'
+      }
+    : null
+))
+
+const tripPathPoints = computed(() => {
+  if (tripGpsPoints.value.length >= 2) {
+    return tripGpsPoints.value
+  }
+
+  return resolveHighlightedTripPoints({
+    highlightedTrip: selectedTripForMap.value,
+    pathData: [],
+    allowPathDataFallback: false
+  })
+})
+
+const tripPathData = computed(() => (
+  tripPathPoints.value.length >= 2
+    ? [tripPathPoints.value]
+    : []
+))
+
+const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(mapInstance.value, MAP_RENDER_MODES.RASTER))
+const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+
+const {
+  showTripReplayBar,
+  showTripReplayRestoreButton,
+  pathReplayState,
+  replaySliderValue,
+  replayElapsedLabel,
+  replayDurationLabel,
+  isReplayPlaying,
+  replaySpeedPresets,
+  replaySpeedMultiplier,
+  replayFollowCamera,
+  replayEnable3d,
+  stopTripReplay,
+  dismissTripReplayControls,
+  restoreTripReplayControls,
+  toggleReplayPlayback,
+  handleReplaySliderInput,
+  setReplaySpeed,
+  toggleReplayFollowCamera,
+  toggleReplay3d,
+  handleHighlightedTripReplayData,
+  cleanupTripReplay
+} = useTripReplayControls({
+  enabled: computed(() => props.visible && tripPathData.value.length > 0),
+  activeTrip: selectedTripForMap,
+  showPath: true,
+  supports3d: isVectorMapMode
 })
 
 // Methods
@@ -239,14 +344,10 @@ const copyToClipboard = async (text) => {
 }
 
 const handleMapReady = async (map) => {
-  mapInstance.value = map
-  mapAdapter.value?.destroy?.()
-  mapAdapter.value = createDetailsMapAdapter(map)
-  mapAdapter.value.initialize?.(map)
+  mapInstance.value = map ? markRaw(map) : null
 
   if (props.trip) {
     await fetchTripGpsPoints()
-    renderTripOnMap()
   }
 }
 
@@ -266,8 +367,8 @@ const fetchTripGpsPoints = async () => {
       endTime.toISOString()
     )
 
-    // Get the points from the store
-    tripGpsPoints.value = locationStore.getLocationPoints || []
+    const points = locationStore.getLocationPoints || []
+    tripGpsPoints.value = normalizeReplayPathPoints(points)
   } catch (error) {
     console.error('Error fetching trip GPS points:', error)
     tripGpsPoints.value = []
@@ -280,40 +381,14 @@ const fetchTripGpsPoints = async () => {
   }
 }
 
-const renderTripOnMap = () => {
-  if (!mapAdapter.value || !props.trip) {
-    return
-  }
-
-  mapAdapter.value.renderTrip({
-    trip: props.trip,
-    tripGpsPoints: tripGpsPoints.value,
-    pathColor: getPathColor(props.trip.movementType)
-  })
-}
-
-const getPathColor = (movementType) => {
-  const colorMap = {
-    'CAR': '#ef4444',
-    'WALK': '#22c55e', 
-    'BICYCLE': '#3b82f6',
-    'TRAIN': '#8b5cf6',
-    'FLIGHT': '#ef4444',
-    'UNKNOWN': '#6b7280'
-  }
-  return colorMap[movementType?.toUpperCase()] || '#6b7280'
-}
-
 // Watch for trip changes to update map
 watch(() => props.trip, async (newTrip) => {
   if (newTrip && mapInstance.value) {
     await fetchTripGpsPoints()
-    renderTripOnMap()
     return
   }
 
   tripGpsPoints.value = []
-  mapAdapter.value?.clear?.()
 }, { deep: true })
 
 // Reset map ID when dialog opens/closes to ensure fresh map
@@ -325,29 +400,37 @@ watch(() => props.visible, async (isVisible) => {
     }
   } else {
     tripGpsPoints.value = []
-    mapAdapter.value?.clear?.()
+    cleanupTripReplay()
   }
 })
 
 onBeforeUnmount(() => {
-  mapAdapter.value?.destroy?.()
-  mapAdapter.value = null
+  cleanupTripReplay()
+  mapInstance.value = null
 })
 </script>
 
 <style scoped>
+:deep(.p-dialog-content) {
+  overflow-y: auto;
+}
+
 .trip-details-content {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-lg);
-  max-height: 80vh;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .map-section {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
+}
+
+.trip-details-map-shell {
+  position: relative;
+  min-height: 350px;
 }
 
 .section-title {
@@ -458,28 +541,6 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   font-weight: 600;
   display: inline-block;
-}
-
-/* Map markers */
-:deep(.marker-pin) {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: white;
-  border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-:deep(.start-pin) {
-  background: var(--gp-success);
-}
-
-:deep(.end-pin) {
-  background: var(--gp-danger);
 }
 
 /* Dark Mode */

@@ -1,5 +1,5 @@
 <template>
-  <div ref="timelinePageRef" class="timeline-page">
+  <div ref="timelinePageRef" class="timeline-page" :style="timelinePageStyle">
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
@@ -50,6 +50,7 @@
             :custom-style-url="customMapStyleUrl"
             :map-render-mode="mapRenderMode"
             :enable-trip-replay="true"
+            :auto-show-trip-replay-controls="autoShowTripReplayControls"
             @timeline-marker-click="handleTimelineMarkerClick"
             @highlighted-path-click="handleHighlightedPathClick"
             @edit-favorite="handleEditFavorite"
@@ -71,7 +72,7 @@
             @pointerdown="handleTimelineSheetPointerDown"
           >
             <span class="timeline-sheet-grip"></span>
-            <span class="timeline-sheet-label">Movement Timeline</span>
+            <span class="timeline-sheet-label">{{ timelineSheetLabel }}</span>
           </button>
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
@@ -234,7 +235,10 @@ const readTimelineDisplayFallback = () => {
       ?? true,
     customMapTileUrl: customMapTileUrlSource || null,
     customMapStyleUrl: customMapStyleUrlSource || null,
-    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode)
+    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode),
+    autoShowTripReplayControls: user.autoShowTripReplayControls
+      ?? snapshot.autoShowTripReplayControls
+      ?? true
   }
 }
 
@@ -261,6 +265,7 @@ const showCurrentLocationTelemetry = ref(initialTimelineDisplaySettings.showCurr
 const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
+const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -314,13 +319,26 @@ const timelineReconstructionFallbackCenter = computed(() => {
 
 const timelineSheetClasses = computed(() => ({
   [`timeline-sheet--${timelineSheetState.value}`]: true,
-  'timeline-sheet--dragging': isTimelineSheetDragging.value
+  'timeline-sheet--dragging': isTimelineSheetDragging.value,
+  'timeline-sheet--compact': timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
 }))
+
+const timelineSheetLabel = computed(() => (
+  timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
+    ? 'Timeline'
+    : 'Movement Timeline'
+))
 
 const timelineSheetStyle = computed(() => (
   timelineSheetHeight.value
     ? { '--timeline-sheet-height': `${timelineSheetHeight.value}px` }
     : {}
+))
+
+const timelinePageStyle = computed(() => (
+  timelineSheetHeight.value
+    ? { '--timeline-mobile-sheet-height': `${timelineSheetHeight.value}px` }
+    : { '--timeline-mobile-sheet-height': '0px' }
 ))
 
 const MOBILE_TIMELINE_MEDIA = '(max-width: 768px), (max-height: 520px) and (pointer: coarse)'
@@ -331,9 +349,11 @@ const isMobileTimelineViewport = () => (
 )
 
 const getTimelineSheetHeights = () => {
-  const containerHeight = timelinePageRef.value?.getBoundingClientRect().height || window.innerHeight || 800
-  const collapsed = 52
-  const half = Math.max(collapsed + 64, containerHeight * 0.5)
+  const pageHeight = timelinePageRef.value?.getBoundingClientRect().height || 0
+  const viewportHeight = window.visualViewport?.height || window.innerHeight || 800
+  const containerHeight = Math.max(320, Math.min(pageHeight || viewportHeight, viewportHeight))
+  const collapsed = 44
+  const half = Math.max(collapsed + 80, containerHeight * 0.5)
   const expanded = Math.max(half + 64, containerHeight * 0.88)
   return {
     collapsed,
@@ -354,6 +374,15 @@ const syncTimelineSheetHeight = () => {
 const setTimelineSheetState = (state) => {
   timelineSheetState.value = state
   syncTimelineSheetHeight()
+}
+
+const revealMapForMobileTripSelection = () => {
+  if (!isMobileTimelineViewport() || timelineSheetState.value === 'collapsed') {
+    return
+  }
+
+  setTimelineSheetState('collapsed')
+  triggerMapResize()
 }
 
 const cycleTimelineSheetState = () => {
@@ -455,6 +484,10 @@ const handleTimelineItemClick = (item) => {
   if (highlightStore.isItemHighlighted(item)) {
     highlightStore.clearAllHighlights()
     return
+  }
+
+  if (item?.type === 'trip') {
+    revealMapForMobileTripSelection()
   }
 
   highlightStore.setHighlightedItem(item)
@@ -903,11 +936,13 @@ const loadTimelineDisplaySettings = async () => {
       ? data.customMapStyleUrl || null
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
+    autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
   } catch (error) {
     showCurrentLocationTelemetry.value = fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = fallback.customMapTileUrl
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
+    autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
   } finally {
     mapPreferencesLoaded.value = true
   }
@@ -1189,6 +1224,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   flex-direction: column;
   height: calc(100vh - 160px); /* Account for navbar (60px) + tabs (40px) + padding (60px) */
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .trip-workspace-banner {
@@ -1229,7 +1265,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   margin-left: 0.5rem;
   margin-right: 1rem;
   height: 100%;
-  max-height: 70vh; /* Reduced map height to prevent page scrolling */
+  max-height: 82vh;
   min-height: 350px;
   min-width: 0;
   flex-direction: column;
@@ -1277,6 +1313,8 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     flex-direction: column;
     gap: 0;
     height: 100%;
+    overflow: hidden;
+    overscroll-behavior: contain;
   }
 
   .timeline-page {
@@ -1314,6 +1352,24 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
     transition: height 0.22s ease;
+    will-change: height, transform;
+  }
+
+  .timeline-sheet--compact {
+    left: 50%;
+    right: auto;
+    bottom: calc(0.55rem + env(safe-area-inset-bottom));
+    width: min(16rem, calc(100% - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    height: var(--timeline-sheet-height, 44px);
+    max-height: none;
+    border: 1px solid var(--gp-border-light);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+    transform: translateX(-50%);
+  }
+
+  .timeline-sheet--compact :deep(.timeline-container) {
+    display: none;
   }
 
   .timeline-sheet--dragging {
@@ -1340,6 +1396,13 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     user-select: none;
   }
 
+  .timeline-sheet--compact .timeline-sheet-handle {
+    height: 100%;
+    min-height: 44px;
+    border-bottom: none;
+    border-radius: inherit;
+  }
+
   .timeline-sheet--dragging .timeline-sheet-handle {
     cursor: grabbing;
   }
@@ -1355,6 +1418,17 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
   .timeline-sheet-label {
     padding-top: 8px;
+  }
+
+  .timeline-sheet--compact .timeline-sheet-label {
+    padding-top: 0;
+    font-size: 0.8rem;
+  }
+
+  .timeline-sheet--compact .timeline-sheet-grip {
+    position: static;
+    flex: 0 0 36px;
+    width: 36px;
   }
 
   .right-pane :deep(.timeline-container) {
@@ -1386,70 +1460,40 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   }
 
   .left-pane {
-    max-height: 65vh;
+    max-height: 76vh;
   }
 }
 
 @media (min-width: 1024px) and (max-width: 1280px) {
   .left-pane {
-    max-height: 68vh;
+    max-height: 80vh;
   }
 }
 
 @media (min-width: 1280px) and (max-width: 1599px) {
   .left-pane {
-    max-height: 70vh;
+    max-height: 82vh;
   }
 }
 
 @media (min-width: 1600px) {
   .left-pane {
-    max-height: 75vh;
+    max-height: 86vh;
   }
 }
 
-@media (max-height: 520px) and (pointer: coarse) {
-  .timeline-main {
-    position: relative;
-    flex-direction: column;
-    gap: 0;
-    height: 100%;
-  }
-
-  .timeline-page {
-    height: calc(100dvh - 112px);
-    min-height: 0;
-  }
-
-  .left-pane {
-    position: absolute;
-    inset: 0;
-    flex: none;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    max-height: none;
-    margin: 0;
-  }
-
-  .right-pane {
-    position: absolute;
-    left: env(safe-area-inset-left);
-    right: env(safe-area-inset-right);
-    bottom: 0;
-    z-index: 1050;
-    flex: none;
-    width: auto;
-    height: var(--timeline-sheet-height, 168px);
-    max-height: calc(100% - 24px);
-    min-height: 0;
-    margin: 0;
-    overflow: hidden !important;
-  }
-}
 </style>
 
 <style>
+.gp-tab-container:has(.timeline-page),
+.gp-tab-content:has(.timeline-page) {
+  overscroll-behavior: contain;
+}
+
+.gp-tab-content:has(.timeline-page) {
+  overflow: hidden;
+}
+
 /* Override padding on the timeline container */
 .p-timeline-left .p-timeline-event-opposite {
   display: none !important; /* optional: remove opposite content space */

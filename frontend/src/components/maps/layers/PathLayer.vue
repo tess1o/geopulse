@@ -8,6 +8,10 @@
     :highlighted-trip="highlightedTrip"
     :path-options="pathOptions"
     :replay-state="replayState"
+    :focus-highlighted-trip="focusHighlightedTrip"
+    :inspection-enabled="inspectionEnabled"
+    :allow-path-data-trip-fallback="allowPathDataTripFallback"
+    :show-highlighted-trip-popup="showHighlightedTripPopup"
     @path-click="(payload) => emit('path-click', payload)"
     @path-hover="(payload) => emit('path-hover', payload)"
     @trip-marker-click="(payload) => emit('trip-marker-click', payload)"
@@ -51,6 +55,22 @@ const props = defineProps({
   replayState: {
     type: Object,
     default: null
+  },
+  focusHighlightedTrip: {
+    type: Boolean,
+    default: true
+  },
+  inspectionEnabled: {
+    type: Boolean,
+    default: true
+  },
+  allowPathDataTripFallback: {
+    type: Boolean,
+    default: false
+  },
+  showHighlightedTripPopup: {
+    type: Boolean,
+    default: true
   }
 })
 

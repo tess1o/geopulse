@@ -27,6 +27,7 @@ public class BrowserAuthResponseMapper {
                 .dateFormat(authResponse.getDateFormat())
                 .timeFormat(authResponse.getTimeFormat())
                 .defaultDateRangePreset(authResponse.getDefaultDateRangePreset())
+                .autoShowTripReplayControls(authResponse.getAutoShowTripReplayControls())
                 .build();
 
         return BrowserAuthResponse.builder()

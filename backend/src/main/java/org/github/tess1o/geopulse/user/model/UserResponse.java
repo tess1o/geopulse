@@ -31,5 +31,6 @@ public class UserResponse {
     private String dateFormat;
     private String timeFormat;
     private String defaultDateRangePreset;
+    private Boolean autoShowTripReplayControls;
     // Don't include passwordHash in responses
 }
