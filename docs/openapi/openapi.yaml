@@ -1819,6 +1819,8 @@ components:
           type: string
         showCurrentLocationTelemetry:
           type: boolean
+        autoShowTripReplayControls:
+          type: boolean
     UpdateTimelinePreferencesRequest:
       type: object
       properties:
@@ -9615,7 +9617,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.32.1
+  version: 1.32.2
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
