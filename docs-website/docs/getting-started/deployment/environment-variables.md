@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **200** distinct env vars.
+Backend runtime currently includes **213** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -181,7 +181,7 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Timeline and Trip Intelligence (80)
+### Timeline and Trip Intelligence (85)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -189,6 +189,11 @@ Notes:
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.max_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.max_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.min_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_BOAT_ENABLED` | `false` | Boat (optional - disabled by default). Uses water evidence; speed is only a sanity ceiling. Property: \`geopulse.timeline.travel.classification.boat.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_TIMELINE_BOAT_MAX_PLAUSIBLE_SPEED` | `120.0` | Boat (optional - disabled by default). Maximum plausible speed sanity ceiling for boat classification. Property: \`geopulse.timeline.travel.classification.boat.max_plausible_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_BOAT_MIN_CONTINUOUS_WATER_DISTANCE_METERS` | `1000.0` | Boat (optional - disabled by default). Minimum continuous water distance required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_continuous_water_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_BOAT_MIN_WATER_DISTANCE_METERS` | `2000.0` | Boat (optional - disabled by default). Minimum total water distance required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_water_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_BOAT_MIN_WATER_RATIO` | `0.60` | Boat (optional - disabled by default). Minimum route water-evidence ratio required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_water_ratio\`. | Decimal between 0 and 1. | Backend restart |
 | `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `10.0` | Car (mandatory) - updated default from 8.0 to 10.0 Property: \`geopulse.timeline.travel.classification.car.min_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED` | `15.0` | Car (mandatory) - updated default from 8.0 to 10.0 Property: \`geopulse.timeline.travel.classification.car.min_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_DATA_GAP_MIN_DURATION_SECONDS` | `1800` | Data Gap Detection Configuration Property: \`geopulse.timeline.data_gap.min_duration_seconds\`. | Non-negative numeric value. | Backend restart |
@@ -265,6 +270,19 @@ Notes:
 | `GEOPULSE_TRIP_VISIT_MATCHING_EXACT_NAME_BOOST_DISTANCE_METERS` | `120` | Trip visit auto-matching Property: \`geopulse.trip.visit-matching.exact-name-boost-distance-meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TRIP_VISIT_MATCHING_MAX_DISTANCE_METERS` | `400` | Trip visit auto-matching Property: \`geopulse.trip.visit-matching.max-distance-meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TRIP_VISIT_MATCHING_SUGGEST_THRESHOLD` | `0.55` | Trip visit auto-matching Property: \`geopulse.trip.visit-matching.suggest-threshold\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+
+### Boat Water Dataset (8)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_WATER_DATASET_AUTO_IMPORT` | `true` | Boat water dataset setup. Automatically imports the configured water-surface dataset when boat evidence is needed. Property: \`geopulse.water-dataset.auto-import\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_WATER_DATASET_CONNECT_TIMEOUT_SECONDS` | `30` | Boat water dataset setup. HTTP connect timeout for dataset download. Property: \`geopulse.water-dataset.connect-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WATER_DATASET_DOWNLOAD_STALL_TIMEOUT_SECONDS` | `120` | Boat water dataset setup. Maximum allowed download stall before aborting. Property: \`geopulse.water-dataset.download-stall-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WATER_DATASET_DOWNLOAD_TIMEOUT_HOURS` | `6` | Boat water dataset setup. Overall timeout for dataset download. Property: \`geopulse.water-dataset.download-timeout-hours\`. | Positive integer hours. | Backend restart |
+| `GEOPULSE_WATER_DATASET_LOCAL_PATH` | `(empty)` | Boat water dataset setup. Optional path to a pre-mounted dataset copy archive inside the backend container. Property: \`geopulse.water-dataset.local-path\`. | Optional readable path in backend container filesystem. | Backend restart |
+| `GEOPULSE_WATER_DATASET_SETUP_START_TIMEOUT_MINUTES` | `5` | Boat water dataset setup. Timeout while waiting for setup/import startup. Property: \`geopulse.water-dataset.setup-start-timeout-minutes\`. | Positive integer minutes. | Backend restart |
+| `GEOPULSE_WATER_DATASET_SHA256` | `(empty)` | Boat water dataset setup. Optional SHA-256 checksum used to verify the dataset archive. Property: \`geopulse.water-dataset.sha256\`. | Hex SHA-256 checksum or empty to skip verification. | Backend restart |
+| `GEOPULSE_WATER_DATASET_URL` | `https://github.com/tess1o/GeoPulse/releases/download/water-surfaces-v1/geopulse-water-surfaces-v1.copy.gz` | Boat water dataset setup. Remote dataset archive URL; the dataset is intentionally not bundled into Flyway or the backend image. Property: \`geopulse.water-dataset.url\`. | Valid URL, or configure `GEOPULSE_WATER_DATASET_LOCAL_PATH`. | Backend restart |
 
 ### GPS Filtering and Deduplication (7)
 
