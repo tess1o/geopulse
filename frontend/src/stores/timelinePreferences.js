@@ -1,6 +1,8 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 
+const unwrapApiData = (response) => response?.data ?? response
+
 export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
     state: () => ({
         timelinePreferences: null,
@@ -74,14 +76,14 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
 
         async updateTimelinePreferences(changes) {
             try {
-                console.log(changes)
                 const response = await apiService.put(`/users/preferences/timeline`, {...changes})
+                const responseData = unwrapApiData(response)
 
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
 
-                this.lastUpdateResponseData = response?.data || null
-                return response?.data?.jobId || response?.data?.boatSetupJobId || null
+                this.lastUpdateResponseData = responseData || null
+                return responseData?.jobId || responseData?.boatSetupJobId || null
             } catch (error) {
                 throw error
             }

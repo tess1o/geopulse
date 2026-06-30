@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service.boat;
 
+import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStartResponseDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStatusDTO;
 import org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -61,7 +63,27 @@ class BoatSetupServiceTest {
         verify(tripReclassificationService).reclassifyUserTrips(userId);
     }
 
+    @Test
+    void startSetupReturnsReadyStatusWithoutCreatingJobWhenAlreadyReady() {
+        TestableBoatSetupService service = new TestableBoatSetupService();
+        UUID userId = UUID.randomUUID();
+        BoatSetupStatusDTO readyStatus = BoatSetupStatusDTO.builder()
+                .status("READY")
+                .datasetStatus("READY")
+                .userEnvironmentStatus("READY")
+                .phase("Boat setup is ready")
+                .progressPercentage(100)
+                .build();
+        service.currentStatus = readyStatus;
+
+        BoatSetupStartResponseDTO response = service.startSetup(userId);
+
+        assertNull(response.jobId());
+        assertEquals(readyStatus, response.status());
+    }
+
     private static class TestableBoatSetupService extends BoatSetupService {
+        BoatSetupStatusDTO currentStatus;
         String updatedStatus;
         String updatedEnvironmentStatus;
         String updatedPhase;
@@ -87,6 +109,20 @@ class BoatSetupServiceTest {
         void failJob(UUID jobId, String errorCode, String errorMessage) {
             this.failedErrorCode = errorCode;
             this.failedErrorMessage = errorMessage;
+        }
+
+        @Override
+        BoatSetupStatusDTO getCurrentSetupStatus(UUID userId) {
+            if (currentStatus != null) {
+                return currentStatus;
+            }
+            return BoatSetupStatusDTO.builder()
+                    .status("PENDING")
+                    .datasetStatus("READY")
+                    .userEnvironmentStatus("PENDING")
+                    .phase("GPS water evidence needs enrichment")
+                    .progressPercentage(0)
+                    .build();
         }
     }
 }

@@ -219,10 +219,7 @@
           class="boat-setup-dialog"
         >
           <div class="boat-setup-dialog-content">
-            <p>
-              Boat detection needs a global water dataset of about 800-900 MB and a one-time
-              GPS pre-calculation for your account.
-            </p>
+            <p>{{ boatSetupModalIntro }}</p>
             <ProgressBar
               :value="boatSetupStatus?.progressPercentage || 0"
               class="boat-setup-progress-bar"
@@ -538,6 +535,14 @@ const boatSetupRunning = computed(() => {
 const boatSetupNeedsAction = computed(() => {
   if (!prefs.value?.boatEnabled) return false
   return !boatSetupStatus.value || ['FAILED', 'PENDING'].includes(boatSetupStatus.value.status)
+})
+
+const boatSetupModalIntro = computed(() => {
+  if (boatSetupStatus.value?.datasetStatus === 'READY') {
+    return 'Boat detection needs a one-time GPS water evidence pre-calculation for your account.'
+  }
+
+  return 'Boat detection needs a global water dataset of about 800-900 MB and a one-time GPS pre-calculation for your account.'
 })
 
 const headerSecondaryActionsMenu = computed(() => {
@@ -876,6 +881,7 @@ const startBoatSetupPolling = () => {
 
       if (status?.status === 'READY') {
         stopBoatSetupPolling()
+        await loadPreferences()
         toast.add({
           severity: 'success',
           summary: 'Boat Setup Ready',
@@ -925,8 +931,16 @@ const formatBytes = (bytes) => {
 }
 
 const confirmStartBoatSetup = () => {
+  const setupReady = boatSetupStatus.value?.status === 'READY'
+  const datasetReady = boatSetupStatus.value?.datasetStatus === 'READY'
+  const message = setupReady
+    ? 'Boat setup is already ready. Cached water evidence is available for timeline generation.'
+    : datasetReady
+      ? 'Boat setup will pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.'
+      : 'Boat setup will download or read the water dataset and pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.'
+
   confirm.require({
-    message: 'Boat setup will download or read the water dataset and pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.',
+    message,
     header: boatSetupStatus.value?.status === 'FAILED' ? 'Retry Boat Setup' : 'Start Boat Setup',
     icon: 'pi pi-download',
     rejectProps: {
@@ -944,9 +958,35 @@ const confirmStartBoatSetup = () => {
 
 const startBoatSetup = async () => {
   try {
+    await boatSetupStore.fetchStatus()
+    if (boatSetupStatus.value?.status === 'READY') {
+      boatSetupVisible.value = false
+      await loadPreferences()
+      toast.add({
+        severity: 'success',
+        summary: 'Boat Setup Ready',
+        detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+        life: 4000
+      })
+      return
+    }
+
     boatSetupVisible.value = true
     const setup = await boatSetupStore.startSetup()
-    boatSetupStore.currentJobId = setup?.jobId
+    boatSetupStore.currentJobId = setup?.jobId || boatSetupStore.currentJobId
+
+    if (boatSetupStatus.value?.status === 'READY') {
+      boatSetupVisible.value = false
+      await loadPreferences()
+      toast.add({
+        severity: 'success',
+        summary: 'Boat Setup Ready',
+        detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+        life: 4000
+      })
+      return
+    }
+
     startBoatSetupPolling()
     toast.add({
       severity: 'info',
@@ -966,7 +1006,36 @@ const startBoatSetup = async () => {
   }
 }
 
-const confirmSavePreferences = () => {
+const getBoatEnablementConfirmation = (status, hasStructuralChanges) => {
+  if (status?.status === 'READY') {
+    return {
+      message: hasStructuralChanges
+        ? 'Boat setup is already ready. Saving these preferences will regenerate your timeline with Boat detection enabled.'
+        : 'Boat setup is already ready. Saving this preference will update existing trip classifications with Boat detection enabled.',
+      icon: 'pi pi-check-circle',
+      label: hasStructuralChanges ? 'Enable & Regenerate' : 'Enable Boat',
+      saveType: hasStructuralChanges ? 'full' : 'classification'
+    }
+  }
+
+  if (status?.datasetStatus === 'READY') {
+    return {
+      message: 'Boat detection requires a one-time GPS water evidence pre-calculation for your account. The global water dataset is already installed, so no large download is needed. Timeline generation will wait until setup is complete.',
+      icon: 'pi pi-database',
+      label: 'Enable & Start Setup',
+      saveType: hasStructuralChanges ? 'full' : 'boat-setup'
+    }
+  }
+
+  return {
+    message: 'Boat detection requires downloading a global water dataset of about 800-900 MB and running a one-time GPS pre-calculation for your account. Timeline generation will wait until this setup is complete.',
+    icon: 'pi pi-download',
+    label: 'Enable & Start Setup',
+    saveType: hasStructuralChanges ? 'full' : 'boat-setup'
+  }
+}
+
+const confirmSavePreferences = async () => {
   if (!isFormValid.value) {
     return;
   }
@@ -992,20 +1061,28 @@ const confirmSavePreferences = () => {
   const isBoatEnablement = changes.boatEnabled === true && originalPrefs.value?.boatEnabled !== true
 
   if (isBoatEnablement) {
+    let currentBoatSetupStatus = boatSetupStatus.value
+    try {
+      currentBoatSetupStatus = await boatSetupStore.fetchStatus()
+    } catch (error) {
+      console.warn('Failed to refresh Boat setup status before enabling Boat:', error)
+    }
+
+    const confirmation = getBoatEnablementConfirmation(currentBoatSetupStatus, hasStructuralChanges)
     confirm.require({
-      message: 'Boat detection requires downloading a global water dataset of about 800-900 MB and running a one-time GPS pre-calculation for your account. Timeline generation will wait until this setup is complete.',
+      message: confirmation.message,
       header: 'Enable Boat Detection',
-      icon: 'pi pi-download',
+      icon: confirmation.icon,
       rejectProps: {
         label: 'Cancel',
         severity: 'secondary',
         outlined: true
       },
       acceptProps: {
-        label: 'Enable & Start Setup',
+        label: confirmation.label,
         severity: 'primary'
       },
-      accept: () => savePreferences(hasStructuralChanges ? 'full' : 'boat-setup', changes)
+      accept: () => savePreferences(confirmation.saveType, changes)
     })
     return
   }
@@ -1080,15 +1157,44 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       await timelinePreferencesStore.updateTimelinePreferences(changes)
       const result = timelinePreferencesStore.lastUpdateResponseData
       await loadPreferences()
-      boatSetupVisible.value = true
 
       if (result?.boatSetupJobId) {
         boatSetupStore.currentJobId = result.boatSetupJobId
         boatSetupStore.status = result.boatSetupStatus || boatSetupStore.status
+      } else if (result?.boatSetupStatus) {
+        boatSetupStore.status = result.boatSetupStatus
       } else {
-        const setup = await boatSetupStore.startSetup()
-        boatSetupStore.currentJobId = setup?.jobId
+        await boatSetupStore.fetchStatus()
       }
+
+      if (boatSetupStatus.value?.status === 'READY') {
+        boatSetupVisible.value = false
+        toast.add({
+          severity: 'success',
+          summary: 'Boat Detection Enabled',
+          detail: 'Boat setup is ready and the preference has been saved.',
+          life: 4000
+        })
+        return
+      }
+
+      boatSetupVisible.value = true
+      if (!result?.boatSetupJobId) {
+        const setup = await boatSetupStore.startSetup()
+        boatSetupStore.currentJobId = setup?.jobId || boatSetupStore.currentJobId
+
+        if (boatSetupStatus.value?.status === 'READY') {
+          boatSetupVisible.value = false
+          toast.add({
+            severity: 'success',
+            summary: 'Boat Detection Enabled',
+            detail: 'Boat setup is ready and the preference has been saved.',
+            life: 4000
+          })
+          return
+        }
+      }
+
       startBoatSetupPolling()
       toast.add({
         severity: 'info',

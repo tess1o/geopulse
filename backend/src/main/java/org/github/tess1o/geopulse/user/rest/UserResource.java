@@ -19,6 +19,7 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.nio.file.Files;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -203,10 +204,12 @@ public class UserResource {
         }
         if ("boat-setup".equals(changeType)) {
             var setup = boatSetupService.startSetup(userId);
-            return Response.ok(ApiResponse.success(Map.of(
-                    "boatSetupJobId", setup.jobId().toString(),
-                    "boatSetupStatus", setup.status()
-            ))).build();
+            Map<String, Object> payload = new LinkedHashMap<>();
+            if (setup.jobId() != null) {
+                payload.put("boatSetupJobId", setup.jobId().toString());
+            }
+            payload.put("boatSetupStatus", setup.status());
+            return Response.ok(ApiResponse.success(payload)).build();
         }
 
         // No job created (classification-only or no changes)

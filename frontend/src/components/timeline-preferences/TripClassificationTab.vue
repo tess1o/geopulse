@@ -450,7 +450,7 @@
           <div class="boat-setup-content">
             <div>
               <strong>{{ boatSetupTitle }}</strong>
-              <div class="boat-setup-phase">{{ boatSetupStatus.phase }}</div>
+              <div v-if="boatSetupPhaseText" class="boat-setup-phase">{{ boatSetupPhaseText }}</div>
               <a
                 v-if="boatSetupStatus.errorMessage && boatSetupStatus.docsUrl"
                 :href="boatSetupStatus.docsUrl"
@@ -466,7 +466,7 @@
             </div>
             <Button
               v-if="boatSetupCanStart"
-              :label="boatSetupStatus.status === 'FAILED' ? 'Retry' : 'Start'"
+              label="Retry"
               icon="pi pi-refresh"
               size="small"
               @click="$emit('retry-boat-setup')"
@@ -688,9 +688,14 @@ const boatSetupTitle = computed(() => {
   return 'Boat setup required'
 })
 
+const boatSetupPhaseText = computed(() => {
+  if (!props.boatSetupStatus) return null
+  if (props.boatSetupStatus.status === 'READY') return 'Cached water evidence is available.'
+  return props.boatSetupStatus.phase
+})
+
 const boatSetupCanStart = computed(() => {
-  if (!props.boatSetupStatus) return true
-  return ['FAILED', 'PENDING'].includes(props.boatSetupStatus.status)
+  return props.boatSetupStatus?.status === 'FAILED'
 })
 </script>
 

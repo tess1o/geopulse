@@ -143,6 +143,14 @@ public class BoatSetupService {
     }
 
     public BoatSetupStartResponseDTO startSetup(UUID userId) {
+        BoatSetupStatusDTO currentStatus = getCurrentSetupStatus(userId);
+        if (currentStatus != null && "READY".equals(currentStatus.status())) {
+            return BoatSetupStartResponseDTO.builder()
+                    .jobId(currentStatus.jobId())
+                    .status(currentStatus)
+                    .build();
+        }
+
         failStaleStartingJobs(userId);
         Optional<BoatSetupStatusDTO> activeJob = getLatestJob(userId, true);
         if (activeJob.isPresent()) {
@@ -175,6 +183,10 @@ public class BoatSetupService {
                 .jobId(jobId)
                 .status(getJobStatus(userId, jobId).orElse(null))
                 .build();
+    }
+
+    BoatSetupStatusDTO getCurrentSetupStatus(UUID userId) {
+        return getStatus(userId);
     }
 
     public Optional<BoatSetupStatusDTO> getJobStatus(UUID userId, UUID jobId) {

@@ -71,7 +71,7 @@ class StatisticsServiceImplTest {
         verify(statisticsRepository).getTopPlaces(testUserId, testStart, testEnd, 5);
         verify(statisticsRepository).getMostActiveDay(testUserId, testStart, testEnd);
         verify(statisticsRepository).getRoutesStatistics(testUserId, testStart, testEnd);
-        verify(statisticsRepository, times(6)).getChartDataByDays(any(), any(), any(), any());
+        verify(statisticsRepository, times(7)).getChartDataByDays(any(), any(), any(), any());
     }
     @Test
     void getStatistics_WithEmptyData_ReturnsZeroStatistics() {
@@ -195,7 +195,7 @@ class StatisticsServiceImplTest {
         // When
         statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
         // Then
-        verify(statisticsRepository, times(6)).getChartDataByWeeks(any(), any(), any(), any());
+        verify(statisticsRepository, times(7)).getChartDataByWeeks(any(), any(), any(), any());
         verify(statisticsRepository, times(0)).getChartDataByDays(any(), any(), any(), any());
     }
     @Test

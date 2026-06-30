@@ -10,7 +10,9 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -219,63 +221,93 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
     /**
      * Determine if trip segments represent legitimate mode changes vs traffic fragmentation.
-     * Uses relative contribution analysis: both modes must contribute meaningfully to total distance.
+     * Uses relative contribution analysis: at least two known modes must contribute meaningfully
+     * to total distance or time.
      */
     private boolean hasLegitimateModChanges(List<Trip> trips) {
-        long walkingTrips = trips.stream().filter(t -> t.getTripType() == TripType.WALK).count();
-        long drivingTrips = trips.stream().filter(t -> t.getTripType() == TripType.CAR).count();
-
-        // If all same mode, definitely merge
-        if (walkingTrips == 0 || drivingTrips == 0) {
+        Map<TripType, ModeContribution> contributionsByType = summarizeModeContributions(trips);
+        if (contributionsByType.size() < 2) {
             return false;
         }
 
-        // Calculate total distance for each mode
-        double totalWalkDistance = trips.stream()
-                .filter(t -> t.getTripType() == TripType.WALK)
-                .mapToDouble(Trip::getDistanceMeters)
+        double totalDistance = contributionsByType.values().stream()
+                .mapToDouble(ModeContribution::distanceMeters)
+                .sum();
+        double totalTime = contributionsByType.values().stream()
+                .mapToDouble(ModeContribution::durationSeconds)
                 .sum();
 
-        double totalDriveDistance = trips.stream()
-                .filter(t -> t.getTripType() == TripType.CAR)
-                .mapToDouble(Trip::getDistanceMeters)
-                .sum();
+        if (totalDistance <= 0.0 && totalTime <= 0.0) {
+            return false;
+        }
 
+        long significantModeCount = contributionsByType.values().stream()
+                .filter(contribution -> isSignificantModeContribution(contribution, totalDistance, totalTime))
+                .count();
 
-        // Calculate total time for each mode
-        double totalWalkingTime = trips.stream()
-                .filter(t -> t.getTripType() == TripType.WALK)
-                .mapToDouble(t -> t.getDuration().getSeconds())
-                .sum();
+        boolean legitimate = significantModeCount >= 2;
 
-        double totalDriveTime = trips.stream()
-                .filter(t -> t.getTripType() == TripType.CAR)
-                .mapToDouble(t -> t.getDuration().getSeconds())
-                .sum();
-
-        // Calculate distance-based ratios
-        double totalDistance = totalWalkDistance + totalDriveDistance;
-        double walkDistanceRatio = totalDistance > 0 ? totalWalkDistance / totalDistance : 0;
-        double driveDistanceRatio = totalDistance > 0 ? totalDriveDistance / totalDistance : 0;
-
-        // Calculate time-based ratios
-        double totalTime = totalWalkingTime + totalDriveTime;
-        double walkTimeRatio = totalTime > 0 ? totalWalkingTime / totalTime : 0;
-        double driveTimeRatio = totalTime > 0 ? totalDriveTime / totalTime : 0;
-
-        // Hybrid approach: legitimate if EITHER distance-based OR time-based thresholds are met
-        boolean distanceBasedLegit = walkDistanceRatio >= MIN_MODE_CONTRIBUTION_RATIO &&
-                                     driveDistanceRatio >= MIN_MODE_CONTRIBUTION_RATIO;
-        boolean timeBasedLegit = walkTimeRatio >= MIN_MODE_CONTRIBUTION_RATIO &&
-                                driveTimeRatio >= MIN_MODE_CONTRIBUTION_RATIO;
-        boolean legitimate = distanceBasedLegit || timeBasedLegit;
-
-        log.debug("Mode change analysis: walking={} ({}m, {}%, {}s, {}%), driving={} ({}m, {}%, {}s, {}%), " +
-                "distanceLegit={}, timeLegit={}, legitimate={}",
-                walkingTrips, (long) totalWalkDistance, walkDistanceRatio * 100, (long) totalWalkingTime, walkTimeRatio * 100,
-                drivingTrips, (long) totalDriveDistance, driveDistanceRatio * 100, (long) totalDriveTime, driveTimeRatio * 100,
-                distanceBasedLegit, timeBasedLegit, legitimate);
+        log.debug("Mode change analysis: contributions={}, significantModes={}, legitimate={}",
+                describeModeContributions(contributionsByType, totalDistance, totalTime),
+                significantModeCount,
+                legitimate);
 
         return legitimate;
+    }
+
+    private Map<TripType, ModeContribution> summarizeModeContributions(List<Trip> trips) {
+        Map<TripType, ModeContribution> contributions = new EnumMap<>(TripType.class);
+
+        for (Trip trip : trips) {
+            TripType tripType = trip.getTripType();
+            if (tripType == null || tripType == TripType.UNKNOWN) {
+                continue;
+            }
+
+            ModeContribution current = contributions.getOrDefault(tripType, new ModeContribution(0, 0.0, 0.0));
+            double distanceMeters = Math.max(0.0, trip.getDistanceMeters());
+            double durationSeconds = trip.getDuration() != null ? Math.max(0.0, trip.getDuration().getSeconds()) : 0.0;
+            contributions.put(
+                    tripType,
+                    new ModeContribution(
+                            current.tripCount() + 1,
+                            current.distanceMeters() + distanceMeters,
+                            current.durationSeconds() + durationSeconds
+                    )
+            );
+        }
+
+        return contributions;
+    }
+
+    private boolean isSignificantModeContribution(ModeContribution contribution, double totalDistance, double totalTime) {
+        double distanceRatio = totalDistance > 0.0 ? contribution.distanceMeters() / totalDistance : 0.0;
+        double timeRatio = totalTime > 0.0 ? contribution.durationSeconds() / totalTime : 0.0;
+        return distanceRatio >= MIN_MODE_CONTRIBUTION_RATIO
+                || timeRatio >= MIN_MODE_CONTRIBUTION_RATIO;
+    }
+
+    private String describeModeContributions(Map<TripType, ModeContribution> contributionsByType,
+                                             double totalDistance,
+                                             double totalTime) {
+        return contributionsByType.entrySet().stream()
+                .map(entry -> {
+                    ModeContribution contribution = entry.getValue();
+                    double distanceRatio = totalDistance > 0.0 ? contribution.distanceMeters() / totalDistance : 0.0;
+                    double timeRatio = totalTime > 0.0 ? contribution.durationSeconds() / totalTime : 0.0;
+                    return String.format(
+                            "%s=%d trips, %.0fm, %.1f%%, %.0fs, %.1f%%",
+                            entry.getKey(),
+                            contribution.tripCount(),
+                            contribution.distanceMeters(),
+                            distanceRatio * 100.0,
+                            contribution.durationSeconds(),
+                            timeRatio * 100.0
+                    );
+                })
+                .collect(Collectors.joining("; "));
+    }
+
+    private record ModeContribution(int tripCount, double distanceMeters, double durationSeconds) {
     }
 }
