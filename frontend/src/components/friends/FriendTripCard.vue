@@ -70,6 +70,7 @@ const movementTypeMap = {
   CAR: { label: 'Car', icon: '🚗' },
   TRAIN: { label: 'Train', icon: '🚊' },
   FLIGHT: { label: 'Flight', icon: '✈️' },
+  BOAT: { label: 'Boat', icon: '⛵' },
   UNKNOWN: { label: 'Unknown', icon: '❓' }
 }
 

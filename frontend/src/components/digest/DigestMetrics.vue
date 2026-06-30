@@ -78,6 +78,16 @@
         </div>
       </div>
 
+      <!-- Boat Distance -->
+      <div class="metric-card" v-if="metrics.boatDistance > 0">
+        <div class="metric-icon">⛵</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.boatDistance) }}</div>
+        <div class="metric-label">Distance by Boat</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.boatDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
       <!-- Unknown Distance -->
       <div class="metric-card" v-if="metrics.unknownDistance > 0">
         <div class="metric-icon">❓</div>

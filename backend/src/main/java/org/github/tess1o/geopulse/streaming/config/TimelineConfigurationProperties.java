@@ -217,6 +217,27 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String flightMinMaxSpeed;
 
+    // Optional Trip Types - Boat
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String boatEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.min_water_ratio", defaultValue = "0.60")
+    @StaticInitSafe
+    String boatMinWaterRatio;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.min_water_distance_meters", defaultValue = "2000.0")
+    @StaticInitSafe
+    String boatMinWaterDistanceMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.min_continuous_water_distance_meters", defaultValue = "1000.0")
+    @StaticInitSafe
+    String boatMinContinuousWaterDistanceMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.boat.max_plausible_speed", defaultValue = "120.0")
+    @StaticInitSafe
+    String boatMaxPlausibleSpeed;
+
     // Timeline View Item Limit - maximum number of items to load on Timeline page
     @ConfigProperty(name = "geopulse.timeline.view.item-limit", defaultValue = "150")
     @StaticInitSafe

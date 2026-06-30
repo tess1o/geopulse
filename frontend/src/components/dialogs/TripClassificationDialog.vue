@@ -148,6 +148,8 @@
             <div class="priority-flow">
               <span class="priority-step">✈️ FLIGHT</span>
               <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">⛵ BOAT</span>
+              <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🚊 TRAIN</span>
               <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🚴 BICYCLE</span>
@@ -254,6 +256,7 @@ const movementTypeOptions = [
   { label: 'Running', value: 'RUNNING' },
   { label: 'Train', value: 'TRAIN' },
   { label: 'Flight', value: 'FLIGHT' },
+  { label: 'Boat', value: 'BOAT' },
   { label: 'Unknown', value: 'UNKNOWN' }
 ]
 
@@ -413,6 +416,7 @@ const getTransportSeverity = (transportMode) => {
     'RUNNING': 'success',
     'TRAIN': 'info',
     'FLIGHT': 'danger',
+    'BOAT': 'info',
     'UNKNOWN': 'secondary'
   }
   return severityMap[transportMode?.toUpperCase()] || 'secondary'

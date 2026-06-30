@@ -8,6 +8,8 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
+import org.github.tess1o.geopulse.streaming.service.trips.TripWaterClassificationService;
+import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -1110,5 +1112,186 @@ public class TimelineTripClassificationTest {
         // Actually: 800 km > 100 km AND 100 km/h in range 50-200 AND 8h >= 1h → TRAIN
         assertEquals(TripType.TRAIN, result,
                 "800 km at 100 km/h over 8h meets TRAIN thresholds (ambiguous case)");
+    }
+
+    @Test
+    void testBoatClassificationUsesWaterEvidenceWithoutMinimumSpeed() {
+        TimelineConfig boatConfig = boatConfig(true);
+        TripGpsStatistics slowBoatSpeeds = new TripGpsStatistics(3.0 / 3.6, 6.0 / 3.6, 1.0, 0);
+        TripWaterStatistics lakeEvidence = new TripWaterStatistics(
+                4_500.0,
+                0.90,
+                2_500.0,
+                20,
+                true
+        );
+
+        TripType result = classification.classifyTravelType(
+                slowBoatSpeeds,
+                lakeEvidence,
+                Duration.ofMinutes(90),
+                5_000,
+                boatConfig
+        );
+
+        assertEquals(TripType.BOAT, result,
+                "Sustained water evidence should classify as BOAT even at low speed");
+    }
+
+    @Test
+    void testBoatDisabledFallsBackToExistingClassification() {
+        TripGpsStatistics slowBoatSpeeds = new TripGpsStatistics(3.0 / 3.6, 6.0 / 3.6, 1.0, 0);
+        TripWaterStatistics lakeEvidence = new TripWaterStatistics(4_500.0, 0.90, 2_500.0, 20, true);
+
+        TripType result = classification.classifyTravelType(
+                slowBoatSpeeds,
+                lakeEvidence,
+                Duration.ofMinutes(90),
+                5_000,
+                boatConfig(false)
+        );
+
+        assertEquals(TripType.WALK, result,
+                "Disabled BOAT detection should preserve existing speed-based classification");
+    }
+
+    @Test
+    void testFlightPriorityBeatsBoatWaterEvidence() {
+        TimelineConfig boatAndFlightConfig = boatConfig(true);
+        boatAndFlightConfig.setFlightEnabled(true);
+        boatAndFlightConfig.setFlightMinAvgSpeed(400.0);
+        boatAndFlightConfig.setFlightMinMaxSpeed(500.0);
+
+        TripGpsStatistics flightSpeeds = new TripGpsStatistics(700.0 / 3.6, 850.0 / 3.6, 20.0, 0);
+        TripWaterStatistics oceanEvidence = new TripWaterStatistics(300_000.0, 0.95, 250_000.0, 100, true);
+
+        TripType result = classification.classifyTravelType(
+                flightSpeeds,
+                oceanEvidence,
+                Duration.ofMinutes(60),
+                700_000,
+                boatAndFlightConfig
+        );
+
+        assertEquals(TripType.FLIGHT, result,
+                "Flight must remain higher priority than BOAT for over-water flights");
+    }
+
+    @Test
+    void testWeakWaterEvidenceDoesNotClassifyBoat() {
+        TripGpsStatistics carSpeeds = new TripGpsStatistics(40.0 / 3.6, 70.0 / 3.6, 20.0, 0);
+        TripWaterStatistics bridgeLikeEvidence = new TripWaterStatistics(300.0, 0.08, 300.0, 8, true);
+
+        TripType result = classification.classifyTravelType(
+                carSpeeds,
+                bridgeLikeEvidence,
+                Duration.ofMinutes(20),
+                13_000,
+                boatConfig(true)
+        );
+
+        assertEquals(TripType.CAR, result,
+                "Short water crossings should not become BOAT");
+    }
+
+    @Test
+    void testUnavailableWaterEvidenceDoesNotClassifyBoat() {
+        TripGpsStatistics slowSpeeds = new TripGpsStatistics(3.0 / 3.6, 6.0 / 3.6, 1.0, 0);
+
+        TripType result = classification.classifyTravelType(
+                slowSpeeds,
+                TripWaterStatistics.unavailable(),
+                Duration.ofMinutes(90),
+                5_000,
+                boatConfig(true)
+        );
+
+        assertEquals(TripType.WALK, result,
+                "BOAT requires explicit water evidence");
+    }
+
+    @Test
+    void testWaterStatisticsUseCachedPointEnvironmentEvidence() {
+        TripWaterClassificationService waterClassificationService = new TripWaterClassificationService();
+        List<GPSPoint> lakePath = List.of(
+                environmentPoint(0.0, 0.0, 0, true),
+                environmentPoint(0.0, 0.01, 600, true),
+                environmentPoint(0.0, 0.02, 1200, true),
+                environmentPoint(0.0, 0.02, 4800, true),
+                environmentPoint(0.0, 0.03, 5400, true)
+        );
+
+        TripWaterStatistics result = waterClassificationService.calculateStatistics(lakePath, boatConfig(true));
+
+        assertEquals(true, result.hasEvidence());
+        assertEquals(1.0, result.waterDistanceRatio());
+    }
+
+    @Test
+    void testWaterStatisticsRejectBridgeLikeLandEndpoints() {
+        TripWaterClassificationService waterClassificationService = new TripWaterClassificationService();
+        List<GPSPoint> bridgePath = List.of(
+                environmentPoint(0.0, 0.0, 0, false),
+                environmentPoint(0.0, 0.01, 120, true),
+                environmentPoint(0.0, 0.02, 240, false)
+        );
+
+        TripWaterStatistics result = waterClassificationService.calculateStatistics(bridgePath, boatConfig(true));
+
+        assertEquals(true, result.hasEvidence());
+        assertEquals(0.0, result.waterDistanceMeters());
+    }
+
+    @Test
+    void testWaterStatisticsUseExplicitWaterBodyForInlandLake() {
+        TripWaterClassificationService waterClassificationService = new TripWaterClassificationService();
+        List<GPSPoint> lakePath = List.of(
+                environmentPoint(0.0, 0.0, 0, true),
+                environmentPoint(0.0, 0.01, 600, true),
+                environmentPoint(0.0, 0.02, 1200, true)
+        );
+
+        TripWaterStatistics result = waterClassificationService.calculateStatistics(lakePath, boatConfig(true));
+
+        assertEquals(true, result.hasEvidence());
+        assertEquals(1.0, result.waterDistanceRatio());
+    }
+
+    @Test
+    void testWaterStatisticsUnavailableWhenEnvironmentEvidenceMissing() {
+        TripWaterClassificationService waterClassificationService = new TripWaterClassificationService();
+        List<GPSPoint> path = List.of(
+                point(0.0, 0.0, 0, 0),
+                point(0.0, 0.01, 120, 0)
+        );
+
+        TripWaterStatistics result = waterClassificationService.calculateStatistics(path, boatConfig(true));
+
+        assertEquals(false, result.hasEvidence());
+    }
+
+    private GPSPoint environmentPoint(double lon, double lat, long secondsOffset, boolean onWater) {
+        GPSPoint gpsPoint = point(lon, lat, secondsOffset, 0.0);
+        gpsPoint.setOnWater(onWater);
+        return gpsPoint;
+    }
+
+    private TimelineConfig boatConfig(boolean enabled) {
+        return TimelineConfig.builder()
+                .boatEnabled(enabled)
+                .boatMinWaterRatio(0.60)
+                .boatMinWaterDistanceMeters(2_000.0)
+                .boatMinContinuousWaterDistanceMeters(1_000.0)
+                .boatMaxPlausibleSpeed(120.0)
+                .carEnabled(true)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .bicycleEnabled(false)
+                .runningEnabled(false)
+                .trainEnabled(false)
+                .flightEnabled(false)
+                .build();
     }
 }

@@ -25,14 +25,17 @@ public class TripReclassificationService {
 
     private final TimelineTripRepository tripRepository;
     private final TravelClassification travelClassification;
+    private final TripWaterClassificationService tripWaterClassificationService;
     private final TimelineConfigurationProvider configProvider;
 
     @Inject
     public TripReclassificationService(TimelineTripRepository tripRepository,
                                        TravelClassification travelClassification,
+                                       TripWaterClassificationService tripWaterClassificationService,
                                        TimelineConfigurationProvider configProvider) {
         this.tripRepository = tripRepository;
         this.travelClassification = travelClassification;
+        this.tripWaterClassificationService = tripWaterClassificationService;
         this.configProvider = configProvider;
     }
 
@@ -107,10 +110,37 @@ public class TripReclassificationService {
      * @return the new movement type
      */
     private String reclassifyTrip(TimelineTripEntity trip, TimelineConfig config) {
+        populateMissingWaterEvidence(trip, config);
+
         // Use enhanced classification with GPS statistics if available
         TripType tripType = travelClassification.classifyTravelType(trip, config);
         
         return tripType.name();
+    }
+
+    private void populateMissingWaterEvidence(TimelineTripEntity trip, TimelineConfig config) {
+        if (!Boolean.TRUE.equals(config.getBoatEnabled())
+                || Boolean.TRUE.equals(trip.getWaterEvidenceAvailable())
+                || tripWaterClassificationService == null) {
+            return;
+        }
+
+        var waterStats = tripWaterClassificationService.calculateStatistics(
+                trip.getUser().getId(),
+                trip.getTimestamp(),
+                trip.getTimestamp().plusSeconds(trip.getTripDuration()),
+                config
+        );
+
+        if (waterStats.hasEvidence()) {
+            trip.setWaterDistanceMeters(waterStats.waterDistanceMeters());
+            trip.setWaterDistanceRatio(waterStats.waterDistanceRatio());
+            trip.setLongestWaterSegmentMeters(waterStats.longestWaterSegmentMeters());
+            trip.setWaterSampleCount(waterStats.waterSampleCount());
+            trip.setWaterEvidenceAvailable(true);
+        } else {
+            trip.setWaterEvidenceAvailable(false);
+        }
     }
 
 }

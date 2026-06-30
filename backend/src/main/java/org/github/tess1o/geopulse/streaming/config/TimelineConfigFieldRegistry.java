@@ -367,6 +367,42 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::getFlightMinMaxSpeed,
                         TimelineConfig::setFlightMinMaxSpeed,
                         Double::valueOf
+                ))
+                // Optional Trip Types - Boat
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.boat.enabled",
+                        properties.getBoatEnabled(),
+                        TimelineConfig::getBoatEnabled,
+                        TimelineConfig::setBoatEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.boat.min_water_ratio",
+                        properties.getBoatMinWaterRatio(),
+                        TimelineConfig::getBoatMinWaterRatio,
+                        TimelineConfig::setBoatMinWaterRatio,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.boat.min_water_distance_meters",
+                        properties.getBoatMinWaterDistanceMeters(),
+                        TimelineConfig::getBoatMinWaterDistanceMeters,
+                        TimelineConfig::setBoatMinWaterDistanceMeters,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.boat.min_continuous_water_distance_meters",
+                        properties.getBoatMinContinuousWaterDistanceMeters(),
+                        TimelineConfig::getBoatMinContinuousWaterDistanceMeters,
+                        TimelineConfig::setBoatMinContinuousWaterDistanceMeters,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.boat.max_plausible_speed",
+                        properties.getBoatMaxPlausibleSpeed(),
+                        TimelineConfig::getBoatMaxPlausibleSpeed,
+                        TimelineConfig::setBoatMaxPlausibleSpeed,
+                        Double::valueOf
                 ));
     }
 }

@@ -75,6 +75,7 @@ const getTransportIcon = (type) => {
   const iconMap = {
     'FLIGHT': '✈️',
     'TRAIN': '🚊',
+    'BOAT': '⛵',
     'BICYCLE': '🚴',
     'RUNNING': '🏃',
     'CAR': '🚗',

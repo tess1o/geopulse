@@ -50,6 +50,7 @@ export function useTableFilters(options = {}) {
         {label: 'Running', value: 'RUNNING'},
         {label: 'Train', value: 'TRAIN'},
         {label: 'Flight', value: 'FLIGHT'},
+        {label: 'Boat', value: 'BOAT'},
         {label: 'Unknown', value: 'UNKNOWN'}
     ]
 

@@ -95,6 +95,7 @@ const sidebars = {
                         'user-guide/timeline/stay_detection',
                         'user-guide/timeline/trip_detection',
                         'user-guide/timeline/travel_classification',
+                        'user-guide/timeline/boat-setup',
                         {
                             type: 'doc',
                             id: 'user-guide/timeline/data_gaps',

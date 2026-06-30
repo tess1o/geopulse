@@ -3,7 +3,8 @@ import apiService from '../utils/apiService'
 
 export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
     state: () => ({
-        timelinePreferences: null
+        timelinePreferences: null,
+        lastUpdateResponseData: null
     }),
 
     getters: {
@@ -79,9 +80,8 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { jobId: "..." } }
-                return response?.data?.jobId || null
+                this.lastUpdateResponseData = response?.data || null
+                return response?.data?.jobId || response?.data?.boatSetupJobId || null
             } catch (error) {
                 throw error
             }

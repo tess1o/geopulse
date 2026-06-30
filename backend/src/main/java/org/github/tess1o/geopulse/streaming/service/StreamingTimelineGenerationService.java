@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.service.trips.StreamingTripPostProcessor;
+import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMerger;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
@@ -75,6 +76,9 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     GpsPointRepository gpsPointRepository;
+
+    @Inject
+    BoatSetupService boatSetupService;
 
     @Inject
     TimelineJobProgressService jobProgressService;
@@ -146,8 +150,16 @@ public class StreamingTimelineGenerationService {
 
             log.info("Estimated {} GPS points to process for user {} using streaming iterator", estimatedCount, userId);
 
+            String environmentDatasetVersion = prepareBoatEvidence(userId, config, jobId);
+
             // Create streaming iterable (memory-efficient - no loading all points!)
-            StreamingGpsIterable gpsStream = new StreamingGpsIterable(gpsPointRepository, userId, regenerationStartTime, 10_000);
+            StreamingGpsIterable gpsStream = new StreamingGpsIterable(
+                    gpsPointRepository,
+                    userId,
+                    regenerationStartTime,
+                    10_000,
+                    environmentDatasetVersion
+            );
 
             updateProgress(jobId, "Ready to process " + estimatedCount + " GPS points", 3, 35,
                     Map.of("totalGpsPoints", estimatedCount));
@@ -329,6 +341,26 @@ public class StreamingTimelineGenerationService {
                         .and("userId", userId)
                         .and("idleStatus", TimelineStatus.IDLE));
         return updatedRows > 0;
+    }
+
+    private String prepareBoatEvidence(UUID userId,
+                                       TimelineConfig config,
+                                       UUID jobId) {
+        if (boatSetupService == null || !boatSetupService.shouldUseBoatSetup(config)) {
+            return null;
+        }
+
+        updateProgress(jobId, "Preparing Boat setup", 3, 25,
+                Map.of("boatEvidenceAvailable", false));
+        String environmentDatasetVersion = boatSetupService.ensureReadyForUser(
+                userId,
+                config,
+                (phase, percentage) -> updateProgress(jobId, phase, 3, percentage,
+                        Map.of("boatEvidenceAvailable", true))
+        );
+        updateProgress(jobId, "Boat water evidence ready", 3, 35,
+                Map.of("boatEvidenceAvailable", true));
+        return environmentDatasetVersion;
     }
 
     private void releaseLock(UUID userId) {

@@ -138,7 +138,8 @@ const tripTypeConfig = {
   RUNNING: { label: 'Running', color: 'contrast' },
   CAR: { label: 'Car', color: 'primary' },
   TRAIN: { label: 'Train', color: 'secondary' },
-  FLIGHT: { label: 'Flight', color: 'danger' }
+  FLIGHT: { label: 'Flight', color: 'danger' },
+  BOAT: { label: 'Boat', color: 'info' }
 }
 
 // Y-axis title based on unit system

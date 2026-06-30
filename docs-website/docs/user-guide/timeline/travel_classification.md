@@ -1,11 +1,11 @@
 ---
 title: Travel Classification
-description: How GeoPulse automatically identifies your travel mode (walking, car, bicycle, train, flight) based on GPS data.
+description: How GeoPulse automatically identifies your travel mode based on GPS data.
 ---
 
 # Travel Classification
 
-GeoPulse automatically analyzes your trips to determine how you traveled  whether you walked, drove, cycled, took a train, or flew. This classification uses GPS speed data and advanced algorithms to accurately identify your mode of transport.
+GeoPulse automatically analyzes your trips to determine how you traveled, including walking, driving, cycling, running, train, flight, and boat travel. Classification uses GPS speed data plus additional route evidence where available.
 
 ---
 
@@ -16,6 +16,7 @@ When GeoPulse detects that you're moving between two locations (a trip), it anal
 - **Average Speed**  -  Your typical speed throughout the trip
 - **Maximum Speed**  -  The highest speed reached during the trip
 - **Speed Variance**  -  How consistent your speed was (important for distinguishing trains from cars)
+- **Water Evidence**  -  Whether the trip path spends sustained distance over water (used for boat trips)
 
 The system then compares these metrics against configurable thresholds to determine which mode of transport best matches your trip characteristics.
 
@@ -41,6 +42,7 @@ These types can be enabled or disabled in your Timeline Preferences:
 - **RUNNING**  -  Medium-low speed running and jogging
 - **TRAIN**  -  High-speed rail travel with consistent speeds
 - **FLIGHT**  -  Air travel with very high speeds
+- **BOAT**  -  Ferry, boat, and ship travel detected from sustained water evidence
 
 :::tip
 If you don't use certain travel modes, you can disable them in your Timeline Preferences to improve classification accuracy. For example, if you never cycle, disable **BICYCLE** to prevent car trips from being misclassified.
@@ -55,12 +57,13 @@ If you don't use certain travel modes, you can disable them in your Timeline Pre
 The system evaluates trip types in a specific order to ensure accurate classification:
 
 1. **FLIGHT**  -  Checked first (400+ km/h average OR 500+ km/h peak)
-2. **TRAIN**  -  High speed with low variance (30-150 km/h, consistent speed)
-3. **BICYCLE**  -  Medium speeds (8-25 km/h)  -  **Checked before RUNNING!**
-4. **RUNNING**  -  Medium-low speeds (7-14 km/h)  -  **Must be before CAR!**
-5. **CAR**  -  Motorized transport (10+ km/h average OR 15+ km/h peak, if enabled)
-6. **WALK**  -  Low speeds (≤6 km/h average, ≤8 km/h peak)
-7. **UNKNOWN**  -  Fallback for edge cases
+2. **BOAT**  -  Sustained water evidence; speed is only a sanity check
+3. **TRAIN**  -  High speed with low variance (30-150 km/h, consistent speed)
+4. **BICYCLE**  -  Medium speeds (8-25 km/h)  -  **Checked before RUNNING!**
+5. **RUNNING**  -  Medium-low speeds (7-14 km/h)  -  **Must be before CAR!**
+6. **CAR**  -  Motorized transport (10+ km/h average OR 15+ km/h peak, if enabled)
+7. **WALK**  -  Low speeds (≤6 km/h average, ≤8 km/h peak)
+8. **UNKNOWN**  -  Fallback for edge cases
 
 :::warning Important
 **BICYCLE and RUNNING must be checked before CAR** because their speed ranges overlap. The order matters: BICYCLE (8-25 km/h) is checked first to catch faster speeds, then RUNNING (7-14 km/h), then CAR. If BICYCLE or RUNNING are disabled, those trips will be classified as the next matching enabled type (often CAR, otherwise UNKNOWN).
@@ -73,6 +76,12 @@ GeoPulse includes sophisticated GPS noise detection to ensure accurate classific
 - **Supersonic Speed Detection**  -  Rejects impossible speeds above 1,200 km/h (GPS noise)
 - **Reliability Validation**  -  Compares GPS speeds against calculated speeds from distance/duration
 - **Adaptive Thresholds**  -  Uses different validation rules for low-speed vs. high-speed trips
+
+### Boat Detection
+
+Boat detection is intentionally based on water evidence, not a minimum speed. Slow movement on a lake can still classify as **BOAT** if enough of the moving trip path is over water. Stationary time on water remains a normal stay.
+
+To reduce false positives from bridges, tunnels, and shoreline GPS drift, GeoPulse requires a minimum water ratio, minimum water distance, and minimum continuous water segment over imported water-surface polygons. Ambiguous sparse trips, trips crossing short bridges, or trips near unmapped water may remain **UNKNOWN** or use another matching mode.
 - **Smart Fallbacks**  -  Automatically switches to calculated speeds when GPS data is unreliable
 
 ### Distance-Based Classification (Sparse GPS Data)
@@ -273,7 +282,7 @@ You can fine-tune travel classification in **Timeline Preferences** to match you
 
 Trip classifications appear in several places throughout GeoPulse:
 
-- **Timeline View**  -  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane)
+- **Timeline View**  -  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane, boat)
 - **Journey Insights**  -  Breakdown of trips by type with statistics
 - **Dashboard**  -  Summary of travel modes used over time periods
 
@@ -286,6 +295,7 @@ Trip classifications appear in several places throughout GeoPulse:
 | =� | BICYCLE | Cycling or fast running |
 | =� | TRAIN | Train or metro travel |
 |  | FLIGHT | Air travel |
+| ⛵ | BOAT | Boat, ferry, or ship travel |
 | S | UNKNOWN | Unable to classify with confidence |
 
 ### Why a Trip Might Be UNKNOWN

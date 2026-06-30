@@ -49,6 +49,7 @@ public class DigestMetricsCalculator {
         double runningDistance = calculateDistanceForTripType(stats, "RUNNING");
         double trainDistance = calculateDistanceForTripType(stats, "TRAIN");
         double flightDistance = calculateDistanceForTripType(stats, "FLIGHT");
+        double boatDistance = calculateDistanceForTripType(stats, "BOAT");
         double unknownDistance = calculateDistanceForTripType(stats, "UNKNOWN");
 
         return DigestMetrics.builder()
@@ -64,6 +65,7 @@ public class DigestMetricsCalculator {
                 .runningDistance(runningDistance * 1000)
                 .trainDistance(trainDistance * 1000)
                 .flightDistance(flightDistance * 1000)
+                .boatDistance(boatDistance * 1000)
                 .unknownDistance(unknownDistance * 1000)
                 // Other enhanced metrics
                 .timeMoving(stats.getTimeMoving())

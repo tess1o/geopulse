@@ -108,6 +108,36 @@ public class TimelineTripEntity {
     private Integer lowAccuracyPointsCount;
 
     /**
+     * Water-distance evidence used for BOAT classification.
+     */
+    @Column(name = "water_distance_meters")
+    private Double waterDistanceMeters;
+
+    /**
+     * Ratio of usable trip distance classified as water.
+     */
+    @Column(name = "water_distance_ratio")
+    private Double waterDistanceRatio;
+
+    /**
+     * Longest continuous water segment in meters.
+     */
+    @Column(name = "longest_water_segment_meters")
+    private Double longestWaterSegmentMeters;
+
+    /**
+     * Count of GPS/path segments sampled for water evidence.
+     */
+    @Column(name = "water_sample_count")
+    private Integer waterSampleCount;
+
+    /**
+     * Whether water evidence was available for this trip.
+     */
+    @Column(name = "water_evidence_available")
+    private Boolean waterEvidenceAvailable;
+
+    /**
      * When this trip was last updated/regenerated
      */
     @Column(name = "last_updated", nullable = false)

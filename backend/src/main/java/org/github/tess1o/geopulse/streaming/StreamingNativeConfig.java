@@ -44,6 +44,8 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         PlaceVisitDTO.class,
         FavoriteRelationDTO.class,
         TripClassificationDetailsDTO.class,
+        BoatSetupStatusDTO.class,
+        BoatSetupStartResponseDTO.class,
         // Location Analytics DTOs
         LocationStatisticsDTO.class,
         LocationAnalyticsMapPlaceDTO.class,

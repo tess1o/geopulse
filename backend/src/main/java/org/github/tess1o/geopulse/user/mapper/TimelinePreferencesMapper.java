@@ -142,6 +142,17 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "flightMinMaxSpeed",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Optional Trip Types - Boat
+    @org.mapstruct.Mapping(target = "boatEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "boatMinWaterRatio",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "boatMinWaterDistanceMeters",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "boatMinContinuousWaterDistanceMeters",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "boatMaxPlausibleSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
     /**
@@ -202,6 +213,11 @@ public interface TimelinePreferencesMapper {
                     .flightEnabled(fromImport.getFlightEnabled())
                     .flightMinAvgSpeed(fromImport.getFlightMinAvgSpeed())
                     .flightMinMaxSpeed(fromImport.getFlightMinMaxSpeed())
+                    .boatEnabled(fromImport.getBoatEnabled())
+                    .boatMinWaterRatio(fromImport.getBoatMinWaterRatio())
+                    .boatMinWaterDistanceMeters(fromImport.getBoatMinWaterDistanceMeters())
+                    .boatMinContinuousWaterDistanceMeters(fromImport.getBoatMinContinuousWaterDistanceMeters())
+                    .boatMaxPlausibleSpeed(fromImport.getBoatMaxPlausibleSpeed())
                     .build();
         }
         
@@ -252,6 +268,11 @@ public interface TimelinePreferencesMapper {
                 .flightEnabled(existing.getFlightEnabled())
                 .flightMinAvgSpeed(existing.getFlightMinAvgSpeed())
                 .flightMinMaxSpeed(existing.getFlightMinMaxSpeed())
+                .boatEnabled(existing.getBoatEnabled())
+                .boatMinWaterRatio(existing.getBoatMinWaterRatio())
+                .boatMinWaterDistanceMeters(existing.getBoatMinWaterDistanceMeters())
+                .boatMinContinuousWaterDistanceMeters(existing.getBoatMinContinuousWaterDistanceMeters())
+                .boatMaxPlausibleSpeed(existing.getBoatMaxPlausibleSpeed())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

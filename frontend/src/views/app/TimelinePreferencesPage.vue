@@ -122,6 +122,8 @@
             v-if="activeTab === 'trips'"
             v-model="prefs"
             :get-warning-messages-for-type="getWarningMessagesForType"
+            :boat-setup-status="boatSetupStatus"
+            @retry-boat-setup="confirmStartBoatSetup"
           />
 
           <!-- GPS Gaps Detection Tab -->
@@ -208,6 +210,67 @@
           </template>
         </Dialog>
 
+        <Dialog
+          v-model:visible="boatSetupVisible"
+          modal
+          :closable="!boatSetupRunning"
+          :dismissableMask="!boatSetupRunning"
+          header="Boat Setup"
+          class="boat-setup-dialog"
+        >
+          <div class="boat-setup-dialog-content">
+            <p>
+              Boat detection needs a global water dataset of about 800-900 MB and a one-time
+              GPS pre-calculation for your account.
+            </p>
+            <ProgressBar
+              :value="boatSetupStatus?.progressPercentage || 0"
+              class="boat-setup-progress-bar"
+            />
+            <div class="boat-setup-modal-details">
+              <span>{{ boatSetupStatus?.phase || 'Preparing Boat setup...' }}</span>
+              <strong>{{ boatSetupStatus?.progressPercentage || 0 }}%</strong>
+            </div>
+            <div
+              v-if="boatSetupStatus?.datasetStatus === 'DOWNLOADING' && boatSetupStatus?.downloadedBytes"
+              class="boat-setup-secondary"
+            >
+              Downloaded {{ formatBytes(boatSetupStatus.downloadedBytes) }}
+              <template v-if="boatSetupStatus.totalBytes">
+                / {{ formatBytes(boatSetupStatus.totalBytes) }}
+              </template>
+            </div>
+            <div v-if="boatSetupStatus?.totalGpsPoints" class="boat-setup-secondary">
+              GPS points processed:
+              {{ (boatSetupStatus.processedGpsPoints || 0).toLocaleString() }}
+              / {{ boatSetupStatus.totalGpsPoints.toLocaleString() }}
+            </div>
+            <Message v-if="boatSetupStatus?.status === 'FAILED'" severity="error">
+              <div>
+                <strong>{{ boatSetupStatus.errorCode || 'Boat setup failed' }}</strong>
+                <div>{{ boatSetupStatus.errorMessage }}</div>
+                <a
+                  v-if="boatSetupStatus.docsUrl"
+                  :href="boatSetupStatus.docsUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Use an offline dataset file <i class="pi pi-external-link"></i>
+                </a>
+              </div>
+            </Message>
+          </div>
+          <template #footer>
+            <Button
+              label="Close"
+              severity="secondary"
+              outlined
+              :disabled="boatSetupRunning"
+              @click="boatSetupVisible = false"
+            />
+          </template>
+        </Dialog>
+
         <!-- Confirm Dialog -->
         <ConfirmDialog />
         <Toast />
@@ -249,6 +312,7 @@ import TimelineRegenerationModal from '@/components/dialogs/TimelineRegeneration
 
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
+import { useBoatSetupStore } from '@/stores/boatSetup'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useClassificationValidation } from '@/composables/useClassificationValidation'
 import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
@@ -267,7 +331,9 @@ const CLASSIFICATION_FIELDS = [
   'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
   'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
   'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
-  'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed'
+  'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed',
+  'boatEnabled', 'boatMinWaterRatio', 'boatMinWaterDistanceMeters',
+  'boatMinContinuousWaterDistanceMeters', 'boatMaxPlausibleSpeed'
 ]
 
 const STRUCTURAL_FIELDS = [
@@ -316,6 +382,11 @@ const PREFERENCE_VALUE_TYPES = {
   flightEnabled: 'boolean',
   flightMinAvgSpeed: 'number',
   flightMinMaxSpeed: 'number',
+  boatEnabled: 'boolean',
+  boatMinWaterRatio: 'number',
+  boatMinWaterDistanceMeters: 'number',
+  boatMinContinuousWaterDistanceMeters: 'number',
+  boatMaxPlausibleSpeed: 'number',
   tripArrivalDetectionMinDurationSeconds: 'number',
   tripSustainedStopMinDurationSeconds: 'number',
   tripArrivalMinPoints: 'number',
@@ -338,6 +409,9 @@ const PREFERENCE_UNITS = {
   staypointVelocityThreshold: 'km/h',
   staypointMaxAccuracyThreshold: 'm',
   walkingMaxAvgSpeed: 'km/h',
+  boatMinWaterDistanceMeters: 'm',
+  boatMinContinuousWaterDistanceMeters: 'm',
+  boatMaxPlausibleSpeed: 'km/h',
   walkingMaxMaxSpeed: 'km/h',
   carMinAvgSpeed: 'km/h',
   carMinMaxSpeed: 'km/h',
@@ -373,6 +447,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
 const timelineStore = useTimelineStore()
+const boatSetupStore = useBoatSetupStore()
 const { checkActiveJob } = useTimelineJobCheck()
 
 // Composables
@@ -436,6 +511,8 @@ const isImportApplying = ref(false)
 const detectedActiveJobId = ref(null)
 const checkingActiveJob = ref(false)
 const actionsMenuRef = ref(null)
+const boatSetupVisible = ref(false)
+const boatSetupPollingTimer = ref(null)
 let activeJobPollingTimer = null
 
 // Computed
@@ -450,6 +527,17 @@ const isFormValid = computed(() => {
 
 const hasActiveJob = computed(() => {
   return Boolean(currentJobId.value || detectedActiveJobId.value)
+})
+
+const boatSetupStatus = computed(() => boatSetupStore.status)
+
+const boatSetupRunning = computed(() => {
+  return ['QUEUED', 'RUNNING'].includes(boatSetupStatus.value?.status)
+})
+
+const boatSetupNeedsAction = computed(() => {
+  if (!prefs.value?.boatEnabled) return false
+  return !boatSetupStatus.value || ['FAILED', 'PENDING'].includes(boatSetupStatus.value.status)
 })
 
 const headerSecondaryActionsMenu = computed(() => {
@@ -769,6 +857,115 @@ const refreshActiveJob = async () => {
   }
 }
 
+const refreshBoatSetupStatus = async () => {
+  try {
+    await boatSetupStore.fetchStatus()
+  } catch (error) {
+    console.warn('Failed to fetch Boat setup status:', error)
+  }
+}
+
+const startBoatSetupPolling = () => {
+  stopBoatSetupPolling()
+  boatSetupPollingTimer.value = window.setInterval(async () => {
+    try {
+      const jobId = boatSetupStore.currentJobId
+      const status = jobId
+        ? await boatSetupStore.fetchJob(jobId)
+        : await boatSetupStore.fetchStatus()
+
+      if (status?.status === 'READY') {
+        stopBoatSetupPolling()
+        toast.add({
+          severity: 'success',
+          summary: 'Boat Setup Ready',
+          detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+          life: 5000
+        })
+      } else if (status?.status === 'FAILED') {
+        boatSetupVisible.value = true
+        stopBoatSetupPolling()
+        toast.add({
+          severity: 'error',
+          summary: 'Boat Setup Failed',
+          detail: status.errorMessage || 'Water dataset setup failed. Check offline setup instructions.',
+          life: 9000
+        })
+      }
+    } catch (error) {
+      stopBoatSetupPolling()
+      boatSetupVisible.value = true
+      toast.add({
+        severity: 'error',
+        summary: 'Boat Setup Status Failed',
+        detail: error.message || 'Could not refresh Boat setup status.',
+        life: 7000
+      })
+    }
+  }, 2000)
+}
+
+const stopBoatSetupPolling = () => {
+  if (boatSetupPollingTimer.value) {
+    window.clearInterval(boatSetupPollingTimer.value)
+    boatSetupPollingTimer.value = null
+  }
+}
+
+const formatBytes = (bytes) => {
+  if (!bytes || bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let value = bytes
+  let index = 0
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024
+    index++
+  }
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
+const confirmStartBoatSetup = () => {
+  confirm.require({
+    message: 'Boat setup will download or read the water dataset and pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.',
+    header: boatSetupStatus.value?.status === 'FAILED' ? 'Retry Boat Setup' : 'Start Boat Setup',
+    icon: 'pi pi-download',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: boatSetupStatus.value?.status === 'FAILED' ? 'Retry Setup' : 'Start Setup',
+      severity: 'primary'
+    },
+    accept: startBoatSetup
+  })
+}
+
+const startBoatSetup = async () => {
+  try {
+    boatSetupVisible.value = true
+    const setup = await boatSetupStore.startSetup()
+    boatSetupStore.currentJobId = setup?.jobId
+    startBoatSetupPolling()
+    toast.add({
+      severity: 'info',
+      summary: 'Boat Setup Started',
+      detail: 'Water dataset setup and GPS pre-calculation are running.',
+      life: 4000
+    })
+  } catch (error) {
+    console.error('Failed to start Boat setup:', error)
+    boatSetupVisible.value = true
+    toast.add({
+      severity: 'error',
+      summary: 'Boat Setup Failed',
+      detail: error.message || 'Failed to start Boat setup.',
+      life: 7000
+    })
+  }
+}
+
 const confirmSavePreferences = () => {
   if (!isFormValid.value) {
     return;
@@ -776,6 +973,10 @@ const confirmSavePreferences = () => {
 
   const changes = getChangedPrefs()
   if (Object.keys(changes).length === 0) {
+    if (boatSetupNeedsAction.value) {
+      confirmStartBoatSetup()
+      return
+    }
     toast.add({
       severity: 'info',
       summary: 'No Changes',
@@ -788,6 +989,26 @@ const confirmSavePreferences = () => {
   // Categorize changes
   const hasClassificationChanges = hasClassificationParameters(changes)
   const hasStructuralChanges = hasStructuralParameters(changes)
+  const isBoatEnablement = changes.boatEnabled === true && originalPrefs.value?.boatEnabled !== true
+
+  if (isBoatEnablement) {
+    confirm.require({
+      message: 'Boat detection requires downloading a global water dataset of about 800-900 MB and running a one-time GPS pre-calculation for your account. Timeline generation will wait until this setup is complete.',
+      header: 'Enable Boat Detection',
+      icon: 'pi pi-download',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+        outlined: true
+      },
+      acceptProps: {
+        label: 'Enable & Start Setup',
+        severity: 'primary'
+      },
+      accept: () => savePreferences(hasStructuralChanges ? 'full' : 'boat-setup', changes)
+    })
+    return
+  }
   
   if (hasClassificationChanges && !hasStructuralChanges) {
     // Fast path - classification only
@@ -854,7 +1075,37 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
     return
   }
 
-  if (saveType === 'classification') {
+  if (saveType === 'boat-setup') {
+    try {
+      await timelinePreferencesStore.updateTimelinePreferences(changes)
+      const result = timelinePreferencesStore.lastUpdateResponseData
+      await loadPreferences()
+      boatSetupVisible.value = true
+
+      if (result?.boatSetupJobId) {
+        boatSetupStore.currentJobId = result.boatSetupJobId
+        boatSetupStore.status = result.boatSetupStatus || boatSetupStore.status
+      } else {
+        const setup = await boatSetupStore.startSetup()
+        boatSetupStore.currentJobId = setup?.jobId
+      }
+      startBoatSetupPolling()
+      toast.add({
+        severity: 'info',
+        summary: 'Boat Setup Started',
+        detail: 'Water dataset setup and GPS pre-calculation are running.',
+        life: 4000
+      })
+    } catch (error) {
+      console.error('Failed to start Boat setup:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Boat Setup Failed',
+        detail: error.message || 'Failed to enable Boat setup.',
+        life: 7000
+      })
+    }
+  } else if (saveType === 'classification') {
     // Fast path: classification-only updates don't need job tracking
     try {
       await timelinePreferencesStore.updateTimelinePreferences(changes)
@@ -1057,6 +1308,7 @@ watch(
 // Lifecycle
 onMounted(() => {
   loadPreferences()
+  refreshBoatSetupStatus()
   refreshActiveJob()
   activeJobPollingTimer = window.setInterval(refreshActiveJob, 15000)
 
@@ -1076,6 +1328,7 @@ onUnmounted(() => {
     window.clearInterval(activeJobPollingTimer)
     activeJobPollingTimer = null
   }
+  stopBoatSetupPolling()
 })
 </script>
 
@@ -1288,6 +1541,32 @@ onUnmounted(() => {
 
 .hidden-file-input {
   display: none;
+}
+
+.boat-setup-dialog {
+  width: min(560px, 95vw);
+}
+
+.boat-setup-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.boat-setup-progress-bar {
+  width: 100%;
+}
+
+.boat-setup-modal-details {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.boat-setup-secondary {
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
 }
 
 .import-preview-dialog {

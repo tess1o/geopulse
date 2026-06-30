@@ -15,6 +15,8 @@
             <div class="priority-flow">
               <span class="priority-step">✈️ FLIGHT</span>
               <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">⛵ BOAT</span>
+              <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🚊 TRAIN</span>
               <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🚴 BICYCLE</span>
@@ -29,7 +31,7 @@
             </div>
             <p class="priority-description">
               Trips are classified in priority order from top to bottom. Once a match is found, classification stops.
-              This order handles overlapping speed ranges correctly - e.g., a 12 km/h trip matches BICYCLE before RUNNING, and RUNNING before CAR.
+              This order handles water and speed evidence conservatively - e.g., over-water flights remain FLIGHT, and overlapping land speeds match BICYCLE before RUNNING and CAR.
             </p>
           </div>
         </div>
@@ -426,6 +428,118 @@
       </template>
     </TransportTypeCard>
 
+    <!-- Boat Classification -->
+    <TransportTypeCard
+      type="boat"
+      title="Boat"
+      subtitle="Optional transport type"
+      icon="pi pi-compass"
+      description="Detects boat trips from sustained water evidence. Speed is only used as a sanity check, not as proof of boat travel."
+      :enabled="modelValue.boatEnabled"
+      @update:enabled="updatePref('boatEnabled', $event)"
+      :collapsible="true"
+      :validation-messages="getWarningMessagesForType('boat').value"
+      setting-id="boatEnabled"
+    >
+      <template #parameters>
+        <Message
+          v-if="modelValue.boatEnabled && boatSetupStatus"
+          :severity="boatSetupSeverity"
+          class="boat-setup-message"
+        >
+          <div class="boat-setup-content">
+            <div>
+              <strong>{{ boatSetupTitle }}</strong>
+              <div class="boat-setup-phase">{{ boatSetupStatus.phase }}</div>
+              <a
+                v-if="boatSetupStatus.errorMessage && boatSetupStatus.docsUrl"
+                :href="boatSetupStatus.docsUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="boat-setup-docs-link"
+              >
+                Offline setup documentation <i class="pi pi-external-link"></i>
+              </a>
+            </div>
+            <div v-if="boatSetupStatus.progressPercentage !== undefined" class="boat-setup-progress">
+              {{ boatSetupStatus.progressPercentage }}%
+            </div>
+            <Button
+              v-if="boatSetupCanStart"
+              :label="boatSetupStatus.status === 'FAILED' ? 'Retry' : 'Start'"
+              icon="pi pi-refresh"
+              size="small"
+              @click="$emit('retry-boat-setup')"
+            />
+          </div>
+        </Message>
+
+        <div class="parameter-group" data-setting-id="boatMinWaterRatio">
+          <label class="parameter-label">Minimum Water Ratio</label>
+          <p class="parameter-description">
+            Share of usable trip distance that must be over water
+          </p>
+          <div class="control-value">{{ Math.round((modelValue.boatMinWaterRatio || 0) * 100) }}%</div>
+          <SliderControl
+            v-if="modelValue.boatMinWaterRatio !== undefined"
+            :model-value="modelValue.boatMinWaterRatio"
+            @update:model-value="updatePref('boatMinWaterRatio', $event)"
+            :min="0.1" :max="1.0" :step="0.05"
+            :labels="['10% (Lenient)', '60% (Default)', '100% (Strict)']"
+            :decimal-places="2"
+          />
+        </div>
+
+        <div class="parameter-group" data-setting-id="boatMinWaterDistanceMeters">
+          <label class="parameter-label">Minimum Water Distance</label>
+          <p class="parameter-description">
+            Total water distance required before a trip can be classified as boat
+          </p>
+          <div class="control-value">{{ modelValue.boatMinWaterDistanceMeters }} m</div>
+          <SliderControl
+            v-if="modelValue.boatMinWaterDistanceMeters !== undefined"
+            :model-value="modelValue.boatMinWaterDistanceMeters"
+            @update:model-value="updatePref('boatMinWaterDistanceMeters', $event)"
+            :min="100" :max="10000" :step="100"
+            :labels="['100 m (Lenient)', '2000 m (Default)', '10000 m (Strict)']"
+            suffix=" m" :decimal-places="0"
+          />
+        </div>
+
+        <div class="parameter-group" data-setting-id="boatMinContinuousWaterDistanceMeters">
+          <label class="parameter-label">Minimum Continuous Water Distance</label>
+          <p class="parameter-description">
+            Filters out short bridge, tunnel, and shoreline crossings
+          </p>
+          <div class="control-value">{{ modelValue.boatMinContinuousWaterDistanceMeters }} m</div>
+          <SliderControl
+            v-if="modelValue.boatMinContinuousWaterDistanceMeters !== undefined"
+            :model-value="modelValue.boatMinContinuousWaterDistanceMeters"
+            @update:model-value="updatePref('boatMinContinuousWaterDistanceMeters', $event)"
+            :min="100" :max="10000" :step="100"
+            :labels="['100 m (Lenient)', '1000 m (Default)', '10000 m (Strict)']"
+            suffix=" m" :decimal-places="0"
+          />
+        </div>
+
+        <div class="parameter-group" data-setting-id="boatMaxPlausibleSpeed">
+          <label class="parameter-label">Maximum Plausible Speed</label>
+          <p class="parameter-description">
+            Sanity ceiling only; slow movement can still be boat travel
+          </p>
+          <div class="control-value">{{ modelValue.boatMaxPlausibleSpeed }} km/h</div>
+          <SliderControl
+            v-if="modelValue.boatMaxPlausibleSpeed !== undefined"
+            :model-value="modelValue.boatMaxPlausibleSpeed"
+            @update:model-value="updatePref('boatMaxPlausibleSpeed', $event)"
+            :min="20" :max="300" :step="10"
+            :labels="['20 km/h (Strict)', '120 km/h (Default)', '300 km/h (Lenient)']"
+            suffix=" km/h" :decimal-places="0"
+          />
+        </div>
+      </template>
+    </TransportTypeCard>
+
     <!-- Short Distance Threshold -->
     <SettingCard
       title="Short Trip Distance Threshold"
@@ -526,6 +640,8 @@ import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import TransportTypeCard from '@/components/ui/forms/TransportTypeCard.vue'
 import Card from 'primevue/card'
 import Select from 'primevue/select'
+import Message from 'primevue/message'
+import Button from 'primevue/button'
 
 const props = defineProps({
   modelValue: {
@@ -535,10 +651,14 @@ const props = defineProps({
   getWarningMessagesForType: {
     type: Function,
     required: true
+  },
+  boatSetupStatus: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'retry-boat-setup'])
 
 const tripsAlgorithmOptions = [
   { label: 'Single trip', value: 'single' },
@@ -551,6 +671,27 @@ const updatePref = (key, value) => {
     [key]: value
   })
 }
+
+const boatSetupSeverity = computed(() => {
+  if (!props.boatSetupStatus) return 'warn'
+  if (props.boatSetupStatus.status === 'READY') return 'success'
+  if (props.boatSetupStatus.status === 'FAILED') return 'error'
+  if (['QUEUED', 'RUNNING'].includes(props.boatSetupStatus.status)) return 'info'
+  return 'warn'
+})
+
+const boatSetupTitle = computed(() => {
+  if (!props.boatSetupStatus) return 'Boat setup required'
+  if (props.boatSetupStatus.status === 'READY') return 'Boat setup ready'
+  if (props.boatSetupStatus.status === 'FAILED') return 'Boat setup failed'
+  if (['QUEUED', 'RUNNING'].includes(props.boatSetupStatus.status)) return 'Boat setup in progress'
+  return 'Boat setup required'
+})
+
+const boatSetupCanStart = computed(() => {
+  if (!props.boatSetupStatus) return true
+  return ['FAILED', 'PENDING'].includes(props.boatSetupStatus.status)
+})
 </script>
 
 <style scoped>
@@ -577,6 +718,33 @@ const updatePref = (key, value) => {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.boat-setup-message {
+  margin-bottom: 1rem;
+}
+
+.boat-setup-content {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.boat-setup-phase {
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.boat-setup-progress {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.boat-setup-docs-link {
+  display: inline-block;
+  margin-top: 0.35rem;
 }
 
 .priority-icon i {

@@ -258,6 +258,25 @@ export function useClassificationValidation(prefs) {
     return null
   })
 
+  const boatWaterEvidenceWarning = computed(() => {
+    if (!prefs.value?.boatEnabled) return null
+
+    const minWaterDistance = prefs.value?.boatMinWaterDistanceMeters
+    const minContinuousWater = prefs.value?.boatMinContinuousWaterDistanceMeters
+
+    if (minWaterDistance !== undefined &&
+      minContinuousWater !== undefined &&
+      minContinuousWater > minWaterDistance) {
+      return {
+        type: 'boat',
+        severity: 'error',
+        message: `Boat continuous water distance (${minContinuousWater} m) cannot exceed total water distance (${minWaterDistance} m).`
+      }
+    }
+
+    return null
+  })
+
   /**
    * Aggregate all validation warnings
    */
@@ -273,7 +292,8 @@ export function useClassificationValidation(prefs) {
       trainMinPeakWarning.value,
       flightMinMaxWarning.value,
       carMinMaxWarning.value,
-      walkingMaxWarning.value
+      walkingMaxWarning.value,
+      boatWaterEvidenceWarning.value
     ].filter(w => w !== null)
 
     return warnings

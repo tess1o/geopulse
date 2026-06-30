@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -35,12 +36,17 @@ public class UserResource {
     private final UserService userService;
     private final UserMapper userMapper;
     private final CurrentUserService currentUserService;
+    private final BoatSetupService boatSetupService;
 
     @Inject
-    public UserResource(UserService userService, UserMapper userMapper, CurrentUserService currentUserService) {
+    public UserResource(UserService userService,
+                        UserMapper userMapper,
+                        CurrentUserService currentUserService,
+                        BoatSetupService boatSetupService) {
         this.userService = userService;
         this.userMapper = userMapper;
         this.currentUserService = currentUserService;
+        this.boatSetupService = boatSetupService;
     }
 
     /**
@@ -194,6 +200,13 @@ public class UserResource {
             if (jobId != null) {
                 return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
             }
+        }
+        if ("boat-setup".equals(changeType)) {
+            var setup = boatSetupService.startSetup(userId);
+            return Response.ok(ApiResponse.success(Map.of(
+                    "boatSetupJobId", setup.jobId().toString(),
+                    "boatSetupStatus", setup.status()
+            ))).build();
         }
 
         // No job created (classification-only or no changes)

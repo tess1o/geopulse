@@ -23,6 +23,8 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
     TravelClassification travelClassification;
     @Inject
     GpsStatisticsCalculator gpsStatisticsCalculator;
+    @Inject
+    TripWaterClassificationService tripWaterClassificationService;
 
     /**
      * Validate trip against minimum distance and duration requirements.
@@ -78,6 +80,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
 
         // Classify the overall trip mode
         TripGpsStatistics tripGpsStatistics;
+        TripWaterStatistics tripWaterStatistics;
         TripType overallTripType;
 
         if (hasInferredTrip) {
@@ -85,11 +88,13 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             // This prevents polluting flight classification with low-speed GPS data from adjacent car trips
             log.debug("Merged trips include inferred trip - using distance-based classification");
             tripGpsStatistics = TripGpsStatistics.empty();
-            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
+            tripWaterStatistics = TripWaterStatistics.unavailable();
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
         } else {
             // Normal case: recalculate GPS statistics from actual GPS points
             tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(userId, startTime, endTime);
-            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
+            tripWaterStatistics = calculateWaterStatistics(userId, startTime, endTime, config);
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
         }
 
         Trip mergedTrip = Trip.builder()
@@ -99,6 +104,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .startPoint(firstTrip.getStartLocation())
                 .endPoint(lastTrip.getEndLocation())
                 .statistics(tripGpsStatistics)
+                .waterStatistics(tripWaterStatistics)
                 .tripType(overallTripType)
                 .build();
 
@@ -113,6 +119,20 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
      */
     protected TripType classifyMergedTrip(double totalDistance, Duration tripDuration, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
         return travelClassification.classifyTravelType(tripGpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
+    }
+
+    protected TripType classifyMergedTrip(double totalDistance,
+                                          Duration tripDuration,
+                                          TripGpsStatistics tripGpsStatistics,
+                                          TripWaterStatistics tripWaterStatistics,
+                                          TimelineConfig config) {
+        return travelClassification.classifyTravelType(
+                tripGpsStatistics,
+                tripWaterStatistics,
+                tripDuration,
+                Double.valueOf(totalDistance).longValue(),
+                config
+        );
     }
 
     /**
@@ -180,12 +200,14 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .build();
 
         TripGpsStatistics stats = TripGpsStatistics.empty();
+        TripWaterStatistics waterStats = TripWaterStatistics.unavailable();
         TripType tripType;
         if (tripDuration.isZero() || distanceMeters <= 0) {
             tripType = TripType.UNKNOWN;
         } else {
             tripType = travelClassification.classifyTravelType(
                     stats,
+                    waterStats,
                     tripDuration,
                     Double.valueOf(distanceMeters).longValue(),
                     config
@@ -196,10 +218,18 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .startTime(tripStart)
                 .duration(tripDuration)
                 .statistics(stats)
+                .waterStatistics(waterStats)
                 .startPoint(startPoint)
                 .endPoint(endPoint)
                 .distanceMeters(distanceMeters)
                 .tripType(tripType)
                 .build();
+    }
+
+    private TripWaterStatistics calculateWaterStatistics(UUID userId, Instant startTime, Instant endTime, TimelineConfig config) {
+        if (tripWaterClassificationService == null) {
+            return TripWaterStatistics.unavailable();
+        }
+        return tripWaterClassificationService.calculateStatistics(userId, startTime, endTime, config);
     }
 }

@@ -396,6 +396,177 @@ class StreamingTimelineProcessorTest {
         assertNotNull(events, "Timeline events should not be null");
         // With only 1 stopped point, arrival should NOT be detected yet
     }
+
+    @Test
+    void shouldSplitBoatTripFromWalking_WhenWaterToLandTransitionIsSustained() {
+        TimelineConfig boatConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(10)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .boatEnabled(true)
+            .boatMinContinuousWaterDistanceMeters(300.0)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(boatConfig)))
+            .thenAnswer(invocation -> {
+                UserState state = invocation.getArgument(0);
+                List<GPSPoint> path = state.copyActivePoints();
+                GPSPoint first = path.getFirst();
+                GPSPoint last = path.getLast();
+                boolean allWater = path.stream().allMatch(p -> Boolean.TRUE.equals(p.getOnWater()));
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .distanceMeters(first.distanceTo(last))
+                    .tripType(allWater ? org.github.tess1o.geopulse.streaming.model.shared.TripType.BOAT
+                            : org.github.tess1o.geopulse.streaming.model.shared.TripType.WALK)
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2026-06-29T15:00:00Z"), 49.5500, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:01:00Z"), 49.5520, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:02:00Z"), 49.5540, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:03:00Z"), 49.5560, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:04:00Z"), 49.5580, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:05:00Z"), 49.5600, 25.6000, 2.5, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T15:06:00Z"), 49.5605, 25.6000, 1.4, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T15:07:00Z"), 49.5605, 25.6020, 1.4, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T15:08:00Z"), 49.5605, 25.6040, 1.4, 15.0, false)
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, boatConfig, testUserId);
+        List<Trip> trips = events.stream()
+            .filter(Trip.class::isInstance)
+            .map(Trip.class::cast)
+            .toList();
+
+        assertEquals(2, trips.size(), "Boat and walking portions should be emitted as separate trips");
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.BOAT, trips.get(0).getTripType());
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.WALK, trips.get(1).getTripType());
+        assertEquals(Instant.parse("2026-06-29T15:05:00Z"), trips.get(0).getEndTime(),
+            "Boat trip should end at the last confirmed water point");
+        assertEquals(Instant.parse("2026-06-29T15:05:00Z"), trips.get(1).getStartTime(),
+            "Walking trip should start from the shared shoreline boundary point");
+    }
+
+    @Test
+    void shouldSplitBoatTripFromWalking_WhenShorelineEvidenceHasShortBlip() {
+        TimelineConfig boatConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(10)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .boatEnabled(true)
+            .boatMinContinuousWaterDistanceMeters(300.0)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(boatConfig)))
+            .thenAnswer(invocation -> {
+                UserState state = invocation.getArgument(0);
+                List<GPSPoint> path = state.copyActivePoints();
+                GPSPoint first = path.getFirst();
+                GPSPoint last = path.getLast();
+                boolean allWater = path.stream().allMatch(p -> Boolean.TRUE.equals(p.getOnWater()));
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .distanceMeters(first.distanceTo(last))
+                    .tripType(allWater ? org.github.tess1o.geopulse.streaming.model.shared.TripType.BOAT
+                            : org.github.tess1o.geopulse.streaming.model.shared.TripType.WALK)
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2026-06-25T18:17:41Z"), 49.569005, 25.573084, 2.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:19:11Z"), 49.567381, 25.573826, 6.0, 4.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:21:43Z"), 49.564925, 25.575779, 9.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:24:43Z"), 49.561541, 25.578912, 9.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:28:11Z"), 49.557881, 25.582067, 10.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:31:11Z"), 49.554735, 25.586510, 6.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:32:41Z"), 49.554557, 25.586770, 0.0, 7.0, false),
+            createGpsPoint(Instant.parse("2026-06-25T18:34:11Z"), 49.554158, 25.586638, 8.0, 5.0, true),
+            createGpsPoint(Instant.parse("2026-06-25T18:35:41Z"), 49.553263, 25.586580, 1.0, 4.0, false),
+            createGpsPoint(Instant.parse("2026-06-25T18:38:41Z"), 49.552932, 25.588299, 4.0, 5.0, false),
+            createGpsPoint(Instant.parse("2026-06-25T18:41:41Z"), 49.552799, 25.591423, 5.0, 2.0, false),
+            createGpsPoint(Instant.parse("2026-06-25T18:44:41Z"), 49.552350, 25.594869, 4.0, 4.0, false)
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, boatConfig, testUserId);
+        List<Trip> trips = events.stream()
+            .filter(Trip.class::isInstance)
+            .map(Trip.class::cast)
+            .toList();
+
+        assertEquals(2, trips.size(), "Short shoreline environment blips should not prevent boat/walk splitting");
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.BOAT, trips.get(0).getTripType());
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.WALK, trips.get(1).getTripType());
+        assertEquals(Instant.parse("2026-06-25T18:31:11Z"), trips.get(0).getEndTime());
+        assertEquals(Instant.parse("2026-06-25T18:31:11Z"), trips.get(1).getStartTime());
+    }
+
+    @Test
+    void shouldNotSplitTrip_ForShortWaterCrossing() {
+        TimelineConfig boatConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(10)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .boatEnabled(true)
+            .boatMinContinuousWaterDistanceMeters(300.0)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(boatConfig)))
+            .thenAnswer(invocation -> {
+                UserState state = invocation.getArgument(0);
+                List<GPSPoint> path = state.copyActivePoints();
+                GPSPoint first = path.getFirst();
+                GPSPoint last = path.getLast();
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .distanceMeters(first.distanceTo(last))
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2026-06-29T16:00:00Z"), 49.5500, 25.6000, 8.0, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T16:01:00Z"), 49.5520, 25.6000, 8.0, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T16:02:00Z"), 49.5540, 25.6000, 8.0, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T16:03:00Z"), 49.5560, 25.6000, 8.0, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T16:04:00Z"), 49.5580, 25.6000, 8.0, 15.0, true),
+            createGpsPoint(Instant.parse("2026-06-29T16:05:00Z"), 49.5600, 25.6000, 8.0, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T16:06:00Z"), 49.5620, 25.6000, 8.0, 15.0, false),
+            createGpsPoint(Instant.parse("2026-06-29T16:07:00Z"), 49.5640, 25.6000, 8.0, 15.0, false)
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, boatConfig, testUserId);
+        long tripCount = events.stream()
+            .filter(Trip.class::isInstance)
+            .count();
+
+        assertEquals(1, tripCount, "Short water crossings should not split a moving trip");
+    }
+
     private GPSPoint createGpsPoint(Instant timestamp, double lat, double lon, double speed, double accuracy) {
         return GPSPoint.builder()
             .timestamp(timestamp)
@@ -404,5 +575,11 @@ class StreamingTimelineProcessorTest {
             .speed(speed)
             .accuracy(accuracy)
             .build();
+    }
+
+    private GPSPoint createGpsPoint(Instant timestamp, double lat, double lon, double speed, double accuracy, boolean onWater) {
+        GPSPoint point = createGpsPoint(timestamp, lat, lon, speed, accuracy);
+        point.setOnWater(onWater);
+        return point;
     }
 }

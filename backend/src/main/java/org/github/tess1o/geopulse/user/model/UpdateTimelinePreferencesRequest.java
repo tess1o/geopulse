@@ -174,4 +174,23 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMin(value = "400.0", message = "Flight min max speed must be at least 400.0 km/h")
     @DecimalMax(value = "900.0", message = "Flight min max speed must be at most 900.0 km/h")
     private Double flightMinMaxSpeed;
+
+    // Optional Trip Types - Boat
+    private Boolean boatEnabled;
+
+    @DecimalMin(value = "0.10", message = "Boat min water ratio must be at least 0.10")
+    @DecimalMax(value = "1.00", message = "Boat min water ratio must be at most 1.00")
+    private Double boatMinWaterRatio;
+
+    @DecimalMin(value = "100.0", message = "Boat min water distance must be at least 100 meters")
+    @DecimalMax(value = "100000.0", message = "Boat min water distance must be at most 100000 meters")
+    private Double boatMinWaterDistanceMeters;
+
+    @DecimalMin(value = "100.0", message = "Boat min continuous water distance must be at least 100 meters")
+    @DecimalMax(value = "50000.0", message = "Boat min continuous water distance must be at most 50000 meters")
+    private Double boatMinContinuousWaterDistanceMeters;
+
+    @DecimalMin(value = "20.0", message = "Boat max plausible speed must be at least 20.0 km/h")
+    @DecimalMax(value = "300.0", message = "Boat max plausible speed must be at most 300.0 km/h")
+    private Double boatMaxPlausibleSpeed;
 }
