@@ -29,7 +29,7 @@
     <!-- Normal Timeline View -->
     <template v-else>
       <div class="timeline-content-wrapper">
-        <div class="timeline-main">
+        <div class="timeline-main" :class="timelineMainClasses">
           <div class="left-pane">
         <div v-if="mapNoData" class="loading-messages">
           No data to show on the map. Try to select different date range.
@@ -67,12 +67,14 @@
           <button
             type="button"
             class="timeline-sheet-handle"
-            :aria-label="`Timeline panel ${timelineSheetState}. Tap to change size.`"
+            :aria-label="timelineSheetToggleLabel"
+            :title="timelineSheetToggleLabel"
             @click="cycleTimelineSheetState"
             @pointerdown="handleTimelineSheetPointerDown"
           >
             <span class="timeline-sheet-grip"></span>
             <span class="timeline-sheet-label">{{ timelineSheetLabel }}</span>
+            <i class="timeline-sheet-toggle-icon" :class="timelineSheetToggleIcon"></i>
           </button>
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
@@ -323,10 +325,26 @@ const timelineSheetClasses = computed(() => ({
   'timeline-sheet--compact': timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
 }))
 
+const timelineMainClasses = computed(() => ({
+  'timeline-main--sheet-collapsed': timelineSheetState.value === 'collapsed'
+}))
+
 const timelineSheetLabel = computed(() => (
   timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
     ? 'Timeline'
     : 'Movement Timeline'
+))
+
+const timelineSheetToggleLabel = computed(() => (
+  timelineSheetState.value === 'collapsed'
+    ? 'Show movement timeline'
+    : 'Collapse movement timeline'
+))
+
+const timelineSheetToggleIcon = computed(() => (
+  timelineSheetState.value === 'collapsed'
+    ? 'pi pi-chevron-left'
+    : 'pi pi-chevron-right'
 ))
 
 const timelineSheetStyle = computed(() => (
@@ -374,6 +392,7 @@ const syncTimelineSheetHeight = () => {
 const setTimelineSheetState = (state) => {
   timelineSheetState.value = state
   syncTimelineSheetHeight()
+  triggerMapResize()
 }
 
 const revealMapForMobileTripSelection = () => {
@@ -382,7 +401,6 @@ const revealMapForMobileTripSelection = () => {
   }
 
   setTimelineSheetState('collapsed')
-  triggerMapResize()
 }
 
 const cycleTimelineSheetState = () => {
@@ -391,10 +409,14 @@ const cycleTimelineSheetState = () => {
     return
   }
 
-  const nextState = timelineSheetState.value === 'collapsed'
-    ? 'half'
-    : timelineSheetState.value === 'half'
-      ? 'expanded'
+  const nextState = isMobileTimelineViewport()
+    ? timelineSheetState.value === 'collapsed'
+      ? 'half'
+      : timelineSheetState.value === 'half'
+        ? 'expanded'
+        : 'collapsed'
+    : timelineSheetState.value === 'collapsed'
+      ? 'half'
       : 'collapsed'
   setTimelineSheetState(nextState)
 }
@@ -463,9 +485,13 @@ const handleTimelineViewportResize = () => {
 // Methods
 const triggerMapResize = () => {
   nextTick(() => {
-    setTimeout(() => {
+    const invalidateMap = () => {
+      mapViewRef.value?.invalidateSize?.()
       mapViewRef.value?.invalidateMapSize?.()
-    }, 250)
+    }
+
+    invalidateMap()
+    setTimeout(invalidateMap, 260)
   })
 }
 
@@ -1253,6 +1279,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 .timeline-main {
+  position: relative;
   flex: 1;
   display: flex;
   overflow: hidden;
@@ -1273,7 +1300,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 .right-pane {
   flex: 0 0 clamp(360px, 32vw, 520px);
-  overflow-y: auto !important;
+  overflow: hidden !important;
   height: 100%;
   min-height: 350px;
   min-width: 320px;
@@ -1281,7 +1308,98 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 .timeline-sheet-handle {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  border-bottom: 2px solid var(--gp-primary-light);
+  background: transparent;
+  color: var(--gp-primary);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-sheet-handle:hover {
+  background: var(--gp-surface-light);
+}
+
+.timeline-sheet-handle:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: -2px;
+}
+
+.timeline-sheet-grip {
   display: none;
+}
+
+.timeline-sheet-toggle-icon {
+  position: absolute;
+  right: var(--gp-spacing-md);
+  font-size: 0.9rem;
+}
+
+.right-pane :deep(.timeline-container) {
+  height: calc(100% - 44px);
+}
+
+.right-pane :deep(.timeline-header) {
+  display: none;
+}
+
+.timeline-main--sheet-collapsed .left-pane {
+  margin-right: 0.5rem;
+}
+
+.timeline-main--sheet-collapsed .right-pane {
+  position: absolute;
+  top: calc(1rem + env(safe-area-inset-top));
+  right: calc(5.5rem + env(safe-area-inset-right));
+  z-index: 950;
+  flex: none;
+  width: min(12rem, calc(100% - 7rem));
+  height: 44px;
+  min-width: 0;
+  min-height: 0;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+.timeline-main--sheet-collapsed .timeline-sheet-handle {
+  height: 100%;
+  min-height: 44px;
+  border-bottom: none;
+  border-radius: inherit;
+  font-size: 0.9rem;
+}
+
+.timeline-main--sheet-collapsed .timeline-sheet-toggle-icon {
+  right: var(--gp-spacing-sm);
+}
+
+.timeline-sheet--compact :deep(.timeline-container) {
+  display: none;
+}
+
+.p-dark .timeline-sheet-handle:hover {
+  background: var(--gp-surface-dark);
+}
+
+.p-dark .timeline-sheet-handle {
+  border-bottom-color: var(--gp-border-medium);
+}
+
+.p-dark .timeline-main--sheet-collapsed .right-pane {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
 }
 
 .loading-messages {
@@ -1355,6 +1473,27 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     will-change: height, transform;
   }
 
+  .timeline-main--sheet-collapsed .left-pane {
+    margin: 0;
+  }
+
+  .timeline-main--sheet-collapsed .right-pane {
+    position: absolute;
+    top: auto;
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
+    bottom: 0;
+    z-index: 1050;
+    width: auto;
+    height: var(--timeline-sheet-height, 168px);
+    min-width: 320px;
+    background: var(--gp-surface-white);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
+    transform: none;
+  }
+
   .timeline-sheet--compact {
     left: 50%;
     right: auto;
@@ -1362,6 +1501,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     width: min(16rem, calc(100% - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
     height: var(--timeline-sheet-height, 44px);
     max-height: none;
+    min-width: 0;
     border: 1px solid var(--gp-border-light);
     border-radius: 999px;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
@@ -1393,7 +1533,10 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     font-weight: 700;
     touch-action: none;
     cursor: grab;
-    user-select: none;
+  }
+
+  .timeline-sheet-toggle-icon {
+    display: none;
   }
 
   .timeline-sheet--compact .timeline-sheet-handle {
@@ -1408,6 +1551,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   }
 
   .timeline-sheet-grip {
+    display: block;
     position: absolute;
     top: 7px;
     width: 42px;
@@ -1429,14 +1573,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     position: static;
     flex: 0 0 36px;
     width: 36px;
-  }
-
-  .right-pane :deep(.timeline-container) {
-    height: calc(100% - 44px);
-  }
-
-  .right-pane :deep(.timeline-header) {
-    display: none;
   }
 
   .right-pane :deep(.timeline-content) {
