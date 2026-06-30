@@ -33,7 +33,7 @@ public class DistanceCalculationService {
         List<Object[]> results = query.getResultList();
 
         if (results.isEmpty()) {
-            return new DistanceTraveled(0, 0, 0, 0, 0, 0, 0);
+            return new DistanceTraveled(0, 0, 0, 0, 0, 0, 0, 0);
         }
 
         int car = 0;
@@ -42,6 +42,7 @@ public class DistanceCalculationService {
         int running = 0;
         int train = 0;
         int flight = 0;
+        int boat = 0;
         int unknown = 0;
 
         for (Object[] result : results) {
@@ -59,9 +60,10 @@ public class DistanceCalculationService {
                 case RUNNING -> running += distanceKm;
                 case TRAIN -> train += distanceKm;
                 case FLIGHT -> flight += distanceKm;
+                case BOAT -> boat += distanceKm;
                 case UNKNOWN -> unknown += distanceKm;
             }
         }
-        return new DistanceTraveled(car, walk, bicycle, running, train, flight, unknown);
+        return new DistanceTraveled(car, walk, bicycle, running, train, flight, boat, unknown);
     }
 }

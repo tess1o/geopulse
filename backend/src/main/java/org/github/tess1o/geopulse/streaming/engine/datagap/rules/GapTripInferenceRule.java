@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
+import org.github.tess1o.geopulse.streaming.service.trips.TripWaterStatistics;
 
 import java.time.Duration;
 import java.util.List;
@@ -119,9 +120,11 @@ public class GapTripInferenceRule implements DataGapRule {
         );
         double distanceMeters = context.lastPoint().distanceTo(context.currentPoint());
         TripGpsStatistics gpsStatistics = TripGpsStatistics.empty();
+        TripWaterStatistics waterStatistics = TripWaterStatistics.unavailable();
 
         TripType tripType = travelClassification.classifyTravelType(
                 gpsStatistics,
+                waterStatistics,
                 tripDuration,
                 Double.valueOf(distanceMeters).longValue(),
                 context.config()
@@ -137,6 +140,7 @@ public class GapTripInferenceRule implements DataGapRule {
                 .startTime(context.lastPoint().getTimestamp())
                 .duration(tripDuration)
                 .statistics(gpsStatistics)
+                .waterStatistics(waterStatistics)
                 .startPoint(context.lastPoint())
                 .endPoint(context.currentPoint())
                 .distanceMeters(distanceMeters)

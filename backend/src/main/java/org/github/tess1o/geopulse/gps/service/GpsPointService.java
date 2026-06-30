@@ -20,6 +20,9 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -30,6 +33,8 @@ import jakarta.ws.rs.NotFoundException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.*;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -47,6 +52,8 @@ public class GpsPointService {
     private final GpsDataFilteringService filteringService;
     private final GpsTelemetryRenderingService telemetryRenderingService;
     private final GeofenceEvaluationService geofenceEvaluationService;
+    private final TimelineConfigurationProvider timelineConfigurationProvider;
+    private final GpsPointEnvironmentService gpsPointEnvironmentService;
 
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
@@ -57,7 +64,9 @@ public class GpsPointService {
                            StreamingTimelineGenerationService streamingTimelineGenerationService,
                            GpsDataFilteringService filteringService,
                            GpsTelemetryRenderingService telemetryRenderingService,
-                           GeofenceEvaluationService geofenceEvaluationService) {
+                           GeofenceEvaluationService geofenceEvaluationService,
+                           TimelineConfigurationProvider timelineConfigurationProvider,
+                           GpsPointEnvironmentService gpsPointEnvironmentService) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
@@ -66,6 +75,8 @@ public class GpsPointService {
         this.filteringService = filteringService;
         this.telemetryRenderingService = telemetryRenderingService;
         this.geofenceEvaluationService = geofenceEvaluationService;
+        this.timelineConfigurationProvider = timelineConfigurationProvider;
+        this.gpsPointEnvironmentService = gpsPointEnvironmentService;
     }
 
     /**
@@ -74,13 +85,13 @@ public class GpsPointService {
      *
      * @param entity The mapped GPS point entity to filter and persist
      * @param config The GPS source configuration containing filter settings
-     * @return true if the point was saved, false if rejected by filters
+     * @return saved point if persisted, otherwise empty when rejected by filters or duplicate detection
      */
-    private boolean filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
+    private Optional<GpsPointEntity> filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
         var filterResult = filteringService.filter(entity, config);
         if (filterResult.isRejected()) {
             // Already logged in filtering service
-            return false;
+            return Optional.empty();
         }
 
         // Check for existing point with the same unique key
@@ -93,13 +104,43 @@ public class GpsPointService {
         if (existingPoint.isPresent()) {
             // It's a duplicate, reject it
             log.info("Skipping duplicate GPS point for user {} at timestamp {} with same coordinates", entity.getUser().getId(), entity.getTimestamp());
-            return false;
+            return Optional.empty();
         } else {
             // Persist the new entity
             gpsPointRepository.persist(entity);
             geofenceEvaluationService.handlePersistedPoint(entity);
             log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
-            return true;
+            return Optional.of(entity);
+        }
+    }
+
+    private void enrichSavedGpsPointsIfBoatReady(UUID userId, Collection<GpsPointEntity> savedPoints) {
+        if (savedPoints == null || savedPoints.isEmpty() || timelineConfigurationProvider == null || gpsPointEnvironmentService == null) {
+            return;
+        }
+
+        try {
+            TimelineConfig timelineConfig = timelineConfigurationProvider.getConfigurationForUser(userId);
+            if (timelineConfig == null || !Boolean.TRUE.equals(timelineConfig.getBoatEnabled())) {
+                return;
+            }
+
+            String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
+            if (datasetVersion == null) {
+                return;
+            }
+
+            em.flush();
+            List<Long> savedPointIds = savedPoints.stream()
+                    .map(GpsPointEntity::getId)
+                    .filter(id -> id != null)
+                    .toList();
+            if (!savedPointIds.isEmpty()) {
+                gpsPointEnvironmentService.enrichPoints(userId, savedPointIds, datasetVersion);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to enrich Boat water evidence for newly saved GPS points for user {}: {}",
+                    userId, e.getMessage());
         }
     }
 
@@ -125,8 +166,8 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
 
-        // Filter and persist
-        filterAndPersistGpsPoint(entity, config);
+        filterAndPersistGpsPoint(entity, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
     }
 
     @Transactional
@@ -160,8 +201,8 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
-        // Filter and persist
-        filterAndPersistGpsPoint(entity, config);
+        filterAndPersistGpsPoint(entity, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
     }
 
     @Transactional
@@ -176,6 +217,7 @@ public class GpsPointService {
                 : globalDuplicateDetectionThresholdMinutes;
         }
 
+        List<GpsPointEntity> savedPoints = new ArrayList<>();
         for (DawarichLocation location : payload.getLocations()) {
             Instant timestamp = location.getProperties().getTimestamp();
             double lon = location.getGeometry().getCoordinates().get(0);
@@ -204,9 +246,9 @@ public class GpsPointService {
             // Map message to entity (mapper handles m/s → km/h conversion)
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
 
-            // Filter and persist
-            filterAndPersistGpsPoint(entity, config);
+            filterAndPersistGpsPoint(entity, config).ifPresent(savedPoints::add);
         }
+        enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
     }
 
     @Transactional
@@ -240,8 +282,8 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
 
-        // Filter and persist
-        filterAndPersistGpsPoint(entity, config);
+        filterAndPersistGpsPoint(entity, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
     }
 
     @Transactional
@@ -270,8 +312,8 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
-        // Filter and persist
-        filterAndPersistGpsPoint(entity, config);
+        filterAndPersistGpsPoint(entity, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
     }
 
     @Transactional
@@ -315,23 +357,33 @@ public class GpsPointService {
 
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
-        filterAndPersistGpsPoint(entity, config);
+        filterAndPersistGpsPoint(entity, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
     }
 
+    @Transactional
     public void saveMobileAppGpsPoints(List<GpsPointDTO> data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         if (data == null || data.isEmpty()) {
             log.warn("Gps points are empty");
             return;
         }
 
+        List<GpsPointEntity> savedPoints = new ArrayList<>();
         data.stream()
                 .filter(point -> point.getTimestamp() != null)
                 .sorted(Comparator.comparing(GpsPointDTO::getTimestamp))
-                .forEach(point -> saveMobileAppGpsPoint(point, deviceId, userId, sourceType, config));
+                .forEach(point -> saveMobileAppGpsPointInternal(point, deviceId, userId, sourceType, config)
+                        .ifPresent(savedPoints::add));
+        enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
     }
 
     @Transactional
     public void saveMobileAppGpsPoint(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        saveMobileAppGpsPointInternal(data, deviceId, userId, sourceType, config)
+                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+    }
+
+    private Optional<GpsPointEntity> saveMobileAppGpsPointInternal(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = data.getTimestamp();
 
         double lat = data.getCoordinates().getLat();
@@ -344,18 +396,18 @@ public class GpsPointService {
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
                 log.info("Skipping Mobile App GPS point for user {} and device id {} at coordinates ({}, {}): duplicate location detected within {} minutes window", userId, deviceId, lat, lon, threshold);
-                return;
+                return Optional.empty();
             }
         } else {
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
                 log.info("Skipping duplicate Mobile App GPS point for user {} and device id {} at timestamp {}", userId, deviceId, timestamp);
-                return;
+                return Optional.empty();
             }
         }
 
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, deviceId, user, sourceType);
-        filterAndPersistGpsPoint(entity, config);
+        return filterAndPersistGpsPoint(entity, config);
     }
 
     /**
@@ -447,6 +499,7 @@ public class GpsPointService {
         gpsPoint.setAccuracy(dto.getAccuracy());
 
         gpsPointRepository.persist(gpsPoint);
+        enrichSavedGpsPointsIfBoatReady(userId, List.of(gpsPoint));
 
         // Trigger synchronous timeline regeneration if needed
         triggerSynchronousTimelineRegenerationIfNeeded(userId, originalTimestamp);

@@ -194,18 +194,37 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      */
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
                                                  int offset, int limit) {
-        List<Object[]> results = getEntityManager().createNativeQuery(
+        return findEssentialDataChunk(userId, fromTimestamp, offset, limit, null);
+    }
+
+    public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
+                                                 int offset, int limit, String environmentDatasetVersion) {
+        String environmentSelect = environmentDatasetVersion == null
+                ? "NULL::boolean as on_water "
+                : "env.on_water as on_water ";
+        String environmentJoin = environmentDatasetVersion == null
+                ? ""
+                : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
+
+        Query query = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
-                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
+                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
+                                environmentSelect +
                                 "FROM gps_points gp " +
+                                environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
                                 "ORDER BY gp.timestamp ASC " +
                                 "LIMIT :limit OFFSET :offset")
                 .setParameter("userId", userId)
                 .setParameter("fromTimestamp", fromTimestamp)
                 .setParameter("limit", limit)
-                .setParameter("offset", offset)
-                .getResultList();
+                .setParameter("offset", offset);
+
+        if (environmentDatasetVersion != null) {
+            query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
+        }
+
+        List<Object[]> results = query.getResultList();
 
         return results.stream()
                 .map(this::mapToGPSPoint)
@@ -223,16 +242,34 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @return List of lightweight GPS points for this chunk
      */
     public List<GPSPoint> findEssentialPointsInInterval(UUID userId, Instant start, Instant end) {
-        List<Object[]> results = getEntityManager().createNativeQuery(
+        return findEssentialPointsInInterval(userId, start, end, null);
+    }
+
+    public List<GPSPoint> findEssentialPointsInInterval(UUID userId, Instant start, Instant end, String environmentDatasetVersion) {
+        String environmentSelect = environmentDatasetVersion == null
+                ? "NULL::boolean as on_water "
+                : "env.on_water as on_water ";
+        String environmentJoin = environmentDatasetVersion == null
+                ? ""
+                : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
+
+        Query query = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
-                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
+                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
+                                environmentSelect +
                                 "FROM gps_points gp " +
+                                environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :start AND gp.timestamp <= :end " +
                                 "ORDER BY gp.timestamp ASC")
                 .setParameter("userId", userId)
                 .setParameter("start", start)
-                .setParameter("end", end)
-                .getResultList();
+                .setParameter("end", end);
+
+        if (environmentDatasetVersion != null) {
+            query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
+        }
+
+        List<Object[]> results = query.getResultList();
 
         return results.stream()
                 .map(this::mapToGPSPoint)
@@ -260,7 +297,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
 
     /**
      * Map native SQL result array to GPSPoint object.
-     * Expected array: [timestamp, latitude, longitude, speed, accuracy]
+     * Expected array: [timestamp, latitude, longitude, speed, accuracy, onWater]
      */
     private GPSPoint mapToGPSPoint(Object[] row) {
         Instant timestampInstant = TimestampUtils.getInstantSafe(row[0]);
@@ -268,14 +305,13 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         Double longitude = ((Number) row[2]).doubleValue();
         Double speed = ((Number) row[3]).doubleValue();
         Double accuracy = ((Number) row[4]).doubleValue();
+        Boolean onWater = row.length > 5 && row[5] != null
+                ? (Boolean) row[5]
+                : null;
 
-        return new GPSPoint(
-                timestampInstant,
-                latitude,
-                longitude,
-                speed,
-                accuracy
-        );
+        GPSPoint gpsPoint = new GPSPoint(latitude, longitude, speed, accuracy, timestampInstant);
+        gpsPoint.setOnWater(onWater);
+        return gpsPoint;
     }
 
     // =================== FILTERING METHODS ===================

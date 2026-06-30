@@ -76,4 +76,11 @@ public class TimelinePreferences implements Serializable {
     private Boolean flightEnabled;
     private Double flightMinAvgSpeed;
     private Double flightMinMaxSpeed;
+
+    // Optional Trip Types - Boat
+    private Boolean boatEnabled;
+    private Double boatMinWaterRatio;
+    private Double boatMinWaterDistanceMeters;
+    private Double boatMinContinuousWaterDistanceMeters;
+    private Double boatMaxPlausibleSpeed;
 }

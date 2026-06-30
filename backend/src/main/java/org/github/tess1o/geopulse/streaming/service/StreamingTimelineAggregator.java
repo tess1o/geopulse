@@ -238,7 +238,7 @@ public class StreamingTimelineAggregator {
         });
     }
 
-    private void snapTripEndpointsToAdjacentFavoriteStays(
+    void snapTripEndpointsToAdjacentFavoriteStays(
             List<TimelineTripDTO> trips,
             List<TimelineStayLocationDTO> stays
     ) {
@@ -255,17 +255,50 @@ public class StreamingTimelineAggregator {
             Instant tripEnd = tripStart.plusSeconds(Math.max(0L, trip.getTripDuration()));
 
             TimelineStayLocationDTO origin = findClosestOriginStay(stays, tripStart);
-            if (origin != null && origin.getFavoriteId() != null) {
+            if (origin != null && origin.getFavoriteId() != null
+                    && !hasAnotherTripBetween(
+                            origin.getTimestamp().plusSeconds(Math.max(0L, origin.getStayDuration())),
+                            tripStart,
+                            trips,
+                            trip)) {
                 trip.setLatitude(origin.getLatitude());
                 trip.setLongitude(origin.getLongitude());
             }
 
             TimelineStayLocationDTO destination = findClosestDestinationStay(stays, tripEnd);
-            if (destination != null && destination.getFavoriteId() != null) {
+            if (destination != null && destination.getFavoriteId() != null
+                    && !hasAnotherTripBetween(
+                            tripEnd,
+                            destination.getTimestamp(),
+                            trips,
+                            trip)) {
                 trip.setEndLatitude(destination.getLatitude());
                 trip.setEndLongitude(destination.getLongitude());
             }
         }
+    }
+
+    private boolean hasAnotherTripBetween(Instant intervalStart,
+                                          Instant intervalEnd,
+                                          List<TimelineTripDTO> trips,
+                                          TimelineTripDTO currentTrip) {
+        if (intervalStart == null || intervalEnd == null || trips == null || !intervalEnd.isAfter(intervalStart)) {
+            return false;
+        }
+
+        for (TimelineTripDTO otherTrip : trips) {
+            if (otherTrip == null || otherTrip == currentTrip || otherTrip.getTimestamp() == null) {
+                continue;
+            }
+
+            Instant otherStart = otherTrip.getTimestamp();
+            Instant otherEnd = otherStart.plusSeconds(Math.max(0L, otherTrip.getTripDuration()));
+            if (otherStart.isBefore(intervalEnd) && otherEnd.isAfter(intervalStart)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private TimelineStayLocationDTO findClosestOriginStay(List<TimelineStayLocationDTO> stays, Instant tripStart) {

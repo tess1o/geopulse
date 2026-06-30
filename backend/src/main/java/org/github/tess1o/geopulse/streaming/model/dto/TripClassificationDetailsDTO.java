@@ -13,7 +13,7 @@ import java.util.List;
  * - Final classification reasoning
  * <p>
  * This DTO is used to help users understand why their trip was classified
- * as a specific transport type (WALK, CAR, BICYCLE, RUNNING, TRAIN, FLIGHT, UNKNOWN).
+ * as a specific transport type (WALK, CAR, BICYCLE, RUNNING, TRAIN, FLIGHT, BOAT, UNKNOWN).
  */
 public record TripClassificationDetailsDTO(
         Long tripId,
@@ -38,7 +38,12 @@ public record TripClassificationDetailsDTO(
             Double calculatedAvgSpeedKmh,
             Double speedVarianceKmh,
             Integer lowAccuracyPointsCount,
-            boolean gpsReliable
+            boolean gpsReliable,
+            Double waterDistanceMeters,
+            Double waterDistanceRatio,
+            Double longestWaterSegmentMeters,
+            Integer waterSampleCount,
+            Boolean waterEvidenceAvailable
     ) {}
 
     /**
@@ -78,7 +83,14 @@ public record TripClassificationDetailsDTO(
             // FLIGHT thresholds (optional)
             Boolean flightEnabled,
             Double flightMinAvgSpeed,
-            Double flightMinMaxSpeed
+            Double flightMinMaxSpeed,
+
+            // BOAT thresholds (optional)
+            Boolean boatEnabled,
+            Double boatMinWaterRatio,
+            Double boatMinWaterDistanceMeters,
+            Double boatMinContinuousWaterDistanceMeters,
+            Double boatMaxPlausibleSpeed
     ) {}
 
     /**

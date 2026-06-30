@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -18,6 +19,7 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.nio.file.Files;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,12 +37,17 @@ public class UserResource {
     private final UserService userService;
     private final UserMapper userMapper;
     private final CurrentUserService currentUserService;
+    private final BoatSetupService boatSetupService;
 
     @Inject
-    public UserResource(UserService userService, UserMapper userMapper, CurrentUserService currentUserService) {
+    public UserResource(UserService userService,
+                        UserMapper userMapper,
+                        CurrentUserService currentUserService,
+                        BoatSetupService boatSetupService) {
         this.userService = userService;
         this.userMapper = userMapper;
         this.currentUserService = currentUserService;
+        this.boatSetupService = boatSetupService;
     }
 
     /**
@@ -194,6 +201,15 @@ public class UserResource {
             if (jobId != null) {
                 return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
             }
+        }
+        if ("boat-setup".equals(changeType)) {
+            var setup = boatSetupService.startSetup(userId);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            if (setup.jobId() != null) {
+                payload.put("boatSetupJobId", setup.jobId().toString());
+            }
+            payload.put("boatSetupStatus", setup.status());
+            return Response.ok(ApiResponse.success(payload)).build();
         }
 
         // No job created (classification-only or no changes)

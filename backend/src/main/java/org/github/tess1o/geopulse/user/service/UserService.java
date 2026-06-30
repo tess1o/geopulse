@@ -679,14 +679,20 @@ public class UserService {
             user.timelinePreferences = new TimelinePreferences();
         }
 
+        boolean wasBoatEnabled = Boolean.TRUE.equals(user.timelinePreferences.getBoatEnabled());
+
         // Use registry-based updater - eliminates all the manual if/else logic
         preferencesUpdater.updatePreferences(user.timelinePreferences, update);
 
         // Determine which type of event to fire based on parameter types
         boolean hasClassificationChanges = hasClassificationParameters(update);
         boolean hasStructuralChanges = hasStructuralParameters(update);
+        boolean boatWasEnabled = !wasBoatEnabled && Boolean.TRUE.equals(user.timelinePreferences.getBoatEnabled());
 
-        if (hasClassificationChanges && !hasStructuralChanges) {
+        if (boatWasEnabled && !hasStructuralChanges) {
+            log.info("Boat detection enabled for user {}; Boat setup is required before reclassification", userId);
+            return "boat-setup";
+        } else if (hasClassificationChanges && !hasStructuralChanges) {
             // Synchronous trip type recalculation (fast, no job needed)
             log.info("Firing travel classification updated event for user {} (classification-only changes)", userId);
             classificationUpdatedEvent.fire(new TravelClassificationUpdatedEvent(
@@ -771,7 +777,13 @@ public class UserService {
                 // Flight
                 update.getFlightEnabled() != null ||
                 update.getFlightMinAvgSpeed() != null ||
-                update.getFlightMinMaxSpeed() != null;
+                update.getFlightMinMaxSpeed() != null ||
+                // Boat
+                update.getBoatEnabled() != null ||
+                update.getBoatMinWaterRatio() != null ||
+                update.getBoatMinWaterDistanceMeters() != null ||
+                update.getBoatMinContinuousWaterDistanceMeters() != null ||
+                update.getBoatMaxPlausibleSpeed() != null;
     }
 
     /**

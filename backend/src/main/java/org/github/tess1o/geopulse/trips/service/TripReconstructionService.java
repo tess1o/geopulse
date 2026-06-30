@@ -299,8 +299,8 @@ public class TripReconstructionService {
         try {
             return TripType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException(
-                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, UNKNOWN"
+                throw new IllegalArgumentException(
+                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, BOAT, UNKNOWN"
             );
         }
     }
@@ -493,6 +493,7 @@ public class TripReconstructionService {
                     positiveOrDefault(config.getFlightMinAvgSpeed(), 400.0d),
                     950.0d
             );
+            case BOAT -> new SpeedRange(0.5d, positiveOrDefault(config.getBoatMaxPlausibleSpeed(), 120.0d));
             case UNKNOWN -> new SpeedRange(3.0d, 50.0d);
             case CAR -> {
                 double min = positiveOrDefault(config.getCarMinAvgSpeed(), 10.0d);

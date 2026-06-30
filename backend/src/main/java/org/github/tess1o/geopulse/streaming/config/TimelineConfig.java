@@ -399,4 +399,38 @@ public class TimelineConfig {
      * Default: 500.0 km/h
      */
     private Double flightMinMaxSpeed;
+
+    // Optional Trip Types Configuration - Boat
+    /**
+     * Enable or disable boat trip type detection.
+     * Boat classification uses sustained water evidence as the primary signal.
+     * Default: false (disabled)
+     */
+    private Boolean boatEnabled;
+
+    /**
+     * Minimum ratio of usable trip distance that must be on water.
+     * Default: 0.60
+     */
+    private Double boatMinWaterRatio;
+
+    /**
+     * Minimum total water distance in meters required for boat classification.
+     * Default: 2000 meters
+     */
+    private Double boatMinWaterDistanceMeters;
+
+    /**
+     * Minimum longest continuous water segment in meters.
+     * Filters out short bridges and tunnels.
+     * Default: 1000 meters
+     */
+    private Double boatMinContinuousWaterDistanceMeters;
+
+    /**
+     * Sanity ceiling for boat classification. Speeds above this are treated as
+     * incompatible with boat travel, but there is intentionally no minimum speed.
+     * Default: 120 km/h
+     */
+    private Double boatMaxPlausibleSpeed;
 }

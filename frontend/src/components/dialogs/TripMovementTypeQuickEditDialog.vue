@@ -96,6 +96,7 @@ const movementTypeOptions = [
   { label: 'Running', value: 'RUNNING' },
   { label: 'Train', value: 'TRAIN' },
   { label: 'Flight', value: 'FLIGHT' },
+  { label: 'Boat', value: 'BOAT' },
   { label: 'Unknown', value: 'UNKNOWN' }
 ]
 
@@ -192,6 +193,7 @@ const getTransportSeverity = (transportMode) => {
     RUNNING: 'success',
     TRAIN: 'info',
     FLIGHT: 'danger',
+    BOAT: 'info',
     UNKNOWN: 'secondary'
   }
   return severityMap[transportMode?.toUpperCase()] || 'secondary'

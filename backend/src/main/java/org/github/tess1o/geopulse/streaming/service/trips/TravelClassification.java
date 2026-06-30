@@ -14,8 +14,8 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 /**
  * Service for classifying trip types based on GPS movement patterns.
  * <p>
- * Supports mandatory WALK type and optional types (CAR, BICYCLE, TRAIN, FLIGHT).
- * Classification is based on speed analysis and movement characteristics.
+ * Supports mandatory WALK type and optional types (CAR, BICYCLE, TRAIN, FLIGHT, BOAT).
+ * Classification is based on speed analysis, movement characteristics, and optional water evidence.
  * <p>
  * GPS RELIABILITY VALIDATION (BIDIRECTIONAL):
  * - Compares GPS-reported speeds against calculated speeds (distance/duration)
@@ -27,12 +27,13 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * <p>
  * CRITICAL CLASSIFICATION ORDER:
  * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak)
- * 2. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
- * 3. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
- * 4. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
- * 5. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
- * 6. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak, mandatory)
- * 7. UNKNOWN - fallback
+ * 2. BOAT - sustained movement over water (speed is only a sanity check)
+ * 3. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
+ * 4. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
+ * 5. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
+ * 6. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
+ * 7. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak, mandatory)
+ * 8. UNKNOWN - fallback
  */
 @ApplicationScoped
 @Slf4j
@@ -252,7 +253,9 @@ public class TravelClassification {
                     trip.getSpeedVariance(),
                     trip.getLowAccuracyPointsCount()
             );
+            TripWaterStatistics waterStatistics = createWaterStatistics(trip);
             initialClassification = classifyWithGpsStatistics(statistics,
+                    waterStatistics,
                     Duration.ofSeconds(trip.getTripDuration()),
                     trip.getDistanceMeters(),
                     config);
@@ -261,6 +264,7 @@ public class TravelClassification {
             log.debug("GPS statistics not available for trip {}, falling back to path-based classification",
                     trip.getId());
             initialClassification = classifyWithoutGpsStatistics(config,
+                    createWaterStatistics(trip),
                     Duration.ofSeconds(trip.getTripDuration()),
                     trip.getDistanceMeters());
         }
@@ -285,7 +289,16 @@ public class TravelClassification {
                                        Duration tripDuration,
                                        long distanceMeters,
                                        TimelineConfig config) {
+        return classifyTravelType(statistics, TripWaterStatistics.unavailable(), tripDuration, distanceMeters, config);
+    }
+
+    public TripType classifyTravelType(TripGpsStatistics statistics,
+                                       TripWaterStatistics waterStatistics,
+                                       Duration tripDuration,
+                                       long distanceMeters,
+                                       TimelineConfig config) {
         TripType initialClassification = classifyWithGpsStatistics(statistics,
+                waterStatistics,
                 tripDuration,
                 distanceMeters,
                 config);
@@ -301,12 +314,13 @@ public class TravelClassification {
      * Includes comprehensive GPS noise detection and reliability validation.
      */
     private TripType classifyWithGpsStatistics(TripGpsStatistics statistics,
+                                               TripWaterStatistics waterStatistics,
                                                Duration tripDuration,
                                                long distanceMeters,
                                                TimelineConfig config) {
         if (statistics == null || !statistics.hasValidData()) {
             log.warn("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
-            return classifyWithoutGpsStatistics(config, tripDuration, distanceMeters);
+            return classifyWithoutGpsStatistics(config, waterStatistics, tripDuration, distanceMeters);
         }
 
         // Convert speeds from m/s to km/h
@@ -330,7 +344,7 @@ public class TravelClassification {
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
-                statistics.speedVariance(), config);
+                statistics.speedVariance(), waterStatistics, config);
     }
 
     /**
@@ -346,6 +360,7 @@ public class TravelClassification {
      * (e.g., international flights with taxi/ground time show ~150-200 km/h avg).
      */
     private TripType classifyWithoutGpsStatistics(TimelineConfig config,
+                                                  TripWaterStatistics waterStatistics,
                                                   Duration tripDuration,
                                                   long distanceMeters) {
         double distanceKm = distanceMeters / 1000.0;
@@ -439,9 +454,13 @@ public class TravelClassification {
             }
         }
 
+        if (isBoatEnabled(config) && isBoatMatch(avgSpeedKmh, avgSpeedKmh, waterStatistics, config)) {
+            return BOAT;
+        }
+
         // For other modes, use standard speed-based classification
         // When no max speed available, use avg speed for both
-        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
+        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, waterStatistics, config);
     }
 
     /**
@@ -449,12 +468,13 @@ public class TravelClassification {
      * <p>
      * CRITICAL PRIORITY ORDER:
      * 1. FLIGHT - highest priority (unambiguous speeds)
-     * 2. TRAIN - before CAR (uses variance discriminator)
-     * 3. BICYCLE - checked before RUNNING (higher speeds)
-     * 4. RUNNING - BEFORE CAR (overlapping speeds)
-     * 5. CAR - optional type (enabled by default)
-     * 6. WALK - mandatory type
-     * 7. UNKNOWN - fallback
+     * 2. BOAT - water evidence before land vehicle types
+     * 3. TRAIN - before CAR (uses variance discriminator)
+     * 4. BICYCLE - checked before RUNNING (higher speeds)
+     * 5. RUNNING - BEFORE CAR (overlapping speeds)
+     * 6. CAR - optional type (enabled by default)
+     * 7. WALK - mandatory type
+     * 8. UNKNOWN - fallback
      *
      * @param avgSpeedKmh   average speed in km/h
      * @param maxSpeedKmh   maximum speed in km/h
@@ -465,6 +485,7 @@ public class TravelClassification {
     private TripType classifyBySpeed(double avgSpeedKmh,
                                      double maxSpeedKmh,
                                      Double speedVariance,
+                                     TripWaterStatistics waterStatistics,
                                      TimelineConfig config) {
 
         // 0. SANITY CHECK: Reject impossible speeds (GPS noise detection)
@@ -487,7 +508,12 @@ public class TravelClassification {
             return FLIGHT;
         }
 
-        // 2. TRAIN - high speed with low variance
+        // 2. BOAT - water evidence is primary; speed is only a sanity ceiling.
+        if (isBoatEnabled(config) && isBoatMatch(avgSpeedKmh, maxSpeedKmh, waterStatistics, config)) {
+            return BOAT;
+        }
+
+        // 3. TRAIN - high speed with low variance
         //    MUST be checked BEFORE CAR to use variance as discriminator
         //    Requires: speed in range + low variance + high peak (filters station stops)
         if (Boolean.TRUE.equals(config.getTrainEnabled()) &&
@@ -500,7 +526,7 @@ public class TravelClassification {
             return TRAIN;
         }
 
-        // 3. BICYCLE - medium speeds
+        // 4. BICYCLE - medium speeds
         //    CRITICAL: MUST be checked BEFORE RUNNING due to higher speeds (8-25 km/h)
         if (Boolean.TRUE.equals(config.getBicycleEnabled()) &&
                 avgSpeedKmh >= config.getBicycleMinAvgSpeed() &&
@@ -509,7 +535,7 @@ public class TravelClassification {
             return BICYCLE;
         }
 
-        // 4. RUNNING - medium-low speeds
+        // 5. RUNNING - medium-low speeds
         //    CRITICAL: MUST be checked BEFORE CAR due to overlapping speeds (7-14 km/h)
         //    Conservative thresholds to distinguish from fast walking and slow cycling
         if (Boolean.TRUE.equals(config.getRunningEnabled()) &&
@@ -519,7 +545,7 @@ public class TravelClassification {
             return RUNNING;
         }
 
-        // 5. CAR - motorized transport (optional, enabled by default)
+        // 6. CAR - motorized transport (optional, enabled by default)
         //    CRITICAL: Checked AFTER BICYCLE and RUNNING to avoid capturing human-powered trips
         //    Uses OR logic: avg >= 10 OR max >= 15
         if (isCarEnabled(config) &&
@@ -528,14 +554,14 @@ public class TravelClassification {
             return CAR;
         }
 
-        // 6. WALK - low speeds (mandatory)
+        // 7. WALK - low speeds (mandatory)
         //    Both avg AND max must be within walking range
         if (avgSpeedKmh <= config.getWalkingMaxAvgSpeed() &&
                 maxSpeedKmh <= config.getWalkingMaxMaxSpeed()) {
             return WALK;
         }
 
-        // 7. UNKNOWN - fallback for edge cases
+        // 8. UNKNOWN - fallback for edge cases
         //    Example: 7 km/h avg (above walk, below running if disabled, below car min)
         return UNKNOWN;
     }
@@ -577,6 +603,51 @@ public class TravelClassification {
 
     private boolean isCarEnabled(TimelineConfig config) {
         return !Boolean.FALSE.equals(config.getCarEnabled());
+    }
+
+    private boolean isBoatEnabled(TimelineConfig config) {
+        return Boolean.TRUE.equals(config.getBoatEnabled());
+    }
+
+    private boolean isBoatMatch(double avgSpeedKmh,
+                                double maxSpeedKmh,
+                                TripWaterStatistics waterStatistics,
+                                TimelineConfig config) {
+        if (waterStatistics == null || !waterStatistics.hasEvidence()) {
+            return false;
+        }
+
+        double maxPlausibleSpeed = config.getBoatMaxPlausibleSpeed() != null
+                ? config.getBoatMaxPlausibleSpeed()
+                : 120.0;
+        if (avgSpeedKmh > maxPlausibleSpeed || maxSpeedKmh > maxPlausibleSpeed) {
+            return false;
+        }
+
+        double minWaterRatio = config.getBoatMinWaterRatio() != null ? config.getBoatMinWaterRatio() : 0.60;
+        double minWaterDistanceMeters = config.getBoatMinWaterDistanceMeters() != null
+                ? config.getBoatMinWaterDistanceMeters()
+                : 2000.0;
+        double minContinuousWaterDistanceMeters = config.getBoatMinContinuousWaterDistanceMeters() != null
+                ? config.getBoatMinContinuousWaterDistanceMeters()
+                : 1000.0;
+
+        return waterStatistics.waterDistanceRatio() >= minWaterRatio
+                && waterStatistics.waterDistanceMeters() >= minWaterDistanceMeters
+                && waterStatistics.longestWaterSegmentMeters() >= minContinuousWaterDistanceMeters;
+    }
+
+    private TripWaterStatistics createWaterStatistics(TimelineTripEntity trip) {
+        if (Boolean.TRUE.equals(trip.getWaterEvidenceAvailable())) {
+            return new TripWaterStatistics(
+                    trip.getWaterDistanceMeters(),
+                    trip.getWaterDistanceRatio(),
+                    trip.getLongestWaterSegmentMeters(),
+                    trip.getWaterSampleCount(),
+                    trip.getWaterEvidenceAvailable()
+            );
+        }
+        return TripWaterStatistics.unavailable();
     }
 
     // ============================================

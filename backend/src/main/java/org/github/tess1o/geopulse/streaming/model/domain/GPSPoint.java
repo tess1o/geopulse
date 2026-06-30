@@ -24,6 +24,7 @@ public class GPSPoint implements GpsPoint {
     private double longitude;
     private double speed; // in meters per second
     private double accuracy; // GPS accuracy in meters
+    private Boolean onWater; // nullable when environmental evidence has not been calculated
 
     public GPSPoint(double latitude, double longitude, double speed, double accuracy, Instant timestamp) {
         this.latitude = latitude;
@@ -35,6 +36,10 @@ public class GPSPoint implements GpsPoint {
 
     public GPSPoint(double latitude, double longitude, double speed, double accuracy) {
         this(latitude, longitude, speed, accuracy, null);
+    }
+
+    public GPSPoint(Instant timestamp, double latitude, double longitude, double speed, double accuracy) {
+        this(latitude, longitude, speed, accuracy, timestamp);
     }
 
     /**

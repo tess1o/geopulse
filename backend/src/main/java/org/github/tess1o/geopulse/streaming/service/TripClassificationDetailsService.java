@@ -236,7 +236,12 @@ public class TripClassificationDetailsService {
                 calculatedAvgSpeedKmh,
                 speedVarianceKmh,
                 trip.getLowAccuracyPointsCount(),
-                gpsReliable
+                gpsReliable,
+                trip.getWaterDistanceMeters(),
+                trip.getWaterDistanceRatio(),
+                trip.getLongestWaterSegmentMeters(),
+                trip.getWaterSampleCount(),
+                trip.getWaterEvidenceAvailable()
         );
     }
 
@@ -316,7 +321,14 @@ public class TripClassificationDetailsService {
                 // FLIGHT
                 config.getFlightEnabled(),
                 config.getFlightEnabled() ? config.getFlightMinAvgSpeed() : null,
-                config.getFlightEnabled() ? config.getFlightMinMaxSpeed() : null
+                config.getFlightEnabled() ? config.getFlightMinMaxSpeed() : null,
+
+                // BOAT
+                config.getBoatEnabled(),
+                config.getBoatEnabled() ? config.getBoatMinWaterRatio() : null,
+                config.getBoatEnabled() ? config.getBoatMinWaterDistanceMeters() : null,
+                config.getBoatEnabled() ? config.getBoatMinContinuousWaterDistanceMeters() : null,
+                config.getBoatEnabled() ? config.getBoatMaxPlausibleSpeed() : null
         );
     }
 
@@ -395,7 +407,19 @@ public class TripClassificationDetailsService {
             matchedType = "FLIGHT";
         }
 
-        // Priority 2: TRAIN
+        // Priority 2: BOAT
+        if (!foundMatch) {
+            ClassificationStep boatStep = checkBoat(avgSpeedKmh, maxSpeedKmh, config, statistics);
+            steps.add(boatStep);
+            if (boatStep.checked() && boatStep.passed()) {
+                foundMatch = true;
+                matchedType = "BOAT";
+            }
+        } else {
+            steps.add(createSkippedStep("BOAT", matchedType));
+        }
+
+        // Priority 3: TRAIN
         if (!foundMatch) {
             ClassificationStep trainStep = checkTrain(avgSpeedKmh, maxSpeedKmh, speedVariance,
                     trip.getDistanceMeters(), trip.getTripDuration(), isInferredTrip, config, speedSource);
@@ -714,6 +738,55 @@ public class TripClassificationDetailsService {
         }
     }
 
+    private ClassificationStep checkBoat(double avgSpeedKmh,
+                                         double maxSpeedKmh,
+                                         TimelineConfig config,
+                                         TripStatistics statistics) {
+        if (!Boolean.TRUE.equals(config.getBoatEnabled())) {
+            return new ClassificationStep("BOAT", false, false,
+                    "Boat detection is not enabled in configuration", List.of());
+        }
+
+        double minWaterRatio = config.getBoatMinWaterRatio() != null ? config.getBoatMinWaterRatio() : 0.60;
+        double minWaterDistanceMeters = config.getBoatMinWaterDistanceMeters() != null
+                ? config.getBoatMinWaterDistanceMeters()
+                : 2000.0;
+        double minContinuousWaterDistanceMeters = config.getBoatMinContinuousWaterDistanceMeters() != null
+                ? config.getBoatMinContinuousWaterDistanceMeters()
+                : 1000.0;
+        double maxPlausibleSpeed = config.getBoatMaxPlausibleSpeed() != null
+                ? config.getBoatMaxPlausibleSpeed()
+                : 120.0;
+
+        boolean evidenceCheck = Boolean.TRUE.equals(statistics.waterEvidenceAvailable());
+        boolean ratioCheck = statistics.waterDistanceRatio() != null
+                && statistics.waterDistanceRatio() >= minWaterRatio;
+        boolean distanceCheck = statistics.waterDistanceMeters() != null
+                && statistics.waterDistanceMeters() >= minWaterDistanceMeters;
+        boolean continuousCheck = statistics.longestWaterSegmentMeters() != null
+                && statistics.longestWaterSegmentMeters() >= minContinuousWaterDistanceMeters;
+        boolean speedCheck = avgSpeedKmh <= maxPlausibleSpeed && maxSpeedKmh <= maxPlausibleSpeed;
+
+        List<ThresholdCheck> checks = new ArrayList<>();
+        checks.add(new ThresholdCheck("Water Evidence Available", "==", 1.0, evidenceCheck ? 1.0 : 0.0, evidenceCheck));
+        checks.add(new ThresholdCheck("Water Distance Ratio", ">=",
+                minWaterRatio, statistics.waterDistanceRatio(), ratioCheck));
+        checks.add(new ThresholdCheck("Water Distance", ">=",
+                minWaterDistanceMeters, statistics.waterDistanceMeters(), distanceCheck));
+        checks.add(new ThresholdCheck("Continuous Water Distance", ">=",
+                minContinuousWaterDistanceMeters, statistics.longestWaterSegmentMeters(), continuousCheck));
+        checks.add(new ThresholdCheck("Max Plausible Speed", "<=",
+                maxPlausibleSpeed, Math.max(avgSpeedKmh, maxSpeedKmh), speedCheck));
+
+        boolean passed = evidenceCheck && ratioCheck && distanceCheck && continuousCheck && speedCheck;
+        String reason = passed
+                ? String.format("Boat detected: %.0f m on water, %.0f%% water ratio, and %.0f m continuous water segment.",
+                statistics.waterDistanceMeters(), statistics.waterDistanceRatio() * 100.0, statistics.longestWaterSegmentMeters())
+                : "Not a boat: water evidence is missing or below the configured sustained-water thresholds.";
+
+        return new ClassificationStep("BOAT", true, passed, reason, checks);
+    }
+
     private ClassificationStep checkBicycle(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
         if (!Boolean.TRUE.equals(config.getBicycleEnabled())) {
             return new ClassificationStep("BICYCLE", false, false,
@@ -835,6 +908,9 @@ public class TripClassificationDetailsService {
         String autoReason = switch (algorithmClassification) {
             case "FLIGHT" -> String.format("Automatic classification was FLIGHT because speed (%.1f km/h) matches air travel.", avgSpeed);
             case "TRAIN" -> String.format("Automatic classification was TRAIN due to sustained high speeds (%.1f km/h) and consistency.", avgSpeed);
+            case "BOAT" -> String.format("Automatic classification was BOAT because the GPS path has sustained water evidence (%.0f m on water, %.0f%% water ratio).",
+                    statistics.waterDistanceMeters() != null ? statistics.waterDistanceMeters() : 0.0,
+                    statistics.waterDistanceRatio() != null ? statistics.waterDistanceRatio() * 100.0 : 0.0);
             case "BICYCLE" -> String.format("Automatic classification was BICYCLE based on moderate speeds (%.1f km/h).", avgSpeed);
             case "RUNNING" -> String.format("Automatic classification was RUNNING based on speeds (%.1f km/h) consistent with running.", avgSpeed);
             case "CAR" -> String.format("Automatic classification was CAR due to motorized-speed profile (avg %.1f km/h).", avgSpeed);

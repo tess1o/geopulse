@@ -22,6 +22,7 @@ const movementTypeOptions = [
   { label: 'Car', value: 'CAR' },
   { label: 'Train', value: 'TRAIN' },
   { label: 'Flight', value: 'FLIGHT' },
+  { label: 'Boat', value: 'BOAT' },
   { label: 'Unknown', value: 'UNKNOWN' }
 ]
 

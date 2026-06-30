@@ -43,6 +43,13 @@ public enum TripType {
     FLIGHT,
 
     /**
+     * Boat trip - characterized by sustained movement over water.
+     * Optional type, disabled by default. Classification uses water-surface evidence
+     * as the primary signal; speed is only used as a sanity check.
+     */
+    BOAT,
+
+    /**
      * Unknown trip type - used when classification cannot be determined reliably
      * due to insufficient data or ambiguous speed patterns.
      */

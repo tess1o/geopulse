@@ -29,6 +29,7 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
     private final UUID userId;
     private final Instant fromTimestamp;
     private final int bufferSize;
+    private final String environmentDatasetVersion;
 
     // Keep reference to track progress
     private StreamingGpsIterator currentIterator;
@@ -50,16 +51,26 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
             UUID userId,
             Instant fromTimestamp,
             int bufferSize) {
+        this(repository, userId, fromTimestamp, bufferSize, null);
+    }
+
+    public StreamingGpsIterable(
+            GpsPointRepository repository,
+            UUID userId,
+            Instant fromTimestamp,
+            int bufferSize,
+            String environmentDatasetVersion) {
         this.repository = repository;
         this.userId = userId;
         this.fromTimestamp = fromTimestamp;
         this.bufferSize = bufferSize;
+        this.environmentDatasetVersion = environmentDatasetVersion;
     }
 
     @Override
     public Iterator<GPSPoint> iterator() {
         currentIterator = new StreamingGpsIterator(
-                repository, userId, fromTimestamp, bufferSize);
+                repository, userId, fromTimestamp, bufferSize, environmentDatasetVersion);
         return currentIterator;
     }
 

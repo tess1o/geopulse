@@ -19,7 +19,9 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -196,6 +198,8 @@ class GpsPointResourceMobilePointTest {
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
+        TimelineConfigurationProvider timelineConfigurationProvider = mock(TimelineConfigurationProvider.class);
+        GpsPointEnvironmentService gpsPointEnvironmentService = mock(GpsPointEnvironmentService.class);
         GpsPointService service = new GpsPointService(
                 mapper,
                 repository,
@@ -204,7 +208,9 @@ class GpsPointResourceMobilePointTest {
                 timelineService,
                 filteringService,
                 telemetryService,
-                geofenceService
+                geofenceService,
+                timelineConfigurationProvider,
+                gpsPointEnvironmentService
         );
 
         UUID userId = UUID.randomUUID();
@@ -249,6 +255,72 @@ class GpsPointResourceMobilePointTest {
     }
 
     @Test
+    void saveMobileAppGpsPoints_enrichesSavedBatchWhenBoatDatasetExists() {
+        GpsPointMapper mapper = mock(GpsPointMapper.class);
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
+        EntityManager entityManager = mock(EntityManager.class);
+        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
+        GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
+        GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
+        GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
+        TimelineConfigurationProvider timelineConfigurationProvider = mock(TimelineConfigurationProvider.class);
+        GpsPointEnvironmentService gpsPointEnvironmentService = mock(GpsPointEnvironmentService.class);
+        GpsPointService service = new GpsPointService(
+                mapper,
+                repository,
+                duplicateDetectionService,
+                entityManager,
+                timelineService,
+                filteringService,
+                telemetryService,
+                geofenceService,
+                timelineConfigurationProvider,
+                gpsPointEnvironmentService
+        );
+
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        Instant firstTimestamp = Instant.parse("2026-05-15T09:00:00Z");
+        Instant secondTimestamp = Instant.parse("2026-05-15T09:05:00Z");
+        GpsPointDTO firstPoint = new GpsPointDTO(0L, firstTimestamp, new GpsPointDTO.CoordinatesDTO(40.0, -74.0), 4.0, 86.0, 0.5, 14.0, null);
+        GpsPointDTO secondPoint = new GpsPointDTO(0L, secondTimestamp, new GpsPointDTO.CoordinatesDTO(40.1, -74.1), 5.0, 88.0, 1.5, 12.0, null);
+        GpsSourceConfigEntity config = GpsSourceConfigEntity.builder()
+                .sourceType(GpsSourceType.MOBILE_APP)
+                .active(true)
+                .filterInaccurateData(false)
+                .maxAllowedAccuracy(100)
+                .maxAllowedSpeed(250)
+                .enableDuplicateDetection(false)
+                .build();
+        GpsPointEntity firstEntity = new GpsPointEntity();
+        firstEntity.setId(10L);
+        firstEntity.setUser(user);
+        firstEntity.setTimestamp(firstTimestamp);
+        GpsPointEntity secondEntity = new GpsPointEntity();
+        secondEntity.setId(11L);
+        secondEntity.setUser(user);
+        secondEntity.setTimestamp(secondTimestamp);
+
+        when(entityManager.getReference(UserEntity.class, userId)).thenReturn(user);
+        when(duplicateDetectionService.isDuplicatePoint(userId, firstTimestamp, GpsSourceType.MOBILE_APP)).thenReturn(false);
+        when(duplicateDetectionService.isDuplicatePoint(userId, secondTimestamp, GpsSourceType.MOBILE_APP)).thenReturn(false);
+        when(mapper.toEntity(firstPoint, DEVICE_ID, user, GpsSourceType.MOBILE_APP)).thenReturn(firstEntity);
+        when(mapper.toEntity(secondPoint, DEVICE_ID, user, GpsSourceType.MOBILE_APP)).thenReturn(secondEntity);
+        when(filteringService.filter(any(GpsPointEntity.class), eq(config))).thenReturn(GpsFilterResult.accepted());
+        when(repository.findByUniqueKey(any(), any(), any())).thenReturn(java.util.Optional.empty());
+        when(timelineConfigurationProvider.getConfigurationForUser(userId))
+                .thenReturn(TimelineConfig.builder().boatEnabled(true).build());
+        when(gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion()).thenReturn("dataset-v1");
+
+        service.saveMobileAppGpsPoints(List.of(firstPoint, secondPoint), DEVICE_ID, userId, GpsSourceType.MOBILE_APP, config);
+
+        verify(entityManager).flush();
+        verify(gpsPointEnvironmentService).enrichPoints(userId, List.of(10L, 11L), "dataset-v1");
+    }
+
+    @Test
     void saveMobileAppGpsPoints_ignoresNullAndEmptyPayloads() {
         GpsPointMapper mapper = mock(GpsPointMapper.class);
         GpsPointRepository repository = mock(GpsPointRepository.class);
@@ -258,6 +330,8 @@ class GpsPointResourceMobilePointTest {
         GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
         GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
         GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
+        TimelineConfigurationProvider timelineConfigurationProvider = mock(TimelineConfigurationProvider.class);
+        GpsPointEnvironmentService gpsPointEnvironmentService = mock(GpsPointEnvironmentService.class);
         GpsPointService service = new GpsPointService(
                 mapper,
                 repository,
@@ -266,7 +340,9 @@ class GpsPointResourceMobilePointTest {
                 timelineService,
                 filteringService,
                 telemetryService,
-                geofenceService
+                geofenceService,
+                timelineConfigurationProvider,
+                gpsPointEnvironmentService
         );
 
         UUID userId = UUID.randomUUID();
@@ -290,7 +366,9 @@ class GpsPointResourceMobilePointTest {
                 timelineService,
                 filteringService,
                 telemetryService,
-                geofenceService
+                geofenceService,
+                timelineConfigurationProvider,
+                gpsPointEnvironmentService
         );
     }
 }

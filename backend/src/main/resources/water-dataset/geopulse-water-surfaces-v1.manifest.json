@@ -1,0 +1,21 @@
+{
+  "datasetVersion": "water_surfaces_v1",
+  "artifactName": "geopulse-water-surfaces-v1.copy.gz",
+  "artifactUrl": "https://github.com/tess1o/GeoPulse/releases/download/water-surfaces-v1/geopulse-water-surfaces-v1.copy.gz",
+  "sha256": "",
+  "expectedSizeBytes": "800000000-900000000",
+  "copyFormat": "postgresql-binary-gzip",
+  "columns": [
+    "source",
+    "source_id",
+    "name",
+    "water_type",
+    "geom_ewkb"
+  ],
+  "sources": [
+    "HydroLAKES",
+    "Natural Earth ocean polygons"
+  ],
+  "attribution": "HydroLAKES, HydroSHEDS; Natural Earth",
+  "license": "Mixed: HydroLAKES CC-BY 4.0; Natural Earth public domain"
+}

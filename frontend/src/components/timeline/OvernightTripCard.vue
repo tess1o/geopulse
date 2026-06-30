@@ -142,6 +142,7 @@ const getMovementIcon = () => {
     case 'CAR': return '🚗'
     case 'TRAIN': return '🚊'
     case 'FLIGHT': return '✈️'
+    case 'BOAT': return '⛵'
     case 'UNKNOWN': return '❓'
     default: return '❓'
   }
@@ -159,6 +160,7 @@ const formatMovementType = (type) => {
     CAR: 'Car',
     TRAIN: 'Train',
     FLIGHT: 'Flight',
+    BOAT: 'Boat',
     UNKNOWN: 'Unknown'
   }
   return movementTypeMap[type] || type

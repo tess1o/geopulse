@@ -306,6 +306,100 @@ class StreamingSingleTripAlgorithmTest {
     }
 
     @Test
+    void shouldPreserveBoatWalkModeChange_MultiAlgorithm() {
+        Stay start = createStay("2026-06-25T18:00:00Z", "Dock");
+        Trip boat = createTrip("2026-06-25T18:19:11Z", Duration.ofMinutes(9), 1478.0, TripType.BOAT);
+        Trip walk = createTrip("2026-06-25T18:31:11Z", Duration.ofMinutes(14), 851.0, TripType.WALK);
+        Stay end = createStay("2026-06-25T18:50:00Z", "City");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, boat, walk, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(2, trips.size());
+        assertEquals(TripType.BOAT, trips.get(0).getTripType());
+        assertEquals(TripType.WALK, trips.get(1).getTripType());
+        assertEquals(1478.0, trips.get(0).getDistanceMeters());
+        assertEquals(851.0, trips.get(1).getDistanceMeters());
+    }
+
+    @Test
+    void shouldPreserveWalkBoatModeChange_MultiAlgorithm() {
+        Stay start = createStay("2026-06-25T18:00:00Z", "City");
+        Trip walk = createTrip("2026-06-25T18:05:00Z", Duration.ofMinutes(8), 700.0, TripType.WALK);
+        Trip boat = createTrip("2026-06-25T18:13:00Z", Duration.ofMinutes(18), 2200.0, TripType.BOAT);
+        Stay end = createStay("2026-06-25T18:35:00Z", "Dock");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, walk, boat, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(2, trips.size());
+        assertEquals(TripType.WALK, trips.get(0).getTripType());
+        assertEquals(TripType.BOAT, trips.get(1).getTripType());
+    }
+
+    @Test
+    void shouldMergeTinyBoatFragmentIntoWalk_MultiAlgorithm() {
+        Stay start = createStay("2026-06-25T18:00:00Z", "Park");
+        Trip walkBefore = createTrip("2026-06-25T18:05:00Z", Duration.ofMinutes(10), 800.0, TripType.WALK);
+        Trip shortBoat = createTrip("2026-06-25T18:15:00Z", Duration.ofSeconds(45), 40.0, TripType.BOAT);
+        Trip walkAfter = createTrip("2026-06-25T18:16:00Z", Duration.ofMinutes(10), 820.0, TripType.WALK);
+        Stay end = createStay("2026-06-25T18:30:00Z", "Center");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, walkBefore, shortBoat, walkAfter, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(1, trips.size());
+        assertEquals(TripType.WALK, trips.getFirst().getTripType());
+    }
+
+    @Test
+    void shouldStillPreserveWalkCarModeChange_MultiAlgorithm() {
+        Stay start = createStay("2026-06-25T08:00:00Z", "Home");
+        Trip walk = createTrip("2026-06-25T08:10:00Z", Duration.ofMinutes(12), 900.0, TripType.WALK);
+        Trip car = createTrip("2026-06-25T08:22:00Z", Duration.ofMinutes(20), 8000.0, TripType.CAR);
+        Stay end = createStay("2026-06-25T09:00:00Z", "Office");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, walk, car, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(2, trips.size());
+        assertEquals(TripType.WALK, trips.get(0).getTripType());
+        assertEquals(TripType.CAR, trips.get(1).getTripType());
+    }
+
+    @Test
     void shouldPreserveShortTripBeforeDataGapSingleAlgorithm() {
         TimelineConfig strictConfig = TimelineConfig.builder()
                 .staypointRadiusMeters(100)
@@ -387,5 +481,24 @@ class StreamingSingleTripAlgorithmTest {
         assertTrue(result.get(1) instanceof Trip);
         assertTrue(result.get(2) instanceof DataGap);
         assertEquals(3, ((Trip) result.get(1)).getDuration().toMinutes());
+    }
+
+    private Stay createStay(String startTime, String locationName) {
+        return Stay.builder()
+                .startTime(Instant.parse(startTime))
+                .duration(Duration.ofMinutes(10))
+                .locationName(locationName)
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+    }
+
+    private Trip createTrip(String startTime, Duration duration, double distanceMeters, TripType tripType) {
+        return Trip.builder()
+                .startTime(Instant.parse(startTime))
+                .duration(duration)
+                .distanceMeters(distanceMeters)
+                .tripType(tripType)
+                .build();
     }
 }

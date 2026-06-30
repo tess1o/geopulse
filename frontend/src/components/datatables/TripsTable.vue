@@ -503,6 +503,7 @@ const getTransportSeverity = (transportMode) => {
     'RUNNING': 'success',
     'TRAIN': 'info',
     'FLIGHT': 'danger',
+    'BOAT': 'info',
     'UNKNOWN': 'secondary'
   }
   return severityMap[transportMode?.toUpperCase()] || 'secondary'
@@ -516,6 +517,7 @@ const getTransportIcon = (transportMode) => {
     'RUNNING': 'fas fa-running',
     'TRAIN': 'fas fa-train',
     'FLIGHT': 'fas fa-plane',
+    'BOAT': 'pi pi-compass',
     'UNKNOWN': 'pi pi-question-circle'
   }
   return iconMap[transportMode?.toUpperCase()] || 'pi pi-question-circle'

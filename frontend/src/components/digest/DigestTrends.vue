@@ -38,7 +38,8 @@ const tripTypeConfig = {
   BICYCLE: { label: 'Bicycle', color: 'warning' }, // Orange/Yellow
   CAR: { label: 'Car', color: 'primary' },        // Blue
   TRAIN: { label: 'Train', color: 'secondary' },  // Gray
-  FLIGHT: { label: 'Flight', color: 'danger' }    // Red
+  FLIGHT: { label: 'Flight', color: 'danger' },   // Red
+  BOAT: { label: 'Boat', color: 'info' }          // Cyan
 }
 
 // Y-axis title based on unit system and view mode

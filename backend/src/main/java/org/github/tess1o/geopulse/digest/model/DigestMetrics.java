@@ -23,6 +23,7 @@ public class DigestMetrics {
     private double runningDistance;
     private double trainDistance;
     private double flightDistance;
+    private double boatDistance;
     private double unknownDistance;
 
     // Other enhanced metrics
