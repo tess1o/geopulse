@@ -4,6 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -24,6 +25,7 @@ import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfig
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.hibernate.Hibernate;
@@ -65,6 +67,9 @@ public class GpsPointServiceTest {
 
     @Inject
     GpsSourceTypeTelemetryConfigRepository telemetryConfigRepository;
+
+    @Inject
+    EntityManager entityManager;
     @BeforeEach
     @Transactional
     public void setup() {
@@ -116,6 +121,94 @@ public class GpsPointServiceTest {
         assertEquals(5.0, savedGpsPoint.getVelocity(), 0.000001);
         assertEquals("test-device", savedGpsPoint.getDeviceId());
         assertEquals(tst, (int) savedGpsPoint.getTimestamp().getEpochSecond());
+    }
+
+    @Test
+    @Transactional
+    public void testSaveOwnTracksGpsPointDoesNotEnrichWaterEvidenceWhenBoatDisabled() {
+        installTestWaterDataset();
+
+        long tst = (int) Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
+        OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
+                .type("location")
+                .acc(0.2)
+                .lat(40.0)
+                .lon(-74.0)
+                .tst(tst)
+                .vel(5.0)
+                .build();
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+
+        assertEquals(0, countGpsPointEnvironmentRows(userId));
+    }
+
+    @Test
+    @Transactional
+    public void testSaveOwnTracksGpsPointEnrichesWaterEvidenceWhenBoatEnabledAndDatasetExists() {
+        enableBoatForTestUser();
+        installTestWaterDataset();
+
+        long tst = (int) Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
+        OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
+                .type("location")
+                .acc(0.2)
+                .lat(40.0)
+                .lon(-74.0)
+                .tst(tst)
+                .vel(5.0)
+                .build();
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+
+        assertEquals(1, countGpsPointEnvironmentRows(userId));
+        assertTrue(Boolean.TRUE.equals(findOnlyWaterEvidenceValue(userId)));
+    }
+
+    @Test
+    @Transactional
+    public void testSaveMobileAppGpsPointsEnrichesWaterEvidenceForSavedBatch() {
+        enableBoatForTestUser();
+        installTestWaterDataset();
+
+        GpsSourceConfigEntity mobileAppConfig = GpsSourceConfigEntity.builder()
+                .user(userRepository.findById(userId))
+                .sourceType(GpsSourceType.MOBILE_APP)
+                .username(TestIds.uniqueValue("gps-point-mobile-source-user"))
+                .active(true)
+                .filterInaccurateData(false)
+                .maxAllowedAccuracy(100)
+                .maxAllowedSpeed(250)
+                .enableDuplicateDetection(false)
+                .build();
+
+        GpsPointDTO waterPoint = new GpsPointDTO(
+                0L,
+                Instant.parse("2026-05-15T10:00:00Z"),
+                new GpsPointDTO.CoordinatesDTO(40.0, -74.0),
+                5.0,
+                88.0,
+                1.5,
+                12.0,
+                null
+        );
+        GpsPointDTO landPoint = new GpsPointDTO(
+                0L,
+                Instant.parse("2026-05-15T10:05:00Z"),
+                new GpsPointDTO.CoordinatesDTO(10.0, 10.0),
+                5.0,
+                88.0,
+                1.5,
+                12.0,
+                null
+        );
+
+        gpsPointService.saveMobileAppGpsPoints(List.of(waterPoint, landPoint), "pixel-9-pro",
+                userId, GpsSourceType.MOBILE_APP, mobileAppConfig);
+
+        assertEquals(2, countGpsPointEnvironmentRows(userId));
+        assertEquals(1, countWaterEvidenceRows(userId, true));
+        assertEquals(1, countWaterEvidenceRows(userId, false));
     }
     @Test
     @Transactional
@@ -431,6 +524,83 @@ public class GpsPointServiceTest {
         assertEquals("batt_v", pathPoint.getTelemetryCurrentPopup().get(0).getKey());
         assertTrue(pathPoint.getTelemetryCurrentPopup().stream().noneMatch(item -> "geofence_lat".equals(item.getKey())));
     }
+    private void enableBoatForTestUser() {
+        UserEntity user = userRepository.findById(userId);
+        user.setTimelinePreferences(TimelinePreferences.builder()
+                .boatEnabled(true)
+                .build());
+        userRepository.persist(user);
+    }
+
+    private void installTestWaterDataset() {
+        entityManager.createNativeQuery("""
+                        INSERT INTO water_surface_polygons (source, source_id, name, water_type, geom)
+                        VALUES (
+                            'gps-point-service-test',
+                            'test-water',
+                            'Test Water',
+                            'lake',
+                            ST_Multi(ST_GeomFromText('POLYGON((-75 39, -75 41, -73 41, -73 39, -75 39))', 4326))
+                        )
+                        """)
+                .executeUpdate();
+        entityManager.createNativeQuery("""
+                        INSERT INTO geo_dataset_metadata (
+                            dataset_name, source_url, source_version, license, attribution, feature_count, imported_at
+                        )
+                        VALUES (
+                            'water_surface_polygons:gps_point_service_test',
+                            'test',
+                            'test',
+                            'test',
+                            'test',
+                            1,
+                            NOW()
+                        )
+                        ON CONFLICT (dataset_name) DO UPDATE SET
+                            feature_count = EXCLUDED.feature_count,
+                            imported_at = EXCLUDED.imported_at
+                        """)
+                .executeUpdate();
+    }
+
+    private long countGpsPointEnvironmentRows(UUID targetUserId) {
+        Number result = (Number) entityManager.createNativeQuery("""
+                        SELECT COUNT(*)
+                        FROM gps_point_environment env
+                        JOIN gps_points gp ON gp.id = env.gps_point_id
+                        WHERE gp.user_id = :userId
+                        """)
+                .setParameter("userId", targetUserId)
+                .getSingleResult();
+        return result.longValue();
+    }
+
+    private long countWaterEvidenceRows(UUID targetUserId, boolean onWater) {
+        Number result = (Number) entityManager.createNativeQuery("""
+                        SELECT COUNT(*)
+                        FROM gps_point_environment env
+                        JOIN gps_points gp ON gp.id = env.gps_point_id
+                        WHERE gp.user_id = :userId
+                          AND env.on_water = :onWater
+                        """)
+                .setParameter("userId", targetUserId)
+                .setParameter("onWater", onWater)
+                .getSingleResult();
+        return result.longValue();
+    }
+
+    private Boolean findOnlyWaterEvidenceValue(UUID targetUserId) {
+        return (Boolean) entityManager.createNativeQuery("""
+                        SELECT env.on_water
+                        FROM gps_point_environment env
+                        JOIN gps_points gp ON gp.id = env.gps_point_id
+                        WHERE gp.user_id = :userId
+                        """)
+                .setParameter("userId", targetUserId)
+                .getSingleResult();
+    }
+
     private void createTestGpsPoint(Instant timestamp) {
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
                 .type("location")

@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **213** distinct env vars.
+Backend runtime currently includes **215** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -181,10 +181,12 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Timeline and Trip Intelligence (85)
+### Timeline and Trip Intelligence (87)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
+| `GEOPULSE_BOAT_WATER_EVIDENCE_MAINTENANCE_INTERVAL` | `15m` | Interval for the Boat water-evidence maintenance job, which repairs missed or stale GPS water-evidence rows for Boat-enabled users. Property: \`geopulse.boat.water-evidence.maintenance.interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
+| `GEOPULSE_BOAT_WATER_EVIDENCE_MAINTENANCE_MAX_USERS_PER_RUN` | `25` | Maximum number of Boat-enabled users repaired per water-evidence maintenance run. Property: \`geopulse.boat.water-evidence.maintenance.max-users-per-run\`. | Positive integer value. | Backend restart |
 | `GEOPULSE_TIMELINE_BICYCLE_ENABLED` | `false` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.max_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0` | Bicycle (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.bicycle.max_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |

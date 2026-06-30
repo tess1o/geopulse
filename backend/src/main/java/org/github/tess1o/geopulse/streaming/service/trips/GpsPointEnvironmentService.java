@@ -7,8 +7,10 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.query.NativeQuery;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -113,6 +115,70 @@ public class GpsPointEnvironmentService {
                 .setParameter("environmentDatasetVersion", environmentDatasetVersion)
                 .getSingleResult();
         return result != null ? result.longValue() : 0;
+    }
+
+    @Transactional
+    public int enrichPoints(UUID userId,
+                            Collection<Long> gpsPointIds,
+                            String environmentDatasetVersion) {
+        if (userId == null || gpsPointIds == null || gpsPointIds.isEmpty() || environmentDatasetVersion == null) {
+            return 0;
+        }
+
+        Query query = entityManager.createNativeQuery("""
+                        WITH candidate AS (
+                            SELECT gp.id, gp.coordinates
+                            FROM gps_points gp
+                            WHERE gp.user_id = :userId
+                              AND gp.id IN (:gpsPointIds)
+                              AND gp.coordinates IS NOT NULL
+                        ),
+                        classified AS (
+                            SELECT
+                                c.id AS gps_point_id,
+                                water_match.source IS NOT NULL AS on_water,
+                                water_match.source AS water_source
+                            FROM candidate c
+                            LEFT JOIN LATERAL (
+                                SELECT water.source
+                                FROM water_surface_polygons water
+                                WHERE water.geom && c.coordinates
+                                  AND ST_Covers(water.geom, c.coordinates)
+                                ORDER BY CASE water.water_type WHEN 'ocean' THEN 2 ELSE 1 END
+                                LIMIT 1
+                            ) water_match ON true
+                        )
+                        INSERT INTO gps_point_environment (
+                            gps_point_id,
+                            environment_dataset_version,
+                            on_water,
+                            water_source,
+                            classified_at
+                        )
+                        SELECT
+                            gps_point_id,
+                            :environmentDatasetVersion,
+                            on_water,
+                            water_source,
+                            NOW()
+                        FROM classified
+                        ON CONFLICT (gps_point_id) DO UPDATE SET
+                            environment_dataset_version = EXCLUDED.environment_dataset_version,
+                            on_water = EXCLUDED.on_water,
+                            water_source = EXCLUDED.water_source,
+                            classified_at = EXCLUDED.classified_at
+                        RETURNING gps_point_id
+                        """)
+                .setParameter("userId", userId)
+                .setParameter("environmentDatasetVersion", environmentDatasetVersion);
+        query.unwrap(NativeQuery.class).setParameterList("gpsPointIds", gpsPointIds);
+
+        List<?> updatedRows = query.getResultList();
+        int updatedCount = updatedRows.size();
+        if (updatedCount > 0) {
+            log.debug("Enriched {} newly saved GPS point environment rows for user {}", updatedCount, userId);
+        }
+        return updatedCount;
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
