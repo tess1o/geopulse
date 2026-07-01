@@ -19,7 +19,6 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
-import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -310,9 +309,8 @@ class GpsPointResourceMobilePointTest {
         when(mapper.toEntity(secondPoint, DEVICE_ID, user, GpsSourceType.MOBILE_APP)).thenReturn(secondEntity);
         when(filteringService.filter(any(GpsPointEntity.class), eq(config))).thenReturn(GpsFilterResult.accepted());
         when(repository.findByUniqueKey(any(), any(), any())).thenReturn(java.util.Optional.empty());
-        when(timelineConfigurationProvider.getConfigurationForUser(userId))
-                .thenReturn(TimelineConfig.builder().boatEnabled(true).build());
         when(gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion()).thenReturn("dataset-v1");
+        when(timelineConfigurationProvider.isBoatEnabledForUser(userId)).thenReturn(true);
 
         service.saveMobileAppGpsPoints(List.of(firstPoint, secondPoint), DEVICE_ID, userId, GpsSourceType.MOBILE_APP, config);
 

@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.streaming.config;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.mapper.TimelinePreferencesMapper;
@@ -25,16 +27,19 @@ public class TimelineConfigurationProvider {
     private final GlobalTimelineConfig globalDefaults;
     private final TimelineConfigFieldRegistry fieldRegistry;
     private final TimelinePreferencesMapper timelinePreferencesMapper;
+    private final EntityManager entityManager;
 
     @Inject
     public TimelineConfigurationProvider(UserRepository userRepository,
                                          GlobalTimelineConfig globalDefaults,
                                          TimelineConfigFieldRegistry fieldRegistry,
-                                         TimelinePreferencesMapper timelinePreferencesMapper) {
+                                         TimelinePreferencesMapper timelinePreferencesMapper,
+                                         EntityManager entityManager) {
         this.userRepository = userRepository;
         this.globalDefaults = globalDefaults;
         this.fieldRegistry = fieldRegistry;
         this.timelinePreferencesMapper = timelinePreferencesMapper;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -80,6 +85,32 @@ public class TimelineConfigurationProvider {
         }
 
         return baseConfig;
+    }
+
+    /**
+     * Reads only the effective boat-enabled flag without materializing UserEntity.
+     * This keeps GPS point save flows from initializing lazy user associations.
+     */
+    public boolean isBoatEnabledForUser(UUID userId) {
+        log.debug("Getting boat-enabled configuration for user {}", userId);
+
+        try {
+            Object result = entityManager.createNativeQuery("""
+                            SELECT (timeline_preferences ->> 'boatEnabled')::boolean
+                            FROM users
+                            WHERE id = :userId
+                            """)
+                    .setParameter("userId", userId)
+                    .getSingleResult();
+
+            if (result instanceof Boolean boatEnabled) {
+                return boatEnabled;
+            }
+
+            return Boolean.TRUE.equals(globalDefaults.getDefaultTimelineConfig().getBoatEnabled());
+        } catch (NoResultException e) {
+            throw new UserNotFoundException("User not found: " + userId);
+        }
     }
 
     /**

@@ -20,7 +20,6 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
-import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -120,13 +119,12 @@ public class GpsPointService {
         }
 
         try {
-            TimelineConfig timelineConfig = timelineConfigurationProvider.getConfigurationForUser(userId);
-            if (timelineConfig == null || !Boolean.TRUE.equals(timelineConfig.getBoatEnabled())) {
+            String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
+            if (datasetVersion == null) {
                 return;
             }
 
-            String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
-            if (datasetVersion == null) {
+            if (!timelineConfigurationProvider.isBoatEnabledForUser(userId)) {
                 return;
             }
 
