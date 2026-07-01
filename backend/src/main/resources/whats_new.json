@@ -1,24 +1,11 @@
 [
   {
-    "version": "1.32.2",
-    "title": "GeoPulse 1.32.2",
+    "version": "1.33.0",
+    "title": "GeoPulse 1.33.0",
     "highlights": [
-      "Added trip replay controls for raster maps and improved replay controls across Timeline and trip details",
-      "Improved the mobile Timeline with a compact collapsible sheet, clearer trip selection, and better trip popups",
-      "Added a Timeline display setting to keep trip replay controls collapsed until you open them",
-      "Improved trip duration labels and Overland GPS accuracy filtering"
+      "Added new trip type 'Boat'. GeoPulse now can identify if you traveled over land or water. Disabled by default, can be enabled in Timeline settings",
+      "Made Timeline collapsable on desktop and other small UI fixes"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.2"
-  },
-  {
-    "version": "1.32.1",
-    "title": "GeoPulse 1.32.1",
-    "highlights": [
-      "Fixed Immich photo markers on vector maps, including cluster expansion and click handling",
-      "Raised the train maximum average speed preference limit to 400 km/h",
-      "Timeline labels can now be hidden from DatePicker presets while remaining visible on timelines",
-      "Improved Timeline layout and PWA across mobile, tablet, and phone landscape viewports"
-    ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.32.1"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.33.0"
   }
 ]
