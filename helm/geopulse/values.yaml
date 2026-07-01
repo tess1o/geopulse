@@ -560,6 +560,19 @@ ingress:
   # Additional paths (for load balancers, etc.)
   extraPaths: []
 
+# HTTPRoute configuration (Gateway API)
+httproute:
+  enabled: false
+  annotations: {}
+
+  # Hostname for the route
+  hostname: geopulse.example.com
+
+  # Gateway parent reference (optional - leave empty to match any accepting Gateway)
+  parentName: ""
+  sectionName: ""
+  namespace: ""
+
 # Service Account
 serviceAccount:
   # Specifies whether a service account should be created
