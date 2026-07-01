@@ -64,18 +64,49 @@
           :class="timelineSheetClasses"
           :style="timelineSheetStyle"
         >
-          <button
-            type="button"
+          <div
             class="timeline-sheet-handle"
-            :aria-label="timelineSheetToggleLabel"
-            :title="timelineSheetToggleLabel"
-            @click="cycleTimelineSheetState"
             @pointerdown="handleTimelineSheetPointerDown"
           >
             <span class="timeline-sheet-grip"></span>
-            <span class="timeline-sheet-label">{{ timelineSheetLabel }}</span>
-            <i class="timeline-sheet-toggle-icon" :class="timelineSheetToggleIcon"></i>
-          </button>
+            <button
+              type="button"
+              class="timeline-sheet-toggle-button"
+              :aria-label="timelineSheetToggleLabel"
+              :title="timelineSheetToggleLabel"
+              @pointerdown.stop
+              @click="cycleTimelineSheetState"
+            >
+              <span class="timeline-sheet-label">{{ timelineSheetLabel }}</span>
+              <i class="timeline-sheet-toggle-icon" :class="timelineSheetToggleIcon"></i>
+            </button>
+            <div
+              v-if="isSingleDaySelected && selectedDateLabel && timelineSheetState !== 'collapsed'"
+              class="timeline-sheet-date-nav"
+              aria-label="Timeline day navigation"
+              @pointerdown.stop
+            >
+              <button
+                type="button"
+                class="timeline-sheet-date-nav-button"
+                title="Previous day"
+                aria-label="Previous day"
+                @click="navigateTimelineDay(-1)"
+              >
+                <i class="pi pi-chevron-left"></i>
+              </button>
+              <span class="timeline-sheet-date-text">{{ selectedDateLabel }}</span>
+              <button
+                type="button"
+                class="timeline-sheet-date-nav-button"
+                title="Next day"
+                aria-label="Next day"
+                @click="navigateTimelineDay(1)"
+              >
+                <i class="pi pi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
         <TimelineContainer
             :timelineData="timelineDataWithStayTelemetry"
             :timelineNoData="timelineNoData"
@@ -333,6 +364,21 @@ const timelineSheetLabel = computed(() => (
   timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
     ? 'Timeline'
     : 'Movement Timeline'
+))
+
+const selectedSingleDayDate = computed(() => {
+  if (!dateRange.value || dateRange.value.length !== 2) {
+    return null
+  }
+
+  const dates = timezone.getDateRangeArray(dateRange.value[0], dateRange.value[1])
+  return dates.length === 1 ? dates[0] : null
+})
+
+const isSingleDaySelected = computed(() => Boolean(selectedSingleDayDate.value))
+
+const selectedDateLabel = computed(() => (
+  selectedSingleDayDate.value ? timezone.formatDateLong(selectedSingleDayDate.value) : ''
 ))
 
 const timelineSheetToggleLabel = computed(() => (
@@ -819,6 +865,15 @@ const handleNavigateDate = (targetDate) => {
   dateRangeStore.setDateRange([start, end])
 }
 
+const navigateTimelineDay = (offset) => {
+  if (!selectedSingleDayDate.value) return
+
+  const targetDate = timezone.create(selectedSingleDayDate.value)
+    .add(offset, 'day')
+    .format('YYYY-MM-DD')
+  handleNavigateDate(targetDate)
+}
+
 const handleTagClicked = (tag) => {
   // Update date range to show full tag period
   const startDate = new Date(tag.startTime)
@@ -1300,6 +1355,8 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 .right-pane {
   flex: 0 0 clamp(360px, 32vw, 520px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden !important;
   height: 100%;
   min-height: 350px;
@@ -1310,11 +1367,14 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 .timeline-sheet-handle {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   width: 100%;
   min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  padding: 0.35rem 2.75rem 0.4rem var(--gp-spacing-md);
   border: none;
   border-bottom: 2px solid var(--gp-primary-light);
   background: transparent;
@@ -1330,13 +1390,81 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   background: var(--gp-surface-light);
 }
 
-.timeline-sheet-handle:focus-visible {
+.timeline-sheet-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+
+.timeline-sheet-toggle-button:focus-visible,
+.timeline-sheet-date-nav-button:focus-visible {
   outline: 2px solid var(--gp-primary);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .timeline-sheet-grip {
   display: none;
+}
+
+.timeline-sheet-label {
+  line-height: 1.2;
+}
+
+.timeline-sheet-date-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-basis: 100%;
+  gap: var(--gp-spacing-sm);
+  max-width: 100%;
+}
+
+.timeline-sheet-date-text {
+  flex: 0 0 clamp(10rem, 38vw, 13rem);
+  width: clamp(10rem, 38vw, 13rem);
+  min-width: 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-sheet-date-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--gp-border-medium);
+  border-radius: var(--gp-radius-small);
+  background: var(--gp-surface-white);
+  color: var(--gp-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.timeline-sheet-date-nav-button:hover {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: #fff;
+}
+
+.timeline-sheet-date-nav-button i {
+  font-size: 0.7rem;
 }
 
 .timeline-sheet-toggle-icon {
@@ -1346,7 +1474,9 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 }
 
 .right-pane :deep(.timeline-container) {
-  height: calc(100% - 44px);
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .right-pane :deep(.timeline-header) {
@@ -1395,6 +1525,12 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 .p-dark .timeline-sheet-handle {
   border-bottom-color: var(--gp-border-medium);
+}
+
+.p-dark .timeline-sheet-date-nav-button {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+  color: var(--gp-text-secondary);
 }
 
 .p-dark .timeline-main--sheet-collapsed .right-pane {
@@ -1524,6 +1660,7 @@ watch(() => timelineReconstructionRequestToken.value, () => {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
+    padding: 0.45rem 2.25rem 0.5rem;
     border: none;
     border-bottom: 1px solid var(--gp-border-light);
     background: var(--gp-surface-white);
@@ -1542,8 +1679,13 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   .timeline-sheet--compact .timeline-sheet-handle {
     height: 100%;
     min-height: 44px;
+    padding: 0 1rem;
     border-bottom: none;
     border-radius: inherit;
+  }
+
+  .timeline-sheet--compact .timeline-sheet-toggle-button {
+    width: 100%;
   }
 
   .timeline-sheet--dragging .timeline-sheet-handle {
@@ -1562,6 +1704,17 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
   .timeline-sheet-label {
     padding-top: 8px;
+  }
+
+  .timeline-sheet-date-nav {
+    flex-basis: 100%;
+    gap: var(--gp-spacing-xs);
+  }
+
+  .timeline-sheet-date-text {
+    flex-basis: clamp(10rem, 52vw, 14rem);
+    width: clamp(10rem, 52vw, 14rem);
+    font-size: 0.8rem;
   }
 
   .timeline-sheet--compact .timeline-sheet-label {

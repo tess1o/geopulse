@@ -1,17 +1,11 @@
 <template>
   <div class="timeline-container">
     <div class="timeline-header">
-      Movement Timeline
-    </div>
-
-    <div v-if="timelineDataLoading" class="loading-messages">
-      <ProgressSpinner />
-    </div>
-
-    <div v-show="timelineNoData" class="loading-messages timeline-no-data">
+      <div class="timeline-title">Movement Timeline</div>
       <div
         v-if="isSingleDaySelected && selectedDateLabel"
-        class="date-separator date-separator--no-data"
+        class="timeline-header-date-nav"
+        aria-label="Timeline day navigation"
       >
         <button
           type="button"
@@ -22,7 +16,7 @@
         >
           <i class="pi pi-chevron-left"></i>
         </button>
-        <div class="date-separator-text">{{ selectedDateLabel }}</div>
+        <div class="timeline-header-date-text">{{ selectedDateLabel }}</div>
         <button
           type="button"
           class="date-nav-button"
@@ -33,6 +27,13 @@
           <i class="pi pi-chevron-right"></i>
         </button>
       </div>
+    </div>
+
+    <div v-if="timelineDataLoading" class="loading-messages">
+      <ProgressSpinner />
+    </div>
+
+    <div v-show="timelineNoData" class="loading-messages timeline-no-data">
       <div>No timeline for the given date range.</div>
     </div>
 
@@ -53,29 +54,9 @@
     <div v-show="!timelineNoData && !timelineDataLoading" class="timeline-content">
       <div v-for="dateGroup in groupedTimelineData" :key="dateGroup.date" class="date-group">
         <!-- Date Header Separator -->
-        <div class="date-separator">
+        <div v-if="!isSingleDaySelected" class="date-separator">
           <div class="date-separator-line"></div>
-          <button
-            v-if="isSingleDaySelected"
-            type="button"
-            class="date-nav-button"
-            title="Previous day"
-            aria-label="Previous day"
-            @click="navigateDay(-1)"
-          >
-            <i class="pi pi-chevron-left"></i>
-          </button>
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
-          <button
-            v-if="isSingleDaySelected"
-            type="button"
-            class="date-nav-button"
-            title="Next day"
-            aria-label="Next day"
-            @click="navigateDay(1)"
-          >
-            <i class="pi pi-chevron-right"></i>
-          </button>
           <template v-if="showTimelineLabels">
             <span
               v-for="tag in getPeriodsForDate(dateGroup.date)"
@@ -610,6 +591,13 @@ watch(() => props.dateRange, () => {
 }
 
 .timeline-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
   width: 100%;
   justify-content: center;
   text-align: center;
@@ -617,8 +605,34 @@ watch(() => props.dateRange, () => {
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: var(--gp-spacing-lg);
-  padding-bottom: var(--gp-spacing-xs);
+  padding: 0 0 var(--gp-spacing-xs);
   border-bottom: 2px solid var(--gp-primary-light);
+  background: var(--gp-surface-white);
+}
+
+.timeline-title {
+  line-height: 1.3;
+}
+
+.timeline-header-date-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gp-spacing-sm);
+  max-width: 100%;
+}
+
+.timeline-header-date-text {
+  flex: 0 0 clamp(12rem, 58vw, 18rem);
+  width: clamp(12rem, 58vw, 18rem);
+  min-width: 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Mobile optimizations */
@@ -627,6 +641,16 @@ watch(() => props.dateRange, () => {
     font-size: 1rem;
     margin-bottom: var(--gp-spacing-md);
     padding-bottom: var(--gp-spacing-xs);
+  }
+
+  .timeline-header-date-nav {
+    gap: var(--gp-spacing-xs);
+  }
+
+  .timeline-header-date-text {
+    flex-basis: clamp(10rem, 52vw, 14rem);
+    width: clamp(10rem, 52vw, 14rem);
+    font-size: 0.8rem;
   }
 }
 
@@ -700,6 +724,7 @@ watch(() => props.dateRange, () => {
 .p-dark .timeline-header {
   color: var(--gp-primary);
   border-bottom-color: var(--gp-border-medium);
+  background: var(--gp-surface-dark);
 }
 
 .p-dark .loading-messages {
@@ -723,11 +748,6 @@ watch(() => props.dateRange, () => {
   align-items: center;
   margin: var(--gp-spacing-xl) 0 var(--gp-spacing-lg) 0;
   gap: var(--gp-spacing-md);
-}
-
-.date-separator--no-data {
-  width: 100%;
-  margin: 0;
 }
 
 .date-separator-line {
