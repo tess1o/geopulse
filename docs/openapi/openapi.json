@@ -971,6 +971,10 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "byBoat" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "byUnknown" : {
             "format" : "int32",
             "type" : "integer"
@@ -2634,6 +2638,33 @@
             "format" : "double",
             "maximum" : 900.0,
             "minimum" : 400.0,
+            "type" : "number"
+          },
+          "boatEnabled" : {
+            "type" : "boolean"
+          },
+          "boatMinWaterRatio" : {
+            "format" : "double",
+            "maximum" : 1.00,
+            "minimum" : 0.10,
+            "type" : "number"
+          },
+          "boatMinWaterDistanceMeters" : {
+            "format" : "double",
+            "maximum" : 100000.0,
+            "minimum" : 100.0,
+            "type" : "number"
+          },
+          "boatMinContinuousWaterDistanceMeters" : {
+            "format" : "double",
+            "maximum" : 50000.0,
+            "minimum" : 100.0,
+            "type" : "number"
+          },
+          "boatMaxPlausibleSpeed" : {
+            "format" : "double",
+            "maximum" : 300.0,
+            "minimum" : 20.0,
             "type" : "number"
           }
         }
@@ -4513,6 +4544,89 @@
         },
         "summary" : "Get Auth Status",
         "tags" : [ "Authentication Resource" ]
+      }
+    },
+    "/api/boat/setup/jobs/{jobId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "jobId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Job",
+        "tags" : [ "Boat Setup Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/boat/setup/start" : {
+      "post" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Start Setup",
+        "tags" : [ "Boat Setup Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/boat/setup/status" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Status",
+        "tags" : [ "Boat Setup Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
       }
     },
     "/api/colota" : {
@@ -13105,7 +13219,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.32.2",
+    "version" : "1.33.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
