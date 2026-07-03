@@ -35,7 +35,9 @@ public class CookieService {
      * Helper method to create cookie with common settings
      */
     private NewCookie createCookie(String name, String value, int maxAge, boolean httpOnly) {
-        if (cookieDomain.isPresent() && !cookieDomain.get().trim().isEmpty() && !cookieDomain.equals("\"\"")) {
+        Optional<String> normalizedCookieDomain = getNormalizedCookieDomain();
+
+        if (normalizedCookieDomain.isPresent()) {
             // Create cookie with domain for cross-subdomain sharing
             return new NewCookie.Builder(name)
                     .value(value)
@@ -44,7 +46,7 @@ public class CookieService {
                     .sameSite(NewCookie.SameSite.LAX) // LAX allows cross-subdomain requests
                     .maxAge(maxAge)
                     .path("/")
-                    .domain(cookieDomain.get())
+                    .domain(normalizedCookieDomain.get())
                     .build();
         } else {
             // Create cookie without domain
@@ -57,6 +59,13 @@ public class CookieService {
                     .path("/")
                     .build();
         }
+    }
+
+    private Optional<String> getNormalizedCookieDomain() {
+        return cookieDomain
+                .map(String::trim)
+                .filter(domain -> !domain.isEmpty())
+                .filter(domain -> !domain.equals("\"\""));
     }
 
     /**

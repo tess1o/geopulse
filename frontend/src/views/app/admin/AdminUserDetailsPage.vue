@@ -148,6 +148,58 @@
           </div>
         </div>
       </div>
+
+      <div class="card api-tokens-card">
+        <div class="card-title">
+          <i class="pi pi-key"></i>
+          <h3>API Tokens</h3>
+        </div>
+        <DataTable
+          :value="apiTokens"
+          :loading="apiTokensLoading"
+          dataKey="id"
+          responsiveLayout="scroll"
+        >
+          <Column field="name" header="Name">
+            <template #body="{ data }">
+              <div class="token-name">{{ data.name }}</div>
+              <div class="token-preview">{{ data.preview }}</div>
+            </template>
+          </Column>
+          <Column field="status" header="Status">
+            <template #body="{ data }">
+              <Tag :value="formatTokenStatus(data.status)" :severity="tokenStatusSeverity(data.status)" />
+            </template>
+          </Column>
+          <Column field="expiresAt" header="Expires">
+            <template #body="{ data }">
+              {{ formatDateTime(data.expiresAt) || 'Never' }}
+            </template>
+          </Column>
+          <Column field="lastUsedAt" header="Last Used">
+            <template #body="{ data }">
+              <div>{{ formatDateTime(data.lastUsedAt) || 'Never' }}</div>
+              <small v-if="data.lastUsedIp" class="text-muted">{{ data.lastUsedIp }}</small>
+            </template>
+          </Column>
+          <Column header="Actions" :exportable="false">
+            <template #body="{ data }">
+              <Button
+                icon="pi pi-ban"
+                rounded
+                text
+                severity="danger"
+                :disabled="data.status === 'REVOKED'"
+                @click="confirmRevokeApiToken(data)"
+                v-tooltip="'Revoke token'"
+              />
+            </template>
+          </Column>
+          <template #empty>
+            <div class="text-center p-4">No API tokens found.</div>
+          </template>
+        </DataTable>
+      </div>
     </div>
 
     <div v-else class="card p-4 text-center">
@@ -198,6 +250,28 @@
       </template>
     </Dialog>
 
+    <Dialog
+      v-model:visible="apiTokenRevokeDialogVisible"
+      header="Revoke API Token"
+      :modal="true"
+      :style="{ width: '420px' }"
+    >
+      <p>
+        Revoke <strong>{{ apiTokenToRevoke?.name }}</strong> for <strong>{{ user?.email }}</strong>?
+        Automation using this token will stop immediately.
+      </p>
+      <template #footer>
+        <Button label="Cancel" icon="pi pi-times" text @click="apiTokenRevokeDialogVisible = false" />
+        <Button
+          label="Revoke"
+          icon="pi pi-ban"
+          severity="danger"
+          :loading="apiTokenRevoking"
+          @click="revokeApiToken"
+        />
+      </template>
+    </Dialog>
+
     <Toast />
     </div>
   </AppLayout>
@@ -212,6 +286,8 @@ import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
@@ -250,6 +326,11 @@ const deleteDialogVisible = ref(false)
 const deleting = ref(false)
 const passwordDialogVisible = ref(false)
 const tempPassword = ref('')
+const apiTokens = ref([])
+const apiTokensLoading = ref(false)
+const apiTokenRevokeDialogVisible = ref(false)
+const apiTokenToRevoke = ref(null)
+const apiTokenRevoking = ref(false)
 
 const isCurrentUser = computed(() => user.value?.id === authStore.userId)
 
@@ -260,6 +341,7 @@ const loadUser = async () => {
     user.value = response
     // Update breadcrumb with user name
     breadcrumbItems.value[2].label = user.value.fullName || user.value.email
+    await loadApiTokens()
   } catch (error) {
     console.error('Failed to load user:', error)
     toast.add({
@@ -271,6 +353,29 @@ const loadUser = async () => {
     breadcrumbItems.value[2].label = 'User Not Found'
   } finally {
     loading.value = false
+  }
+}
+
+const loadApiTokens = async () => {
+  if (!route.params.id) return
+  apiTokensLoading.value = true
+  try {
+    const response = await apiService.get('/admin/api-tokens', {
+      userId: route.params.id,
+      page: 0,
+      size: 100
+    })
+    apiTokens.value = response?.content || []
+  } catch (error) {
+    console.error('Failed to load API tokens:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load API tokens',
+      life: 3000
+    })
+  } finally {
+    apiTokensLoading.value = false
   }
 }
 
@@ -368,6 +473,50 @@ const copyPassword = async () => {
       life: 3000
     })
   }
+}
+
+const confirmRevokeApiToken = (token) => {
+  apiTokenToRevoke.value = token
+  apiTokenRevokeDialogVisible.value = true
+}
+
+const revokeApiToken = async () => {
+  if (!apiTokenToRevoke.value) return
+
+  apiTokenRevoking.value = true
+  try {
+    await apiService.delete(`/admin/api-tokens/${apiTokenToRevoke.value.id}`)
+    toast.add({
+      severity: 'success',
+      summary: 'Revoked',
+      detail: 'API token revoked',
+      life: 3000
+    })
+    apiTokenRevokeDialogVisible.value = false
+    apiTokenToRevoke.value = null
+    await loadApiTokens()
+  } catch (error) {
+    console.error('Failed to revoke API token:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.response?.data?.error || 'Failed to revoke API token',
+      life: 3000
+    })
+  } finally {
+    apiTokenRevoking.value = false
+  }
+}
+
+const tokenStatusSeverity = (status) => {
+  if (status === 'ACTIVE') return 'success'
+  if (status === 'EXPIRED') return 'warning'
+  return 'danger'
+}
+
+const formatTokenStatus = (status) => {
+  if (!status) return ''
+  return status.charAt(0) + status.slice(1).toLowerCase()
 }
 
 const confirmDelete = () => {

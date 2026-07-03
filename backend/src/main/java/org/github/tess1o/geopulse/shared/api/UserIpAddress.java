@@ -4,6 +4,13 @@ import io.vertx.core.http.HttpServerRequest;
 
 public class UserIpAddress {
 
+    public static String resolve(HttpServerRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return resolve(request, request.getHeader("X-Forwarded-For"), request.getHeader("X-Real-IP"));
+    }
+
     public static String resolve(HttpServerRequest request, String forwardedFor, String realIp) {
         if (forwardedFor != null && !forwardedFor.isBlank()) {
             return forwardedFor.split(",")[0].trim();
