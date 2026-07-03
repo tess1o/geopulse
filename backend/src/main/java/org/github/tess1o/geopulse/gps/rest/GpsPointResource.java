@@ -577,6 +577,16 @@ public class GpsPointResource {
         return builder.build();
     }
 
+    @GET
+    @Path("/status")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getGpsStatus() {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to get GPS status for user {}", userId);
+        return Response.ok(ApiResponse.success(gpsPointService.getGpsStatus(userId))).build();
+    }
+
     /**
      * Update a GPS point.
      * This endpoint requires authentication.
