@@ -9,7 +9,7 @@
           <div class="immich-info">
             <h3 class="immich-title">Immich Integration</h3>
             <p class="immich-description">
-              Connect your Immich photo server to display photos on your timeline
+              Connect your Immich photo server to display photos on your timeline.
             </p>
           </div>
         </div>
@@ -321,9 +321,6 @@ onMounted(() => {
 
 <style scoped>
 .immich-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
   width: 100%;
   box-sizing: border-box;
 }
@@ -331,7 +328,6 @@ onMounted(() => {
 .immich-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
-  padding: 1.5rem;
 }
 
 /* Immich Section */
@@ -557,33 +553,22 @@ onMounted(() => {
     gap: 1rem;
   }
 
-.form-actions {
+  .form-actions {
     flex-direction: column;
   }
 }
 
 @media (max-width: 480px) {
-  .immich-card {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  .immich-card :deep(.p-card-content) {
-    padding: 1rem;
-  }
-
   .form-actions .p-button {
     width: 100%;
     min-height: 48px;
   }
+  .help-text {
+    font-size: 0.75rem;
+  }
 
   .form-label {
     font-size: 0.9rem;
-  }
-
-  .help-text {
-    font-size: 0.75rem;
   }
 
   .error-message {

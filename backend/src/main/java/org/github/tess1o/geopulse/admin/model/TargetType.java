@@ -7,5 +7,6 @@ public enum TargetType {
     SETTING,
     USER,
     OIDC_PROVIDER,
-    INVITATION
+    INVITATION,
+    API_TOKEN
 }

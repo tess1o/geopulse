@@ -34,6 +34,11 @@ const sidebars = {
                 },
                 {
                     type: 'doc',
+                    id: 'getting-started/deployment/proxmox-lxc',
+                    label: 'Proxmox VE LXC',
+                },
+                {
+                    type: 'doc',
                     id: 'getting-started/deployment/kubernetes-helm',
                     label: 'Kubernetes Quick Install',
                 },

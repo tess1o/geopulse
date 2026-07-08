@@ -23,6 +23,7 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -56,6 +57,30 @@ class GpsPointResourcePositionIntegrationTest {
 
         AuthResponse auth = authenticationService.authenticate(user.getEmail(), "password123");
         accessToken = auth.getAccessToken();
+    }
+
+    @Test
+    void shouldRequireAuthenticationForGpsStatus() {
+        given()
+                .when()
+                .get("/api/gps/status")
+                .then()
+                .statusCode(401);
+    }
+
+    @Test
+    void shouldReturnGpsStatusForAuthenticatedUser() {
+        given()
+                .header("Authorization", "Bearer " + accessToken)
+                .when()
+                .get("/api/gps/status")
+                .then()
+                .statusCode(200)
+                .body("status", equalTo("success"))
+                .body("data.hasGpsData", equalTo(false))
+                .body("data.totalGpsPoints", equalTo(0))
+                .body("data.latestGpsPointTimestamp", nullValue())
+                .body("data.coordinates", nullValue());
     }
 
     @Test

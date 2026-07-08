@@ -1,6 +1,6 @@
 <template>
   <ConfirmDialog />
-  <Card>
+  <Card class="profile-section-card">
     <template #title>Connected Accounts</template>
     <template #subtitle>Manage OIDC connections for social or corporate SSO login.</template>
     <template #content>

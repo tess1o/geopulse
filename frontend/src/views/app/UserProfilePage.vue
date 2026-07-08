@@ -563,6 +563,27 @@ onMounted(async () => {
   width: 100%;
 }
 
+:deep(.profile-section-card.p-card) {
+  width: 100%;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  box-shadow: var(--gp-shadow-light);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+:deep(.profile-section-card .p-card-body) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1.5rem;
+}
+
+:deep(.profile-section-card .p-card-content) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -610,6 +631,10 @@ onMounted(async () => {
 
   .page-description {
     font-size: 1rem;
+  }
+
+  :deep(.profile-section-card .p-card-body) {
+    padding: 1rem;
   }
 }
 

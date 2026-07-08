@@ -1,20 +1,12 @@
 <template>
   <div>
-    <Card class="security-card">
+    <Card class="profile-section-card security-section-card">
+      <template #title>{{ hasPassword ? 'Change Password' : 'Set Password' }}</template>
+      <template #subtitle>
+        {{ hasPassword ? 'Update your password to keep your account secure.' : 'Set a password for your account.' }}
+      </template>
       <template #content>
         <form @submit.prevent="handleSubmit" class="security-form">
-          <div class="security-header">
-            <div class="security-icon">
-              <i class="pi pi-lock"></i>
-            </div>
-            <div class="security-info">
-              <h3 class="security-title">{{ hasPassword ? 'Change Password' : 'Set Password' }}</h3>
-              <p class="security-description">
-                {{ hasPassword ? 'Update your password to keep your account secure' : 'Set a password for your account' }}
-              </p>
-            </div>
-          </div>
-
           <div class="form-section">
             <div v-if="hasPassword" class="form-field" data-setting-id="currentPassword">
               <label for="currentPassword" class="form-label">Current Password</label>
@@ -85,13 +77,17 @@
       </template>
     </Card>
 
-    <OidcManagement class="mt-6" />
+    <div class="security-followup-section">
+      <OidcManagement />
+    </div>
+    <ApiTokensManagement class="mt-6" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import OidcManagement from '@/components/auth/OidcManagement.vue'
+import ApiTokensManagement from '@/components/profile/ApiTokensManagement.vue'
 
 // Props
 const props = defineProps({
@@ -180,60 +176,13 @@ watch(() => [form.value.newPassword, form.value.confirmPassword], () => {
 </script>
 
 <style scoped>
-.security-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
+.security-section-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
 }
 
-.security-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 1.5rem;
-}
-
-/* Security Section */
-.security-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.security-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.security-info {
-  flex: 1;
-}
-
-.security-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.security-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
+.security-followup-section {
+  margin-top: 1.5rem;
 }
 
 /* Form Sections */
@@ -327,28 +276,12 @@ watch(() => [form.value.newPassword, form.value.confirmPassword], () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .security-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
   .form-actions {
     flex-direction: column;
   }
 }
 
 @media (max-width: 480px) {
-  .security-card {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  .security-card :deep(.p-card-content) {
-    padding: 1rem;
-  }
-
   .form-actions .p-button {
     width: 100%;
     min-height: 48px;

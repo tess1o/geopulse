@@ -9,7 +9,7 @@
           <div class="ai-info">
             <h3 class="ai-title">AI Assistant Configuration</h3>
             <p class="ai-description">
-              Configure your AI assistant settings to enable AI chat
+              Configure your AI assistant settings to enable AI chat.
             </p>
           </div>
         </div>
@@ -293,9 +293,6 @@ watch(() => props.initialSettings, () => {
 
 <style scoped>
 .ai-settings-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
   width: 100%;
   box-sizing: border-box;
 }
@@ -303,7 +300,6 @@ watch(() => props.initialSettings, () => {
 .ai-settings-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
-  padding: 1.5rem;
 }
 
 .ai-settings-form {
@@ -370,11 +366,7 @@ watch(() => props.initialSettings, () => {
 .provider-settings {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-  border-left: 4px solid var(--gp-primary);
+  gap: 1.5rem;
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -525,31 +517,9 @@ watch(() => props.initialSettings, () => {
     flex-direction: column;
   }
 
-  .ai-settings-card :deep(.p-card-content) {
-    padding: 1.5rem;
-  }
-
-  .provider-settings {
-    padding: 1rem;
-  }
 }
 
 @media (max-width: 480px) {
-  .ai-settings-card {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  .ai-settings-card :deep(.p-card-content) {
-    padding: 1rem;
-  }
-
-  .provider-settings {
-    border-radius: 0;
-    padding: 1rem;
-  }
-
   .form-actions .p-button {
     width: 100%;
     min-height: 48px;

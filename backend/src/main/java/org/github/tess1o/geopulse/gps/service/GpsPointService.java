@@ -601,6 +601,47 @@ public class GpsPointService {
         });
     }
 
+    public GpsStatusDTO getGpsStatus(UUID userId) {
+        Instant generatedAt = Instant.now();
+        long totalGpsPoints = gpsPointRepository.countByUser(userId);
+
+        return gpsPointRepository.findLatest(userId)
+                .map(latestPoint -> {
+                    Instant latestTimestamp = latestPoint.getTimestamp();
+                    Long ageSeconds = latestTimestamp == null
+                            ? null
+                            : Duration.between(latestTimestamp, generatedAt).getSeconds();
+                    Long ageMinutes = latestTimestamp == null
+                            ? null
+                            : Duration.between(latestTimestamp, generatedAt).toMinutes();
+
+                    return new GpsStatusDTO(
+                            generatedAt,
+                            true,
+                            latestTimestamp,
+                            latestTimestamp == null ? null : latestTimestamp.getEpochSecond(),
+                            ageSeconds,
+                            ageMinutes,
+                            latestPoint.getCreatedAt(),
+                            latestPoint.getSourceType() == null ? null : latestPoint.getSourceType().name(),
+                            latestPoint.getDeviceId(),
+                            totalGpsPoints
+                    );
+                })
+                .orElseGet(() -> new GpsStatusDTO(
+                        generatedAt,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        totalGpsPoints
+                ));
+    }
+
     /**
      * Get paginated GPS points with filters.
      *

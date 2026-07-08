@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-BSL_1.1-red" alt="License"></a>
-  <a href="https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose"><img src="https://img.shields.io/badge/Docker-Ready-blue.svg" alt="Docker"></a>
+  <a href="#deployment-options"><img src="https://img.shields.io/badge/Install-Options-blue.svg" alt="Installation options"></a>
   <img src="https://img.shields.io/badge/Self--Hosted-Yes-green.svg" alt="Self-Hosted">
   <img src="https://img.shields.io/badge/Privacy-First-green.svg" alt="Privacy First">
 </p>
@@ -39,8 +39,7 @@ docker compose up -d
 **Access:** [http://localhost:5555](http://localhost:5555)  
 *Note: For production, review your `.env` for security-related settings first.*
 
-Need MQTT, custom domains, or hardening? See
-the [Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose).
+Need MQTT, custom domains, hardening, or another platform? See the [deployment options](#deployment-options).
 
 ---
 
@@ -121,15 +120,18 @@ the [Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-sta
 
 ## Deployment Options
 
-### Docker Compose
+Choose the installation path that matches your environment:
 
-Fastest path for local and single-server use. See
-the [Full Docker Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose).
+| Installation type | Best for | Guide |
+|-------------------|----------|-------|
+| Docker Compose | Fastest path for local and single-server use | [Docker Compose Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) |
+| Proxmox VE LXC | Proxmox homelabs and VM hosts that prefer LXC containers | [Proxmox VE LXC Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) |
+| Kubernetes / Helm | Managed clusters and production Kubernetes environments | [Kubernetes Quick Install](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) |
+| Helm values reference | Advanced Helm customization | [Helm Values Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-deployment) |
+| Manual installation | Bare metal servers or VMs without Docker/Kubernetes | [Manual Installation Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) |
+| Environment configuration | Reviewing all runtime settings | [Environment Variables Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables) |
 
-### Kubernetes / Helm
-
-Best for managed clusters and advanced production. See
-the [Helm Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-deployment).
+### Kubernetes / Helm Quick Install
 
 ```shell
 helm repo add geopulse https://tess1o.github.io/geopulse/charts
@@ -149,7 +151,7 @@ helm install my-geopulse geopulse/geopulse
 
 * **New users:** [Quick Start Guide](https://tess1o.github.io/geopulse/docs/getting-started/quick-start)
 * **GPS setup:** [GPS Sources Overview](https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview)
-* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
+* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Proxmox](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
 * **Administration:** [Admin Panel](https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://tess1o.github.io/geopulse/docs/system-administration/configuration/oidc-sso)
 * **Maintenance:** [Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore) | [Updating](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/updating)
 * **Full documentation:** [Documentation Portal](https://tess1o.github.io/geopulse/)

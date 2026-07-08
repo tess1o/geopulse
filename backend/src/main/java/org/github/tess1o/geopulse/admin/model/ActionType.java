@@ -25,6 +25,12 @@ public enum ActionType {
     INVITATION_CREATED,
     INVITATION_REVOKED,
 
+    // API tokens
+    API_TOKEN_CREATED,
+    API_TOKEN_UPDATED,
+    API_TOKEN_REVOKED,
+    API_TOKEN_ADMIN_REVOKED,
+
     // Admin actions
     ADMIN_LOGIN
 }

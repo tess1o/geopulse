@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.auth.service;
 
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -16,12 +17,20 @@ public class CurrentUserService {
     JsonWebToken jwt;
 
     @Inject
+    SecurityIdentity securityIdentity;
+
+    @Inject
     UserService userService;
 
     /**
      * Get the current user's ID from JWT token
      */
     public UUID getCurrentUserId() {
+        UUID apiTokenUserId = getApiTokenUserId();
+        if (apiTokenUserId != null) {
+            return apiTokenUserId;
+        }
+
         if (jwt == null) {
             throw new SecurityException("No JWT token found");
         }
@@ -53,6 +62,11 @@ public class CurrentUserService {
      * Get the current user's email from JWT token
      */
     public String getCurrentUserEmail() {
+        String apiTokenEmail = getApiTokenUserEmail();
+        if (apiTokenEmail != null) {
+            return apiTokenEmail;
+        }
+
         if (jwt == null) {
             throw new SecurityException("No JWT token found");
         }
@@ -77,5 +91,27 @@ public class CurrentUserService {
         }
 
         return user.get();
+    }
+
+    private UUID getApiTokenUserId() {
+        if (securityIdentity == null) {
+            return null;
+        }
+        String userId = securityIdentity.getAttribute(ApiTokenAuthenticationMechanism.ATTR_USER_ID);
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            throw new SecurityException("Invalid user ID in API token identity", e);
+        }
+    }
+
+    private String getApiTokenUserEmail() {
+        if (securityIdentity == null) {
+            return null;
+        }
+        return securityIdentity.getAttribute(ApiTokenAuthenticationMechanism.ATTR_USER_EMAIL);
     }
 }
