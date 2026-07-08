@@ -145,7 +145,7 @@ jobs:
         with:
           context: .
           file: backend/Dockerfile
-          platforms: linux/arm64
+          platforms: linux/arm64/v8
           push: true
           build-args: |
             VERSION=${{ needs.prepare.outputs.version }}-jvm
@@ -228,7 +228,7 @@ jobs:
         with:
           context: .
           file: backend/Dockerfile.native
-          platforms: linux/arm64
+          platforms: linux/arm64/v8
           push: true
           build-args: |
             VERSION=${{ needs.prepare.outputs.version }}-native
@@ -312,7 +312,7 @@ jobs:
         with:
           context: .
           file: backend/Dockerfile.native
-          platforms: linux/arm64
+          platforms: linux/arm64/v8
           push: true
           build-args: |
             VERSION=${{ needs.prepare.outputs.version }}-native
@@ -357,7 +357,7 @@ jobs:
         with:
           context: .
           file: frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64/v8
           push: true
           build-args: |
             VERSION=${{ needs.prepare.outputs.version }}
@@ -368,6 +368,40 @@ jobs:
             ${{ env.GHCR_FRONTEND_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Annotate Frontend ARM64 manifests
+        run: |
+          create_manifest() {
+            local target="$1"
+            local source="$2"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
+          create_manifest \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }} \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
+          create_manifest \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:latest \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:latest
+          create_manifest \
+            ${{ env.GHCR_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }} \
+            ${{ env.GHCR_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
+          create_manifest \
+            ${{ env.GHCR_FRONTEND_IMAGE }}:latest \
+            ${{ env.GHCR_FRONTEND_IMAGE }}:latest
 
   # Create multi-arch manifests for JVM backend
   create-jvm-manifests:
@@ -389,29 +423,69 @@ jobs:
 
       - name: Create and push Docker Hub JVM manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
 
           # Create latest manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-arm64
 
       - name: Create and push GHCR JVM manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
 
           # Create latest manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest \
             ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-arm64
 
@@ -435,31 +509,77 @@ jobs:
 
       - name: Create and push Docker Hub manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
 
           # Create latest manifests
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
 
       - name: Create and push GHCR manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
 
           # Create latest manifests
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:native-latest \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:latest \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:latest \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
 
@@ -483,31 +603,77 @@ jobs:
 
       - name: Create and push Docker Hub compatible manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned compat manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64-compat \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64-compat
 
           # Create latest compat manifest
-          docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-latest \
-            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:compat-latest \
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-latest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
+          create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:compat-latest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
 
       - name: Create and push GHCR compatible manifests
         run: |
+          create_manifest() {
+            local target="$1"
+            local amd64_source="$2"
+            local arm64_source="$3"
+            local tmp_dir
+            tmp_dir="$(mktemp -d)"
+
+            docker buildx imagetools inspect "$amd64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' \
+              > "$tmp_dir/amd64.json"
+            docker buildx imagetools inspect "$arm64_source" --raw \
+              | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' \
+              > "$tmp_dir/arm64.json"
+
+            docker buildx imagetools create \
+              -t "$target" \
+              -f "$tmp_dir/amd64.json" \
+              -f "$tmp_dir/arm64.json"
+          }
+
           # Create versioned compat manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64-compat \
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64-compat
 
           # Create latest compat manifest
-          docker buildx imagetools create \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-latest \
-            -t ${{ env.GHCR_BACKEND_IMAGE }}:compat-latest \
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:compat-latest \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
 

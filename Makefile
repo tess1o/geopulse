@@ -11,7 +11,15 @@ GHCR_BACKEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-backend
 GHCR_FRONTEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-ui
 GHCR_NAMESPACE := ghcr.io/tess1o
 GHCR_BACKEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-backend
-PLATFORMS := linux/amd64,linux/arm64
+PLATFORMS := linux/amd64,linux/arm64/v8
+
+define create_annotated_manifest
+	@tmpdir=$$(mktemp -d); \
+	docker buildx imagetools inspect "$(2)" --raw | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64")' > "$$tmpdir/amd64.json"; \
+	docker buildx imagetools inspect "$(3)" --raw | jq '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .platform.variant = "v8"' > "$$tmpdir/arm64.json"; \
+	docker buildx imagetools create -t "$(1)" -f "$$tmpdir/amd64.json" -f "$$tmpdir/arm64.json"; \
+	rm -rf "$$tmpdir"
+endef
 
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
@@ -31,7 +39,7 @@ ensure-builder:
 .PHONY: build-backend-native-arm64
 build-backend-native-arm64: ensure-builder
 	@echo "🏗️  Building native backend Docker image for ARM64..."
-	docker buildx build --platform linux/arm64 \
+	docker buildx build --platform linux/arm64/v8 \
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64 \
 		-t $(BACKEND_IMAGE):native-latest-arm64 \
 		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64 \
@@ -61,26 +69,14 @@ build-backend-native-amd64: ensure-builder
 .PHONY: build-backend-native
 build-backend-native: build-backend-native-arm64 build-backend-native-amd64
 	@echo "🧩 Creating multi-arch manifest for Docker Hub..."
-	docker buildx imagetools create \
-		-t $(BACKEND_IMAGE):$(VERSION_NATIVE) \
-		$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
-		$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64
-	docker buildx imagetools create \
-		-t $(BACKEND_IMAGE):native-latest \
-		-t $(BACKEND_IMAGE):latest \
-		$(BACKEND_IMAGE):native-latest-amd64 \
-		$(BACKEND_IMAGE):native-latest-arm64
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):$(VERSION_NATIVE),$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64,$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):native-latest,$(BACKEND_IMAGE):native-latest-amd64,$(BACKEND_IMAGE):native-latest-arm64)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):latest,$(BACKEND_IMAGE):native-latest-amd64,$(BACKEND_IMAGE):native-latest-arm64)
 
 	@echo "🧩 Creating multi-arch manifest for GHCR..."
-	docker buildx imagetools create \
-		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE) \
-		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
-		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64
-	docker buildx imagetools create \
-		-t $(GHCR_BACKEND_IMAGE):native-latest \
-		-t $(GHCR_BACKEND_IMAGE):latest \
-		$(GHCR_BACKEND_IMAGE):native-latest-amd64 \
-		$(GHCR_BACKEND_IMAGE):native-latest-arm64
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE),$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):native-latest,$(GHCR_BACKEND_IMAGE):native-latest-amd64,$(GHCR_BACKEND_IMAGE):native-latest-arm64)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):latest,$(GHCR_BACKEND_IMAGE):native-latest-amd64,$(GHCR_BACKEND_IMAGE):native-latest-arm64)
 	@echo "✅ Multi-arch native images built and pushed successfully (Docker Hub + GHCR)."
 
 # Build Compatible Native Images (x86-64-v2 for old CPUs, armv8-a+nolse for Raspberry Pi)
@@ -102,7 +98,7 @@ build-backend-native-amd64-compat: ensure-builder
 .PHONY: build-backend-native-arm64-compat
 build-backend-native-arm64-compat: ensure-builder
 	@echo "🏗️  Building compatible native backend Docker image for ARM64 (Raspberry Pi)..."
-	docker buildx build --platform linux/arm64 \
+	docker buildx build --platform linux/arm64/v8 \
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat \
 		-t $(BACKEND_IMAGE):native-compat-arm64 \
 		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat \
@@ -117,26 +113,14 @@ build-backend-native-arm64-compat: ensure-builder
 .PHONY: build-backend-native-compat
 build-backend-native-compat: build-backend-native-amd64-compat build-backend-native-arm64-compat
 	@echo "🧩 Creating multi-arch compatible manifest for Docker Hub..."
-	docker buildx imagetools create \
-		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-compat \
-		$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
-		$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat
-	docker buildx imagetools create \
-		-t $(BACKEND_IMAGE):native-compat-latest \
-		-t $(BACKEND_IMAGE):compat-latest \
-		$(BACKEND_IMAGE):native-compat-amd64 \
-		$(BACKEND_IMAGE):native-compat-arm64
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):$(VERSION_NATIVE)-compat,$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat,$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):native-compat-latest,$(BACKEND_IMAGE):native-compat-amd64,$(BACKEND_IMAGE):native-compat-arm64)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):compat-latest,$(BACKEND_IMAGE):native-compat-amd64,$(BACKEND_IMAGE):native-compat-arm64)
 
 	@echo "🧩 Creating multi-arch compatible manifest for GHCR..."
-	docker buildx imagetools create \
-		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-compat \
-		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
-		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat
-	docker buildx imagetools create \
-		-t $(GHCR_BACKEND_IMAGE):native-compat-latest \
-		-t $(GHCR_BACKEND_IMAGE):compat-latest \
-		$(GHCR_BACKEND_IMAGE):native-compat-amd64 \
-		$(GHCR_BACKEND_IMAGE):native-compat-arm64
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-compat,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):native-compat-latest,$(GHCR_BACKEND_IMAGE):native-compat-amd64,$(GHCR_BACKEND_IMAGE):native-compat-arm64)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):compat-latest,$(GHCR_BACKEND_IMAGE):native-compat-amd64,$(GHCR_BACKEND_IMAGE):native-compat-arm64)
 	@echo "✅ Multi-arch compatible native images built and pushed successfully (Docker Hub + GHCR)."
 
 # Build multi-architecture backend image
@@ -152,6 +136,10 @@ build-backend-jvm: ensure-builder
 		-f backend/Dockerfile \
 		--push \
 		.
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):$(VERSION_JVM),$(BACKEND_IMAGE):$(VERSION_JVM),$(BACKEND_IMAGE):$(VERSION_JVM))
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):jvm-latest,$(BACKEND_IMAGE):jvm-latest,$(BACKEND_IMAGE):jvm-latest)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):$(VERSION_JVM),$(GHCR_BACKEND_IMAGE):$(VERSION_JVM),$(GHCR_BACKEND_IMAGE):$(VERSION_JVM))
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):jvm-latest,$(GHCR_BACKEND_IMAGE):jvm-latest,$(GHCR_BACKEND_IMAGE):jvm-latest)
 	@echo "✅ Backend JVM image built and pushed to Docker Hub and GHCR successfully."
 
 # Build multi-architecture frontend image
@@ -167,6 +155,10 @@ build-frontend: ensure-builder
 		-f frontend/Dockerfile \
 		--push \
 		.
+	$(call create_annotated_manifest,$(FRONTEND_IMAGE):$(VERSION),$(FRONTEND_IMAGE):$(VERSION),$(FRONTEND_IMAGE):$(VERSION))
+	$(call create_annotated_manifest,$(FRONTEND_IMAGE):latest,$(FRONTEND_IMAGE):latest,$(FRONTEND_IMAGE):latest)
+	$(call create_annotated_manifest,$(GHCR_FRONTEND_IMAGE):$(VERSION),$(GHCR_FRONTEND_IMAGE):$(VERSION),$(GHCR_FRONTEND_IMAGE):$(VERSION))
+	$(call create_annotated_manifest,$(GHCR_FRONTEND_IMAGE):latest,$(GHCR_FRONTEND_IMAGE):latest,$(GHCR_FRONTEND_IMAGE):latest)
 	@echo "Frontend image built successfully"
 
 .PHONY: openapi
