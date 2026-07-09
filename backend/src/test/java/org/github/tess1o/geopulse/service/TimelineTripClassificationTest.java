@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Tag("unit")
 public class TimelineTripClassificationTest {
@@ -609,6 +610,117 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.CAR, result,
                 "Car trip with traffic stops should be CAR (max speed 49 km/h), not BICYCLE");
     }
+
+    @Test
+    void testBusTripAfterTransfer_ShouldKeepMotorizedPeakAboveHumanPoweredLimit() {
+        // Real July 2 fragment after a bicycle -> bus transfer:
+        // Distance: 8803m, Duration: 3010s (calculated avg: 10.5 km/h, dragged down by transfer/end wait)
+        // GPS: avgSpeed 21.46 km/h, maxSpeed 71.64 km/h
+        // GPS avg is just over 2x calculated, but the peak is above configured human-powered limits.
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(35.0)
+                .bicycleMaxMaxSpeed(50.0)
+                .carEnabled(true)
+                .carMinAvgSpeed(30.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        TripGpsStatistics busStats = new TripGpsStatistics(
+                21.458650306748435 / 3.6,
+                71.64 / 3.6,
+                43.293427678873854,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                busStats,
+                Duration.ofSeconds(3010),
+                8803,
+                bicycleConfig
+        );
+
+        assertEquals(TripType.CAR, result,
+                "Bus/car fragment with peak above human-powered limits should classify as CAR despite low calculated average");
+    }
+
+    @Test
+    void testShortNoisyTrip_ShouldNotKeepRoadVehiclePeak() {
+        // Same 71.64 km/h peak as the July 2 bus fragment, but over only 375m.
+        // This is too short to trust as road-vehicle evidence when GPS avg was already rejected.
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(35.0)
+                .bicycleMaxMaxSpeed(50.0)
+                .carEnabled(true)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        TripGpsStatistics noisyStats = new TripGpsStatistics(
+                10.8 / 3.6,
+                71.64 / 3.6,
+                33.89333333333333,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                noisyStats,
+                Duration.ofSeconds(400),
+                375,
+                bicycleConfig
+        );
+
+        assertEquals(TripType.WALK, result,
+                "Short noisy trip should not keep a road-vehicle peak after rejecting GPS average");
+    }
+
+    @Test
+    void testUnreliableGpsWithImpossiblePeak_ShouldNotBecomeFlight() {
+        // Regression from multi-trip condensation logs:
+        // GPS avg is rejected against calculated speed, and the max is an impossible road spike.
+        // That spike must not be kept and allowed to trigger FLIGHT.
+        TimelineConfig config = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(35.0)
+                .bicycleMaxMaxSpeed(50.0)
+                .carEnabled(true)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .build();
+
+        TripGpsStatistics noisyStats = new TripGpsStatistics(
+                70.036138 / 3.6,
+                956.88 / 3.6,
+                120.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                noisyStats,
+                Duration.ofSeconds(4991),
+                39197,
+                config
+        );
+
+        assertNotEquals(TripType.FLIGHT, result,
+                "Impossible GPS max spike must be treated as noise after rejecting GPS average");
+    }
+
     @Test
     void testReliableGpsSpeed_ShouldUsGpsSpeed() {
         // GPS and calculated speeds match closely - GPS is reliable
@@ -672,7 +784,7 @@ public class TimelineTripClassificationTest {
                 "GPS at exactly 2x calculated should still be trusted");
     }
     @Test
-    void testJustOver2x_ShouldTriggerSanityCheck() {
+    void testJustOverReliabilityRatio_ShouldTriggerSanityCheck() {
         TimelineConfig bicycleConfig = TimelineConfig.builder()
                 .bicycleEnabled(true)
                 .bicycleMinAvgSpeed(8.0)
@@ -684,9 +796,9 @@ public class TimelineTripClassificationTest {
                 .walkingMaxMaxSpeed(8.0)
                 .build();
         // Calculated: 1000m / 600s = 1.67 m/s = 6.0 km/h
-        // GPS: 3.4 m/s = 12.24 km/h (2.04x calculated)
+        // GPS: 3.75 m/s = 13.5 km/h (2.25x calculated)
         TripGpsStatistics overThresholdStats = new TripGpsStatistics(
-                3.4,   // 12.24 km/h (2.04x calculated - triggers sanity check for speeds < 20 km/h)
+                3.75,  // 13.5 km/h (2.25x calculated - triggers sanity check for speeds < 20 km/h)
                 5.0,   // 18.0 km/h max (3x calculated - keep this, not > 5x)
                 8.0,
                 0
@@ -697,7 +809,7 @@ public class TimelineTripClassificationTest {
                 1000,
                 bicycleConfig
         );
-        // Over 2x threshold for low speeds (< 20 km/h), sanity check triggers
+        // Over reliability threshold for low speeds (< 20 km/h), sanity check triggers
         // GPS max (18.0) is 3x calculated but < 5x threshold, so keep it
         // Uses calculated avg (6.0 km/h) but keeps GPS max (18.0 km/h)
         // Result: CAR (maxSpeed 18.0 >= carMinMaxSpeed 15.0)

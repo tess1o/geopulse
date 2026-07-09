@@ -25,38 +25,49 @@ class TripStopHeuristicsService {
 
     TripStopDetection detectTripStopFromRecentWindow(List<GPSPoint> activePoints, TimelineConfig config) {
         int minPoints = getTripArrivalMinPoints(config);
-        if (activePoints == null || activePoints.size() < minPoints) {
+        if (activePoints == null || activePoints.size() < minPoints + 1) {
             return TripStopDetection.noStop();
         }
 
         double stopSpeedThreshold = getStopSpeedThreshold(config);
         double stayRadius = getStayRadiusMeters(config);
 
-        int recentPointsToCheck = Math.min(minPoints, activePoints.size());
-        int stoppedClusterStartIndex = activePoints.size() - recentPointsToCheck;
-        List<GPSPoint> recentPoints = activePoints.subList(stoppedClusterStartIndex, activePoints.size());
-        GPSPoint lastPoint = recentPoints.get(recentPoints.size() - 1);
-
-        boolean spatiallyClusteredAndSlow = recentPoints.stream()
-                .allMatch(p -> p.distanceTo(lastPoint) <= stayRadius && p.getSpeed() <= stopSpeedThreshold);
-
-        if (spatiallyClusteredAndSlow) {
-            Duration clusterDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-            if (clusterDuration.compareTo(getArrivalDetectionDuration(config)) >= 0) {
-                return TripStopDetection.stopDetected(stoppedClusterStartIndex);
-            }
+        GPSPoint lastPoint = activePoints.get(activePoints.size() - 1);
+        if (lastPoint.getSpeed() > stopSpeedThreshold) {
+            return TripStopDetection.noStop();
         }
 
-        if (recentPoints.size() >= 2) {
-            boolean allRecentSlow = recentPoints.stream()
-                    .allMatch(p -> p.getSpeed() < stopSpeedThreshold);
-
-            if (allRecentSlow) {
-                Duration slowDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-                if (slowDuration.compareTo(getSustainedStopDuration(config)) >= 0) {
-                    return TripStopDetection.stopDetected(stoppedClusterStartIndex);
-                }
+        int stoppedClusterStartIndex = activePoints.size() - 1;
+        while (stoppedClusterStartIndex > 0) {
+            GPSPoint candidate = activePoints.get(stoppedClusterStartIndex - 1);
+            if (candidate.getSpeed() > stopSpeedThreshold || candidate.distanceTo(lastPoint) > stayRadius) {
+                break;
             }
+            stoppedClusterStartIndex--;
+        }
+
+        int clusterPointCount = activePoints.size() - stoppedClusterStartIndex;
+        if (clusterPointCount < minPoints || stoppedClusterStartIndex == 0) {
+            return TripStopDetection.noStop();
+        }
+
+        boolean hasMovingPointBeforeCluster = activePoints.subList(0, stoppedClusterStartIndex).stream()
+                .anyMatch(p -> p.getSpeed() > stopSpeedThreshold);
+        if (!hasMovingPointBeforeCluster) {
+            return TripStopDetection.noStop();
+        }
+
+        GPSPoint firstStoppedPoint = activePoints.get(stoppedClusterStartIndex);
+        if (firstStoppedPoint.getTimestamp() == null || lastPoint.getTimestamp() == null) {
+            return TripStopDetection.noStop();
+        }
+
+        Duration clusterDuration = Duration.between(firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp());
+        Duration sustainedStopDuration = getSustainedStopDuration(config);
+        Duration arrivalDetectionDuration = getArrivalDetectionDuration(config);
+        if (clusterDuration.compareTo(sustainedStopDuration) >= 0 ||
+                clusterDuration.compareTo(arrivalDetectionDuration) >= 0) {
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
         }
 
         return TripStopDetection.noStop();

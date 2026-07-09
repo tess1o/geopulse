@@ -108,6 +108,13 @@ public class TravelClassification {
     private static final double GPS_MAX_SPEED_NOISE_RATIO = 5.0;
 
     /**
+     * Upper bound for using an otherwise noisy GPS max speed as road-vehicle evidence.
+     * Speeds above this are too likely to be GPS spikes and must not be allowed to
+     * trigger train/flight-style classifications when the GPS average was already rejected.
+     */
+    private static final double MAX_PLAUSIBLE_ROAD_VEHICLE_PEAK_KMH = 250.0;
+
+    /**
      * Multiplier for estimating reasonable max speed from calculated avg speed.
      * Used when GPS max speed is deemed unreliable.
      * Example: Calculated avg 10 km/h → estimated max = 10 * 1.5 = 15 km/h.
@@ -340,7 +347,7 @@ public class TravelClassification {
         // Step 2: Validate GPS reliability against calculated speed
         GpsReliabilityResult reliabilityResult = validateGpsReliability(
                 avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh,
-                distanceMeters, tripDuration
+                distanceMeters, tripDuration, config
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
@@ -721,7 +728,8 @@ public class TravelClassification {
      */
     private GpsReliabilityResult validateGpsReliability(double avgSpeedKmh, double maxSpeedKmh,
                                                         double calculatedAvgSpeedKmh,
-                                                        long distanceMeters, Duration tripDuration) {
+                                                        long distanceMeters, Duration tripDuration,
+                                                        TimelineConfig config) {
         // Check if GPS is unreliable compared to calculated
         boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
 
@@ -756,7 +764,7 @@ public class TravelClassification {
 
         // GPS avg is unreliable - use calculated avg, but decide about max speed
         double adjustedMaxSpeed = adjustMaxSpeed(maxSpeedKmh, calculatedAvgSpeedKmh,
-                avgSpeedKmh, distanceMeters, tripDuration);
+                avgSpeedKmh, distanceMeters, tripDuration, config);
 
         return new GpsReliabilityResult(calculatedAvgSpeedKmh, adjustedMaxSpeed);
     }
@@ -831,8 +839,21 @@ public class TravelClassification {
      * @return adjusted max speed
      */
     private double adjustMaxSpeed(double maxSpeedKmh, double calculatedAvgSpeedKmh,
-                                  double avgSpeedKmh, long distanceMeters, Duration tripDuration) {
+                                  double avgSpeedKmh, long distanceMeters, Duration tripDuration, TimelineConfig config) {
         if (maxSpeedKmh > calculatedAvgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
+            if (shouldKeepRoadVehiclePeakSpeed(maxSpeedKmh, distanceMeters, config)) {
+                log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) exceeds configured " +
+                                "non-motorized peak thresholds within plausible road-vehicle range " +
+                                "(calculated avg: {} km/h). " +
+                                "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
+                        String.format("%f", avgSpeedKmh),
+                        String.format("%f", maxSpeedKmh),
+                        String.format("%f", calculatedAvgSpeedKmh),
+                        distanceMeters,
+                        tripDuration.getSeconds());
+                return maxSpeedKmh;
+            }
+
             // GPS max is too high - likely noise spike
             // Use reasonable estimate instead
             double estimatedMax = calculatedAvgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
@@ -856,5 +877,48 @@ public class TravelClassification {
                     tripDuration.getSeconds());
             return maxSpeedKmh;
         }
+    }
+
+    private boolean shouldKeepRoadVehiclePeakSpeed(double maxSpeedKmh, long distanceMeters, TimelineConfig config) {
+        if (!isCarEnabled(config)) {
+            return false;
+        }
+
+        if (maxSpeedKmh > MAX_PLAUSIBLE_ROAD_VEHICLE_PEAK_KMH) {
+            return false;
+        }
+
+        Double carMinMaxSpeed = config.getCarMinMaxSpeed();
+        Double humanPoweredPeakThreshold = getHumanPoweredPeakThreshold(config);
+        Double shortDistanceKm = config.getShortDistanceKm();
+        if (carMinMaxSpeed == null || humanPoweredPeakThreshold == null || shortDistanceKm == null) {
+            return false;
+        }
+
+        double minDistanceMeters = shortDistanceKm * 1000.0;
+        if (distanceMeters < minDistanceMeters) {
+            return false;
+        }
+
+        double requiredPeakSpeed = Math.max(carMinMaxSpeed, humanPoweredPeakThreshold);
+        return maxSpeedKmh > requiredPeakSpeed;
+    }
+
+    private Double getHumanPoweredPeakThreshold(TimelineConfig config) {
+        Double threshold = config.getWalkingMaxMaxSpeed();
+
+        if (Boolean.TRUE.equals(config.getRunningEnabled()) && config.getRunningMaxMaxSpeed() != null) {
+            threshold = threshold == null
+                    ? config.getRunningMaxMaxSpeed()
+                    : Math.max(threshold, config.getRunningMaxMaxSpeed());
+        }
+
+        if (Boolean.TRUE.equals(config.getBicycleEnabled()) && config.getBicycleMaxMaxSpeed() != null) {
+            threshold = threshold == null
+                    ? config.getBicycleMaxMaxSpeed()
+                    : Math.max(threshold, config.getBicycleMaxMaxSpeed());
+        }
+
+        return threshold;
     }
 }

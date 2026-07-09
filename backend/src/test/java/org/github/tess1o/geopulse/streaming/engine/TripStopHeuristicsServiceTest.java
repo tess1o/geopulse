@@ -53,6 +53,85 @@ class TripStopHeuristicsServiceTest {
                 service.detectTripStopFromRecentWindow(activePoints, config);
         assertFalse(result.isStopDetected());
     }
+
+    @Test
+    void shouldDetectTripStopFromFullTrailingCluster_WhenHighFrequencyPointsSpanSustainedStop() {
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 6.0),
+                point("2024-01-01T10:01:00Z", 40.7130, -74.0080, 7.0),
+                point("2024-01-01T10:02:00Z", 40.71400, -74.00600, 1.4),
+                point("2024-01-01T10:02:05Z", 40.71402, -74.00600, 1.2),
+                point("2024-01-01T10:02:10Z", 40.71403, -74.00601, 0.8),
+                point("2024-01-01T10:02:15Z", 40.71404, -74.00601, 0.6),
+                point("2024-01-01T10:02:20Z", 40.71405, -74.00602, 0.4),
+                point("2024-01-01T10:02:25Z", 40.71406, -74.00602, 0.3),
+                point("2024-01-01T10:02:30Z", 40.71407, -74.00603, 0.2),
+                point("2024-01-01T10:02:35Z", 40.71408, -74.00603, 0.2),
+                point("2024-01-01T10:02:40Z", 40.71409, -74.00604, 0.1),
+                point("2024-01-01T10:02:45Z", 40.71410, -74.00604, 0.1),
+                point("2024-01-01T10:02:50Z", 40.71411, -74.00605, 0.1),
+                point("2024-01-01T10:02:55Z", 40.71412, -74.00605, 0.1),
+                point("2024-01-01T10:03:00Z", 40.71413, -74.00606, 0.1),
+                point("2024-01-01T10:03:05Z", 40.71414, -74.00606, 0.1));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, config);
+
+        assertTrue(result.isStopDetected());
+        assertEquals(2, result.getStoppedClusterStartIndex());
+    }
+
+    @Test
+    void shouldNotDetectTripStopFromRecentWindow_WhenSlowCrawlIsNotSpatiallyClustered() {
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 8.0),
+                point("2024-01-01T10:01:00Z", 40.7130, -74.0080, 9.0),
+                point("2024-01-01T10:02:00Z", 40.7140, -74.0060, 1.0),
+                point("2024-01-01T10:02:30Z", 40.7147, -74.0060, 1.0),
+                point("2024-01-01T10:03:00Z", 40.7154, -74.0060, 1.0),
+                point("2024-01-01T10:03:30Z", 40.7161, -74.0060, 1.0));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, config);
+
+        assertFalse(result.isStopDetected());
+    }
+
+    @Test
+    void shouldNotDetectTripStopFromRecentWindow_WhenClusterHasFewerThanMinimumPoints() {
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 8.0),
+                point("2024-01-01T10:01:00Z", 40.7130, -74.0080, 0.5),
+                point("2024-01-01T10:03:00Z", 40.7130, -74.0080, 0.4));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, config);
+
+        assertFalse(result.isStopDetected());
+    }
+
+    @Test
+    void shouldDetectTripStopFromRecentWindow_WithTwoStoppedPointsWhenConfigured() {
+        TimelineConfig twoPointConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(80)
+                .staypointVelocityThreshold(2.0)
+                .tripArrivalMinPoints(2)
+                .tripArrivalDetectionMinDurationSeconds(90)
+                .tripSustainedStopMinDurationSeconds(60)
+                .build();
+
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 9.0),
+                point("2024-01-01T10:15:00Z", 40.7140, -74.0060, 0.5),
+                point("2024-01-01T10:30:00Z", 40.7140, -74.0060, 0.4));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, twoPointConfig);
+
+        assertTrue(result.isStopDetected());
+        assertEquals(1, result.getStoppedClusterStartIndex());
+    }
+
     @Test
     void shouldMatchGapTailArrivalCluster_WhenTailAndPostGapPointLookStationary() {
         List<GPSPoint> activeTripPoints = List.of(

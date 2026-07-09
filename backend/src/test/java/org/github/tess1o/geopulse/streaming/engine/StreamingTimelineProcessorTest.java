@@ -269,8 +269,9 @@ class StreamingTimelineProcessorTest {
         // Create UserState in IN_TRIP mode with 2 stopped points
         UserState userState = new UserState();
         userState.setCurrentMode(ProcessorMode.IN_TRIP);
-        // Add 2 stopped GPS points within stay radius
+        // Add a moving point followed by 2 stopped GPS points within stay radius
         Instant baseTime = Instant.parse("2024-08-15T10:00:00Z");
+        userState.addActivePoint(createGpsPoint(baseTime.minusSeconds(900), 40.7489, -73.9951, 12.0, 20.0));
         userState.addActivePoint(createGpsPoint(baseTime, 40.7589, -73.9851, 0.0, 20.0));  // 1st stopped point
         userState.addActivePoint(createGpsPoint(baseTime.plusSeconds(900), 40.7589, -73.9851, 0.0, 20.0));  // 2nd stopped point (15 min later)
         // Use reflection to access the private detectSustainedStopInTrip method (renamed from isSustainedStopInTrip)
@@ -395,6 +396,69 @@ class StreamingTimelineProcessorTest {
         List<TimelineEvent> events = processor.processPoints(points, config, testUserId);
         assertNotNull(events, "Timeline events should not be null");
         // With only 1 stopped point, arrival should NOT be detected yet
+    }
+
+    @Test
+    void shouldSplitBikeAndCarTrips_WhenShortTransferClusterIsDetectedWithoutStay() {
+        TimelineConfig multiModalConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(7)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(multiModalConfig)))
+            .thenAnswer(invocation -> {
+                UserState state = invocation.getArgument(0);
+                List<GPSPoint> path = state.copyActivePoints();
+                GPSPoint first = path.getFirst();
+                GPSPoint last = path.getLast();
+                double maxSpeed = path.stream()
+                    .mapToDouble(GPSPoint::getSpeed)
+                    .max()
+                    .orElse(0.0);
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .distanceMeters(first.distanceTo(last))
+                    .tripType(maxSpeed > 10.0
+                        ? org.github.tess1o.geopulse.streaming.model.shared.TripType.CAR
+                        : org.github.tess1o.geopulse.streaming.model.shared.TripType.BICYCLE)
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2026-07-02T06:36:51Z"), 38.8768, -3.2420, 0.0, 15.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:37:51Z"), 38.8790, -3.2405, 5.0, 15.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:39:51Z"), 38.8840, -3.2365, 6.0, 15.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:42:51Z"), 38.8910, -3.2265, 6.5, 15.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:46:06Z"), 38.89745, -3.22198, 1.0, 20.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:46:36Z"), 38.89746, -3.22199, 0.5, 20.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:47:06Z"), 38.89747, -3.22200, 0.2, 20.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:48:00Z"), 38.8995, -3.2225, 14.0, 20.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:51:00Z"), 38.9100, -3.2000, 18.0, 20.0),
+            createGpsPoint(Instant.parse("2026-07-02T06:55:00Z"), 38.9300, -3.2070, 16.0, 20.0));
+
+        List<TimelineEvent> events = processor.processPoints(points, multiModalConfig, testUserId);
+
+        List<Trip> trips = events.stream()
+            .filter(Trip.class::isInstance)
+            .map(Trip.class::cast)
+            .toList();
+        long stayCount = events.stream()
+            .filter(Stay.class::isInstance)
+            .count();
+
+        assertEquals(2, trips.size(), "Short transfer cluster should split the mixed movement into two trips");
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.BICYCLE, trips.get(0).getTripType());
+        assertEquals(org.github.tess1o.geopulse.streaming.model.shared.TripType.CAR, trips.get(1).getTripType());
+        assertEquals(0, stayCount, "A short transfer below minimum stay duration should not create an intermediate stay");
     }
 
     @Test
