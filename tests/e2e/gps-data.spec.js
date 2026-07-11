@@ -162,8 +162,15 @@ test.describe('GPS Data Page', () => {
             expect(displayedPoints.length).toBe(5);
 
             // Verify data structure and content
-            for (const point of displayedPoints) {
+            for (const [index, point] of displayedPoints.entries()) {
                 expect(point).toHaveProperty('timestamp');
+                expect(point.timestamp).toMatch(/\d{1,2}:\d{2}:\d{2}/);
+                expect(point).toHaveProperty('delta');
+                if (index === 0) {
+                    expect(point.delta).toBe('-');
+                } else {
+                    expect(point.delta).toMatch(/^(\d+s|\d+m \d{2}s|\d+h \d+m|\d+d \d+h)$/);
+                }
                 expect(point).toHaveProperty('coordinates');
                 expect(point.coordinates).toHaveProperty('lat');
                 expect(point.coordinates).toHaveProperty('lng');
