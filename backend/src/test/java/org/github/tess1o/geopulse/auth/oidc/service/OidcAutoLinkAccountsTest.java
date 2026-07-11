@@ -1,9 +1,12 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
+import io.quarkus.arc.ClientProxy;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.auth.oidc.dto.OidcUserInfo;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
@@ -11,10 +14,12 @@ import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionReposit
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -29,6 +34,10 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OidcAutoLinkAccountsTest {
     @Inject
     UserService userService;
+    @Inject
+    OidcAuthenticationService oidcAuthenticationService;
+    @Inject
+    SystemSettingsService systemSettingsService;
     @Inject
     OidcSessionStateRepository sessionStateRepository;
     @Inject
@@ -116,6 +125,44 @@ public class OidcAutoLinkAccountsTest {
         assertEquals("google", connections.get(0).getProviderName());
         assertEquals(externalUserId, connections.get(0).getExternalUserId());
     }
+
+    @Test
+    @Transactional
+    public void testOidcNewUserUsesConfiguredDefaultMeasureUnit() throws Exception {
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("oidc-default-unit-updater"),
+                "password",
+                "OIDC Default Unit Updater",
+                "UTC"
+        );
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        try {
+            String email = TestIds.uniqueEmail("oidc-default-unit");
+            String externalUserId = TestIds.uniqueValue("oidc-subject");
+            OidcUserInfo userInfo = OidcUserInfo.builder()
+                    .subject(externalUserId)
+                    .email(email)
+                    .emailVerified(true)
+                    .name("OIDC Default Unit")
+                    .picture("https://example.com/avatar.jpg")
+                    .build();
+
+            Method method = OidcAuthenticationService.class.getDeclaredMethod(
+                    "createNewUserWithOidcConnection",
+                    OidcUserInfo.class,
+                    String.class
+            );
+            method.setAccessible(true);
+            OidcAuthenticationService oidcService = ClientProxy.unwrap(oidcAuthenticationService);
+            UserEntity user = (UserEntity) method.invoke(oidcService, userInfo, "google");
+
+            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+            assertEquals(1, connectionRepository.findByUserId(user.getId()).size());
+        } finally {
+            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+        }
+    }
+
     /**
      * Test: Verify that when OIDC connection already exists, last login is updated
      */

@@ -203,6 +203,12 @@
   font-weight: 600;
 }
 
+.trip-hover-speed {
+  margin-top: 0.2rem;
+  color: var(--gp-primary, #1a56db);
+  font-weight: 600;
+}
+
 .trip-hover-confidence.exact {
   color: var(--gp-success, #22c55e);
 }

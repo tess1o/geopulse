@@ -1,43 +1,17 @@
 <template>
   <div class="map-panel">
     <div class="map-toolbar">
-      <AutoComplete
+      <TripPlanLocationSearchInput
         v-model="localSearchQuery"
         :suggestions="searchSuggestions"
-        optionLabel="displayName"
         :placeholder="searchPlaceholder"
-        :minLength="2"
-        :delay="300"
-        :loading="false"
-        :showEmptyMessage="!searchLoading"
+        :loading="searchLoading"
+        :error="searchError"
         class="map-search"
         @complete="(event) => emit('search-complete', event)"
-        @item-select="(event) => emit('search-select', event?.value || null)"
-      >
-        <template #option="{ option }">
-          <div class="map-search-option">
-            <div class="map-search-option-title">{{ option.displayName }}</div>
-            <div class="map-search-option-meta">
-              <span
-                v-if="option.groupLabel"
-                class="map-search-source-chip"
-                :class="option.groupLabel === 'Saved place' ? 'map-search-source-chip--saved' : 'map-search-source-chip--provider'"
-              >
-                {{ option.groupLabel }}
-              </span>
-              <span v-if="option.metaLine" class="map-search-option-subtitle">{{ option.metaLine }}</span>
-            </div>
-          </div>
-        </template>
-      </AutoComplete>
-
-      <div v-if="searchLoading" class="map-search-loading" aria-live="polite">
-        <i class="pi pi-spin pi-spinner map-search-loading-icon" />
-        <span>Searching places...</span>
-      </div>
+        @select="(suggestion) => emit('search-select', suggestion)"
+      />
     </div>
-
-    <small v-if="searchError" class="map-search-error">{{ searchError }}</small>
 
     <MapContainer
       :map-id="mapId"
@@ -80,7 +54,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import AutoComplete from 'primevue/autocomplete'
+import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
 import { MapContainer } from '@/components/maps'
 import TripReconstructionMapOverlay from '@/components/trips/reconstruction/TripReconstructionMapOverlay.vue'
 import '@/maps/shared/styles/tripReconstructionMarkers.css'
@@ -189,75 +163,6 @@ const searchPlaceholder = computed(() => {
   flex: 0 1 auto;
   width: min(360px, 100%);
   min-width: 280px;
-}
-
-.map-search :deep(.p-autocomplete-loader) {
-  display: none !important;
-}
-
-.map-search-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex: 0 0 auto;
-  white-space: nowrap;
-  font-size: 0.78rem;
-  color: var(--gp-text-secondary);
-}
-
-.map-search-loading-icon {
-  font-size: 0.95rem;
-}
-
-.map-search-option {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.map-search-option-title {
-  font-size: 0.88rem;
-  color: var(--gp-text-primary);
-}
-
-.map-search-option-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-}
-
-.map-search-source-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  padding: 0.08rem 0.45rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.map-search-source-chip--saved {
-  color: #166534;
-  background: #dcfce7;
-  border-color: #86efac;
-}
-
-.map-search-source-chip--provider {
-  color: #1e3a8a;
-  background: #dbeafe;
-  border-color: #93c5fd;
-}
-
-.map-search-option-subtitle {
-  font-size: 0.75rem;
-  color: var(--gp-text-secondary);
-}
-
-.map-search-error {
-  color: var(--gp-danger);
-  font-size: 0.78rem;
 }
 
 .map-hint {

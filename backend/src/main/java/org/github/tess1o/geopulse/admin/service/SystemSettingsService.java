@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 
 import java.time.Instant;
 import java.util.*;
@@ -32,6 +33,7 @@ public class SystemSettingsService {
     private final AIEncryptionService encryptionService;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
+    private static final String DEFAULT_MEASURE_UNIT_KEY = "system.user.default-measure-unit";
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -157,6 +159,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.export.temp-file-retention-hours", "24", ValueType.INTEGER, "export", "Temp file retention (hours)"));
 
         // System performance
+        SETTING_DEFINITIONS.put(DEFAULT_MEASURE_UNIT_KEY,
+                new SettingDefinition("geopulse.user.default-measure-unit", "METRIC", ValueType.STRING, "system", "Default measurement unit for newly created users"));
         SETTING_DEFINITIONS.put("system.timeline.processing.thread-pool-size",
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
         SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
@@ -223,6 +227,10 @@ public class SystemSettingsService {
         }
     }
 
+    public MeasureUnit getDefaultMeasureUnit() {
+        return parseMeasureUnitOrDefault(getValue(DEFAULT_MEASURE_UNIT_KEY));
+    }
+
     /**
      * Get value with DB-first, env-fallback pattern.
      */
@@ -256,6 +264,9 @@ public class SystemSettingsService {
         if (def != null) {
             String envValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
+            if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
+                envValue = parseMeasureUnitOrDefault(envValue).name();
+            }
             log.trace("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
         }
@@ -270,8 +281,12 @@ public class SystemSettingsService {
     public String getDefaultValue(String key) {
         SettingDefinition def = SETTING_DEFINITIONS.get(key);
         if (def != null) {
-            return config.getOptionalValue(def.envVarName(), String.class)
+            String defaultValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
+            if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
+                return parseMeasureUnitOrDefault(defaultValue).name();
+            }
+            return defaultValue;
         }
         return "";
     }
@@ -296,6 +311,9 @@ public class SystemSettingsService {
         // Validate value type
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
+        if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
+            value = parseMeasureUnit(value).name();
+        }
 
         // Encrypt if type is ENCRYPTED
         String storedValue = value;
@@ -436,6 +454,30 @@ public class SystemSettingsService {
             if (parsed < 1) {
                 throw new IllegalArgumentException("Setting " + key + " must be at least 1 day");
             }
+        }
+        if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
+            parseMeasureUnit(value);
+        }
+    }
+
+    private MeasureUnit parseMeasureUnitOrDefault(String value) {
+        try {
+            return parseMeasureUnit(value);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid default measure unit '{}'. Falling back to METRIC", value);
+            return MeasureUnit.METRIC;
+        }
+    }
+
+    private MeasureUnit parseMeasureUnit(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Setting " + DEFAULT_MEASURE_UNIT_KEY + " must be METRIC or IMPERIAL");
+        }
+
+        try {
+            return MeasureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Setting " + DEFAULT_MEASURE_UNIT_KEY + " must be METRIC or IMPERIAL");
         }
     }
 }

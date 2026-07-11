@@ -118,6 +118,14 @@ config:
     email: "admin@example.com"
 ```
 
+#### User Defaults
+
+| Feature                  | values.yaml Path                    | Environment Variable                  | Default  |
+|--------------------------|-------------------------------------|---------------------------------------|----------|
+| Default Measurement Unit | `config.user.defaultMeasureUnit`    | `GEOPULSE_USER_DEFAULT_MEASURE_UNIT`  | `METRIC` |
+
+Allowed values are `METRIC` and `IMPERIAL`. This applies only to newly created users.
+
 #### Authentication & Registration
 
 | Feature               | values.yaml Path                          | Environment Variable                          | Default |

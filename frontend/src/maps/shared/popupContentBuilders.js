@@ -1,4 +1,5 @@
-import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
+import { formatDuration, formatDistance, formatSpeed } from '@/utils/calculationsHelpers'
+import { resolveAverageTripSpeedKmh, resolveHoverSpeedKmh } from '@/maps/shared/tripSpeed'
 
 export const escapeHtml = (value) => {
   if (value === null || value === undefined) {
@@ -85,6 +86,8 @@ export const buildTripPopupHtml = (trip, deps = {}) => {
   const endText = Number.isFinite(endMs)
     ? formatDateTimeDisplay(new Date(endMs).toISOString())
     : 'Unknown'
+  const averageSpeedKmh = resolveAverageTripSpeedKmh(trip)
+  const averageSpeedText = Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
 
   return `
     <div class="trip-popup">
@@ -103,8 +106,13 @@ export const buildTripPopupHtml = (trip, deps = {}) => {
       <div class="trip-detail">
         Distance: ${escapeHtml(formatDistance(trip?.distanceMeters || 0))}
       </div>
+      ${averageSpeedText ? `
+      <div class="trip-detail">
+        Average speed: ${escapeHtml(averageSpeedText)}
+      </div>
+      ` : ''}
       <div class="trip-detail trip-detail-hint">
-        Hover the highlighted route to see when you were there.
+        Hover the highlighted route to see when you were there and how fast you were moving.
       </div>
     </div>
   `.trim()
@@ -210,12 +218,19 @@ export const buildTripHoverTooltipHtml = (trip, hoverTiming, deps = {}) => {
     : null
   const confidenceLabel = hoverTiming.mode === 'exact' ? 'Exact GPS point' : 'Estimated between points'
   const confidenceClass = hoverTiming.mode === 'exact' ? 'exact' : 'estimated'
+  const speedKmh = resolveHoverSpeedKmh(hoverTiming)
+  const speedText = Number.isFinite(speedKmh) ? formatSpeed(speedKmh) : null
 
   return `
     <div class="trip-hover-tooltip">
       <div class="trip-hover-time">
         ${formatDateTimeDisplay(new Date(hoverTiming.timeMs).toISOString())}
       </div>
+      ${speedText ? `
+      <div class="trip-hover-speed">
+        Speed: ${escapeHtml(speedText)}
+      </div>
+      ` : ''}
       <div class="trip-hover-confidence ${confidenceClass}">
         ${confidenceLabel}
       </div>

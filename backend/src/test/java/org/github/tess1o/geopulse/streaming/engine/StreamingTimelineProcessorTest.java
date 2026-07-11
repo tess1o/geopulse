@@ -125,6 +125,30 @@ class StreamingTimelineProcessorTest {
     }
 
     @Test
+    void shouldIncludeHighAccuracyPoint_WhenAccuracyValidationDisabled() throws Exception {
+        TimelineConfig configDisabled = TimelineConfig.builder()
+            .staypointMaxAccuracyThreshold(50.0)
+            .useVelocityAccuracy(false)
+            .build();
+        GPSPoint poorAccuracyPoint = createGpsPoint(
+            Instant.parse("2024-08-15T08:03:00Z"),
+            40.7589,
+            -73.9851,
+            0.0,
+            80.0
+        );
+
+        Method method = StreamingTimelineProcessor.class.getDeclaredMethod(
+            "shouldIncludePoint",
+            GPSPoint.class,
+            TimelineConfig.class
+        );
+        method.setAccessible(true);
+
+        assertTrue((Boolean) method.invoke(processor, poorAccuracyPoint, configDisabled));
+    }
+
+    @Test
     void shouldRejectStay_WhenAccuracyRatioTooLow() {
         // Mock finalization service to return null when accuracy ratio fails
         when(finalizationService.finalizeStayWithoutLocation(any(UserState.class), eq(config)))
