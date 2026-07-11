@@ -308,6 +308,7 @@ const formatDuration = (seconds) => {
 const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
+    'MOTORCYCLE': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
     'RUNNING': 'success',

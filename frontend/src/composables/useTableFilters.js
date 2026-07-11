@@ -46,6 +46,7 @@ export function useTableFilters(options = {}) {
     const defaultTransportModeOptions = [
         {label: 'Walk', value: 'WALK'},
         {label: 'Car', value: 'CAR'},
+        {label: 'Motorcycle', value: 'MOTORCYCLE'},
         {label: 'Bicycle', value: 'BICYCLE'},
         {label: 'Running', value: 'RUNNING'},
         {label: 'Train', value: 'TRAIN'},

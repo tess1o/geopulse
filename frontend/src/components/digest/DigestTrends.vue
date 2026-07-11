@@ -37,6 +37,7 @@ const tripTypeConfig = {
   RUNNING: { label: 'Running', color: 'contrast' }, // Purple/Contrast
   BICYCLE: { label: 'Bicycle', color: 'warning' }, // Orange/Yellow
   CAR: { label: 'Car', color: 'primary' },        // Blue
+  MOTORCYCLE: { label: 'Motorcycle', color: 'info' },
   TRAIN: { label: 'Train', color: 'secondary' },  // Gray
   FLIGHT: { label: 'Flight', color: 'danger' },   // Red
   BOAT: { label: 'Boat', color: 'info' }          // Cyan

@@ -140,6 +140,7 @@ const getMovementIcon = () => {
     case 'BICYCLE': return '🚴'
     case 'RUNNING': return '🏃'
     case 'CAR': return '🚗'
+    case 'MOTORCYCLE': return '🏍️'
     case 'TRAIN': return '🚊'
     case 'FLIGHT': return '✈️'
     case 'BOAT': return '⛵'
@@ -158,6 +159,7 @@ const formatMovementType = (type) => {
     BICYCLE: 'Bicycle',
     RUNNING: 'Running',
     CAR: 'Car',
+    MOTORCYCLE: 'Motorcycle',
     TRAIN: 'Train',
     FLIGHT: 'Flight',
     BOAT: 'Boat',

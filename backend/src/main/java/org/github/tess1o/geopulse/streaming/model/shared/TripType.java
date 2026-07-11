@@ -31,6 +31,13 @@ public enum TripType {
     CAR,
 
     /**
+     * Motorcycle trip - uses the same motor-vehicle speed profile as CAR.
+     * It can be selected manually, or automatically chosen as the preferred
+     * motor-vehicle label when motorcycle detection is enabled.
+     */
+    MOTORCYCLE,
+
+    /**
      * Train trip - characterized by high sustained speeds with low variance.
      * Optional type, disabled by default. Distinguished from cars by steady speed.
      */

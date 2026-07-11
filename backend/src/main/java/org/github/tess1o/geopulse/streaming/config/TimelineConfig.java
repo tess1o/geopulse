@@ -215,22 +215,35 @@ public class TimelineConfig {
     private Double walkingMaxMaxSpeed;
 
     /**
-     * Enable or disable car trip type detection.
-     * When disabled, trips that would otherwise match car thresholds
-     * fall back to UNKNOWN unless another transport type matches first.
+     * Enable or disable car as a label for motor-vehicle trip detection.
+     * The car thresholds are the shared motor-vehicle speed thresholds kept
+     * under their existing names for backward compatibility.
      * Default: true (enabled)
      */
     private Boolean carEnabled;
+
+    /**
+     * Enable or disable motorcycle as a label for motor-vehicle trip detection.
+     * Uses the same shared motor-vehicle speed thresholds as car.
+     * Default: false (disabled)
+     */
+    private Boolean motorcycleEnabled;
+
+    /**
+     * Preferred label when both car and motorcycle are enabled for detected
+     * motor-vehicle trips. Allowed values: CAR, MOTORCYCLE.
+     */
+    private String preferredMotorizedType;
     
     /**
-     * Minimum average speed in km/h to classify movement as car travel.
-     * Trips with average speeds above this threshold are likely car trips.
+     * Minimum average speed in km/h to classify movement as motor-vehicle travel.
+     * Trips with average speeds above this threshold are likely car or motorcycle trips.
      */
     private Double carMinAvgSpeed;
     
     /**
-     * Minimum peak speed in km/h to classify movement as car travel.
-     * Trips with maximum speeds above this threshold are likely car trips.
+     * Minimum peak speed in km/h to classify movement as motor-vehicle travel.
+     * Trips with maximum speeds above this threshold are likely car or motorcycle trips.
      */
     private Double carMinMaxSpeed;
     

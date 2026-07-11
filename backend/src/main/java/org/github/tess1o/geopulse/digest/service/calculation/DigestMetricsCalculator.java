@@ -44,6 +44,7 @@ public class DigestMetricsCalculator {
 
         // Calculate distances by trip type from charts
         double carDistance = calculateDistanceForTripType(stats, "CAR");
+        double motorcycleDistance = calculateDistanceForTripType(stats, "MOTORCYCLE");
         double walkDistance = calculateDistanceForTripType(stats, "WALK");
         double bicycleDistance = calculateDistanceForTripType(stats, "BICYCLE");
         double runningDistance = calculateDistanceForTripType(stats, "RUNNING");
@@ -60,6 +61,7 @@ public class DigestMetricsCalculator {
                 .stayCount(timeline.getStaysCount())
                 // Distance by trip type (charts are in km, convert to meters)
                 .carDistance(carDistance * 1000)
+                .motorcycleDistance(motorcycleDistance * 1000)
                 .walkDistance(walkDistance * 1000)
                 .bicycleDistance(bicycleDistance * 1000)
                 .runningDistance(runningDistance * 1000)

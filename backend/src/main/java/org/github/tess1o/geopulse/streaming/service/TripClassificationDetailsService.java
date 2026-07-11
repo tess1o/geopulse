@@ -66,7 +66,7 @@ public class TripClassificationDetailsService {
     /**
      * Coefficient for walk speed verification (multiplier).
      * If calculated speed exceeds walkingMaxMaxSpeed * this coefficient,
-     * reclassify as CAR (if enabled) or UNKNOWN.
+     * reclassify as the preferred motor-vehicle label or UNKNOWN.
      */
     private static final double WALK_VERIFICATION_COEFFICIENT = 1.2;
 
@@ -293,10 +293,12 @@ public class TripClassificationDetailsService {
                 config.getWalkingMaxAvgSpeed(),
                 config.getWalkingMaxMaxSpeed(),
 
-                // CAR
+                // Motor vehicle
                 isCarEnabled(config),
-                isCarEnabled(config) ? config.getCarMinAvgSpeed() : null,
-                isCarEnabled(config) ? config.getCarMinMaxSpeed() : null,
+                isMotorcycleEnabled(config),
+                normalizePreferredMotorizedType(config),
+                isMotorVehicleEnabled(config) ? config.getCarMinAvgSpeed() : null,
+                isMotorVehicleEnabled(config) ? config.getCarMinMaxSpeed() : null,
 
                 // BICYCLE
                 config.getBicycleEnabled(),
@@ -456,16 +458,16 @@ public class TripClassificationDetailsService {
             steps.add(createSkippedStep("RUNNING", matchedType));
         }
 
-        // Priority 5: CAR
+        // Priority 5: MOTOR VEHICLE
         if (!foundMatch) {
-            ClassificationStep carStep = checkCar(avgSpeedKmh, maxSpeedKmh, config, speedSource);
-            steps.add(carStep);
-            if (carStep.checked() && carStep.passed()) {
+            ClassificationStep motorVehicleStep = checkMotorVehicle(avgSpeedKmh, maxSpeedKmh, config, speedSource);
+            steps.add(motorVehicleStep);
+            if (motorVehicleStep.checked() && motorVehicleStep.passed()) {
                 foundMatch = true;
-                matchedType = "CAR";
+                matchedType = motorVehicleStep.tripType();
             }
         } else {
-            steps.add(createSkippedStep("CAR", matchedType));
+            steps.add(createSkippedStep(resolveMotorizedTripType(config), matchedType));
         }
 
         // Priority 6: WALK
@@ -563,7 +565,7 @@ public class TripClassificationDetailsService {
      * Replicates TravelClassification.verifyAndCorrectClassification() logic.
      *
      * If a trip is classified as WALK but the speed is unrealistically high,
-     * it's corrected to CAR (if enabled) or UNKNOWN.
+     * it's corrected to the preferred motor-vehicle label or UNKNOWN.
      *
      * @param tripType       the initial trip classification
      * @param distanceMeters the total distance of the trip in meters
@@ -580,11 +582,11 @@ public class TripClassificationDetailsService {
             final double hours = tripDuration / 3600.0;
             final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR (if enabled)
-            // or UNKNOWN (if CAR is disabled).
+            // If calculated speed exceeds walking threshold with tolerance, re-classify as motor vehicle
+            // or UNKNOWN if motor-vehicle labels are disabled.
             // Uses WALK_VERIFICATION_COEFFICIENT (1.2x) to allow for GPS inaccuracies in short trips
             if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT) {
-                String fallbackType = isCarEnabled(config) ? "CAR" : "UNKNOWN";
+                String fallbackType = isMotorVehicleEnabled(config) ? resolveMotorizedTripType(config) : "UNKNOWN";
                 log.debug("Correcting WALK to {} due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
                         fallbackType,
                         avgSpeedKmh,
@@ -841,10 +843,11 @@ public class TripClassificationDetailsService {
         return new ClassificationStep("RUNNING", true, passed, reason, checks);
     }
 
-    private ClassificationStep checkCar(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
-        if (!isCarEnabled(config)) {
-            return new ClassificationStep("CAR", false, false,
-                    "Car detection is not enabled in configuration", List.of());
+    private ClassificationStep checkMotorVehicle(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
+        String resolvedType = resolveMotorizedTripType(config);
+        if (!isMotorVehicleEnabled(config)) {
+            return new ClassificationStep(resolvedType, false, false,
+                    "Motor vehicle detection is not enabled in configuration", List.of());
         }
 
         List<ThresholdCheck> checks = new ArrayList<>();
@@ -858,16 +861,41 @@ public class TripClassificationDetailsService {
 
         boolean passed = avgCheck || maxCheck; // OR logic
         String reason = passed
-                ? String.format("Car detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds car thresholds. %s",
-                avgSpeedKmh, maxSpeedKmh, speedSource)
-                : String.format("Not a car: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
+                ? String.format("Motor vehicle detected and labeled as %s: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds motor vehicle thresholds. %s",
+                resolvedType, avgSpeedKmh, maxSpeedKmh, speedSource)
+                : String.format("Not a motor vehicle: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
                 avgSpeedKmh, config.getCarMinAvgSpeed(), maxSpeedKmh, config.getCarMinMaxSpeed(), speedSource);
 
-        return new ClassificationStep("CAR", true, passed, reason, checks);
+        return new ClassificationStep(resolvedType, true, passed, reason, checks);
     }
 
     private boolean isCarEnabled(TimelineConfig config) {
         return !Boolean.FALSE.equals(config.getCarEnabled());
+    }
+
+    private boolean isMotorcycleEnabled(TimelineConfig config) {
+        return Boolean.TRUE.equals(config.getMotorcycleEnabled());
+    }
+
+    private boolean isMotorVehicleEnabled(TimelineConfig config) {
+        return isCarEnabled(config) || isMotorcycleEnabled(config);
+    }
+
+    private String normalizePreferredMotorizedType(TimelineConfig config) {
+        return "MOTORCYCLE".equalsIgnoreCase(config.getPreferredMotorizedType()) ? "MOTORCYCLE" : "CAR";
+    }
+
+    private String resolveMotorizedTripType(TimelineConfig config) {
+        boolean carEnabled = isCarEnabled(config);
+        boolean motorcycleEnabled = isMotorcycleEnabled(config);
+
+        if (carEnabled && motorcycleEnabled) {
+            return normalizePreferredMotorizedType(config);
+        }
+        if (motorcycleEnabled) {
+            return "MOTORCYCLE";
+        }
+        return carEnabled ? "CAR" : "CAR";
     }
 
     private ClassificationStep checkWalk(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
@@ -913,7 +941,8 @@ public class TripClassificationDetailsService {
                     statistics.waterDistanceRatio() != null ? statistics.waterDistanceRatio() * 100.0 : 0.0);
             case "BICYCLE" -> String.format("Automatic classification was BICYCLE based on moderate speeds (%.1f km/h).", avgSpeed);
             case "RUNNING" -> String.format("Automatic classification was RUNNING based on speeds (%.1f km/h) consistent with running.", avgSpeed);
-            case "CAR" -> String.format("Automatic classification was CAR due to motorized-speed profile (avg %.1f km/h).", avgSpeed);
+            case "CAR" -> String.format("Automatic classification was CAR due to motor-vehicle speed profile (avg %.1f km/h).", avgSpeed);
+            case "MOTORCYCLE" -> String.format("Automatic classification was MOTORCYCLE due to motor-vehicle speed profile (avg %.1f km/h).", avgSpeed);
             case "WALK" -> String.format("Automatic classification was WALK based on low speeds (%.1f km/h).", avgSpeed);
             default -> "Automatic classification resulted in UNKNOWN.";
         };

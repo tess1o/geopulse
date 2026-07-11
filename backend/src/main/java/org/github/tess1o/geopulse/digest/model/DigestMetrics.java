@@ -18,6 +18,7 @@ public class DigestMetrics {
 
     // Distance by trip type (in meters)
     private double carDistance;
+    private double motorcycleDistance;
     private double walkDistance;
     private double bicycleDistance;
     private double runningDistance;
