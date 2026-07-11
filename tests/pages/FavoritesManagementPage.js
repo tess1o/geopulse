@@ -22,6 +22,8 @@ export class FavoritesManagementPage {
       mapContainer: '.map-container',
       mapHost: '#favorites-map[data-testid="map-host-raster"], #favorites-map[data-testid="map-host-vector"]',
       leafletMap: '#favorites-map[data-testid="map-host-raster"], #favorites-map[data-testid="map-host-vector"]',
+      placeSearchInput: '.place-search-control input',
+      placeSearchOption: '.favorite-place-search-panel .p-autocomplete-option, .favorite-place-search-panel [role="option"]',
       favoriteMarker: '.favorite-marker-icon',
       favoriteAreaMarker: '.favorite-area-icon',
       pendingPointMarker: '.pending-marker-icon',
@@ -223,6 +225,26 @@ export class FavoritesManagementPage {
     await marker.waitFor({ state: 'visible', timeout: 5000 });
     await marker.click({ button: 'right', force: true });
     await this.page.waitForTimeout(1000);
+  }
+
+  async searchPlaceToAdd(query) {
+    const input = this.page.locator(this.selectors.placeSearchInput).first();
+    await input.fill(query);
+    await this.page.waitForTimeout(800);
+  }
+
+  async selectPlaceSearchResult(text) {
+    const option = this.page.locator(this.selectors.placeSearchOption, { hasText: text }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  async isPlaceSearchResultVisible(text) {
+    return await this.page
+      .locator(this.selectors.placeSearchOption, { hasText: text })
+      .first()
+      .isVisible()
+      .catch(() => false);
   }
 
   // ===========================================
@@ -429,6 +451,13 @@ export class FavoritesManagementPage {
     await expect(input).toBeVisible({ timeout: 10000 });
     await expect(input).toBeEditable({ timeout: 10000 });
     await input.fill(name);
+  }
+
+  async getAddDialogNameValue() {
+    await this.waitForAddDialog();
+    const dialog = this.getAddDialog();
+    const input = dialog.locator('input').first();
+    return await input.inputValue();
   }
 
   async submitAddDialog() {

@@ -97,6 +97,11 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { useGeocodingStore } from '@/stores/geocoding'
 import { useTripReconstructionSegments } from '@/composables/useTripReconstructionSegments'
 import { useTripReconstructionLocationSync } from '@/composables/useTripReconstructionLocationSync'
+import {
+  getTripPlanSuggestionCoordinates,
+  isTripPlanLocalSearchSource,
+  useTripPlanLocationSearch
+} from '@/composables/useTripPlanLocationSearch'
 import { fitMapToActiveSegment } from '@/maps/tripReconstruction/shared/tripReconstructionViewport'
 import TripReconstructionSegmentsPanel from '@/components/trips/reconstruction/TripReconstructionSegmentsPanel.vue'
 import TripReconstructionMapPanel from '@/components/trips/reconstruction/TripReconstructionMapPanel.vue'
@@ -150,11 +155,18 @@ const isPreviewLoading = ref(false)
 const isCommitLoading = ref(false)
 const previewResult = ref(null)
 const previewWarnings = ref([])
-const searchQuery = ref('')
-const searchSuggestions = ref([])
-const isSearchLoading = ref(false)
-const searchError = ref('')
-const searchRequestToken = ref(0)
+
+const {
+  query: searchQuery,
+  suggestions: searchSuggestions,
+  isLoading: isSearchLoading,
+  error: searchError,
+  search: handleSearchComplete,
+  reset: resetSearchState
+} = useTripPlanLocationSearch({
+  getBias: () => getSearchBias(),
+  fallbackLabel: 'Planned place'
+})
 
 const dialogHeader = computed(() => (props.mode === 'trip' ? 'Add Missing Trip Data' : 'Add Missing Timeline Data'))
 const reconstructionHelpMessage = computed(() => (
@@ -253,30 +265,6 @@ const normalizeSuggestionId = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null
 }
 
-const isLocalSearchSource = (sourceType) => {
-  return sourceType === 'favorite-point' || sourceType === 'favorite-area' || sourceType === 'geocoding'
-}
-
-const buildProviderMetaLine = (subtitle, providerName) => {
-  const safeSubtitle = subtitle?.trim()
-  if (!safeSubtitle) {
-    return null
-  }
-
-  const safeProviderName = providerName?.trim()
-  if (!safeProviderName) {
-    return safeSubtitle
-  }
-
-  const providerLower = safeProviderName.toLowerCase()
-  const parts = safeSubtitle
-    .split('•')
-    .map((part) => part.trim())
-    .filter((part) => part && part.toLowerCase() !== providerLower)
-
-  return parts.length > 0 ? parts.join(' • ') : null
-}
-
 const getSearchBias = () => {
   const active = activeSegment.value
   if (active?.segmentType === 'STAY' && Number.isFinite(active.latitude) && Number.isFinite(active.longitude)) {
@@ -303,27 +291,6 @@ const getSearchBias = () => {
   }
 
   return null
-}
-
-const buildSuggestionDisplayMeta = (suggestion) => {
-  const sourceType = suggestion?.sourceType || ''
-  if (isLocalSearchSource(sourceType)) {
-    const subtitle = suggestion?.subtitle?.trim() || null
-    return { groupLabel: 'Saved place', metaLine: subtitle }
-  }
-
-  const providerName = suggestion?.providerName?.trim() || ''
-  const groupLabel = providerName ? `Provider: ${providerName}` : 'Provider'
-  const metaLine = buildProviderMetaLine(suggestion?.subtitle, providerName)
-  return { groupLabel, metaLine }
-}
-
-const resetSearchState = () => {
-  searchQuery.value = ''
-  searchSuggestions.value = []
-  isSearchLoading.value = false
-  searchError.value = ''
-  searchRequestToken.value += 1
 }
 
 const handleMapReady = (map) => {
@@ -359,72 +326,16 @@ const handleWaypointRemoved = ({ segmentIndex, waypointIndex }) => {
   removeWaypoint(segmentIndex, waypointIndex)
 }
 
-const handleSearchComplete = async (event) => {
-  const query = event?.query?.trim() || ''
-  searchError.value = ''
-
-  if (query.length < 2) {
-    searchSuggestions.value = []
-    isSearchLoading.value = false
-    searchRequestToken.value += 1
-    return
-  }
-
-  const requestToken = ++searchRequestToken.value
-  isSearchLoading.value = true
-
-  try {
-    const bias = getSearchBias()
-    const results = await tripsStore.searchPlanLocations(query, {
-      lat: bias?.lat,
-      lon: bias?.lon,
-      limit: 12
-    })
-
-    if (requestToken !== searchRequestToken.value) {
-      return
-    }
-
-    searchSuggestions.value = (Array.isArray(results) ? results : []).map((result) => {
-      const title = result?.title?.trim()
-      const latitude = Number(result?.latitude)
-      const longitude = Number(result?.longitude)
-      const displayName = title || (Number.isFinite(latitude) && Number.isFinite(longitude)
-        ? `Planned place (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`
-        : 'Planned place')
-
-      const { groupLabel, metaLine } = buildSuggestionDisplayMeta(result)
-
-      return {
-        ...result,
-        displayName,
-        groupLabel,
-        metaLine
-      }
-    })
-  } catch (error) {
-    if (requestToken !== searchRequestToken.value) {
-      return
-    }
-    searchError.value = error.response?.data?.message || error.message || 'Failed to search places.'
-  } finally {
-    if (requestToken === searchRequestToken.value) {
-      isSearchLoading.value = false
-    }
-  }
-}
-
 const applySelectedSuggestionToStay = (segmentIndex, suggestion) => {
-  const latitude = Number(suggestion?.latitude)
-  const longitude = Number(suggestion?.longitude)
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  const coordinates = getTripPlanSuggestionCoordinates(suggestion)
+  if (!coordinates) {
     return
   }
 
   const sourceType = suggestion?.sourceType || 'coordinates'
-  const shouldResolveName = !isLocalSearchSource(sourceType)
+  const shouldResolveName = !isTripPlanLocalSearchSource(sourceType)
 
-  updateStayLocation(segmentIndex, latitude, longitude, {
+  updateStayLocation(segmentIndex, coordinates.latitude, coordinates.longitude, {
     reframe: true,
     resolveName: shouldResolveName
   })
@@ -452,9 +363,8 @@ const handleSearchSelect = (suggestion) => {
     return
   }
 
-  const latitude = Number(suggestion?.latitude)
-  const longitude = Number(suggestion?.longitude)
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+  const coordinates = getTripPlanSuggestionCoordinates(suggestion)
+  if (!coordinates) {
     return
   }
 
@@ -463,14 +373,13 @@ const handleSearchSelect = (suggestion) => {
   if (activeSegment.value.segmentType === 'STAY') {
     applySelectedSuggestionToStay(segmentIndex, suggestion)
   } else if (activeSegment.value.segmentType === 'TRIP') {
-    addWaypoint(segmentIndex, latitude, longitude)
+    addWaypoint(segmentIndex, coordinates.latitude, coordinates.longitude)
     nextTick(() => {
       renderActiveViewport()
     })
   }
 
-  searchQuery.value = ''
-  searchSuggestions.value = []
+  resetSearchState()
 }
 
 const previewReconstruction = async () => {

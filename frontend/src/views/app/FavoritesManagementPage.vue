@@ -59,8 +59,24 @@
       <!-- Map Section -->
       <BaseCard class="map-section">
         <div class="map-header">
-          <h3 class="map-title">Favorites Map</h3>
-          <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
+          <div class="map-heading">
+            <h3 class="map-title">Favorites Map</h3>
+            <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
+          </div>
+          <div class="place-search-control">
+            <TripPlanLocationSearchInput
+                v-model="placeSearchQuery"
+                :suggestions="placeSearchSuggestions"
+                placeholder="Search place to add..."
+                :loading="isPlaceSearchLoading"
+                :error="placeSearchError"
+                :show-loading-text="false"
+                class="place-search-input"
+                panelClass="trip-plan-location-search-panel favorite-place-search-panel"
+                @complete="handlePlaceSearchComplete"
+                @select="handlePlaceSearchSelect"
+            />
+          </div>
         </div>
         <div class="map-container">
           <BaseMap
@@ -279,6 +295,7 @@
       <AddFavoriteDialog
           :visible="showAddDialog"
           :header="addDialogHeader"
+          :initial-name="addDialogInitialName"
           @add-to-favorites="handleAddFavorite"
           @close="handleCloseAddDialog"
       />
@@ -347,6 +364,10 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useGeocodingStore} from '@/stores/geocoding'
 import {useRectangleDrawingRuntime} from '@/composables/useRectangleDrawingRuntime'
 import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
+import {
+  getTripPlanSuggestionCoordinates,
+  useTripPlanLocationSearch
+} from '@/composables/useTripPlanLocationSearch'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import {createFavoritesManagementMapAdapter} from '@/maps/favoritesManagement/runtime/createFavoritesManagementMapAdapter'
 import {
@@ -365,6 +386,7 @@ import TimelineRegenerationModal from '@/components/dialogs/TimelineRegeneration
 import PendingFavoritesPanel from '@/components/favorites/PendingFavoritesPanel.vue'
 import BulkSaveConfirmDialog from '@/components/dialogs/BulkSaveConfirmDialog.vue'
 import BulkEditDialog from '@/components/dialogs/BulkEditDialog.vue'
+import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
@@ -435,8 +457,24 @@ const showBulkSaveDialog = ref(false)
 const reconcileMode = ref('selected') // 'selected' | 'all'
 const enabledProviders = ref([])
 const addDialogHeader = ref('Add Point to Favorites')
+const addDialogInitialName = ref('')
 const pendingAddCoordinates = ref(null)
 const pendingAddBounds = ref(null)
+
+const {
+  query: placeSearchQuery,
+  suggestions: placeSearchSuggestions,
+  isLoading: isPlaceSearchLoading,
+  error: placeSearchError,
+  search: handlePlaceSearchComplete,
+  reset: resetPlaceSearch
+} = useTripPlanLocationSearch({
+  getBias: () => getMapSearchBias(),
+  excludeSavedFavorites: true,
+  fallbackLabel: 'Place',
+  geocodingGroupLabel: 'Cached place',
+  providerGroupPrefix: ''
+})
 
 // Bulk add mode states
 const bulkAddMode = ref(false)
@@ -481,6 +519,8 @@ const {
       northEastLat: northEast.lat,
       northEastLon: northEast.lng
     }
+    pendingAddCoordinates.value = null
+    addDialogInitialName.value = ''
 
     // Show add dialog for area
     addDialogHeader.value = 'Add Area to Favorites'
@@ -630,6 +670,51 @@ const handleFilterChange = () => {
 const clearFilters = () => {
   selectedType.value = null
   searchText.value = ''
+}
+
+const getMapSearchBias = () => {
+  if (mapInstance.value?.getCenter) {
+    const center = mapInstance.value.getCenter()
+    const lat = Number(center?.lat)
+    const lon = Number(center?.lng ?? center?.lon)
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return {lat, lon}
+    }
+  }
+
+  const fallbackLat = Number(mapCenter.value?.[0])
+  const fallbackLon = Number(mapCenter.value?.[1])
+  if (Number.isFinite(fallbackLat) && Number.isFinite(fallbackLon)) {
+    return {lat: fallbackLat, lon: fallbackLon}
+  }
+
+  return null
+}
+
+const handlePlaceSearchSelect = (suggestion) => {
+  const coordinates = getTripPlanSuggestionCoordinates(suggestion)
+
+  if (!coordinates) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Place Unavailable',
+      detail: 'Selected place does not include usable coordinates.',
+      life: 4000
+    })
+    return
+  }
+
+  const point = {lat: coordinates.latitude, lng: coordinates.longitude}
+  pendingAddCoordinates.value = point
+  pendingAddBounds.value = null
+  addDialogHeader.value = 'Add Point to Favorites'
+  addDialogInitialName.value = suggestion?.title?.trim() || suggestion?.displayName?.trim() || ''
+
+  mapAdapter.value?.setTempPoint?.(point)
+  mapAdapter.value?.focusOnPoint?.(point, {zoom: 16})
+
+  resetPlaceSearch()
+  showAddDialog.value = true
 }
 
 const getFavoriteIcon = (type) => {
@@ -822,6 +907,8 @@ const handleAddPointFromContextMenu = () => {
     lat: contextMenuLatLng.value.lat,
     lng: contextMenuLatLng.value.lng
   }
+  pendingAddBounds.value = null
+  addDialogInitialName.value = ''
 
   mapAdapter.value?.setTempPoint?.(contextMenuLatLng.value)
 
@@ -881,6 +968,7 @@ const handleAddFavorite = (name) => {
     showAddDialog.value = false
     pendingAddCoordinates.value = null
     pendingAddBounds.value = null
+    addDialogInitialName.value = ''
     mapAdapter.value?.clearTempPoint?.()
     cleanupTempLayer()
 
@@ -925,6 +1013,7 @@ const handleAddFavorite = (name) => {
   showAddDialog.value = false
   pendingAddCoordinates.value = null
   pendingAddBounds.value = null
+  addDialogInitialName.value = ''
 
   mapAdapter.value?.clearTempPoint?.()
   cleanupTempLayer()
@@ -944,6 +1033,7 @@ const handleCloseAddDialog = () => {
   showAddDialog.value = false
   pendingAddCoordinates.value = null
   pendingAddBounds.value = null
+  addDialogInitialName.value = ''
 
   mapAdapter.value?.clearTempPoint?.()
 
@@ -1243,9 +1333,17 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
   border-bottom: 1px solid var(--gp-border-light);
+}
+
+.map-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .map-title {
@@ -1258,6 +1356,18 @@ onUnmounted(() => {
 .map-subtitle {
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
+}
+
+.place-search-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: min(420px, 45%);
+  min-width: 260px;
+}
+
+.place-search-input {
+  width: 100%;
 }
 
 .map-container {
@@ -1501,6 +1611,16 @@ onUnmounted(() => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .map-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .place-search-control {
+    width: 100%;
+    min-width: unset;
+  }
+
   .filter-controls {
     flex-direction: column;
     align-items: stretch;

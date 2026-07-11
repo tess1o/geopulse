@@ -124,6 +124,81 @@ test.describe('Favorites Management Page', () => {
     });
   });
 
+  test.describe('Add Favorite Point - Place Search', () => {
+    const mockPlanSearch = async (page) => {
+      await page.route('**/api/trips/plan-search**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            data: [
+              {
+                sourceType: 'favorite-point',
+                title: 'Existing Saved Favorite',
+                subtitle: 'Already saved',
+                latitude: 50.44,
+                longitude: 30.52,
+                favoriteId: 123,
+                favoriteType: 'point'
+              },
+              {
+                sourceType: 'external-search',
+                title: 'Central Library',
+                subtitle: 'Kyiv, Ukraine, Photon',
+                latitude: 50.4501,
+                longitude: 30.5234,
+                providerName: 'Photon'
+              }
+            ]
+          })
+        });
+      });
+    };
+
+    test('should add favorite point from place search', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      await mockPlanSearch(page);
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+      await favoritesPage.searchPlaceToAdd('Central');
+
+      expect(await favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
+      expect(await favoritesPage.isPlaceSearchResultVisible('Central Library')).toBe(true);
+
+      await favoritesPage.selectPlaceSearchResult('Central Library');
+      expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+
+      await favoritesPage.submitAddDialog();
+      await favoritesPage.waitForTimelineRegenerationCycle({ optional: true });
+
+      await expect.poll(
+        () => TestSetupHelper.countFavorites(dbManager, user.id),
+        { timeout: 30000 }
+      ).toBe(initialCount + 1);
+
+      await expect(page.locator('.favorites-table')).toContainText('Central Library', { timeout: 20000 });
+    });
+
+    test('should add searched favorite to pending list in bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
+      await mockPlanSearch(page);
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+      await favoritesPage.toggleBulkMode();
+      await favoritesPage.searchPlaceToAdd('Central');
+      await favoritesPage.selectPlaceSearchResult('Central Library');
+      expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+
+      await favoritesPage.submitAddDialog();
+
+      expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(initialCount);
+      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
+      expect(await favoritesPage.getPendingCount()).toBe(1);
+      expect(await favoritesPage.getPendingItemName(0)).toContain('Central Library');
+    });
+  });
+
   test.describe('Add Favorite Area - Immediate Save Mode', () => {
     test('should add favorite area via rectangle drawing', async ({page, isolatedUsers, dbManager, mapMode}) => {
       const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });

@@ -336,42 +336,18 @@
         <div class="plan-item-dialog-map-pane">
           <div>
             <label for="planLocationSearch" class="field-label">Search place</label>
-            <AutoComplete
-              id="planLocationSearch"
+            <TripPlanLocationSearchInput
+              input-id="planLocationSearch"
               ref="planLocationSearchRef"
               v-model="planItemLocationSearchQuery"
               :suggestions="planItemLocationSearchSuggestions"
-              optionLabel="displayName"
               placeholder="Search saved places or providers..."
-              :minLength="2"
-              :delay="300"
-              :loading="false"
-              :showEmptyMessage="!isPlanItemLocationSearchLoading"
+              :loading="isPlanItemLocationSearchLoading"
+              :error="planItemLocationSearchError"
               class="plan-item-location-search"
               @complete="handlePlanItemLocationSearchComplete"
-              @item-select="handlePlanItemLocationSearchSelect"
-            >
-              <template #option="{ option }">
-                <div class="plan-item-location-option">
-                  <div class="plan-item-location-option-title">{{ option.displayName }}</div>
-                  <div class="plan-item-location-option-meta">
-                    <span
-                      v-if="option.groupLabel"
-                      class="plan-item-location-source-chip"
-                      :class="option.groupLabel === 'Saved place' ? 'plan-item-location-source-chip--saved' : 'plan-item-location-source-chip--provider'"
-                    >
-                      {{ option.groupLabel }}
-                    </span>
-                    <span v-if="option.metaLine" class="plan-item-location-option-subtitle">{{ option.metaLine }}</span>
-                  </div>
-                </div>
-              </template>
-            </AutoComplete>
-            <div v-if="isPlanItemLocationSearchLoading" class="plan-item-location-search-loading" aria-live="polite">
-              <i class="pi pi-spin pi-spinner plan-item-location-search-loading-icon" />
-              <span>Searching places...</span>
-            </div>
-            <small v-if="planItemLocationSearchError" class="p-error">{{ planItemLocationSearchError }}</small>
+              @select="handlePlanItemLocationSearchSelect"
+            />
           </div>
 
           <div class="plan-item-dialog-map-wrap">
@@ -597,8 +573,12 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
-import AutoComplete from 'primevue/autocomplete'
 import ConfirmDialog from 'primevue/confirmdialog'
+import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
+import {
+  getTripPlanSuggestionCoordinates,
+  useTripPlanLocationSearch
+} from '@/composables/useTripPlanLocationSearch'
 
 const route = useRoute()
 const router = useRouter()
@@ -633,11 +613,6 @@ const isSubmittingPlanItem = ref(false)
 const planItemErrors = ref({})
 const isResolvingPlanSuggestion = ref(false)
 const planItemLocationSource = ref(null)
-const planItemLocationSearchQuery = ref('')
-const planItemLocationSearchSuggestions = ref([])
-const isPlanItemLocationSearchLoading = ref(false)
-const planItemLocationSearchError = ref('')
-const planItemLocationSearchRequestToken = ref(0)
 const planItemSuggestionRequestToken = ref(0)
 const planItemDialogMapId = ref(Math.random().toString(36).slice(2, 10))
 const planItemDialogMapCenter = ref([37.7749, -122.4194])
@@ -648,6 +623,18 @@ const showCollaboratorsDialog = ref(false)
 const showReconstructionDialog = ref(false)
 const showTimelineGenerationDialog = ref(false)
 const isRefreshingAfterTimelineJob = ref(false)
+
+const {
+  query: planItemLocationSearchQuery,
+  suggestions: planItemLocationSearchSuggestions,
+  isLoading: isPlanItemLocationSearchLoading,
+  error: planItemLocationSearchError,
+  search: handlePlanItemLocationSearchComplete,
+  reset: resetPlanItemLocationSearchState
+} = useTripPlanLocationSearch({
+  getBias: () => resolvePlanItemLocationSearchBias(),
+  fallbackLabel: 'Planned place'
+})
 const collaboratorsLoading = ref(false)
 const isSavingCollaborator = ref(false)
 const collaborators = ref([])
@@ -1330,54 +1317,6 @@ const applyPlanSuggestionToForm = async (suggestion) => {
   planItemForm.value.longitude = typeof suggestion.longitude === 'number' ? suggestion.longitude : planItemForm.value.longitude
 }
 
-const isLocalSearchSource = (sourceType) => (
-  sourceType === 'favorite-point' || sourceType === 'favorite-area' || sourceType === 'geocoding'
-)
-
-const buildProviderMetaLine = (subtitle, providerName) => {
-  const safeSubtitle = subtitle?.trim()
-  if (!safeSubtitle) {
-    return null
-  }
-
-  const safeProviderName = providerName?.trim()
-  if (!safeProviderName) {
-    return safeSubtitle
-  }
-
-  const providerLower = safeProviderName.toLowerCase()
-  const parts = safeSubtitle
-    .split('•')
-    .map((part) => part.trim())
-    .filter((part) => part && part.toLowerCase() !== providerLower)
-
-  return parts.length > 0 ? parts.join(' • ') : null
-}
-
-const buildPlanItemLocationMeta = (suggestion) => {
-  const sourceType = suggestion?.sourceType || ''
-  if (isLocalSearchSource(sourceType)) {
-    return {
-      groupLabel: 'Saved place',
-      metaLine: suggestion?.subtitle?.trim() || null
-    }
-  }
-
-  const providerName = suggestion?.providerName?.trim() || ''
-  return {
-    groupLabel: providerName ? `Provider: ${providerName}` : 'Provider',
-    metaLine: buildProviderMetaLine(suggestion?.subtitle, providerName)
-  }
-}
-
-const resetPlanItemLocationSearchState = () => {
-  planItemLocationSearchQuery.value = ''
-  planItemLocationSearchSuggestions.value = []
-  isPlanItemLocationSearchLoading.value = false
-  planItemLocationSearchError.value = ''
-  planItemLocationSearchRequestToken.value += 1
-}
-
 const PLAN_ITEM_DIALOG_MARKER_HTML = `
   <span class="plan-item-dialog-marker-pin" aria-hidden="true">
     <svg viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
@@ -1615,71 +1554,14 @@ const resolvePlanItemLocationSearchBias = () => {
   return null
 }
 
-const handlePlanItemLocationSearchComplete = async (event) => {
-  const query = event?.query?.trim() || ''
-  planItemLocationSearchError.value = ''
-
-  if (query.length < 2) {
-    planItemLocationSearchSuggestions.value = []
-    isPlanItemLocationSearchLoading.value = false
-    planItemLocationSearchRequestToken.value += 1
+const handlePlanItemLocationSearchSelect = (suggestion) => {
+  const coordinates = getTripPlanSuggestionCoordinates(suggestion)
+  if (!coordinates) {
     return
   }
 
-  const requestToken = ++planItemLocationSearchRequestToken.value
-  isPlanItemLocationSearchLoading.value = true
-
-  try {
-    const bias = resolvePlanItemLocationSearchBias()
-    const results = await tripsStore.searchPlanLocations(query, {
-      lat: bias?.lat,
-      lon: bias?.lon,
-      limit: 12
-    })
-
-    if (requestToken !== planItemLocationSearchRequestToken.value) {
-      return
-    }
-
-    planItemLocationSearchSuggestions.value = (Array.isArray(results) ? results : []).map((result) => {
-      const title = result?.title?.trim()
-      const latitude = Number(result?.latitude)
-      const longitude = Number(result?.longitude)
-      const displayName = title || (Number.isFinite(latitude) && Number.isFinite(longitude)
-        ? `Planned place (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`
-        : 'Planned place')
-
-      const { groupLabel, metaLine } = buildPlanItemLocationMeta(result)
-
-      return {
-        ...result,
-        displayName,
-        groupLabel,
-        metaLine
-      }
-    })
-  } catch (error) {
-    if (requestToken !== planItemLocationSearchRequestToken.value) {
-      return
-    }
-    planItemLocationSearchError.value = error.response?.data?.message || error.message || 'Failed to search places.'
-  } finally {
-    if (requestToken === planItemLocationSearchRequestToken.value) {
-      isPlanItemLocationSearchLoading.value = false
-    }
-  }
-}
-
-const handlePlanItemLocationSearchSelect = (event) => {
-  const suggestion = event?.value || event
-  const latitude = Number(suggestion?.latitude)
-  const longitude = Number(suggestion?.longitude)
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return
-  }
-
-  planItemForm.value.latitude = latitude
-  planItemForm.value.longitude = longitude
+  planItemForm.value.latitude = coordinates.latitude
+  planItemForm.value.longitude = coordinates.longitude
 
   const selectedTitle = suggestion?.title?.trim() || suggestion?.displayName?.trim()
   if (selectedTitle) {
@@ -1687,9 +1569,7 @@ const handlePlanItemLocationSearchSelect = (event) => {
   }
 
   planItemLocationSource.value = null
-  planItemLocationSearchQuery.value = ''
-  planItemLocationSearchSuggestions.value = []
-  planItemLocationSearchError.value = ''
+  resetPlanItemLocationSearchState()
   syncPlanItemDialogMapLocation({ recenter: true, zoom: 16 })
 }
 
@@ -2523,73 +2403,6 @@ watch(showPlanItemDialog, async (nextVisible) => {
 
 .plan-item-location-search {
   width: 100%;
-}
-
-.plan-item-location-search :deep(.p-autocomplete-loader) {
-  display: none !important;
-}
-
-.plan-item-location-search :deep(.p-autocomplete-input) {
-  width: 100%;
-}
-
-.plan-item-location-search-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: var(--gp-spacing-xs);
-  color: var(--gp-text-secondary);
-  font-size: 0.78rem;
-}
-
-.plan-item-location-search-loading-icon {
-  font-size: 0.95rem;
-}
-
-.plan-item-location-option {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.plan-item-location-option-title {
-  font-size: 0.88rem;
-  color: var(--gp-text-primary);
-}
-
-.plan-item-location-option-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-}
-
-.plan-item-location-source-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  padding: 0.08rem 0.45rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.plan-item-location-source-chip--saved {
-  color: #166534;
-  background: #dcfce7;
-  border-color: #86efac;
-}
-
-.plan-item-location-source-chip--provider {
-  color: #1e3a8a;
-  background: #dbeafe;
-  border-color: #93c5fd;
-}
-
-.plan-item-location-option-subtitle {
-  font-size: 0.75rem;
-  color: var(--gp-text-secondary);
 }
 
 .timeline-generation-content {

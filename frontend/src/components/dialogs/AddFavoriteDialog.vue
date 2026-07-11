@@ -22,11 +22,18 @@ import InputText from "primevue/inputtext";
 export default {
   name: "AddFavoriteDialog",
   components: {InputText, Dialog, Button},
-  props: ['visible', 'header'],
+  props: {
+    visible: Boolean,
+    header: String,
+    initialName: {
+      type: String,
+      default: ''
+    }
+  },
   emits: ['add-to-favorites', 'close'],
   data() {
     return {
-      locationName: '',
+      locationName: this.initialName || '',
       internalVisible: this.visible,
       internalHeader: this.header,
     };
@@ -44,6 +51,17 @@ export default {
   watch: {
     visible(val) {
       this.internalVisible = val;
+      if (val) {
+        this.locationName = this.initialName || '';
+      }
+    },
+    header(val) {
+      this.internalHeader = val;
+    },
+    initialName(val) {
+      if (this.internalVisible) {
+        this.locationName = val || '';
+      }
     },
     internalVisible(val) {
       if (!val) {
