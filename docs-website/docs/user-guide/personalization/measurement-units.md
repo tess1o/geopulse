@@ -22,6 +22,9 @@ If you prefer the **Imperial system**, you can switch to:
 - **Feet** and **miles** for distance
 - **mph** for speed
 
+Administrators can change the default assigned to newly created users in **Admin → Settings → System** or with
+`GEOPULSE_USER_DEFAULT_MEASURE_UNIT`. Existing users keep their own profile preference.
+
 ---
 
 ## Changing the Measurement Unit

@@ -8,8 +8,18 @@
         @reset="handleReset(setting)"
       >
         <template #control="{ setting }">
+          <Select
+            v-if="setting.key === 'system.user.default-measure-unit'"
+            v-model="setting.currentValue"
+            :options="measureUnitOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select default unit"
+            @change="handleUpdate(setting)"
+            style="width: 260px"
+          />
           <InputSwitch
-            v-if="setting.valueType === 'BOOLEAN'"
+            v-else-if="setting.valueType === 'BOOLEAN'"
             v-model="setting.currentValue"
             @change="handleUpdate(setting)"
           />
@@ -45,12 +55,15 @@ import { onMounted, ref } from 'vue'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
+import { MEASURE_UNIT_OPTIONS } from '@/constants/adminSettingsMetadata'
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 
 const systemSettings = ref([])
+const measureUnitOptions = MEASURE_UNIT_OPTIONS
 
 const reloadSettings = async () => {
   const loaded = await loadSettings('system')

@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.geofencing.service.DefaultNotificationTemplateService;
@@ -45,6 +46,7 @@ public class UserService {
     private final AuthConfigurationService authConfigurationService;
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final DefaultNotificationTemplateService defaultNotificationTemplateService;
+    private final SystemSettingsService systemSettingsService;
 
     @ConfigProperty(name = "geopulse.admin.email")
     Optional<String> adminEmail;
@@ -79,7 +81,8 @@ public class UserService {
                        Event<TimelineStructureUpdatedEvent> structureUpdatedEvent,
                        AuthConfigurationService authConfigurationService,
                        AsyncTimelineGenerationService asyncTimelineGenerationService,
-                       DefaultNotificationTemplateService defaultNotificationTemplateService) {
+                       DefaultNotificationTemplateService defaultNotificationTemplateService,
+                       SystemSettingsService systemSettingsService) {
         this.userRepository = userRepository;
         this.userAvatarRepository = userAvatarRepository;
         this.securePasswordUtils = securePasswordUtils;
@@ -90,6 +93,7 @@ public class UserService {
         this.authConfigurationService = authConfigurationService;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.defaultNotificationTemplateService = defaultNotificationTemplateService;
+        this.systemSettingsService = systemSettingsService;
     }
 
     /**
@@ -131,7 +135,7 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .measureUnit(MeasureUnit.METRIC)
+                .measureUnit(getDefaultMeasureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -181,7 +185,7 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .measureUnit(MeasureUnit.METRIC)
+                .measureUnit(getDefaultMeasureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -208,6 +212,10 @@ public class UserService {
         if (isNewUser) {
             defaultNotificationTemplateService.ensureDefaultsForUser(user.getId());
         }
+    }
+
+    public MeasureUnit getDefaultMeasureUnit() {
+        return systemSettingsService.getDefaultMeasureUnit();
     }
 
     /**

@@ -377,6 +377,11 @@ config:
     # Leave empty if you don't want to set an initial admin
     email: ""
 
+  # User defaults
+  user:
+    # Default measurement unit for newly created users (METRIC or IMPERIAL)
+    defaultMeasureUnit: "METRIC"
+
   # Authentication & Registration Configuration
   auth:
     # Enable/disable user registration (default: true)

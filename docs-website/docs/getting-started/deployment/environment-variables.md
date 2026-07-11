@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **215** distinct env vars.
+Backend runtime currently includes **216** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -77,6 +77,7 @@ Notes:
 | `GEOPULSE_JWT_PRIVATE_KEY_LOCATION` | `file:/app/keys/jwt-private-key.pem` | Property: \`smallrye.jwt.sign.key.location\`. | Readable path/URI to private key file. | Backend restart |
 | `GEOPULSE_JWT_PUBLIC_KEY_LOCATION` | `file:/app/keys/jwt-public-key.pem` | Property: \`mp.jwt.verify.publickey.location\`. | Readable path/URI in container filesystem. | Backend restart |
 | `GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN` | `604800` | JWT Property: \`jwt.refresh-token.lifespan\`. | Integer value. | Backend restart |
+| `GEOPULSE_USER_DEFAULT_MEASURE_UNIT` | `METRIC` | Default measurement unit for newly created users. Property: \`geopulse.user.default-measure-unit\`. Existing users keep their profile preference. | `METRIC` or `IMPERIAL`. | Backend restart |
 
 ### OIDC Core (5)
 
