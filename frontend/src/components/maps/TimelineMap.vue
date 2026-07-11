@@ -231,6 +231,8 @@
           <span>{{ mobileTripSummary.duration }}</span>
           <span class="mobile-trip-summary-dot"></span>
           <span>{{ mobileTripSummary.distance }}</span>
+          <span v-if="mobileTripSummary.averageSpeed" class="mobile-trip-summary-dot"></span>
+          <span v-if="mobileTripSummary.averageSpeed">{{ mobileTripSummary.averageSpeed }}</span>
         </div>
       </div>
       <button
@@ -280,8 +282,9 @@ import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRunt
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
-import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
+import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
@@ -643,11 +646,14 @@ const mobileTripSummary = computed(() => {
   const trip = activeHighlightedTrip.value
   if (!trip) return null
 
+  const averageSpeedKmh = resolveAverageTripSpeedKmh(trip)
+
   return {
     iconClass: getTripMovementIconClass(trip.movementType),
     title: formatTripMovementTitle(trip.movementType),
     duration: formatDuration(Number(trip.tripDuration) || 0),
-    distance: formatDistance(Number(trip.distanceMeters) || 0)
+    distance: formatDistance(Number(trip.distanceMeters) || 0),
+    averageSpeed: Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
   }
 })
 
@@ -1554,13 +1560,14 @@ defineExpose({
 .mobile-trip-summary-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.38rem;
-  overflow: hidden;
+  overflow: visible;
   color: #334155;
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.2;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .mobile-trip-summary-dot {

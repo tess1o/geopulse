@@ -40,6 +40,9 @@ const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
 const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
 const HIGHLIGHTED_TRIP_NON_CAR_DASH = '1 8'
+const RASTER_TOUCH_INSPECTION_HIT_TOLERANCE_PX = 28
+const RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS = { passive: false, capture: true }
+const RASTER_TOUCH_INSPECTION_END_LISTENER_OPTIONS = { capture: true }
 
 const isCarMovementType = (movementType) => String(movementType || '').trim().toUpperCase() === 'CAR'
 
@@ -304,6 +307,10 @@ let tripPopupAutoHideTimeoutId = null
 let tripTouchInspecting = false
 let tripTouchMoveHandler = null
 let tripTouchEndHandler = null
+let tripContainerTouchStartHandler = null
+let tripContainerTouchMoveHandler = null
+let tripContainerTouchEndHandler = null
+let tripContainerTouchBoundElement = null
 let lastReplayEmissionKey = ''
 const replayController = createRasterPathReplayController({
   getMap: () => props.map,
@@ -345,7 +352,7 @@ const clearTripHoverState = () => {
   tripHoverContextMapHandler = null
 }
 
-const clearTripTouchInspection = () => {
+const clearTripTouchInspection = ({ removeContainerListeners = false } = {}) => {
   tripTouchInspecting = false
   if (tripTouchMoveHandler && props.map) {
     props.map.off('touchmove', tripTouchMoveHandler)
@@ -356,6 +363,38 @@ const clearTripTouchInspection = () => {
   }
   tripTouchMoveHandler = null
   tripTouchEndHandler = null
+  if (removeContainerListeners) {
+    if (tripContainerTouchBoundElement && tripContainerTouchStartHandler) {
+      tripContainerTouchBoundElement.removeEventListener(
+        'touchstart',
+        tripContainerTouchStartHandler,
+        RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS
+      )
+    }
+    if (tripContainerTouchBoundElement && tripContainerTouchMoveHandler) {
+      tripContainerTouchBoundElement.removeEventListener(
+        'touchmove',
+        tripContainerTouchMoveHandler,
+        RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS
+      )
+    }
+    if (tripContainerTouchBoundElement && tripContainerTouchEndHandler) {
+      tripContainerTouchBoundElement.removeEventListener(
+        'touchend',
+        tripContainerTouchEndHandler,
+        RASTER_TOUCH_INSPECTION_END_LISTENER_OPTIONS
+      )
+      tripContainerTouchBoundElement.removeEventListener(
+        'touchcancel',
+        tripContainerTouchEndHandler,
+        RASTER_TOUCH_INSPECTION_END_LISTENER_OPTIONS
+      )
+    }
+    tripContainerTouchStartHandler = null
+    tripContainerTouchMoveHandler = null
+    tripContainerTouchEndHandler = null
+    tripContainerTouchBoundElement = null
+  }
   props.map?.dragging?.enable?.()
 }
 
@@ -363,7 +402,7 @@ const clearHighlightedTripLayers = () => {
   clearTripPopupTimeout()
   clearTripPopupAutoHideTimeout()
   clearTripHoverState()
-  clearTripTouchInspection()
+  clearTripTouchInspection({ removeContainerListeners: true })
   clearReplayMarker()
 
   // Stop in-progress zoom/pan animations before removing layers.
@@ -422,9 +461,9 @@ const syncReplayMarker = () => {
   })
 }
 
-const showInspectionTooltipAtLatLng = (latlng, trip) => {
+const showInspectionTooltipAtLatLng = (latlng, trip, options = {}) => {
   if (!props.inspectionEnabled || !tripPathLayer.value) {
-    return
+    return null
   }
 
   clearTripPopupTimeout()
@@ -434,10 +473,20 @@ const showInspectionTooltipAtLatLng = (latlng, trip) => {
   const hoverTiming = resolveTripHoverTiming(tripHoverContext, latlng, props.map)
   if (!hoverTiming) {
     hideTripHoverTooltip(tripPathLayer.value)
-    return
+    return null
+  }
+
+  if (
+    Number.isFinite(options.maxDistancePx)
+    && Number.isFinite(hoverTiming.distanceSq)
+    && hoverTiming.distanceSq > options.maxDistancePx * options.maxDistancePx
+  ) {
+    hideTripHoverTooltip(tripPathLayer.value)
+    return null
   }
 
   showTripHoverTooltip(tripPathLayer.value, props.map, trip, hoverTiming)
+  return hoverTiming
 }
 
 const resolveTouchLatLng = (event) => {
@@ -447,6 +496,68 @@ const resolveTouchLatLng = (event) => {
     return event?.latlng || null
   }
   return props.map.mouseEventToLatLng(touch)
+}
+
+const resolveDomTouchLatLng = (event) => {
+  const touch = event?.touches?.[0] || event?.changedTouches?.[0]
+  if (!touch || !props.map?.mouseEventToLatLng) {
+    return null
+  }
+  return props.map.mouseEventToLatLng(touch)
+}
+
+const beginTripTouchInspection = (latlng, trip, originalEvent, options = {}) => {
+  const hoverTiming = showInspectionTooltipAtLatLng(latlng, trip, options)
+  if (!hoverTiming) {
+    return false
+  }
+
+  originalEvent?.preventDefault?.()
+  originalEvent?.stopPropagation?.()
+  tripTouchInspecting = true
+  props.map?.dragging?.disable?.()
+  return true
+}
+
+const registerTripContainerTouchInspection = (trip) => {
+  const container = props.map?.getContainer?.()
+  if (!container || tripContainerTouchStartHandler) {
+    return
+  }
+
+  tripContainerTouchStartHandler = (event) => {
+    if (!props.inspectionEnabled || !tripPathLayer.value || !tripHoverContext) {
+      return
+    }
+
+    beginTripTouchInspection(resolveDomTouchLatLng(event), trip, event, {
+      maxDistancePx: RASTER_TOUCH_INSPECTION_HIT_TOLERANCE_PX
+    })
+  }
+
+  tripContainerTouchMoveHandler = (event) => {
+    if (!tripTouchInspecting) {
+      return
+    }
+
+    event?.preventDefault?.()
+    showInspectionTooltipAtLatLng(resolveDomTouchLatLng(event), trip)
+  }
+
+  tripContainerTouchEndHandler = () => {
+    if (!tripTouchInspecting) {
+      return
+    }
+
+    tripTouchInspecting = false
+    props.map?.dragging?.enable?.()
+  }
+
+  container.addEventListener('touchstart', tripContainerTouchStartHandler, RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS)
+  container.addEventListener('touchmove', tripContainerTouchMoveHandler, RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS)
+  container.addEventListener('touchend', tripContainerTouchEndHandler, RASTER_TOUCH_INSPECTION_END_LISTENER_OPTIONS)
+  container.addEventListener('touchcancel', tripContainerTouchEndHandler, RASTER_TOUCH_INSPECTION_END_LISTENER_OPTIONS)
+  tripContainerTouchBoundElement = container
 }
 
 const renderHighlightedTrip = (newTrip) => {
@@ -572,6 +683,7 @@ const renderHighlightedTrip = (newTrip) => {
     }
     props.map?.on?.('zoomend', tripHoverContextMapHandler)
     props.map?.on?.('moveend', tripHoverContextMapHandler)
+    registerTripContainerTouchInspection(newTrip)
 
     tripPathLayer.value.on('mousemove', (e) => {
       // While inspecting hover timing, hide the static highlighted-trip popup.
@@ -594,11 +706,7 @@ const renderHighlightedTrip = (newTrip) => {
 
     tripPathLayer.value.on('touchstart', (e) => {
       if (!props.inspectionEnabled) return
-      e?.originalEvent?.preventDefault?.()
-      e?.originalEvent?.stopPropagation?.()
-      tripTouchInspecting = true
-      props.map?.dragging?.disable?.()
-      showInspectionTooltipAtLatLng(resolveTouchLatLng(e), newTrip)
+      if (!beginTripTouchInspection(resolveTouchLatLng(e), newTrip, e?.originalEvent)) return
 
       if (!tripTouchMoveHandler) {
         tripTouchMoveHandler = (moveEvent) => {
