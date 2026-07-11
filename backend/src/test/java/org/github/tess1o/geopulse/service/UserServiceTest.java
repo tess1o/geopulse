@@ -18,8 +18,6 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -56,7 +54,9 @@ public class UserServiceTest {
 
     @Test
     public void testUserRegistrationUsesConfiguredDefaultMeasureUnit() {
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", UUID.randomUUID());
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("default-unit-updater"), "test", "Default Unit Updater", "Europe/Kyiv");
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
         try {
             String email = TestIds.uniqueEmail("user-service-default-unit");
             UserEntity user = userService.registerUser(email, "test", "test", "Europe/Kyiv");
@@ -69,7 +69,9 @@ public class UserServiceTest {
 
     @Test
     public void testInvitationRegistrationUsesConfiguredDefaultMeasureUnit() {
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", UUID.randomUUID());
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("invitation-default-unit-updater"), "test", "Invitation Default Unit Updater", "Europe/Kyiv");
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
         try {
             String email = TestIds.uniqueEmail("user-service-invitation-default-unit");
             UserEntity user = userService.registerUserViaInvitation(

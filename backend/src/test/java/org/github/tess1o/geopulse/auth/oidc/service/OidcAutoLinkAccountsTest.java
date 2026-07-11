@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
+import io.quarkus.arc.ClientProxy;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -22,7 +23,6 @@ import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test class for OIDC auto-link accounts functionality.
@@ -129,7 +129,13 @@ public class OidcAutoLinkAccountsTest {
     @Test
     @Transactional
     public void testOidcNewUserUsesConfiguredDefaultMeasureUnit() throws Exception {
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", UUID.randomUUID());
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("oidc-default-unit-updater"),
+                "password",
+                "OIDC Default Unit Updater",
+                "UTC"
+        );
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
         try {
             String email = TestIds.uniqueEmail("oidc-default-unit");
             String externalUserId = TestIds.uniqueValue("oidc-subject");
@@ -147,7 +153,8 @@ public class OidcAutoLinkAccountsTest {
                     String.class
             );
             method.setAccessible(true);
-            UserEntity user = (UserEntity) method.invoke(oidcAuthenticationService, userInfo, "google");
+            OidcAuthenticationService oidcService = ClientProxy.unwrap(oidcAuthenticationService);
+            UserEntity user = (UserEntity) method.invoke(oidcService, userInfo, "google");
 
             assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
             assertEquals(1, connectionRepository.findByUserId(user.getId()).size());
