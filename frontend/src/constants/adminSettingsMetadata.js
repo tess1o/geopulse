@@ -220,6 +220,10 @@ export const SETTING_METADATA = {
   },
 
   // System / Notifications Settings
+  'system.user.default-measure-unit': {
+    label: 'Default Measurement Unit',
+    description: 'Measurement unit assigned to newly created users'
+  },
   'system.notifications.apprise.enabled': {
     label: 'Enable Apprise Notifications',
     description: 'Enable delivery of geofence alerts to Apprise destinations'
@@ -258,6 +262,11 @@ export const GEOCODING_PROVIDER_OPTIONS = [
   { label: 'Photon', value: 'photon' },
   { label: 'Google Maps', value: 'googlemaps' },
   { label: 'Mapbox', value: 'mapbox' }
+]
+
+export const MEASURE_UNIT_OPTIONS = [
+  { label: 'Metric (kilometers, meters)', value: 'METRIC' },
+  { label: 'Imperial (miles, feet)', value: 'IMPERIAL' }
 ]
 
 /**

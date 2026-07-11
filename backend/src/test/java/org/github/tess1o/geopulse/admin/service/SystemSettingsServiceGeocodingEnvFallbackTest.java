@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.admin.service;
 
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,7 @@ import org.mockito.Mockito;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -23,6 +25,8 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
     private static final String PROVIDER_GOOGLE_MAPS_ENABLED = "geocoding.provider.googlemaps.enabled";
     private static final String PROVIDER_GOOGLE_MAPS_API_KEY = "geocoding.provider.googlemaps.api-key";
     private static final String PROVIDER_GOOGLE_MAPS_LANGUAGE = "geocoding.provider.googlemaps.language";
+    private static final String GEOPULSE_USER_DEFAULT_MEASURE_UNIT = "GEOPULSE_USER_DEFAULT_MEASURE_UNIT";
+    private static final String USER_DEFAULT_MEASURE_UNIT = "geopulse.user.default-measure-unit";
 
     @AfterEach
     void cleanUpSystemProperties() {
@@ -32,6 +36,8 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         System.clearProperty(PROVIDER_GOOGLE_MAPS_ENABLED);
         System.clearProperty(PROVIDER_GOOGLE_MAPS_API_KEY);
         System.clearProperty(PROVIDER_GOOGLE_MAPS_LANGUAGE);
+        System.clearProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT);
+        System.clearProperty(USER_DEFAULT_MEASURE_UNIT);
     }
 
     @Test
@@ -86,6 +92,50 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         SystemSettingsService service = createService();
 
         assertEquals("pt-BR", service.getString("geocoding.googlemaps.language"));
+    }
+
+    @Test
+    void shouldUseMetricAsDefaultMeasureUnit() {
+        SystemSettingsService service = createService();
+
+        assertEquals(MeasureUnit.METRIC, service.getDefaultMeasureUnit());
+        assertEquals("METRIC", service.getString("system.user.default-measure-unit"));
+    }
+
+    @Test
+    void shouldResolveDefaultMeasureUnitFromGeopulseEnvVariableStyle() {
+        System.setProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT, "IMPERIAL");
+
+        SystemSettingsService service = createService();
+
+        assertEquals(MeasureUnit.IMPERIAL, service.getDefaultMeasureUnit());
+    }
+
+    @Test
+    void shouldResolveDefaultMeasureUnitFromPropertyStyle() {
+        System.setProperty(USER_DEFAULT_MEASURE_UNIT, "IMPERIAL");
+
+        SystemSettingsService service = createService();
+
+        assertEquals(MeasureUnit.IMPERIAL, service.getDefaultMeasureUnit());
+    }
+
+    @Test
+    void shouldFallbackToMetricWhenDefaultMeasureUnitEnvValueIsInvalid() {
+        System.setProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT, "yards");
+
+        SystemSettingsService service = createService();
+
+        assertEquals(MeasureUnit.METRIC, service.getDefaultMeasureUnit());
+        assertEquals("METRIC", service.getString("system.user.default-measure-unit"));
+    }
+
+    @Test
+    void shouldRejectInvalidDefaultMeasureUnitAdminValue() {
+        SystemSettingsService service = createService();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setValue("system.user.default-measure-unit", "yards", null));
     }
 
     private SystemSettingsService createService() {
