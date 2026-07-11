@@ -321,6 +321,23 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
     tempPointMarker = null
   }
 
+  const focusOnPoint = (pointLike, options = {}) => {
+    if (!map || !pointLike) {
+      return
+    }
+
+    const point = {
+      lat: Number(pointLike.lat),
+      lng: Number(pointLike.lng)
+    }
+
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) {
+      return
+    }
+
+    map.setView([point.lat, point.lng], options.zoom || 15)
+  }
+
   const focusOnFavorite = (favorite, options = {}) => {
     if (!map || !favorite) {
       return
@@ -385,6 +402,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
     render,
     setTempPoint,
     clearTempPoint,
+    focusOnPoint,
     focusOnFavorite,
     cleanup
   }
