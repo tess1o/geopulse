@@ -120,6 +120,14 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String carEnabled;
 
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.motorcycle.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String motorcycleEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.preferred_motorized_type", defaultValue = "CAR")
+    @StaticInitSafe
+    String preferredMotorizedType;
+
     @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_avg_speed", defaultValue = "10.0")
     @StaticInitSafe
     String carMinAvgSpeed;

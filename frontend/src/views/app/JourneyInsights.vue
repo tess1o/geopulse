@@ -96,6 +96,16 @@
                 </div>
               </div>
 
+              <!-- Distance by Motorcycle -->
+              <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byMotorcycle > 0">
+                <div class="travel-icon">🏍️</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byMotorcycle * 1000 || 0) }}</div>
+                <div class="stat-label">Distance by Motorcycle</div>
+                <div class="stat-detail">
+                  {{ getMotorcyclePercentage(distanceTraveled) }} - {{ getMotorcyclePhrase(distanceTraveled?.byMotorcycle || 0) }}
+                </div>
+              </div>
+
               <!-- Distance Walking -->
               <div class="insight-stat-large travel-card">
                 <div class="travel-icon">🚶</div>
@@ -453,6 +463,12 @@ const getCarPercentage = (distanceData) => {
   return `(${percentage}%)`
 }
 
+const getMotorcyclePercentage = (distanceData) => {
+  if (!distanceData?.total || distanceData.total === 0) return '(0%)'
+  const percentage = Math.round((distanceData.byMotorcycle / distanceData.total) * 100)
+  return `(${percentage}%)`
+}
+
 const getWalkPercentage = (distanceData) => {
   if (!distanceData?.total || distanceData.total === 0) return '(0%)'
   const percentage = Math.round((distanceData.byWalk / distanceData.total) * 100)
@@ -664,6 +680,12 @@ const getTotalDistancePhrase = (distance) => {
 const getCarPhrase = (distance) => {
   const range = carPhrases.find(r => distance >= r.min && distance < r.max)
   if (!range) return "Keep driving!"
+  return range.phrases[Math.floor(Math.random() * range.phrases.length)]
+}
+
+const getMotorcyclePhrase = (distance) => {
+  const range = carPhrases.find(r => distance >= r.min && distance < r.max)
+  if (!range) return "Keep riding!"
   return range.phrases[Math.floor(Math.random() * range.phrases.length)]
 }
 

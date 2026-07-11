@@ -495,7 +495,7 @@ public class TripReconstructionService {
             );
             case BOAT -> new SpeedRange(0.5d, positiveOrDefault(config.getBoatMaxPlausibleSpeed(), 120.0d));
             case UNKNOWN -> new SpeedRange(3.0d, 50.0d);
-            case CAR -> {
+            case CAR, MOTORCYCLE -> {
                 double min = positiveOrDefault(config.getCarMinAvgSpeed(), 10.0d);
                 double max = positiveOrDefault(config.getTrainMinAvgSpeed(), 120.0d) - 1.0d;
                 if (max <= min) {

@@ -6,6 +6,7 @@ const TRIP_MOVEMENT_ICON_CLASS_MAP = Object.freeze({
   FLIGHT: 'fas fa-plane',
   BOAT: 'pi pi-compass',
   CAR: 'pi pi-car',
+  MOTORCYCLE: 'fas fa-motorcycle',
   UNKNOWN: 'pi pi-car'
 })
 

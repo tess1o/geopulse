@@ -43,6 +43,8 @@ public class TimelinePreferences implements Serializable {
     private Double walkingMaxAvgSpeed;
     private Double walkingMaxMaxSpeed;
     private Boolean carEnabled;
+    private Boolean motorcycleEnabled;
+    private String preferredMotorizedType;
     private Double carMinAvgSpeed;
     private Double carMinMaxSpeed;
     private Double shortDistanceKm;

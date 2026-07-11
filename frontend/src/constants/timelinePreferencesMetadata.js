@@ -10,9 +10,11 @@ export const TIMELINE_PREFERENCE_LABELS = {
   tripDetectionAlgorithm: 'Trip Detection Algorithm',
   walkingMaxAvgSpeed: 'Walking Maximum Average Speed',
   walkingMaxMaxSpeed: 'Walking Maximum Peak Speed',
-  carEnabled: 'Car Detection Enabled',
-  carMinAvgSpeed: 'Car Minimum Average Speed',
-  carMinMaxSpeed: 'Car Minimum Peak Speed',
+  carEnabled: 'Car Label Enabled',
+  motorcycleEnabled: 'Motorcycle Label Enabled',
+  preferredMotorizedType: 'Preferred Motor Vehicle Label',
+  carMinAvgSpeed: 'Motor Vehicle Minimum Average Speed',
+  carMinMaxSpeed: 'Motor Vehicle Minimum Peak Speed',
   shortDistanceKm: 'Short Trip Distance Threshold',
   bicycleEnabled: 'Bicycle Detection Enabled',
   bicycleMinAvgSpeed: 'Bicycle Minimum Average Speed',
@@ -64,6 +66,8 @@ export const TIMELINE_PREFERENCE_TAB_BY_KEY = {
   walkingMaxAvgSpeed: 'trips',
   walkingMaxMaxSpeed: 'trips',
   carEnabled: 'trips',
+  motorcycleEnabled: 'trips',
+  preferredMotorizedType: 'trips',
   carMinAvgSpeed: 'trips',
   carMinMaxSpeed: 'trips',
   shortDistanceKm: 'trips',
@@ -114,5 +118,6 @@ export const TIMELINE_PREFERENCE_VISIBILITY_HINTS = {
   gapStayInferenceMaxGapHours: 'Enable "Gap Stay Inference" to edit this setting.',
   gapTripInferenceMinDistanceMeters: 'Enable "Gap Trip Inference" to edit this setting.',
   gapTripInferenceMinGapHours: 'Enable "Gap Trip Inference" to edit this setting.',
-  gapTripInferenceMaxGapHours: 'Enable "Gap Trip Inference" to edit this setting.'
+  gapTripInferenceMaxGapHours: 'Enable "Gap Trip Inference" to edit this setting.',
+  preferredMotorizedType: 'Enable both "Car Label" and "Motorcycle Label" to edit this setting.'
 }

@@ -322,7 +322,7 @@ import { jumpToSetting } from '@/utils/settingJump'
 
 const CLASSIFICATION_FIELDS = [
   'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
-  'carEnabled',
+  'carEnabled', 'motorcycleEnabled', 'preferredMotorizedType',
   'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
   'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
   'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
@@ -359,6 +359,8 @@ const PREFERENCE_VALUE_TYPES = {
   walkingMaxAvgSpeed: 'number',
   walkingMaxMaxSpeed: 'number',
   carEnabled: 'boolean',
+  motorcycleEnabled: 'boolean',
+  preferredMotorizedType: 'string',
   carMinAvgSpeed: 'number',
   carMinMaxSpeed: 'number',
   shortDistanceKm: 'number',

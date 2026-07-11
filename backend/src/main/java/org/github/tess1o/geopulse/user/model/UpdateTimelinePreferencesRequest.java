@@ -85,13 +85,18 @@ public class UpdateTimelinePreferencesRequest {
     private Double walkingMaxMaxSpeed;
 
     private Boolean carEnabled;
+
+    private Boolean motorcycleEnabled;
+
+    @Pattern(regexp = "CAR|MOTORCYCLE", message = "Preferred motorized type must be CAR or MOTORCYCLE")
+    private String preferredMotorizedType;
     
-    @DecimalMin(value = "5.0", message = "Car min average speed must be at least 5.0 km/h")
-    @DecimalMax(value = "25.0", message = "Car min average speed must be at most 25.0 km/h")
+    @DecimalMin(value = "5.0", message = "Motor vehicle min average speed must be at least 5.0 km/h")
+    @DecimalMax(value = "25.0", message = "Motor vehicle min average speed must be at most 25.0 km/h")
     private Double carMinAvgSpeed;
     
-    @DecimalMin(value = "10.0", message = "Car min maximum speed must be at least 10.0 km/h")
-    @DecimalMax(value = "50.0", message = "Car min maximum speed must be at most 50.0 km/h")
+    @DecimalMin(value = "10.0", message = "Motor vehicle min maximum speed must be at least 10.0 km/h")
+    @DecimalMax(value = "50.0", message = "Motor vehicle min maximum speed must be at most 50.0 km/h")
     private Double carMinMaxSpeed;
     
     @DecimalMin(value = "0.1", message = "Short distance threshold must be at least 0.1 km")

@@ -752,6 +752,8 @@ public class UserService {
         return update.getWalkingMaxAvgSpeed() != null ||
                 update.getWalkingMaxMaxSpeed() != null ||
                 update.getCarEnabled() != null ||
+                update.getMotorcycleEnabled() != null ||
+                update.getPreferredMotorizedType() != null ||
                 update.getCarMinAvgSpeed() != null ||
                 update.getCarMinMaxSpeed() != null ||
                 update.getShortDistanceKm() != null ||

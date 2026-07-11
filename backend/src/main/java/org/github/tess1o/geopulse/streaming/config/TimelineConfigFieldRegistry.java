@@ -203,6 +203,20 @@ public class TimelineConfigFieldRegistry {
                         Boolean::valueOf
                 ))
                 .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.motorcycle.enabled",
+                        properties.getMotorcycleEnabled(),
+                        TimelineConfig::getMotorcycleEnabled,
+                        TimelineConfig::setMotorcycleEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.preferred_motorized_type",
+                        properties.getPreferredMotorizedType(),
+                        TimelineConfig::getPreferredMotorizedType,
+                        TimelineConfig::setPreferredMotorizedType,
+                        String::valueOf
+                ))
+                .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.car.min_avg_speed",
                         properties.getCarMinAvgSpeed(),
                         TimelineConfig::getCarMinAvgSpeed,

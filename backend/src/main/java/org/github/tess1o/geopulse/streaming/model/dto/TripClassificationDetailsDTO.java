@@ -13,7 +13,7 @@ import java.util.List;
  * - Final classification reasoning
  * <p>
  * This DTO is used to help users understand why their trip was classified
- * as a specific transport type (WALK, CAR, BICYCLE, RUNNING, TRAIN, FLIGHT, BOAT, UNKNOWN).
+ * as a specific transport type (WALK, CAR, MOTORCYCLE, BICYCLE, RUNNING, TRAIN, FLIGHT, BOAT, UNKNOWN).
  */
 public record TripClassificationDetailsDTO(
         Long tripId,
@@ -55,8 +55,10 @@ public record TripClassificationDetailsDTO(
             Double walkingMaxAvgSpeed,
             Double walkingMaxMaxSpeed,
 
-            // CAR thresholds (optional, enabled by default)
+            // Motor vehicle thresholds (car enabled by default, motorcycle optional)
             Boolean carEnabled,
+            Boolean motorcycleEnabled,
+            String preferredMotorizedType,
             Double carMinAvgSpeed,
             Double carMinMaxSpeed,
 

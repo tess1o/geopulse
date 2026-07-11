@@ -23,7 +23,7 @@
               <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🏃 RUNNING</span>
               <i class="pi pi-arrow-right"></i>
-              <span class="priority-step">🚗 CAR</span>
+              <span class="priority-step">🚗/🏍️ MOTOR VEHICLE</span>
               <i class="pi pi-arrow-right"></i>
               <span class="priority-step">🚶 WALK</span>
               <i class="pi pi-arrow-right"></i>
@@ -31,7 +31,7 @@
             </div>
             <p class="priority-description">
               Trips are classified in priority order from top to bottom. Once a match is found, classification stops.
-              This order handles water and speed evidence conservatively - e.g., over-water flights remain FLIGHT, and overlapping land speeds match BICYCLE before RUNNING and CAR.
+              This order handles water and speed evidence conservatively - e.g., over-water flights remain FLIGHT, and overlapping land speeds match BICYCLE before RUNNING and motor vehicles.
             </p>
           </div>
         </div>
@@ -236,24 +236,71 @@
       </template>
     </TransportTypeCard>
 
-    <!-- Car Classification -->
+    <!-- Motor Vehicle Classification -->
     <TransportTypeCard
       type="car"
-      title="Car"
-      subtitle="Optional transport type (enabled by default)"
+      title="Motor Vehicle"
+      subtitle="Car or motorcycle label"
       icon="pi pi-car"
-      description="Detects motorized vehicle transport (10+ km/h). Disable this if you want non-matching motorized trips to fall back to UNKNOWN."
-      :enabled="modelValue.carEnabled !== false"
-      @update:enabled="updatePref('carEnabled', $event)"
+      description="Detects car or motorcycle-like trips using shared motor vehicle speed thresholds. The selected label controls how matching trips are classified."
+      :enabled="isMotorVehicleEnabled"
+      @update:enabled="updateMotorVehicleEnabled"
       :collapsible="true"
       :validation-messages="getWarningMessagesForType('car').value"
       setting-id="carEnabled"
     >
       <template #parameters>
+        <div class="motorized-label-controls">
+          <div class="label-toggle" data-setting-id="carEnabled">
+            <div>
+              <label class="parameter-label">Car Label</label>
+              <p class="parameter-description">Allow detected motor vehicle trips to be labeled as car.</p>
+            </div>
+            <ToggleSwitch
+              :model-value="modelValue.carEnabled !== false"
+              @update:model-value="updatePref('carEnabled', $event)"
+              aria-label="Enable car label"
+            />
+          </div>
+
+          <div class="label-toggle" data-setting-id="motorcycleEnabled">
+            <div>
+              <label class="parameter-label">Motorcycle Label</label>
+              <p class="parameter-description">Allow detected motor vehicle trips to be labeled as motorcycle.</p>
+            </div>
+            <ToggleSwitch
+              :model-value="modelValue.motorcycleEnabled === true"
+              @update:model-value="updatePref('motorcycleEnabled', $event)"
+              aria-label="Enable motorcycle label"
+            />
+          </div>
+        </div>
+
+        <div
+          v-if="modelValue.carEnabled !== false && modelValue.motorcycleEnabled === true"
+          class="parameter-group"
+          data-setting-id="preferredMotorizedType"
+        >
+          <label class="parameter-label">Preferred Motor Vehicle Label</label>
+          <p class="parameter-description">
+            When both labels are enabled, detected motor vehicle trips use this label by default.
+          </p>
+          <div class="control-value">{{ formatPreferredMotorizedType(modelValue.preferredMotorizedType) }}</div>
+          <Select
+            :model-value="modelValue.preferredMotorizedType || 'CAR'"
+            @update:model-value="updatePref('preferredMotorizedType', $event)"
+            :options="preferredMotorizedTypeOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select preferred label"
+            class="w-full"
+          />
+        </div>
+
         <div class="parameter-group" data-setting-id="carMinAvgSpeed">
           <label class="parameter-label">Minimum Average Speed</label>
           <p class="parameter-description">
-            Trips with average speeds below this will be classified as walking or bicycle (if enabled)
+            Trips with average speeds below this will be classified as walking, running, or bicycle if those match first
           </p>
           <div class="control-value">{{ modelValue.carMinAvgSpeed }} km/h</div>
           <SliderControl
@@ -269,7 +316,7 @@
         <div class="parameter-group" data-setting-id="carMinMaxSpeed">
           <label class="parameter-label">Minimum Peak Speed</label>
           <p class="parameter-description">
-            Trips that never reach this speed will not be classified as driving
+            Trips that never reach this speed will not be classified as a motor vehicle unless average speed matches
           </p>
           <div class="control-value">{{ modelValue.carMinMaxSpeed }} km/h</div>
           <SliderControl
@@ -642,6 +689,7 @@ import Card from 'primevue/card'
 import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
+import ToggleSwitch from 'primevue/toggleswitch'
 
 const props = defineProps({
   modelValue: {
@@ -665,11 +713,40 @@ const tripsAlgorithmOptions = [
   { label: 'Multiple trips', value: 'multiple' }
 ]
 
+const preferredMotorizedTypeOptions = [
+  { label: 'Car', value: 'CAR' },
+  { label: 'Motorcycle', value: 'MOTORCYCLE' }
+]
+
+const isMotorVehicleEnabled = computed(() => {
+  return props.modelValue.carEnabled !== false || props.modelValue.motorcycleEnabled === true
+})
+
 const updatePref = (key, value) => {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value
   })
+}
+
+const updateMotorVehicleEnabled = (enabled) => {
+  if (enabled) {
+    emit('update:modelValue', {
+      ...props.modelValue,
+      carEnabled: true
+    })
+    return
+  }
+
+  emit('update:modelValue', {
+    ...props.modelValue,
+    carEnabled: false,
+    motorcycleEnabled: false
+  })
+}
+
+const formatPreferredMotorizedType = (type) => {
+  return type === 'MOTORCYCLE' ? 'Motorcycle' : 'Car'
 }
 
 const boatSetupSeverity = computed(() => {
@@ -750,6 +827,22 @@ const boatSetupCanStart = computed(() => {
 .boat-setup-docs-link {
   display: inline-block;
   margin-top: 0.35rem;
+}
+
+.motorized-label-controls {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.label-toggle {
+  align-items: center;
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem;
 }
 
 .priority-icon i {

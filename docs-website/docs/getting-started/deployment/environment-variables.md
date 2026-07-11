@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **215** distinct env vars.
+Backend runtime currently includes **218** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -181,7 +181,7 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Timeline and Trip Intelligence (87)
+### Timeline and Trip Intelligence (90)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -196,8 +196,9 @@ Notes:
 | `GEOPULSE_TIMELINE_BOAT_MIN_CONTINUOUS_WATER_DISTANCE_METERS` | `1000.0` | Boat (optional - disabled by default). Minimum continuous water distance required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_continuous_water_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_BOAT_MIN_WATER_DISTANCE_METERS` | `2000.0` | Boat (optional - disabled by default). Minimum total water distance required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_water_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_BOAT_MIN_WATER_RATIO` | `0.60` | Boat (optional - disabled by default). Minimum route water-evidence ratio required for boat classification. Property: \`geopulse.timeline.travel.classification.boat.min_water_ratio\`. | Decimal between 0 and 1. | Backend restart |
-| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `10.0` | Car (mandatory) - updated default from 8.0 to 10.0 Property: \`geopulse.timeline.travel.classification.car.min_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
-| `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED` | `15.0` | Car (mandatory) - updated default from 8.0 to 10.0 Property: \`geopulse.timeline.travel.classification.car.min_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_CAR_ENABLED` | `true` | Enables the Car label for detected motor vehicle trips. Uses the shared motor vehicle speed thresholds. Property: \`geopulse.timeline.travel.classification.car.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `10.0` | Shared motor vehicle minimum average speed threshold used for Car and Motorcycle classification. Property: \`geopulse.timeline.travel.classification.car.min_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED` | `15.0` | Shared motor vehicle minimum peak speed threshold used for Car and Motorcycle classification. Property: \`geopulse.timeline.travel.classification.car.min_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_DATA_GAP_MIN_DURATION_SECONDS` | `1800` | Data Gap Detection Configuration Property: \`geopulse.timeline.data_gap.min_duration_seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_ADJACENT_TOLERANCE_SECONDS` | `120` | Manual Data Gap -> Stay override matching and merge tolerance (re-apply overrides after timeline rebuild/import) Property: \`geopulse.timeline.data_gap_stay_override.adjacent_tolerance_seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_TIMELINE_DATA_GAP_STAY_OVERRIDE_LOCATION_MATCH_MAX_DISTANCE_METERS` | `80.0` | Manual Data Gap -> Stay override location matching fallback distance Property: \`geopulse.timeline.data_gap_stay_override.location_match.max_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
@@ -227,16 +228,18 @@ Notes:
 | `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_GAP_HOURS` | `1` | Gap Trip Inference Configuration When enabled, infers a trip instead of creating a data gap when distance between points exceeds threshold Useful for detecting flights, long-dis... Property: \`geopulse.timeline.gap_trip_inference.min_gap_hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_TIMELINE_JOB_DELAY` | `1m` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.job.delay\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_TIMELINE_JOB_INTERVAL` | `5m` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.job.interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
+| `GEOPULSE_TIMELINE_MOTORCYCLE_ENABLED` | `false` | Enables the Motorcycle label for detected motor vehicle trips. Uses the shared motor vehicle speed thresholds. Property: \`geopulse.timeline.travel.classification.motorcycle.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_ADAPTIVE` | `true` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.adaptive\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_ENABLED` | `true` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_MAX_POINTS` | `100` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.max_points\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_TOLERANCE` | `15.0` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.tolerance\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.processing.thread-pool-size\`. | Integer value. | Backend restart |
+| `GEOPULSE_TIMELINE_PREFERRED_MOTORIZED_TYPE` | `CAR` | Preferred label when both Car and Motorcycle labels are enabled for detected motor vehicle trips. Property: \`geopulse.timeline.travel.classification.preferred_motorized_type\`. | One of \`CAR\`, \`MOTORCYCLE\`. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_ENABLED` | `false` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_MAX_AVG_SPEED` | `14.0` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.max_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_MAX_MAX_SPEED` | `18.0` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.max_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_MIN_AVG_SPEED` | `7.0` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.min_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
-| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM` | `1.0` | Car (mandatory) - updated default from 8.0 to 10.0 Property: \`geopulse.timeline.travel.classification.short_distance_km\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM` | `1.0` | Short trip distance threshold used by travel classification heuristics. Property: \`geopulse.timeline.travel.classification.short_distance_km\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_STAYPOINT_ACCURACY_THRESHOLD` | `60.0` | Default timeline configs. They can be overwritten by each user individually or via ENV variables Property: \`geopulse.timeline.staypoint.accuracy.threshold\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_STAYPOINT_MERGE_ENABLED` | `true` | Merge staypoints Property: \`geopulse.timeline.staypoint.merge.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_STAYPOINT_MERGE_MAX_DISTANCE_METERS` | `400` | Merge staypoints Property: \`geopulse.timeline.staypoint.merge.max_distance_meters\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |

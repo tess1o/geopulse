@@ -97,6 +97,65 @@ public class TimelineTripClassificationTest {
         );
         assertEquals(TripType.UNKNOWN, result);
     }
+
+    @Test
+    void testMotorVehicleClassification_WhenOnlyMotorcycleEnabled() {
+        TimelineConfig motorcycleConfig = motorVehicleConfig(false, true, "CAR");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                motorcycleConfig
+        );
+        assertEquals(TripType.MOTORCYCLE, result);
+    }
+
+    @Test
+    void testMotorVehicleClassification_WhenBothEnabledPrefersMotorcycle() {
+        TimelineConfig motorcyclePreferredConfig = motorVehicleConfig(true, true, "MOTORCYCLE");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                motorcyclePreferredConfig
+        );
+        assertEquals(TripType.MOTORCYCLE, result);
+    }
+
+    @Test
+    void testMotorVehicleClassification_WhenBothEnabledPrefersCarByDefault() {
+        TimelineConfig carPreferredConfig = motorVehicleConfig(true, true, "CAR");
+        TripType result = classification.classifyTravelType(
+                motorVehicleStats(),
+                Duration.ofMinutes(25),
+                16_500,
+                carPreferredConfig
+        );
+        assertEquals(TripType.CAR, result);
+    }
+
+    private TimelineConfig motorVehicleConfig(boolean carEnabled, boolean motorcycleEnabled, String preferredMotorizedType) {
+        return TimelineConfig.builder()
+                .carEnabled(carEnabled)
+                .motorcycleEnabled(motorcycleEnabled)
+                .preferredMotorizedType(preferredMotorizedType)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .shortDistanceKm(1.0)
+                .bicycleEnabled(false)
+                .runningEnabled(false)
+                .trainEnabled(false)
+                .flightEnabled(false)
+                .boatEnabled(false)
+                .build();
+    }
+
+    private TripGpsStatistics motorVehicleStats() {
+        return new TripGpsStatistics(40.0 / 3.6, 65.0 / 3.6, 18.0, 0);
+    }
+
     private double calculateTripDistance(List<? extends GpsPoint> path) {
         if (path == null || path.size() < 2) {
             return 0.0;
