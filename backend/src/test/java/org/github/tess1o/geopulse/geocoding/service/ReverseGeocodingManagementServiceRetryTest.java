@@ -20,9 +20,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -108,6 +111,23 @@ class ReverseGeocodingManagementServiceRetryTest {
         inOrder.verify(reconciliationProgressService).updateProgress(jobId, 1, 1, 0);
         inOrder.verify(reconciliationProgressService).updateProgress(jobId, 2, 1, 1);
         inOrder.verify(reconciliationProgressService).completeJob(jobId);
+    }
+
+    @Test
+    void processReconciliationJob_marksJobFailedWhenEveryItemFails() {
+        UUID jobId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        service.reconcileItemMaxAttempts = 1;
+
+        doThrow(new RuntimeException("provider unavailable"))
+                .when(reconciliationService).reconcileWithProvider(userId, 1L, "Photon");
+
+        service.processReconciliationJob(jobId, userId, List.of(1L), "Photon");
+
+        verify(reconciliationService).reconcileWithProvider(userId, 1L, "Photon");
+        verify(reconciliationProgressService).updateProgress(jobId, 1, 0, 1);
+        verify(reconciliationProgressService).failJob(eq(jobId), contains("provider unavailable"));
+        verify(reconciliationProgressService, never()).completeJob(jobId);
     }
 
     @Test

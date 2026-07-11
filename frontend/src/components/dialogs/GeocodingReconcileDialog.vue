@@ -4,7 +4,7 @@
     :header="dialogTitle"
     :modal="true"
     :closable="true"
-    @update:visible="$emit('close')"
+    @update:visible="handleVisibilityUpdate"
     class="gp-dialog-md"
   >
     <div class="dialog-content">
@@ -150,7 +150,7 @@
           label="Cancel"
           severity="secondary"
           @click="handleClose"
-          :disabled="showProgress && !isComplete"
+          :disabled="showProgress && !isTerminal"
         />
         <Button
           v-if="!showProgress"
@@ -166,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
@@ -246,8 +246,16 @@ const isComplete = computed(() => {
   return props.jobProgress?.status === 'COMPLETED'
 })
 
+const isFailed = computed(() => {
+  return props.jobProgress?.status === 'FAILED'
+})
+
+const isTerminal = computed(() => {
+  return isComplete.value || isFailed.value
+})
+
 const handleReconcile = async () => {
-  if (!selectedProvider.value) return
+  if (!selectedProvider.value || showProgress.value) return
 
   const request = {
     providerName: selectedProvider.value,
@@ -277,13 +285,40 @@ const handleClose = () => {
   emit('close')
 }
 
+const handleVisibilityUpdate = (visible) => {
+  if (!visible) {
+    handleClose()
+  }
+}
+
+let autoCloseTimer = null
+
+const clearAutoCloseTimer = () => {
+  if (autoCloseTimer) {
+    clearTimeout(autoCloseTimer)
+    autoCloseTimer = null
+  }
+}
+
 // Watch for job completion to auto-close
 watch(() => props.jobProgress?.status, (status) => {
+  clearAutoCloseTimer()
   if (status === 'COMPLETED') {
-    setTimeout(() => {
+    autoCloseTimer = setTimeout(() => {
       handleClose()
     }, 2000) // Auto-close 2 seconds after completion
   }
+})
+
+watch(() => props.visible, (visible) => {
+  if (!visible) {
+    clearAutoCloseTimer()
+    selectedProvider.value = null
+  }
+})
+
+onUnmounted(() => {
+  clearAutoCloseTimer()
 })
 </script>
 

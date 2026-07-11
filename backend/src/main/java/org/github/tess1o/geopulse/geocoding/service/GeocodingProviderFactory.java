@@ -9,6 +9,8 @@ import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.service.external.GoogleMapsGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.external.ChibiGeoGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.external.GeoapifyGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
@@ -28,6 +30,8 @@ public class GeocodingProviderFactory {
     private final GoogleMapsGeocodingService googleMapsService;
     private final MapboxGeocodingService mapboxService;
     private final PhotonGeocodingService photonService;
+    private final GeoapifyGeocodingService geoapifyService;
+    private final ChibiGeoGeocodingService chibiGeoService;
     private final GeocodingConfigurationService configService;
 
     @Inject
@@ -35,11 +39,15 @@ public class GeocodingProviderFactory {
                                     GoogleMapsGeocodingService googleMapsService,
                                     MapboxGeocodingService mapboxService,
                                     PhotonGeocodingService photonService,
+                                    GeoapifyGeocodingService geoapifyService,
+                                    ChibiGeoGeocodingService chibiGeoService,
                                     GeocodingConfigurationService configService) {
         this.nominatimService = nominatimService;
         this.googleMapsService = googleMapsService;
         this.mapboxService = mapboxService;
         this.photonService = photonService;
+        this.geoapifyService = geoapifyService;
+        this.chibiGeoService = chibiGeoService;
         this.configService = configService;
     }
 
@@ -100,6 +108,18 @@ public class GeocodingProviderFactory {
                 }
                 yield photonService.reverseGeocode(requestCoordinates);
             }
+            case "geoapify" -> {
+                if (!geoapifyService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Geoapify provider is disabled or not configured"));
+                }
+                yield geoapifyService.reverseGeocode(requestCoordinates);
+            }
+            case "chibigeo" -> {
+                if (!chibiGeoService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("ChibiGeo provider is disabled or not configured"));
+                }
+                yield chibiGeoService.reverseGeocode(requestCoordinates);
+            }
             default -> {
                 log.error("Unknown provider: {}", providerName);
                 yield Uni.createFrom().failure(new GeocodingException("Unknown provider: " + providerName));
@@ -116,6 +136,8 @@ public class GeocodingProviderFactory {
         if (googleMapsService.isEnabled()) enabled.add("GoogleMaps");
         if (mapboxService.isEnabled()) enabled.add("Mapbox");
         if (photonService.isEnabled()) enabled.add("Photon");
+        if (geoapifyService.isEnabled()) enabled.add("Geoapify");
+        if (chibiGeoService.isEnabled()) enabled.add("ChibiGeo");
         return enabled;
     }
 
@@ -183,6 +205,18 @@ public class GeocodingProviderFactory {
                     yield Uni.createFrom().failure(new GeocodingException("Photon provider is disabled or not configured"));
                 }
                 yield photonService.forwardSearch(query, biasCenter, limit);
+            }
+            case "geoapify" -> {
+                if (!geoapifyService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Geoapify provider is disabled or not configured"));
+                }
+                yield geoapifyService.forwardSearch(query, biasCenter, limit);
+            }
+            case "chibigeo" -> {
+                if (!chibiGeoService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("ChibiGeo provider is disabled or not configured"));
+                }
+                yield chibiGeoService.forwardSearch(query, biasCenter, limit);
             }
             default -> Uni.createFrom().failure(new GeocodingException("Unknown provider: " + providerName));
         };

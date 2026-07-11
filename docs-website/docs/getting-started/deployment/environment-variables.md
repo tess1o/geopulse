@@ -101,7 +101,7 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_TIMEOUT_SECONDS` | `15` | Immich search timeout Property: \`immich.photos.search-timeout-seconds\`. | Positive numeric value. | Backend restart |
 
-### Geocoding and GeoNames (40)
+### Geocoding and GeoNames (49)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -117,7 +117,16 @@ Notes:
 | `GEOPULSE_GEOCODING_RECONCILE_ITEM_MAX_ATTEMPTS` | `4` | Maximum attempts per record during geocoding reconciliation jobs Property: \`geocoding.reconcile.item.max-attempts\`. | Positive numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RECONCILE_CIRCUIT_OPEN_WAIT_MS` | `20000` | Wait before retrying reconciliation when circuit breaker is open (milliseconds) Property: \`geocoding.reconcile.circuit-open-wait.ms\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_RECONCILE_INTER_ITEM_DELAY_MS` | `1000` | Delay between reconciliation job items (milliseconds) Property: \`geocoding.reconcile.inter-item-delay.ms\`. | Non-negative numeric value. | Backend restart |
-| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `photon` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
+| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `photon` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`, \`geoapify\`, \`chibigeo\`. | Backend restart |
+| `GEOPULSE_GEOCODING_GEOAPIFY_API_KEY` | `(empty)` | Geoapify API key Property: \`geocoding.geoapify.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_GEOCODING_GEOAPIFY_DELAY_MS` | `0` | Delay between Geoapify requests. Property: \`geocoding.provider.geoapify.delay.ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_GEOAPIFY_ENABLED` | `false` | Property: \`geocoding.provider.geoapify.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_GEOCODING_GEOAPIFY_LANGUAGE` | `(empty)` | Geoapify language preference Property: \`geocoding.geoapify.language\`. | Language code or empty. | Backend restart |
+| `GEOPULSE_GEOCODING_CHIBIGEO_API_KEY` | `(empty)` | ChibiGeo API key sent as \`X-Api-Key\` Property: \`geocoding.chibigeo.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS` | `0` | Delay between ChibiGeo requests. Property: \`geocoding.provider.chibigeo.delay.ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_CHIBIGEO_ENABLED` | `false` | Property: \`geocoding.provider.chibigeo.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_GEOCODING_CHIBIGEO_URL` | `https://app.chibigeo.com/v1/photon` | ChibiGeo Photon-compatible endpoint Property: \`quarkus.rest-client.chibigeo-api.url\`. | Valid URL. | Backend restart |
+| `GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE` | `(empty)` | ChibiGeo Photon-compatible language preference Property: \`geocoding.chibigeo.language\`. | One Photon-supported code or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `(empty)` | API Keys (can also be set via encrypted storage in admin panel) Property: \`geocoding.googlemaps.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false` | Property: \`geocoding.provider.googlemaps.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | `(empty)` | Google Maps reverse geocoding language preference sent as the `language` query param. Property: \`geocoding.googlemaps.language\`. | Google supported language code (for example \`en\`, \`uk\`, \`pt-BR\`, \`zh-CN\`) or empty. | Backend restart |
@@ -130,7 +139,7 @@ Notes:
 | `GEOPULSE_GEOCODING_PHOTON_ENABLED` | `true` | Property: \`geocoding.provider.photon.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` | `(empty)` | Photon geocoding language preference. Allowed values: \`de\`, \`pl\`, \`el\`, \`en\`, \`es\`, \`fa\`, \`fr\`, \`it\`, \`ja\`, \`ko\`. If not set, no Accept-Language header/lang query parameter will be sent (existing behavior). Property: \`geocoding.photon.language\`. | One allowed code or empty. | Backend restart |
 | `GEOPULSE_GEOCODING_PHOTON_URL` | `https://photon.komoot.io` | Property: \`quarkus.rest-client.photon-api.url\`. | Valid URL. | Backend restart |
-| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER` | `nominatim` | Primary geocoding provider (nominatim, photon, googlemaps, mapbox) Property: \`geocoding.provider.primary\`. | One of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
+| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER` | `nominatim` | Primary geocoding provider (nominatim, photon, googlemaps, mapbox, geoapify, chibigeo) Property: \`geocoding.provider.primary\`. | One of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`, \`geoapify\`, \`chibigeo\`. | Backend restart |
 | `GEOPULSE_GEONAMES_COUNTRY_IMPORT_BATCH_SIZE` | `200` | GeoNames country dataset import (ISO2 -> country metadata) Property: \`geopulse.geonames.country-import.batch-size\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GEONAMES_COUNTRY_IMPORT_CONNECT_TIMEOUT_SECONDS` | `20` | GeoNames country dataset import (ISO2 -> country metadata) Property: \`geopulse.geonames.country-import.connect-timeout-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEONAMES_COUNTRY_IMPORT_ENABLED` | `true` | GeoNames country dataset import (ISO2 -> country metadata) Property: \`geopulse.geonames.country-import.enabled\`. | \`true\` or \`false\`. | Backend restart |

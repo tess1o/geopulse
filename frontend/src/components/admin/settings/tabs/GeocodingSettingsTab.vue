@@ -98,6 +98,24 @@
             >
               ⚠️ Requires access token
             </span>
+
+            <span
+              v-if="setting.key === 'geocoding.geoapify.enabled' &&
+                    setting.currentValue &&
+                    !hasGeoapifyCredentials"
+              class="warning-text"
+            >
+              ⚠️ Requires API key
+            </span>
+
+            <span
+              v-if="setting.key === 'geocoding.chibigeo.enabled' &&
+                    setting.currentValue &&
+                    !hasChibiGeoCredentials"
+              class="warning-text"
+            >
+              ⚠️ Requires API key
+            </span>
           </div>
         </template>
       </SettingItem>
@@ -121,11 +139,19 @@
             style="width: 300px"
           />
           <InputText
-            v-else
+            v-else-if="setting.valueType === 'STRING'"
             v-model="setting.currentValue"
             @input="markDirty"
             :placeholder="getPlaceholder(setting)"
             style="width: 300px"
+          />
+          <InputNumber
+            v-else-if="setting.valueType === 'INTEGER'"
+            v-model="setting.currentValue"
+            @input="markDirty"
+            :min="0"
+            :step="100"
+            style="width: 150px"
           />
         </template>
       </SettingItem>
@@ -176,10 +202,13 @@ const providerAvailabilitySettings = computed(() =>
 
 const providerConfigSettings = computed(() =>
   geocodingSettings.value.filter(s =>
+    s.key !== 'geocoding.delay-ms' && (
     s.key.includes('.url') ||
     s.key.includes('.language') ||
+    s.key.includes('.delay-ms') ||
     s.key.includes('.api-key') ||
     s.key.includes('.access-token')
+    )
   )
 )
 
@@ -190,11 +219,15 @@ const enabledProviders = computed(() => {
   const photon = geocodingSettings.value.find(s => s.key === 'geocoding.photon.enabled')
   const googlemaps = geocodingSettings.value.find(s => s.key === 'geocoding.googlemaps.enabled')
   const mapbox = geocodingSettings.value.find(s => s.key === 'geocoding.mapbox.enabled')
+  const geoapify = geocodingSettings.value.find(s => s.key === 'geocoding.geoapify.enabled')
+  const chibigeo = geocodingSettings.value.find(s => s.key === 'geocoding.chibigeo.enabled')
 
   if (nominatim?.currentValue === true) enabled.push('nominatim')
   if (photon?.currentValue === true) enabled.push('photon')
   if (googlemaps?.currentValue === true) enabled.push('googlemaps')
   if (mapbox?.currentValue === true) enabled.push('mapbox')
+  if (geoapify?.currentValue === true) enabled.push('geoapify')
+  if (chibigeo?.currentValue === true) enabled.push('chibigeo')
 
   return enabled
 })
@@ -222,6 +255,16 @@ const hasGoogleMapsCredentials = computed(() => {
 const hasMapboxCredentials = computed(() => {
   const token = geocodingSettings.value.find(s => s.key === 'geocoding.mapbox.access-token')?.currentValue
   return token && token !== ''
+})
+
+const hasGeoapifyCredentials = computed(() => {
+  const apiKey = geocodingSettings.value.find(s => s.key === 'geocoding.geoapify.api-key')?.currentValue
+  return apiKey && apiKey !== ''
+})
+
+const hasChibiGeoCredentials = computed(() => {
+  const apiKey = geocodingSettings.value.find(s => s.key === 'geocoding.chibigeo.api-key')?.currentValue
+  return apiKey && apiKey !== ''
 })
 
 const getPlaceholder = (setting) => {
@@ -268,16 +311,21 @@ const validateAllSettings = () => {
   const photonEnabled = geocodingSettings.value.find(s => s.key === 'geocoding.photon.enabled')?.currentValue
   const googlemapsEnabled = geocodingSettings.value.find(s => s.key === 'geocoding.googlemaps.enabled')?.currentValue
   const mapboxEnabled = geocodingSettings.value.find(s => s.key === 'geocoding.mapbox.enabled')?.currentValue
+  const geoapifyEnabled = geocodingSettings.value.find(s => s.key === 'geocoding.geoapify.enabled')?.currentValue
+  const chibigeoEnabled = geocodingSettings.value.find(s => s.key === 'geocoding.chibigeo.enabled')?.currentValue
 
   const googlemapsApiKey = geocodingSettings.value.find(s => s.key === 'geocoding.googlemaps.api-key')?.currentValue
   const mapboxToken = geocodingSettings.value.find(s => s.key === 'geocoding.mapbox.access-token')?.currentValue
+  const geoapifyApiKey = geocodingSettings.value.find(s => s.key === 'geocoding.geoapify.api-key')?.currentValue
+  const chibigeoApiKey = geocodingSettings.value.find(s => s.key === 'geocoding.chibigeo.api-key')?.currentValue
 
   const primaryProvider = geocodingSettings.value.find(s => s.key === 'geocoding.primary-provider')?.currentValue
   const fallbackProvider = geocodingSettings.value.find(s => s.key === 'geocoding.fallback-provider')?.currentValue
   const photonLanguage = geocodingSettings.value.find(s => s.key === 'geocoding.photon.language')?.currentValue
+  const chibiGeoLanguage = geocodingSettings.value.find(s => s.key === 'geocoding.chibigeo.language')?.currentValue
 
   // 1. At least one provider must be enabled
-  if (!nominatimEnabled && !photonEnabled && !googlemapsEnabled && !mapboxEnabled) {
+  if (!nominatimEnabled && !photonEnabled && !googlemapsEnabled && !mapboxEnabled && !geoapifyEnabled && !chibigeoEnabled) {
     return 'At least one geocoding provider must be enabled'
   }
 
@@ -293,12 +341,22 @@ const validateAllSettings = () => {
     return 'Cannot enable Mapbox without providing an access token'
   }
 
+  if (geoapifyEnabled && (!geoapifyApiKey || geoapifyApiKey === '')) {
+    return 'Cannot enable Geoapify without providing an API key'
+  }
+
+  if (chibigeoEnabled && (!chibigeoApiKey || chibigeoApiKey === '')) {
+    return 'Cannot enable ChibiGeo without providing an API key'
+  }
+
   // 4. Primary provider must be enabled
   const enabledProvidersList = []
   if (nominatimEnabled) enabledProvidersList.push('nominatim')
   if (photonEnabled) enabledProvidersList.push('photon')
   if (googlemapsEnabled) enabledProvidersList.push('googlemaps')
   if (mapboxEnabled) enabledProvidersList.push('mapbox')
+  if (geoapifyEnabled) enabledProvidersList.push('geoapify')
+  if (chibigeoEnabled) enabledProvidersList.push('chibigeo')
 
   if (primaryProvider && !enabledProvidersList.includes(primaryProvider)) {
     return `Primary provider "${primaryProvider}" is not enabled. Please enable it first or choose a different provider.`
@@ -318,6 +376,11 @@ const validateAllSettings = () => {
   const photonLanguageError = validatePhotonLanguage(photonLanguage)
   if (photonLanguageError) {
     return photonLanguageError
+  }
+
+  const chibiGeoLanguageError = validatePhotonLanguage(chibiGeoLanguage)
+  if (chibiGeoLanguageError) {
+    return chibiGeoLanguageError.replace('Photon', 'ChibiGeo')
   }
 
   return null // No errors
