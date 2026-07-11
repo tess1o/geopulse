@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 
 import java.time.Duration;
 import java.util.*;
@@ -695,17 +696,7 @@ public class StreamingTimelineProcessor {
      * @return true if point should be included, false if it should be filtered out
      */
     private boolean shouldIncludePoint(GPSPoint point, TimelineConfig config) {
-        if (point == null) {
-            return false;
-        }
-
-        Double maxAccuracyThreshold = config.getStaypointMaxAccuracyThreshold();
-        if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0) {
-            // No filtering if threshold is not set or invalid
-            return true;
-        }
-
-        return point.getAccuracy() <= maxAccuracyThreshold;
+        return TimelineGpsAccuracyFilter.shouldInclude(point, config);
     }
 
     /**
