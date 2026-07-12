@@ -26,7 +26,7 @@ public class GeocodingConfigurationService {
 
     /**
      * Get the primary geocoding provider name.
-     * @return Provider name (nominatim, photon, googlemaps, mapbox)
+     * @return Provider name (nominatim, photon, googlemaps, mapbox, geoapify, chibigeo)
      */
     public String getPrimaryProvider() {
         return settingsService.getString("geocoding.primary-provider");
@@ -46,6 +46,28 @@ public class GeocodingConfigurationService {
      */
     public int getDelayMs() {
         return settingsService.getInteger("geocoding.delay-ms");
+    }
+
+    /**
+     * Get delay between requests for a specific provider.
+     */
+    public int getDelayMsForProvider(String providerName) {
+        if (providerName == null || providerName.isBlank()) {
+            return getDelayMs();
+        }
+
+        return switch (providerName.toLowerCase()) {
+            case "geoapify" -> settingsService.getInteger("geocoding.geoapify.delay-ms");
+            case "chibigeo" -> settingsService.getInteger("geocoding.chibigeo.delay-ms");
+            default -> getDelayMs();
+        };
+    }
+
+    /**
+     * Get delay between requests for the currently configured primary provider.
+     */
+    public int getPrimaryProviderDelayMs() {
+        return getDelayMsForProvider(getPrimaryProvider());
     }
 
     /**
@@ -142,5 +164,66 @@ public class GeocodingConfigurationService {
      */
     public String getMapboxAccessToken() {
         return settingsService.getString("geocoding.mapbox.access-token");
+    }
+
+    /**
+     * Check if Geoapify provider is enabled.
+     */
+    public boolean isGeoapifyEnabled() {
+        return settingsService.getBoolean("geocoding.geoapify.enabled");
+    }
+
+    /**
+     * Get Geoapify API key (decrypted).
+     * @return Decrypted API key or empty string if not set
+     */
+    public String getGeoapifyApiKey() {
+        return settingsService.getString("geocoding.geoapify.api-key");
+    }
+
+    /**
+     * Get Geoapify language preference.
+     */
+    public Optional<String> getGeoapifyLanguage() {
+        String language = settingsService.getString("geocoding.geoapify.language");
+        return optionalText(language);
+    }
+
+    /**
+     * Check if ChibiGeo provider is enabled.
+     */
+    public boolean isChibiGeoEnabled() {
+        return settingsService.getBoolean("geocoding.chibigeo.enabled");
+    }
+
+    /**
+     * Get custom ChibiGeo URL if configured.
+     */
+    public Optional<String> getChibiGeoUrl() {
+        String url = settingsService.getString("geocoding.chibigeo.url");
+        return url.isEmpty() ? Optional.empty() : Optional.of(url);
+    }
+
+    /**
+     * Get ChibiGeo API key (decrypted).
+     */
+    public String getChibiGeoApiKey() {
+        return settingsService.getString("geocoding.chibigeo.api-key");
+    }
+
+    /**
+     * Get ChibiGeo language preference.
+     */
+    public Optional<String> getChibiGeoLanguage() {
+        String language = settingsService.getString("geocoding.chibigeo.language");
+        return optionalText(language);
+    }
+
+    private Optional<String> optionalText(String value) {
+        if (value == null) {
+            return Optional.empty();
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() || trimmed.equals("\"\"") ? Optional.empty() : Optional.of(trimmed);
     }
 }

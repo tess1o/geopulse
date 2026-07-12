@@ -69,6 +69,13 @@ data:
   GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED: {{ .Values.config.geocoding.googleMaps.enabled | quote }}
   GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE: {{ .Values.config.geocoding.googleMaps.language | quote }}
   GEOPULSE_GEOCODING_MAPBOX_ENABLED: {{ .Values.config.geocoding.mapbox.enabled | quote }}
+  GEOPULSE_GEOCODING_GEOAPIFY_ENABLED: {{ .Values.config.geocoding.geoapify.enabled | quote }}
+  GEOPULSE_GEOCODING_GEOAPIFY_LANGUAGE: {{ .Values.config.geocoding.geoapify.language | quote }}
+  GEOPULSE_GEOCODING_GEOAPIFY_DELAY_MS: {{ .Values.config.geocoding.geoapify.delayMs | quote }}
+  GEOPULSE_GEOCODING_CHIBIGEO_ENABLED: {{ .Values.config.geocoding.chibigeo.enabled | quote }}
+  GEOPULSE_GEOCODING_CHIBIGEO_URL: {{ .Values.config.geocoding.chibigeo.url | quote }}
+  GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE: {{ .Values.config.geocoding.chibigeo.language | quote }}
+  GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS: {{ .Values.config.geocoding.chibigeo.delayMs | quote }}
 
   # Location Sharing
   GEOPULSE_SHARE_BASE_URL: {{ .Values.config.share.baseUrl | quote }}

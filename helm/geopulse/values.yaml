@@ -458,7 +458,7 @@ config:
   # Note: Most geocoding settings can also be configured via Admin Panel UI
   # These values serve as initial defaults or for environments without Admin Panel access
   geocoding:
-    # Primary geocoding provider (nominatim, photon, googlemaps, mapbox)
+    # Primary geocoding provider (nominatim, photon, googlemaps, mapbox, geoapify, chibigeo)
     primaryProvider: "nominatim"
     # Fallback geocoding provider (optional, leave empty for none)
     fallbackProvider: ""
@@ -491,6 +491,21 @@ config:
     mapbox:
       enabled: false
       accessToken: ""  # Stored in secret if provided
+
+    # Geoapify - Requires API key
+    geoapify:
+      enabled: false
+      apiKey: ""  # Stored in secret if provided
+      language: ""  # Optional: Geoapify language preference
+      delayMs: 0  # Free tier is daily-quota based, not per-second
+
+    # ChibiGeo - Photon-compatible, requires API key
+    chibigeo:
+      enabled: false
+      url: "https://app.chibigeo.com/v1/photon"
+      apiKey: ""  # Stored in secret if provided
+      language: ""  # Optional: Photon-compatible language code
+      delayMs: 0  # Free tier is daily-quota based, not per-second
 
   # Location Sharing Configuration
   share:

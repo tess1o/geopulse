@@ -52,7 +52,7 @@ const FeatureList = [
         title: 'Places & Customization',
         description: (
             <>
-                Manage favorite places directly on the map with reverse geocoding via Nominatim, Google Maps, or Mapbox.
+                Manage favorite places directly on the map with reverse geocoding via Nominatim, Photon, Geoapify, ChibiGeo, Google Maps, or Mapbox.
                 Customize map tiles, adjust timeline sensitivity, and export your data in multiple formats.
             </>
         ),

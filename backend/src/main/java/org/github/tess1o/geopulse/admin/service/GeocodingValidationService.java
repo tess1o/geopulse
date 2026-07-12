@@ -83,8 +83,8 @@ public class GeocodingValidationService {
             return validateFallbackProviderChange(newValue, context);
         }
 
-        // Validate Photon language format
-        if (key.equals("geocoding.photon.language")) {
+        // Validate Photon-compatible language format
+        if (key.equals("geocoding.photon.language") || key.equals("geocoding.chibigeo.language")) {
             return validatePhotonLanguage(newValue);
         }
 
@@ -253,6 +253,8 @@ public class GeocodingValidationService {
      * - Photon: Only needs enabled flag
      * - Google Maps: Needs BOTH enabled flag AND api-key
      * - Mapbox: Needs BOTH enabled flag AND access-token
+     * - Geoapify: Needs BOTH enabled flag AND api-key
+     * - ChibiGeo: Needs BOTH enabled flag AND api-key
      *
      * @param context Validation context with pending changes
      * @return List of provider names that would be enabled
@@ -283,6 +285,22 @@ public class GeocodingValidationService {
             String token = context.getValue("geocoding.mapbox.access-token");
             if (token != null && !token.isBlank() && !token.equals("********")) {
                 enabled.add("Mapbox");
+            }
+        }
+
+        // Geoapify - needs BOTH enabled flag AND api-key
+        if (context.getBoolean("geocoding.geoapify.enabled")) {
+            String apiKey = context.getValue("geocoding.geoapify.api-key");
+            if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("********")) {
+                enabled.add("Geoapify");
+            }
+        }
+
+        // ChibiGeo - needs BOTH enabled flag AND api-key
+        if (context.getBoolean("geocoding.chibigeo.enabled")) {
+            String apiKey = context.getValue("geocoding.chibigeo.api-key");
+            if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("********")) {
+                enabled.add("ChibiGeo");
             }
         }
 

@@ -12,6 +12,12 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
 @Tag("unit")
 class PhotonGeocodingServiceLanguageGuardTest {
@@ -64,7 +70,7 @@ class PhotonGeocodingServiceLanguageGuardTest {
         PhotonResponseAdapter adapter = new PhotonResponseAdapter();
         StubGeocodingConfig config = new StubGeocodingConfig();
         config.photonLanguage = configuredLanguage;
-        return new TestPhotonService(adapter, config, client);
+        return new TestPhotonService(adapter, config, client.client());
     }
 
     private static final class StubGeocodingConfig extends GeocodingConfigurationService {
@@ -104,33 +110,43 @@ class PhotonGeocodingServiceLanguageGuardTest {
         }
     }
 
-    private static final class CapturingPhotonClient implements PhotonRestClient {
+    private static final class CapturingPhotonClient {
+        private final PhotonRestClient client = mock(PhotonRestClient.class);
         private String lastQuery;
         private int lastLimit;
         private String lastLang;
         private String lastAcceptLanguage;
 
-        @Override
-        public Uni<PhotonResponse> getAddress(double longitude, double latitude, String acceptLanguage) {
-            return Uni.createFrom().item(new PhotonResponse());
+        private CapturingPhotonClient() {
+            doAnswer(invocation -> Uni.createFrom().item(new PhotonResponse()))
+                    .when(client).getAddress(
+                            anyDouble(),
+                            anyDouble(),
+                            nullable(String.class),
+                            nullable(String.class));
+
+            doAnswer(invocation -> {
+                lastQuery = invocation.getArgument(0);
+                lastLimit = invocation.getArgument(1);
+                lastLang = invocation.getArgument(5);
+                lastAcceptLanguage = invocation.getArgument(6);
+
+                PhotonResponse response = new PhotonResponse();
+                response.setFeatures(List.of());
+                return Uni.createFrom().item(response);
+            }).when(client).search(
+                    anyString(),
+                    anyInt(),
+                    nullable(Double.class),
+                    nullable(Double.class),
+                    nullable(Integer.class),
+                    nullable(String.class),
+                    nullable(String.class),
+                    nullable(String.class));
         }
 
-        @Override
-        public Uni<PhotonResponse> search(String query,
-                                          int limit,
-                                          Double latitude,
-                                          Double longitude,
-                                          Integer zoom,
-                                          String language,
-                                          String acceptLanguage) {
-            this.lastQuery = query;
-            this.lastLimit = limit;
-            this.lastLang = language;
-            this.lastAcceptLanguage = acceptLanguage;
-
-            PhotonResponse response = new PhotonResponse();
-            response.setFeatures(List.of());
-            return Uni.createFrom().item(response);
+        private PhotonRestClient client() {
+            return client;
         }
     }
 }

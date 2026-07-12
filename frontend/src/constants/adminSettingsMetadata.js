@@ -89,6 +89,14 @@ export const SETTING_METADATA = {
     label: 'Mapbox',
     description: 'Enable Mapbox geocoding provider'
   },
+  'geocoding.geoapify.enabled': {
+    label: 'Geoapify',
+    description: 'Enable Geoapify geocoding provider'
+  },
+  'geocoding.chibigeo.enabled': {
+    label: 'ChibiGeo',
+    description: 'Enable ChibiGeo geocoding provider'
+  },
   'geocoding.nominatim.url': {
     label: 'Nominatim URL',
     description: 'Custom Nominatim server URL (optional)'
@@ -116,6 +124,34 @@ export const SETTING_METADATA = {
   'geocoding.mapbox.access-token': {
     label: 'Mapbox Access Token',
     description: 'Access token for Mapbox (encrypted, enter to update)'
+  },
+  'geocoding.geoapify.api-key': {
+    label: 'Geoapify API Key',
+    description: 'API key for Geoapify (encrypted, enter to update)'
+  },
+  'geocoding.geoapify.language': {
+    label: 'Geoapify Language',
+    description: 'Language preference for Geoapify responses (optional)'
+  },
+  'geocoding.geoapify.delay-ms': {
+    label: 'Geoapify Delay',
+    description: 'Delay between Geoapify requests (milliseconds)'
+  },
+  'geocoding.chibigeo.url': {
+    label: 'ChibiGeo URL',
+    description: 'Photon-compatible ChibiGeo URL'
+  },
+  'geocoding.chibigeo.api-key': {
+    label: 'ChibiGeo API Key',
+    description: 'API key for ChibiGeo (encrypted, enter to update)'
+  },
+  'geocoding.chibigeo.language': {
+    label: 'ChibiGeo Language',
+    description: 'Photon-compatible language code (allowed: de, pl, el, en, es, fa, fr, it, ja, ko). Leave empty for provider default'
+  },
+  'geocoding.chibigeo.delay-ms': {
+    label: 'ChibiGeo Delay',
+    description: 'Delay between ChibiGeo requests (milliseconds)'
   },
 
   // Import Settings
@@ -261,7 +297,9 @@ export const GEOCODING_PROVIDER_OPTIONS = [
   { label: 'Nominatim', value: 'nominatim' },
   { label: 'Photon', value: 'photon' },
   { label: 'Google Maps', value: 'googlemaps' },
-  { label: 'Mapbox', value: 'mapbox' }
+  { label: 'Mapbox', value: 'mapbox' },
+  { label: 'Geoapify', value: 'geoapify' },
+  { label: 'ChibiGeo', value: 'chibigeo' }
 ]
 
 export const MEASURE_UNIT_OPTIONS = [

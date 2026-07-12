@@ -332,10 +332,12 @@ public class ReverseGeocodingManagementService {
         log.info("Starting async reconciliation job {} for user {} ({} items)",
                 jobId, currentUserId, idsToReconcile.size());
 
+        long interItemDelayMs = resolveReconciliationDelayMs(request.getProviderName());
+
         // Run reconciliation asynchronously using ManagedExecutor
         CompletableFuture.runAsync(() -> {
             try {
-                processReconciliationJob(jobId, currentUserId, idsToReconcile, request.getProviderName());
+                processReconciliationJob(jobId, currentUserId, idsToReconcile, request.getProviderName(), interItemDelayMs);
             } catch (Exception e) {
                 log.error("Failed to process reconciliation job {}", jobId, e);
                 reconciliationProgressService.failJob(jobId, e.getMessage());
@@ -449,33 +451,50 @@ public class ReverseGeocodingManagementService {
      * This runs asynchronously and updates progress after each item.
      */
     @ActivateRequestContext
-    void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName) {
+    void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName, long interItemDelayMs) {
         int successCount = 0;
         int failedCount = 0;
+        String lastErrorMessage = null;
 
         log.info("Processing reconciliation job {} with {} items", jobId, ids.size());
 
         for (int i = 0; i < ids.size(); i++) {
             Long id = ids.get(i);
             if (i > 0) {
-                sleepWithInterruptHandling(Math.max(0, reconcileInterItemDelayMs),
+                sleepWithInterruptHandling(interItemDelayMs,
                         "inter-item reconciliation delay", jobId, id);
             }
 
-            boolean reconciled = reconcileWithRetry(userId, id, providerName, jobId);
-            if (reconciled) {
+            ReconciliationAttemptResult result = reconcileWithRetry(userId, id, providerName, jobId);
+            if (result.successful()) {
                 successCount++;
             } else {
                 failedCount++;
+                lastErrorMessage = result.errorMessage();
             }
 
             // Update progress after each item
             reconciliationProgressService.updateProgress(jobId, i + 1, successCount, failedCount);
         }
 
-        // Mark complete
+        if (!ids.isEmpty() && successCount == 0 && failedCount > 0) {
+            String message = String.format("Reconciliation failed for all %d item%s using provider %s",
+                    failedCount, failedCount == 1 ? "" : "s", providerName);
+            if (lastErrorMessage != null && !lastErrorMessage.isBlank()) {
+                message = message + ": " + lastErrorMessage;
+            }
+            reconciliationProgressService.failJob(jobId, message);
+            log.warn("Reconciliation job {} failed: {}", jobId, message);
+            return;
+        }
+
         reconciliationProgressService.completeJob(jobId);
         log.info("Reconciliation job {} completed: {} success, {} failed", jobId, successCount, failedCount);
+    }
+
+    @ActivateRequestContext
+    void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName) {
+        processReconciliationJob(jobId, userId, ids, providerName, Math.max(0, reconcileInterItemDelayMs));
     }
 
     @ActivateRequestContext
@@ -535,6 +554,14 @@ public class ReverseGeocodingManagementService {
         reconciliationProgressService.completeJob(jobId);
     }
 
+    private long resolveReconciliationDelayMs(String providerName) {
+        if (providerName != null
+                && (providerName.equalsIgnoreCase("geoapify") || providerName.equalsIgnoreCase("chibigeo"))) {
+            return Math.max(0, configService.getDelayMsForProvider(providerName));
+        }
+        return Math.max(0, reconcileInterItemDelayMs);
+    }
+
     @Transactional
     ReverseGeocodingDTO applySingleNormalizationRuleToGeocoding(UUID currentUserId, Long geocodingId, NormalizationRuleDto rule) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
@@ -565,19 +592,19 @@ public class ReverseGeocodingManagementService {
      * Provider-level @Retry/@CircuitBreaker remains on provider methods; this loop controls
      * per-item retry budget and circuit-open cooldown between attempts within bulk jobs.
      */
-    private boolean reconcileWithRetry(UUID userId, Long geocodingId, String providerName, UUID jobId) {
+    private ReconciliationAttemptResult reconcileWithRetry(UUID userId, Long geocodingId, String providerName, UUID jobId) {
         int maxAttempts = Math.max(1, reconcileItemMaxAttempts);
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 reconciliationService.reconcileWithProvider(userId, geocodingId, providerName);
-                return true;
+                return ReconciliationAttemptResult.success();
             } catch (Exception e) {
                 boolean circuitOpen = isCircuitBreakerOpenFailure(e);
                 if (attempt >= maxAttempts) {
                     log.warn("Failed to reconcile geocoding result {} in job {} after {} attempts: {}",
                             geocodingId, jobId, attempt, e.getMessage());
-                    return false;
+                    return ReconciliationAttemptResult.failure(e.getMessage());
                 }
 
                 if (circuitOpen) {
@@ -593,7 +620,17 @@ public class ReverseGeocodingManagementService {
             }
         }
 
-        return false;
+        return ReconciliationAttemptResult.failure("Unknown reconciliation failure");
+    }
+
+    private record ReconciliationAttemptResult(boolean successful, String errorMessage) {
+        static ReconciliationAttemptResult success() {
+            return new ReconciliationAttemptResult(true, null);
+        }
+
+        static ReconciliationAttemptResult failure(String errorMessage) {
+            return new ReconciliationAttemptResult(false, errorMessage);
+        }
     }
 
     private boolean isCircuitBreakerOpenFailure(Throwable throwable) {

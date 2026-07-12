@@ -22,10 +22,11 @@ import org.locationtech.jts.geom.Point;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Nominatim geocoding service that handles API calls and response transformation.
+ * Photon-compatible geocoding service that handles API calls and response transformation.
  * Returns structured FormattableGeocodingResult instead of raw responses.
  */
 @ApplicationScoped
@@ -35,6 +36,12 @@ public class PhotonGeocodingService {
     private final PhotonResponseAdapter adapter;
     private final GeocodingConfigurationService configService;
     private final String defaultUrl;
+
+    protected PhotonGeocodingService() {
+        this.adapter = null;
+        this.configService = null;
+        this.defaultUrl = null;
+    }
 
     @Inject
     public PhotonGeocodingService(PhotonResponseAdapter adapter,
@@ -50,7 +57,7 @@ public class PhotonGeocodingService {
      * Builds client dynamically to support runtime URL changes.
      */
     PhotonRestClient getClient() {
-        String url = configService.getPhotonUrl().orElse(defaultUrl);
+        String url = getConfiguredUrl().orElse(defaultUrl);
         try {
             return RestClientBuilder.newBuilder()
                     .baseUri(URI.create(url))
@@ -79,37 +86,37 @@ public class PhotonGeocodingService {
     @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         if (!isEnabled()) {
-            return Uni.createFrom().failure(new GeocodingException("Photon provider is disabled"));
+            return Uni.createFrom().failure(new GeocodingException(getProviderName() + " provider is disabled"));
         }
 
         double longitude = requestCoordinates.getX();
         double latitude = requestCoordinates.getY();
 
         // Get language from global configuration (if set)
-        String configuredLanguage = configService.getPhotonLanguage().orElse(null);
+        String configuredLanguage = getConfiguredLanguage().orElse(null);
         String language = sanitizePhotonLanguage(configuredLanguage, "reverse geocoding");
 
         if (language != null) {
-            log.debug("Calling Photon for coordinates: lon={}, lat={}, language={}",
-                      longitude, latitude, language);
+            log.debug("Calling {} for coordinates: lon={}, lat={}, language={}",
+                      getProviderName(), longitude, latitude, language);
         } else {
-            log.debug("Calling Photon for coordinates: lon={}, lat={} (no language header)",
-                      longitude, latitude);
+            log.debug("Calling {} for coordinates: lon={}, lat={} (no language header)",
+                      getProviderName(), longitude, latitude);
         }
 
         PhotonRestClient client = getClient();
-        return client.getAddress(longitude, latitude, language)
+        return client.getAddress(longitude, latitude, language, getApiKeyHeader())
                 .map(response -> {
-                    log.debug("Photon response received: {}", response);
+                    log.debug("{} response received: {}", getProviderName(), response);
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
                 .onItem().ifNull().failWith(() -> {
-                    log.error("Photon adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
-                    return new GeocodingException("Photon adapter returned null result");
+                    log.error("{} adapter returned null for coordinates: lon={}, lat={}", getProviderName(), longitude, latitude);
+                    return new GeocodingException(getProviderName() + " adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
-                    log.error("Photon API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
-                    return new GeocodingException("Photon geocoding failed", failure);
+                    log.error("{} API call failed for coordinates: lon={}, lat={}", getProviderName(), longitude, latitude, failure);
+                    return new GeocodingException(getProviderName() + " geocoding failed", failure);
                 });
     }
 
@@ -131,12 +138,24 @@ public class PhotonGeocodingService {
         return "Photon";
     }
 
+    protected Optional<String> getConfiguredUrl() {
+        return configService.getPhotonUrl();
+    }
+
+    protected Optional<String> getConfiguredLanguage() {
+        return configService.getPhotonLanguage();
+    }
+
+    protected String getApiKeyHeader() {
+        return null;
+    }
+
     @Retry
     @Bulkhead(value = 2, waitingTaskQueue = 10)
     @CircuitBreaker
     public Uni<List<GeocodingSearchResult>> forwardSearch(String query, Point biasCenter, int limit) {
         if (!isEnabled()) {
-            return Uni.createFrom().failure(new GeocodingException("Photon provider is disabled"));
+            return Uni.createFrom().failure(new GeocodingException(getProviderName() + " provider is disabled"));
         }
 
         String safeQuery = query == null ? "" : query.trim();
@@ -145,7 +164,7 @@ public class PhotonGeocodingService {
         }
 
         int safeLimit = Math.max(1, Math.min(limit, 20));
-        String configuredLanguage = configService.getPhotonLanguage().orElse(null);
+        String configuredLanguage = getConfiguredLanguage().orElse(null);
         String language = sanitizePhotonLanguage(configuredLanguage, "forward search");
         Double biasLat = biasCenter == null ? null : biasCenter.getY();
         Double biasLon = biasCenter == null ? null : biasCenter.getX();
@@ -157,12 +176,13 @@ public class PhotonGeocodingService {
                         biasLon,
                         biasCenter == null ? null : 12,
                         language,
-                        language
+                        language,
+                        getApiKeyHeader()
                 )
                 .map(response -> mapSearchResponse(response, biasCenter))
                 .onFailure().transform(failure -> {
-                    log.error("Photon forward search failed for query='{}'", safeQuery, failure);
-                    return new GeocodingException("Photon forward search failed", failure);
+                    log.error("{} forward search failed for query='{}'", getProviderName(), safeQuery, failure);
+                    return new GeocodingException(getProviderName() + " forward search failed", failure);
                 });
     }
 

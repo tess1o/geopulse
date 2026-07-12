@@ -19,7 +19,8 @@ public interface PhotonRestClient {
     Uni<PhotonResponse> getAddress(
             @QueryParam("lon") double longitude,
             @QueryParam("lat") double latitude,
-            @HeaderParam("Accept-Language") String acceptLanguage);
+            @HeaderParam("Accept-Language") String acceptLanguage,
+            @HeaderParam("X-Api-Key") String apiKey);
 
     @GET
     @Path("/api")
@@ -31,5 +32,6 @@ public interface PhotonRestClient {
             @QueryParam("lon") Double longitude,
             @QueryParam("zoom") Integer zoom,
             @QueryParam("lang") String language,
-            @HeaderParam("Accept-Language") String acceptLanguage);
+            @HeaderParam("Accept-Language") String acceptLanguage,
+            @HeaderParam("X-Api-Key") String apiKey);
 }

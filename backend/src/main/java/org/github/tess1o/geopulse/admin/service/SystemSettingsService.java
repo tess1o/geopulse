@@ -66,6 +66,10 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.fallback", "", ValueType.STRING, "geocoding", "Fallback geocoding provider (optional)"));
         SETTING_DEFINITIONS.put("geocoding.delay-ms",
                 new SettingDefinition("geocoding.provider.delay.ms", "1000", ValueType.INTEGER, "geocoding", "Delay between geocoding requests (milliseconds)"));
+        SETTING_DEFINITIONS.put("geocoding.geoapify.delay-ms",
+                new SettingDefinition("geocoding.provider.geoapify.delay.ms", "0", ValueType.INTEGER, "geocoding", "Delay between Geoapify requests (milliseconds)"));
+        SETTING_DEFINITIONS.put("geocoding.chibigeo.delay-ms",
+                new SettingDefinition("geocoding.provider.chibigeo.delay.ms", "0", ValueType.INTEGER, "geocoding", "Delay between ChibiGeo requests (milliseconds)"));
 
         // Geocoding settings - Provider Availability
         SETTING_DEFINITIONS.put("geocoding.nominatim.enabled",
@@ -95,6 +99,22 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.mapbox.access-token",
                 new SettingDefinition("geocoding.provider.mapbox.access-token", "", ValueType.ENCRYPTED, "geocoding", "Mapbox access token (encrypted)"));
+
+        SETTING_DEFINITIONS.put("geocoding.geoapify.enabled",
+                new SettingDefinition("geocoding.provider.geoapify.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Geoapify geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.geoapify.api-key",
+                new SettingDefinition("geocoding.provider.geoapify.api-key", "", ValueType.ENCRYPTED, "geocoding", "Geoapify API key (encrypted)"));
+        SETTING_DEFINITIONS.put("geocoding.geoapify.language",
+                new SettingDefinition("geocoding.provider.geoapify.language", "", ValueType.STRING, "geocoding", "Geoapify language preference (optional)"));
+
+        SETTING_DEFINITIONS.put("geocoding.chibigeo.enabled",
+                new SettingDefinition("geocoding.provider.chibigeo.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable ChibiGeo geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.chibigeo.url",
+                new SettingDefinition("quarkus.rest-client.chibigeo-api.url", "", ValueType.STRING, "geocoding", "Custom ChibiGeo Photon-compatible server URL (optional)"));
+        SETTING_DEFINITIONS.put("geocoding.chibigeo.api-key",
+                new SettingDefinition("geocoding.provider.chibigeo.api-key", "", ValueType.ENCRYPTED, "geocoding", "ChibiGeo API key (encrypted)"));
+        SETTING_DEFINITIONS.put("geocoding.chibigeo.language",
+                new SettingDefinition("geocoding.provider.chibigeo.language", "", ValueType.STRING, "geocoding", "ChibiGeo language preference (allowed Photon codes; empty = provider default)"));
 
         // GPS processing defaults
         SETTING_DEFINITIONS.put("gps.filter.inaccurate-data.enabled",

@@ -320,7 +320,7 @@
       :total-records="totalRecords"
       :current-filters="{ provider: selectedProvider, searchText: searchText }"
       :job-progress="jobProgress"
-      @close="showReconcileDialog = false"
+      @close="handleReconcileDialogClose"
       @reconcile="handleReconcile"
       @reconcile-complete="handleReconcileComplete"
     />
@@ -883,6 +883,19 @@ const viewDetails = (result) => {
   router.push(`/app/place-details/geocoding/${result.id}`)
 }
 
+const resetReconcileDialogState = () => {
+  if (activeJobMode.value !== 'normalization') {
+    activeJobMode.value = null
+    resetProgress()
+  }
+}
+
+const openReconcileDialog = (mode) => {
+  resetReconcileDialogState()
+  reconcileMode.value = mode
+  showReconcileDialog.value = true
+}
+
 const editResult = (result) => {
   selectedResult.value = result
   showEditDialog.value = true
@@ -891,7 +904,7 @@ const editResult = (result) => {
 const reconcileResult = (result) => {
   selectedResult.value = result
   selectedRows.value = []
-  showReconcileDialog.value = true
+  openReconcileDialog('selected')
 }
 
 const bulkEditSelected = () => {
@@ -906,15 +919,13 @@ const handleBulkEditSave = async () => {
 
 const reconcileSelected = () => {
   selectedResult.value = null
-  reconcileMode.value = 'selected'
-  showReconcileDialog.value = true
+  openReconcileDialog('selected')
 }
 
 const reconcileAll = () => {
   selectedResult.value = null
   selectedRows.value = []
-  reconcileMode.value = 'all'
-  showReconcileDialog.value = true
+  openReconcileDialog('all')
 }
 
 const handleEditSave = async (updatedData) => {
@@ -948,6 +959,7 @@ const handleEditSave = async (updatedData) => {
 
 const handleReconcile = async (reconcileData) => {
   try {
+    resetProgress()
     activeJobMode.value = 'reconcile'
     // Start bulk reconciliation job
     const result = await geocodingStore.startBulkReconciliation(reconcileData)
@@ -970,7 +982,14 @@ const handleReconcile = async (reconcileData) => {
     })
     showReconcileDialog.value = false
     selectedResult.value = null
+    resetReconcileDialogState()
   }
+}
+
+const handleReconcileDialogClose = () => {
+  showReconcileDialog.value = false
+  selectedResult.value = null
+  resetReconcileDialogState()
 }
 
 const handleReconcileComplete = async () => {
