@@ -284,6 +284,7 @@ public class SystemSettingsService {
         if (def != null) {
             String envValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
+            envValue = normalizeConfigFallbackValue(envValue);
             if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
                 envValue = parseMeasureUnitOrDefault(envValue).name();
             }
@@ -303,12 +304,17 @@ public class SystemSettingsService {
         if (def != null) {
             String defaultValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
+            defaultValue = normalizeConfigFallbackValue(defaultValue);
             if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
                 return parseMeasureUnitOrDefault(defaultValue).name();
             }
             return defaultValue;
         }
         return "";
+    }
+
+    private String normalizeConfigFallbackValue(String value) {
+        return "\"\"".equals(value) ? "" : value;
     }
 
     /**
