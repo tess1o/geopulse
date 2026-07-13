@@ -561,17 +561,39 @@ ingress:
   extraPaths: []
 
 # HTTPRoute configuration (Gateway API)
-httproute:
+route:
   enabled: false
+  # -- Set the route apiVersion
+  apiVersion: gateway.networking.k8s.io/v1
+  # -- Set the route kind
+  kind: HTTPRoute
+
+  # -- Route annotations
   annotations: {}
+  # -- Route labels
+  labels: {}
 
-  # Hostname for the route
-  hostname: geopulse.example.com
+  # -- Route hostnames
+  hostnames: []
+  # -- Reference to parent gateways
+  parentRefs: []
 
-  # Gateway parent reference (optional - leave empty to match any accepting Gateway)
-  parentName: ""
-  sectionName: ""
-  namespace: ""
+  # -- Create http route for redirect (https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/#http-to-https-redirects).
+  # Take care that you only enable this on the http listener of the gateway to avoid an infinite redirect.
+  # Matches, filters and additionalRules will be ignored if this is set to true
+  httpsRedirect: false
+
+  # -- Route matches
+  matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+  # -- Route filters
+  filters: []
+
+  # -- Additional custom rules that can be added to the route
+  additionalRules: []
 
 # Service Account
 serviceAccount:
