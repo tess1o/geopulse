@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
+import org.github.tess1o.geopulse.geocoding.client.GeoapifyRestClient;
 import org.github.tess1o.geopulse.geocoding.client.GoogleMapsRestClient;
 import org.github.tess1o.geopulse.geocoding.client.MapboxRestClient;
 import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
@@ -18,6 +19,7 @@ import org.github.tess1o.geopulse.geocoding.model.UserLocationNormalizationRuleE
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.GeocodingSearchResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
+import org.github.tess1o.geopulse.geocoding.model.geoapify.GeoapifyResponse;
 import org.github.tess1o.geopulse.geocoding.model.googlemaps.*;
 import org.github.tess1o.geopulse.geocoding.model.mapbox.*;
 import org.github.tess1o.geopulse.geocoding.model.nominatim.NominatimAddress;
@@ -40,6 +42,10 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         GoogleMapsResult.class,
         GoogleMapsViewport.class,
 
+        GeoapifyResponse.class,
+        GeoapifyResponse.Result.class,
+        GeoapifyResponse.Bbox.class,
+
         MapboxContext.class,
         MapboxFeature.class,
         MapboxGeometry.class,
@@ -51,6 +57,7 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
 
         GeocodingConfigurationService.class,
         MapboxRestClient.class,
+        GeoapifyRestClient.class,
         GoogleMapsRestClient.class,
         NominatimRestClient.class,
         PhotonRestClient.class,

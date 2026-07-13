@@ -92,6 +92,10 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "motorcycleEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "preferredMotorizedType",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinAvgSpeed", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinMaxSpeed", 
@@ -189,6 +193,8 @@ public interface TimelinePreferencesMapper {
                     .walkingMaxAvgSpeed(fromImport.getWalkingMaxAvgSpeed())
                     .walkingMaxMaxSpeed(fromImport.getWalkingMaxMaxSpeed())
                     .carEnabled(fromImport.getCarEnabled())
+                    .motorcycleEnabled(fromImport.getMotorcycleEnabled())
+                    .preferredMotorizedType(fromImport.getPreferredMotorizedType())
                     .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
                     .carMinMaxSpeed(fromImport.getCarMinMaxSpeed())
                     .shortDistanceKm(fromImport.getShortDistanceKm())
@@ -244,6 +250,8 @@ public interface TimelinePreferencesMapper {
                 .walkingMaxAvgSpeed(existing.getWalkingMaxAvgSpeed())
                 .walkingMaxMaxSpeed(existing.getWalkingMaxMaxSpeed())
                 .carEnabled(existing.getCarEnabled())
+                .motorcycleEnabled(existing.getMotorcycleEnabled())
+                .preferredMotorizedType(existing.getPreferredMotorizedType())
                 .carMinAvgSpeed(existing.getCarMinAvgSpeed())
                 .carMinMaxSpeed(existing.getCarMinMaxSpeed())
                 .shortDistanceKm(existing.getShortDistanceKm())

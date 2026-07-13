@@ -674,6 +674,23 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
     }
   }
 
+  const focusOnPoint = (pointLike, options = {}) => {
+    if (!isMapLibreMap(map) || !pointLike) {
+      return
+    }
+
+    const lat = Number(pointLike.lat)
+    const lng = Number(pointLike.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return
+    }
+
+    map.jumpTo({
+      center: [lng, lat],
+      zoom: options.zoom || 15
+    })
+  }
+
   const initialize = (mapInstance) => {
     map = mapInstance
     attachMapEvents()
@@ -710,6 +727,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
     render,
     setTempPoint,
     clearTempPoint,
+    focusOnPoint,
     focusOnFavorite,
     cleanup
   }

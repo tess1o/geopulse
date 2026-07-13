@@ -2,9 +2,9 @@ package org.github.tess1o.geopulse.shared.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
@@ -26,24 +26,24 @@ public class LocationPointResolver {
     private final CacheGeocodingService cacheGeocodingService;
     private final CacheGeocodingBatchService batchService;
     private final ReverseGeocodingManagementService geocodingManagementService;
+    private final GeocodingConfigurationService geocodingConfigurationService;
 
     @Inject
     org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService jobProgressService;
-
-    @ConfigProperty(name = "geocoding.provider.delay.ms", defaultValue = "1000")
-    private long geocodingProviderDelayMs;
 
     @Inject
     public LocationPointResolver(GeocodingService geocodingService,
                                  FavoriteLocationService favoriteLocationService,
                                  CacheGeocodingService cacheGeocodingService,
                                  CacheGeocodingBatchService batchService,
-                                 ReverseGeocodingManagementService geocodingManagementService) {
+                                 ReverseGeocodingManagementService geocodingManagementService,
+                                 GeocodingConfigurationService geocodingConfigurationService) {
         this.geocodingService = geocodingService;
         this.favoriteLocationService = favoriteLocationService;
         this.cacheGeocodingService = cacheGeocodingService;
         this.batchService = batchService;
         this.geocodingManagementService = geocodingManagementService;
+        this.geocodingConfigurationService = geocodingConfigurationService;
     }
 
     /**
@@ -288,7 +288,7 @@ public class LocationPointResolver {
                                                        UUID userId, UUID jobId, int totalLocations,
                                                        int favoritesResolved, int cachedResolved) {
 
-        long delayMs = geocodingProviderDelayMs < 0 ? 0 : geocodingProviderDelayMs;
+        long delayMs = Math.max(0, geocodingConfigurationService.getPrimaryProviderDelayMs());
 
         for (int i = 0; i < coordinates.size(); i++) {
             Point point = coordinates.get(i);

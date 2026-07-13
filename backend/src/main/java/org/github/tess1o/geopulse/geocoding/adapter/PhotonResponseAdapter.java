@@ -23,8 +23,6 @@ import java.util.List;
 @Slf4j
 public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonResponse> {
 
-    private static final String PROVIDER_NAME = "Photon";
-
     @Inject
     CountryMapper countryMapper;
 
@@ -51,7 +49,7 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
                 .resultCoordinates(createPoint(geom))
                 .boundingBox(convertBoundingBox(props.getExtent()))
                 .formattedDisplayName(formatAddress(props))
-                .providerName(PROVIDER_NAME)
+                .providerName(providerName)
                 .city(extractCity(props))
                 .country(normalizedCountry)
                 .build();
@@ -113,7 +111,7 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
 
     @Override
     public String getProviderName() {
-        return PROVIDER_NAME;
+        return "Photon";
     }
 
     private Polygon convertBoundingBox(List<Double> boundingbox) {

@@ -33,10 +33,11 @@ public class DistanceCalculationService {
         List<Object[]> results = query.getResultList();
 
         if (results.isEmpty()) {
-            return new DistanceTraveled(0, 0, 0, 0, 0, 0, 0, 0);
+            return DistanceTraveled.empty();
         }
 
         int car = 0;
+        int motorcycle = 0;
         int walk = 0;
         int bicycle = 0;
         int running = 0;
@@ -55,6 +56,7 @@ public class DistanceCalculationService {
             int distanceKm = (int) (distanceMeters / 1000);
             switch (movementType) {
                 case CAR -> car += distanceKm;
+                case MOTORCYCLE -> motorcycle += distanceKm;
                 case WALK -> walk += distanceKm;
                 case BICYCLE -> bicycle += distanceKm;
                 case RUNNING -> running += distanceKm;
@@ -64,6 +66,6 @@ public class DistanceCalculationService {
                 case UNKNOWN -> unknown += distanceKm;
             }
         }
-        return new DistanceTraveled(car, walk, bicycle, running, train, flight, boat, unknown);
+        return new DistanceTraveled(car, motorcycle, walk, bicycle, running, train, flight, boat, unknown);
     }
 }

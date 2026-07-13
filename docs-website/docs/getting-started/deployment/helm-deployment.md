@@ -118,6 +118,14 @@ config:
     email: "admin@example.com"
 ```
 
+#### User Defaults
+
+| Feature                  | values.yaml Path                    | Environment Variable                  | Default  |
+|--------------------------|-------------------------------------|---------------------------------------|----------|
+| Default Measurement Unit | `config.user.defaultMeasureUnit`    | `GEOPULSE_USER_DEFAULT_MEASURE_UNIT`  | `METRIC` |
+
+Allowed values are `METRIC` and `IMPERIAL`. This applies only to newly created users.
+
 #### Authentication & Registration
 
 | Feature               | values.yaml Path                          | Environment Variable                          | Default |
@@ -215,6 +223,15 @@ config:
 | Google Maps API Key | `config.geocoding.googleMaps.apiKey`  | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `""` (secret)                         |
 | Mapbox Enabled      | `config.geocoding.mapbox.enabled`     | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               |
 | Mapbox Access Token | `config.geocoding.mapbox.accessToken` | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | `""` (secret)                         |
+| Geoapify Enabled    | `config.geocoding.geoapify.enabled`   | `GEOPULSE_GEOCODING_GEOAPIFY_ENABLED`    | `false`                               |
+| Geoapify API Key    | `config.geocoding.geoapify.apiKey`    | `GEOPULSE_GEOCODING_GEOAPIFY_API_KEY`    | `""` (secret)                         |
+| Geoapify Language   | `config.geocoding.geoapify.language`  | `GEOPULSE_GEOCODING_GEOAPIFY_LANGUAGE`   | `""`                                  |
+| Geoapify Delay      | `config.geocoding.geoapify.delayMs`   | `GEOPULSE_GEOCODING_GEOAPIFY_DELAY_MS`   | `0`                                   |
+| ChibiGeo Enabled    | `config.geocoding.chibigeo.enabled`   | `GEOPULSE_GEOCODING_CHIBIGEO_ENABLED`    | `false`                               |
+| ChibiGeo URL        | `config.geocoding.chibigeo.url`       | `GEOPULSE_GEOCODING_CHIBIGEO_URL`        | `https://app.chibigeo.com/v1/photon`  |
+| ChibiGeo API Key    | `config.geocoding.chibigeo.apiKey`    | `GEOPULSE_GEOCODING_CHIBIGEO_API_KEY`    | `""` (secret)                         |
+| ChibiGeo Language   | `config.geocoding.chibigeo.language`  | `GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE`   | `""`                                  |
+| ChibiGeo Delay      | `config.geocoding.chibigeo.delayMs`   | `GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS`   | `0`                                   |
 
 **Example:**
 
@@ -232,6 +249,17 @@ config:
       language: "en-US"  # Optional: BCP 47 language tag
     photon:
       language: "en"  # Optional: allowed Photon codes: de, pl, el, en, es, fa, fr, it, ja, ko
+    geoapify:
+      enabled: false
+      apiKey: "your-api-key-here"
+      language: "en"
+      delayMs: 0
+    chibigeo:
+      enabled: false
+      url: "https://app.chibigeo.com/v1/photon"
+      apiKey: "your-api-key-here"
+      language: "en"
+      delayMs: 0
 ```
 
 #### Location Sharing

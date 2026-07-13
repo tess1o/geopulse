@@ -136,6 +136,7 @@ const movementTypeMap = {
   BICYCLE: { label: 'Bicycle', icon: '🚴' },
   RUNNING: { label: 'Running', icon: '🏃' },
   CAR: { label: 'Car', icon: '🚗' },
+  MOTORCYCLE: { label: 'Motorcycle', icon: '🏍️' },
   TRAIN: { label: 'Train', icon: '🚊' },
   FLIGHT: { label: 'Flight', icon: '✈️' },
   BOAT: { label: 'Boat', icon: '⛵' },

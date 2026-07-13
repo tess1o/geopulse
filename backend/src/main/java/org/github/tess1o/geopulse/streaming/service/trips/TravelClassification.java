@@ -14,7 +14,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 /**
  * Service for classifying trip types based on GPS movement patterns.
  * <p>
- * Supports mandatory WALK type and optional types (CAR, BICYCLE, TRAIN, FLIGHT, BOAT).
+ * Supports mandatory WALK type and optional types (CAR, MOTORCYCLE, BICYCLE, TRAIN, FLIGHT, BOAT).
  * Classification is based on speed analysis, movement characteristics, and optional water evidence.
  * <p>
  * GPS RELIABILITY VALIDATION (BIDIRECTIONAL):
@@ -31,7 +31,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * 3. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
  * 4. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
  * 5. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
- * 6. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
+ * 6. CAR/MOTORCYCLE - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
  * 7. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak, mandatory)
  * 8. UNKNOWN - fallback
  */
@@ -106,6 +106,13 @@ public class TravelClassification {
      * Example: GPS max 29 km/h vs calculated avg 5 km/h = 5.8x ratio (exceeds 5x, use estimated max).
      */
     private static final double GPS_MAX_SPEED_NOISE_RATIO = 5.0;
+
+    /**
+     * Upper bound for using an otherwise noisy GPS max speed as road-vehicle evidence.
+     * Speeds above this are too likely to be GPS spikes and must not be allowed to
+     * trigger train/flight-style classifications when the GPS average was already rejected.
+     */
+    private static final double MAX_PLAUSIBLE_ROAD_VEHICLE_PEAK_KMH = 250.0;
 
     /**
      * Multiplier for estimating reasonable max speed from calculated avg speed.
@@ -340,7 +347,7 @@ public class TravelClassification {
         // Step 2: Validate GPS reliability against calculated speed
         GpsReliabilityResult reliabilityResult = validateGpsReliability(
                 avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh,
-                distanceMeters, tripDuration
+                distanceMeters, tripDuration, config
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
@@ -472,7 +479,7 @@ public class TravelClassification {
      * 3. TRAIN - before CAR (uses variance discriminator)
      * 4. BICYCLE - checked before RUNNING (higher speeds)
      * 5. RUNNING - BEFORE CAR (overlapping speeds)
-     * 6. CAR - optional type (enabled by default)
+     * 6. CAR/MOTORCYCLE - optional motor-vehicle labels (car enabled by default)
      * 7. WALK - mandatory type
      * 8. UNKNOWN - fallback
      *
@@ -545,13 +552,13 @@ public class TravelClassification {
             return RUNNING;
         }
 
-        // 6. CAR - motorized transport (optional, enabled by default)
+        // 6. MOTOR VEHICLE - car/motorcycle transport (optional, car enabled by default)
         //    CRITICAL: Checked AFTER BICYCLE and RUNNING to avoid capturing human-powered trips
         //    Uses OR logic: avg >= 10 OR max >= 15
-        if (isCarEnabled(config) &&
+        if (isMotorVehicleEnabled(config) &&
                 (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
                         maxSpeedKmh >= config.getCarMinMaxSpeed())) {
-            return CAR;
+            return resolveMotorizedTripType(config);
         }
 
         // 7. WALK - low speeds (mandatory)
@@ -569,7 +576,7 @@ public class TravelClassification {
     /**
      * Verifies and corrects the trip classification based on realistic speed constraints.
      * If a trip is classified as WALK but the speed is unrealistically high,
-     * it is corrected to CAR (if enabled) or UNKNOWN (if CAR is disabled).
+     * it is corrected to the preferred motor-vehicle label or UNKNOWN if motor vehicles are disabled.
      *
      * @param tripType       the initial trip classification
      * @param distanceMeters the total distance of the trip in meters
@@ -586,11 +593,11 @@ public class TravelClassification {
             final double hours = tripDuration / 3600.0;
             final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR (if enabled)
-            // or UNKNOWN (if CAR is disabled) to avoid forcing a disabled transport type.
+            // If calculated speed exceeds walking threshold with tolerance, re-classify as motor vehicle
+            // or UNKNOWN if motor-vehicle labels are disabled to avoid forcing a disabled transport type.
             // Uses WALK_VERIFICATION_COEFFICIENT (1.2x) to allow for GPS inaccuracies in short trips
             if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT) {
-                TripType fallbackType = isCarEnabled(config) ? CAR : UNKNOWN;
+                TripType fallbackType = isMotorVehicleEnabled(config) ? resolveMotorizedTripType(config) : UNKNOWN;
                 log.debug("Correcting WALK to {} due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
                         fallbackType,
                         avgSpeedKmh,
@@ -603,6 +610,27 @@ public class TravelClassification {
 
     private boolean isCarEnabled(TimelineConfig config) {
         return !Boolean.FALSE.equals(config.getCarEnabled());
+    }
+
+    private boolean isMotorcycleEnabled(TimelineConfig config) {
+        return Boolean.TRUE.equals(config.getMotorcycleEnabled());
+    }
+
+    private boolean isMotorVehicleEnabled(TimelineConfig config) {
+        return isCarEnabled(config) || isMotorcycleEnabled(config);
+    }
+
+    private TripType resolveMotorizedTripType(TimelineConfig config) {
+        boolean carEnabled = isCarEnabled(config);
+        boolean motorcycleEnabled = isMotorcycleEnabled(config);
+
+        if (carEnabled && motorcycleEnabled) {
+            return MOTORCYCLE.name().equalsIgnoreCase(config.getPreferredMotorizedType()) ? MOTORCYCLE : CAR;
+        }
+        if (motorcycleEnabled) {
+            return MOTORCYCLE;
+        }
+        return carEnabled ? CAR : UNKNOWN;
     }
 
     private boolean isBoatEnabled(TimelineConfig config) {
@@ -721,7 +749,8 @@ public class TravelClassification {
      */
     private GpsReliabilityResult validateGpsReliability(double avgSpeedKmh, double maxSpeedKmh,
                                                         double calculatedAvgSpeedKmh,
-                                                        long distanceMeters, Duration tripDuration) {
+                                                        long distanceMeters, Duration tripDuration,
+                                                        TimelineConfig config) {
         // Check if GPS is unreliable compared to calculated
         boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
 
@@ -756,7 +785,7 @@ public class TravelClassification {
 
         // GPS avg is unreliable - use calculated avg, but decide about max speed
         double adjustedMaxSpeed = adjustMaxSpeed(maxSpeedKmh, calculatedAvgSpeedKmh,
-                avgSpeedKmh, distanceMeters, tripDuration);
+                avgSpeedKmh, distanceMeters, tripDuration, config);
 
         return new GpsReliabilityResult(calculatedAvgSpeedKmh, adjustedMaxSpeed);
     }
@@ -831,8 +860,21 @@ public class TravelClassification {
      * @return adjusted max speed
      */
     private double adjustMaxSpeed(double maxSpeedKmh, double calculatedAvgSpeedKmh,
-                                  double avgSpeedKmh, long distanceMeters, Duration tripDuration) {
+                                  double avgSpeedKmh, long distanceMeters, Duration tripDuration, TimelineConfig config) {
         if (maxSpeedKmh > calculatedAvgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
+            if (shouldKeepRoadVehiclePeakSpeed(maxSpeedKmh, distanceMeters, config)) {
+                log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) exceeds configured " +
+                                "non-motorized peak thresholds within plausible road-vehicle range " +
+                                "(calculated avg: {} km/h). " +
+                                "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
+                        String.format("%f", avgSpeedKmh),
+                        String.format("%f", maxSpeedKmh),
+                        String.format("%f", calculatedAvgSpeedKmh),
+                        distanceMeters,
+                        tripDuration.getSeconds());
+                return maxSpeedKmh;
+            }
+
             // GPS max is too high - likely noise spike
             // Use reasonable estimate instead
             double estimatedMax = calculatedAvgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
@@ -856,5 +898,48 @@ public class TravelClassification {
                     tripDuration.getSeconds());
             return maxSpeedKmh;
         }
+    }
+
+    private boolean shouldKeepRoadVehiclePeakSpeed(double maxSpeedKmh, long distanceMeters, TimelineConfig config) {
+        if (!isMotorVehicleEnabled(config)) {
+            return false;
+        }
+
+        if (maxSpeedKmh > MAX_PLAUSIBLE_ROAD_VEHICLE_PEAK_KMH) {
+            return false;
+        }
+
+        Double carMinMaxSpeed = config.getCarMinMaxSpeed();
+        Double humanPoweredPeakThreshold = getHumanPoweredPeakThreshold(config);
+        Double shortDistanceKm = config.getShortDistanceKm();
+        if (carMinMaxSpeed == null || humanPoweredPeakThreshold == null || shortDistanceKm == null) {
+            return false;
+        }
+
+        double minDistanceMeters = shortDistanceKm * 1000.0;
+        if (distanceMeters < minDistanceMeters) {
+            return false;
+        }
+
+        double requiredPeakSpeed = Math.max(carMinMaxSpeed, humanPoweredPeakThreshold);
+        return maxSpeedKmh > requiredPeakSpeed;
+    }
+
+    private Double getHumanPoweredPeakThreshold(TimelineConfig config) {
+        Double threshold = config.getWalkingMaxMaxSpeed();
+
+        if (Boolean.TRUE.equals(config.getRunningEnabled()) && config.getRunningMaxMaxSpeed() != null) {
+            threshold = threshold == null
+                    ? config.getRunningMaxMaxSpeed()
+                    : Math.max(threshold, config.getRunningMaxMaxSpeed());
+        }
+
+        if (Boolean.TRUE.equals(config.getBicycleEnabled()) && config.getBicycleMaxMaxSpeed() != null) {
+            threshold = threshold == null
+                    ? config.getBicycleMaxMaxSpeed()
+                    : Math.max(threshold, config.getBicycleMaxMaxSpeed());
+        }
+
+        return threshold;
     }
 }

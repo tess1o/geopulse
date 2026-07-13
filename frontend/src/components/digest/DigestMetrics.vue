@@ -28,6 +28,16 @@
         </div>
       </div>
 
+      <!-- Motorcycle Distance -->
+      <div class="metric-card" v-if="metrics.motorcycleDistance > 0">
+        <div class="metric-icon">🏍️</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.motorcycleDistance) }}</div>
+        <div class="metric-label">Distance by Motorcycle</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.motorcycleDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
       <!-- Walk Distance -->
       <div class="metric-card" v-if="metrics.walkDistance > 0">
         <div class="metric-icon">🚶</div>

@@ -483,6 +483,83 @@ class StreamingSingleTripAlgorithmTest {
         assertEquals(3, ((Trip) result.get(1)).getDuration().toMinutes());
     }
 
+    @Test
+    void shouldMergeSameModeFragmentsFromShortTrafficStop_MultiAlgorithm() {
+        Stay start = createStay("2026-07-02T06:30:00Z", "Start");
+        Trip carBeforeStop = createTrip("2026-07-02T06:36:00Z", Duration.ofMinutes(8), 5000.0, TripType.CAR);
+        Trip carAfterStop = createTrip("2026-07-02T06:47:00Z", Duration.ofMinutes(10), 7000.0, TripType.CAR);
+        Stay end = createStay("2026-07-02T07:05:00Z", "End");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, carBeforeStop, carAfterStop, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(1, trips.size(), "Same-mode fragments around a short stop should merge back together");
+        assertEquals(TripType.CAR, trips.getFirst().getTripType());
+    }
+
+    @Test
+    void shouldPreserveBicycleCarFragmentsFromTransferStop_MultiAlgorithm() {
+        Stay start = createStay("2026-07-02T06:30:00Z", "Start");
+        Trip bicycle = createTrip("2026-07-02T06:36:51Z", Duration.ofMinutes(9), 3361.0, TripType.BICYCLE);
+        Trip car = createTrip("2026-07-02T06:49:40Z", Duration.ofMinutes(10), 7883.0, TripType.CAR);
+        Stay end = createStay("2026-07-02T07:05:00Z", "End");
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(start, bicycle, car, end),
+                config
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(2, trips.size(), "Significant bicycle and car fragments should stay separate");
+        assertEquals(TripType.BICYCLE, trips.get(0).getTripType());
+        assertEquals(TripType.CAR, trips.get(1).getTripType());
+    }
+
+    @Test
+    void shouldPreserveShortSignificantModeLegAtStreamEnd_MultiAlgorithm() {
+        TimelineConfig strictConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(100)
+                .staypointMinDurationMinutes(10)
+                .walkingMaxAvgSpeed(5.0)
+                .walkingMaxMaxSpeed(8.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .build();
+
+        Trip bicycle = createTrip("2026-07-02T06:36:51Z", Duration.ofSeconds(580), 3455.6, TripType.BICYCLE);
+        Trip car = createTrip("2026-07-02T06:46:31Z", Duration.ofSeconds(3010), 8803.5, TripType.CAR);
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(bicycle, car),
+                strictConfig
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(2, trips.size(),
+                "Significant BICYCLE -> CAR segment at stream end must not drop the short bicycle leg");
+        assertEquals(TripType.BICYCLE, trips.get(0).getTripType());
+        assertEquals(TripType.CAR, trips.get(1).getTripType());
+    }
+
     private Stay createStay(String startTime, String locationName) {
         return Stay.builder()
                 .startTime(Instant.parse(startTime))

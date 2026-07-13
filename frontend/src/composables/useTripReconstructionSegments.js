@@ -20,6 +20,7 @@ const movementTypeOptions = [
   { label: 'Running', value: 'RUNNING' },
   { label: 'Bicycle', value: 'BICYCLE' },
   { label: 'Car', value: 'CAR' },
+  { label: 'Motorcycle', value: 'MOTORCYCLE' },
   { label: 'Train', value: 'TRAIN' },
   { label: 'Flight', value: 'FLIGHT' },
   { label: 'Boat', value: 'BOAT' },

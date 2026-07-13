@@ -35,12 +35,14 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 | **Photon**      | Yes                         | No               | Unknown                     |
 | **Google Maps** | Limited                     | Yes              | 40,000 requests/month free  |
 | **Mapbox**      | Limited, see ToS note below | Yes              | 100,000 requests/month free |
+| **Geoapify**    | Yes                         | Yes              | 3,000 requests/day free     |
+| **ChibiGeo**    | Yes                         | Yes              | 2,500 requests/day free     |
 
 ## Geocoding Configuration
 
 | Property                                 | Default                               | Description                                                               |
 |------------------------------------------|---------------------------------------|---------------------------------------------------------------------------|
-| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`, `photon`) |
+| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`, `photon`, `geoapify`, `chibigeo`) |
 | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | _(empty)_                             | Fallback service if primary fails                                         |
 | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                | Enable Nominatim geocoding service                                        |
 | `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` | Nominatim url                                                             |
@@ -53,6 +55,15 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE` | _(empty)_                             | Google Maps language code for reverse geocoding responses (optional, query param `language`) |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                           |
 | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                                 |
+| `GEOPULSE_GEOCODING_GEOAPIFY_ENABLED`    | `false`                               | Enable Geoapify geocoding service                                         |
+| `GEOPULSE_GEOCODING_GEOAPIFY_API_KEY`    | _(empty)_                             | Geoapify API key (required for Geoapify)                                  |
+| `GEOPULSE_GEOCODING_GEOAPIFY_LANGUAGE`   | _(empty)_                             | Geoapify language preference (optional)                                   |
+| `GEOPULSE_GEOCODING_GEOAPIFY_DELAY_MS`   | `0`                                   | Delay between Geoapify requests. Free tier is daily-quota based.          |
+| `GEOPULSE_GEOCODING_CHIBIGEO_ENABLED`    | `false`                               | Enable ChibiGeo geocoding service                                         |
+| `GEOPULSE_GEOCODING_CHIBIGEO_URL`        | `https://app.chibigeo.com/v1/photon`  | ChibiGeo Photon-compatible URL                                            |
+| `GEOPULSE_GEOCODING_CHIBIGEO_API_KEY`    | _(empty)_                             | ChibiGeo API key (required for ChibiGeo)                                  |
+| `GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE`   | _(empty)_                             | ChibiGeo Photon-compatible language preference                            |
+| `GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS`   | `0`                                   | Delay between ChibiGeo requests. Free tier is daily-quota based.          |
 
 > **Provider switch behavior:** changing primary/fallback provider affects only new lookups.
 > Existing cached geocoding records are reused until you run reconciliation from the Reverse Geocoding Management page.
@@ -76,6 +87,24 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 - Rate limited to 2 request per second
 - Possible to use self-hosted version
 - Language can be configured via `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` (allowed: "de", "pl", "el", "en", "es", "fa", "fr", "it", "ja", "ko")
+
+**Geoapify**
+
+1. Create an account at [Geoapify](https://www.geoapify.com/)
+2. Generate an API key
+3. Enable `GEOPULSE_GEOCODING_GEOAPIFY_ENABLED=true`
+4. Set `GEOPULSE_GEOCODING_GEOAPIFY_API_KEY`
+
+Geoapify supports both reverse geocoding and forward search. The default request delay is `0` because the free tier is daily-quota based rather than per-second based.
+
+**ChibiGeo**
+
+1. Create an account at [ChibiGeo](https://chibigeo.com/)
+2. Generate an API key
+3. Enable `GEOPULSE_GEOCODING_CHIBIGEO_ENABLED=true`
+4. Set `GEOPULSE_GEOCODING_CHIBIGEO_API_KEY`
+
+ChibiGeo is Photon-compatible and supports both reverse geocoding and forward search. GeoPulse sends the key as `X-Api-Key` and reuses the Photon response parser.
 
 **Google Maps**
 
@@ -163,6 +192,8 @@ GEOPULSE_GEOCODING_FALLBACK_PROVIDER=googlemaps
 GEOPULSE_GEOCODING_NOMINATIM_ENABLED=true
 GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED=true
 GEOPULSE_GEOCODING_MAPBOX_ENABLED=false
+GEOPULSE_GEOCODING_GEOAPIFY_ENABLED=false
+GEOPULSE_GEOCODING_CHIBIGEO_ENABLED=false
 
 # Custom URLs
 GEOPULSE_GEOCODING_NOMINATIM_URL=https://nominatim.openstreetmap.org
@@ -172,13 +203,19 @@ GEOPULSE_GEOCODING_PHOTON_URL=https://photon.komoot.io
 GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE=en-US
 GEOPULSE_GEOCODING_PHOTON_LANGUAGE=en
 GEOPULSE_GEOCODING_GOOGLE_MAPS_LANGUAGE=en
+GEOPULSE_GEOCODING_GEOAPIFY_LANGUAGE=en
+GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE=en
 
 # API Credentials (if using paid services)
 GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY=your_google_api_key_here
 GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
+GEOPULSE_GEOCODING_GEOAPIFY_API_KEY=your_geoapify_api_key_here
+GEOPULSE_GEOCODING_CHIBIGEO_API_KEY=your_chibigeo_api_key_here
 
 #Delay between requests to geocoding provider
 GEOPULSE_GEOCODING_DELAY_MS=1000
+GEOPULSE_GEOCODING_GEOAPIFY_DELAY_MS=0
+GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS=0
 
 # Resilience tuning (optional)
 GEOPULSE_GEOCODING_RETRY_MAX_RETRIES=5
@@ -218,6 +255,17 @@ config:
     mapbox:
       enabled: false
       accessToken: ""
+    geoapify:
+      enabled: false
+      apiKey: "your-api-key"
+      language: "en"
+      delayMs: 0
+    chibigeo:
+      enabled: false
+      url: "https://app.chibigeo.com/v1/photon"
+      apiKey: "your-api-key"
+      language: "en"
+      delayMs: 0
 ```
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`

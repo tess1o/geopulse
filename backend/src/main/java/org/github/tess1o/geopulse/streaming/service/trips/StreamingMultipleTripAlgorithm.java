@@ -47,9 +47,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                     List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
 
                     // Ensure at least one trip between stays for continuity
-                    List<Trip> validTrips = processedTrips.stream()
-                            .filter(trip -> isValidTrip(trip, config))
-                            .collect(Collectors.toList());
+                    List<Trip> validTrips = selectValidTrips(processedTrips, config);
 
                     if (validTrips.isEmpty() && !processedTrips.isEmpty() && currentStay != null) {
                         // No valid trips but we have movement between stays - include the best one
@@ -98,9 +96,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
             } else {
                 if (!tripSegment.isEmpty()) {
                     List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
-                    List<Trip> validTrips = processedTrips.stream()
-                            .filter(trip -> isValidTrip(trip, config))
-                            .collect(Collectors.toList());
+                    List<Trip> validTrips = selectValidTrips(processedTrips, config);
                     if (!validTrips.isEmpty()) {
                         processedEvents.addAll(validTrips);
                     } else if (event instanceof DataGap && !processedTrips.isEmpty()) {
@@ -121,9 +117,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         // Handle remaining trips
         if (!tripSegment.isEmpty()) {
             List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
-            List<Trip> validTrips = processedTrips.stream()
-                    .filter(trip -> isValidTrip(trip, config))
-                    .collect(Collectors.toList());
+            List<Trip> validTrips = selectValidTrips(processedTrips, config);
 
             if (validTrips.isEmpty() && !processedTrips.isEmpty() && currentStay != null) {
                 // Include best trip for continuity if we had a preceding stay
@@ -140,6 +134,18 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         log.info("Multi algorithm: processed {} events into {}", events.size(), processedEvents.size());
         return processedEvents;
+    }
+
+    private List<Trip> selectValidTrips(List<Trip> processedTrips, TimelineConfig config) {
+        boolean preserveShortSignificantLegs = processedTrips.size() > 1 && hasLegitimateModeChanges(processedTrips, false);
+
+        List<Trip> validTrips = processedTrips.stream()
+                .filter(trip -> preserveShortSignificantLegs
+                        ? isValidTripDistance(trip, config)
+                        : isValidTrip(trip, config))
+                .collect(Collectors.toList());
+
+        return validTrips;
     }
 
 
@@ -164,7 +170,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         }
 
         // Step 2: Check if we have legitimate mode diversity (not just traffic fragmentation)
-        boolean hasSignificantModeChanges = hasLegitimateModChanges(condensedTrips);
+        boolean hasSignificantModeChanges = hasLegitimateModeChanges(condensedTrips, true);
 
         if (hasSignificantModeChanges) {
             log.debug("Multi algorithm: keeping {} separate trips due to significant mode changes", condensedTrips.size());
@@ -224,7 +230,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Uses relative contribution analysis: at least two known modes must contribute meaningfully
      * to total distance or time.
      */
-    private boolean hasLegitimateModChanges(List<Trip> trips) {
+    private boolean hasLegitimateModeChanges(List<Trip> trips, boolean logAnalysis) {
         Map<TripType, ModeContribution> contributionsByType = summarizeModeContributions(trips);
         if (contributionsByType.size() < 2) {
             return false;
@@ -247,10 +253,12 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         boolean legitimate = significantModeCount >= 2;
 
-        log.debug("Mode change analysis: contributions={}, significantModes={}, legitimate={}",
-                describeModeContributions(contributionsByType, totalDistance, totalTime),
-                significantModeCount,
-                legitimate);
+        if (logAnalysis) {
+            log.debug("Mode change analysis: contributions={}, significantModes={}, legitimate={}",
+                    describeModeContributions(contributionsByType, totalDistance, totalTime),
+                    significantModeCount,
+                    legitimate);
+        }
 
         return legitimate;
     }

@@ -102,6 +102,10 @@
               <span class="detail-label">Distance:</span>
               <span class="detail-value">{{ formatDistance(trip?.distanceMeters) }}</span>
             </div>
+            <div v-if="averageSpeedText" class="detail-item">
+              <span class="detail-label">Average Speed:</span>
+              <span class="detail-value">{{ averageSpeedText }}</span>
+            </div>
             <div class="detail-item">
               <span class="detail-label">Route Points:</span>
               <span class="detail-value">{{ tripGpsPoints.length }} points</span>
@@ -161,7 +165,7 @@ import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
-import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
+import { formatDurationSmart, formatDistance, formatSpeed } from '@/utils/calculationsHelpers'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { useLocationStore } from '@/stores/location'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
@@ -169,6 +173,7 @@ import {
   normalizeReplayPathPoints,
   resolveHighlightedTripPoints
 } from '@/maps/shared/highlightedTripData'
+import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -241,6 +246,10 @@ const tripPathData = computed(() => (
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(mapInstance.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+const averageSpeedText = computed(() => {
+  const averageSpeedKmh = resolveAverageTripSpeedKmh(props.trip)
+  return Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
+})
 
 const {
   showTripReplayBar,
@@ -299,6 +308,7 @@ const formatDuration = (seconds) => {
 const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
+    'MOTORCYCLE': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
     'RUNNING': 'success',

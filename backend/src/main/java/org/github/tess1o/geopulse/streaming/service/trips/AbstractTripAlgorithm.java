@@ -34,13 +34,21 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             return false;
         }
 
-        Integer minDistance = config.getStaypointRadiusMeters();
+        boolean validDistance = isValidTripDistance(trip, config);
         Integer minDuration = config.getStaypointMinDurationMinutes();
 
-        boolean validDistance = minDistance == null || trip.getDistanceMeters() >= minDistance;
         boolean validDuration = minDuration == null || trip.getDuration().toMinutes() >= minDuration;
 
         return validDistance && validDuration;
+    }
+
+    protected boolean isValidTripDistance(Trip trip, TimelineConfig config) {
+        if (trip == null) {
+            return false;
+        }
+
+        Integer minDistance = config.getStaypointRadiusMeters();
+        return minDistance == null || trip.getDistanceMeters() >= minDistance;
     }
 
     /**

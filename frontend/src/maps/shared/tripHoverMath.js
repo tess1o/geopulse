@@ -110,6 +110,22 @@ export const projectTripHoverContext = (context, projectionApi = {}) => {
     const deltaY = endProjected.y - startProjected.y
     const segmentLengthSq = deltaX * deltaX + deltaY * deltaY
     const segmentLengthMeters = context.cumulativeDistancesMeters[index + 1] - context.cumulativeDistancesMeters[index]
+    const segmentStartTimeMs = context.timestampsMs[index]
+    const segmentEndTimeMs = context.timestampsMs[index + 1]
+    const segmentDurationSeconds = (
+      Number.isFinite(segmentStartTimeMs)
+      && Number.isFinite(segmentEndTimeMs)
+      && segmentEndTimeMs > segmentStartTimeMs
+    )
+      ? (segmentEndTimeMs - segmentStartTimeMs) / 1000
+      : null
+    const speedKmh = (
+      Number.isFinite(segmentLengthMeters)
+      && Number.isFinite(segmentDurationSeconds)
+      && segmentDurationSeconds > 0
+    )
+      ? (segmentLengthMeters / segmentDurationSeconds) * 3.6
+      : null
 
     context.segments.push({
       index,
@@ -117,8 +133,31 @@ export const projectTripHoverContext = (context, projectionApi = {}) => {
       deltaX,
       deltaY,
       segmentLengthSq,
-      segmentLengthMeters
+      segmentLengthMeters,
+      segmentDurationSeconds,
+      speedKmh
     })
+  }
+}
+
+const resolvePointSpeedContext = (context, pointIndex) => {
+  if (!context || !Number.isInteger(pointIndex)) {
+    return {}
+  }
+
+  const nextSegment = context.segments?.[pointIndex]
+  const previousSegment = context.segments?.[pointIndex - 1]
+  const segment = nextSegment || previousSegment
+  if (!segment) {
+    return {}
+  }
+
+  return {
+    segmentIndex: segment.index,
+    segmentFactor: nextSegment ? 0 : 1,
+    segmentDistanceMeters: segment.segmentLengthMeters,
+    segmentDurationSeconds: segment.segmentDurationSeconds,
+    speedKmh: segment.speedKmh
   }
 }
 
@@ -157,6 +196,7 @@ export const resolveTripHoverTiming = (context, cursorPoint, projectionApi = {})
         distanceSq,
         timeMs: timestampMs,
         distanceFromStartMeters: context.cumulativeDistancesMeters[index],
+        ...resolvePointSpeedContext(context, index),
         snappedPoint: {
           latitude: context.points[index].latitude,
           longitude: context.points[index].longitude
@@ -223,6 +263,11 @@ export const resolveTripHoverTiming = (context, cursorPoint, projectionApi = {})
         distanceSq,
         timeMs: estimatedTimeMs,
         distanceFromStartMeters: context.cumulativeDistancesMeters[segment.index] + (segment.segmentLengthMeters * projectionFactor),
+        segmentIndex: segment.index,
+        segmentFactor: projectionFactor,
+        segmentDistanceMeters: segment.segmentLengthMeters,
+        segmentDurationSeconds: segment.segmentDurationSeconds,
+        speedKmh: segment.speedKmh,
         snappedPoint
       }
     }

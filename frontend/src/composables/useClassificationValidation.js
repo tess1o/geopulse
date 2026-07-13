@@ -14,6 +14,8 @@ import { computed } from 'vue'
  */
 export function useClassificationValidation(prefs) {
   const isCarEnabled = () => prefs.value?.carEnabled !== false
+  const isMotorcycleEnabled = () => prefs.value?.motorcycleEnabled === true
+  const isMotorVehicleEnabled = () => isCarEnabled() || isMotorcycleEnabled()
 
   /**
    * Check for bicycle completely exceeding car threshold (PROBLEMATIC)
@@ -23,7 +25,7 @@ export function useClassificationValidation(prefs) {
    * WRONG: bicycle 8-30 km/h, car 10+ km/h → car trips at 28 km/h would be classified as BICYCLE
    */
   const bicycleCarOverlapWarning = computed(() => {
-    if (!prefs.value?.bicycleEnabled || !isCarEnabled()) return null
+    if (!prefs.value?.bicycleEnabled || !isMotorVehicleEnabled()) return null
 
     const bicycleMaxAvg = prefs.value?.bicycleMaxAvgSpeed ?? 25.0
     const bicycleMaxMax = prefs.value?.bicycleMaxMaxSpeed ?? 35.0
@@ -36,7 +38,7 @@ export function useClassificationValidation(prefs) {
       return {
         type: 'bicycle',
         severity: 'warn',
-        message: `Bicycle max avg speed (${bicycleMaxAvg} km/h) is very high. Car trips may be misclassified as bicycle. Consider lowering to ~25 km/h.`
+        message: `Bicycle max avg speed (${bicycleMaxAvg} km/h) is very high. Motor vehicle trips may be misclassified as bicycle. Consider lowering to ~25 km/h.`
       }
     }
 
@@ -44,12 +46,12 @@ export function useClassificationValidation(prefs) {
   })
 
   /**
-   * Check for insufficient gap between bicycle and car
+   * Check for insufficient gap between bicycle and motor vehicle
    * NOTE: This is less critical due to priority order (bicycle checked before car)
    * Only warn if car min is HIGHER than bicycle max (creating a gap where trips become UNKNOWN)
    */
   const bicycleCarGapWarning = computed(() => {
-    if (!prefs.value?.bicycleEnabled || !isCarEnabled()) return null
+    if (!prefs.value?.bicycleEnabled || !isMotorVehicleEnabled()) return null
 
     const bicycleMaxAvg = prefs.value?.bicycleMaxAvgSpeed ?? 25.0
     const carMinAvg = prefs.value?.carMinAvgSpeed ?? 10.0
@@ -60,7 +62,7 @@ export function useClassificationValidation(prefs) {
       return {
         type: 'bicycle',
         severity: 'warn',
-        message: `Large ${gap.toFixed(1)} km/h gap between bicycle max (${bicycleMaxAvg} km/h) and car min (${carMinAvg} km/h). Trips in this range will be UNKNOWN.`
+        message: `Large ${gap.toFixed(1)} km/h gap between bicycle max (${bicycleMaxAvg} km/h) and motor vehicle min (${carMinAvg} km/h). Trips in this range will be UNKNOWN.`
       }
     }
 
@@ -224,7 +226,7 @@ export function useClassificationValidation(prefs) {
    * Check for car min/max inversion
    */
   const carMinMaxWarning = computed(() => {
-    if (!isCarEnabled()) return null
+    if (!isMotorVehicleEnabled()) return null
 
     const minAvg = prefs.value?.carMinAvgSpeed
     const minMax = prefs.value?.carMinMaxSpeed
@@ -233,7 +235,7 @@ export function useClassificationValidation(prefs) {
       return {
         type: 'car',
         severity: 'warn',
-        message: `Car min avg speed (${minAvg} km/h) is higher than min peak speed (${minMax} km/h). Trips may be harder to classify.`
+        message: `Motor vehicle min avg speed (${minAvg} km/h) is higher than min peak speed (${minMax} km/h). Trips may be harder to classify.`
       }
     }
 

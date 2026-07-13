@@ -4,7 +4,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
@@ -21,7 +20,9 @@ import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocati
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
+import org.github.tess1o.geopulse.streaming.util.TimelineGpsAccuracyFilter;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -418,7 +419,10 @@ public class GpsPointService {
      * @return A GpsPointPathDTO containing the path points
      */
     public GpsPointPathDTO getGpsPointPath(UUID userId, Instant startTime, Instant endTime) {
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime);
+        TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(userId);
+        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime).stream()
+                .filter(point -> point != null && TimelineGpsAccuracyFilter.shouldIncludeAccuracy(point.getAccuracy(), config))
+                .toList();
         List<GpsPointPathPointDTO> pathPoints = gpsPointMapper.toPathPoints(gpsPoints);
         applyTelemetryToPathPoints(userId, gpsPoints, pathPoints);
 

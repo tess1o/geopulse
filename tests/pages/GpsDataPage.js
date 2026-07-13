@@ -44,9 +44,11 @@ export class GpsDataPage {
       altitudeColumn: '[data-field="altitude"]',
       batteryColumn: '[data-field="battery"]',
       sourceColumn: '[data-field="sourceType"]',
+      deltaColumn: 'th:has-text("Delta")',
       
       // Table cell content
       timestampCells: '.timestamp-cell',
+      deltaCells: '.delta-col',
       coordinateCells: '.coordinates-cell',
       sourceTags: '.source-tag',
       
@@ -191,16 +193,18 @@ export class GpsDataPage {
       }
       
       // Extract other data (with null handling)
-      const speedText = await this.getTableCellText(row, 2);
+      const deltaText = await this.getTableCellTextByClass(row, 'delta-col');
+
+      const speedText = await this.getTableCellTextByClass(row, 'numeric-col', 0);
       const speed = this.parseSpeed(speedText);
       
-      const accuracyText = await this.getTableCellText(row, 3);
+      const accuracyText = await this.getTableCellTextByClass(row, 'numeric-col', 1);
       const accuracy = this.parseAccuracy(accuracyText);
       
-      const altitudeText = await this.getTableCellText(row, 4);
+      const altitudeText = await this.getTableCellTextByClass(row, 'numeric-col', 2);
       const altitude = this.parseAltitude(altitudeText);
       
-      const batteryText = await this.getTableCellText(row, 5);
+      const batteryText = await this.getTableCellTextByClass(row, 'numeric-col', 3);
       const battery = this.parseBattery(batteryText);
       
       const sourceTag = row.locator('.source-tag');
@@ -208,6 +212,7 @@ export class GpsDataPage {
       
       points.push({
         timestamp: `${date} ${time}`,
+        delta: deltaText?.trim() || null,
         coordinates: { lat, lng },
         speed,
         accuracy,
@@ -228,6 +233,21 @@ export class GpsDataPage {
       const cells = row.locator('td');
       if (await cells.count() > columnIndex) {
         return await cells.nth(columnIndex).textContent();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Helper to get table cell text by cell class
+   */
+  async getTableCellTextByClass(row, className, index = 0) {
+    try {
+      const cells = row.locator(`td.${className}`);
+      if (await cells.count() > index) {
+        return await cells.nth(index).textContent();
       }
       return null;
     } catch {

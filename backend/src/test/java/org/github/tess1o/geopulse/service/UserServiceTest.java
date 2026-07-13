@@ -4,10 +4,12 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -16,7 +18,6 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-
 import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -31,6 +32,9 @@ public class UserServiceTest {
 
     @Inject
     SecurePasswordUtils passwordUtils;
+
+    @Inject
+    SystemSettingsService systemSettingsService;
 
 
     @Test
@@ -47,6 +51,43 @@ public class UserServiceTest {
         assertTrue(passwordUtils.isPasswordValid("test", user.getPasswordHash()));
         assertEquals(MapRenderMode.VECTOR, user.getMapRenderMode());
     }
+
+    @Test
+    public void testUserRegistrationUsesConfiguredDefaultMeasureUnit() {
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("default-unit-updater"), "test", "Default Unit Updater", "Europe/Kyiv");
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        try {
+            String email = TestIds.uniqueEmail("user-service-default-unit");
+            UserEntity user = userService.registerUser(email, "test", "test", "Europe/Kyiv");
+
+            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+        } finally {
+            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+        }
+    }
+
+    @Test
+    public void testInvitationRegistrationUsesConfiguredDefaultMeasureUnit() {
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("invitation-default-unit-updater"), "test", "Invitation Default Unit Updater", "Europe/Kyiv");
+        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        try {
+            String email = TestIds.uniqueEmail("user-service-invitation-default-unit");
+            UserEntity user = userService.registerUserViaInvitation(
+                    "invitation-token-for-test",
+                    email,
+                    "test",
+                    "test",
+                    "Europe/Kyiv"
+            );
+
+            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+        } finally {
+            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+        }
+    }
+
     @Test
     @Transactional
     public void testValidAvatarPaths() {

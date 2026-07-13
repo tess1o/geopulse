@@ -354,6 +354,67 @@ public class GpsPointServiceTest {
 
     @Test
     @Transactional
+    public void testGetGpsPointPath_FiltersPointsAboveTimelineAccuracyThreshold() {
+        setTimelineAccuracyPreferences(true, 60.0);
+        savePathTestPoints();
+
+        GpsPointPathDTO path = gpsPointService.getGpsPointPath(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:03:00Z")
+        );
+
+        List<Double> accuracies = path.getPoints().stream()
+                .map(point -> ((GpsPointPathPointDTO) point).getAccuracy())
+                .toList();
+
+        assertEquals(List.of(11.0, 12.0), accuracies);
+    }
+
+    @Test
+    @Transactional
+    public void testGetGpsPointPath_KeepsHighAccuracyPointsWhenAccuracyValidationDisabled() {
+        setTimelineAccuracyPreferences(false, 60.0);
+        savePathTestPoints();
+
+        GpsPointPathDTO path = gpsPointService.getGpsPointPath(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:03:00Z")
+        );
+
+        List<Double> accuracies = path.getPoints().stream()
+                .map(point -> ((GpsPointPathPointDTO) point).getAccuracy())
+                .toList();
+
+        assertEquals(List.of(11.0, 100.0, 12.0), accuracies);
+    }
+
+    @Test
+    @Transactional
+    public void testGetGpsPointPath_KeepsNullAccuracyPoints() {
+        setTimelineAccuracyPreferences(true, 60.0);
+        GpsSourceConfigEntity mobileAppConfig = createMobileAppTestConfig();
+        gpsPointService.saveMobileAppGpsPoint(
+                createMobilePoint("2026-05-15T10:00:00Z", 40.0, -74.0, null),
+                "pixel-9-pro",
+                userId,
+                GpsSourceType.MOBILE_APP,
+                mobileAppConfig
+        );
+
+        GpsPointPathDTO path = gpsPointService.getGpsPointPath(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:01:00Z")
+        );
+
+        assertEquals(1, path.getPoints().size());
+        assertNull(((GpsPointPathPointDTO) path.getPoints().get(0)).getAccuracy());
+    }
+
+    @Test
+    @Transactional
     public void testGetGpsPointSummary_BasicFunctionality() {
         Instant utcTodayNoon = Instant.now()
                 .atZone(ZoneId.of("UTC"))
@@ -612,6 +673,55 @@ public class GpsPointServiceTest {
                 .build();
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
     }
+
+    private void setTimelineAccuracyPreferences(boolean useVelocityAccuracy, double maxAccuracyThreshold) {
+        UserEntity user = userRepository.findById(userId);
+        user.setTimelinePreferences(TimelinePreferences.builder()
+                .useVelocityAccuracy(useVelocityAccuracy)
+                .staypointMaxAccuracyThreshold(maxAccuracyThreshold)
+                .build());
+        userRepository.persist(user);
+    }
+
+    private void savePathTestPoints() {
+        GpsSourceConfigEntity mobileAppConfig = createMobileAppTestConfig();
+        gpsPointService.saveMobileAppGpsPoints(List.of(
+                        createMobilePoint("2026-05-15T10:00:00Z", 40.0, -74.0, 11.0),
+                        createMobilePoint("2026-05-15T10:01:00Z", 40.1, -74.1, 100.0),
+                        createMobilePoint("2026-05-15T10:02:00Z", 40.2, -74.2, 12.0)
+                ),
+                "pixel-9-pro",
+                userId,
+                GpsSourceType.MOBILE_APP,
+                mobileAppConfig);
+    }
+
+    private GpsPointDTO createMobilePoint(String timestamp, double lat, double lng, Double accuracy) {
+        return new GpsPointDTO(
+                0L,
+                Instant.parse(timestamp),
+                new GpsPointDTO.CoordinatesDTO(lat, lng),
+                accuracy,
+                88.0,
+                1.5,
+                12.0,
+                null
+        );
+    }
+
+    private GpsSourceConfigEntity createMobileAppTestConfig() {
+        return GpsSourceConfigEntity.builder()
+                .user(userRepository.findById(userId))
+                .sourceType(GpsSourceType.MOBILE_APP)
+                .username(TestIds.uniqueValue("gps-point-mobile-source-user"))
+                .active(true)
+                .filterInaccurateData(false)
+                .maxAllowedAccuracy(100)
+                .maxAllowedSpeed(250)
+                .enableDuplicateDetection(false)
+                .build();
+    }
+
     public static class DisableLocationTimeThresholdTestProfile implements QuarkusTestProfile {
         @Override
         public Map<String, String> getConfigOverrides() {

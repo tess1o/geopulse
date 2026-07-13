@@ -76,6 +76,7 @@ GeoPulse includes sophisticated GPS noise detection to ensure accurate classific
 - **Supersonic Speed Detection**  -  Rejects impossible speeds above 1,200 km/h (GPS noise)
 - **Reliability Validation**  -  Compares GPS speeds against calculated speeds from distance/duration
 - **Adaptive Thresholds**  -  Uses different validation rules for low-speed vs. high-speed trips
+- **Road-Vehicle Peak Preservation**  -  If GPS average speed is unreliable but the trip is long enough and the peak speed is plausible for road traffic, GeoPulse can keep that peak as evidence for **CAR** while still using the calculated average speed. Unrealistic spikes and very short noisy trips are still treated as GPS noise.
 
 ### Boat Detection
 

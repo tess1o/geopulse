@@ -252,6 +252,7 @@ const selectedMovementType = ref(null)
 const movementTypeOptions = [
   { label: 'Walk', value: 'WALK' },
   { label: 'Car', value: 'CAR' },
+  { label: 'Motorcycle', value: 'MOTORCYCLE' },
   { label: 'Bicycle', value: 'BICYCLE' },
   { label: 'Running', value: 'RUNNING' },
   { label: 'Train', value: 'TRAIN' },
@@ -411,6 +412,7 @@ const formatVariance = (variance) => {
 const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
+    'MOTORCYCLE': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
     'RUNNING': 'success',

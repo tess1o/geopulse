@@ -398,7 +398,7 @@
     <!-- GPS Points Table -->
     <BaseCard class="table-section">
       <DataTable
-        :value="gpsPoints"
+        :value="gpsPointsWithDelta"
         :loading="tableLoading"
         paginator
         :rows="pageSize"
@@ -482,6 +482,13 @@
               <div class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</div>
               <div class="timestamp-time">{{ formatTimestamp(slotProps.data.timestamp).time }}</div>
             </div>
+          </template>
+        </Column>
+
+        <Column header="Delta" class="delta-col" v-if="!isMobile">
+          <template #body="slotProps">
+            <span v-if="slotProps.data.timeDeltaDisplay">{{ slotProps.data.timeDeltaDisplay }}</span>
+            <span v-else class="null-value">-</span>
           </template>
         </Column>
 
@@ -801,6 +808,12 @@ const telemetryTypeOptions = [
 const summaryStats = computed(() => technicalDataStore.summaryStats)
 const gpsPoints = computed(() => technicalDataStore.gpsPoints)
 const totalRecords = computed(() => technicalDataStore.totalRecords)
+const gpsPointsWithDelta = computed(() =>
+  gpsPoints.value.map((point, index, points) => ({
+    ...point,
+    timeDeltaDisplay: formatTimeDelta(point.timestamp, points[index - 1]?.timestamp)
+  }))
+)
 
 const hasData = computed(() => summaryStats.value.totalPoints > 0)
 const hasDateFilter = computed(() =>
@@ -889,8 +902,27 @@ const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
   return {
     date: timezone.formatDateDisplay(timestamp),
-    time: timezone.formatTime(timestamp)
+    time: timezone.formatTime(timestamp, { withSeconds: true })
   }
+}
+
+const formatTimeDelta = (timestamp, previousTimestamp) => {
+  if (!timestamp || !previousTimestamp) return null
+
+  const currentMs = Date.parse(timestamp)
+  const previousMs = Date.parse(previousTimestamp)
+  if (!Number.isFinite(currentMs) || !Number.isFinite(previousMs)) return null
+
+  const totalSeconds = Math.abs(Math.round((currentMs - previousMs) / 1000))
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${String(seconds).padStart(2, '0')}s`
+  return `${seconds}s`
 }
 
 const formatTelemetryValue = (item) => {
@@ -1894,8 +1926,14 @@ watch(filters, async () => {
 
 /* Table Columns */
 .gps-data-table :deep(.timestamp-col) {
-  min-width: 120px;
-  width: 120px;
+  min-width: 135px;
+  width: 135px;
+}
+
+.gps-data-table :deep(.delta-col) {
+  min-width: 80px;
+  width: 80px;
+  text-align: right;
 }
 
 .gps-data-table :deep(.coordinates-col) {
@@ -1934,8 +1972,13 @@ watch(filters, async () => {
 /* Large screen column optimizations */
 @media (min-width: 1440px) {
   .gps-data-table :deep(.timestamp-col) {
-    min-width: 140px;
-    width: 140px;
+    min-width: 155px;
+    width: 155px;
+  }
+
+  .gps-data-table :deep(.delta-col) {
+    min-width: 90px;
+    width: 90px;
   }
 
   .gps-data-table :deep(.coordinates-col) {
@@ -2171,8 +2214,8 @@ watch(filters, async () => {
   }
 
   .gps-data-table :deep(.timestamp-col) {
-    min-width: 90px;
-    width: 90px;
+    min-width: 105px;
+    width: 105px;
   }
 
   .gps-data-table :deep(.coordinates-col) {
