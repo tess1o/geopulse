@@ -423,6 +423,72 @@ class StreamingTimelineProcessorTest {
     }
 
     @Test
+    void shouldEndLowSpeedWalkingTrip_WhenSustainedStopFallbackDetectsArrival() {
+        TimelineConfig walkingConfig = TimelineConfig.builder()
+            .staypointRadiusMeters(50)
+            .staypointMinDurationMinutes(7)
+            .staypointVelocityThreshold(2.0)
+            .tripArrivalDetectionMinDurationSeconds(90)
+            .tripSustainedStopMinDurationSeconds(60)
+            .tripArrivalMinPoints(3)
+            .useVelocityAccuracy(false)
+            .dataGapThresholdSeconds(3600)
+            .build();
+
+        when(finalizationService.finalizeTrip(any(UserState.class), eq(walkingConfig)))
+            .thenAnswer(invocation -> {
+                UserState state = invocation.getArgument(0);
+                List<GPSPoint> path = state.copyActivePoints();
+                GPSPoint first = path.getFirst();
+                GPSPoint last = path.getLast();
+                return Trip.builder()
+                    .startTime(first.getTimestamp())
+                    .duration(java.time.Duration.between(first.getTimestamp(), last.getTimestamp()))
+                    .startPoint(first)
+                    .endPoint(last)
+                    .distanceMeters(first.distanceTo(last))
+                    .build();
+            });
+
+        List<GPSPoint> points = Arrays.asList(
+            createGpsPoint(Instant.parse("2026-07-12T09:06:46Z"), 49.547896, 25.595152, 0.0, 2.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:08:16Z"), 49.548400, 25.594169, 1.1111111111111112, 4.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:11:16Z"), 49.546935, 25.593016, 1.1111111111111112, 4.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:14:16Z"), 49.546136, 25.591888, 0.5555555555555556, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:17:16Z"), 49.546761, 25.589489, 0.8333333333333333, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:20:16Z"), 49.546368, 25.588111, 0.8333333333333333, 2.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:23:16Z"), 49.545500, 25.586527, 0.8333333333333333, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:26:16Z"), 49.546474, 25.584697, 0.8333333333333333, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:29:16Z"), 49.547252, 25.583258, 0.8333333333333333, 8.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:32:16Z"), 49.548312, 25.581359, 0.8333333333333333, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:35:16Z"), 49.548410, 25.581285, 0.0, 6.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:36:46Z"), 49.548586, 25.581334, 0.0, 3.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:39:46Z"), 49.548581, 25.581312, 0.0, 6.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:42:46Z"), 49.548586, 25.581316, 0.0, 7.0),
+            createGpsPoint(Instant.parse("2026-07-12T09:45:46Z"), 49.548580, 25.581321, 0.0, 10.0)
+        );
+
+        List<TimelineEvent> events = processor.processPoints(points, walkingConfig, testUserId);
+
+        List<Trip> trips = events.stream()
+            .filter(Trip.class::isInstance)
+            .map(Trip.class::cast)
+            .toList();
+        List<Stay> stays = events.stream()
+            .filter(Stay.class::isInstance)
+            .map(Stay.class::cast)
+            .toList();
+
+        assertFalse(trips.isEmpty(), "Low-speed walking should still produce trip fragments before the stay");
+        assertTrue(stays.stream()
+                .anyMatch(stay -> Instant.parse("2026-07-12T09:35:16Z").equals(stay.getStartTime())),
+            "Sustained-stop fallback should create the next stay at the rollbacked arrival boundary");
+        assertTrue(trips.stream()
+                .noneMatch(trip -> Instant.parse("2026-07-12T09:45:46Z").equals(trip.getEndTime())),
+            "Walking trip must not remain open through the whole stationary tail");
+    }
+
+    @Test
     void shouldSplitBikeAndCarTrips_WhenShortTransferClusterIsDetectedWithoutStay() {
         TimelineConfig multiModalConfig = TimelineConfig.builder()
             .staypointRadiusMeters(50)

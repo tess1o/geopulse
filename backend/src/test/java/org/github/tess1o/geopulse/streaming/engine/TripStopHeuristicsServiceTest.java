@@ -82,7 +82,7 @@ class TripStopHeuristicsServiceTest {
     }
 
     @Test
-    void shouldNotDetectTripStopFromRecentWindow_WhenSlowCrawlIsNotSpatiallyClustered() {
+    void shouldDetectSustainedStopFallback_WhenRecentSlowWindowIsNotSpatiallyClustered() {
         List<GPSPoint> activePoints = List.of(
                 point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 8.0),
                 point("2024-01-01T10:01:00Z", 40.7130, -74.0080, 9.0),
@@ -90,6 +90,54 @@ class TripStopHeuristicsServiceTest {
                 point("2024-01-01T10:02:30Z", 40.7147, -74.0060, 1.0),
                 point("2024-01-01T10:03:00Z", 40.7154, -74.0060, 1.0),
                 point("2024-01-01T10:03:30Z", 40.7161, -74.0060, 1.0));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, config);
+
+        assertTrue(result.isStopDetected());
+        assertEquals(3, result.getStoppedClusterStartIndex());
+    }
+
+    @Test
+    void shouldDetectSustainedStopFallback_ForLowSpeedWalkingArrivalFromJuly2026Regression() {
+        TimelineConfig walkingConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(50)
+                .staypointVelocityThreshold(2.0)
+                .tripArrivalMinPoints(3)
+                .tripArrivalDetectionMinDurationSeconds(90)
+                .tripSustainedStopMinDurationSeconds(60)
+                .build();
+
+        List<GPSPoint> activePoints = List.of(
+                point("2026-07-12T09:06:46Z", 49.547896, 25.595152, 0.0),
+                point("2026-07-12T09:08:16Z", 49.548400, 25.594169, 1.1111111111111112),
+                point("2026-07-12T09:11:16Z", 49.546935, 25.593016, 1.1111111111111112),
+                point("2026-07-12T09:14:16Z", 49.546136, 25.591888, 0.5555555555555556),
+                point("2026-07-12T09:17:16Z", 49.546761, 25.589489, 0.8333333333333333),
+                point("2026-07-12T09:20:16Z", 49.546368, 25.588111, 0.8333333333333333),
+                point("2026-07-12T09:23:16Z", 49.545500, 25.586527, 0.8333333333333333),
+                point("2026-07-12T09:26:16Z", 49.546474, 25.584697, 0.8333333333333333),
+                point("2026-07-12T09:29:16Z", 49.547252, 25.583258, 0.8333333333333333),
+                point("2026-07-12T09:32:16Z", 49.548312, 25.581359, 0.8333333333333333),
+                point("2026-07-12T09:35:16Z", 49.548410, 25.581285, 0.0),
+                point("2026-07-12T09:36:46Z", 49.548586, 25.581334, 0.0),
+                point("2026-07-12T09:39:46Z", 49.548581, 25.581312, 0.0));
+
+        TripStopHeuristicsService.TripStopDetection result =
+                service.detectTripStopFromRecentWindow(activePoints, walkingConfig);
+
+        assertTrue(result.isStopDetected());
+        assertEquals(10, result.getStoppedClusterStartIndex());
+    }
+
+    @Test
+    void shouldNotDetectSustainedStopFallback_WhenRecentSlowWindowTooShort() {
+        List<GPSPoint> activePoints = List.of(
+                point("2024-01-01T10:00:00Z", 40.7120, -74.0100, 8.0),
+                point("2024-01-01T10:01:00Z", 40.7130, -74.0080, 9.0),
+                point("2024-01-01T10:02:00Z", 40.7140, -74.0060, 1.0),
+                point("2024-01-01T10:02:20Z", 40.7147, -74.0060, 1.0),
+                point("2024-01-01T10:02:40Z", 40.7154, -74.0060, 1.0));
 
         TripStopHeuristicsService.TripStopDetection result =
                 service.detectTripStopFromRecentWindow(activePoints, config);
