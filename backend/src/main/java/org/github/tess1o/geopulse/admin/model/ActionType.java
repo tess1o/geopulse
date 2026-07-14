@@ -31,6 +31,10 @@ public enum ActionType {
     API_TOKEN_REVOKED,
     API_TOKEN_ADMIN_REVOKED,
 
+    // Timeline regeneration campaigns
+    TIMELINE_REGENERATION_CAMPAIGN_CREATED,
+    TIMELINE_REGENERATION_CAMPAIGN_RETRIED,
+
     // Admin actions
     ADMIN_LOGIN
 }

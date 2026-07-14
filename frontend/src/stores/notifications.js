@@ -317,11 +317,23 @@ export const useNotificationsStore = defineStore('notifications', {
         if (emitStartupSummary && unreadCount > 0 && Number.isFinite(startupBaselineId)) {
           const shouldShowSummary = this.backlogWatermark == null || startupBaselineId > this.backlogWatermark
           if (shouldShowSummary) {
+            const latestUnreadEvent = events.find(event => Number(event.id) === startupBaselineId)
+              || events.find(event => !event.seen)
             this.emitToast({
               summary: 'Unread notifications',
               detail: `You have ${unreadCount} unread notifications.`,
               life: 6500,
-              data: { action: 'open-events' }
+              data: latestUnreadEvent
+                ? {
+                    action: 'open-notification',
+                    notification: latestUnreadEvent,
+                    notificationId: latestUnreadEvent.id,
+                    actionLabel: this.notificationActionLabel(latestUnreadEvent)
+                  }
+                : {
+                    action: 'open-events',
+                    actionLabel: 'Open Geofence Events'
+                  }
             })
             this.advanceBacklogWatermark(startupBaselineId)
           }
@@ -349,8 +361,10 @@ export const useNotificationsStore = defineStore('notifications', {
             detail: event.message || 'New notification',
             life: 7000,
             data: {
-              action: 'open-events',
-              notificationId: event.id
+              action: 'open-notification',
+              notification: event,
+              notificationId: event.id,
+              actionLabel: this.notificationActionLabel(event)
             }
           })
           this.advanceBacklogWatermark(event.id)
@@ -370,6 +384,28 @@ export const useNotificationsStore = defineStore('notifications', {
         return `${event.source} notification`
       }
       return 'New notification'
+    },
+
+    notificationActionLabel(event) {
+      const targetRoute = event?.metadata?.targetRoute
+
+      if (typeof targetRoute === 'string') {
+        if (targetRoute.startsWith('/app/timeline/jobs')) {
+          return 'Open Timeline Jobs'
+        }
+        if (targetRoute.startsWith('/app/geofences')) {
+          return 'Open Geofence Events'
+        }
+      }
+
+      if (event?.type === 'TIMELINE_REGENERATION_REQUIRED' || event?.source === 'TIMELINE') {
+        return 'Open Timeline Jobs'
+      }
+      if (event?.source === 'GEOFENCE') {
+        return 'Open Geofence Events'
+      }
+
+      return 'Open Notification'
     },
 
     async markSeen(notificationId) {
@@ -491,7 +527,7 @@ export const useNotificationsStore = defineStore('notifications', {
 
         notification.onclick = () => {
           window.focus()
-          this.openEventsView()
+          this.openNotification(event)
           notification.close()
         }
       } catch (error) {
@@ -507,9 +543,22 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     handleToastClick(data) {
+      if (data?.action === 'open-notification') {
+        this.openNotification(data.notification)
+        return
+      }
       if (data?.action === 'open-events') {
         this.openEventsView()
       }
+    },
+
+    openNotification(event) {
+      const targetRoute = event?.metadata?.targetRoute
+      if (typeof targetRoute === 'string' && targetRoute.startsWith('/app/')) {
+        void router.push(targetRoute).catch(() => {})
+        return
+      }
+      this.openEventsView()
     },
 
     openEventsView() {

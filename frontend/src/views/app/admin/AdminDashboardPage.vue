@@ -120,6 +120,9 @@
             <router-link to="/app/admin/audit-logs" class="no-underline">
               <Button label="Audit Logs" icon="pi pi-history" severity="secondary" class="action-button" />
             </router-link>
+            <router-link to="/app/admin/timeline-regeneration-campaigns" class="no-underline">
+              <Button label="Timeline Regeneration" icon="pi pi-refresh" severity="secondary" class="action-button" />
+            </router-link>
           </div>
         </template>
       </Card>

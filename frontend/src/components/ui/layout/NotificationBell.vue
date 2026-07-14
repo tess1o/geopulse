@@ -62,10 +62,14 @@
             class="gp-notification-item"
             :class="{ 'gp-notification-item--unread': !item.seen }"
           >
-            <button type="button" class="gp-notification-item-main" @click="openEventsView">
+            <button type="button" class="gp-notification-item-main" @click="openNotification(item)">
               <div class="gp-notification-item-row">
                 <span class="gp-notification-item-title">{{ itemTitle(item) }}</span>
-                <Tag :value="item.deliveryStatus || 'UNKNOWN'" :severity="deliverySeverity(item.deliveryStatus)" />
+                <Tag
+                  v-if="showDeliveryStatus(item)"
+                  :value="item.deliveryStatus"
+                  :severity="deliverySeverity(item.deliveryStatus)"
+                />
               </div>
               <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
               <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
@@ -180,6 +184,11 @@ const closePanel = () => {
   panelOpen.value = false
 }
 
+const openNotification = (item) => {
+  notificationsStore.openNotification(item)
+  closePanel()
+}
+
 const openEventsView = () => {
   notificationsStore.openEventsView()
   closePanel()
@@ -227,6 +236,10 @@ const deliverySeverity = (status) => {
   if (status === 'FAILED') return 'danger'
   if (status === 'PENDING') return 'info'
   return 'secondary'
+}
+
+const showDeliveryStatus = (item) => {
+  return item?.source === 'GEOFENCE' && !!item.deliveryStatus
 }
 
 const itemTitle = (item) => {

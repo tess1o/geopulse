@@ -343,6 +343,12 @@ const adminSystemItems = computed(() => [
     key: 'admin-dashboard'
   },
   {
+    label: 'Timeline Regeneration',
+    icon: 'pi pi-refresh',
+    to: '/app/admin/timeline-regeneration-campaigns',
+    key: 'admin-timeline-regeneration'
+  },
+  {
     label: 'Audit Logs',
     icon: 'pi pi-history',
     to: '/app/admin/audit-logs',

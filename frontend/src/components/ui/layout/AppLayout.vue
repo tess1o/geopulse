@@ -10,7 +10,7 @@
         >
           <div class="gp-notification-toast-summary">{{ slotProps.message.summary }}</div>
           <div v-if="slotProps.message.detail" class="gp-notification-toast-detail">{{ slotProps.message.detail }}</div>
-          <div class="gp-notification-toast-hint">Open Geofence Events</div>
+          <div class="gp-notification-toast-hint">{{ notificationToastHint(slotProps.message) }}</div>
         </button>
       </template>
     </Toast>
@@ -101,6 +101,20 @@ const emitNotificationToast = (payload = {}) => {
 
 const handleNotificationToastClick = (message) => {
   notificationsStore.handleToastClick(message?.data)
+}
+
+const notificationToastHint = (message) => {
+  const data = message?.data
+  if (typeof data?.actionLabel === 'string' && data.actionLabel.trim()) {
+    return data.actionLabel
+  }
+  if (data?.action === 'open-notification') {
+    return notificationsStore.notificationActionLabel(data.notification)
+  }
+  if (data?.action === 'open-events') {
+    return 'Open Geofence Events'
+  }
+  return 'Open Notification'
 }
 
 onMounted(() => {

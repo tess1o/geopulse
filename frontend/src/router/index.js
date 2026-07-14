@@ -454,6 +454,13 @@ const routes = [
         beforeEnter: requireAdmin
     },
     {
+        path: '/app/admin/timeline-regeneration-campaigns',
+        name: 'Admin Timeline Regeneration',
+        component: () => import('@/views/app/admin/AdminTimelineRegenerationCampaignsPage.vue'),
+        meta: {title: 'Timeline Regeneration'},
+        beforeEnter: requireAdmin
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: NotFoundPage,

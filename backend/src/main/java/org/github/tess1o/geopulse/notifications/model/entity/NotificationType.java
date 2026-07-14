@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.notifications.model.entity;
 public enum NotificationType {
     GEOFENCE_ENTER,
     GEOFENCE_LEAVE,
+    TIMELINE_REGENERATION_REQUIRED,
     IMPORT_COMPLETED,
     IMPORT_FAILED,
     EXPORT_COMPLETED,
