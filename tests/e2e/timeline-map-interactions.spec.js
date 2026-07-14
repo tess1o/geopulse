@@ -191,9 +191,9 @@ const setupTimelineWithMapMode = (
 };
 
 test.describe('Timeline Map Interactions', () => {
-  test.describe('Raster map loading', () => {
-    test.use({ mapMode: 'RASTER' });
+  test.use({ mapMode: 'RASTER' });
 
+  test.describe('Raster map loading', () => {
     test('should not request vector map assets when raster mode is selected on initial timeline load', async ({page, isolatedUsers, dbManager}) => {
       const vectorRequests = [];
       page.on('request', (request) => {
@@ -236,7 +236,19 @@ test.describe('Timeline Map Interactions', () => {
       });
 
       await page.route('**/api/users/preferences/timeline/display', async (route) => {
-        await route.abort('failed');
+        if (route.request().method() !== 'GET') {
+          await route.continue();
+          return;
+        }
+
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'error',
+            message: 'display preferences unavailable'
+          })
+        });
       });
 
       const timelinePage = new TimelinePage(page);

@@ -12,7 +12,13 @@ export class TripsManagementPage {
       searchInput: '.search-input input, .search-input',
       statusSelect: '.status-select',
       tripNameInput: '.p-dialog:visible input#tripName',
-      dateRangeInput: '.p-dialog:visible input[id="tripDateRange_input"], .p-dialog:visible #tripDateRange input, .p-dialog:visible #tripDateRange',
+      dateRangeInput: [
+        '.p-dialog:visible #tripDateRange input',
+        '.p-dialog:visible input[id^="tripDateRange"]',
+        '.p-dialog:visible .p-datepicker input',
+        '.p-dialog:visible input[role="combobox"]',
+        '.p-dialog:visible input[placeholder*="YYYY"]'
+      ].join(', '),
       confirmAccept: '.p-confirmdialog-accept-button',
     };
   }
@@ -68,7 +74,7 @@ export class TripsManagementPage {
 
   async expectDateRangeInputEditable() {
     const input = this.page.locator(this.selectors.dateRangeInput).first();
-    const isReadOnly = await input.evaluate((element) => element.readOnly);
+    const isReadOnly = await input.evaluate((element) => element.readOnly === true);
     expect(isReadOnly).toBe(false);
   }
 

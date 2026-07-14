@@ -109,7 +109,8 @@ export class TestSetupHelper {
    * @param {Object|null} userData - Optional user object for isolated test user injection
    */
   static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5, userData = null, options = {}) {
-    const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData, options);
+    const publicShareOptions = { ...options, mapMode: options?.mapMode || 'RASTER' };
+    const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData, publicShareOptions);
 
     if (gpsPointCount > 0) {
       await GpsDataFactory.createGpsPointsForUser(dbManager, user.id, gpsPointCount);
@@ -382,7 +383,8 @@ export class TestSetupHelper {
    * @returns {Promise<{geofencesPage, user, testUser}>}
    */
   static async loginAndNavigateToGeofencesPage(page, dbManager, userData = null, options = {}) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, options);
+    const geofenceOptions = { ...options, mapMode: options?.mapMode || 'RASTER' };
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData, geofenceOptions);
     const geofencesPage = new GeofencesPage(page);
     await geofencesPage.navigate();
     await geofencesPage.waitForPageLoad();
@@ -1182,7 +1184,11 @@ export class TestSetupHelper {
    */
   static async assertPeriodTagVisibility(page, tagName, shouldBeVisible = true, expect) {
     const periodTagBanner = page.locator(`.gp-period-badge:has-text("${tagName}"), .p-message:has-text("${tagName}")`);
-    expect(await periodTagBanner.isVisible()).toBe(shouldBeVisible);
+    if (shouldBeVisible) {
+      await expect(periodTagBanner.first()).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(periodTagBanner).toBeHidden({ timeout: 5000 });
+    }
   }
 
   /**

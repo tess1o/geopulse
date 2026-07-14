@@ -181,7 +181,7 @@ const hasValidCoordinates = (latitude, longitude) => {
       !Number.isNaN(longitude)
 }
 
-const dataBounds = computed(() => {
+const friendBounds = computed(() => {
   const bounds = []
 
   if (props.friends) {
@@ -192,12 +192,18 @@ const dataBounds = computed(() => {
     })
   }
 
-  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
-    bounds.push([props.currentUser.latitude, props.currentUser.longitude])
-  }
-
   return bounds.length > 0 ? bounds : null
 })
+
+const currentUserBounds = computed(() => {
+  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
+    return [[props.currentUser.latitude, props.currentUser.longitude]]
+  }
+
+  return null
+})
+
+const dataBounds = computed(() => friendBounds.value || currentUserBounds.value)
 
 // Template refs
 const mapContainerRef = ref(null)
@@ -228,12 +234,7 @@ const mapCenter = ref((() => {
     }
   }
 
-  // Otherwise center on current user once at initialization
-  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
-    return [props.currentUser.latitude, props.currentUser.longitude]
-  }
-
-  // If we have friends with locations, center on the first friend
+  // Prefer friend locations for the initial center so the live map does not flash on the viewer first.
   if (props.friends?.length) {
     const firstFriendWithLocation = props.friends.find(friend =>
         hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)
@@ -242,6 +243,10 @@ const mapCenter = ref((() => {
     if (firstFriendWithLocation) {
       return [firstFriendWithLocation.lastLatitude, firstFriendWithLocation.lastLongitude]
     }
+  }
+
+  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
+    return [props.currentUser.latitude, props.currentUser.longitude]
   }
 
   // Default to London if no locations
@@ -389,6 +394,19 @@ const fitMapBounds = (bounds, options = {}) => {
   return true
 }
 
+const fitDefaultMapBounds = () => {
+  const bounds = friendBounds.value || currentUserBounds.value
+  if (!bounds?.length) {
+    return false
+  }
+
+  if (bounds.length === 1) {
+    return setMapView(bounds[0], 13, { animate: false })
+  }
+
+  return fitMapBounds(bounds, { padding: [20, 20] })
+}
+
 const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
   if (!map.value || !friend) {
     return false
@@ -432,9 +450,8 @@ const handleMapReady = (mapInstance) => {
       return
     }
   } else if (hasLocations.value && dataBounds.value) {
-    // Otherwise, fit map to all friends data if available
     nextTick(() => {
-      fitMapBounds(dataBounds.value, {padding: [20, 20]})
+      fitDefaultMapBounds()
     })
   }
 }
@@ -548,7 +565,7 @@ watch(dataBounds, (newBounds, oldBounds) => {
 
     nextTick(() => {
       try {
-        fitMapBounds(newBounds, {padding: [20, 20]})
+        fitDefaultMapBounds()
       } catch (error) {
         console.warn('Error fitting bounds:', error)
       }
@@ -620,9 +637,8 @@ watch(() => props.initialFriendEmail, (newEmail) => {
   } else if (map.value && dataBounds.value) {
     selectedFriendKey.value = null
     disableAutoFollow()
-    // If the friend is deselected, fit the map to the data bounds
     nextTick(() => {
-      fitMapBounds(dataBounds.value, { padding: [20, 20] })
+      fitDefaultMapBounds()
     })
   }
 })

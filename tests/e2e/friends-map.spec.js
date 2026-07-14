@@ -221,6 +221,61 @@ const getLiveMapCenter = async (page) => {
   })
 }
 
+const getLiveMapCamera = async (page) => {
+  return page.evaluate(() => {
+    const root = document.querySelector('.friends-map-container')
+    const host = root?.querySelector('[data-testid="map-host-vector"], [data-testid="map-host-raster"]')
+    const mapId = host?.id || null
+    const registry = window.__GP_E2E_MAPS || {}
+    const map = mapId ? registry[mapId] : null
+    if (!map || typeof map.getCenter !== 'function' || typeof map.getBounds !== 'function') {
+      return null
+    }
+
+    const center = map.getCenter()
+    const bounds = map.getBounds()
+    const southWest = bounds?.getSouthWest?.()
+    const northEast = bounds?.getNorthEast?.()
+    const zoom = typeof map.getZoom === 'function' ? Number(map.getZoom()) : null
+
+    const camera = {
+      center: {
+        lat: Number(center?.lat),
+        lon: Number(center?.lng)
+      },
+      zoom,
+      bounds: {
+        south: Number(southWest?.lat),
+        west: Number(southWest?.lng),
+        north: Number(northEast?.lat),
+        east: Number(northEast?.lng)
+      }
+    }
+
+    const isFiniteCamera = Number.isFinite(camera.center.lat)
+      && Number.isFinite(camera.center.lon)
+      && Number.isFinite(camera.zoom)
+      && Number.isFinite(camera.bounds.south)
+      && Number.isFinite(camera.bounds.west)
+      && Number.isFinite(camera.bounds.north)
+      && Number.isFinite(camera.bounds.east)
+
+    return isFiniteCamera ? camera : null
+  })
+}
+
+const boundsContainCoordinate = (bounds, { latitude, longitude }) => {
+  if (!bounds) {
+    return false
+  }
+
+  const latitudeInside = latitude >= bounds.south && latitude <= bounds.north
+  const longitudeInside = bounds.west <= bounds.east
+    ? longitude >= bounds.west && longitude <= bounds.east
+    : longitude >= bounds.west || longitude <= bounds.east
+
+  return latitudeInside && longitudeInside
+}
 
 const isCenterNear = (center, { latitude, longitude }, tolerance = 0.006) => {
   if (!center) {
@@ -260,6 +315,80 @@ test.describe('Friends Map Coverage', () => {
       () => getVisibleLiveFriendFeatures(page, mapHarness, mapMode),
       { timeout: 20000 }
     ).toBeGreaterThanOrEqual(2)
+  })
+
+  test('should fit initial Live map to visible friends on mobile without including distant current user', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    const mapHarness = new MapEngineHarness(page)
+    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 2, mapMode)
+    const kyiv = { latitude: 50.4501, longitude: 30.5234 }
+    const london = { latitude: 51.5074, longitude: -0.1278 }
+
+    await insertFriendGpsPoint(dbManager, {
+      userId: user.id,
+      deviceId: 'friends-map-distant-current-user',
+      latitude: 21.3069,
+      longitude: -157.8583,
+      timestamp: new Date(Date.now() + 60_000).toISOString()
+    })
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, kyiv.latitude, kyiv.longitude, true)
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[1].dbUser.id, london.latitude, london.longitude, true)
+
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
+    expect(await friendsPage.isTabActive('live')).toBe(true)
+    expect(await mapHarness.waitForMapReady({
+      rootSelector: '.friends-map-container',
+      timeout: 20000,
+      settleMs: 1200
+    })).toBe(mapMode)
+
+    await expect.poll(
+      () => getVisibleLiveFriendFeatures(page, mapHarness, mapMode),
+      { timeout: 20000 }
+    ).toBeGreaterThanOrEqual(2)
+
+    await expect.poll(async () => {
+      const camera = await getLiveMapCamera(page)
+      if (!camera) {
+        return false
+      }
+
+      return camera.center.lon > -10
+        && camera.center.lon < 35
+        && boundsContainCoordinate(camera.bounds, kyiv)
+        && boundsContainCoordinate(camera.bounds, london)
+    }, { timeout: 15000 }).toBe(true)
+  })
+
+  test('should center initial Live map on a single visible friend on mobile without including distant current user', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    const mapHarness = new MapEngineHarness(page)
+    const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
+    const kyiv = { latitude: 50.4501, longitude: 30.5234 }
+
+    await insertFriendGpsPoint(dbManager, {
+      userId: user.id,
+      deviceId: 'friends-map-single-distant-current-user',
+      latitude: 21.3069,
+      longitude: -157.8583,
+      timestamp: new Date(Date.now() + 60_000).toISOString()
+    })
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, kyiv.latitude, kyiv.longitude, true)
+
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
+    expect(await friendsPage.isTabActive('live')).toBe(true)
+    expect(await mapHarness.waitForMapReady({
+      rootSelector: '.friends-map-container',
+      timeout: 20000,
+      settleMs: 1200
+    })).toBe(mapMode)
+
+    await expect.poll(async () => {
+      const center = await getLiveMapCenter(page)
+      return isCenterNear(center, kyiv, 0.02)
+    }, { timeout: 15000 }).toBe(true)
   })
 
   test('should auto-refresh Live map when friend location changes (polling)', async ({ page, isolatedUsers, dbManager, mapMode }) => {

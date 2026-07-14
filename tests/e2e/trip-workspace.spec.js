@@ -5,6 +5,9 @@ import { TripWorkspacePage } from '../pages/TripWorkspacePage.js';
 
 const days = (n) => n * 24 * 60 * 60 * 1000;
 
+const createAndLoginRasterUser = (page, dbManager, userData) =>
+  TestSetupHelper.createAndLoginUser(page, dbManager, userData, { mapMode: 'RASTER' });
+
 const stubPlanSuggestion = async (page, title = 'Stubbed plan suggestion') => {
   await page.route('**/api/trips/plan-suggestion*', async (route) => {
     const url = new URL(route.request().url());
@@ -32,7 +35,7 @@ const stubPlanSuggestion = async (page, title = 'Stubbed plan suggestion') => {
 test.describe('Trip Workspace Page', () => {
   test('UPCOMING trip: plan-only flow with map right-click add/edit/delete and planning UI', async ({ page, isolatedUsers, dbManager }) => {
     const testUser = createManagedUser(isolatedUsers);
-    const { user } = await TestSetupHelper.createAndLoginUser(page, dbManager, testUser);
+    const { user } = await createAndLoginRasterUser(page, dbManager, testUser);
 
     const now = Date.now();
     const tripId = await TestSetupHelper.createTrip(dbManager, user.id, {
@@ -75,7 +78,7 @@ test.describe('Trip Workspace Page', () => {
 
   test('ACTIVE trip: overview+plan tabs, map planning, and visit action transitions', async ({ page, isolatedUsers, dbManager }) => {
     const testUser = createManagedUser(isolatedUsers);
-    const { user } = await TestSetupHelper.createAndLoginUser(page, dbManager, testUser);
+    const { user } = await createAndLoginRasterUser(page, dbManager, testUser);
 
     const now = Date.now();
     const tripId = await TestSetupHelper.createTrip(dbManager, user.id, {
@@ -128,7 +131,7 @@ test.describe('Trip Workspace Page', () => {
 
   test('COMPLETED trip: plan-vs-actual with matched stay evidence and manual override reset', async ({ page, isolatedUsers, dbManager }) => {
     const testUser = createManagedUser(isolatedUsers);
-    const { user } = await TestSetupHelper.createAndLoginUser(page, dbManager, testUser);
+    const { user } = await createAndLoginRasterUser(page, dbManager, testUser);
 
     const now = Date.now();
     const tripStart = new Date(now - days(10));

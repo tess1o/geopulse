@@ -67,6 +67,32 @@ export function normalizeLeafletBoundsToMapLibre(bounds) {
     return null
   }
 
+  const pointsToBoundingBox = (points) => {
+    let west = Infinity
+    let south = Infinity
+    let east = -Infinity
+    let north = -Infinity
+
+    points.forEach((point) => {
+      const tuple = toLngLatTuple(point)
+      if (!tuple) {
+        return
+      }
+
+      const [lng, lat] = tuple
+      if (lng < west) west = lng
+      if (lng > east) east = lng
+      if (lat < south) south = lat
+      if (lat > north) north = lat
+    })
+
+    if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
+      return null
+    }
+
+    return [[west, south], [east, north]]
+  }
+
   if (Array.isArray(bounds)) {
     if (bounds.length === 4) {
       const south = toFiniteNumber(bounds[0])
@@ -81,42 +107,10 @@ export function normalizeLeafletBoundsToMapLibre(bounds) {
       return [[west, south], [east, north]]
     }
 
-    // Leaflet-style corners: [[south, west], [north, east]]
-    if (bounds.length === 2) {
-      const southWest = toLngLatTuple(bounds[0])
-      const northEast = toLngLatTuple(bounds[1])
-      if (!southWest || !northEast) {
-        return null
-      }
-
-      return [southWest, northEast]
-    }
-
-    // Leaflet fitBounds also accepts an array of points. Compute bounding box.
-    if (bounds.length > 2) {
-      let west = Infinity
-      let south = Infinity
-      let east = -Infinity
-      let north = -Infinity
-
-      bounds.forEach((point) => {
-        const tuple = toLngLatTuple(point)
-        if (!tuple) {
-          return
-        }
-
-        const [lng, lat] = tuple
-        if (lng < west) west = lng
-        if (lng > east) east = lng
-        if (lat < south) south = lat
-        if (lat > north) north = lat
-      })
-
-      if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
-        return null
-      }
-
-      return [[west, south], [east, north]]
+    // Leaflet fitBounds accepts an array of points; compute a real bounding box
+    // even for two points because callers often pass unsorted coordinates.
+    if (bounds.length >= 2) {
+      return pointsToBoundingBox(bounds)
     }
   }
 

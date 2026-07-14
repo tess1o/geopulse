@@ -14,6 +14,11 @@ test.describe('Timeline Page', () => {
     endDate: new Date('2025-09-21')
   };
 
+  const multiDayTestDateRange = {
+    startDate: new Date('2025-09-20'),
+    endDate: new Date('2025-09-22')
+  };
+
   const isExpectedStreamingRange = (requestUrl) => {
     const url = new URL(requestUrl);
     return (
@@ -189,8 +194,7 @@ test.describe('Timeline Page', () => {
       const timelinePage = new TimelinePage(page);
       await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
-      const header = page.locator('.timeline-header:has-text("Movement Timeline")');
-      expect(await header.isVisible()).toBe(true);
+      await expect(page.locator('.timeline-sheet-label, .timeline-title', { hasText: 'Movement Timeline' }).first()).toBeVisible();
     });
 
     test('should display regular stays with correct information', async ({ page, isolatedUsers, dbManager}) => {
@@ -351,10 +355,19 @@ test.describe('Timeline Page', () => {
       const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
 
-      await insertSingleTripForMovementType(dbManager, user.id, {
-        movementType: 'CAR',
-        movementTypeSource: 'AUTO'
-      });
+      await TimelineTestData.insertRegularTripsTestData(dbManager, user.id);
+      await dbManager.client.query(`
+        UPDATE timeline_trips
+        SET movement_type = 'CAR',
+            movement_type_source = 'AUTO'
+        WHERE id = (
+          SELECT id
+          FROM timeline_trips
+          WHERE user_id = $1
+          ORDER BY timestamp DESC
+          LIMIT 1
+        )
+      `, [user.id]);
 
       await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
       await timelinePage.waitForPageLoad();
@@ -684,7 +697,7 @@ test.describe('Timeline Page', () => {
   test.describe('Timeline UI Behavior and Data Verification', () => {
     test('should display date separators correctly', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
+      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), multiDayTestDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -1050,8 +1063,8 @@ test.describe('Timeline Page', () => {
           endTime: TestDates.PERIOD_TAG.END_DATE,
           source: 'manual'
         },
-        startDate: TestDates.PERIOD_TAG.MIDDLE_DATE,
-        endDate: TestDates.PERIOD_TAG.MIDDLE_DATE
+        startDate: TestDates.PERIOD_TAG.START_DATE,
+        endDate: TestDates.PERIOD_TAG.END_DATE
       });
 
       // Verify period tag banner is visible
@@ -1083,7 +1096,7 @@ test.describe('Timeline Page', () => {
 
       // Navigate to date that overlaps both tags
       const timelinePage = new TimelinePage(page);
-      await timelinePage.navigateWithDateRange(TestDates.PERIOD_TAG.MIDDLE_DATE, TestDates.PERIOD_TAG.MIDDLE_DATE);
+      await timelinePage.navigateWithDateRange(TestDates.PERIOD_TAG.START_DATE, TestDates.PERIOD_TAG.END_DATE);
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
@@ -1203,7 +1216,7 @@ test.describe('Timeline Page', () => {
       ]);
 
       // Navigate to Sept 21 where timeline data exists
-      await timelinePage.navigateWithDateRange(TestDates.PERIOD_TAG.MIDDLE_DATE, TestDates.PERIOD_TAG.MIDDLE_DATE);
+      await timelinePage.navigateWithDateRange(new Date('2025-09-20'), new Date('2025-09-23'));
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 

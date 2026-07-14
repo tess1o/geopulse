@@ -4,6 +4,9 @@ import {PlaceDetailsPage} from '../pages/PlaceDetailsPage.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
+const createAndLoginRasterUser = (page, dbManager, userData) =>
+  TestSetupHelper.createAndLoginUser(page, dbManager, userData, { mapMode: 'RASTER' });
+
 test.describe('Place Details Page', () => {
 
   test.describe('Favorite Place Details - Page Load and Initial State', () => {
@@ -717,7 +720,7 @@ test.describe('Place Details Page', () => {
 
   test.describe('Map Display', () => {
     test('should display map with point geometry for favorite point', async ({page, isolatedUsers, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
+      const {user} = await createAndLoginRasterUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite point
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -746,7 +749,7 @@ test.describe('Place Details Page', () => {
     });
 
     test('should display map with area geometry for favorite area', async ({page, isolatedUsers, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
+      const {user} = await createAndLoginRasterUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {

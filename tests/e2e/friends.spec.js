@@ -5,47 +5,89 @@ import {TestSetupHelper} from "../utils/test-setup-helper.js";
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
+const RASTER_MAP_MODE = 'RASTER';
+
+const applyRasterMapMode = async (dbManager, ...users) => {
+  for (const user of users) {
+    if (user?.email) {
+      await TestSetupHelper.applyMapRenderModeIfProvided(dbManager, user.email, RASTER_MAP_MODE);
+    }
+  }
+};
+
 const createAndLoginUserAndNavigateToFriendsPage = (page, dbManager, isolatedUsers, overrides = {}) =>
   TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(
     page,
     dbManager,
-    createManagedUser(isolatedUsers, overrides)
+    createManagedUser(isolatedUsers, overrides),
+    { mapMode: RASTER_MAP_MODE }
   );
 
-const setupTwoUserFriendsTest = (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) =>
-  TestSetupHelper.setupTwoUserFriendsTest(
+const setupTwoUserFriendsTest = async (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) => {
+  const state = await TestSetupHelper.setupTwoUserFriendsTest(
     page,
     dbManager,
     createManagedUser(isolatedUsers, receiverOverrides),
     createManagedUser(isolatedUsers, senderOverrides)
   );
 
-const setupTwoUserFriendsTestWithLogin = (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) =>
-  TestSetupHelper.setupTwoUserFriendsTestWithLogin(
+  await applyRasterMapMode(dbManager, state.testUser, state.friendUser);
+  return state;
+};
+
+const setupTwoUserFriendsTestWithLogin = async (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) => {
+  const state = await setupTwoUserFriendsTest(
     page,
     dbManager,
-    createManagedUser(isolatedUsers, receiverOverrides),
-    createManagedUser(isolatedUsers, senderOverrides)
+    isolatedUsers,
+    receiverOverrides,
+    senderOverrides
   );
 
-const setupMultipleFriendsTest = (page, dbManager, isolatedUsers, friendCount = 2, login = false) =>
-  TestSetupHelper.setupMultipleFriendsTest(
+  await TestSetupHelper.loginAndNavigateToFriendsPage(page, state.testUser, state.friendsPage);
+  return state;
+};
+
+const setupMultipleFriendsTest = async (page, dbManager, isolatedUsers, friendCount = 2, login = false) => {
+  const state = await TestSetupHelper.setupMultipleFriendsTest(
     page,
     dbManager,
     friendCount,
-    login,
+    false,
     createManagedUser(isolatedUsers),
     Array.from({length: friendCount}, () => createManagedUser(isolatedUsers))
   );
 
-const setupInvitationTest = (page, dbManager, isolatedUsers, loginAsReceiver = true) =>
-  TestSetupHelper.setupInvitationTest(
+  await applyRasterMapMode(
+    dbManager,
+    state.testUser,
+    ...(state.friendsData || [])
+  );
+
+  if (login) {
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, state.testUser, state.friendsPage);
+  }
+
+  return state;
+};
+
+const setupInvitationTest = async (page, dbManager, isolatedUsers, loginAsReceiver = true) => {
+  const state = await TestSetupHelper.setupInvitationTest(
     page,
     dbManager,
-    loginAsReceiver,
+    false,
     createManagedUser(isolatedUsers),
     createManagedUser(isolatedUsers)
   );
+
+  await applyRasterMapMode(dbManager, state.receiverData, state.senderData);
+
+  if (loginAsReceiver) {
+    await TestSetupHelper.loginAndNavigateToFriendsPage(page, state.receiverData, state.friendsPage);
+  }
+
+  return state;
+};
 
 test.describe('Friends Page', () => {
 
@@ -558,10 +600,9 @@ test.describe('Friends Page', () => {
       await friendsPage.switchToTab('friends');
       await page.waitForTimeout(1000);
 
-      // Live button should still be available, but there is no location marker/popup action.
-      await friendsPage.showFriendOnLiveMap(friendUser.email);
-      await page.waitForTimeout(1000);
-      expect(await friendsPage.isTabActive('live')).toBe(true);
+      // Live action is disabled until the friend has a usable live coordinate.
+      const friendCard = page.locator('.friend-card').filter({ hasText: friendUser.email }).first();
+      await expect(friendCard.locator('button:has-text("Live")')).toBeDisabled();
 
       await expect(page.locator('.friend-popup .popup-google-maps-link')).toHaveCount(0);
     });
