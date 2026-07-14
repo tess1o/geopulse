@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
@@ -12,6 +13,7 @@ import java.util.List;
  * Centralizes threshold defaults and cluster checks to avoid drift between code paths.
  */
 @ApplicationScoped
+@Slf4j
 class TripStopHeuristicsService {
 
     private static final int DEFAULT_STAY_RADIUS_METERS = 50;
@@ -25,15 +27,38 @@ class TripStopHeuristicsService {
 
     TripStopDetection detectTripStopFromRecentWindow(List<GPSPoint> activePoints, TimelineConfig config) {
         int minPoints = getTripArrivalMinPoints(config);
-        if (activePoints == null || activePoints.size() < minPoints + 1) {
+        if (activePoints == null || activePoints.size() < minPoints) {
+            log.debug("Trip stop rejected - insufficient points: available={}, required={}",
+                    activePoints == null ? 0 : activePoints.size(), minPoints);
             return TripStopDetection.noStop();
         }
 
         double stopSpeedThreshold = getStopSpeedThreshold(config);
         double stayRadius = getStayRadiusMeters(config);
 
+        TripStopDetection clusteredStop = detectClusteredStop(activePoints, minPoints, stopSpeedThreshold, stayRadius, config);
+        if (clusteredStop.isStopDetected()) {
+            return clusteredStop;
+        }
+
+        return detectSustainedSlowStop(activePoints, minPoints, stopSpeedThreshold, config);
+    }
+
+    private TripStopDetection detectClusteredStop(List<GPSPoint> activePoints,
+                                                  int minPoints,
+                                                  double stopSpeedThreshold,
+                                                  double stayRadius,
+                                                  TimelineConfig config) {
+        if (activePoints.size() < minPoints + 1) {
+            log.debug("Full-cluster stop rejected - insufficient points before cluster: available={}, required={}",
+                    activePoints.size(), minPoints + 1);
+            return TripStopDetection.noStop();
+        }
+
         GPSPoint lastPoint = activePoints.get(activePoints.size() - 1);
         if (lastPoint.getSpeed() > stopSpeedThreshold) {
+            log.debug("Full-cluster stop rejected - last point speed {} exceeds threshold {} at {}",
+                    lastPoint.getSpeed(), stopSpeedThreshold, lastPoint.getTimestamp());
             return TripStopDetection.noStop();
         }
 
@@ -48,17 +73,22 @@ class TripStopHeuristicsService {
 
         int clusterPointCount = activePoints.size() - stoppedClusterStartIndex;
         if (clusterPointCount < minPoints || stoppedClusterStartIndex == 0) {
+            log.debug("Full-cluster stop rejected - cluster points={}, required={}, startIndex={}",
+                    clusterPointCount, minPoints, stoppedClusterStartIndex);
             return TripStopDetection.noStop();
         }
 
         boolean hasMovingPointBeforeCluster = activePoints.subList(0, stoppedClusterStartIndex).stream()
                 .anyMatch(p -> p.getSpeed() > stopSpeedThreshold);
         if (!hasMovingPointBeforeCluster) {
+            log.debug("Full-cluster stop rejected - no pre-cluster point exceeds speed threshold {} before cluster at {}",
+                    stopSpeedThreshold, activePoints.get(stoppedClusterStartIndex).getTimestamp());
             return TripStopDetection.noStop();
         }
 
         GPSPoint firstStoppedPoint = activePoints.get(stoppedClusterStartIndex);
         if (firstStoppedPoint.getTimestamp() == null || lastPoint.getTimestamp() == null) {
+            log.debug("Full-cluster stop rejected - missing timestamps for cluster start/end");
             return TripStopDetection.noStop();
         }
 
@@ -67,9 +97,52 @@ class TripStopHeuristicsService {
         Duration arrivalDetectionDuration = getArrivalDetectionDuration(config);
         if (clusterDuration.compareTo(sustainedStopDuration) >= 0 ||
                 clusterDuration.compareTo(arrivalDetectionDuration) >= 0) {
+            log.debug("Full-cluster stop accepted - start={}, end={}, duration={}, points={}, speedThreshold={}, radius={}",
+                    firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), clusterDuration,
+                    clusterPointCount, stopSpeedThreshold, stayRadius);
             return TripStopDetection.stopDetected(stoppedClusterStartIndex);
         }
 
+        log.debug("Full-cluster stop rejected - duration {} below sustained={} and arrival={} for start={}, end={}, points={}",
+                clusterDuration, sustainedStopDuration, arrivalDetectionDuration,
+                firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), clusterPointCount);
+        return TripStopDetection.noStop();
+    }
+
+    private TripStopDetection detectSustainedSlowStop(List<GPSPoint> activePoints,
+                                                      int minPoints,
+                                                      double stopSpeedThreshold,
+                                                      TimelineConfig config) {
+        int stoppedClusterStartIndex = activePoints.size() - minPoints;
+        List<GPSPoint> recentPoints = activePoints.subList(stoppedClusterStartIndex, activePoints.size());
+
+        boolean allRecentSlow = recentPoints.stream()
+                .allMatch(p -> p.getSpeed() <= stopSpeedThreshold);
+        if (!allRecentSlow) {
+            log.debug("Sustained-stop fallback rejected - not all last {} points are <= speed threshold {}",
+                    minPoints, stopSpeedThreshold);
+            return TripStopDetection.noStop();
+        }
+
+        GPSPoint firstStoppedPoint = recentPoints.getFirst();
+        GPSPoint lastPoint = recentPoints.getLast();
+        if (firstStoppedPoint.getTimestamp() == null || lastPoint.getTimestamp() == null) {
+            log.debug("Sustained-stop fallback rejected - missing timestamps for recent window");
+            return TripStopDetection.noStop();
+        }
+
+        Duration slowDuration = Duration.between(firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp());
+        Duration requiredDuration = getSustainedStopDuration(config);
+        if (slowDuration.compareTo(requiredDuration) >= 0) {
+            log.debug("Sustained-stop fallback accepted - start={}, end={}, duration={}, points={}, speedThreshold={}",
+                    firstStoppedPoint.getTimestamp(), lastPoint.getTimestamp(), slowDuration,
+                    recentPoints.size(), stopSpeedThreshold);
+            return TripStopDetection.stopDetected(stoppedClusterStartIndex);
+        }
+
+        log.debug("Sustained-stop fallback rejected - duration {} below required {} for start={}, end={}, points={}",
+                slowDuration, requiredDuration, firstStoppedPoint.getTimestamp(),
+                lastPoint.getTimestamp(), recentPoints.size());
         return TripStopDetection.noStop();
     }
 
