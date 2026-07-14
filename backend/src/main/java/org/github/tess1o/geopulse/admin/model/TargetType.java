@@ -8,5 +8,6 @@ public enum TargetType {
     USER,
     OIDC_PROVIDER,
     INVITATION,
-    API_TOKEN
+    API_TOKEN,
+    TIMELINE_REGENERATION_CAMPAIGN
 }

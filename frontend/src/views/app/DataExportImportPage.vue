@@ -50,7 +50,8 @@
 </template>
 
 <script setup>
-import {ref, computed} from 'vue'
+import {ref, computed, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -61,8 +62,15 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import DataExportTab from '@/components/data-export-import/DataExportTab.vue'
 import DataImportTab from '@/components/data-export-import/DataImportTab.vue'
 
+const route = useRoute()
+const router = useRouter()
+
+const normalizeTab = (value) => {
+  return value === 'import' ? 'import' : 'export'
+}
+
 // State
-const activeTab = ref('export')
+const activeTab = ref(normalizeTab(route.query.tab))
 
 // Tab configuration
 const tabItems = ref([
@@ -87,8 +95,18 @@ const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
   if (selectedTab) {
     activeTab.value = selectedTab.key
+    router.replace({
+      query: {
+        ...route.query,
+        tab: selectedTab.key
+      }
+    }).catch(() => {})
   }
 }
+
+watch(() => route.query.tab, (tab) => {
+  activeTab.value = normalizeTab(tab)
+})
 </script>
 
 <style scoped>

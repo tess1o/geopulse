@@ -336,6 +336,8 @@ const actionTypeOptions = ref([
   { label: 'OIDC Provider Reset', value: 'OIDC_PROVIDER_RESET' },
   { label: 'Invitation Created', value: 'INVITATION_CREATED' },
   { label: 'Invitation Revoked', value: 'INVITATION_REVOKED' },
+  { label: 'Timeline Regeneration Campaign Created', value: 'TIMELINE_REGENERATION_CAMPAIGN_CREATED' },
+  { label: 'Timeline Regeneration Campaign Retried', value: 'TIMELINE_REGENERATION_CAMPAIGN_RETRIED' },
   { label: 'Admin Login', value: 'ADMIN_LOGIN' }
 ])
 
@@ -343,7 +345,8 @@ const targetTypeOptions = ref([
   { label: 'Setting', value: 'SETTING' },
   { label: 'User', value: 'USER' },
   { label: 'OIDC Provider', value: 'OIDC_PROVIDER' },
-  { label: 'Invitation', value: 'INVITATION' }
+  { label: 'Invitation', value: 'INVITATION' },
+  { label: 'Timeline Regeneration Campaign', value: 'TIMELINE_REGENERATION_CAMPAIGN' }
 ])
 
 const loadAuditLogs = async () => {
@@ -462,6 +465,8 @@ const getActionIcon = (actionType) => {
     'OIDC_PROVIDER_RESET': 'pi pi-replay',
     'INVITATION_CREATED': 'pi pi-send',
     'INVITATION_REVOKED': 'pi pi-ban',
+    'TIMELINE_REGENERATION_CAMPAIGN_CREATED': 'pi pi-refresh',
+    'TIMELINE_REGENERATION_CAMPAIGN_RETRIED': 'pi pi-replay',
     'ADMIN_LOGIN': 'pi pi-sign-in'
   }
   return iconMap[actionType] || 'pi pi-circle'

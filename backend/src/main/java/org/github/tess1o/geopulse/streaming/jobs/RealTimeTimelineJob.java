@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaignService;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -27,6 +28,9 @@ public class RealTimeTimelineJob {
 
     @Inject
     StreamingTimelineGenerationService timelineGenerationService;
+
+    @Inject
+    TimelineRegenerationCampaignService campaignService;
 
     @Inject
     @Identifier("timeline-processing")
@@ -79,6 +83,11 @@ public class RealTimeTimelineJob {
 
     @Transactional
     public void processUser(UserEntity user) {
+        if (campaignService.hasActiveCampaignForUser(user.getId())) {
+            log.debug("Skipping real-time timeline processing for user {} due to active forced regeneration campaign",
+                    user.getId());
+            return;
+        }
         timelineGenerationService.generateTimelineFromTimestamp(user.getId(), Instant.now());
     }
 }

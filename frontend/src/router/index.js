@@ -207,6 +207,13 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
+        path: '/app/notifications',
+        name: 'Notifications',
+        component: () => import('@/views/app/NotificationsPage.vue'),
+        meta: {title: 'Notifications'},
+        beforeEnter: requireAuth
+    },
+    {
         path: '/app/location-sources',
         name: 'Location Sources',
         component: LocationSourcesPage,
@@ -451,6 +458,13 @@ const routes = [
         name: 'Admin Audit Logs',
         component: () => import('@/views/app/admin/AdminAuditLogsPage.vue'),
         meta: {title: 'Audit Logs'},
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/timeline-regeneration-campaigns',
+        name: 'Admin Timeline Regeneration',
+        component: () => import('@/views/app/admin/AdminTimelineRegenerationCampaignsPage.vue'),
+        meta: {title: 'Timeline Regeneration'},
         beforeEnter: requireAdmin
     },
     {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import router from '@/router'
 import { readUserSnapshot } from '@/utils/authSnapshotStorage'
+import { resolveNotificationDisplay, resolveNotificationRoute } from '@/utils/notificationDisplay'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
 const BACKLOG_WATERMARK_PREFIX = 'gp.notifications.backlog.watermark.'
@@ -268,6 +269,35 @@ export const useNotificationsStore = defineStore('notifications', {
       return Array.isArray(response?.data) ? response.data : []
     },
 
+    async fetchNotificationsPage({
+      page = 0,
+      pageSize = 25,
+      seen = null,
+      source = null,
+      type = null
+    } = {}) {
+      const params = {
+        page,
+        pageSize
+      }
+      if (seen !== null && seen !== undefined) {
+        params.seen = seen
+      }
+      if (source) {
+        params.source = source
+      }
+      if (type) {
+        params.type = type
+      }
+      const response = await apiService.get('/notifications/page', params)
+      return response?.data || {
+        items: [],
+        totalCount: 0,
+        page,
+        pageSize
+      }
+    },
+
     async fetchUnreadCount() {
       const response = await apiService.get('/notifications/unread-count')
       const count = Number(response?.data?.count || 0)
@@ -317,11 +347,23 @@ export const useNotificationsStore = defineStore('notifications', {
         if (emitStartupSummary && unreadCount > 0 && Number.isFinite(startupBaselineId)) {
           const shouldShowSummary = this.backlogWatermark == null || startupBaselineId > this.backlogWatermark
           if (shouldShowSummary) {
+            const latestUnreadEvent = events.find(event => Number(event.id) === startupBaselineId)
+              || events.find(event => !event.seen)
             this.emitToast({
               summary: 'Unread notifications',
               detail: `You have ${unreadCount} unread notifications.`,
               life: 6500,
-              data: { action: 'open-events' }
+              data: latestUnreadEvent
+                ? {
+                    action: 'open-notification',
+                    notification: latestUnreadEvent,
+                    notificationId: latestUnreadEvent.id,
+                    actionLabel: this.notificationActionLabel(latestUnreadEvent)
+                  }
+                : {
+                    action: 'open-notification-center',
+                    actionLabel: 'View all notifications'
+                  }
             })
             this.advanceBacklogWatermark(startupBaselineId)
           }
@@ -349,8 +391,10 @@ export const useNotificationsStore = defineStore('notifications', {
             detail: event.message || 'New notification',
             life: 7000,
             data: {
-              action: 'open-events',
-              notificationId: event.id
+              action: 'open-notification',
+              notification: event,
+              notificationId: event.id,
+              actionLabel: this.notificationActionLabel(event)
             }
           })
           this.advanceBacklogWatermark(event.id)
@@ -370,6 +414,14 @@ export const useNotificationsStore = defineStore('notifications', {
         return `${event.source} notification`
       }
       return 'New notification'
+    },
+
+    notificationActionLabel(event) {
+      return resolveNotificationDisplay(event).actionLabel
+    },
+
+    notificationDisplay(event) {
+      return resolveNotificationDisplay(event)
     },
 
     async markSeen(notificationId) {
@@ -491,7 +543,7 @@ export const useNotificationsStore = defineStore('notifications', {
 
         notification.onclick = () => {
           window.focus()
-          this.openEventsView()
+          this.openNotification(event)
           notification.close()
         }
       } catch (error) {
@@ -507,16 +559,30 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     handleToastClick(data) {
+      if (data?.action === 'open-notification') {
+        this.openNotification(data.notification)
+        return
+      }
       if (data?.action === 'open-events') {
-        this.openEventsView()
+        this.openNotificationCenter()
+        return
+      }
+      if (data?.action === 'open-notification-center') {
+        this.openNotificationCenter()
       }
     },
 
-    openEventsView() {
-      void router.push({
-        path: '/app/geofences',
-        query: { tab: 'events' }
-      }).catch(() => {})
+    openNotification(event) {
+      const targetRoute = resolveNotificationRoute(event)
+      if (typeof targetRoute === 'string' && targetRoute.startsWith('/app/')) {
+        void router.push(targetRoute).catch(() => {})
+        return
+      }
+      this.openNotificationCenter()
+    },
+
+    openNotificationCenter() {
+      void router.push('/app/notifications').catch(() => {})
     }
   }
 })

@@ -10,6 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.notifications.model.dto.UnreadCountDto;
 import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationDto;
+import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationPageDto;
+import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
+import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 import org.github.tess1o.geopulse.notifications.service.UserNotificationService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
@@ -44,6 +47,32 @@ public class NotificationResource {
             log.error("Failed to load notifications", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to load notifications"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/page")
+    public Response getNotificationsPage(@QueryParam("page") @DefaultValue("0") int page,
+                                         @QueryParam("pageSize") @DefaultValue("25") int pageSize,
+                                         @QueryParam("seen") Boolean seen,
+                                         @QueryParam("source") NotificationSource source,
+                                         @QueryParam("type") NotificationType type) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            UserNotificationPageDto notifications = notificationService.listNotificationsPage(
+                    userId,
+                    page,
+                    pageSize,
+                    seen,
+                    source,
+                    type
+            );
+            return Response.ok(ApiResponse.success(notifications)).build();
+        } catch (Exception e) {
+            log.error("Failed to load notifications page", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to load notifications page"))
                     .build();
         }
     }

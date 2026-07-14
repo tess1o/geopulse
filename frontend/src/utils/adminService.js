@@ -202,6 +202,28 @@ const adminService = {
         return apiService.delete(`/admin/invitations/${invitationId}`);
     },
 
+    // ==================== Timeline Regeneration Campaigns ====================
+
+    async previewTimelineRegenerationCampaign(data) {
+        return apiService.post('/admin/timeline-regeneration-campaigns/preview', data);
+    },
+
+    async createTimelineRegenerationCampaign(data) {
+        return apiService.post('/admin/timeline-regeneration-campaigns', data);
+    },
+
+    async getTimelineRegenerationCampaigns() {
+        return apiService.get('/admin/timeline-regeneration-campaigns');
+    },
+
+    async getTimelineRegenerationCampaign(campaignId) {
+        return apiService.get(`/admin/timeline-regeneration-campaigns/${campaignId}`);
+    },
+
+    async retryTimelineRegenerationCampaignFailedUsers(campaignId) {
+        return apiService.post(`/admin/timeline-regeneration-campaigns/${campaignId}/retry-failed`, {});
+    },
+
     // ==================== Audit Log Management ====================
 
     /**

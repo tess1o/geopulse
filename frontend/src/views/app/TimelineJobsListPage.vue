@@ -8,7 +8,7 @@
             <div class="header-text">
               <h1 class="page-title">Timeline Generation Jobs</h1>
               <p class="page-description">
-                View active and recent timeline generation jobs
+                View timeline generation work that is running now or finished recently.
               </p>
             </div>
           </div>
@@ -29,12 +29,12 @@
           <template #content>
             <div class="no-job-content">
               <i class="pi pi-info-circle no-job-icon"></i>
-              <h2>No Active Timeline Generation Jobs</h2>
+              <h2>No timeline jobs are running now</h2>
               <p class="no-job-message">
-                There are currently no timeline generation jobs running for your account.
+                If you opened this from a notification, the scheduled refresh may already be complete. Recent completed or failed jobs are shown below when available.
               </p>
               <p class="info-hint">
-                Timeline generation jobs are created when you change timeline preferences, add/delete favorites, or manually trigger a full regeneration.
+                Timeline jobs can be started by timeline preference changes, favorite updates, manual regeneration, or scheduled GeoPulse maintenance.
               </p>
               <div class="action-buttons">
                 <Button
@@ -92,7 +92,7 @@
             <template #content>
               <div class="no-history-content">
                 <i class="pi pi-inbox"></i>
-                <p>No recent job history available</p>
+                <p>No recent timeline jobs found.</p>
               </div>
             </template>
           </Card>

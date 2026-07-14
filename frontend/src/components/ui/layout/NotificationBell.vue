@@ -54,7 +54,7 @@
 
         <div class="gp-notification-list">
           <div v-if="visibleItems.length === 0" class="gp-notification-empty">
-            No {{ activeFilter === 'unread' ? 'unread' : '' }} notifications.
+            {{ emptyMessage }}
           </div>
           <div
             v-for="item in visibleItems"
@@ -62,22 +62,46 @@
             class="gp-notification-item"
             :class="{ 'gp-notification-item--unread': !item.seen }"
           >
-            <button type="button" class="gp-notification-item-main" @click="openEventsView">
+            <button type="button" class="gp-notification-item-main" @click="openNotification(item)">
+              <div class="gp-notification-item-meta">
+                <Tag
+                  :value="notificationDisplay(item).sourceLabel"
+                  :severity="notificationDisplay(item).severity"
+                  :icon="notificationDisplay(item).icon"
+                />
+                <span v-if="showTypeLabel(item)">{{ notificationDisplay(item).typeLabel }}</span>
+              </div>
               <div class="gp-notification-item-row">
-                <span class="gp-notification-item-title">{{ itemTitle(item) }}</span>
-                <Tag :value="item.deliveryStatus || 'UNKNOWN'" :severity="deliverySeverity(item.deliveryStatus)" />
+                <span class="gp-notification-item-title">
+                  <span>{{ itemTitle(item) }}</span>
+                </span>
+                <Tag
+                  v-if="showDeliveryStatus(item)"
+                  :value="item.deliveryStatus"
+                  :severity="deliverySeverity(item.deliveryStatus)"
+                />
               </div>
               <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
               <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
             </button>
-            <Button
-              v-if="!item.seen"
-              label="Mark seen"
-              size="small"
-              text
-              class="gp-notification-item-action"
-              @click.stop="markSeen(item.id)"
-            />
+            <div class="gp-notification-item-actions">
+              <Button
+                :label="notificationDisplay(item).actionLabel"
+                icon="pi pi-external-link"
+                size="small"
+                text
+                class="gp-notification-item-action"
+                @click.stop="openNotification(item)"
+              />
+              <Button
+                v-if="!item.seen"
+                label="Mark seen"
+                size="small"
+                text
+                class="gp-notification-item-action"
+                @click.stop="markSeen(item.id)"
+              />
+            </div>
           </div>
         </div>
 
@@ -91,11 +115,11 @@
             @click="markAllSeen"
           />
           <Button
-            label="Open Events"
+            label="View all notifications"
             size="small"
             severity="secondary"
             outlined
-            @click="openEventsView"
+            @click="openNotificationCenter"
           />
         </div>
       </div>
@@ -128,6 +152,10 @@ const unreadBadgeValue = computed(() => {
   return unreadCount.value > 99 ? '99+' : unreadCount.value
 })
 
+const emptyMessage = computed(() => {
+  return activeFilter.value === 'unread' ? 'No unread notifications.' : 'No notifications found.'
+})
+
 const visibleItems = computed(() => {
   const source = Array.isArray(items.value) ? items.value : []
   const filtered = activeFilter.value === 'unread'
@@ -136,8 +164,19 @@ const visibleItems = computed(() => {
   return filtered.slice(0, 20)
 })
 
-const togglePanel = () => {
+const togglePanel = async () => {
   panelOpen.value = !panelOpen.value
+  if (panelOpen.value) {
+    try {
+      await notificationsStore.refresh({
+        emitToasts: false,
+        emitBrowser: false,
+        emitStartupSummary: false
+      })
+    } catch (error) {
+      // Polling will retry; keep the bell usable if a refresh fails.
+    }
+  }
 }
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -180,8 +219,13 @@ const closePanel = () => {
   panelOpen.value = false
 }
 
-const openEventsView = () => {
-  notificationsStore.openEventsView()
+const openNotification = (item) => {
+  notificationsStore.openNotification(item)
+  closePanel()
+}
+
+const openNotificationCenter = () => {
+  notificationsStore.openNotificationCenter()
   closePanel()
 }
 
@@ -229,17 +273,23 @@ const deliverySeverity = (status) => {
   return 'secondary'
 }
 
+const showDeliveryStatus = (item) => {
+  return item?.source === 'GEOFENCE' && !!item.deliveryStatus
+}
+
+const notificationDisplay = (item) => {
+  return notificationsStore.notificationDisplay(item)
+}
+
 const itemTitle = (item) => {
-  if (item?.title) {
-    return item.title
-  }
-  if (item?.source && item?.type) {
-    return `${item.source}: ${item.type}`
-  }
-  if (item?.source) {
-    return `${item.source} notification`
-  }
-  return 'Notification'
+  return notificationDisplay(item).title || 'Notification'
+}
+
+const showTypeLabel = (item) => {
+  const display = notificationDisplay(item)
+  const title = String(display.title || '').trim().toLowerCase()
+  const typeLabel = String(display.typeLabel || '').trim().toLowerCase()
+  return !!typeLabel && typeLabel !== title
 }
 
 const handleClickOutside = (event) => {
@@ -465,6 +515,15 @@ watch(panelOpen, async (isOpen) => {
   color: inherit;
 }
 
+.gp-notification-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--gp-text-muted);
+  font-size: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
 .gp-notification-item-row {
   display: flex;
   align-items: center;
@@ -473,8 +532,16 @@ watch(panelOpen, async (isOpen) => {
 }
 
 .gp-notification-item-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-weight: 700;
   font-size: 0.92rem;
+  min-width: 0;
+}
+
+.gp-notification-item-title span {
+  overflow-wrap: anywhere;
 }
 
 .gp-notification-item-message {
@@ -489,8 +556,11 @@ watch(panelOpen, async (isOpen) => {
   font-size: 0.78rem;
 }
 
-.gp-notification-item-action {
-  align-self: flex-end;
+.gp-notification-item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .gp-notification-footer {
@@ -550,6 +620,11 @@ watch(panelOpen, async (isOpen) => {
 .gp-notification-panel :deep(.p-tag.p-tag-info) {
   background: var(--gp-info-light);
   color: var(--gp-info-dark);
+}
+
+.gp-notification-panel :deep(.p-tag.p-tag-warning) {
+  background: var(--gp-warning-light);
+  color: var(--gp-warning-dark);
 }
 
 .gp-notification-panel :deep(.p-tag.p-tag-secondary) {

@@ -122,6 +122,73 @@ class NotificationResourceIntegrationTest {
                 .body("data.title", not(hasItem("Other user geofence")));
     }
     @Test
+    void shouldPageNotificationsWithFiltersAcrossSources() {
+        createNotification(ownerUser,
+                NotificationSource.GEOFENCE,
+                NotificationType.GEOFENCE_ENTER,
+                "Owner geofence unread",
+                null,
+                Instant.parse("2026-03-19T10:00:00Z"));
+        createNotification(ownerUser,
+                NotificationSource.TIMELINE,
+                NotificationType.TIMELINE_REGENERATION_REQUIRED,
+                "Owner timeline unread",
+                null,
+                Instant.parse("2026-03-19T11:00:00Z"));
+        createNotification(ownerUser,
+                NotificationSource.IMPORT,
+                NotificationType.IMPORT_COMPLETED,
+                "Owner import seen",
+                Instant.parse("2026-03-19T12:00:00Z"),
+                Instant.parse("2026-03-19T09:00:00Z"));
+        createNotification(otherUser,
+                NotificationSource.TIMELINE,
+                NotificationType.TIMELINE_REGENERATION_REQUIRED,
+                "Other timeline unread",
+                null,
+                Instant.parse("2026-03-19T12:00:00Z"));
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/notifications/page?page=0&pageSize=2")
+                .then()
+                .statusCode(200)
+                .body("status", equalTo("success"))
+                .body("data.totalCount", equalTo(3))
+                .body("data.page", equalTo(0))
+                .body("data.pageSize", equalTo(2))
+                .body("data.items.size()", equalTo(2))
+                .body("data.items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
+                .body("data.items.title", not(hasItem("Other timeline unread")));
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/notifications/page?seen=false&pageSize=25")
+                .then()
+                .statusCode(200)
+                .body("data.totalCount", equalTo(2))
+                .body("data.items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
+                .body("data.items.title", not(hasItem("Owner import seen")));
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/notifications/page?source=TIMELINE")
+                .then()
+                .statusCode(200)
+                .body("data.totalCount", equalTo(1))
+                .body("data.items[0].source", equalTo("TIMELINE"))
+                .body("data.items[0].type", equalTo("TIMELINE_REGENERATION_REQUIRED"))
+                .body("data.items[0].title", equalTo("Owner timeline unread"));
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/notifications/page?type=TIMELINE_REGENERATION_REQUIRED")
+                .then()
+                .statusCode(200)
+                .body("data.totalCount", equalTo(1))
+                .body("data.items[0].title", equalTo("Owner timeline unread"));
+    }
+    @Test
     void shouldReturnUnreadCountAndLatestUnreadId() {
         createNotification(ownerUser,
                 NotificationSource.GEOFENCE,
