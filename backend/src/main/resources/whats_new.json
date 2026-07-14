@@ -1,26 +1,11 @@
 [
   {
-    "version": "1.34.0",
-    "title": "GeoPulse 1.34.0",
+    "version": "1.34.1",
+    "title": "GeoPulse 1.34.1",
     "highlights": [
-      "Added personal access tokens for the backend REST API, including token management in user profiles and admin visibility",
-      "Added Geoapify and ChibiGeo reverse geocoding providers with updated admin geocoding settings and Helm/environment configuration",
-      "Added Motorcycle as a trip type with configurable motor vehicle classification preferences, digest metrics, insights, and timeline support",
-      "Improved Timeline trip quality by fixing trip classification logic and filtering poor-accuracy GPS points from rendered paths",
-      "Added average trip speed to Timeline trip details, map popups, and reports",
-      "Added place search when creating favorites, so points can be added from search results instead of only map clicks",
-      "Improved GPS technical data with seconds in timestamps, a Delta column, and a backend endpoint for the latest GPS point timestamp",
-      "Added default measurement unit configuration for new users, Proxmox LXC installation documentation, and proper Raspberry Pi 4 release builds"
+      "Fixed stay detection regression issue introduced in 1.34.0. Timeline regeneration is required to fix the data for end users",
+      "Fixed UI issues in Friends Live tab"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.34.0"
-  },
-  {
-    "version": "1.33.0",
-    "title": "GeoPulse 1.33.0",
-    "highlights": [
-      "Added new trip type 'Boat'. GeoPulse now can identify if you traveled over land or water. Disabled by default, can be enabled in Timeline settings",
-      "Made Timeline collapsable on desktop and other small UI fixes"
-    ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.33.0"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.34.1"
   }
 ]
