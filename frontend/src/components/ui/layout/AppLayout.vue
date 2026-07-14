@@ -112,7 +112,10 @@ const notificationToastHint = (message) => {
     return notificationsStore.notificationActionLabel(data.notification)
   }
   if (data?.action === 'open-events') {
-    return 'Open Geofence Events'
+    return 'View all notifications'
+  }
+  if (data?.action === 'open-notification-center') {
+    return 'View all notifications'
   }
   return 'Open Notification'
 }

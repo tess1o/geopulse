@@ -147,7 +147,7 @@ const { themeMode, themeModes } = useThemeMode()
 // Store refs
 const { userName, isAdmin } = storeToRefs(authStore)
 const { receivedInvitesCount } = storeToRefs(friendsStore)
-const { unreadCount: geofenceUnreadCount } = storeToRefs(notificationsStore)
+const { unreadCount: notificationUnreadCount } = storeToRefs(notificationsStore)
 
 // Local state
 const visible = ref(false)
@@ -287,12 +287,18 @@ const accountItems = computed(() => [
     key: 'favorites-management'
   },
   {
+    label: 'Notifications',
+    icon: 'pi pi-bell',
+    to: '/app/notifications',
+    key: 'notifications',
+    badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
+    badgeType: 'danger'
+  },
+  {
     label: 'Geofences',
     icon: 'pi pi-bell',
     to: '/app/geofences',
-    key: 'geofences',
-    badge: geofenceUnreadCount.value > 0 ? geofenceUnreadCount.value : null,
-    badgeType: 'danger'
+    key: 'geofences'
   },
   {
     label: 'Timeline Preferences',

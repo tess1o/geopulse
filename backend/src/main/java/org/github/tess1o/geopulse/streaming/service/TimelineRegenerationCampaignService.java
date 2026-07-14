@@ -35,7 +35,7 @@ import java.util.UUID;
 @Slf4j
 public class TimelineRegenerationCampaignService {
 
-    private static final String NOTIFICATION_TITLE = "Timeline regeneration scheduled";
+    private static final String NOTIFICATION_TITLE = "Timeline refresh scheduled";
     private static final String NOTIFICATION_TARGET_ROUTE = "/app/timeline/jobs";
     private static final Duration STALE_RUNNING_AFTER = Duration.ofHours(2);
 

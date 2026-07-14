@@ -207,6 +207,13 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
+        path: '/app/notifications',
+        name: 'Notifications',
+        component: () => import('@/views/app/NotificationsPage.vue'),
+        meta: {title: 'Notifications'},
+        beforeEnter: requireAuth
+    },
+    {
         path: '/app/location-sources',
         name: 'Location Sources',
         component: LocationSourcesPage,

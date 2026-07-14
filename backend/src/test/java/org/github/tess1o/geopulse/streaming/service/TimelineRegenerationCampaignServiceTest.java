@@ -135,6 +135,7 @@ class TimelineRegenerationCampaignServiceTest {
                 .toList();
 
         assertThat(notifications).hasSize(1);
+        assertThat(notifications.get(0).getTitle()).isEqualTo("Timeline refresh scheduled");
         assertThat(notifications.get(0).getMessage()).isEqualTo("A timeline repair is required.");
         assertThat(notifications.get(0).getDedupeKey())
                 .isEqualTo("timeline-regeneration-campaign:" + campaign.getId() + ":user:" + eligibleUser.getId());
