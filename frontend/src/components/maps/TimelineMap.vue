@@ -31,6 +31,9 @@
           :show-favorites="showFavorites"
           :show-timeline="showTimeline"
           :show-path="showPath"
+          :show-raw-gps-points-control="!props.isPublicView"
+          :raw-gps-points-enabled="showRawGpsPoints"
+          :raw-gps-points-loading="rawGpsPointsLoading"
           :show-immich="showImmich"
           :show-heatmap="props.showHeatmapControl && !props.isPublicView"
           :heatmap-enabled="heatmapEnabled"
@@ -41,6 +44,7 @@
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
+          @toggle-raw-gps-points="handleToggleRawGpsPoints"
           @toggle-immich="toggleImmich"
           @toggle-heatmap="handleToggleHeatmap"
           @heatmap-layer-change="handleHeatmapLayerChange"
@@ -92,6 +96,14 @@
           @trip-marker-click="handleTripMarkerClick"
           @highlighted-trip-click="handleHighlightedTripClick"
           @highlighted-trip-replay-data="handleHighlightedTripReplayData"
+        />
+
+        <RawGpsPointsLayer
+          v-if="map && isReady && !props.isPublicView"
+          :map="map"
+          :points="rawGpsPoints"
+          :visible="showRawGpsPoints"
+          :resolve-location="resolveRawGpsPointLocation"
         />
         
 
@@ -284,10 +296,11 @@ import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 
 // Map components
-import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer, RawGpsPointsLayer} from '@/components/maps'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
+import apiService from '@/utils/apiService'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -436,10 +449,12 @@ const {
   showFavorites,
   showTimeline,
   showPath,
+  showRawGpsPoints,
   showImmich,
   toggleFavorites,
   toggleTimeline,
   togglePath,
+  toggleRawGpsPoints,
   toggleImmich
 } = useMapLayers()
 
@@ -504,8 +519,14 @@ const favoriteContextMenuActive = ref(false)
 const heatmapEnabled = ref(false)
 const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
+const rawGpsPoints = ref([])
+const rawGpsPointsLoading = ref(false)
 let heatmapRequestId = 0
+let rawGpsPointsRequestId = 0
 const heatmapPrefetches = new Map()
+const rawGpsPointsCache = new Map()
+const rawGpsLocationCache = new Map()
+const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
 
 // Dialog state
@@ -1065,6 +1086,17 @@ const handleHeatmapLayerChange = (layer) => {
   heatmapLayer.value = layer
 }
 
+const handleToggleRawGpsPoints = (enabled) => {
+  if (props.isPublicView) return
+
+  toggleRawGpsPoints(enabled)
+  if (enabled) {
+    toggleTimeline(false)
+    togglePath(true)
+    loadRawGpsPoints()
+  }
+}
+
 // Area drawing control (for escape key handling)
 
 const initAreaDrawControl = () => {
@@ -1255,6 +1287,117 @@ const prefetchHeatmapRange = () => {
   })
 }
 
+// ─── Raw GPS point inspector logic ──────────────────────────────────────────
+
+const getRawGpsRange = () => {
+  const range = dateRangeStore.getCurrentDateRange
+  return Array.isArray(range) && range.length === 2 && range[0] && range[1]
+    ? range
+    : null
+}
+
+const getRawGpsRangeKey = (startTime, endTime) => `raw-gps:${startTime}:${endTime}`
+
+const loadRawGpsPoints = async () => {
+  if (!showRawGpsPoints.value || props.isPublicView) {
+    return
+  }
+
+  const range = getRawGpsRange()
+  if (!range) {
+    rawGpsPoints.value = []
+    return
+  }
+
+  const [startTime, endTime] = range
+  const key = getRawGpsRangeKey(startTime, endTime)
+  const cached = rawGpsPointsCache.get(key)
+  if (cached) {
+    rawGpsPoints.value = cached.points
+    return
+  }
+
+  const requestId = ++rawGpsPointsRequestId
+  rawGpsPointsLoading.value = true
+
+  try {
+    const response = await apiService.get('/gps/map-points', {
+      startTime,
+      endTime,
+      limit: 10000
+    })
+    if (requestId !== rawGpsPointsRequestId) return
+
+    const data = response?.data || {}
+    const points = Array.isArray(data.points) ? data.points : []
+    const meta = {
+      totalCount: Number(data.totalCount || 0),
+      returnedCount: Number(data.returnedCount || points.length),
+      limit: Number(data.limit || 10000),
+      limited: Boolean(data.limited)
+    }
+
+    rawGpsPointsCache.set(key, { points, meta })
+    rawGpsPoints.value = points
+
+    if (meta.limited && !rawGpsLimitWarningKeys.has(key)) {
+      rawGpsLimitWarningKeys.add(key)
+      toast.add({
+        severity: 'warn',
+        summary: 'Raw GPS points limited',
+        detail: `Showing ${meta.returnedCount} of ${meta.totalCount} points. Narrow the date range for exact inspection.`,
+        life: 5000
+      })
+    }
+  } catch (error) {
+    if (requestId !== rawGpsPointsRequestId) return
+    rawGpsPoints.value = []
+    console.error('Failed to load raw GPS points:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Raw GPS Points',
+      detail: 'Failed to load raw GPS points for this date range.',
+      life: 5000
+    })
+  } finally {
+    if (requestId === rawGpsPointsRequestId) {
+      rawGpsPointsLoading.value = false
+    }
+  }
+}
+
+const getRawGpsLocationCacheKey = (point) => {
+  if (point?.id != null) {
+    return `id:${point.id}`
+  }
+  return `coord:${point?.latitude}:${point?.longitude}`
+}
+
+const resolveRawGpsPointLocation = async (point) => {
+  if (!point?.id) {
+    throw new Error('GPS point id is required to resolve location')
+  }
+
+  const key = getRawGpsLocationCacheKey(point)
+  if (rawGpsLocationCache.has(key)) {
+    return rawGpsLocationCache.get(key)
+  }
+
+  const promise = apiService
+    .get(`/gps/points/${point.id}/location`)
+    .then((response) => response?.data)
+
+  rawGpsLocationCache.set(key, promise)
+  try {
+    const location = await promise
+    rawGpsLocationCache.set(key, location)
+    return location
+  } catch (error) {
+    rawGpsLocationCache.delete(key)
+    throw error
+  }
+}
+
 
 
 // Computed data from stores and props
@@ -1422,9 +1565,18 @@ watch(
     if (heatmapEnabled.value) {
       loadHeatmap()
     }
+    if (showRawGpsPoints.value) {
+      loadRawGpsPoints()
+    }
   },
   { immediate: true }
 )
+
+watch(showRawGpsPoints, (enabled) => {
+  if (enabled) {
+    loadRawGpsPoints()
+  }
+})
 
 // Lifecycle
 onMounted(() => {

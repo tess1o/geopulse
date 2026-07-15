@@ -32,6 +32,18 @@
         <i class="pi pi-map"></i>
       </button>
 
+      <button
+        v-if="showRawGpsPointsControl"
+        @click="handleToggleRawGpsPoints"
+        :class="{ active: rawGpsPointsEnabled, 'raw-gps-loading': rawGpsPointsLoading }"
+        :title="rawGpsPointsButtonTitle"
+        class="control-button"
+        :disabled="!map || rawGpsPointsLoading"
+      >
+        <i class="pi pi-circle"></i>
+        <span v-if="rawGpsPointsLoading" class="loading-indicator"></span>
+      </button>
+
       <div
         v-if="showHeatmap"
         ref="heatmapControlRef"
@@ -130,6 +142,18 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showRawGpsPointsControl: {
+    type: Boolean,
+    default: false
+  },
+  rawGpsPointsEnabled: {
+    type: Boolean,
+    default: false
+  },
+  rawGpsPointsLoading: {
+    type: Boolean,
+    default: false
+  },
   showImmich: {
     type: Boolean,
     default: false
@@ -168,6 +192,7 @@ const emit = defineEmits([
   'toggle-favorites',
   'toggle-timeline',
   'toggle-path',
+  'toggle-raw-gps-points',
   'toggle-immich',
   'toggle-heatmap',
   'heatmap-layer-change',
@@ -184,6 +209,10 @@ const handleToggleTimeline = () => {
 
 const handleTogglePath = () => {
   emit('toggle-path', !props.showPath)
+}
+
+const handleToggleRawGpsPoints = () => {
+  emit('toggle-raw-gps-points', !props.rawGpsPointsEnabled)
 }
 
 const handleToggleImmich = () => {
@@ -226,6 +255,11 @@ const heatmapButtonTitle = computed(() => {
   if (!props.heatmapAvailable) return 'Select a date range to enable heatmap'
   if (props.heatmapEnabled) return 'Heatmap enabled'
   return 'Show heatmap'
+})
+
+const rawGpsPointsButtonTitle = computed(() => {
+  if (props.rawGpsPointsLoading) return 'Loading raw GPS points'
+  return props.rawGpsPointsEnabled ? 'Hide raw GPS points' : 'Show raw GPS points'
 })
 
 const handleDocumentClick = (event) => {
@@ -401,6 +435,11 @@ onBeforeUnmount(() => {
 
 /* Immich button specific styles */
 .control-button.immich-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.control-button.raw-gps-loading {
   position: relative;
   pointer-events: none;
 }
