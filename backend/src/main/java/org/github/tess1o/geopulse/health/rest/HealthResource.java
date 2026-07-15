@@ -13,11 +13,13 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/health")
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: System", description = "Check service health.")
 public class HealthResource {
 
     private final EntityManager entityManager;

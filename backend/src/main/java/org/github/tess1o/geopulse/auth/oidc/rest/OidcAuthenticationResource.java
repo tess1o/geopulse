@@ -29,12 +29,14 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/auth/oidc")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Authentication", description = "Authenticate users and manage OIDC account linking.")
 public class OidcAuthenticationResource {
 
     @Inject

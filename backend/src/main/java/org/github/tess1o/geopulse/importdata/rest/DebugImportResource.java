@@ -13,9 +13,11 @@ import org.jboss.resteasy.reactive.multipart.FileUpload;
 import java.nio.file.Files;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/import/debug")
 @Slf4j
+@Tag(name = "User: Import and Export", description = "Upload debug import data.")
 public class DebugImportResource {
 
     @Inject

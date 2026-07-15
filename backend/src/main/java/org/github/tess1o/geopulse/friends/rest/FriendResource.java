@@ -27,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/friends")
 @ApplicationScoped
@@ -34,6 +35,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Friends", description = "Manage friends, location sharing, permissions, and friend discovery.")
 public class FriendResource {
 
     private final FriendService friendService;

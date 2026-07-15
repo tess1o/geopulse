@@ -11,12 +11,15 @@ import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRe
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Home Assistant.")
 public class HomeAssistantResource {
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
@@ -28,6 +31,8 @@ public class HomeAssistantResource {
 
     @POST
     @Path("/api/homeassistant")
+    @Operation(summary = "Ingest Home Assistant location",
+            description = "Receives a Home Assistant location update and stores it for the matching source token.")
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
         log.info("Received payload for home assistant: {}", data);
 

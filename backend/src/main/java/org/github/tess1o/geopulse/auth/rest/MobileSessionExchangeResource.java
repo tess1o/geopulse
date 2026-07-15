@@ -18,11 +18,13 @@ import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.Optional;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/mobile")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
+@Tag(name = "User: Authentication", description = "Exchange mobile session codes for authenticated sessions.")
 public class MobileSessionExchangeResource {
 
     @Inject

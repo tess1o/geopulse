@@ -18,12 +18,15 @@ import org.jboss.resteasy.reactive.RestHeader;
 
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from GPS Logger clients.")
 public class GpsLoggerResource {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -39,6 +42,8 @@ public class GpsLoggerResource {
 
     @POST
     @Path("/api/gpslogger")
+    @Operation(summary = "Ingest GPS Logger location",
+            description = "Receives a GPS Logger location update and stores it as a GPS point for the matching source token.")
     public Response handleGpsLogger(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String authHeader,
                                     @RestHeader("X-Limit-D") String deviceId) {

@@ -17,12 +17,15 @@ import org.jboss.resteasy.reactive.RestHeader;
 
 import java.time.Instant;
 import java.util.*;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from OwnTracks clients.")
 public class OwnTracksResource {
 
     @ConfigProperty(name = "geopulse.owntracks.ping.timestamp.override", defaultValue = "false")
@@ -48,6 +51,8 @@ public class OwnTracksResource {
 
     @POST
     @Path("/api/owntracks")
+    @Operation(summary = "Ingest OwnTracks location",
+            description = "Receives an OwnTracks location update and stores it as a GPS point for the matching source token.")
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {

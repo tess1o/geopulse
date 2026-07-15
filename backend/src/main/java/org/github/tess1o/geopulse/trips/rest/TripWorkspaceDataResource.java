@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.trips.service.TripWorkspaceDataService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/{tripId}")
 @ApplicationScoped
@@ -22,6 +23,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips", description = "Read trip workspace timeline and path data.")
 public class TripWorkspaceDataResource {
 
     private final TripWorkspaceDataService tripWorkspaceDataService;

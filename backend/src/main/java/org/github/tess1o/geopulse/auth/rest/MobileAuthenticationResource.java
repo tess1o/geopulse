@@ -14,11 +14,13 @@ import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Slf4j
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
+@Tag(name = "User: Authentication", description = "Create mobile authentication codes for the authenticated user.")
 public class MobileAuthenticationResource {
 
     @Inject

@@ -14,11 +14,13 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/ai")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: AI Assistant", description = "Manage AI assistant settings and chat with the configured AI provider.")
 public class AIResource {
 
     @Inject

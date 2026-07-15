@@ -29,12 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @jakarta.ws.rs.Path("/api/export")
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: Import and Export", description = "Create, monitor, download, and delete export jobs.")
 public class ExportResource {
 
     @Inject

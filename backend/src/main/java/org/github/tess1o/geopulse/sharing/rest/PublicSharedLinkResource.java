@@ -16,12 +16,14 @@ import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/shared")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Sharing", description = "Read public shared location data and verify shared-link passwords.")
 public class PublicSharedLinkResource {
 
     @Inject

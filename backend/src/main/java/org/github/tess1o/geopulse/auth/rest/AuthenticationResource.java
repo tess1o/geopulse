@@ -19,12 +19,14 @@ import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Authentication", description = "Login, refresh sessions, logout, and inspect authentication status.")
 public class AuthenticationResource {
 
     private final AuthenticationService authenticationService;

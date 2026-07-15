@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/period-tags")
 @ApplicationScoped
@@ -24,6 +25,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Period Tags", description = "Manage period tags and overlap checks.")
 public class PeriodTagResource {
 
     private final PeriodTagService service;

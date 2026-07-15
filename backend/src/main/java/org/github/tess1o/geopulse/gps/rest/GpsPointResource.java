@@ -38,6 +38,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for GPS point data.
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Data", description = "Ingest, query, update, export, and delete GPS points.")
 public class GpsPointResource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String OK_RESPONSE = "OK";

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST API resource for the new streaming timeline algorithm.
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
 @RequestScoped
+@Tag(name = "User: Timeline", description = "Read timelines and manage timeline generation, jobs, and overrides.")
 public class StreamingTimelineResource {
 
     @Inject

@@ -14,12 +14,15 @@ import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Overland clients.")
 public class OverlandResource {
 
     private final GpsPointService gpsPointService;
@@ -33,6 +36,8 @@ public class OverlandResource {
 
     @POST
     @Path("/api/overland")
+    @Operation(summary = "Ingest Overland locations",
+            description = "Receives an Overland location batch and stores the points for the matching source token.")
     public Response handleOverland(OverlandLocations overlandLocations,
                                    @HeaderParam("Authorization") String overlandAuth) {
         log.info("Received payload for overland:{}", overlandLocations);

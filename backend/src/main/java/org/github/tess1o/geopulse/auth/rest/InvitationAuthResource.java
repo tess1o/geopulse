@@ -18,12 +18,14 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/auth/invitation")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @PermitAll
 @Slf4j
+@Tag(name = "User: Authentication", description = "Validate invitations and register invited users.")
 public class InvitationAuthResource {
 
     @Inject

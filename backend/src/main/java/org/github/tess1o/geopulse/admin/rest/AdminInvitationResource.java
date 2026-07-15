@@ -21,12 +21,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/admin/invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
+@Tag(name = "Admin: Invitations", description = "Manage account invitations and registration links.")
 public class AdminInvitationResource {
 
     @Context

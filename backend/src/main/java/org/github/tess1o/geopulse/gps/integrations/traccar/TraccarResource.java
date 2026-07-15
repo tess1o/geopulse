@@ -17,12 +17,15 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.Locale;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Traccar clients.")
 public class TraccarResource {
 
     private final GpsPointService gpsPointService;
@@ -36,6 +39,8 @@ public class TraccarResource {
 
     @POST
     @Path("/api/traccar")
+    @Operation(summary = "Ingest Traccar position",
+            description = "Receives a Traccar position update and routes it to matching active Traccar source configurations.")
     public Response handleTraccar(TraccarPositionData payload,
                                   @HeaderParam("Authorization") String authHeader) {
         log.info("Received Traccar payload: {}", payload);

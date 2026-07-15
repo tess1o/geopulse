@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.trips.service.TripVisitAutoMatchService;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/{tripId}/visit-suggestions")
 @ApplicationScoped
@@ -20,6 +21,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips", description = "Read visit suggestions for trips.")
 public class TripVisitMatchingResource {
 
     private final TripVisitAutoMatchService tripVisitAutoMatchService;

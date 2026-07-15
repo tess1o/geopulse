@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.trips.service.TripPlanItemService;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/{tripId}/plan-items")
 @ApplicationScoped
@@ -25,6 +26,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips and Planning", description = "Manage trip plan items and visit overrides.")
 public class TripPlanItemResource {
 
     private final TripPlanItemService tripPlanItemService;

@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for user management.
@@ -32,6 +33,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Users", description = "Register users and manage the authenticated user profile, avatar, password, and preferences.")
 public class UserResource {
 
     private final UserService userService;

@@ -1215,6 +1215,26 @@ jobs:
           echo "Copied to docs-website/static/charts:"
           ls -lh docs-website/static/charts/
 
+      - name: Validate OpenAPI specification files
+        run: |
+          test -f docs/openapi/openapi.json
+          test -f docs/openapi/openapi.yaml
+
+      - name: Generate REST API documentation
+        run: |
+          cd docs-website
+          npm run api:gen
+
+      - name: Validate generated REST API documentation
+        run: |
+          test -d docs-website/docs/api/reference
+          test -f docs-website/docs/api/reference/sidebar.ts
+          GENERATED_PAGE="$(find docs-website/docs/api/reference -name '*.mdx' -print -quit)"
+          if [ -z "$GENERATED_PAGE" ]; then
+            echo "No generated REST API documentation pages found"
+            exit 1
+          fi
+
       - name: Deploy documentation with Helm charts
         env:
           GIT_USER: ${{ github.actor }}
@@ -1236,5 +1256,6 @@ jobs:
           echo "  - Docker Hub"
           echo "  - GitHub Container Registry"
           echo "  - Helm repository (GitHub Pages)"
+          echo "  - REST API documentation (GitHub Pages)"
           echo ""
           echo "📝 Next: Create GitHub Release at https://github.com/${{ github.repository }}/releases/new?tag=v${{ needs.prepare.outputs.version }}"

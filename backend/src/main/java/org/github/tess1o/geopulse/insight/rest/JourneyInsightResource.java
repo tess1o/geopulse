@@ -11,10 +11,12 @@ import org.github.tess1o.geopulse.insight.model.JourneyInsights;
 import org.github.tess1o.geopulse.insight.service.JourneyInsightService;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/journey-insights")
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
+@Tag(name = "User: Journey Insights", description = "Read journey insight summaries.")
 public class JourneyInsightResource {
 
     @Inject

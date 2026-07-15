@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJobResponse;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 
 import java.util.*;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for managing import jobs.
@@ -21,6 +22,7 @@ import java.util.*;
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: Import and Export", description = "Read, monitor, and delete import jobs.")
 public class ImportResource {
 
     @Inject

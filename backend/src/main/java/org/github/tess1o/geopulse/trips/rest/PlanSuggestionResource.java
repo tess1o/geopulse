@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.trips.model.dto.PlanSuggestionDto;
 import org.locationtech.jts.geom.Point;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/plan-suggestion")
 @ApplicationScoped
@@ -27,6 +28,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips and Planning", description = "Suggest trip plans for a location.")
 public class PlanSuggestionResource {
 
     private final CurrentUserService currentUserService;

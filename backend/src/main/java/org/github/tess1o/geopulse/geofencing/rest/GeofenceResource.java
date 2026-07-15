@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/geofences")
 @ApplicationScoped
@@ -33,6 +34,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Geofences", description = "Manage geofence rules, events, templates, and notification tests.")
 public class GeofenceResource {
 
     private final GeofenceRuleService ruleService;

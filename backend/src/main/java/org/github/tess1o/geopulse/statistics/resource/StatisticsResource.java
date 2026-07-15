@@ -13,12 +13,14 @@ import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/statistics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Statistics", description = "Read movement statistics for range, week, and month views.")
 public class StatisticsResource {
 
     private final StatisticsService statisticsService;

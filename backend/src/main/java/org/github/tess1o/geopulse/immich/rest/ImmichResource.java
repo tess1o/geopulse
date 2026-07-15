@@ -18,12 +18,14 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Immich", description = "Manage Immich configuration and retrieve Immich photo data.")
 public class ImmichResource {
 
     @Inject

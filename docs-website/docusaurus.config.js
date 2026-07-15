@@ -43,6 +43,7 @@ const config = {
             ({
                 docs: {
                     sidebarPath: './sidebars.js',
+                    docItemComponent: '@theme/ApiItem',
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
                 },
@@ -52,6 +53,42 @@ const config = {
             }),
         ],
     ],
+    plugins: [
+        function webpackFallbackPlugin() {
+            return {
+                name: 'webpack-fallback-plugin',
+                configureWebpack() {
+                    return {
+                        resolve: {
+                            fallback: {
+                                path: false,
+                            },
+                        },
+                    };
+                },
+            };
+        },
+        [
+            'docusaurus-plugin-openapi-docs',
+            {
+                id: 'api',
+                docsPluginId: 'classic',
+                config: {
+                    geopulse: {
+                        specPath: '../docs/openapi/openapi.yaml',
+                        outputDir: 'docs/api/reference',
+                        hideSendButton: true,
+                        showSchemas: true,
+                        sidebarOptions: {
+                            groupPathsBy: 'tag',
+                            categoryLinkSource: 'auto',
+                        },
+                    },
+                },
+            },
+        ],
+    ],
+    themes: ['docusaurus-theme-openapi-docs'],
     headTags: [
         {
             tagName: 'meta',
@@ -82,6 +119,12 @@ const config = {
                         sidebarId: 'docsSidebar',
                         position: 'left',
                         label: 'Documentation',
+                    },
+                    {
+                        type: 'doc',
+                        docId: 'api/intro',
+                        position: 'left',
+                        label: 'REST API',
                     },
                     {
                         href: 'https://github.com/tess1o/geopulse',

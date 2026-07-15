@@ -11,12 +11,15 @@ import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location updates from Colota-compatible clients.")
 public class ColotaResource {
 
     private final GpsPointService gpsPointService;
@@ -30,6 +33,8 @@ public class ColotaResource {
 
     @POST
     @Path("/api/colota")
+    @Operation(summary = "Ingest Colota location",
+            description = "Receives a Colota-compatible location update and stores it for the matching source token.")
     public Response handleColota(ColotaLocationMessage payload,
                                  @HeaderParam("Authorization") String authHeader) {
         log.info("Received Colota payload: {}", payload);

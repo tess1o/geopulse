@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for OIDC provider management.
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
+@Tag(name = "Admin: OIDC Providers", description = "Manage OpenID Connect provider configuration.")
 public class AdminOidcProviderResource {
 
     @Context

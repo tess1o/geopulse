@@ -16,6 +16,8 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 
 @Path("/api/dawarich/api/v1")
@@ -23,6 +25,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: GPS Integrations", description = "Ingest location data and compatibility responses for Dawarich.")
 public class DawarichResource {
 
     private final GpsPointService gpsPointService;
@@ -36,6 +39,8 @@ public class DawarichResource {
 
     @GET
     @Path("/health")
+    @Operation(summary = "Check Dawarich compatibility health",
+            description = "Returns a Dawarich-compatible health response for source connectivity checks.")
     public Response handleDawarichHealth(Request request, @HeaderParam("Authorization") String authHeader) {
         log.info("Received health request");
         var authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
@@ -50,6 +55,8 @@ public class DawarichResource {
 
     @POST
     @Path("/points")
+    @Operation(summary = "Ingest Dawarich points",
+            description = "Receives Dawarich point payloads and stores them for the matching source token.")
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         if (authResult.isEmpty()) {
@@ -64,6 +71,8 @@ public class DawarichResource {
 
     @GET
     @Path("/stats")
+    @Operation(summary = "Get Dawarich compatibility stats",
+            description = "Returns a Dawarich-compatible stats response for authenticated compatibility clients.")
     public Response handleDawarichStats(@QueryParam("api_key") String apiKey) {
         log.info("Received stats request with api_key: {}", apiKey);
 

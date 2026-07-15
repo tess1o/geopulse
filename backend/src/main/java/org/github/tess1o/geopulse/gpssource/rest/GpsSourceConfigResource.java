@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/gps/source")
 @Produces(MediaType.APPLICATION_JSON)
@@ -23,6 +24,7 @@ import java.util.UUID;
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
 @Slf4j
+@Tag(name = "User: GPS Sources", description = "Manage GPS source configuration, telemetry mappings, and status.")
 public class GpsSourceConfigResource {
 
     private final GpsSourceService gpsSourceService;

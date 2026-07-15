@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST API for managing reverse geocoding results.
@@ -28,6 +29,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Geocoding", description = "Manage reverse geocoding results, normalization, providers, and reconciliation.")
 public class ReverseGeocodingResource {
 
     private final ReverseGeocodingManagementService managementService;

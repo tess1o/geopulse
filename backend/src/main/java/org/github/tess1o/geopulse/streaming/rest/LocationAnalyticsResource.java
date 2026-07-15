@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST API resource for location analytics.
@@ -35,6 +36,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
 @RequestScoped
+@Tag(name = "User: Location Analytics", description = "Search and analyze visited cities, countries, places, and visits.")
 public class LocationAnalyticsResource {
 
     @Inject

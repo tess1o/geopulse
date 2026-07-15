@@ -16,11 +16,13 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
+@Tag(name = "User: API Tokens", description = "Manage API tokens owned by the authenticated user.")
 public class ApiTokenResource {
 
     @Context

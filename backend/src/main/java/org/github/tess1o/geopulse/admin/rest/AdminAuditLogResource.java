@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for admin audit log viewing.
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
+@Tag(name = "Admin: Audit Logs", description = "Review administrator audit events and security-relevant activity.")
 public class AdminAuditLogResource {
 
     @Inject

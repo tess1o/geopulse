@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/friends/invitations")
 @ApplicationScoped
@@ -30,6 +31,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 @RolesAllowed({"USER", "ADMIN"})
+@Tag(name = "User: Friends", description = "Send and manage friend invitations.")
 public class FriendInvitationResource {
     private final FriendInvitationService friendInvitationService;
     private final CurrentUserService currentUserService;

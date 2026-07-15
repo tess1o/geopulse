@@ -16,12 +16,14 @@ import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.service.TripSummaryService;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/{tripId}/summary")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips", description = "Read trip summaries.")
 public class TripSummaryResource {
 
     private final TripSummaryService tripSummaryService;

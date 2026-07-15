@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/favorites")
 @ApplicationScoped
@@ -25,6 +26,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Favorites", description = "Manage favorite places, areas, distinct values, and reconciliation.")
 public class FavoritesResource {
 
     private final FavoriteLocationService service;

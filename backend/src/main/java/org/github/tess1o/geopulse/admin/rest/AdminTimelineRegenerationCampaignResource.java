@@ -23,12 +23,14 @@ import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaign
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
+@Tag(name = "Admin: Timeline Regeneration", description = "Preview, create, inspect, and retry timeline regeneration campaigns.")
 public class AdminTimelineRegenerationCampaignResource {
 
     @Context

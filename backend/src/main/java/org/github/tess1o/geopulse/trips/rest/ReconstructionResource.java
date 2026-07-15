@@ -19,6 +19,7 @@ import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/reconstruction")
 @ApplicationScoped
@@ -26,6 +27,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips and Planning", description = "Preview and commit timeline reconstruction changes.")
 public class ReconstructionResource {
 
     private final TripReconstructionService tripReconstructionService;

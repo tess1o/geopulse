@@ -12,12 +12,14 @@ import org.github.tess1o.geopulse.digest.service.DigestService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/digest")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Digests", description = "Read monthly and yearly movement digests.")
 public class DigestResource {
 
     @Inject

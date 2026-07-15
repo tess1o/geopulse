@@ -19,12 +19,14 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/notifications")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Notifications", description = "Read and update notification seen state.")
 public class NotificationResource {
 
     private final UserNotificationService notificationService;

@@ -166,7 +166,7 @@ openapi:
 	@echo "Removing old OpenAPI specification"
 	rm -rf backend/target/openapi docs/openapi
 	@echo "📘 Generating OpenAPI specification..."
-	./mvnw -pl backend -am package -DskipTests=true
+	./mvnw -pl backend -am package -DskipTests=true -Dmaven.test.skip=true
 	@echo "📦 Copying OpenAPI files to docs/openapi..."
 	mkdir -p docs/openapi
 	cp -v backend/target/openapi/* docs/openapi/

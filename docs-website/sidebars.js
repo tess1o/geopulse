@@ -1,5 +1,3 @@
-// @ts-check
-
 /**
  * Creating a sidebar enables you to:
  - create an ordered group of docs
@@ -12,6 +10,111 @@
 
  @type {import('@docusaurus/plugin-content-docs').SidebarsConfig}
  */
+const path = require('path');
+const fs = require('fs');
+
+const apiReferenceDir = path.join(process.cwd(), 'docs', 'api', 'reference');
+const hasGeneratedApiReference = fs.existsSync(path.join(apiReferenceDir, 'sidebar.ts'))
+    && fs.readdirSync(apiReferenceDir).some((fileName) => fileName.endsWith('.mdx'));
+
+let generatedApiSidebar = [];
+if (hasGeneratedApiReference) {
+    const sidebarModule = require('./docs/api/reference/sidebar.ts');
+    generatedApiSidebar = sidebarModule.default || sidebarModule;
+}
+
+const USER_API_PREFIX = 'User: ';
+const ADMIN_API_PREFIX = 'Admin: ';
+const PUBLIC_API_PREFIX = 'Public: ';
+
+const stripGeneratedIndexTitle = (item, label) => ({
+    ...item,
+    label,
+    link: item.link?.type === 'generated-index'
+        ? {...item.link, title: label}
+        : item.link,
+});
+
+const findOrCreateCategory = (items, label) => {
+    let category = items.find((item) => item.type === 'category' && item.label === label);
+    if (!category) {
+        category = {
+            type: 'category',
+            label,
+            items: [],
+        };
+        items.push(category);
+    }
+    return category;
+};
+
+const splitGeneratedApiItems = (items, prefix) => {
+    const groupedItems = [];
+
+    items
+        .filter((item) => item.type === 'category' && item.label.startsWith(prefix))
+        .forEach((item) => {
+            const labelPath = item.label
+                .replace(prefix, '')
+                .split(':')
+                .map((label) => label.trim())
+                .filter(Boolean);
+            const label = labelPath.pop();
+            if (!label) {
+                return;
+            }
+
+            const apiItem = stripGeneratedIndexTitle(item, label);
+            let currentItems = groupedItems;
+            labelPath.forEach((categoryLabel) => {
+                currentItems = findOrCreateCategory(currentItems, categoryLabel).items;
+            });
+            currentItems.push(apiItem);
+        });
+
+    return groupedItems;
+};
+
+const publicApiItems = splitGeneratedApiItems(generatedApiSidebar, PUBLIC_API_PREFIX);
+const userApiItems = splitGeneratedApiItems(generatedApiSidebar, USER_API_PREFIX);
+const adminApiItems = splitGeneratedApiItems(generatedApiSidebar, ADMIN_API_PREFIX);
+const generalApiItems = generatedApiSidebar
+    .filter((item) => item.type === 'category'
+        && !item.label.startsWith(PUBLIC_API_PREFIX)
+        && !item.label.startsWith(USER_API_PREFIX)
+        && !item.label.startsWith(ADMIN_API_PREFIX));
+
+const restApiItems = [
+    {
+        type: 'doc',
+        id: 'api/intro',
+        label: 'API Overview',
+    },
+    {
+        type: 'doc',
+        id: 'api/api-tokens',
+        label: 'API Tokens',
+    },
+    ...(hasGeneratedApiReference ? [
+        ...(publicApiItems.length > 0 ? [{
+            type: 'category',
+            label: 'Public API',
+            items: publicApiItems,
+        }] : []),
+        ...(userApiItems.length > 0 ? [{
+            type: 'category',
+            label: 'User API',
+            items: userApiItems,
+        }] : []),
+        ...(adminApiItems.length > 0 ? [{
+            type: 'category',
+            label: 'Admin API',
+            items: adminApiItems,
+        }] : []),
+        ...generalApiItems,
+    ] : []),
+];
+
 const sidebars = {
     docsSidebar: [
         {
@@ -223,6 +326,11 @@ const sidebars = {
             type: 'category',
             label: 'Reference & Troubleshooting',
             items: [
+                {
+                    type: 'category',
+                    label: 'REST API',
+                    items: restApiItems,
+                },
                 {
                     type: 'category',
                     label: 'Documentation In Progress',

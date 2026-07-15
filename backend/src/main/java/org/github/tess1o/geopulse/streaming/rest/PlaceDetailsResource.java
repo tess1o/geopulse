@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST API resource for place details and visit history.
@@ -35,6 +36,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
 @RequestScoped
+@Tag(name = "User: Places", description = "Read and update place details, visits, photos, and exports.")
 public class PlaceDetailsResource {
 
     @Inject

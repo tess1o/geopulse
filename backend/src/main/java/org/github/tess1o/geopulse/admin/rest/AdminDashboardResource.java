@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource for admin dashboard statistics.
@@ -21,6 +22,7 @@ import java.util.Map;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
 @Slf4j
+@Tag(name = "Admin: Dashboard", description = "Read administrator dashboard metrics and system statistics.")
 public class AdminDashboardResource {
 
     @Inject

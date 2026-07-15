@@ -20,12 +20,14 @@ import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStatusDTO;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/boat/setup")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Trips and Planning", description = "Run and monitor boat setup analysis.")
 public class BoatSetupResource {
 
     @Inject

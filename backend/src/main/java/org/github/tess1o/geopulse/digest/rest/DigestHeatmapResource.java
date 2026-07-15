@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * REST resource exposing heatmap location data for the Rewind (TimeDigest)
@@ -28,6 +29,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({ "USER", "ADMIN" })
 @Slf4j
+@Tag(name = "User: Digests", description = "Read digest heatmap data for monthly, yearly, and custom ranges.")
 public class DigestHeatmapResource {
 
     @Inject

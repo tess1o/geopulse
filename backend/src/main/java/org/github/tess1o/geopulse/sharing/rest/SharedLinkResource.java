@@ -16,12 +16,14 @@ import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/share-links")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Sharing", description = "Manage shared location links.")
 public class SharedLinkResource {
 
     @Inject

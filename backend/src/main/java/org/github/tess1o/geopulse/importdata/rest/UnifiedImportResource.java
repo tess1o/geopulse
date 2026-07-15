@@ -20,6 +20,7 @@ import org.jboss.resteasy.reactive.RestForm;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
  * Unified REST resource for handling all file imports.
@@ -30,6 +31,7 @@ import java.util.*;
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
+@Tag(name = "User: Import and Export", description = "Upload files and manage chunked imports.")
 public class UnifiedImportResource {
 
     @Inject

@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.trips.service.TripPlanSearchService;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/trips/plan-search")
 @ApplicationScoped
@@ -24,6 +25,7 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @Slf4j
+@Tag(name = "User: Trips and Planning", description = "Search trip plan candidates.")
 public class PlanSearchResource {
 
     private final CurrentUserService currentUserService;

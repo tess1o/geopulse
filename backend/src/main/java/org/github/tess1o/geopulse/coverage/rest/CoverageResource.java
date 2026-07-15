@@ -25,11 +25,13 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
 import java.util.UUID;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/coverage")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({ "USER", "ADMIN" })
+@Tag(name = "User: Coverage", description = "Read and manage coverage grid status, cells, and recalculation jobs.")
 public class CoverageResource {
 
     private final CoverageService coverageService;

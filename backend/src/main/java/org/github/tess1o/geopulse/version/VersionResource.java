@@ -10,8 +10,10 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.Map;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/version")
+@Tag(name = "User: System", description = "Read application version and version status.")
 public class VersionResource {
     @ConfigProperty(name = "quarkus.application.version")
     @StaticInitSafe
