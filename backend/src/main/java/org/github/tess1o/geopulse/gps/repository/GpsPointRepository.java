@@ -34,6 +34,18 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 userId, startTime, endTime);
     }
 
+    public List<GpsPointEntity> findMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime, int limit) {
+        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp ASC",
+                userId, startTime, endTime)
+                .page(0, limit)
+                .list();
+    }
+
+    public long countByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime) {
+        return count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
+                userId, startTime, endTime);
+    }
+
     /**
      * Get friend trail points for the current user in one SQL query.
      * For every friend who shared live location, the window is:

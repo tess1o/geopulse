@@ -69,7 +69,18 @@ public class LocationPointResolver {
             }
         }
 
-        // No favorite found, use geocoding
+        // No favorite found, reuse cached geocoding before making an external provider call.
+        var cachedGeocodingResult = cacheGeocodingService.getCachedGeocodingResult(userId, point);
+        if (cachedGeocodingResult.isPresent()) {
+            Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(userId, point).orElse(null);
+            geocodingId = normalizeGeocodingReference(userId, geocodingId);
+            return LocationResolutionResult.fromGeocoding(
+                    cachedGeocodingResult.get().getFormattedDisplayName(),
+                    geocodingId
+            );
+        }
+
+        // No favorite or cache hit found, use geocoding provider fallback.
         FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
 
         // Get the entity ID of the cached result (getLocationName already cached it)

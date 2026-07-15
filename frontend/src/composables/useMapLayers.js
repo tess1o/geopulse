@@ -10,6 +10,7 @@ export function useMapLayers() {
   const showFavorites = ref(false)
   const showTimeline = ref(true)
   const showPath = ref(true)
+  const showRawGpsPoints = ref(false)
   const showImmich = ref(false)
 
   // Layer control methods
@@ -35,6 +36,10 @@ export function useMapLayers() {
     showPath.value = value !== undefined ? value : !showPath.value
   }
 
+  const toggleRawGpsPoints = (value) => {
+    showRawGpsPoints.value = value !== undefined ? value : !showRawGpsPoints.value
+  }
+
   const toggleImmich = (value) => {
     console.log('useMapLayers: toggleImmich called', {
       currentValue: showImmich.value,
@@ -51,6 +56,7 @@ export function useMapLayers() {
     showFavorites.value = true
     showTimeline.value = true
     showPath.value = true
+    showRawGpsPoints.value = true
     showImmich.value = true
   }
 
@@ -59,6 +65,7 @@ export function useMapLayers() {
     showFavorites.value = false
     showTimeline.value = false
     showPath.value = false
+    showRawGpsPoints.value = false
     showImmich.value = false
   }
 
@@ -67,12 +74,13 @@ export function useMapLayers() {
     showFavorites.value = false
     showTimeline.value = true
     showPath.value = true
+    showRawGpsPoints.value = false
     showImmich.value = false
   }
 
   // Computed
   const visibleLayerCount = computed(() => {
-    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value, showImmich.value]
+    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value, showRawGpsPoints.value, showImmich.value]
       .filter(Boolean).length
   })
 
@@ -109,6 +117,13 @@ export function useMapLayers() {
       icon: 'pi pi-map'
     },
     {
+      id: 'raw-gps-points',
+      label: 'Raw GPS Points',
+      visible: showRawGpsPoints.value,
+      toggle: toggleRawGpsPoints,
+      icon: 'pi pi-circle'
+    },
+    {
       id: 'immich',
       label: 'Photos',
       visible: showImmich.value,
@@ -123,6 +138,7 @@ export function useMapLayers() {
     showFavorites: readonly(showFavorites),
     showTimeline: readonly(showTimeline),
     showPath: readonly(showPath),
+    showRawGpsPoints: readonly(showRawGpsPoints),
     showImmich: readonly(showImmich),
 
     // Methods
@@ -130,6 +146,7 @@ export function useMapLayers() {
     toggleFavorites,
     toggleTimeline,
     togglePath,
+    toggleRawGpsPoints,
     toggleImmich,
     showAllLayers,
     hideAllLayers,

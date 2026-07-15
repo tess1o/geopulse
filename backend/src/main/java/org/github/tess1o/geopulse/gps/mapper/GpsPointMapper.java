@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
+import org.github.tess1o.geopulse.gps.model.RawGpsPointMapPointDTO;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -301,6 +302,34 @@ public class GpsPointMapper {
                 null,
                 null
         );
+    }
+
+    public RawGpsPointMapPointDTO toRawGpsPointMapPointDTO(GpsPointEntity entity) {
+        if (entity == null || entity.getCoordinates() == null) {
+            return null;
+        }
+
+        return RawGpsPointMapPointDTO.builder()
+                .id(entity.getId())
+                .timestamp(entity.getTimestamp())
+                .latitude(entity.getCoordinates().getY())
+                .longitude(entity.getCoordinates().getX())
+                .accuracy(entity.getAccuracy())
+                .battery(entity.getBattery())
+                .velocity(entity.getVelocity())
+                .altitude(entity.getAltitude())
+                .sourceType(entity.getSourceType() == null ? null : entity.getSourceType().name())
+                .build();
+    }
+
+    public List<RawGpsPointMapPointDTO> toRawGpsPointMapPointDTOs(List<GpsPointEntity> entities) {
+        if (entities == null) {
+            return List.of();
+        }
+
+        return entities.stream()
+                .map(this::toRawGpsPointMapPointDTO)
+                .collect(Collectors.toList());
     }
 
     /**

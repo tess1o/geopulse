@@ -19,6 +19,8 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
+import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
+import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
@@ -54,6 +56,9 @@ public class GpsPointService {
     private final GeofenceEvaluationService geofenceEvaluationService;
     private final TimelineConfigurationProvider timelineConfigurationProvider;
     private final GpsPointEnvironmentService gpsPointEnvironmentService;
+
+    @Inject
+    LocationPointResolver locationPointResolver;
 
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
@@ -427,6 +432,50 @@ public class GpsPointService {
         applyTelemetryToPathPoints(userId, gpsPoints, pathPoints);
 
         return new GpsPointPathDTO(userId, pathPoints);
+    }
+
+    public RawGpsPointMapResponseDTO getRawGpsMapPoints(UUID userId, Instant startTime, Instant endTime, int limit) {
+        long totalCount = gpsPointRepository.countByUserIdAndTimePeriod(userId, startTime, endTime);
+        List<GpsPointEntity> gpsPoints = gpsPointRepository.findMapPointsByUserIdAndTimePeriod(userId, startTime, endTime, limit);
+        List<RawGpsPointMapPointDTO> points = gpsPointMapper.toRawGpsPointMapPointDTOs(gpsPoints);
+
+        return RawGpsPointMapResponseDTO.builder()
+                .points(points)
+                .totalCount(totalCount)
+                .returnedCount(points.size())
+                .limit(limit)
+                .limited(totalCount > points.size())
+                .build();
+    }
+
+    public RawGpsPointLocationDTO resolveRawGpsPointLocation(UUID userId, Long pointId) {
+        Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
+        if (optionalPoint.isEmpty()) {
+            throw new NotFoundException("GPS point not found with ID: " + pointId);
+        }
+
+        GpsPointEntity gpsPoint = optionalPoint.get();
+        if (!gpsPoint.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("GPS point does not belong to the user");
+        }
+
+        if (gpsPoint.getCoordinates() == null) {
+            throw new NotFoundException("GPS point has no coordinates");
+        }
+
+        LocationResolutionResult result = locationPointResolver.resolveLocationWithReferences(userId, gpsPoint.getCoordinates());
+        String sourceType = result.getFavoriteId() != null
+                ? "favorite"
+                : result.getGeocodingId() != null ? "geocoding" : "unknown";
+
+        return RawGpsPointLocationDTO.builder()
+                .locationName(result.getLocationName())
+                .sourceType(sourceType)
+                .favoriteId(result.getFavoriteId())
+                .geocodingId(result.getGeocodingId())
+                .anchorLatitude(result.getAnchorLatitude())
+                .anchorLongitude(result.getAnchorLongitude())
+                .build();
     }
 
     /**

@@ -49,6 +49,8 @@ import java.util.stream.Collectors;
 public class GpsPointResource {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String OK_RESPONSE = "OK";
+    private static final int DEFAULT_RAW_MAP_POINTS_LIMIT = 10000;
+    private static final int MAX_RAW_MAP_POINTS_LIMIT = 25000;
 
     private final GpsPointService gpsPointService;
     private final CurrentUserService currentUserService;
@@ -157,6 +159,65 @@ public class GpsPointResource {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve GPS point path: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/map-points")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getRawGpsMapPoints(
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime,
+            @QueryParam("limit") @DefaultValue("" + DEFAULT_RAW_MAP_POINTS_LIMIT) int limit) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            if (limit < 1 || limit > MAX_RAW_MAP_POINTS_LIMIT) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Limit must be between 1 and " + MAX_RAW_MAP_POINTS_LIMIT))
+                        .build();
+            }
+
+            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
+            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
+            RawGpsPointMapResponseDTO result = gpsPointService.getRawGpsMapPoints(userId, start, end, limit);
+            return Response.ok(ApiResponse.success(result)).build();
+        } catch (DateTimeParseException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to retrieve raw GPS map points for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve raw GPS map points: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/points/{pointId}/location")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response resolveRawGpsPointLocation(@PathParam("pointId") Long pointId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            RawGpsPointLocationDTO result = gpsPointService.resolveRawGpsPointLocation(userId, pointId);
+            return Response.ok(ApiResponse.success(result)).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to resolve raw GPS point location {} for user {}", pointId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to resolve GPS point location: " + e.getMessage()))
                     .build();
         }
     }
