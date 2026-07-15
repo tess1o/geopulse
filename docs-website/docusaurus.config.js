@@ -10,8 +10,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-    title: 'GeoPulse documentation',
-    tagline: 'A self-hosted location tracking and analysis platform',
+    title: 'GeoPulse',
+    tagline: 'A privacy-first, self-hosted Google Timeline alternative',
     favicon: 'img/favicon.png',
 
     // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -19,8 +19,8 @@ const config = {
         v4: true, // Improve compatibility with the upcoming Docusaurus v4
     },
 
-    url: 'https://tess1o.github.io',
-    baseUrl: '/geopulse/',
+    url: 'https://geopulse.cc',
+    baseUrl: '/',
     organizationName: 'tess1o', // your GitHub username
     projectName: 'GeoPulse', // your repo name
     deploymentBranch: 'gh-pages',
@@ -101,7 +101,7 @@ const config = {
     themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
-            image: 'img/docusaurus-social-card.jpg',
+            image: 'img/geopulse-app-timeline.png',
 
             colorMode: {
                 respectPrefersColorScheme: true,
@@ -110,26 +110,32 @@ const config = {
             navbar: {
                 title: 'GeoPulse',
                 logo: {
-                    alt: 'My Site Logo',
+                    alt: 'GeoPulse',
                     src: 'img/geopulse-logo.svg',
                 },
                 items: [
                     {
                         type: 'docSidebar',
                         sidebarId: 'docsSidebar',
-                        position: 'left',
+                        position: 'right',
                         label: 'Documentation',
                     },
                     {
                         type: 'doc',
                         docId: 'api/intro',
-                        position: 'left',
+                        position: 'right',
                         label: 'REST API',
                     },
                     {
                         href: 'https://github.com/tess1o/geopulse',
                         label: 'GitHub',
                         position: 'right',
+                    },
+                    {
+                        href: 'https://github.com/tess1o/geopulse/releases/tag/v1.34.1',
+                        label: 'v1.34.1',
+                        position: 'right',
+                        className: 'navbar-version-link',
                     },
                 ],
             },
