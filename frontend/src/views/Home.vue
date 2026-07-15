@@ -93,9 +93,9 @@
       <section class="hero-section">
         <div class="hero-container">
           <div class="hero-content">
-            <div class="hero-eyebrow">Self-hosted location timeline</div>
+            <div class="hero-eyebrow">Privacy-first Google Timeline alternative</div>
             <h1 class="hero-title" v-html="heroTitle"></h1>
-            <p class="hero-subtitle" v-if="!isMobileViewport">GeoPulse turns raw GPS points into stays, trips, maps, and insights while your data stays under your control.</p>
+            <p class="hero-subtitle" v-if="!isMobileViewport">GeoPulse turns raw GPS points into a private location timeline with stays, trips, maps, and insights, all under your control.</p>
 
             <div class="hero-visual mobile-orbit" v-if="isMobileViewport">
               <div class="visual-showcase">
@@ -331,7 +331,7 @@ const whatsNewHighlights = computed(() => matchedWhatsNewEntry.value?.highlights
 const matchedWhatsNewUrl = computed(() => matchedWhatsNewEntry.value?.releaseUrl || defaultReleaseNotesUrl)
 
 const heroTitle = computed(() => {
-  return authStore.isAuthenticated ? 'Welcome back' : 'Self-Host Anywhere'
+  return authStore.isAuthenticated ? 'Welcome back' : 'Your Timeline, Self-Hosted'
 })
 
 const navVersionBadge = computed(() => {
