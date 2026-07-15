@@ -1541,10 +1541,25 @@ html body .p-dark .p-tooltip .p-tooltip-arrow::before {
   }
 }
 
-@media (max-width: 768px) {
+/* Keep focused mobile form controls at 16px to prevent iOS Safari auto-zoom. */
+@media (max-width: 768px), (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select,
+  .p-inputtext,
+  .p-password-input,
+  .p-inputnumber-input,
+  .p-autocomplete-input,
   .p-datepicker-input,
   .p-datepicker input,
-  .p-inputtext.p-datepicker-input {
+  .p-inputtext.p-datepicker-input,
+  .p-textarea,
+  .p-inputtextarea,
+  .p-select-label,
+  .p-dropdown-label,
+  .p-multiselect-label,
+  .p-treeselect-label,
+  .p-cascadeselect-label {
     font-size: 16px !important;
   }
 
