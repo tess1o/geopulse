@@ -34,13 +34,13 @@
                       :key="country.name"
                       class="geographic-item"
                   >
-                    <img
-                        v-if="country.flagUrl"
-                        :src="country.flagUrl"
-                        :alt="`${country.name} flag`"
-                        class="country-flag-img"
-                        @error="handleFlagError(country)"
-                    />
+                    <span
+                        v-if="country.flagClass"
+                        class="country-flag-img flag"
+                        :class="country.flagClass"
+                        role="img"
+                        :aria-label="`${country.name} flag`"
+                    ></span>
                     <span v-else class="country-flag-placeholder">🏳️</span>
                     <span class="country-name">{{ country.name }}</span>
                   </div>
@@ -262,12 +262,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from "primevue/usetoast"
 import ProgressSpinner from 'primevue/progressspinner'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useTimezone } from '@/composables/useTimezone'
+import { getCountryFlagClass } from '@/utils/countryFlags'
 
 const timezone = useTimezone()
 
@@ -284,9 +285,6 @@ const { handleErrorWithRetry } = useErrorHandler()
 
 // Store refs
 const { insights: journeyInsights, loading: isLoading } = storeToRefs(journeyInsightsStore)
-
-// Local state for UI interactions
-const countryFlags = ref(new Map()) // Cache for country flags
 
 // Computed properties
 const hasAnyData = computed(() => {
@@ -337,10 +335,10 @@ const localMostActiveTime = computed(() => {
 const displayedCountries = computed(() => {
   const countries = geographic.value?.countries || []
 
-  // Add flag URLs to countries
+  // Add bundled flag sprite classes to countries
   return countries.map(country => ({
     ...country,
-    flagUrl: countryFlags.value.get(country.name)
+    flagClass: getCountryFlagClass(country.name)
   }))
 })
 
@@ -362,99 +360,11 @@ const achievementBadges = computed(() => {
 const fetchJourneyInsights = async () => {
   try {
     await journeyInsightsStore.fetchJourneyInsights()
-    // Fetch flags for countries after getting data
-    await fetchCountryFlags()
-
   } catch (error) {
     console.error('Error fetching journey insights:', error)
     // Use improved error handling with retry capability
     handleErrorWithRetry(error, fetchJourneyInsights)
   }
-}
-
-// Countries cache management
-const COUNTRIES_CACHE_KEY = 'geopulse_countries_cache'
-const CACHE_EXPIRY_KEY = 'geopulse_countries_cache_expiry'
-const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000 // 7 days
-
-let countriesCache = []
-
-const loadCountries = async () => {
-  try {
-    // Check if we have valid cached data
-    const cachedData = localStorage.getItem(COUNTRIES_CACHE_KEY)
-    const cacheExpiry = localStorage.getItem(CACHE_EXPIRY_KEY)
-
-    if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
-      countriesCache = JSON.parse(cachedData)
-      return
-    }
-
-    // Fetch fresh data
-    const res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags")
-    countriesCache = await res.json()
-
-    // Cache the data
-    localStorage.setItem(COUNTRIES_CACHE_KEY, JSON.stringify(countriesCache))
-    localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
-
-  } catch (error) {
-    console.error('Failed to load countries data:', error)
-    // Try to use stale cache if available
-    const cachedData = localStorage.getItem(COUNTRIES_CACHE_KEY)
-    if (cachedData) {
-      countriesCache = JSON.parse(cachedData)
-    }
-  }
-}
-
-const getFlagByLocalName = (localName) => {
-  if (!countriesCache.length) {
-    console.warn('Countries cache not loaded yet')
-    return null
-  }
-
-  const normalizeName = (value) => value?.toString().trim().toLocaleLowerCase()
-  const targetName = normalizeName(localName)
-  if (!targetName) return null
-
-  const country = countriesCache.find(c => {
-    const namesToMatch = [
-      c.name?.common,
-      c.name?.official,
-      ...Object.values(c.name?.nativeName || {}).flatMap(n => [n.common, n.official])
-    ]
-      .map(normalizeName)
-      .filter(Boolean)
-
-    return namesToMatch.includes(targetName)
-  })
-
-  return country?.flags?.png || null
-}
-
-const fetchCountryFlags = async () => {
-  // Ensure countries data is loaded first
-  if (!countriesCache.length) {
-    await loadCountries()
-  }
-
-  const countries = geographic.value?.countries || []
-
-  // Get flags for countries that don't have them cached
-  countries
-      .filter(country => !countryFlags.value.has(country.name))
-      .forEach(country => {
-        const flagUrl = getFlagByLocalName(country.name)
-        if (flagUrl) {
-          countryFlags.value.set(country.name, flagUrl)
-        }
-      })
-}
-
-const handleFlagError = (country) => {
-  // Remove failed flag from cache so it can be retried
-  countryFlags.value.delete(country.name)
 }
 
 const getCarPercentage = (distanceData) => {
@@ -719,18 +629,8 @@ const getFlightPhrase = (distance) => {
   return range.phrases[Math.floor(Math.random() * range.phrases.length)]
 }
 
-// Watch for countries data changes to fetch flags
-watch(() => geographic.value?.countries, (newCountries) => {
-  if (newCountries?.length > 0) {
-    fetchCountryFlags()
-  }
-}, { immediate: true })
-
 // Lifecycle
 onMounted(async () => {
-  // Load countries cache in background
-  loadCountries().catch(console.error)
-
   // Fetch journey insights
   await fetchJourneyInsights()
 })
@@ -879,12 +779,12 @@ onMounted(async () => {
   background: var(--gp-timeline-blue);
 }
 
-.country-flag-img {
+.country-flag-img.flag {
   width: 24px;
-  height: auto;
+  height: 16px;
   border-radius: var(--gp-radius-small);
-  object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px var(--gp-border-light);
 }
 
 .country-flag-placeholder {
