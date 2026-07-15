@@ -324,13 +324,13 @@ const sidebars = {
         },
         {
             type: 'category',
+            label: 'REST API',
+            items: restApiItems,
+        },
+        {
+            type: 'category',
             label: 'Reference & Troubleshooting',
             items: [
-                {
-                    type: 'category',
-                    label: 'REST API',
-                    items: restApiItems,
-                },
                 {
                     type: 'category',
                     label: 'Documentation In Progress',

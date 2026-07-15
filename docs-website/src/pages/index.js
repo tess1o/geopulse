@@ -328,7 +328,7 @@ function Hero() {
                 <div className={styles.heroContent}>
                     <p className={styles.heroEyebrow}>Privacy-first Google Timeline alternative</p>
                     <Heading as="h1" className={styles.heroTitle}>
-                        Your Timeline, Self-Hosted
+                        Own Your Location Timeline
                     </Heading>
                     <p className={styles.heroSubtitle}>
                         GeoPulse turns raw GPS points into a private location timeline with stays, trips, maps, and

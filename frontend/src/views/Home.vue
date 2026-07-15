@@ -331,7 +331,7 @@ const whatsNewHighlights = computed(() => matchedWhatsNewEntry.value?.highlights
 const matchedWhatsNewUrl = computed(() => matchedWhatsNewEntry.value?.releaseUrl || defaultReleaseNotesUrl)
 
 const heroTitle = computed(() => {
-  return authStore.isAuthenticated ? 'Welcome back' : 'Your Timeline, Self-Hosted'
+  return authStore.isAuthenticated ? 'Welcome back' : 'Own Your Location Timeline'
 })
 
 const navVersionBadge = computed(() => {

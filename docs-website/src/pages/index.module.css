@@ -37,6 +37,7 @@
   position: relative;
   overflow: hidden;
   padding: 0 1.5rem;
+  box-sizing: border-box;
   background: var(--home-hero-gradient);
 }
 
@@ -53,6 +54,8 @@
   z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
   gap: 3rem;
   align-items: center;
   max-width: 1400px !important;
@@ -61,6 +64,8 @@
 }
 
 .heroContent {
+  width: 100%;
+  min-width: 0;
   max-width: 500px;
 }
 
@@ -116,6 +121,9 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .heroSubtitle {
@@ -736,9 +744,7 @@
 }
 
 .previewLayout,
-.installLayout,
-.faqContainer,
-.docsContainer {
+.installLayout {
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(430px, 1.14fr);
   gap: 2rem;
@@ -748,10 +754,13 @@
 
 .faqContainer,
 .docsContainer {
-  display: block;
+  display: block !important;
+  max-width: 1400px !important;
 }
 
 .sectionHeader {
+  display: block;
+  width: 100%;
   max-width: 820px;
   margin-bottom: 2rem;
 }
@@ -762,6 +771,9 @@
   font-size: clamp(2rem, 4vw, 3.1rem);
   line-height: 1.1;
   letter-spacing: -0.02em;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .sectionLead {
@@ -922,6 +934,7 @@
 
 .docsGrid {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
 }
@@ -1022,13 +1035,122 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 996px) {
+  .heroSection {
+    padding: 2.75rem 1.25rem 0;
+  }
+
   .heroContainer {
-    gap: 1.5rem;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
   }
 
   .heroContent {
-    text-align: center;
+    max-width: none;
+  }
+
+  .showcasePanels,
+  .previewLayout,
+  .installLayout,
+  .faqContainer,
+  .docsContainer {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+    padding-right: 1.25rem !important;
+    padding-left: 1.25rem !important;
+  }
+
+  .faqContainer,
+  .docsContainer {
+    display: block !important;
+  }
+
+  .faqSection .sectionHeader,
+  .docsSection .sectionHeader {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin-bottom: 1.35rem;
+  }
+
+  .sectionHeader,
+  .sectionLead,
+  .explorePanel,
+  .faqGrid,
+  .docsGrid {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .sectionTitle {
+    font-size: clamp(1.9rem, 6vw, 2.55rem);
+  }
+
+  .sectionEyebrow,
+  .sectionTitle,
+  .sectionLead {
+    white-space: normal;
+  }
+
+  .highlightList,
+  .faqGrid,
+  .docsGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .docCard,
+  .faqItem {
+    min-width: 0;
+  }
+
+  .docCard h3,
+  .docCard p,
+  .faqItem summary span:first-child,
+  .faqItem p {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroSection {
+    padding: 2.5rem 1rem 0;
+  }
+
+  .heroContainer {
+    gap: 1.5rem;
+    width: 100% !important;
+    max-width: none !important;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .heroContent {
+    max-width: none;
+    text-align: left;
+  }
+
+  .heroEyebrow,
+  .sectionEyebrow,
+  .panelKicker {
+    font-size: 0.72rem;
+  }
+
+  .heroTitle {
+    font-size: clamp(2.45rem, 12vw, 3.2rem);
+    line-height: 1.05;
+  }
+
+  .heroSubtitle {
+    font-size: 1rem;
+    line-height: 1.6;
   }
 
   .heroActions,
@@ -1042,8 +1164,8 @@
   }
 
   .githubBadge {
-    margin-right: auto;
-    margin-left: auto;
+    margin-right: 0;
+    margin-left: 0;
   }
 
   .socialProofText {
@@ -1065,7 +1187,35 @@
   }
 
   .showcasePanels {
+    width: 100% !important;
+    max-width: none !important;
     margin-top: 0.5rem;
+    padding-right: 1rem !important;
+    padding-left: 1rem !important;
+  }
+
+  .previewLayout,
+  .installLayout,
+  .faqContainer,
+  .docsContainer {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0;
+    padding-right: 1rem !important;
+    padding-left: 1rem !important;
+  }
+
+  .sectionHeader,
+  .sectionLead,
+  .explorePanel,
+  .faqGrid,
+  .docsGrid {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .sectionTitle {
+    font-size: clamp(1.8rem, 9vw, 2.35rem);
   }
 
   .exploreBody {
