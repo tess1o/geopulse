@@ -147,11 +147,10 @@ const config = {
 
                 contextualSearch: true,
 
-                // IMPORTANT for GitHub Pages + baseUrl
-                // replaceSearchResultPathname: {
-                //     from: '/docs/',
-                //     to: '/docs/',
-                // },
+                replaceSearchResultPathname: {
+                    from: /^\/geopulse\//,
+                    to: '/',
+                },
             },
 
             prism: {

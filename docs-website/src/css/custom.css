@@ -133,9 +133,22 @@ body,
 }
 
 .navbar__inner {
+    width: 100%;
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 1.5rem;
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+}
+
+.navbar__items {
+    min-width: 0;
+}
+
+.navbar__items--right {
+    margin-left: auto;
+    gap: 0.35rem;
+    justify-content: flex-end;
 }
 
 .navbar__brand {
@@ -150,13 +163,13 @@ body,
 
 .navbar__title {
     font-size: 1.1rem;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 .navbar__items--right > .navbar__item.navbar__link {
     display: inline-flex;
     align-items: center;
-    margin: 0 0.18rem;
+    margin: 0;
     border: 1px solid rgba(203, 213, 225, 0.85);
     border-radius: 999px;
     padding: 0.36rem 0.66rem;
@@ -336,6 +349,42 @@ html[data-theme='dark'] .DocSearch.DocSearch-Button,
     border-color: rgba(148, 163, 184, 0.35) !important;
     background: rgba(15, 23, 42, 0.7) !important;
     color: #cbd5e1 !important;
+}
+
+html[data-theme='dark'] .DocSearch-Container,
+html[data-theme='dark'] .DocSearch-Modal {
+    --docsearch-text-color: #f8fafc;
+    --docsearch-hit-color: #e2e8f0;
+    --docsearch-secondary-text-color: #cbd5e1;
+    --docsearch-muted-color: #94a3b8;
+    --docsearch-icon-color: #cbd5e1;
+    --docsearch-modal-background: #0f172a;
+    --docsearch-searchbox-background: rgba(15, 23, 42, 0.96);
+    --docsearch-searchbox-focus-background: rgba(15, 23, 42, 0.96);
+    --docsearch-hit-background: rgba(30, 41, 59, 0.92);
+    --docsearch-hit-highlight-color: rgba(37, 99, 235, 0.26);
+    --docsearch-footer-background: rgba(15, 23, 42, 0.96);
+}
+
+html[data-theme='dark'] .DocSearch-Input,
+html[data-theme='dark'] .DocSearch-Modal-heading,
+html[data-theme='dark'] .DocSearch-Hit-Container,
+html[data-theme='dark'] .DocSearch-Hit-title,
+html[data-theme='dark'] .DocSearch-Hit-text,
+html[data-theme='dark'] .DocSearch-Hit-path,
+html[data-theme='dark'] .DocSearch-Hit[aria-selected='true'] .DocSearch-Hit-Tree,
+html[data-theme='dark'] .DocSearch-Hit[aria-selected='true'] .DocSearch-Hit-text,
+html[data-theme='dark'] .DocSearch-Hit[aria-selected='true'] .DocSearch-Hit-title {
+    color: var(--docsearch-text-color) !important;
+}
+
+html[data-theme='dark'] .DocSearch-Hit-path {
+    color: var(--docsearch-secondary-text-color) !important;
+}
+
+html[data-theme='dark'] .DocSearch-Input::placeholder {
+    color: var(--docsearch-muted-color) !important;
+    opacity: 1;
 }
 
 html.docs-wrapper body,
@@ -526,8 +575,11 @@ html.docs-wrapper[data-theme='dark'] .theme-code-block span {
     }
 
     .navbar__items--right {
+        --gp-mobile-navbar-control-height: 2.35rem;
         flex: 1 1 auto;
+        margin-left: auto;
         min-width: 0;
+        align-items: center;
         justify-content: flex-end;
         gap: 0.35rem;
         overflow-x: auto;
@@ -541,7 +593,14 @@ html.docs-wrapper[data-theme='dark'] .theme-code-block span {
     }
 
     .navbar__items--right > .navbar__item.navbar__link {
+        display: inline-flex;
         flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: var(--gp-mobile-navbar-control-height);
+        min-height: var(--gp-mobile-navbar-control-height);
+        line-height: 1;
         margin: 0;
         white-space: nowrap;
     }
@@ -550,20 +609,69 @@ html.docs-wrapper[data-theme='dark'] .theme-code-block span {
         display: none !important;
     }
 
-    [class*='navbarSearchContainer'] {
+    .navbar__items--right [class*='colorModeToggle'] {
+        display: flex !important;
         flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: var(--gp-mobile-navbar-control-height);
+        height: var(--gp-mobile-navbar-control-height);
+    }
+
+    .navbar__items--right button.clean-btn[aria-label*="dark and light mode"] {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: var(--gp-mobile-navbar-control-height) !important;
+        min-width: var(--gp-mobile-navbar-control-height) !important;
+        height: var(--gp-mobile-navbar-control-height) !important;
+        min-height: var(--gp-mobile-navbar-control-height) !important;
+        padding: 0 !important;
+    }
+
+    [class*='navbarSearchContainer'] {
+        position: static !important;
+        right: auto;
+        display: block !important;
+        flex: 0 0 auto;
+        width: var(--gp-mobile-navbar-control-height);
+        height: var(--gp-mobile-navbar-control-height);
     }
 
     .DocSearch.DocSearch-Button {
-        width: 2.35rem !important;
-        min-width: 2.35rem !important;
-        height: 2.35rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box;
+        width: var(--gp-mobile-navbar-control-height) !important;
+        min-width: var(--gp-mobile-navbar-control-height) !important;
+        height: var(--gp-mobile-navbar-control-height) !important;
+        min-height: var(--gp-mobile-navbar-control-height) !important;
         padding: 0 !important;
+    }
+
+    .DocSearch-Button-Container {
+        align-items: center !important;
+        justify-content: center !important;
+        height: 100%;
+        width: 100%;
+    }
+
+    .DocSearch-Search-Icon {
+        flex: 0 0 auto;
+        margin: 0 !important;
     }
 
     .DocSearch-Button-Placeholder,
     .DocSearch-Button-Keys {
         display: none !important;
+    }
+
+    .DocSearch-Input {
+        font-size: 16px !important;
+        line-height: 1.4 !important;
     }
 
     .main-wrapper,
@@ -594,16 +702,24 @@ html.docs-wrapper[data-theme='dark'] .theme-code-block span {
 
 @media (max-width: 640px) {
     [class*='navbarSearchContainer'] {
-        display: none !important;
+        position: static !important;
+        right: auto;
+        display: block !important;
     }
 
     .navbar__items--right {
-        justify-content: flex-start;
+        justify-content: flex-end;
+        gap: 0.25rem;
     }
 
     .navbar__items--right > .navbar__item.navbar__link {
-        padding: 0.34rem 0.56rem;
+        display: inline-flex;
+        padding: 0.34rem 0.5rem;
         font-size: 0.75rem;
+    }
+
+    .navbar__items--right > .navbar__item.navbar__link[href$='/docs/api/intro'] {
+        display: none;
     }
 
     .theme-doc-markdown {
