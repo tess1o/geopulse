@@ -7,7 +7,7 @@
           selectionMode="range"
           :size="size"
           class="date-picker-input"
-          :manualInput="false"
+          :manualInput="manualInput"
           iconDisplay="input"
           :variant="inputVariant"
           :showIcon="showIcon"
@@ -37,7 +37,7 @@
         selectionMode="range"
         :size="size"
         class="date-picker-input"
-        :manualInput="false"
+        :manualInput="manualInput"
         iconDisplay="input"
         :variant="inputVariant"
         :showIcon="showIcon"
@@ -129,6 +129,10 @@ const props = defineProps({
   showValidation: {
     type: Boolean,
     default: true
+  },
+  manualInput: {
+    type: Boolean,
+    default: false
   },
   pickerId: {
     type: String,

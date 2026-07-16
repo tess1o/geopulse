@@ -29,6 +29,7 @@
               :label="datePickerLabel"
               inputVariant="filled"
               pickerId="navbar-date-selector"
+              :manualInput="true"
               :class="datePickerClasses"
               @date-change="handleDateChange"
           />
@@ -69,7 +70,7 @@ const props = defineProps({
   },
   datePickerWidth: {
     type: String,
-    default: '220px'
+    default: '260px'
   }
 })
 
