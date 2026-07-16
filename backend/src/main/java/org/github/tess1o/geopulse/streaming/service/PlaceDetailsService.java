@@ -17,9 +17,14 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.locationtech.jts.geom.*;
 
+import java.time.DateTimeException;
+import java.time.DayOfWeek;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +35,7 @@ import java.util.UUID;
 @ApplicationScoped
 @Slf4j
 public class PlaceDetailsService {
+    private static final int VISIT_PATTERNS_MINIMUM_VISITS = 10;
 
     @Inject
     TimelineStayRepository timelineStayRepository;
@@ -49,13 +55,16 @@ public class PlaceDetailsService {
      * @param type   place type ("favorite" or "geocoding")
      * @param id     place ID
      * @param userId user ID
+     * @param timezone user's configured timezone
      * @return place details with statistics
      */
-    public Optional<PlaceDetailsDTO> getPlaceDetails(String type, Long id, UUID userId) {
+    public Optional<PlaceDetailsDTO> getPlaceDetails(String type, Long id, UUID userId, String timezone) {
+        String resolvedTimezone = resolveTimezone(timezone);
+
         if ("favorite".equalsIgnoreCase(type)) {
-            return getFavoritePlaceDetails(id, userId);
+            return getFavoritePlaceDetails(id, userId, resolvedTimezone);
         } else if ("geocoding".equalsIgnoreCase(type)) {
-            return getGeocodingPlaceDetails(id, userId);
+            return getGeocodingPlaceDetails(id, userId, resolvedTimezone);
         } else {
             return Optional.empty();
         }
@@ -248,14 +257,14 @@ public class PlaceDetailsService {
         return Optional.empty();
     }
 
-    private Optional<PlaceDetailsDTO> getFavoritePlaceDetails(Long favoriteId, UUID userId) {
+    private Optional<PlaceDetailsDTO> getFavoritePlaceDetails(Long favoriteId, UUID userId, String timezone) {
         Optional<FavoritesEntity> favoriteOpt = favoritesRepository.findByIdAndUserId(favoriteId, userId);
         if (favoriteOpt.isEmpty()) {
             return Optional.empty();
         }
 
         FavoritesEntity favorite = favoriteOpt.get();
-        PlaceStatisticsDTO statistics = calculateFavoriteStatistics(favoriteId, userId);
+        PlaceStatisticsDTO statistics = calculateFavoriteStatistics(favoriteId, userId, timezone);
         PlaceGeometryDTO geometry = extractFavoriteGeometry(favorite);
 
         return Optional.of(PlaceDetailsDTO.builder()
@@ -270,7 +279,7 @@ public class PlaceDetailsService {
                 .build());
     }
 
-    private Optional<PlaceDetailsDTO> getGeocodingPlaceDetails(Long geocodingId, UUID userId) {
+    private Optional<PlaceDetailsDTO> getGeocodingPlaceDetails(Long geocodingId, UUID userId, String timezone) {
         Optional<ReverseGeocodingLocationEntity> geocodingOpt =
                 geocodingRepository.findByIdOptional(geocodingId);
         if (geocodingOpt.isEmpty()) {
@@ -278,7 +287,7 @@ public class PlaceDetailsService {
         }
 
         ReverseGeocodingLocationEntity geocoding = geocodingOpt.get();
-        PlaceStatisticsDTO statistics = calculateGeocodingStatistics(geocodingId, userId);
+        PlaceStatisticsDTO statistics = calculateGeocodingStatistics(geocodingId, userId, timezone);
         PlaceGeometryDTO geometry = extractGeocodingGeometry(geocoding);
 
         // Check for related favorite if this geocoding location has no visits
@@ -369,23 +378,30 @@ public class PlaceDetailsService {
         return builder.build();
     }
 
-    private PlaceStatisticsDTO calculateFavoriteStatistics(Long favoriteId, UUID userId) {
+    private PlaceStatisticsDTO calculateFavoriteStatistics(Long favoriteId, UUID userId, String timezone) {
         long totalVisits = timelineStayRepository.countByFavoriteLocationId(favoriteId, userId);
         Object[] stats = timelineStayRepository.getStatisticsByFavoriteLocationId(favoriteId, userId);
         Object[] visitCounts = timelineStayRepository.getVisitCountsByFavoriteLocationId(favoriteId, userId);
+        PlaceVisitPatternsDTO visitPatterns = calculateFavoriteVisitPatterns(favoriteId, userId, timezone, totalVisits);
 
-        return buildStatisticsDTO(totalVisits, stats, visitCounts);
+        return buildStatisticsDTO(totalVisits, stats, visitCounts, visitPatterns);
     }
 
-    private PlaceStatisticsDTO calculateGeocodingStatistics(Long geocodingId, UUID userId) {
+    private PlaceStatisticsDTO calculateGeocodingStatistics(Long geocodingId, UUID userId, String timezone) {
         long totalVisits = timelineStayRepository.countByGeocodingLocationId(geocodingId, userId);
         Object[] stats = timelineStayRepository.getStatisticsByGeocodingLocationId(geocodingId, userId);
         Object[] visitCounts = timelineStayRepository.getVisitCountsByGeocodingLocationId(geocodingId, userId);
+        PlaceVisitPatternsDTO visitPatterns = calculateGeocodingVisitPatterns(geocodingId, userId, timezone, totalVisits);
 
-        return buildStatisticsDTO(totalVisits, stats, visitCounts);
+        return buildStatisticsDTO(totalVisits, stats, visitCounts, visitPatterns);
     }
 
-    private PlaceStatisticsDTO buildStatisticsDTO(long totalVisits, Object[] stats, Object[] visitCounts) {
+    private PlaceStatisticsDTO buildStatisticsDTO(
+            long totalVisits,
+            Object[] stats,
+            Object[] visitCounts,
+            PlaceVisitPatternsDTO visitPatterns
+    ) {
         // Handle case where there are no visits
         if (stats[0] == null) {
             return PlaceStatisticsDTO.builder()
@@ -399,6 +415,7 @@ public class PlaceDetailsService {
                     .maxDuration(0)
                     .firstVisit(null)
                     .lastVisit(null)
+                    .visitPatterns(null)
                     .build();
         }
 
@@ -413,7 +430,68 @@ public class PlaceDetailsService {
                 .maxDuration(((Number) stats[3]).longValue())
                 .firstVisit((Instant) stats[4])
                 .lastVisit((Instant) stats[5])
+                .visitPatterns(visitPatterns)
                 .build();
+    }
+
+    private PlaceVisitPatternsDTO calculateFavoriteVisitPatterns(
+            Long favoriteId,
+            UUID userId,
+            String timezone,
+            long totalVisits
+    ) {
+        if (totalVisits < VISIT_PATTERNS_MINIMUM_VISITS) {
+            return null;
+        }
+
+        Object[] row = timelineStayRepository.getVisitPatternsByFavoriteLocationId(favoriteId, userId, timezone);
+        return buildVisitPatternsDTO(row);
+    }
+
+    private PlaceVisitPatternsDTO calculateGeocodingVisitPatterns(
+            Long geocodingId,
+            UUID userId,
+            String timezone,
+            long totalVisits
+    ) {
+        if (totalVisits < VISIT_PATTERNS_MINIMUM_VISITS) {
+            return null;
+        }
+
+        Object[] row = timelineStayRepository.getVisitPatternsByGeocodingLocationId(geocodingId, userId, timezone);
+        return buildVisitPatternsDTO(row);
+    }
+
+    private PlaceVisitPatternsDTO buildVisitPatternsDTO(Object[] row) {
+        if (row == null || row.length < 5 || row[0] == null) {
+            return null;
+        }
+
+        return PlaceVisitPatternsDTO.builder()
+                .mostCommonDayOfWeek(formatDayOfWeek(((Number) row[0]).intValue()))
+                .mostCommonDayVisitCount(((Number) row[1]).longValue())
+                .mostCommonArrivalPeriod((String) row[2])
+                .mostCommonArrivalPeriodVisitCount(((Number) row[3]).longValue())
+                .averageDaysBetweenVisits(row[4] == null ? null : ((Number) row[4]).doubleValue())
+                .minimumVisitsRequired(VISIT_PATTERNS_MINIMUM_VISITS)
+                .build();
+    }
+
+    private String formatDayOfWeek(int isoDayOfWeek) {
+        return DayOfWeek.of(isoDayOfWeek).getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+    }
+
+    private String resolveTimezone(String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            return ZoneId.of("UTC").getId();
+        }
+
+        try {
+            return ZoneId.of(timezone).getId();
+        } catch (DateTimeException error) {
+            log.warn("Invalid timezone '{}' for place visit patterns, falling back to UTC", timezone);
+            return ZoneId.of("UTC").getId();
+        }
     }
 
     private PlaceVisitDTO convertToPlaceVisitDTO(TimelineStayEntity entity) {

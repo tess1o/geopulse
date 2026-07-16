@@ -4,8 +4,12 @@
     <template #header>
       <div class="table-header">
         <div class="table-title-section">
-          <h3 class="table-title">All Visits</h3>
-          <span class="table-count">{{ pagination.totalCount }} visits</span>
+          <div>
+            <div class="table-title-row">
+              <h3 class="table-title">All Visits</h3>
+              <span class="table-count">{{ pagination.totalCount }} visits</span>
+            </div>
+          </div>
         </div>
         <Button
           label="Export CSV"
@@ -29,11 +33,13 @@
       :rowsPerPageOptions="[25, 50, 100, 200]"
       @page="handlePageChange"
       @sort="handleSort"
+      @row-click="handleRowClick"
       v-model:first="firstRow"
       sortMode="single"
       :sortField="sortField"
       :sortOrder="sortOrder"
-      class="visits-data-table"
+      :class="['visits-data-table', { 'visits-data-table--navigable': enableTimelineNavigation }]"
+      :rowClass="getRowClass"
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
@@ -69,7 +75,7 @@
           <span
             v-if="enableCityNavigation && slotProps.data.city"
             class="city-link"
-            @click="handleCityClick(slotProps.data.city)"
+            @click.stop="handleCityClick(slotProps.data.city)"
           >
             {{ slotProps.data.city }}
           </span>
@@ -169,6 +175,28 @@
           </div>
         </template>
       </Column>
+
+      <!-- Timeline Action Column -->
+      <Column
+        v-if="enableTimelineNavigation"
+        header=""
+        :style="{ 'width': '64px', 'min-width': '64px' }"
+        class="timeline-action-column"
+        headerClass="timeline-action-column"
+        bodyClass="timeline-action-column"
+      >
+        <template #body="slotProps">
+          <Button
+            icon="pi pi-external-link"
+            text
+            size="small"
+            aria-label="Open visit day in timeline"
+            title="Open visit day in timeline"
+            v-tooltip.top="'Open visit day in timeline'"
+            @click.stop="openVisitInTimeline(slotProps.data)"
+          />
+        </template>
+      </Column>
     </DataTable>
 
     <!-- No Data State -->
@@ -232,6 +260,15 @@ const props = defineProps({
   showEndTime: {
     type: Boolean,
     default: true
+  },
+  enableTimelineNavigation: {
+    type: Boolean,
+    default: false
+  },
+  timelineNavigationMode: {
+    type: String,
+    default: 'new-tab',
+    validator: (value) => ['new-tab', 'same-tab'].includes(value)
   }
 })
 
@@ -334,6 +371,55 @@ const handleCityClick = (cityName) => {
   }
 }
 
+const getRowClass = () => (
+  props.enableTimelineNavigation ? 'visit-row--navigable' : ''
+)
+
+const buildTimelineRouteForVisit = (visit) => {
+  if (!visit?.timestamp) return null
+
+  const visitDay = timezone.formatUrlDate(visit.timestamp)
+  const query = {
+    start: visitDay,
+    end: visitDay,
+    focusTime: visit.timestamp
+  }
+
+  if (visit.id !== undefined && visit.id !== null) {
+    query.focusStay = String(visit.id)
+  }
+
+  return router.resolve({
+    path: '/app/timeline',
+    query
+  })
+}
+
+const openVisitInTimeline = (visit) => {
+  if (!props.enableTimelineNavigation) return
+
+  const resolvedRoute = buildTimelineRouteForVisit(visit)
+  if (!resolvedRoute) return
+
+  if (props.timelineNavigationMode === 'same-tab') {
+    router.push(resolvedRoute.fullPath)
+    return
+  }
+
+  const newWindow = window.open(resolvedRoute.href, '_blank')
+  if (!newWindow) {
+    router.push(resolvedRoute.fullPath)
+    return
+  }
+
+  newWindow.opener = null
+}
+
+const handleRowClick = (event) => {
+  if (!props.enableTimelineNavigation) return
+  openVisitInTimeline(event?.data)
+}
+
 const handleTripTagClick = (trip) => {
   if (!trip?.id) return
   router.push(`/app/trips/${trip.id}`)
@@ -368,6 +454,12 @@ watch(
 }
 
 .table-title-section {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.table-title-row {
   display: flex;
   align-items: center;
   gap: var(--gp-spacing-sm);
@@ -477,6 +569,10 @@ watch(
   outline-offset: 2px;
 }
 
+.timeline-action-column {
+  text-align: center;
+}
+
 .no-data-state,
 .loading-state {
   text-align: center;
@@ -584,6 +680,10 @@ watch(
 .visits-data-table :deep(.p-datatable) {
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.visits-data-table--navigable :deep(.visit-row--navigable) {
+  cursor: pointer;
 }
 
 /* Mobile Responsive */

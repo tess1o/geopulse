@@ -52,6 +52,7 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         PlaceDetailsDTO.class,
         PlaceGeometryDTO.class,
         PlaceStatisticsDTO.class,
+        PlaceVisitPatternsDTO.class,
         PlaceVisitDTO.class,
         FavoriteRelationDTO.class,
         TripClassificationDetailsDTO.class,

@@ -795,6 +795,99 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     }
 
     /**
+     * Get visit pattern facts for stays at a specific favorite location.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @param timezone   user timezone for local day/time calculations
+     * @return [dayOfWeek, dayVisitCount, arrivalPeriod, periodVisitCount, averageDaysBetweenVisits]
+     */
+    public Object[] getVisitPatternsByFavoriteLocationId(Long favoriteId, UUID userId, String timezone) {
+        return getVisitPatternsByPlaceColumn("favorite_id", favoriteId, userId, timezone);
+    }
+
+    /**
+     * Get visit pattern facts for stays at a specific geocoding location.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @param timezone    user timezone for local day/time calculations
+     * @return [dayOfWeek, dayVisitCount, arrivalPeriod, periodVisitCount, averageDaysBetweenVisits]
+     */
+    public Object[] getVisitPatternsByGeocodingLocationId(Long geocodingId, UUID userId, String timezone) {
+        return getVisitPatternsByPlaceColumn("geocoding_id", geocodingId, userId, timezone);
+    }
+
+    private Object[] getVisitPatternsByPlaceColumn(String placeColumn, Long placeId, UUID userId, String timezone) {
+        String sql = """
+                WITH base AS (
+                    SELECT s.timestamp
+                    FROM timeline_stays s
+                    WHERE s.user_id = :userId
+                      AND s.%s = :placeId
+                ),
+                day_counts AS (
+                    SELECT EXTRACT(ISODOW FROM timestamp AT TIME ZONE :timezone)::int AS day_of_week,
+                           COUNT(*) AS visit_count
+                    FROM base
+                    GROUP BY day_of_week
+                    ORDER BY visit_count DESC, day_of_week ASC
+                    LIMIT 1
+                ),
+                arrival_counts AS (
+                    SELECT arrival_period,
+                           COUNT(*) AS visit_count
+                    FROM (
+                        SELECT CASE
+                            WHEN local_hour >= 5 AND local_hour < 12 THEN 'Morning'
+                            WHEN local_hour >= 12 AND local_hour < 17 THEN 'Afternoon'
+                            WHEN local_hour >= 17 AND local_hour < 22 THEN 'Evening'
+                            ELSE 'Night'
+                        END AS arrival_period
+                        FROM (
+                            SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE :timezone)::int AS local_hour
+                            FROM base
+                        ) local_hours
+                    ) periods
+                    GROUP BY arrival_period
+                    ORDER BY visit_count DESC,
+                             CASE arrival_period
+                                 WHEN 'Morning' THEN 1
+                                 WHEN 'Afternoon' THEN 2
+                                 WHEN 'Evening' THEN 3
+                                 ELSE 4
+                             END ASC
+                    LIMIT 1
+                ),
+                visit_gaps AS (
+                    SELECT EXTRACT(EPOCH FROM (
+                               timestamp - LAG(timestamp) OVER (ORDER BY timestamp)
+                           )) / 86400.0 AS gap_days
+                    FROM base
+                ),
+                cadence AS (
+                    SELECT AVG(gap_days) AS average_days_between_visits
+                    FROM visit_gaps
+                    WHERE gap_days IS NOT NULL
+                )
+                SELECT day_counts.day_of_week,
+                       day_counts.visit_count,
+                       arrival_counts.arrival_period,
+                       arrival_counts.visit_count,
+                       cadence.average_days_between_visits
+                FROM day_counts
+                CROSS JOIN arrival_counts
+                CROSS JOIN cadence
+                """.formatted(placeColumn);
+
+        return (Object[]) getEntityManager().createNativeQuery(sql)
+                .setParameter("userId", userId)
+                .setParameter("placeId", placeId)
+                .setParameter("timezone", timezone)
+                .getSingleResult();
+    }
+
+    /**
      * Update cached location name for all stays associated with a favorite location.
      * This maintains data consistency when a favorite is renamed.
      *

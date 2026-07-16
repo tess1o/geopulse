@@ -91,6 +91,34 @@
           </div>
         </div>
       </div>
+
+      <!-- Visit Patterns -->
+      <div v-if="hasVisitPatterns" class="stat-section">
+        <h3 class="section-title">Visit Patterns</h3>
+        <div class="stat-items">
+          <div class="stat-item-full">
+            <div class="stat-label">
+              <i class="pi pi-calendar"></i>
+              <span>Typical Day</span>
+            </div>
+            <div class="stat-value">{{ visitPatterns.mostCommonDayOfWeek }}</div>
+          </div>
+          <div class="stat-item-full">
+            <div class="stat-label">
+              <i class="pi pi-clock"></i>
+              <span>Arrival Period</span>
+            </div>
+            <div class="stat-value">{{ visitPatterns.mostCommonArrivalPeriod }}</div>
+          </div>
+          <div class="stat-item-full">
+            <div class="stat-label">
+              <i class="pi pi-refresh"></i>
+              <span>Visit Cadence</span>
+            </div>
+            <div class="stat-value">{{ formatCadence(visitPatterns.averageDaysBetweenVisits) }}</div>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseCard>
 </template>
@@ -110,6 +138,9 @@ const props = defineProps({
   }
 })
 
+const visitPatterns = computed(() => props.statistics?.visitPatterns || null)
+const hasVisitPatterns = computed(() => Boolean(visitPatterns.value))
+
 const formatDuration = (seconds) => {
   if (seconds === null || seconds === undefined) return 'N/A'
   if (seconds === 0) return '0 seconds'
@@ -120,12 +151,30 @@ const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A'
   return timezone.format(timestamp, 'MMMM DD, YYYY')
 }
+
+const formatCadence = (days) => {
+  if (days === null || days === undefined || Number.isNaN(Number(days))) {
+    return 'N/A'
+  }
+
+  const numericDays = Number(days)
+  if (numericDays < 1) {
+    return 'Less than daily'
+  }
+
+  const roundedDays = Math.round(numericDays)
+  if (roundedDays === 1) {
+    return 'Every day'
+  }
+
+  return `Every ${roundedDays} days`
+}
 </script>
 
 <style scoped>
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--gp-spacing-xl);
   max-width: 100%;
   box-sizing: border-box;

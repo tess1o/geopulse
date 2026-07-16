@@ -108,6 +108,7 @@
             </div>
           </div>
         <TimelineContainer
+            ref="timelineContainerRef"
             :timelineData="timelineDataWithStayTelemetry"
             :timelineNoData="timelineNoData"
             :timelineDataLoading="timelineDataLoading"
@@ -178,7 +179,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, onUnmounted, computed, inject } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -210,6 +211,7 @@ import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 
 const toast = useToast()
+const route = useRoute()
 const router = useRouter()
 
 const authStore = useAuthStore()
@@ -283,6 +285,7 @@ const mapNoData = ref(false)
 const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
 const timelinePageRef = ref(null)
+const timelineContainerRef = ref(null)
 const timelineSheetRef = ref(null)
 const timelineSheetState = ref('half')
 const timelineSheetHeight = ref(null)
@@ -291,6 +294,7 @@ const timelineSheetDidDrag = ref(false)
 const timelineSheetDragStartY = ref(0)
 const timelineSheetDragStartHeight = ref(0)
 const lastFetchedRange = ref(null)
+const lastAppliedFocusKey = ref(null)
 const currentLocation = ref(null)
 let currentLocationRequestToken = 0
 const mapPreferencesLoaded = ref(false)
@@ -1259,6 +1263,71 @@ const timelineDataWithStayTelemetry = computed(() => {
   })
 })
 
+const getFirstQueryValue = (value) => {
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+const timestampsMatch = (left, right) => {
+  if (!left || !right) {
+    return false
+  }
+  if (left === right) {
+    return true
+  }
+
+  const leftMs = new Date(left).getTime()
+  const rightMs = new Date(right).getTime()
+  return Number.isFinite(leftMs) && Number.isFinite(rightMs) && leftMs === rightMs
+}
+
+const findFocusedStay = () => {
+  const focusStay = getFirstQueryValue(route.query.focusStay)
+  const focusTime = getFirstQueryValue(route.query.focusTime)
+  if (!focusStay && !focusTime) {
+    return null
+  }
+
+  const stays = (timelineDataWithStayTelemetry.value || []).filter(item => item?.type === 'stay')
+  if (focusStay) {
+    const byId = stays.find(item => String(item.id) === String(focusStay))
+    if (byId) {
+      return byId
+    }
+  }
+
+  if (focusTime) {
+    return stays.find(item => timestampsMatch(item.timestamp, focusTime)) || null
+  }
+
+  return null
+}
+
+const applyTimelineFocusFromQuery = async () => {
+  if (timelineDataLoading.value) {
+    return
+  }
+
+  const focusedStay = findFocusedStay()
+  if (!focusedStay) {
+    return
+  }
+
+  const focusStay = getFirstQueryValue(route.query.focusStay)
+  const focusTime = getFirstQueryValue(route.query.focusTime)
+  const focusKey = `${focusStay || ''}:${focusTime || ''}:${focusedStay.id || focusedStay.timestamp || ''}`
+  if (lastAppliedFocusKey.value === focusKey) {
+    return
+  }
+
+  lastAppliedFocusKey.value = focusKey
+  highlightStore.setHighlightedItem(focusedStay)
+  await nextTick()
+  timelineContainerRef.value?.scrollToTimelineItem?.(focusedStay)
+}
+
 watch(dateRange, async (newValue) => {
   if (!newValue || !timezone.isValidDataRange(newValue)) return
 
@@ -1283,6 +1352,19 @@ watch(dateRange, async (newValue) => {
 
   await executeFetchForRange(startDate, endDate, rangeKey)
 }, { immediate: true })
+
+watch(
+  [
+    timelineDataWithStayTelemetry,
+    timelineDataLoading,
+    () => route.query.focusStay,
+    () => route.query.focusTime
+  ],
+  () => {
+    void applyTimelineFocusFromQuery()
+  },
+  { immediate: true }
+)
 
 // Watch for today's date and get current location
 watch(isToday, () => {

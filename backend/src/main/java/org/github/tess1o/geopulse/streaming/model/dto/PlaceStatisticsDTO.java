@@ -32,4 +32,7 @@ public class PlaceStatisticsDTO {
     // Temporal information
     private Instant firstVisit;
     private Instant lastVisit;
+
+    // Secondary pattern facts, hidden for low visit counts
+    private PlaceVisitPatternsDTO visitPatterns;
 }

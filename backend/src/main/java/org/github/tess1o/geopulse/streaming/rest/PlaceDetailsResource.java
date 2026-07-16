@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.PlaceDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlacePhotoSearchWindowDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceVisitDTO;
 import org.github.tess1o.geopulse.streaming.service.PlaceDetailsService;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -56,11 +57,13 @@ public class PlaceDetailsResource {
     @Path("/{type}/{id}")
     @RolesAllowed({"USER", "ADMIN"})
     public Response getPlaceDetails(@PathParam("type") String type, @PathParam("id") Long id) {
-        UUID userId = currentUserService.getCurrentUserId();
+        UserEntity user = currentUserService.getCurrentUser();
+        UUID userId = user.getId();
         log.info("Place details request from user {} for {}:{}", userId, type, id);
 
         try {
-            Optional<PlaceDetailsDTO> placeDetails = placeDetailsService.getPlaceDetails(type, id, userId);
+            Optional<PlaceDetailsDTO> placeDetails = placeDetailsService.getPlaceDetails(
+                    type, id, userId, user.getTimezone());
 
             if (placeDetails.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
@@ -235,12 +238,14 @@ public class PlaceDetailsResource {
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
 
-        UUID userId = currentUserService.getCurrentUserId();
+        UserEntity user = currentUserService.getCurrentUser();
+        UUID userId = user.getId();
         log.info("Export visits request from user {} for {}:{}", userId, type, id);
 
         try {
             // Get place details for metadata
-            Optional<PlaceDetailsDTO> placeDetailsOpt = placeDetailsService.getPlaceDetails(type, id, userId);
+            Optional<PlaceDetailsDTO> placeDetailsOpt = placeDetailsService.getPlaceDetails(
+                    type, id, userId, user.getTimezone());
             if (placeDetailsOpt.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("Place not found or access denied")

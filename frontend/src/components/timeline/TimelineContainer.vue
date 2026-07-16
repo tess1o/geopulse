@@ -1,5 +1,5 @@
 <template>
-  <div class="timeline-container">
+  <div ref="timelineContainerRef" class="timeline-container">
     <div class="timeline-header">
       <div class="timeline-title">Movement Timeline</div>
       <div
@@ -89,6 +89,11 @@
           </template>
 
           <template #content="slotProps">
+            <div
+              class="timeline-item-content"
+              :data-timeline-item-id="slotProps.item.id ?? ''"
+              :data-timeline-item-timestamp="slotProps.item.timestamp || slotProps.item.startTime || ''"
+            >
             <!-- Stay Cards -->
             <OvernightStayCard
               v-if="slotProps.item.type === 'stay' && isOvernightItem(slotProps.item)"
@@ -153,6 +158,7 @@
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
             />
+            </div>
           </template>
         </Timeline>
       </div>
@@ -226,6 +232,7 @@ const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
 const dataGapConversionDialogVisible = ref(false)
 const selectedDataGapForConversion = ref(null)
+const timelineContainerRef = ref(null)
 
 // Props
 const props = defineProps({
@@ -427,6 +434,27 @@ const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
 }
 
+const scrollToTimelineItem = (item) => {
+  if (!item || !timelineContainerRef.value) {
+    return false
+  }
+
+  const itemId = item.id !== undefined && item.id !== null ? String(item.id) : ''
+  const itemTimestamp = item.timestamp || item.startTime || ''
+  const items = Array.from(timelineContainerRef.value.querySelectorAll('.timeline-item-content'))
+  const target = items.find((element) => (
+    (itemId && element.dataset.timelineItemId === itemId) ||
+    (itemTimestamp && element.dataset.timelineItemTimestamp === itemTimestamp)
+  ))
+
+  if (!target) {
+    return false
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  return true
+}
+
 const handleRenameStay = (stayItem) => {
   emit('rename-stay', stayItem)
 }
@@ -572,6 +600,10 @@ watch(() => props.dateRange, () => {
   loadPeriodTags()
   loadImmichPhotosForCards()
 }, { deep: true, immediate: true })
+
+defineExpose({
+  scrollToTimelineItem
+})
 </script>
 
 <style scoped>

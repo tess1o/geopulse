@@ -123,6 +123,7 @@
         :visits="placeVisits"
         :pagination="pagination"
         :loading="visitsLoading"
+        :enable-timeline-navigation="true"
         @page-change="handlePageChange"
         @sort-change="handleSortChange"
         @export="handleExportVisits"
