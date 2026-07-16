@@ -12,4 +12,5 @@ public class ImmichPhotoMapMarkerDto {
     private Double longitude;
     private Integer count;
     private OffsetDateTime latestTakenAt;
+    private ImmichPhotoDto singlePhoto;
 }

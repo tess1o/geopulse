@@ -7,22 +7,28 @@ import {
   buildPhotoGroupsFromPhotos,
   buildPhotoMarkerClickPayload,
   getPhotoMarkerCount,
+  getSinglePhotoForThumbnail,
   normalizePhotoMarkerGroups
 } from '@/maps/shared/photoMarkerGroups'
+import { getPhotoThumbnailBlobUrl } from '@/utils/immichPhotoThumbnails'
 
 const PHOTO_CLUSTER_MAX_RADIUS = 48
 const PHOTO_CLUSTER_DISABLE_ZOOM = 16
 
-const createPhotoMarkerIcon = (count) => {
+const createPhotoMarkerIcon = (count, { thumbnailBlobUrl = null, alt = 'Immich photo thumbnail' } = {}) => {
   const badgeHtml = count > 1
     ? `<span class="gp-photo-map-marker-count">${count}</span>`
     : ''
+  const safeAlt = String(alt).replace(/"/g, '&quot;')
+  const contentHtml = thumbnailBlobUrl
+    ? `<img class="gp-photo-map-marker-thumb" src="${thumbnailBlobUrl}" alt="${safeAlt}" />`
+    : '<i class="pi pi-camera"></i>'
 
   return L.divIcon({
     className: 'gp-photo-map-marker-wrapper',
     html: `
       <div class="gp-photo-map-marker">
-        <i class="pi pi-camera"></i>
+        ${contentHtml}
         ${badgeHtml}
       </div>
     `,
@@ -66,6 +72,7 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
   const photoMarkers = ref([])
   const markerClusterGroup = ref(null)
   const focusMarker = ref(null)
+  let renderCycle = 0
 
   const emitPhotoClick = (payload) => {
     if (typeof emit === 'function') {
@@ -74,6 +81,8 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
   }
 
   const clearPhotoMarkers = () => {
+    renderCycle += 1
+
     if (markerClusterGroup.value) {
       markerClusterGroup.value.clearLayers()
       markerClusterGroup.value.remove()
@@ -118,7 +127,28 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     })
   }
 
-  const addPhotoMarker = (mapInstance, group) => {
+  const applyThumbnailToMarker = async (marker, group, currentRenderCycle) => {
+    const photo = getSinglePhotoForThumbnail(group)
+    if (!photo) {
+      return
+    }
+
+    try {
+      const thumbnailBlobUrl = await getPhotoThumbnailBlobUrl(photo)
+      if (!thumbnailBlobUrl || currentRenderCycle !== renderCycle || !photoMarkers.value.includes(marker)) {
+        return
+      }
+
+      marker.setIcon(createPhotoMarkerIcon(1, {
+        thumbnailBlobUrl,
+        alt: photo.originalFileName || 'Immich photo thumbnail'
+      }))
+    } catch {
+      // Keep the camera marker when thumbnails cannot be loaded.
+    }
+  }
+
+  const addPhotoMarker = (mapInstance, group, currentRenderCycle) => {
     const count = getPhotoMarkerCount(group)
     const marker = L.marker([group.latitude, group.longitude], {
       icon: createPhotoMarkerIcon(count),
@@ -137,6 +167,7 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
 
     photoMarkers.value.push(marker)
+    applyThumbnailToMarker(marker, group, currentRenderCycle)
   }
 
   const renderGroups = (mapInstance, groups = []) => {
@@ -145,13 +176,14 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
 
     clearPhotoMarkers()
+    const currentRenderCycle = renderCycle
     markerClusterGroup.value = createClusterGroup()
     if (markerClusterGroup.value) {
       mapInstance.addLayer(markerClusterGroup.value)
     }
 
     groups.forEach((group) => {
-      addPhotoMarker(mapInstance, group)
+      addPhotoMarker(mapInstance, group, currentRenderCycle)
     })
 
     return groups

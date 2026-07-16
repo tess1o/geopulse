@@ -14,14 +14,20 @@ import {
   buildPhotoGroupsFromPhotos,
   buildPhotoMarkerClickPayload,
   getPhotoMarkerCount,
+  getSinglePhotoForThumbnail,
   normalizePhotoMarkerGroups
 } from '@/maps/shared/photoMarkerGroups'
+import {
+  buildPhotoThumbnailImageId,
+  createCircularPhotoThumbnailImageData
+} from '@/utils/immichPhotoThumbnails'
 
 const PHOTO_CLUSTER_RADIUS = 48
 const PHOTO_CLUSTER_MAX_ZOOM = 16
 const PHOTO_CLUSTER_LABEL_MIN_ZOOM = 4
 const PHOTO_CLUSTER_CAMERA_ICON_SIZE = 0.52
 const PHOTO_POINT_CAMERA_ICON_SIZE = 0.44
+const PHOTO_POINT_THUMBNAIL_ICON_SIZE = 1
 const PHOTO_CLUSTER_EVENT_HANDLED_KEY = '__gpImmichClusterHandled'
 const PHOTO_CLUSTER_DOUBLE_CLICK_EVENT_HANDLED_KEY = '__gpImmichClusterDoubleClickHandled'
 const PHOTO_POINT_EVENT_HANDLED_KEY = '__gpImmichPointHandled'
@@ -50,11 +56,16 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     pointIconLayerId: '',
     pointCountLayerId: '',
     cameraImageId: '',
+    thumbnailImagePrefix: '',
     listeners: [],
     styleLoadHandler: null,
     boundMap: null,
     groups: [],
     groupsByFeatureId: new Map(),
+    thumbnailImageDataById: new Map(),
+    thumbnailImageRequests: new Map(),
+    thumbnailImageIds: new Set(),
+    thumbnailLoadToken: 0,
     visible: true
   }
 
@@ -66,6 +77,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
   state.pointIconLayerId = `${state.token}-point-icon`
   state.pointCountLayerId = `${state.token}-point-count`
   state.cameraImageId = `${state.token}-camera`
+  state.thumbnailImagePrefix = `${state.token}-photo`
 
   const emitPhotoClick = (payload) => {
     if (typeof emit === 'function') {
@@ -95,8 +107,19 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       if (typeof targetMap.hasImage === 'function' && targetMap.hasImage(state.cameraImageId)) {
         targetMap.removeImage(state.cameraImageId)
       }
+      if (typeof targetMap.hasImage === 'function' && typeof targetMap.removeImage === 'function') {
+        state.thumbnailImageIds.forEach((imageId) => {
+          if (targetMap.hasImage(imageId)) {
+            targetMap.removeImage(imageId)
+          }
+        })
+      }
     }
 
+    state.thumbnailLoadToken += 1
+    state.thumbnailImageIds = new Set()
+    state.thumbnailImageDataById = new Map()
+    state.thumbnailImageRequests = new Map()
     state.boundMap = null
     state.groups = []
     state.groupsByFeatureId = new Map()
@@ -129,11 +152,26 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     emitPhotoClick(buildPhotoMarkerClickPayload(group))
   }
 
-  const buildCollection = (groups) => {
+  const getThumbnailImageIdForGroup = (group) => {
+    const photo = getSinglePhotoForThumbnail(group)
+    return photo ? buildPhotoThumbnailImageId(state.thumbnailImagePrefix, photo) : ''
+  }
+
+  const isThumbnailImageAvailable = (mapInstance, imageId) => {
+    return Boolean(
+      imageId &&
+      typeof mapInstance?.hasImage === 'function' &&
+      mapInstance.hasImage(imageId)
+    )
+  }
+
+  const buildCollection = (mapInstance, groups) => {
     state.groupsByFeatureId = new Map()
     const features = groups.map((group, index) => {
       const featureId = `photo-${index}`
       const count = getPhotoMarkerCount(group)
+      const thumbnailImageId = getThumbnailImageIdForGroup(group)
+      const hasThumbnail = isThumbnailImageAvailable(mapInstance, thumbnailImageId)
       state.groupsByFeatureId.set(featureId, group)
 
       return {
@@ -145,7 +183,9 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         properties: {
           featureId,
           markerKey: group.markerKey || `${group.latitude},${group.longitude}`,
-          photoCount: count
+          photoCount: count,
+          thumbnailImageId: hasThumbnail ? thumbnailImageId : '',
+          hasThumbnail
         }
       }
     })
@@ -195,6 +235,83 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     }
 
     return mapInstance.hasImage(state.cameraImageId)
+  }
+
+  const addThumbnailImage = (mapInstance, imageId, imageData) => {
+    if (!imageId || !imageData || typeof mapInstance?.hasImage !== 'function' || typeof mapInstance?.addImage !== 'function') {
+      return false
+    }
+
+    if (mapInstance.hasImage(imageId)) {
+      return false
+    }
+
+    try {
+      mapInstance.addImage(imageId, imageData, { pixelRatio: 2 })
+      state.thumbnailImageIds.add(imageId)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const queueThumbnailImageLoads = (mapInstance) => {
+    if (!isMapLibreMap(mapInstance) || typeof mapInstance.addImage !== 'function' || typeof mapInstance.hasImage !== 'function') {
+      return
+    }
+
+    const thumbnailEntries = state.groups
+      .map((group) => {
+        const photo = getSinglePhotoForThumbnail(group)
+        return photo
+          ? { photo, imageId: buildPhotoThumbnailImageId(state.thumbnailImagePrefix, photo) }
+          : null
+      })
+      .filter((entry) => entry?.imageId && !mapInstance.hasImage(entry.imageId))
+
+    if (thumbnailEntries.length === 0) {
+      return
+    }
+
+    const loadToken = ++state.thumbnailLoadToken
+    let loadedAny = false
+
+    Promise.allSettled(thumbnailEntries.map(async ({ photo, imageId }) => {
+      if (state.thumbnailImageDataById.has(imageId)) {
+        const added = addThumbnailImage(mapInstance, imageId, state.thumbnailImageDataById.get(imageId))
+        loadedAny = loadedAny || added
+        return
+      }
+
+      if (state.thumbnailImageRequests.has(imageId)) {
+        await state.thumbnailImageRequests.get(imageId)
+        if (state.thumbnailImageDataById.has(imageId)) {
+          const added = addThumbnailImage(mapInstance, imageId, state.thumbnailImageDataById.get(imageId))
+          loadedAny = loadedAny || added
+        }
+        return
+      }
+
+      const request = createCircularPhotoThumbnailImageData(photo)
+      state.thumbnailImageRequests.set(imageId, request)
+
+      try {
+        const imageData = await request
+        if (!imageData) {
+          return
+        }
+
+        state.thumbnailImageDataById.set(imageId, imageData)
+        const added = addThumbnailImage(mapInstance, imageId, imageData)
+        loadedAny = loadedAny || added
+      } finally {
+        state.thumbnailImageRequests.delete(imageId)
+      }
+    })).then(() => {
+      if (loadedAny && loadToken === state.thumbnailLoadToken && state.boundMap === mapInstance) {
+        renderLayers(mapInstance)
+      }
+    })
   }
 
   const registerEvents = (mapInstance) => {
@@ -344,7 +461,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       return
     }
 
-    ensureClusterSource(mapInstance, state.sourceId, buildCollection(state.groups), {
+    ensureClusterSource(mapInstance, state.sourceId, buildCollection(mapInstance, state.groups), {
       cluster: true,
       clusterRadius: PHOTO_CLUSTER_RADIUS,
       clusterMaxZoom: PHOTO_CLUSTER_MAX_ZOOM,
@@ -415,7 +532,12 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         'circle-radius': 13,
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 2,
-        'circle-opacity': 0.95
+        'circle-opacity': [
+          'case',
+          ['boolean', ['get', 'hasThumbnail'], false],
+          0,
+          0.95
+        ]
       }
     })
 
@@ -426,8 +548,18 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         source: state.sourceId,
         filter: ['!', ['has', 'point_count']],
         layout: {
-          'icon-image': state.cameraImageId,
-          'icon-size': PHOTO_POINT_CAMERA_ICON_SIZE,
+          'icon-image': [
+            'case',
+            ['boolean', ['get', 'hasThumbnail'], false],
+            ['get', 'thumbnailImageId'],
+            state.cameraImageId
+          ],
+          'icon-size': [
+            'case',
+            ['boolean', ['get', 'hasThumbnail'], false],
+            PHOTO_POINT_THUMBNAIL_ICON_SIZE,
+            PHOTO_POINT_CAMERA_ICON_SIZE
+          ],
           'icon-allow-overlap': true
         }
       })
@@ -466,6 +598,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
 
     unregisterEvents()
     registerEvents(mapInstance)
+    queueThumbnailImageLoads(mapInstance)
   }
 
   const renderGroups = (mapInstance, groups = []) => {

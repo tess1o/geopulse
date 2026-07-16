@@ -1,3 +1,5 @@
+import { hasPhotoThumbnail } from '@/utils/immichPhotoThumbnailMeta'
+
 const PHOTO_MARKER_KEY_FACTOR = 10000
 const NEARBY_PHOTO_GROUP_RADIUS_METERS = 15
 
@@ -44,6 +46,18 @@ const getMarkerGroupCount = (markerGroup) => {
   }
 
   return Array.isArray(markerGroup.photos) ? markerGroup.photos.length : 1
+}
+
+const getMarkerGroupPhotos = (markerGroup, count) => {
+  if (Array.isArray(markerGroup.photos) && markerGroup.photos.length > 0) {
+    return markerGroup.photos
+  }
+
+  if (count === 1 && markerGroup.singlePhoto) {
+    return [markerGroup.singlePhoto]
+  }
+
+  return []
 }
 
 export const buildPhotoGroupsFromPhotos = (photos) => {
@@ -94,6 +108,7 @@ export const normalizePhotoMarkerGroups = (markerGroups = []) => {
     .filter((group) => typeof group?.latitude === 'number' && typeof group?.longitude === 'number')
     .forEach((markerGroup) => {
       const count = getMarkerGroupCount(markerGroup)
+      const photos = getMarkerGroupPhotos(markerGroup, count)
       const point = {
         latitude: markerGroup.latitude,
         longitude: markerGroup.longitude
@@ -101,8 +116,8 @@ export const normalizePhotoMarkerGroups = (markerGroups = []) => {
       const normalized = {
         latitude: markerGroup.latitude,
         longitude: markerGroup.longitude,
-        photos: Array.isArray(markerGroup.photos) ? markerGroup.photos : [],
-        indices: Array.isArray(markerGroup.indices) ? markerGroup.indices : [],
+        photos,
+        indices: Array.isArray(markerGroup.indices) ? markerGroup.indices : photos.map((_, index) => index),
         markerKey: markerGroup.markerKey || getPhotoMarkerKey(markerGroup.latitude, markerGroup.longitude),
         count,
         childMarkerGroups: [markerGroup]
@@ -149,3 +164,13 @@ export const buildPhotoMarkerClickPayload = (group) => {
 }
 
 export const getPhotoMarkerCount = getPhotoGroupCount
+
+export const getSinglePhotoForThumbnail = (group) => {
+  const count = getPhotoGroupCount(group)
+  if (count !== 1 || !Array.isArray(group?.photos) || group.photos.length !== 1) {
+    return null
+  }
+
+  const [photo] = group.photos
+  return hasPhotoThumbnail(photo) ? photo : null
+}

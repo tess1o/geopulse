@@ -80,9 +80,9 @@ public class ImmichService {
 
                 groups.compute(key, (ignored, existing) -> {
                     if (existing == null) {
-                        return new MapMarkerAccumulator(roundedLat, roundedLon, photo.getTakenAt(), 1);
+                        return new MapMarkerAccumulator(roundedLat, roundedLon, photo.getTakenAt(), 1, photo);
                     }
-                    return existing.add(photo.getTakenAt());
+                    return existing.add(photo);
                 });
             }
 
@@ -92,6 +92,7 @@ public class ImmichService {
                             .longitude(group.longitude())
                             .count(group.count())
                             .latestTakenAt(group.latestTakenAt())
+                            .singlePhoto(group.count() == 1 ? group.singlePhoto() : null)
                             .build())
                     .sorted(Comparator.comparing(
                             ImmichPhotoMapMarkerDto::getLatestTakenAt,
@@ -595,14 +596,16 @@ public class ImmichService {
             double latitude,
             double longitude,
             java.time.OffsetDateTime latestTakenAt,
-            int count
+            int count,
+            ImmichPhotoDto singlePhoto
     ) {
-        private MapMarkerAccumulator add(java.time.OffsetDateTime takenAt) {
+        private MapMarkerAccumulator add(ImmichPhotoDto photo) {
+            java.time.OffsetDateTime takenAt = photo != null ? photo.getTakenAt() : null;
             java.time.OffsetDateTime latest = latestTakenAt;
             if (latest == null || (takenAt != null && takenAt.isAfter(latest))) {
                 latest = takenAt;
             }
-            return new MapMarkerAccumulator(latitude, longitude, latest, count + 1);
+            return new MapMarkerAccumulator(latitude, longitude, latest, count + 1, null);
         }
     }
 

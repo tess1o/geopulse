@@ -16,6 +16,15 @@
   align-items: center;
   justify-content: center;
   font-size: 0.95rem;
+  overflow: visible;
+}
+
+.gp-photo-map-marker-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
 }
 
 .gp-photo-map-marker-count {

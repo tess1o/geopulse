@@ -619,12 +619,15 @@ const searchPhotos = async (limit = currentLimit.value) => {
 const searchPhotoMapMarkers = async () => {
   if (props.useStorePhotos) {
     const allPhotos = await fetchStoreBackedPhotos()
-    const markers = buildMarkerGroupsFromPhotos(allPhotos, { includePhotos: false }).map((marker) => ({
+    const markers = buildMarkerGroupsFromPhotos(allPhotos, { includePhotos: true }).map((marker) => ({
       latitude: marker.latitude,
       longitude: marker.longitude,
       count: Number(marker.count || 0),
       latestTakenAt: marker.latestTakenAt || null,
-      markerKey: marker.markerKey
+      markerKey: marker.markerKey,
+      singlePhoto: marker.count === 1 && Array.isArray(marker.photos) && marker.photos.length === 1
+        ? marker.photos[0]
+        : null
     }))
     const geotaggedPhotos = markers.reduce((acc, marker) => acc + Number(marker.count || 0), 0)
 
@@ -653,7 +656,8 @@ const searchPhotoMapMarkers = async () => {
       longitude: marker.longitude,
       count: Number(marker.count || 0),
       latestTakenAt: marker.latestTakenAt || null,
-      markerKey: buildMarkerKey(marker.latitude, marker.longitude)
+      markerKey: buildMarkerKey(marker.latitude, marker.longitude),
+      singlePhoto: marker.singlePhoto ? normalizePhoto(marker.singlePhoto) : null
     })),
     totalPhotos: totalPhotosCount,
     geotaggedPhotos
