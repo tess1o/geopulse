@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.ReconciliationResult;
 
@@ -26,17 +27,20 @@ public class GeocodingReconciliationService {
     private final GeocodingProviderFactory providerFactory;
     private final ReverseGeocodingDTOMapper dtoMapper;
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
+    private final UserLocationNormalizationService normalizationService;
 
     @Inject
     public GeocodingReconciliationService(
             ReverseGeocodingLocationRepository geocodingRepository,
             GeocodingProviderFactory providerFactory,
             ReverseGeocodingDTOMapper dtoMapper,
-            GeocodingCopyOnWriteHandler copyOnWriteHandler) {
+            GeocodingCopyOnWriteHandler copyOnWriteHandler,
+            UserLocationNormalizationService normalizationService) {
         this.geocodingRepository = geocodingRepository;
         this.providerFactory = providerFactory;
         this.dtoMapper = dtoMapper;
         this.copyOnWriteHandler = copyOnWriteHandler;
+        this.normalizationService = normalizationService;
     }
 
     /**
@@ -58,6 +62,7 @@ public class GeocodingReconciliationService {
             FormattableGeocodingResult freshResult = providerFactory
                     .reconcileWithProvider(providerName, entity.getRequestCoordinates())
                     .await().indefinitely();
+            freshResult = applyNormalizationRules(currentUserId, freshResult);
 
             ReconciliationResult result = copyOnWriteHandler.handleReconciliation(currentUserId, entity, freshResult);
             return dtoMapper.toDTO(result.entity());
@@ -66,5 +71,23 @@ public class GeocodingReconciliationService {
                     geocodingId, providerName, e.getMessage(), e);
             throw new RuntimeException("Reconciliation failed: " + e.getMessage(), e);
         }
+    }
+
+    private FormattableGeocodingResult applyNormalizationRules(UUID userId, FormattableGeocodingResult result) {
+        UserLocationNormalizationService.NormalizedLocation normalized =
+                normalizationService.normalizeForUser(userId, result.getCity(), result.getCountry());
+        if (!normalized.changed()) {
+            return result;
+        }
+
+        return SimpleFormattableResult.builder()
+                .requestCoordinates(result.getRequestCoordinates())
+                .resultCoordinates(result.getResultCoordinates())
+                .boundingBox(result.getBoundingBox())
+                .formattedDisplayName(result.getFormattedDisplayName())
+                .providerName(result.getProviderName())
+                .city(normalized.city())
+                .country(normalized.country())
+                .build();
     }
 }

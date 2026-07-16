@@ -9,7 +9,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.UserTransaction;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.geocoding.dto.CreateNormalizationRuleRequest;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingReconcileRequest;
+import org.github.tess1o.geopulse.geocoding.model.NormalizationRuleType;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
@@ -56,6 +58,9 @@ class ReverseGeocodingBulkReconciliationTransactionBugTest {
     ReverseGeocodingLocationRepository repository;
 
     @Inject
+    UserLocationNormalizationService normalizationService;
+
+    @Inject
     EntityManager entityManager;
 
     @Inject
@@ -100,6 +105,86 @@ class ReverseGeocodingBulkReconciliationTransactionBugTest {
 
                     return Uni.createFrom().failure(new RuntimeException("Simulated provider failure"));
                 });
+    }
+
+    @Test
+    @DisplayName("Async selected reconciliation should apply user normalization rules")
+    void shouldApplyNormalizationRulesDuringSelectedBulkReconciliation() throws Exception {
+        createNormalizationRules();
+
+        Long geocodingId = createCommittedUserEntity(
+                coord(-120.1234, 35.6789),
+                "Original Selected Name"
+        );
+
+        ReverseGeocodingReconcileRequest request = ReverseGeocodingReconcileRequest.builder()
+                .providerName("photon")
+                .geocodingIds(List.of(geocodingId))
+                .reconcileAll(false)
+                .build();
+
+        UUID jobId = managementService.reconcileWithProviderAsync(userId, request);
+        ReconciliationJobProgress jobProgress = waitForJobToFinish(jobId, Duration.ofSeconds(20));
+
+        assertEquals(ReconciliationJobProgress.JobStatus.COMPLETED, jobProgress.getStatus());
+        assertEquals(1, jobProgress.getProcessedItems());
+        assertEquals(1, jobProgress.getSuccessCount());
+        assertEquals(0, jobProgress.getFailedCount());
+
+        userTransaction.begin();
+        try {
+            entityManager.clear();
+            ReverseGeocodingLocationEntity reconciled = repository.findById(geocodingId);
+            assertNotNull(reconciled);
+            assertEquals("photon", reconciled.getProviderName());
+            assertEquals("Photon Success Location", reconciled.getDisplayName());
+            assertEquals("Kyiv City", reconciled.getCity());
+            assertEquals("UA", reconciled.getCountry());
+
+            userTransaction.commit();
+        } catch (Exception e) {
+            userTransaction.rollback();
+            throw e;
+        }
+    }
+
+    @Test
+    @DisplayName("Reconcile all should apply user normalization rules")
+    void shouldApplyNormalizationRulesDuringReconcileAll() throws Exception {
+        createNormalizationRules();
+
+        Long geocodingId = createCommittedUserEntity(
+                coord(-120.5678, 35.1234),
+                "Original Reconcile All Name"
+        );
+
+        ReverseGeocodingReconcileRequest request = ReverseGeocodingReconcileRequest.builder()
+                .providerName("photon")
+                .geocodingIds(List.of())
+                .reconcileAll(true)
+                .build();
+
+        UUID jobId = managementService.reconcileWithProviderAsync(userId, request);
+        ReconciliationJobProgress jobProgress = waitForJobToFinish(jobId, Duration.ofSeconds(20));
+
+        assertEquals(ReconciliationJobProgress.JobStatus.COMPLETED, jobProgress.getStatus());
+        assertEquals(1, jobProgress.getProcessedItems());
+        assertEquals(1, jobProgress.getSuccessCount());
+        assertEquals(0, jobProgress.getFailedCount());
+
+        userTransaction.begin();
+        try {
+            entityManager.clear();
+            ReverseGeocodingLocationEntity reconciled = repository.findById(geocodingId);
+            assertNotNull(reconciled);
+            assertEquals("Kyiv City", reconciled.getCity());
+            assertEquals("UA", reconciled.getCountry());
+
+            userTransaction.commit();
+        } catch (Exception e) {
+            userTransaction.rollback();
+            throw e;
+        }
     }
 
     @Test
@@ -159,6 +244,34 @@ class ReverseGeocodingBulkReconciliationTransactionBugTest {
             assertEquals("Photon Success Location", successAfter.getDisplayName());
 
             userTransaction.commit();
+        } catch (Exception e) {
+            userTransaction.rollback();
+            throw e;
+        }
+    }
+
+    private void createNormalizationRules() {
+        normalizationService.createRule(userId, CreateNormalizationRuleRequest.builder()
+                .ruleType(NormalizationRuleType.CITY)
+                .sourceCity("Kyiv")
+                .targetCity("Kyiv City")
+                .build());
+        normalizationService.createRule(userId, CreateNormalizationRuleRequest.builder()
+                .ruleType(NormalizationRuleType.COUNTRY)
+                .sourceCountry("Ukraine")
+                .targetCountry("UA")
+                .build());
+    }
+
+    private Long createCommittedUserEntity(Point requestCoordinates, String displayName) throws Exception {
+        userTransaction.begin();
+        try {
+            ReverseGeocodingLocationEntity entity = createUserEntity(userId, requestCoordinates, displayName);
+            repository.persist(entity);
+            entityManager.flush();
+            Long geocodingId = entity.getId();
+            userTransaction.commit();
+            return geocodingId;
         } catch (Exception e) {
             userTransaction.rollback();
             throw e;
