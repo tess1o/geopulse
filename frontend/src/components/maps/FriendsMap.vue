@@ -192,7 +192,7 @@ const friendBounds = computed(() => {
     })
   }
 
-  return bounds.length > 0 ? bounds : null
+  return bounds
 })
 
 const currentUserBounds = computed(() => {
@@ -200,10 +200,38 @@ const currentUserBounds = computed(() => {
     return [[props.currentUser.latitude, props.currentUser.longitude]]
   }
 
-  return null
+  return []
 })
 
-const dataBounds = computed(() => friendBounds.value || currentUserBounds.value)
+const dataBounds = computed(() => {
+  const bounds = [
+    ...friendBounds.value,
+    ...currentUserBounds.value
+  ]
+
+  return bounds.length > 0 ? bounds : null
+})
+
+const defaultMapParticipantSignature = computed(() => {
+  const participantKeys = []
+
+  if (props.friends) {
+    props.friends.forEach((friend, index) => {
+      if (!hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)) {
+        return
+      }
+
+      const key = getFriendLocationKey(friend)
+      participantKeys.push(`friend:${key !== null && key !== undefined ? String(key) : index}`)
+    })
+  }
+
+  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
+    participantKeys.push('current-user')
+  }
+
+  return participantKeys.sort().join('|') || null
+})
 
 // Template refs
 const mapContainerRef = ref(null)
@@ -395,7 +423,7 @@ const fitMapBounds = (bounds, options = {}) => {
 }
 
 const fitDefaultMapBounds = () => {
-  const bounds = friendBounds.value || currentUserBounds.value
+  const bounds = dataBounds.value
   if (!bounds?.length) {
     return false
   }
@@ -551,15 +579,10 @@ const processFriendsForMap = (friends) => {
       }))
 }
 
-// Update map center when data changes
-watch(dataBounds, (newBounds, oldBounds) => {
-  if (newBounds && map.value) {
+// Update map center when the visible participant set changes.
+watch(defaultMapParticipantSignature, (newSignature) => {
+  if (newSignature && map.value) {
     if (selectedFriendKey.value || props.initialFriendEmail) {
-      return
-    }
-
-    // Avoid recentering on every background poll; only auto-fit when locations appear.
-    if (oldBounds) {
       return
     }
 

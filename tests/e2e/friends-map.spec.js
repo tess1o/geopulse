@@ -317,23 +317,24 @@ test.describe('Friends Map Coverage', () => {
     ).toBeGreaterThanOrEqual(2)
   })
 
-  test('should fit initial Live map to visible friends on mobile without including distant current user', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+  test('should fit initial Live map to visible friends and current user on mobile', async ({ page, isolatedUsers, dbManager, mapMode }) => {
     await page.setViewportSize({ width: 390, height: 844 })
 
     const mapHarness = new MapEngineHarness(page)
     const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 2, mapMode)
     const kyiv = { latitude: 50.4501, longitude: 30.5234 }
-    const london = { latitude: 51.5074, longitude: -0.1278 }
+    const nearbyFriend = { latitude: 50.4660, longitude: 30.5900 }
+    const currentUserLocation = { latitude: 50.4501, longitude: 30.8234 }
 
     await insertFriendGpsPoint(dbManager, {
       userId: user.id,
-      deviceId: 'friends-map-distant-current-user',
-      latitude: 21.3069,
-      longitude: -157.8583,
+      deviceId: 'friends-map-current-user-included',
+      latitude: currentUserLocation.latitude,
+      longitude: currentUserLocation.longitude,
       timestamp: new Date(Date.now() + 60_000).toISOString()
     })
     await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, kyiv.latitude, kyiv.longitude, true)
-    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[1].dbUser.id, london.latitude, london.longitude, true)
+    await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[1].dbUser.id, nearbyFriend.latitude, nearbyFriend.longitude, true)
 
     await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage)
     expect(await friendsPage.isTabActive('live')).toBe(true)
@@ -355,24 +356,26 @@ test.describe('Friends Map Coverage', () => {
       }
 
       return camera.center.lon > -10
-        && camera.center.lon < 35
+        && camera.center.lon < 31
         && boundsContainCoordinate(camera.bounds, kyiv)
-        && boundsContainCoordinate(camera.bounds, london)
+        && boundsContainCoordinate(camera.bounds, nearbyFriend)
+        && boundsContainCoordinate(camera.bounds, currentUserLocation)
     }, { timeout: 15000 }).toBe(true)
   })
 
-  test('should center initial Live map on a single visible friend on mobile without including distant current user', async ({ page, isolatedUsers, dbManager, mapMode }) => {
+  test('should fit initial Live map to a single visible friend and current user on mobile', async ({ page, isolatedUsers, dbManager, mapMode }) => {
     await page.setViewportSize({ width: 390, height: 844 })
 
     const mapHarness = new MapEngineHarness(page)
     const { testUser, user, friends, friendsPage } = await setupMultipleFriendsMapTest(page, dbManager, isolatedUsers, 1, mapMode)
     const kyiv = { latitude: 50.4501, longitude: 30.5234 }
+    const currentUserLocation = { latitude: 50.4501, longitude: 30.8234 }
 
     await insertFriendGpsPoint(dbManager, {
       userId: user.id,
-      deviceId: 'friends-map-single-distant-current-user',
-      latitude: 21.3069,
-      longitude: -157.8583,
+      deviceId: 'friends-map-single-current-user-included',
+      latitude: currentUserLocation.latitude,
+      longitude: currentUserLocation.longitude,
       timestamp: new Date(Date.now() + 60_000).toISOString()
     })
     await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, kyiv.latitude, kyiv.longitude, true)
@@ -386,8 +389,13 @@ test.describe('Friends Map Coverage', () => {
     })).toBe(mapMode)
 
     await expect.poll(async () => {
-      const center = await getLiveMapCenter(page)
-      return isCenterNear(center, kyiv, 0.02)
+      const camera = await getLiveMapCamera(page)
+      if (!camera) {
+        return false
+      }
+
+      return boundsContainCoordinate(camera.bounds, kyiv)
+        && boundsContainCoordinate(camera.bounds, currentUserLocation)
     }, { timeout: 15000 }).toBe(true)
   })
 
