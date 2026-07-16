@@ -129,6 +129,7 @@ The dashboard also provides quick links to:
 - **User Invitations** - Generate invitation links for new users
 - **OIDC Providers** - Configure authentication providers
 - **System Settings** - Configure system-wide settings
+- **Timeline Regeneration** - Create and monitor forced timeline regeneration campaigns
 - **Audit Logs** - Review administrative actions and system changes
 
 ---
@@ -438,6 +439,10 @@ The following administrative actions are logged:
 **User Invitations:**
 - `INVITATION_CREATED` - New user invitation was generated
 - `INVITATION_REVOKED` - Pending invitation was revoked
+
+**Timeline Regeneration Campaigns:**
+- `TIMELINE_REGENERATION_CAMPAIGN_CREATED` - Timeline regeneration campaign was created by an administrator
+- `TIMELINE_REGENERATION_CAMPAIGN_RETRIED` - Failed users in a timeline regeneration campaign were queued for retry
 
 **Administrative:**
 - `ADMIN_LOGIN` - Administrator logged into the system

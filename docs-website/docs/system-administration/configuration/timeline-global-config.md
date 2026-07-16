@@ -24,6 +24,27 @@ These settings can be overridden per-user through the web interface. Environment
 new users.
 :::
 
+## Timeline Regeneration Campaign Worker
+
+:::danger Global Settings
+These settings control the background worker used for admin and release-created timeline regeneration campaigns. They
+affect all campaign processing and require a backend restart.
+:::
+
+Timeline regeneration campaigns rebuild affected users' timelines after important timeline logic changes or timeline
+corruption. Administrators can create and monitor campaigns from the Admin Panel. See
+[Timeline Regeneration Campaigns](/docs/system-administration/maintenance/timeline-regeneration-campaigns).
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_INTERVAL` | `5m` | How often the backend checks active campaigns and queues due work. |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_DELAY` | `2m` | Delay after backend startup before the first campaign worker run. |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_MAX_CONCURRENT_TASKS` | `2` | Maximum number of campaign user jobs processed concurrently. |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_MAX_ATTEMPTS` | `5` | Maximum automatic attempts before a user work item remains failed. |
+
+The campaign worker uses the timeline processing executor. Increase concurrency carefully on large instances because
+campaigns can rebuild many users' historical timelines.
+
 ## Staypoint Detection
 
 Controls how GeoPulse identifies when you're stationary at a location.

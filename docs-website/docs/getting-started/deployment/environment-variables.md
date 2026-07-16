@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **218** distinct env vars.
+Backend runtime currently includes **270** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -51,7 +51,7 @@ Notes:
 | `GEOPULSE_VERSION_CHECK_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.connect-timeout-seconds`. | Positive integer seconds. | Backend restart |
 | `GEOPULSE_VERSION_CHECK_READ_TIMEOUT_SECONDS` | `8` | HTTP read timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.read-timeout-seconds`. | Positive integer seconds. | Backend restart |
 
-### Authentication and Access (22)
+### Authentication and Access (23)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -191,7 +191,7 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Timeline and Trip Intelligence (90)
+### Timeline and Trip Intelligence (94)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -245,6 +245,10 @@ Notes:
 | `GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_TOLERANCE` | `15.0` | GPS Path Simplification Configuration Property: \`geopulse.timeline.path.simplification.tolerance\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2` | Real-time Timeline Processing Configuration Property: \`geopulse.timeline.processing.thread-pool-size\`. | Integer value. | Backend restart |
 | `GEOPULSE_TIMELINE_PREFERRED_MOTORIZED_TYPE` | `CAR` | Preferred label when both Car and Motorcycle labels are enabled for detected motor vehicle trips. Property: \`geopulse.timeline.travel.classification.preferred_motorized_type\`. | One of \`CAR\`, \`MOTORCYCLE\`. | Backend restart |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_DELAY` | `2m` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.delay\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_INTERVAL` | `5m` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_MAX_ATTEMPTS` | `5` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.max-attempts\`. | Integer value. | Backend restart |
+| `GEOPULSE_TIMELINE_REGENERATION_CAMPAIGN_MAX_CONCURRENT_TASKS` | `2` | Timeline regeneration campaign worker Property: \`geopulse.timeline.regeneration-campaign.max-concurrent-tasks\`. | Integer value. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_ENABLED` | `false` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_MAX_AVG_SPEED` | `14.0` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.max_avg_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_TIMELINE_RUNNING_MAX_MAX_SPEED` | `18.0` | Running (optional - disabled by default) Property: \`geopulse.timeline.travel.classification.running.max_max_speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |

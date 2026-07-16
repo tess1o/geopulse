@@ -26,7 +26,7 @@ public class TimelineRegenerationCampaignJob {
     @Identifier("timeline-processing")
     ExecutorService executorService;
 
-    @ConfigProperty(name = "geopulse.timeline.regeneration-campaign.max-concurrent-tasks", defaultValue = "1")
+    @ConfigProperty(name = "geopulse.timeline.regeneration-campaign.max-concurrent-tasks", defaultValue = "2")
     @StaticInitSafe
     int maxConcurrentTasks;
 
@@ -45,8 +45,8 @@ public class TimelineRegenerationCampaignJob {
 
     @Blocking
     @Scheduled(
-            every = "${geopulse.timeline.regeneration-campaign.interval:1m}",
-            delayed = "${geopulse.timeline.regeneration-campaign.delay:1m}",
+            every = "${geopulse.timeline.regeneration-campaign.interval:5m}",
+            delayed = "${geopulse.timeline.regeneration-campaign.delay:2m}",
             identity = "timeline-regeneration-campaign"
     )
     public void processCampaigns() {

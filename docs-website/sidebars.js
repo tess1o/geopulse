@@ -308,6 +308,11 @@ const sidebars = {
                     ],
                 },
                 {
+                    type: 'doc',
+                    id: 'system-administration/maintenance/timeline-regeneration-campaigns',
+                    label: 'Timeline Regeneration',
+                },
+                {
                     type: 'category',
                     label: 'Monitoring',
                     items: [
