@@ -269,6 +269,7 @@
         </Dialog>
 
         <!-- Confirm Dialog -->
+        <ConfirmDialog group="timeline-preferences-unsaved-changes" />
         <ConfirmDialog />
         <Toast />
         
@@ -286,7 +287,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -513,9 +514,16 @@ const actionsMenuRef = ref(null)
 const boatSetupVisible = ref(false)
 const boatSetupPollingTimer = ref(null)
 let activeJobPollingTimer = null
+const timelinePreferencesUnsavedConfirmGroup = 'timeline-preferences-unsaved-changes'
 
 // Computed
+const hasLoadedPreferences = computed(() => originalPrefs.value !== null && originalPrefs.value !== undefined)
+
 const hasUnsavedChanges = computed(() => {
+  if (!hasLoadedPreferences.value) {
+    return false
+  }
+
   return JSON.stringify(prefs.value) !== JSON.stringify(originalPrefs.value)
 })
 
@@ -1413,8 +1421,61 @@ watch(
   { immediate: true }
 )
 
+onBeforeRouteLeave((to, from, next) => {
+  if (to.path === from.path || !hasUnsavedChanges.value) {
+    next()
+    return
+  }
+
+  let guardResolved = false
+  const resolveGuard = (allowNavigation) => {
+    if (guardResolved) {
+      return
+    }
+
+    guardResolved = true
+    if (allowNavigation) {
+      next()
+    } else {
+      next(false)
+    }
+  }
+
+  confirm.require({
+    group: timelinePreferencesUnsavedConfirmGroup,
+    message: 'You have unsaved timeline preference changes. If you leave this page, those changes will be lost.',
+    header: 'Unsaved Changes',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Leave without saving',
+    rejectLabel: 'Stay',
+    acceptClass: 'p-button-danger',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    accept: () => {
+      resolveGuard(true)
+    },
+    reject: () => {
+      resolveGuard(false)
+    },
+    onHide: () => {
+      resolveGuard(false)
+    }
+  })
+})
+
+const handleBeforeUnload = (event) => {
+  if (!hasUnsavedChanges.value) {
+    return
+  }
+
+  event.preventDefault()
+  event.returnValue = ''
+  return ''
+}
+
 // Lifecycle
 onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
   loadPreferences()
   refreshBoatSetupStatus()
   refreshActiveJob()
@@ -1432,6 +1493,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+
   if (activeJobPollingTimer) {
     window.clearInterval(activeJobPollingTimer)
     activeJobPollingTimer = null

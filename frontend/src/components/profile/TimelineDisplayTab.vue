@@ -265,7 +265,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -281,7 +281,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'dirty-change'])
 
 // Form state
 const form = ref({
@@ -314,27 +314,40 @@ const mapRenderModeOptions = [
   { label: 'Raster (Leaflet)', value: 'RASTER' }
 ]
 
+const normalizePreferences = (preferences = {}) => ({
+  customMapTileUrl: preferences.customMapTileUrl || '',
+  customMapStyleUrl: preferences.customMapStyleUrl || '',
+  mapRenderMode: preferences.mapRenderMode || 'VECTOR',
+  defaultDateRangePreset: preferences.defaultDateRangePreset || '',
+  pathSimplificationEnabled: preferences.pathSimplificationEnabled ?? true,
+  pathSimplificationTolerance: Number(preferences.pathSimplificationTolerance ?? 15.0),
+  pathMaxPoints: Number(preferences.pathMaxPoints ?? 0),
+  pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
+  showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
+  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true
+})
+
+const hasChanges = computed(() => {
+  const current = normalizePreferences(form.value)
+  const initial = normalizePreferences(props.initialPreferences)
+
+  return Object.keys(current).some((key) => current[key] !== initial[key])
+})
+
 // Initialize form from props
 watch(
   () => props.initialPreferences,
   (newPrefs) => {
     if (newPrefs) {
-      form.value = {
-        customMapTileUrl: newPrefs.customMapTileUrl || '',
-        customMapStyleUrl: newPrefs.customMapStyleUrl || '',
-        mapRenderMode: newPrefs.mapRenderMode || 'VECTOR',
-        defaultDateRangePreset: newPrefs.defaultDateRangePreset || '',
-        pathSimplificationEnabled: newPrefs.pathSimplificationEnabled ?? true,
-        pathSimplificationTolerance: newPrefs.pathSimplificationTolerance ?? 15.0,
-        pathMaxPoints: newPrefs.pathMaxPoints ?? 0,
-        pathAdaptiveSimplification: newPrefs.pathAdaptiveSimplification ?? true,
-        showCurrentLocationTelemetry: newPrefs.showCurrentLocationTelemetry ?? true,
-        autoShowTripReplayControls: newPrefs.autoShowTripReplayControls ?? true
-      }
+      form.value = normalizePreferences(newPrefs)
     }
   },
   { immediate: true }
 )
+
+watch(hasChanges, (changed) => {
+  emit('dirty-change', changed)
+})
 
 // Validation
 const validateCustomMapTileUrl = (url) => {

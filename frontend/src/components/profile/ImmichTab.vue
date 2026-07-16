@@ -150,7 +150,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'dirty-change'])
 
 // State
 const saveLoading = ref(false)
@@ -182,6 +182,10 @@ const hasChanges = computed(() => {
   const apiKeyChanged = (form.value.apiKey?.trim() || '') !== ''
 
   return serverUrlChanged || enabledChanged || apiKeyChanged
+})
+
+watch(hasChanges, (changed) => {
+  emit('dirty-change', Boolean(changed))
 })
 
 const canTestConnection = computed(() => {

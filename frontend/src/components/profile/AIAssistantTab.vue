@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import Message from 'primevue/message';
 import Textarea from 'primevue/textarea';
 
@@ -176,7 +176,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'dirty-change'])
 
 // State
 const loading = ref(false)
@@ -192,6 +192,8 @@ const form = ref({
   apiKeyRequired: true,
   customSystemMessage: null
 })
+const savedFormSnapshot = ref(null)
+const syncingSettings = ref(false)
 
 import apiService from '@/utils/apiService';
 
@@ -201,6 +203,28 @@ const openaiModels = ref([
   'gpt-3.5-turbo',
   'gpt-4-turbo'
 ]);
+
+const normalizeSettings = (settings = {}) => ({
+  enabled: settings.enabled === true,
+  openaiApiKey: settings.openaiApiKey || '',
+  openaiApiUrl: settings.openaiApiUrl || 'https://api.openai.com/v1',
+  openaiModel: settings.openaiModel || 'gpt-3.5-turbo',
+  apiKeyRequired: settings.apiKeyRequired !== false,
+  customSystemMessage: settings.customSystemMessage && settings.customSystemMessage.trim()
+    ? settings.customSystemMessage.trim()
+    : null
+})
+
+const hasChanges = computed(() => {
+  if (syncingSettings.value || !savedFormSnapshot.value) {
+    return false
+  }
+
+  const current = normalizeSettings(form.value)
+  const saved = savedFormSnapshot.value
+
+  return Object.keys(current).some((key) => current[key] !== saved[key])
+})
 
 const fetchModels = async () => {
   modelsLoading.value = true;
@@ -258,6 +282,8 @@ const handleSubmit = async () => {
 }
 
 const loadSettings = async () => {
+  syncingSettings.value = true
+
   form.value = {
     enabled: props.initialSettings.enabled === true,
     openaiApiKey: '', // Always empty since backend doesn't send actual key
@@ -278,7 +304,14 @@ const loadSettings = async () => {
       form.value.customSystemMessage = '';
     }
   }
+
+  savedFormSnapshot.value = normalizeSettings(form.value)
+  syncingSettings.value = false
 }
+
+watch(hasChanges, (changed) => {
+  emit('dirty-change', Boolean(changed))
+})
 
 // Initialize
 onMounted(() => {

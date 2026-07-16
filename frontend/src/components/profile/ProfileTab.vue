@@ -262,7 +262,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'dirty-change'])
 
 // State
 const loading = ref(false)
@@ -420,6 +420,10 @@ const hasChanges = computed(() => {
          effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
 const currentAvatarImage = computed(() => avatarPreviewUrl.value || localAvatar.value || '/avatars/avatar1.png')
+
+watch(hasChanges, (changed) => {
+  emit('dirty-change', Boolean(changed))
+})
 
 const revokeAvatarPreview = () => {
   if (avatarPreviewUrl.value) {

@@ -41,16 +41,19 @@
         </div>
 
         <Toast />
+        <ConfirmDialog group="profile-unsaved-changes" />
       </div>
     </PageContainer>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
-import { useRoute, useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -74,6 +77,7 @@ import { jumpToSetting } from '@/utils/settingJump'
 
 // Composables
 const toast = useToast()
+const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -86,6 +90,7 @@ const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immic
 // State
 const activeTab = ref('profile')
 const validTabs = ['profile', 'security', 'timelineDisplay', 'ai', 'immich']
+const profileUnsavedConfirmGroup = 'profile-unsaved-changes'
 const settingHintsById = Object.fromEntries(
   PROFILE_SETTINGS_SEARCH_INDEX
     .filter((item) => item.visibilityHint)
@@ -159,6 +164,15 @@ const tabComponents = {
 }
 
 const currentTabComponent = computed(() => tabComponents[activeTab.value] || null)
+const dirtyTabs = ref({})
+const hasUnsavedChanges = computed(() => Object.values(dirtyTabs.value).some(Boolean))
+
+const handleTabDirtyChange = (tabKey, isDirty) => {
+  dirtyTabs.value = {
+    ...dirtyTabs.value,
+    [tabKey]: Boolean(isDirty)
+  }
+}
 
 const currentTabProps = computed(() => {
   const allProps = {
@@ -191,11 +205,11 @@ const currentTabProps = computed(() => {
 
 const currentTabHandlers = computed(() => {
   const handlers = {
-    profile: { save: handleProfileSave },
-    security: { save: handlePasswordSave },
-    timelineDisplay: { save: handleTimelineDisplaySave },
-    ai: { save: handleAISave },
-    immich: { save: handleImmichSave },
+    profile: { save: handleProfileSave, 'dirty-change': (isDirty) => handleTabDirtyChange('profile', isDirty) },
+    security: { save: handlePasswordSave, 'dirty-change': (isDirty) => handleTabDirtyChange('security', isDirty) },
+    timelineDisplay: { save: handleTimelineDisplaySave, 'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty) },
+    ai: { save: handleAISave, 'dirty-change': (isDirty) => handleTabDirtyChange('ai', isDirty) },
+    immich: { save: handleImmichSave, 'dirty-change': (isDirty) => handleTabDirtyChange('immich', isDirty) },
   }
   return handlers[activeTab.value] || {}
 })
@@ -476,8 +490,61 @@ watch(
   { immediate: true }
 )
 
+onBeforeRouteLeave((to, from, next) => {
+  if (to.path === from.path || !hasUnsavedChanges.value) {
+    next()
+    return
+  }
+
+  let guardResolved = false
+  const resolveGuard = (allowNavigation) => {
+    if (guardResolved) {
+      return
+    }
+
+    guardResolved = true
+    if (allowNavigation) {
+      next()
+    } else {
+      next(false)
+    }
+  }
+
+  confirm.require({
+    group: profileUnsavedConfirmGroup,
+    message: 'You have unsaved profile changes. If you leave this page, those changes will be lost.',
+    header: 'Unsaved Changes',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Leave without saving',
+    rejectLabel: 'Stay',
+    acceptClass: 'p-button-danger',
+    rejectClass: 'p-button-secondary p-button-outlined',
+    accept: () => {
+      resolveGuard(true)
+    },
+    reject: () => {
+      resolveGuard(false)
+    },
+    onHide: () => {
+      resolveGuard(false)
+    }
+  })
+})
+
+const handleBeforeUnload = (event) => {
+  if (!hasUnsavedChanges.value) {
+    return
+  }
+
+  event.preventDefault()
+  event.returnValue = ''
+  return ''
+}
+
 // Lifecycle
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
   // Fetch fresh profile data from backend first
   try {
     await authStore.fetchCurrentUserProfile()
@@ -510,6 +577,10 @@ onMounted(async () => {
   if (tabParam && validTabs.includes(tabParam)) {
     activeTab.value = tabParam
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 </script>
 

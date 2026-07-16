@@ -98,7 +98,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'dirty-change'])
 
 // State
 const loading = ref(false)
@@ -114,6 +114,10 @@ const hasChanges = computed(() => {
   return form.value.currentPassword ||
          form.value.newPassword ||
          form.value.confirmPassword
+})
+
+watch(hasChanges, (changed) => {
+  emit('dirty-change', Boolean(changed))
 })
 
 // Methods
