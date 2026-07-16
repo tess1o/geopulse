@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.shared.service;
 
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
@@ -51,7 +52,8 @@ class LocationPointResolverCacheTest {
                 favoriteLocationService,
                 cacheGeocodingService,
                 mock(CacheGeocodingBatchService.class),
-                managementService
+                managementService,
+                mock(GeocodingConfigurationService.class)
         );
 
         LocationResolutionResult result = resolver.resolveLocationWithReferences(userId, point);
