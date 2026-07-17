@@ -10,7 +10,10 @@
       "Added unsaved changes protection for Profile and Timeline Preferences pages",
       "Improved date and mobile form handling by allowing manual timeline date entry and preventing unwanted mobile browser zoom on inputs and date pickers",
       "Bundled country flags locally for Journey Insights so flags work without external image fetches",
-      "Added REST API documentation and refreshed the documentation site landing page, search, dark theme, and new feature docs"
+      "Added REST API documentation and refreshed the documentation site landing page, search, dark theme, and new feature docs",
+      "Improved Visit Places table on the Place page to be more informative",
+      "Fixed some bugs in geocoding normalization when executed manually",
+      "Added immich thubmnail for a single photo on the map"
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.35.0"
   }
