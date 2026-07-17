@@ -1096,11 +1096,14 @@ jobs:
 
           # Try to fetch with retries (exponential backoff: 2s, 4s, 8s)
           for i in 1 2 3; do
-            if curl -sSf -o charts/published-index.yaml "$PUBLISHED_INDEX"; then
+            if curl -sSfL -o charts/published-index.yaml "$PUBLISHED_INDEX" && \
+               grep -q "^apiVersion: v1$" charts/published-index.yaml && \
+               grep -q "^entries:" charts/published-index.yaml; then
               echo "✅ Successfully fetched published index"
               echo "MERGE_INDEX=charts/published-index.yaml" >> $GITHUB_ENV
               break
             else
+              rm -f charts/published-index.yaml
               if [ $i -eq 3 ]; then
                 echo "⚠️ Could not fetch published index, will use local index as fallback"
                 echo "MERGE_INDEX=charts/index.yaml" >> $GITHUB_ENV
