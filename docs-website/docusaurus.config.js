@@ -5,8 +5,23 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import {readFileSync} from 'node:fs';
+import {dirname, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+
+const configDir = dirname(fileURLToPath(import.meta.url));
+const rootPomPath = resolve(configDir, '../pom.xml');
+const rootPom = readFileSync(rootPomPath, 'utf8');
+const releaseVersionMatch = rootPom.match(/<project[\s\S]*?<version>([^<]+)<\/version>/);
+
+if (!releaseVersionMatch) {
+    throw new Error(`Unable to read GeoPulse release version from ${rootPomPath}`);
+}
+
+const releaseVersion = releaseVersionMatch[1].trim();
+const releaseTag = `v${releaseVersion}`;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -132,8 +147,8 @@ const config = {
                         position: 'right',
                     },
                     {
-                        href: 'https://github.com/tess1o/geopulse/releases/tag/v1.34.1',
-                        label: 'v1.34.1',
+                        href: `https://github.com/tess1o/geopulse/releases/tag/${releaseTag}`,
+                        label: releaseTag,
                         position: 'right',
                         className: 'navbar-version-link',
                     },
