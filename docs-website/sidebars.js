@@ -283,7 +283,17 @@ const sidebars = {
                         'system-administration/configuration/authentication',
                         'system-administration/configuration/user-registration',
                         'system-administration/configuration/login-control',
-                        'system-administration/configuration/oidc-sso',
+                        {
+                            type: 'category',
+                            label: 'OIDC Authentication',
+                            link: {
+                                type: 'doc',
+                                id: 'system-administration/configuration/oidc-sso',
+                            },
+                            items: [
+                                'system-administration/configuration/authelia-oidc',
+                            ],
+                        },
                     ],
                 },
                 {

@@ -113,6 +113,20 @@ GEOPULSE_OIDC_PROVIDER_POCKETID_DISCOVERY_URL=https://pocketid.example.com/.well
 GEOPULSE_OIDC_PROVIDER_POCKETID_ICON=pi pi-id-card
 ```
 
+### Authelia
+
+Authelia requires additional provider-side OIDC configuration, including client secret hashing, claims policy, and JWKS
+settings. See [Authelia OIDC Setup](./authelia-oidc) for the full setup guide.
+
+```bash
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_ENABLED=true
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_NAME=Authelia
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_CLIENT_ID=geopulse
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_CLIENT_SECRET=your-plaintext-authelia-client-secret
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_DISCOVERY_URL=https://auth.example.com/.well-known/openid-configuration
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/authelia-light.svg
+```
+
 ### GitLab
 
 ```bash
@@ -165,6 +179,9 @@ GEOPULSE_OIDC_PROVIDER_AUTHENTIK_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@
 
 # Keycloak icon (light variant)
 GEOPULSE_OIDC_PROVIDER_KEYCLOAK_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/keycloak-light.svg
+
+# Authelia icon (light variant)
+GEOPULSE_OIDC_PROVIDER_AUTHELIA_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/authelia-light.svg
 
 # PocketID icon
 GEOPULSE_OIDC_PROVIDER_POCKETID_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/pocketid.svg
