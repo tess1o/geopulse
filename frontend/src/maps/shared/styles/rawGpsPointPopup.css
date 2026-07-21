@@ -98,13 +98,45 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   background: transparent;
   color: #0f172a;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 0.75rem;
   padding: 0.55rem 0.7rem;
   text-align: left;
   cursor: pointer;
   font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.raw-gps-stack-time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raw-gps-stack-telemetry {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  color: #475569;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.raw-gps-stack-telemetry-item {
+  white-space: nowrap;
+}
+
+.raw-gps-stack-telemetry-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.raw-gps-stack-telemetry-label::after {
+  content: ": ";
 }
 
 .raw-gps-stack-row:last-child {
@@ -119,6 +151,11 @@
   background: rgba(37, 99, 235, 0.14);
   color: #1d4ed8;
   font-weight: 650;
+}
+
+.raw-gps-stack-row.is-selected .raw-gps-stack-telemetry,
+.raw-gps-stack-row.is-selected .raw-gps-stack-telemetry-label {
+  color: #1d4ed8;
 }
 
 .raw-gps-stack-overflow {
@@ -194,7 +231,9 @@
 .p-dark .raw-gps-popup-label,
 .p-dark .raw-gps-popup-location-source,
 .p-dark .raw-gps-popup-location-muted,
-.p-dark .raw-gps-stack-overflow {
+.p-dark .raw-gps-stack-overflow,
+.p-dark .raw-gps-stack-telemetry,
+.p-dark .raw-gps-stack-telemetry-label {
   color: rgba(203, 213, 225, 0.88);
 }
 
@@ -216,6 +255,11 @@
 
 .p-dark .raw-gps-stack-row.is-selected {
   background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+.p-dark .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry,
+.p-dark .raw-gps-stack-row.is-selected .raw-gps-stack-telemetry-label {
   color: #93c5fd;
 }
 

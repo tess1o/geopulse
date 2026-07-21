@@ -210,21 +210,18 @@ const formatBattery = (value) => {
   return Number.isFinite(number) && number >= 0 ? `${Math.round(number)}%` : 'N/A'
 }
 
-const formatRange = (min, max, formatter) => {
-  if (!Number.isFinite(Number(min))) return 'N/A'
-  if (!Number.isFinite(Number(max)) || Number(min) === Number(max)) {
-    return formatter(min)
-  }
-  return `${formatter(min)} - ${formatter(max)}`
-}
-
-const formatSpeedRange = (min, max) => formatRange(min, max, formatSpeed)
-
 const getSelectedPoint = (group, pointId) => {
   if (!group?.points?.length) return null
   if (pointId == null) return group.representative || group.points[0]
   return group.points.find((point) => String(point.id) === String(pointId)) || group.points[0]
 }
+
+const buildTelemetryItemHtml = (label, value) => `
+  <span class="raw-gps-stack-telemetry-item">
+    <span class="raw-gps-stack-telemetry-label">${escapeHtml(label)}</span>
+    <span>${escapeHtml(value)}</span>
+  </span>
+`.trim()
 
 const renderLocationText = (locationState) => {
   if (locationState?.status === 'resolved' && locationState?.location?.locationName) {
@@ -250,8 +247,11 @@ const buildPointRowsHtml = (group, selectedPoint, timezone) => {
     const selected = String(point.id) === String(selectedPoint?.id)
     return `
       <button type="button" class="raw-gps-stack-row${selected ? ' is-selected' : ''}" data-point-id="${escapeHtml(point.id)}">
-        <span>${escapeHtml(formatRawGpsDateTime(timezone, point.timestamp))}</span>
-        <span>${escapeHtml(formatSpeed(point.velocity))}</span>
+        <span class="raw-gps-stack-time">${escapeHtml(formatRawGpsDateTime(timezone, point.timestamp))}</span>
+        <span class="raw-gps-stack-telemetry">
+          ${buildTelemetryItemHtml('Speed', formatSpeed(point.velocity))}
+          ${buildTelemetryItemHtml('Battery', formatBattery(point.battery))}
+        </span>
       </button>
     `.trim()
   }).join('')
@@ -287,13 +287,13 @@ const buildPopupHtml = (group, selectedPoint, timezone, locationState) => {
         <div>${escapeHtml(formatCoordinate(selectedPoint?.latitude))}<br>${escapeHtml(formatCoordinate(selectedPoint?.longitude))}</div>
 
         <div class="raw-gps-popup-label">Accuracy</div>
-        <div>${escapeHtml(isStack ? formatRange(group.accuracyMin, group.accuracyMax, formatMeters) : formatMeters(selectedPoint?.accuracy))}</div>
+        <div>${escapeHtml(formatMeters(selectedPoint?.accuracy))}</div>
 
         <div class="raw-gps-popup-label">Battery</div>
-        <div>${escapeHtml(isStack ? formatRange(group.batteryMin, group.batteryMax, formatBattery) : formatBattery(selectedPoint?.battery))}</div>
+        <div>${escapeHtml(formatBattery(selectedPoint?.battery))}</div>
 
         <div class="raw-gps-popup-label">Speed</div>
-        <div>${escapeHtml(isStack ? formatSpeedRange(group.speedMin, group.speedMax) : formatSpeed(selectedPoint?.velocity))}</div>
+        <div>${escapeHtml(formatSpeed(selectedPoint?.velocity))}</div>
 
         <div class="raw-gps-popup-label">Altitude</div>
         <div>${escapeHtml(formatMeters(selectedPoint?.altitude))}</div>

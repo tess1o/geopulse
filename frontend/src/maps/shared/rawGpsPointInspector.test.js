@@ -35,6 +35,12 @@ const timezone = {
 
 const waitForRenderNotification = () => new Promise((resolve) => setTimeout(resolve, 20))
 
+const getPopupGridValue = (element, label) => {
+  const labelElement = Array.from(element.querySelectorAll('.raw-gps-popup-label'))
+    .find((node) => node.textContent === label)
+  return labelElement?.nextElementSibling?.textContent
+}
+
 describe('raw GPS point inspector grouping', () => {
   it('collapses many same-location points into one stationary stack', () => {
     const points = Array.from({ length: 500 }, (_, index) => ({
@@ -111,5 +117,68 @@ describe('raw GPS point inspector grouping', () => {
 
     await waitForRenderNotification()
     expect(onRender.mock.calls.length).toBeGreaterThan(initialRenderCount)
+  })
+
+  it('shows exact selected point telemetry for stacked GPS popups', () => {
+    const group = groupRawGpsPoints([
+      {
+        ...pointOffsetByMeters(1, 0, 0),
+        accuracy: 4,
+        battery: 82,
+        velocity: 10,
+        altitude: 12
+      },
+      {
+        ...pointOffsetByMeters(2, 4, 4),
+        accuracy: 19,
+        battery: 71,
+        velocity: 12,
+        altitude: 24
+      }
+    ])[0]
+
+    const element = createRawGpsPopupElement(group, { timezone })
+
+    expect(getPopupGridValue(element, 'Accuracy')).toBe('4m')
+    expect(getPopupGridValue(element, 'Battery')).toBe('82%')
+    expect(getPopupGridValue(element, 'Speed')).toBe('10.00 km/h')
+    expect(getPopupGridValue(element, 'Altitude')).toBe('12m')
+
+    element.querySelectorAll('.raw-gps-stack-row')[1].click()
+
+    expect(getPopupGridValue(element, 'Accuracy')).toBe('19m')
+    expect(getPopupGridValue(element, 'Battery')).toBe('71%')
+    expect(getPopupGridValue(element, 'Speed')).toBe('12.00 km/h')
+    expect(getPopupGridValue(element, 'Altitude')).toBe('24m')
+  })
+
+  it('includes compact speed and battery values in each stack row', () => {
+    const group = groupRawGpsPoints([
+      {
+        ...pointOffsetByMeters(1, 0, 0),
+        accuracy: 4,
+        battery: 82,
+        velocity: 10
+      },
+      {
+        ...pointOffsetByMeters(2, 4, 4),
+        accuracy: null,
+        battery: -1,
+        velocity: 12
+      }
+    ])[0]
+
+    const element = createRawGpsPopupElement(group, { timezone })
+    const rows = element.querySelectorAll('.raw-gps-stack-row')
+
+    expect(rows).toHaveLength(2)
+    expect(rows[0].textContent).toContain('Speed')
+    expect(rows[0].textContent).toContain('10.00 km/h')
+    expect(rows[0].textContent).toContain('Battery')
+    expect(rows[0].textContent).toContain('82%')
+    expect(rows[0].textContent).not.toContain('Accuracy')
+
+    expect(rows[1].textContent).toContain('12.00 km/h')
+    expect(rows[1].textContent).toContain('N/A')
   })
 })
