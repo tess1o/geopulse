@@ -34,6 +34,13 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 userId, startTime, endTime);
     }
 
+    public List<GpsPointEntity> findEligibleByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
+                                                                  Double maxAccuracy) {
+        return find(buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
+                buildEligibleTimePeriodParams(userId, startTime, endTime, maxAccuracy))
+                .list();
+    }
+
     public List<GpsPointEntity> findMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime, int limit) {
         return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp ASC",
                 userId, startTime, endTime)
@@ -41,9 +48,43 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .list();
     }
 
+    public List<GpsPointEntity> findEligibleMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
+                                                                           int limit, Double maxAccuracy) {
+        return find(buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
+                buildEligibleTimePeriodParams(userId, startTime, endTime, maxAccuracy))
+                .page(0, limit)
+                .list();
+    }
+
     public long countByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime) {
         return count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
                 userId, startTime, endTime);
+    }
+
+    public long countEligibleByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
+                                                   Double maxAccuracy) {
+        return count(buildEligibleTimePeriodQuery(maxAccuracy),
+                buildEligibleTimePeriodParams(userId, startTime, endTime, maxAccuracy));
+    }
+
+    private String buildEligibleTimePeriodQuery(Double maxAccuracy) {
+        String query = "user.id = :userId AND timestamp >= :startTime AND timestamp <= :endTime AND coordinates IS NOT NULL";
+        if (maxAccuracy != null) {
+            query += " AND (accuracy IS NULL OR accuracy <= :maxAccuracy)";
+        }
+        return query;
+    }
+
+    private Map<String, Object> buildEligibleTimePeriodParams(UUID userId, Instant startTime, Instant endTime,
+                                                              Double maxAccuracy) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("userId", userId);
+        params.put("startTime", startTime);
+        params.put("endTime", endTime);
+        if (maxAccuracy != null) {
+            params.put("maxAccuracy", maxAccuracy);
+        }
+        return params;
     }
 
     /**

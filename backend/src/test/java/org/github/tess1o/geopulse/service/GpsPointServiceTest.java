@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointSummaryDTO;
+import org.github.tess1o.geopulse.gps.model.RawGpsPointMapResponseDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
@@ -387,7 +388,64 @@ public class GpsPointServiceTest {
                 .map(point -> ((GpsPointPathPointDTO) point).getAccuracy())
                 .toList();
 
-        assertEquals(List.of(11.0, 100.0, 12.0), accuracies);
+        assertEquals(List.of(11.0, 700.0, 12.0), accuracies);
+    }
+
+    @Test
+    @Transactional
+    public void testGetRawGpsMapPoints_FiltersPointsAboveTimelineAccuracyThresholdAndCountsEligibleOnly() {
+        setTimelineAccuracyPreferences(true, 60.0);
+        savePathTestPoints();
+
+        RawGpsPointMapResponseDTO limitedResponse = gpsPointService.getRawGpsMapPoints(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:03:00Z"),
+                1
+        );
+
+        assertEquals(2, limitedResponse.getTotalCount());
+        assertEquals(1, limitedResponse.getReturnedCount());
+        assertEquals(1, limitedResponse.getLimit());
+        assertTrue(limitedResponse.isLimited());
+        assertEquals(List.of(11.0), limitedResponse.getPoints().stream()
+                .map(point -> point.getAccuracy())
+                .toList());
+
+        RawGpsPointMapResponseDTO fullResponse = gpsPointService.getRawGpsMapPoints(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:03:00Z"),
+                10
+        );
+
+        assertEquals(2, fullResponse.getTotalCount());
+        assertEquals(2, fullResponse.getReturnedCount());
+        assertFalse(fullResponse.isLimited());
+        assertEquals(List.of(11.0, 12.0), fullResponse.getPoints().stream()
+                .map(point -> point.getAccuracy())
+                .toList());
+    }
+
+    @Test
+    @Transactional
+    public void testGetRawGpsMapPoints_KeepsHighAccuracyPointsWhenAccuracyValidationDisabled() {
+        setTimelineAccuracyPreferences(false, 60.0);
+        savePathTestPoints();
+
+        RawGpsPointMapResponseDTO response = gpsPointService.getRawGpsMapPoints(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:03:00Z"),
+                10
+        );
+
+        assertEquals(3, response.getTotalCount());
+        assertEquals(3, response.getReturnedCount());
+        assertFalse(response.isLimited());
+        assertEquals(List.of(11.0, 700.0, 12.0), response.getPoints().stream()
+                .map(point -> point.getAccuracy())
+                .toList());
     }
 
     @Test
@@ -411,6 +469,17 @@ public class GpsPointServiceTest {
 
         assertEquals(1, path.getPoints().size());
         assertNull(((GpsPointPathPointDTO) path.getPoints().get(0)).getAccuracy());
+
+        RawGpsPointMapResponseDTO response = gpsPointService.getRawGpsMapPoints(
+                userId,
+                Instant.parse("2026-05-15T09:59:00Z"),
+                Instant.parse("2026-05-15T10:01:00Z"),
+                10
+        );
+
+        assertEquals(1, response.getTotalCount());
+        assertEquals(1, response.getReturnedCount());
+        assertNull(response.getPoints().get(0).getAccuracy());
     }
 
     @Test
@@ -687,7 +756,7 @@ public class GpsPointServiceTest {
         GpsSourceConfigEntity mobileAppConfig = createMobileAppTestConfig();
         gpsPointService.saveMobileAppGpsPoints(List.of(
                         createMobilePoint("2026-05-15T10:00:00Z", 40.0, -74.0, 11.0),
-                        createMobilePoint("2026-05-15T10:01:00Z", 40.1, -74.1, 100.0),
+                        createMobilePoint("2026-05-15T10:01:00Z", 40.1, -74.1, 700.0),
                         createMobilePoint("2026-05-15T10:02:00Z", 40.2, -74.2, 12.0)
                 ),
                 "pixel-9-pro",

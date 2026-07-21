@@ -425,9 +425,8 @@ public class GpsPointService {
      */
     public GpsPointPathDTO getGpsPointPath(UUID userId, Instant startTime, Instant endTime) {
         TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(userId);
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime).stream()
-                .filter(point -> point != null && TimelineGpsAccuracyFilter.shouldIncludeAccuracy(point.getAccuracy(), config))
-                .toList();
+        Double maxAccuracy = TimelineGpsAccuracyFilter.getActiveMaxAccuracyThreshold(config);
+        List<GpsPointEntity> gpsPoints = gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, startTime, endTime, maxAccuracy);
         List<GpsPointPathPointDTO> pathPoints = gpsPointMapper.toPathPoints(gpsPoints);
         applyTelemetryToPathPoints(userId, gpsPoints, pathPoints);
 
@@ -435,8 +434,10 @@ public class GpsPointService {
     }
 
     public RawGpsPointMapResponseDTO getRawGpsMapPoints(UUID userId, Instant startTime, Instant endTime, int limit) {
-        long totalCount = gpsPointRepository.countByUserIdAndTimePeriod(userId, startTime, endTime);
-        List<GpsPointEntity> gpsPoints = gpsPointRepository.findMapPointsByUserIdAndTimePeriod(userId, startTime, endTime, limit);
+        TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(userId);
+        Double maxAccuracy = TimelineGpsAccuracyFilter.getActiveMaxAccuracyThreshold(config);
+        long totalCount = gpsPointRepository.countEligibleByUserIdAndTimePeriod(userId, startTime, endTime, maxAccuracy);
+        List<GpsPointEntity> gpsPoints = gpsPointRepository.findEligibleMapPointsByUserIdAndTimePeriod(userId, startTime, endTime, limit, maxAccuracy);
         List<RawGpsPointMapPointDTO> points = gpsPointMapper.toRawGpsPointMapPointDTOs(gpsPoints);
 
         return RawGpsPointMapResponseDTO.builder()

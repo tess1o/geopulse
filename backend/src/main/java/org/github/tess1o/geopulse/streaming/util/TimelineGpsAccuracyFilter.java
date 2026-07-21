@@ -20,15 +20,24 @@ public final class TimelineGpsAccuracyFilter {
     }
 
     public static boolean shouldIncludeAccuracy(Double accuracy, TimelineConfig config) {
-        if (config == null || Boolean.FALSE.equals(config.getUseVelocityAccuracy())) {
-            return true;
-        }
-
-        Double maxAccuracyThreshold = config.getStaypointMaxAccuracyThreshold();
-        if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0) {
+        Double maxAccuracyThreshold = getActiveMaxAccuracyThreshold(config);
+        if (maxAccuracyThreshold == null) {
             return true;
         }
 
         return accuracy == null || accuracy <= maxAccuracyThreshold;
+    }
+
+    public static Double getActiveMaxAccuracyThreshold(TimelineConfig config) {
+        if (config == null || Boolean.FALSE.equals(config.getUseVelocityAccuracy())) {
+            return null;
+        }
+
+        Double maxAccuracyThreshold = config.getStaypointMaxAccuracyThreshold();
+        if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0) {
+            return null;
+        }
+
+        return maxAccuracyThreshold;
     }
 }
