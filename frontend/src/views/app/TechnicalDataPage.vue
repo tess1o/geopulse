@@ -47,6 +47,13 @@
       </div>
     </template>
 
+    <PullToRefreshIndicator
+      :enabled="isPullEnabled"
+      :refreshing="isPullRefreshing"
+      :distance="pullDistance"
+      :state="pullState"
+    >
+
     <!-- Summary Statistics -->
     <div class="stats-grid">
       <BaseCard variant="subtle" class="stat-card">
@@ -686,6 +693,7 @@
       @close="showEditDialog = false"
       @save="handleEditSave"
     />
+    </PullToRefreshIndicator>
     </PageContainer>
   </AppLayout>
 </template>
@@ -696,6 +704,7 @@ import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { useTimezone } from '@/composables/useTimezone'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 
 const timezone = useTimezone()
 
@@ -704,6 +713,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
+import PullToRefreshIndicator from '@/components/ui/PullToRefreshIndicator.vue'
 import GpsPointEditDialog from '@/components/dialogs/GpsPointEditDialog.vue'
 
 // PrimeVue
@@ -884,6 +894,30 @@ const totalPages = computed(() => {
 const telemetryBooleanRows = computed(() =>
   telemetryMappingRows.value.filter(entry => entry.type === 'boolean')
 )
+
+const refreshGpsData = async () => {
+  const selectedIds = new Set(selectedRows.value.map(row => row.id))
+
+  await Promise.all([
+    loadSummaryStats(),
+    loadGPSPoints()
+  ])
+
+  if (selectedIds.size > 0) {
+    selectedRows.value = gpsPoints.value.filter(row => selectedIds.has(row.id))
+    lastSelectedIndex.value = null
+  }
+}
+
+const {
+  isPullEnabled,
+  isPullRefreshing,
+  pullDistance,
+  pullState
+} = usePullToRefresh({
+  listenOnDocument: true,
+  onRefresh: refreshGpsData
+})
 
 // Removed - using timezone composable directly
 
