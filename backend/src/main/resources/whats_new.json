@@ -1,20 +1,13 @@
 [
   {
-    "version": "1.35.0",
-    "title": "GeoPulse 1.35.0",
+    "version": "1.35.1",
+    "title": "GeoPulse 1.35.1",
     "highlights": [
-      "Added admin timeline regeneration campaigns with affected-user preview, progress tracking, failed-user retry, audit logging, and user notifications",
-      "Added a raw GPS points layer on the timeline map with point grouping, detailed popups, and location lookup for individual points",
-      "Added a dedicated notifications page with filtering, pagination, mark-as-seen actions, and clearer links back to the related GeoPulse area",
-      "Improved Friends Live so all friend locations can be shown together, with better map bounds and controls for resetting filtered views",
-      "Added unsaved changes protection for Profile and Timeline Preferences pages",
-      "Improved date and mobile form handling by allowing manual timeline date entry and preventing unwanted mobile browser zoom on inputs and date pickers",
-      "Bundled country flags locally for Journey Insights so flags work without external image fetches",
-      "Added REST API documentation and refreshed the documentation site landing page, search, dark theme, and new feature docs",
-      "Improved Visit Places table on the Place page to be more informative",
-      "Fixed some bugs in geocoding normalization when executed manually",
-      "Added immich thubmnail for a single photo on the map"
+      "Added Pull To Refresh functionality to PWA on GPS Data page",
+      "Raw GPS points map layer now respects GPS accuracy settings",
+      "Added separate transaction timeout for Import process, so very long import sessions will not fail due to timeout",
+      "Various UI fixes on GPS Data page"
     ],
-    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.35.0"
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.35.1"
   }
 ]
