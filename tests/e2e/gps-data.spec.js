@@ -112,6 +112,39 @@ test.describe('GPS Data Page', () => {
             expect(await gpsDataPage.isExportButtonEnabled()).toBe(true);
         });
 
+        test('should keep row checkbox visual state in sync with selection state', async ({ page, isolatedUsers, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const gpsDataPage = new GpsDataPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const user = await dbManager.getUserByEmail(testUser.email);
+
+            const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device').byDate.august10.slice(0, 3);
+            await GpsDataFactory.insertGpsData(dbManager, gpsTestData);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await gpsDataPage.navigate();
+            await gpsDataPage.waitForPageLoad();
+
+            const firstRowCheckbox = page
+                .locator('.gps-data-table tbody tr')
+                .first()
+                .locator('.selection-col input.p-checkbox-input');
+
+            await expect(firstRowCheckbox).not.toBeChecked();
+
+            await firstRowCheckbox.click();
+            await expect(firstRowCheckbox).toBeChecked();
+            await expect(page.locator('.selection-text')).toHaveText('1 selected');
+            await expect(page.locator('button:has-text("Delete Selected")')).toBeVisible();
+
+            await firstRowCheckbox.click();
+            await expect(firstRowCheckbox).not.toBeChecked();
+            await expect(page.locator('.selection-text')).toHaveCount(0);
+        });
+
         test('should show empty state when user has no GPS data', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);

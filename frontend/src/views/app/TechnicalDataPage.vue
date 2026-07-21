@@ -477,7 +477,7 @@
           <template #body="slotProps">
             <Checkbox
               :model-value="isRowSelected(slotProps.data)"
-              @click="handleCheckboxClick($event, slotProps.data)"
+              @change="handleCheckboxChange($event, slotProps.data)"
               binary
             />
           </template>
@@ -486,8 +486,8 @@
         <Column field="timestamp" header="Date" sortable class="timestamp-col">
           <template #body="slotProps">
             <div class="timestamp-cell">
-              <div class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</div>
-              <div class="timestamp-time">{{ formatTimestamp(slotProps.data.timestamp).time }}</div>
+              <span class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</span>
+              <span class="timestamp-time">{{ formatTimestamp(slotProps.data.timestamp).time }}</span>
             </div>
           </template>
         </Column>
@@ -502,34 +502,35 @@
         <Column header="Location" class="coordinates-col">
           <template #body="slotProps">
             <div class="coordinates-cell">
-              <div class="coordinate-line">{{ slotProps.data.coordinates.lat.toFixed(6) }}</div>
-              <div class="coordinate-line">{{ slotProps.data.coordinates.lng.toFixed(6) }}</div>
+              <span class="coordinate-line">{{ slotProps.data.coordinates.lat.toFixed(6) }}</span>
+              <span class="coordinate-separator">,</span>
+              <span class="coordinate-line">{{ slotProps.data.coordinates.lng.toFixed(6) }}</span>
             </div>
           </template>
         </Column>
 
-        <Column field="velocity" sortable header="Speed" class="numeric-col">
+        <Column field="velocity" sortable header="Speed" class="numeric-col speed-col">
           <template #body="slotProps">
             <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity >= 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="accuracy" sortable header="Accuracy" class="numeric-col" v-if="!isMobile">
+        <Column field="accuracy" sortable header="Accuracy" class="numeric-col accuracy-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.accuracy">{{ formatDistance(slotProps.data.accuracy.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="altitude" header="Altitude" class="numeric-col" v-if="!isMobile && !isTablet">
+        <Column field="altitude" header="Altitude" class="numeric-col altitude-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.altitude">{{ formatDistance(Math.round(slotProps.data.altitude)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile && !isTablet">
+        <Column field="battery" header="Battery" sortable class="numeric-col battery-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.battery !== null && slotProps.data.battery >= 0">{{ Math.round(slotProps.data.battery) }}%</span>
             <span v-else class="null-value">-</span>
@@ -1529,23 +1530,26 @@ const selectRange = (clickedIndex) => {
   }
 }
 
-// Handle checkbox click with shift-select functionality
-const handleCheckboxClick = (event, clickedRow) => {
+const setRowSelected = (row, checked) => {
+  if (checked) {
+    if (!isRowSelected(row)) {
+      selectedRows.value = [...selectedRows.value, row]
+    }
+    return
+  }
+
+  selectedRows.value = selectedRows.value.filter(selectedRow => selectedRow.id !== row.id)
+}
+
+// Handle checkbox change with shift-select functionality
+const handleCheckboxChange = (event, clickedRow) => {
   const clickedIndex = gpsPoints.value.findIndex(row => row.id === clickedRow.id)
 
   // If shift key is pressed and we have a previous selection
   if (event.shiftKey && lastSelectedIndex.value !== null) {
-    // Prevent default checkbox behavior
-    event.preventDefault()
     selectRange(clickedIndex)
   } else {
-    // Normal click - toggle the checkbox
-    const isSelected = isRowSelected(clickedRow)
-    if (isSelected) {
-      selectedRows.value = selectedRows.value.filter(row => row.id !== clickedRow.id)
-    } else {
-      selectedRows.value.push(clickedRow)
-    }
+    setRowSelected(clickedRow, event.target?.checked ?? !isRowSelected(clickedRow))
   }
 
   // Update last selected index
@@ -1858,6 +1862,12 @@ watch(filters, async () => {
   overflow: hidden;
 }
 
+.gps-data-table :deep(.p-datatable-table) {
+  width: 100%;
+  min-width: 80rem;
+  table-layout: fixed;
+}
+
 /* Large screen table optimizations */
 @media (min-width: 1440px) {
   .table-section {
@@ -1887,6 +1897,12 @@ watch(filters, async () => {
   .gps-data-table :deep(.p-datatable-wrapper) {
     overflow-x: auto;
     max-width: 100%;
+  }
+
+  .gps-data-table :deep(.p-datatable-table) {
+    width: max-content;
+    min-width: unset;
+    table-layout: auto;
   }
 
   /* Mobile paginator optimizations */
@@ -1960,87 +1976,75 @@ watch(filters, async () => {
 
 /* Table Columns */
 .gps-data-table :deep(.timestamp-col) {
-  min-width: 135px;
-  width: 135px;
+  min-width: 11rem;
+  width: 12%;
 }
 
 .gps-data-table :deep(.delta-col) {
-  min-width: 80px;
-  width: 80px;
+  min-width: 6.25rem;
+  width: 7%;
   text-align: right;
 }
 
 .gps-data-table :deep(.coordinates-col) {
-  min-width: 140px;
-  width: 140px;
+  min-width: 14rem;
+  width: 14%;
 }
 
 .gps-data-table :deep(.numeric-col) {
-  min-width: 80px;
-  width: 80px;
   text-align: right;
 }
 
+.gps-data-table :deep(.speed-col),
+.gps-data-table :deep(.accuracy-col),
+.gps-data-table :deep(.altitude-col) {
+  min-width: 7rem;
+  width: 8%;
+}
+
+.gps-data-table :deep(.battery-col) {
+  min-width: 6.25rem;
+  width: 7%;
+}
+
 .gps-data-table :deep(.source-col) {
-  min-width: 100px;
-  width: 100px;
+  min-width: 9rem;
+  width: 10%;
 }
 
 .gps-data-table :deep(.telemetry-col) {
-  min-width: 190px;
-  width: 190px;
+  min-width: 12rem;
+  width: 17%;
 }
 
 .gps-data-table :deep(.selection-col) {
-  width: 3rem;
   min-width: 3rem;
+  width: 3%;
   text-align: center;
 }
 
 .gps-data-table :deep(.actions-col) {
-  min-width: 80px;
-  width: 80px;
+  min-width: 5.5rem;
+  width: 6%;
   text-align: center;
 }
 
-/* Large screen column optimizations */
-@media (min-width: 1440px) {
-  .gps-data-table :deep(.timestamp-col) {
-    min-width: 155px;
-    width: 155px;
-  }
+.gps-data-table :deep(.selection-col .p-datatable-column-header-content),
+.gps-data-table :deep(.actions-col .p-datatable-column-header-content) {
+  justify-content: center;
+}
 
-  .gps-data-table :deep(.delta-col) {
-    min-width: 90px;
-    width: 90px;
-  }
-
-  .gps-data-table :deep(.coordinates-col) {
-    min-width: 160px;
-    width: 160px;
-  }
-
-  .gps-data-table :deep(.numeric-col) {
-    min-width: 90px;
-    width: 90px;
-  }
-
-  .gps-data-table :deep(.source-col) {
-    min-width: 120px;
-    width: 120px;
-  }
-
-  .gps-data-table :deep(.telemetry-col) {
-    min-width: 220px;
-    width: 220px;
-  }
+.gps-data-table :deep(.delta-col .p-datatable-column-header-content),
+.gps-data-table :deep(.numeric-col .p-datatable-column-header-content) {
+  justify-content: flex-end;
 }
 
 /* Cell Content */
 .timestamp-cell {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .timestamp-date {
@@ -2057,14 +2061,21 @@ watch(filters, async () => {
 
 .coordinates-cell {
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
+  align-items: baseline;
+  gap: 0.25rem;
+  white-space: nowrap;
 }
 
 .coordinate-line {
   font-family: monospace;
   font-size: 0.8rem;
   color: var(--gp-text-primary);
+}
+
+.coordinate-separator {
+  color: var(--gp-text-muted);
+  font-family: monospace;
+  font-size: 0.8rem;
 }
 
 .telemetry-cell {
@@ -2255,6 +2266,28 @@ watch(filters, async () => {
   .gps-data-table :deep(.coordinates-col) {
     min-width: 100px;
     width: 100px;
+  }
+
+  .gps-data-table :deep(.numeric-col) {
+    min-width: 80px;
+    width: 80px;
+  }
+
+  .gps-data-table :deep(.telemetry-col) {
+    min-width: 190px;
+    width: 190px;
+  }
+
+  .timestamp-cell,
+  .coordinates-cell {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.125rem;
+    white-space: normal;
+  }
+
+  .coordinate-separator {
+    display: none;
   }
 
   .coordinate-line {
