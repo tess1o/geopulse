@@ -2,8 +2,33 @@ apiVersion: v1
 entries:
   geopulse:
   - apiVersion: v2
+    appVersion: 1.35.1
+    created: "2026-07-21T15:03:49.237656384Z"
+    description: A self-hosted location tracking and analysis platform with PostGIS
+      and optional MQTT support
+    digest: b12cea026047cb4ab177be19e68c8ade7c0c4b02cf4b787aaeaf8aa40b1ab2ce
+    home: https://github.com/tess1o/geopulse
+    icon: https://raw.githubusercontent.com/tess1o/geopulse/main/frontend/public/geopulse-logo.svg
+    keywords:
+    - gps
+    - tracking
+    - location
+    - postgis
+    - mqtt
+    - self-hosted
+    maintainers:
+    - email: support@geopulse.io
+      name: GeoPulse Team
+    name: geopulse
+    sources:
+    - https://github.com/tess1o/geopulse
+    type: application
+    urls:
+    - https://tess1o.github.io/geopulse/charts/geopulse-1.35.1.tgz
+    version: 1.35.1
+  - apiVersion: v2
     appVersion: 1.35.0
-    created: "2026-07-17T09:35:36.418617252Z"
+    created: "2026-07-21T15:03:49.235945827Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 27132954ba57c912bcd1ba676c152a6a6fde3adb33c4a5596bfb9db772ad3a18
@@ -28,7 +53,7 @@ entries:
     version: 1.35.0
   - apiVersion: v2
     appVersion: 1.34.1
-    created: "2026-07-17T09:35:36.41739341Z"
+    created: "2026-07-21T15:03:49.234221992Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 111899b1f8dab84834f26d90ba595cec51929a59ae797e34b8ad2ff9cfec99c6
@@ -53,7 +78,7 @@ entries:
     version: 1.34.1
   - apiVersion: v2
     appVersion: 1.34.0
-    created: "2026-07-17T09:35:36.415612177Z"
+    created: "2026-07-21T15:03:49.232314644Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: d5bae28ace1e774e01cf0f50751991e74f7666a42e294a5ec759901e1584511c
@@ -78,7 +103,7 @@ entries:
     version: 1.34.0
   - apiVersion: v2
     appVersion: 1.33.0
-    created: "2026-07-17T09:35:36.414110222Z"
+    created: "2026-07-21T15:03:49.229266784Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 549639e622f550a39eaf0609b6ea9551ac60a3b22f1753547a5d1d380fbb5259
@@ -103,7 +128,7 @@ entries:
     version: 1.33.0
   - apiVersion: v2
     appVersion: 1.32.2
-    created: "2026-07-17T09:35:36.412964038Z"
+    created: "2026-07-21T15:03:49.228024269Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b2a060c5eace41f027d821f039615ec4e5695131d47e527e496adb41aa6f4120
@@ -128,7 +153,7 @@ entries:
     version: 1.32.2
   - apiVersion: v2
     appVersion: 1.32.1
-    created: "2026-07-17T09:35:36.411779152Z"
+    created: "2026-07-21T15:03:49.226892562Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 274088c61443587a25c302794db989df11dd01af54deefb3acc22636de168646
@@ -153,7 +178,7 @@ entries:
     version: 1.32.1
   - apiVersion: v2
     appVersion: 1.32.0
-    created: "2026-07-17T09:35:36.410590807Z"
+    created: "2026-07-21T15:03:49.225755176Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 1ce51fb81b11147c946bd93f0642774426a60dc0cb541b235fba0c8a981e494e
@@ -178,7 +203,7 @@ entries:
     version: 1.32.0
   - apiVersion: v2
     appVersion: 1.31.0
-    created: "2026-07-17T09:35:36.40893898Z"
+    created: "2026-07-21T15:03:49.224669127Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b572453c0679459fb5326173f0b467b459eb6df000dcae3c712c9fc57651dac9
@@ -203,7 +228,7 @@ entries:
     version: 1.31.0
   - apiVersion: v2
     appVersion: 1.30.0
-    created: "2026-07-17T09:35:36.407624061Z"
+    created: "2026-07-21T15:03:49.223543925Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 464838e81455b1701c906af52c75f9f37a295f031ed486cb918504e1a5085b54
@@ -228,7 +253,7 @@ entries:
     version: 1.30.0
   - apiVersion: v2
     appVersion: 1.29.1
-    created: "2026-07-17T09:35:36.405633745Z"
+    created: "2026-07-21T15:03:49.220231662Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9c250dc5cdf0349139d914e0baec2b71e3e4786144341fdc2137e1dce37b786f
@@ -253,7 +278,7 @@ entries:
     version: 1.29.1
   - apiVersion: v2
     appVersion: 1.29.0
-    created: "2026-07-17T09:35:36.404460576Z"
+    created: "2026-07-21T15:03:49.218603026Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 44b175ccaac9430d3a2ac9ffba077fd7f9fd6e4b12746e2c7a03d006fd8f4c42
@@ -278,7 +303,7 @@ entries:
     version: 1.29.0
   - apiVersion: v2
     appVersion: 1.28.2
-    created: "2026-07-17T09:35:36.403139854Z"
+    created: "2026-07-21T15:03:49.217533964Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 35f2e233eceb64f8b961793ad79424f9e8a8c1964239121626ca494810fe5761
@@ -303,7 +328,7 @@ entries:
     version: 1.28.2
   - apiVersion: v2
     appVersion: 1.28.1
-    created: "2026-07-17T09:35:36.401391903Z"
+    created: "2026-07-21T15:03:49.216411392Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 3b974120c7b60989ad1dbbe77d7e1cd44e68008e9eb87756c2bbfc0c0d21110c
@@ -328,7 +353,7 @@ entries:
     version: 1.28.1
   - apiVersion: v2
     appVersion: 1.28.0
-    created: "2026-07-17T09:35:36.400284227Z"
+    created: "2026-07-21T15:03:49.215266204Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: c269c7b76a0c5dddd47478fdb560a1b70e6a36aac91873e897c6dfead1c98d47
@@ -353,7 +378,7 @@ entries:
     version: 1.28.0
   - apiVersion: v2
     appVersion: 1.27.1
-    created: "2026-07-17T09:35:36.399175735Z"
+    created: "2026-07-21T15:03:49.213209948Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 77c80cddd40bf63ca761be8b5d0dd3f6563a78bbff217af7afdfef2635c9438a
@@ -378,7 +403,7 @@ entries:
     version: 1.27.1
   - apiVersion: v2
     appVersion: 1.27.0
-    created: "2026-07-17T09:35:36.398007131Z"
+    created: "2026-07-21T15:03:49.212103494Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 0948aa60df1bae16b1443a967fe040789364942f8515e64a9137cf13b5e3b276
@@ -403,7 +428,7 @@ entries:
     version: 1.27.0
   - apiVersion: v2
     appVersion: 1.26.0
-    created: "2026-07-17T09:35:36.396239979Z"
+    created: "2026-07-21T15:03:49.211054303Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: eca98727cd53ec38dfc4efbf0a4fc27d830344fea8a040ee68e9e7ce1f7a5987
@@ -428,7 +453,7 @@ entries:
     version: 1.26.0
   - apiVersion: v2
     appVersion: 1.25.0
-    created: "2026-07-17T09:35:36.395129121Z"
+    created: "2026-07-21T15:03:49.209993428Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: e6dce0d02421c4c5a426fb2f543158857743364ba154b0ff7f804b6ef2f7f6ab
@@ -453,7 +478,7 @@ entries:
     version: 1.25.0
   - apiVersion: v2
     appVersion: 1.24.0
-    created: "2026-07-17T09:35:36.394028943Z"
+    created: "2026-07-21T15:03:49.208891285Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 0a41cbb1c8959dac74bfae563d2fe8d353cb67cba001ec191f8cb5919148cdaf
@@ -478,7 +503,7 @@ entries:
     version: 1.24.0
   - apiVersion: v2
     appVersion: 1.23.1
-    created: "2026-07-17T09:35:36.392912569Z"
+    created: "2026-07-21T15:03:49.206553707Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b845e1e864501be7e6a2406485b5d76268b4fa936d6efe26d466da9e565c3416
@@ -503,7 +528,7 @@ entries:
     version: 1.23.1
   - apiVersion: v2
     appVersion: 1.23.0
-    created: "2026-07-17T09:35:36.391728319Z"
+    created: "2026-07-21T15:03:49.204834262Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 2682eac9acbc7dcba658119ac4ca1837689d673c04f7e16cac8e693d763bd1f2
@@ -528,7 +553,7 @@ entries:
     version: 1.23.0
   - apiVersion: v2
     appVersion: 1.22.0
-    created: "2026-07-17T09:35:36.389664622Z"
+    created: "2026-07-21T15:03:49.203103374Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: c0c83af002d24f6f6d7d18a90cb7a83f2b228a07c75af0c0a7168b8daca7334a
@@ -553,7 +578,7 @@ entries:
     version: 1.22.0
   - apiVersion: v2
     appVersion: 1.21.0
-    created: "2026-07-17T09:35:36.38856323Z"
+    created: "2026-07-21T15:03:49.201432713Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 1a99e15efe0c598239bcf3a824fbec5e0e762c8b79ebbed9b55eae21a2c22b56
@@ -578,7 +603,7 @@ entries:
     version: 1.21.0
   - apiVersion: v2
     appVersion: 1.20.0
-    created: "2026-07-17T09:35:36.38743708Z"
+    created: "2026-07-21T15:03:49.19954577Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 90c2e0f3ff304103ab909a26cf3966373777ba55e54ce173df5e1554d36434ac
@@ -603,7 +628,7 @@ entries:
     version: 1.20.0
   - apiVersion: v2
     appVersion: 1.19.2
-    created: "2026-07-17T09:35:36.381635701Z"
+    created: "2026-07-21T15:03:49.193956196Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: be0c72b494ab8cf5b317e809521fd8c7072bfff9c3a894c9b6984f7150258311
@@ -628,7 +653,7 @@ entries:
     version: 1.19.2
   - apiVersion: v2
     appVersion: 1.19.1
-    created: "2026-07-17T09:35:36.380489587Z"
+    created: "2026-07-21T15:03:49.191987325Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: cf74a801da1b2565efb0a290dab597c04c19c3a6cb89447564ace6a187420a67
@@ -653,7 +678,7 @@ entries:
     version: 1.19.1
   - apiVersion: v2
     appVersion: 1.19.0
-    created: "2026-07-17T09:35:36.379328754Z"
+    created: "2026-07-21T15:03:49.190732823Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 6a6231abc2a654463f5ed76e8f38e64a551c905a2e37b3df4121fbefb21929b5
@@ -678,7 +703,7 @@ entries:
     version: 1.19.0
   - apiVersion: v2
     appVersion: 1.18.2
-    created: "2026-07-17T09:35:36.377373318Z"
+    created: "2026-07-21T15:03:49.189657365Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 095f9f130c7f5b59ab43bc8b77f8cde1b4d33c54d17b63ddf0d56f1819b8e3f4
@@ -703,7 +728,7 @@ entries:
     version: 1.18.2
   - apiVersion: v2
     appVersion: 1.18.1
-    created: "2026-07-17T09:35:36.376255363Z"
+    created: "2026-07-21T15:03:49.18859199Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 490febcf9bc1edcdee02507f93d8f6c04e531755ae926896925e302599a98b0a
@@ -728,7 +753,7 @@ entries:
     version: 1.18.1
   - apiVersion: v2
     appVersion: 1.18.0
-    created: "2026-07-17T09:35:36.375132962Z"
+    created: "2026-07-21T15:03:49.187535288Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: bab2466832115f4825d7427f95587e4771bc49223cb46c8ab9ee625d62757c34
@@ -753,7 +778,7 @@ entries:
     version: 1.18.0
   - apiVersion: v2
     appVersion: 1.17.0
-    created: "2026-07-17T09:35:36.37399336Z"
+    created: "2026-07-21T15:03:49.186425063Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 6b468566dbe0c24ff6379fecc7f7b3c8287070263f31927e0dfebf2a90d0a001
@@ -778,7 +803,7 @@ entries:
     version: 1.17.0
   - apiVersion: v2
     appVersion: 1.16.2
-    created: "2026-07-17T09:35:36.372473969Z"
+    created: "2026-07-21T15:03:49.184986398Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: fecb17a813a1a9d38328ed062182fe8b3c9b61971ac0576ce0f7effe1ece46e3
@@ -803,7 +828,7 @@ entries:
     version: 1.16.2
   - apiVersion: v2
     appVersion: 1.16.1
-    created: "2026-07-17T09:35:36.370816986Z"
+    created: "2026-07-21T15:03:49.182830677Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 71fd079f3377058c6e6348e4b28aa78de636b50fc2aa7a6de8b7a3158fa60838
@@ -828,7 +853,7 @@ entries:
     version: 1.16.1
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2026-07-17T09:35:36.369624742Z"
+    created: "2026-07-21T15:03:49.18144099Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 81d8faf4154e8fa8c2329e959ae621c168fd0be92424b6144cc9e3440e951801
@@ -853,7 +878,7 @@ entries:
     version: 1.16.0
   - apiVersion: v2
     appVersion: 1.15.0
-    created: "2026-07-17T09:35:36.368515629Z"
+    created: "2026-07-21T15:03:49.180369611Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 4c02c4cff506e09cc7c0b505a24539722e08ed0ce9b6386d48a80e2218ad6eee
@@ -878,7 +903,7 @@ entries:
     version: 1.15.0
   - apiVersion: v2
     appVersion: 1.14.1
-    created: "2026-07-17T09:35:36.367364894Z"
+    created: "2026-07-21T15:03:49.179313099Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: de73af2f396f5ae7a6481d29a304f76919f7efa1b8684ed5be0895fa235ec4d4
@@ -903,7 +928,7 @@ entries:
     version: 1.14.1
   - apiVersion: v2
     appVersion: 1.14.0
-    created: "2026-07-17T09:35:36.365374126Z"
+    created: "2026-07-21T15:03:49.178186826Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9f34e9bafc05c01fc8ed00617ed16af84f495c6b8734b5595a6d37f7ad5c2c4b
@@ -928,7 +953,7 @@ entries:
     version: 1.14.0
   - apiVersion: v2
     appVersion: 1.13.0
-    created: "2026-07-17T09:35:36.364171676Z"
+    created: "2026-07-21T15:03:49.176290545Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 8999861cc0d4cc699bdbf23e3eb4e498bbd4db7e4343a09bdf059a8e09bc85a1
@@ -953,7 +978,7 @@ entries:
     version: 1.13.0
   - apiVersion: v2
     appVersion: 1.12.0
-    created: "2026-07-17T09:35:36.362947986Z"
+    created: "2026-07-21T15:03:49.175180214Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: a8308bdf4391884b6af39f3933d0a56715a853d7768bdaba31616d2313c3608a
@@ -978,7 +1003,7 @@ entries:
     version: 1.12.0
   - apiVersion: v2
     appVersion: 1.11.0
-    created: "2026-07-17T09:35:36.361693019Z"
+    created: "2026-07-21T15:03:49.17416777Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: c07797057beb17cbb37f40cc225d21af89d24deb81605eecc7464933b7b128fc
@@ -1003,7 +1028,7 @@ entries:
     version: 1.11.0
   - apiVersion: v2
     appVersion: 1.10.2
-    created: "2026-07-17T09:35:36.360355277Z"
+    created: "2026-07-21T15:03:49.173133058Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9a8cd3c7d6d2f11acd415e9ee7b6aefe0f04137b234f14f88aba4ee25e8a9c83
@@ -1028,7 +1053,7 @@ entries:
     version: 1.10.2
   - apiVersion: v2
     appVersion: 1.10.1
-    created: "2026-07-17T09:35:36.358013959Z"
+    created: "2026-07-21T15:03:49.171719917Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 012909d98146e9ff570c0cd02b2c8a665c62e8b45675ba2619ccd2f1c52c2408
@@ -1053,7 +1078,7 @@ entries:
     version: 1.10.1
   - apiVersion: v2
     appVersion: 1.10.0
-    created: "2026-07-17T09:35:36.3567404Z"
+    created: "2026-07-21T15:03:49.170126308Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: dbc7cc7264b5f28ff59ad6d209657944f24b15bf5d15f2c5e92eaad2bd64d661
@@ -1078,7 +1103,7 @@ entries:
     version: 1.10.0
   - apiVersion: v2
     appVersion: 1.9.1
-    created: "2026-07-17T09:35:36.427740026Z"
+    created: "2026-07-21T15:03:49.247114607Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 0ce4652280a0177c6245afbf76fd2ba8da5772dadff4da296a74a59f922e24f7
@@ -1103,7 +1128,7 @@ entries:
     version: 1.9.1
   - apiVersion: v2
     appVersion: 1.9.0
-    created: "2026-07-17T09:35:36.426662794Z"
+    created: "2026-07-21T15:03:49.246001221Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 5b800c3ec0f81fcee8b9eceeb98b15e3c389a5f1c5a47d4d76470fb049bba543
@@ -1128,7 +1153,7 @@ entries:
     version: 1.9.0
   - apiVersion: v2
     appVersion: 1.8.1
-    created: "2026-07-17T09:35:36.425592654Z"
+    created: "2026-07-21T15:03:49.244056358Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 6ef4fc9b0fbec9372b691a117edf56f45a0522944da202eb2be873d76689fefc
@@ -1153,7 +1178,7 @@ entries:
     version: 1.8.1
   - apiVersion: v2
     appVersion: 1.8.0
-    created: "2026-07-17T09:35:36.424504491Z"
+    created: "2026-07-21T15:03:49.243072986Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 0e9a8f39167774d6cdf0888a5ef7520eb8d88c8b214704d9381a3a7382a02793
@@ -1178,7 +1203,7 @@ entries:
     version: 1.8.0
   - apiVersion: v2
     appVersion: 1.7.0
-    created: "2026-07-17T09:35:36.42338415Z"
+    created: "2026-07-21T15:03:49.242054206Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 84134d36b1cec4c2137fa79135867355809af519a1a031fc50a3c99cf6a784d3
@@ -1203,7 +1228,7 @@ entries:
     version: 1.7.0
   - apiVersion: v2
     appVersion: 1.6.0
-    created: "2026-07-17T09:35:36.421286933Z"
+    created: "2026-07-21T15:03:49.241034375Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: f9538efbcf85669011d2ef614e1fd146e171e75e189a24198a1ac3aa6f3ff156
@@ -1228,7 +1253,7 @@ entries:
     version: 1.6.0
   - apiVersion: v2
     appVersion: 1.5.0
-    created: "2026-07-17T09:35:36.420367328Z"
+    created: "2026-07-21T15:03:49.240127682Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 4950b58c87cf5ff88681b04d46d39e074ac29b3064b747f53868256843cc1198
@@ -1253,7 +1278,7 @@ entries:
     version: 1.5.0
   - apiVersion: v2
     appVersion: 1.4.0
-    created: "2026-07-17T09:35:36.419481445Z"
+    created: "2026-07-21T15:03:49.238542887Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 3c3371894d512fab97db87c3e397b874a9942c613a169a248774927141e90857
@@ -1278,7 +1303,7 @@ entries:
     version: 1.4.0
   - apiVersion: v2
     appVersion: 1.3.0
-    created: "2026-07-17T09:35:36.406506666Z"
+    created: "2026-07-21T15:03:49.221714009Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 00ac187ca9f870a35265a90d90ef10132485bbf35a8a8e64f658c9be73ad618b
@@ -1303,7 +1328,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 1.2.3
-    created: "2026-07-17T09:35:36.386306054Z"
+    created: "2026-07-21T15:03:49.19775668Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: f105f38163321c6b091d7e7b0c8c3f4d1946f3015977fe45906d1a9756b5f3a7
@@ -1328,7 +1353,7 @@ entries:
     version: 1.2.3
   - apiVersion: v2
     appVersion: 1.2.2
-    created: "2026-07-17T09:35:36.385276074Z"
+    created: "2026-07-21T15:03:49.196916867Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 2c456af48060807a34112e91e6e512ba329b76b0b849e48ce020cf741a31d1a4
@@ -1353,7 +1378,7 @@ entries:
     version: 1.2.2
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2026-07-17T09:35:36.383417879Z"
+    created: "2026-07-21T15:03:49.195977663Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b8acab499d64209062049ca03f10a2ccb177e3e1610f8ffcb18f5c31c3e4eea9
@@ -1378,7 +1403,7 @@ entries:
     version: 1.2.1
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2026-07-17T09:35:36.382547753Z"
+    created: "2026-07-21T15:03:49.195136855Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9163b40a24bcbcf3749e4d8a71691abee673fb8774426d5f06903a1d386063f1
@@ -1403,7 +1428,7 @@ entries:
     version: 1.2.0
   - apiVersion: v2
     appVersion: 1.1.3
-    created: "2026-07-17T09:35:36.355510564Z"
+    created: "2026-07-21T15:03:49.169068458Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: e0c9971a43d5ee8d3527927e8d00fd701ce93054c1b7287b9ae0f7380b95cc97
@@ -1428,7 +1453,7 @@ entries:
     version: 1.1.3
   - apiVersion: v2
     appVersion: 1.1.2
-    created: "2026-07-17T09:35:36.354479842Z"
+    created: "2026-07-21T15:03:49.168146337Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: fba5326acfcf8362f4d929cfcd7e4828e506a611b6248345f39a22e9ecb241f0
@@ -1451,4 +1476,4 @@ entries:
     urls:
     - https://tess1o.github.io/geopulse/charts/geopulse-1.1.2.tgz
     version: 1.1.2
-generated: "2026-07-17T09:35:36.353221481Z"
+generated: "2026-07-21T15:03:49.167072575Z"
