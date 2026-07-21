@@ -44,7 +44,7 @@ class LocationPointResolverCacheTest {
                         .build()
         ));
         when(cacheGeocodingService.getCachedGeocodingResultId(userId, point)).thenReturn(Optional.of(42L));
-        when(managementService.normalizeGeocodingForUser(userId, 42L))
+        when(managementService.normalizeGeocodingForResolution(userId, 42L))
                 .thenReturn(ReverseGeocodingDTO.builder().id(42L).build());
 
         LocationPointResolver resolver = new LocationPointResolver(

@@ -384,7 +384,7 @@ public class LocationPointResolver {
             return null;
         }
         try {
-            return geocodingManagementService.normalizeGeocodingForUser(userId, geocodingId).getId();
+            return geocodingManagementService.normalizeGeocodingForResolution(userId, geocodingId).getId();
         } catch (Exception e) {
             log.debug("Failed to normalize geocoding {} for user {}: {}", geocodingId, userId, e.getMessage());
             return geocodingId;

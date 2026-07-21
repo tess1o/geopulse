@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
+import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
@@ -47,6 +48,7 @@ public class ReverseGeocodingManagementService {
     private final ReverseGeocodingLocationRepository geocodingRepository;
     private final GeocodingProviderFactory providerFactory;
     private final GeocodingConfigurationService configService;
+    private final GeocodingEntityMapper entityMapper;
     private final ReverseGeocodingDTOMapper dtoMapper;
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
     private final GeocodingReconciliationService reconciliationService;
@@ -69,6 +71,7 @@ public class ReverseGeocodingManagementService {
             ReverseGeocodingLocationRepository geocodingRepository,
             GeocodingProviderFactory providerFactory,
             GeocodingConfigurationService configService,
+            GeocodingEntityMapper entityMapper,
             ReverseGeocodingDTOMapper dtoMapper,
             GeocodingCopyOnWriteHandler copyOnWriteHandler,
             GeocodingReconciliationService reconciliationService,
@@ -79,6 +82,7 @@ public class ReverseGeocodingManagementService {
         this.geocodingRepository = geocodingRepository;
         this.providerFactory = providerFactory;
         this.configService = configService;
+        this.entityMapper = entityMapper;
         this.dtoMapper = dtoMapper;
         this.copyOnWriteHandler = copyOnWriteHandler;
         this.reconciliationService = reconciliationService;
@@ -254,6 +258,20 @@ public class ReverseGeocodingManagementService {
      */
     @Transactional
     public ReverseGeocodingDTO normalizeGeocodingForUser(UUID currentUserId, Long geocodingId) {
+        return normalizeGeocodingForUser(currentUserId, geocodingId, true);
+    }
+
+    /**
+     * Normalize city/country while resolving timeline locations.
+     * Geocoding data must commit independently from the surrounding import/timeline transaction,
+     * but existing timeline rows must not be synced outside that surrounding transaction.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public ReverseGeocodingDTO normalizeGeocodingForResolution(UUID currentUserId, Long geocodingId) {
+        return normalizeGeocodingForUser(currentUserId, geocodingId, false);
+    }
+
+    private ReverseGeocodingDTO normalizeGeocodingForUser(UUID currentUserId, Long geocodingId, boolean syncTimeline) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {
             throw new NotFoundException("Geocoding result not found: " + geocodingId);
@@ -273,8 +291,40 @@ public class ReverseGeocodingManagementService {
                 .city(normalized.city())
                 .country(normalized.country())
                 .build();
-        UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
-        return dtoMapper.toDTO(result.entity());
+        ReverseGeocodingLocationEntity result = syncTimeline
+                ? copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO).entity()
+                : applyNormalizationWithoutTimelineSync(currentUserId, entity, updateDTO);
+        return dtoMapper.toDTO(result);
+    }
+
+    private ReverseGeocodingLocationEntity applyNormalizationWithoutTimelineSync(
+            UUID currentUserId,
+            ReverseGeocodingLocationEntity entity,
+            ReverseGeocodingUpdateDTO updateDTO) {
+
+        if (entity.getUser() != null && entity.isOwnedBy(currentUserId)) {
+            entityMapper.updateEntityWithValues(
+                    entity,
+                    updateDTO.getDisplayName(),
+                    updateDTO.getCity(),
+                    updateDTO.getCountry());
+            geocodingRepository.persist(entity);
+            return entity;
+        }
+
+        if (entity.isOriginal()) {
+            ReverseGeocodingLocationEntity userCopy = entityMapper.createUserCopyWithValues(
+                    currentUserId,
+                    entity,
+                    updateDTO.getDisplayName(),
+                    updateDTO.getCity(),
+                    updateDTO.getCountry());
+            geocodingRepository.persist(userCopy);
+            geocodingRepository.flush();
+            return userCopy;
+        }
+
+        throw new ForbiddenException("Cannot modify another user's geocoding data");
     }
 
     /**

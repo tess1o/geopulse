@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.config;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
  * Falls back to environment variables if not set in database.
  */
 @ApplicationScoped
+@Transactional(Transactional.TxType.REQUIRES_NEW)
 @Slf4j
 public class GeocodingConfigurationService {
 

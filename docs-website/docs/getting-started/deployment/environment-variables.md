@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **270** distinct env vars.
+Backend runtime currently includes **271** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -33,7 +33,7 @@ Notes:
 |---|---|---|---|---|
 | `GEOPULSE_CORS_ENABLED` | `true` | Enables/disables backend CORS handling. Property: `quarkus.http.cors.enabled`. New `.env.example` sets this to `false` for same-origin nginx deployments. | `true` or `false`. | Backend restart |
 | `GEOPULSE_CORS_ORIGINS` | `(falls back to GEOPULSE_UI_URL)` | Comma-separated CORS origins when CORS is enabled. Property: `quarkus.http.cors.origins`. | One URL or comma-separated URLs. | Backend restart |
-| `GEOPULSE_DATABASE_TRANSACTION_TIMEOUT_MINUTES` | `60` | Transaction configuration for large imports Property: \`quarkus.transaction-manager.default-transaction-timeout\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_DATABASE_TRANSACTION_TIMEOUT_MINUTES` | `60` | Default database transaction timeout. Import processing has its own timeout. Property: \`quarkus.transaction-manager.default-transaction-timeout\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_AVATAR_MAX_SIZE_BYTES` | `1048576` | Maximum allowed size for uploaded custom avatars (in bytes). Property: `geopulse.avatar.max-size-bytes`. | Positive integer value (bytes). | Backend restart |
 | `GEOPULSE_POSTGRES_PASSWORD` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_POSTGRES_URL` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.jdbc.url\`. | Valid PostgreSQL JDBC URL (\`jdbc:postgresql://...\`). | Backend restart |
@@ -156,7 +156,7 @@ Notes:
 | `GEOPULSE_GEONAMES_IMPORT_READ_TIMEOUT_SECONDS` | `300` | GeoNames cities dataset import (used for city normalization) Property: \`geopulse.geonames.import.read-timeout-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEONAMES_IMPORT_URL` | `https://download.geonames.org/export/dump/cities500.zip` | GeoNames cities dataset import (used for city normalization) Property: \`geopulse.geonames.import.url\`. | Valid URL. | Backend restart |
 
-### Import (17)
+### Import (18)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -175,6 +175,7 @@ Notes:
 | `GEOPULSE_IMPORT_MERGE_BATCH_SIZE` | `250` | Import batch size configuration Property: \`geopulse.import.merge-batch-size\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMPORT_TEMP_DIR` | `/tmp/geopulse/imports` | Import temp file configuration (for large file handling) Files larger than this threshold are saved to temp directory instead of loading into memory This prevents OOM errors wit... Property: \`geopulse.import.temp-directory\`. | Readable path/URI in container filesystem. | Backend restart |
 | `GEOPULSE_IMPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Import temp file configuration (for large file handling) Files larger than this threshold are saved to temp directory instead of loading into memory This prevents OOM errors wit... Property: \`geopulse.import.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_IMPORT_TRANSACTION_TIMEOUT_MINUTES` | `1440` | Transaction timeout for import processing only. Reverse-geocoding data is committed separately and survives import rollback. Property: \`geopulse.import.transaction-timeout-minutes\`. | Positive integer minutes. | Backend restart |
 | `GEOPULSE_IMPORT_UPLOAD_CLEANUP_MINUTES` | `15` | Chunked upload configuration (for bypassing Cloudflare's 100MB upload limit) Files >80MB are split into chunks on the frontend and reassembled on the backend Property: \`geopulse.import.upload-cleanup-minutes\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_IMPORT_UPLOAD_TIMEOUT_HOURS` | `2` | Chunked upload configuration (for bypassing Cloudflare's 100MB upload limit) Files >80MB are split into chunks on the frontend and reassembled on the backend Property: \`geopulse.import.upload-timeout-hours\`. | Non-negative numeric value. | Backend restart |
 

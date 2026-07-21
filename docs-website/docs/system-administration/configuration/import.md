@@ -28,6 +28,7 @@ The import system supports:
 | `GEOPULSE_IMPORT_GPX_STREAMING_BATCH_SIZE` | `500` | Batch size for streaming GPX parser |
 | `GEOPULSE_IMPORT_CSV_STREAMING_BATCH_SIZE` | `500` | Batch size for streaming CSV parser |
 | `GEOPULSE_IMPORT_OWNTRACKS_STREAMING_BATCH_SIZE` | `500` | Batch size for streaming OwnTracks parser |
+| `GEOPULSE_IMPORT_TRANSACTION_TIMEOUT_MINUTES` | `1440` | Transaction timeout for import processing only |
 
 ### Temporary File Storage
 
@@ -133,6 +134,10 @@ If you regularly import large files:
    ```
    GEOPULSE_IMPORT_UPLOAD_TIMEOUT_HOURS=4
    ```
+3. **Increase import transaction timeout** if processing itself can exceed 12 hours:
+   ```
+   GEOPULSE_IMPORT_TRANSACTION_TIMEOUT_MINUTES=1440
+   ```
 
 ### For High-Throughput Systems
 
@@ -178,6 +183,13 @@ This is typically a frontend (Nginx) limit, not a backend limit. See [Frontend C
 Increase the upload timeout:
 ```
 GEOPULSE_IMPORT_UPLOAD_TIMEOUT_HOURS=4
+```
+
+### Import processing times out
+
+Increase the import transaction timeout:
+```
+GEOPULSE_IMPORT_TRANSACTION_TIMEOUT_MINUTES=1440
 ```
 
 ### Disk space fills up during imports

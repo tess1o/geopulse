@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.exportimport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -139,7 +140,6 @@ class OwnTracksExportImportIntegrationTest {
                 return gpsPoint;
         }
         @Test
-        @Transactional
         void testOwnTracksExportImportCycle() throws Exception {
                 log.info("=== Starting OwnTracks Export/Import Integration Test ===");
                 // Step 1: Export GPS data as OwnTracks format
@@ -151,12 +151,7 @@ class OwnTracksExportImportIntegrationTest {
                 ExportJob exportJob = exportJobManager.createExportJob(testUser.getId(), dataTypes, dateRange,
                                 "owntracks");
                 // Process the export job
-                exportDataGenerator.generateOwnTracksExport(exportJob);
-                assertNotNull(exportJob.getTempFilePath());
-                byte[] exportedJsonData = java.nio.file.Files
-                                .readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
-                assertNotNull(exportedJsonData);
-                assertTrue(exportedJsonData.length > 0);
+                byte[] exportedJsonData = generateOwnTracksExport(exportJob);
                 // Verify it's valid JSON array
                 String jsonContent = new String(exportedJsonData);
                 OwnTracksLocationMessage[] exportedMessages = objectMapper.readValue(jsonContent,
@@ -231,7 +226,6 @@ class OwnTracksExportImportIntegrationTest {
                 log.info("=== OwnTracks Export/Import Integration Test Completed Successfully ===");
         }
         @Test
-        @Transactional
         void testOwnTracksImportWithDateRangeFilter() throws Exception {
                 log.info("=== Testing OwnTracks Import with Date Range Filter ===");
                 // Export all data first
@@ -241,12 +235,12 @@ class OwnTracksExportImportIntegrationTest {
                 List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
                 ExportJob exportJob = exportJobManager.createExportJob(testUser.getId(), dataTypes, fullDateRange,
                                 "owntracks");
-                exportDataGenerator.generateOwnTracksExport(exportJob);
-                byte[] exportedJsonData = java.nio.file.Files
-                                .readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
+                byte[] exportedJsonData = generateOwnTracksExport(exportJob);
                 // Clear existing GPS data
-                gpsPointRepository.delete("user = ?1", testUser);
-                long clearedCount = gpsPointRepository.count("user = ?1", testUser);
+                long clearedCount = QuarkusTransaction.requiringNew().call(() -> {
+                        gpsPointRepository.delete("user = ?1", testUser);
+                        return gpsPointRepository.count("user = ?1", testUser);
+                });
                 assertEquals(0, clearedCount, "All GPS points should be cleared");
                 // Import with date range filter (only last 2 hours)
                 ImportOptions importOptions = new ImportOptions();
@@ -274,7 +268,6 @@ class OwnTracksExportImportIntegrationTest {
                                 importedCount, testGpsPoints.size());
         }
         @Test
-        @Transactional
         void testOwnTracksImportInvalidData() throws Exception {
                 log.info("=== Testing OwnTracks Import with Invalid Data ===");
                 // Test 1: Invalid JSON format
@@ -304,7 +297,6 @@ class OwnTracksExportImportIntegrationTest {
                 log.info("Invalid data test completed successfully");
         }
         @Test
-        @Transactional
         void testSpatialDuplicateDetection() throws Exception {
                 log.info("=== Testing Exact Duplicate Detection ===");
                 // Create OwnTracks data with EXACT same timestamp and coordinates (exact
@@ -338,7 +330,6 @@ class OwnTracksExportImportIntegrationTest {
                                 afterDuplicateCount);
         }
         @Test
-        @Transactional
         void testBatchProcessingLargeDataset() throws Exception {
                 log.info("=== Testing Batch Processing with Large Dataset ===");
                 // Create a large dataset (2500 points to test batch processing)
@@ -389,5 +380,17 @@ class OwnTracksExportImportIntegrationTest {
                 assertEquals(importedCount, afterDuplicateImportCount,
                                 "Re-importing large dataset should not create duplicates");
                 log.info("Batch processing duplicate detection verified");
+        }
+
+        private byte[] generateOwnTracksExport(ExportJob exportJob) throws Exception {
+                return QuarkusTransaction.requiringNew().call(() -> {
+                        exportDataGenerator.generateOwnTracksExport(exportJob);
+                        assertNotNull(exportJob.getTempFilePath());
+                        byte[] exportedJsonData = java.nio.file.Files
+                                        .readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
+                        assertNotNull(exportedJsonData);
+                        assertTrue(exportedJsonData.length > 0);
+                        return exportedJsonData;
+                });
         }
 }

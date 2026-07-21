@@ -193,7 +193,7 @@ public class GpxImportStrategy extends BaseGpsImportStrategy {
             totalSkipped.addAndGet(batch.size() - imported);
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
-            // Continue processing even if one batch fails
+            throw new ImportBatchPersistenceException("Failed to flush GPX import batch to database", e);
         }
     }
 

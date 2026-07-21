@@ -79,7 +79,6 @@ public class ImportCrossFormatAndStreamingTest {
      * This verifies that the unique constraint works across different import formats.
      */
     @Test
-    @Transactional
     void testCrossFormatDuplicateDetection_GpxThenOwnTracks() throws Exception {
         log.info("=== Testing cross-format duplicate detection (GPX -> OwnTracks) ===");
         // Use whole-second timestamps for compatibility
@@ -151,7 +150,6 @@ public class ImportCrossFormatAndStreamingTest {
      * - Google Timeline: various formats
      */
     @Test
-    @Transactional
     void testTimestampPrecision_GpxSubsecondHandling() throws Exception {
         log.info("=== Testing GPX subsecond timestamp precision ===");
         // GPX with subsecond timestamps
@@ -200,7 +198,6 @@ public class ImportCrossFormatAndStreamingTest {
      * and batch processing works correctly for 1000+ points.
      */
     @Test
-    @Transactional
     void testStreamingPerformance_LargeDataset() throws Exception {
         log.info("=== Testing streaming performance with large dataset (1000 points) ===");
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
@@ -239,7 +236,6 @@ public class ImportCrossFormatAndStreamingTest {
      * Tests edge cases at poles and dateline
      */
     @Test
-    @Transactional
     void testGeographicEdgeCases_PolesAndDateline() throws Exception {
         log.info("=== Testing geographic edge cases (poles, dateline) ===");
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
@@ -298,7 +294,6 @@ public class ImportCrossFormatAndStreamingTest {
      * Tests batch processing with very small and very large batch sizes
      */
     @Test
-    @Transactional
     void testBatchSize_EdgeCases() throws Exception {
         log.info("=== Testing batch size edge cases ===");
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);

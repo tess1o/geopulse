@@ -93,7 +93,6 @@ public class GeoPulseImportDataCorruptionTest {
         // Deleting users here can violate FKs from timeline tables created during import.
     }
     @Test
-    @Transactional
     void testMultipleUsersImportSameFile_NoDataCorruption() throws Exception {
         log.info("=== Testing Multiple Users Import Same File - No Data Corruption ===");
         // Step 1: Verify initial state - User A has 1 GPS point, User B has 0
@@ -149,7 +148,6 @@ public class GeoPulseImportDataCorruptionTest {
         log.info("Data corruption test PASSED - Multiple users can safely import same file");
     }
     @Test
-    @Transactional
     void testClearModeImport_UserSpecificClearing() throws Exception {
         log.info("=== Testing Clear Mode Import - User Specific Clearing ===");
         // Step 1: Both users import the same file

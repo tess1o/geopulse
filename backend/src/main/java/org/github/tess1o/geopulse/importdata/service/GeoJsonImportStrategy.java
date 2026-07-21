@@ -228,7 +228,7 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
 
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
-            // Continue processing even if one batch fails
+            throw new ImportBatchPersistenceException("Failed to flush GeoJSON import batch to database", e);
         }
     }
 

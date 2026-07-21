@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.geocoding.service;
 
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.service.external.GoogleMapsGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
@@ -67,6 +69,14 @@ class GeocodingFaultToleranceConfigurationTest {
             assertRetryUsesAnnotationDefaults(retry);
             assertCircuitBreakerUsesAnnotationDefaults(circuitBreaker);
         }
+    }
+
+    @Test
+    void geocodingConfigurationService_usesRequiresNewTransactionBoundary() {
+        Transactional transactional = GeocodingConfigurationService.class.getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.value()).isEqualTo(Transactional.TxType.REQUIRES_NEW);
     }
 
     private void assertRetryUsesAnnotationDefaults(Retry retry) throws Exception {

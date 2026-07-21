@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.importdata;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -81,6 +82,21 @@ public class ImportDuplicateDetectionComprehensiveTest {
     void tearDown() {
         // Clean up all test data including timeline entities
     }
+    private void replaceTestUser() {
+        QuarkusTransaction.requiringNew().run(() -> {
+            testUser = new UserEntity();
+            testUser.setEmail(TestIds.uniqueEmail("it-user"));
+            testUser.setPasswordHash("test-hash");
+            testUser.setEmailVerified(true);
+            testUser.setActive(true);
+            testUser.setRole(Role.USER);
+            testUser.setCreatedAt(Instant.now());
+            testUser.setUpdatedAt(Instant.now());
+            userRepository.persist(testUser);
+            testUserId = testUser.getId();
+        });
+    }
+
     /**
      * CRITICAL TEST: Batch with 100% duplicates
      *
@@ -90,7 +106,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * This tests the edge case where every single point in a batch is a duplicate.
      */
     @Test
-    @Transactional
     void testBatchProcessing_AllDuplicates() throws Exception {
         log.info("=== Testing batch with 100% duplicates ===");
         // Create 100 GPS points with whole-second timestamps
@@ -137,7 +152,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * WKT conversion and database storage may normalize/round coordinates.
      */
     @Test
-    @Transactional
     void testDuplicateDetection_CoordinatePrecision() throws Exception {
         log.info("=== Testing coordinate precision edge cases ===");
         Instant timestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS);
@@ -156,17 +170,8 @@ public class ImportDuplicateDetectionComprehensiveTest {
         double lat2 = 37.123456789;
         double lat3 = 37.123466789; // differs by 0.00001 degrees
         double lon2 = -122.987654321;
-        // Clear previous data and recreate user
-        testUser = new UserEntity();
-        testUser.setEmail(TestIds.uniqueEmail("it-user"));
-        testUser.setPasswordHash("test-hash");
-        testUser.setEmailVerified(true);
-        testUser.setActive(true);
-        testUser.setRole(Role.USER);
-        testUser.setCreatedAt(Instant.now());
-        testUser.setUpdatedAt(Instant.now());
-        userRepository.persist(testUser);
-        testUserId = testUser.getId();
+        // Clear previous data by switching to a new committed user.
+        replaceTestUser();
         importOwnTracksPoint(lat2, lon2, timestamp);
         importOwnTracksPoint(lat3, lon2, timestamp); // Different location, same time
         long count2 = gpsPointRepository.count("user.id = ?1", testUserId);
@@ -175,16 +180,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         log.info("✓ Test 2 passed: {} points (both imported)", count2);
         // Test Case 3: Different timestamps, same location (NOT duplicates)
         log.info("Test 3: Same location, different timestamps");
-        testUser = new UserEntity();
-        testUser.setEmail(TestIds.uniqueEmail("it-user"));
-        testUser.setPasswordHash("test-hash");
-        testUser.setEmailVerified(true);
-        testUser.setActive(true);
-        testUser.setRole(Role.USER);
-        testUser.setCreatedAt(Instant.now());
-        testUser.setUpdatedAt(Instant.now());
-        userRepository.persist(testUser);
-        testUserId = testUser.getId();
+        replaceTestUser();
         importOwnTracksPoint(lat1, lon1, timestamp);
         importOwnTracksPoint(lat1, lon1, timestamp.plusSeconds(60)); // 1 minute later
         long count3 = gpsPointRepository.count("user.id = ?1", testUserId);
@@ -193,16 +189,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         log.info("✓ Test 3 passed: {} points (different times)", count3);
         // Test Case 4: Verify WKT conversion consistency
         log.info("Test 4: WKT conversion produces consistent coordinates");
-        testUser = new UserEntity();
-        testUser.setEmail(TestIds.uniqueEmail("it-user"));
-        testUser.setPasswordHash("test-hash");
-        testUser.setEmailVerified(true);
-        testUser.setActive(true);
-        testUser.setRole(Role.USER);
-        testUser.setCreatedAt(Instant.now());
-        testUser.setUpdatedAt(Instant.now());
-        userRepository.persist(testUser);
-        testUserId = testUser.getId();
+        replaceTestUser();
         // Import same coordinates multiple times
         for (int i = 0; i < 3; i++) {
             importOwnTracksPoint(37.7749, -122.4194, timestamp);
@@ -222,7 +209,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * This ensures clear mode doesn't accidentally delete unrelated data.
      */
     @Test
-    @Transactional
     void testClearMode_NoOverlap() throws Exception {
         log.info("=== Testing clear mode with no date overlap ===");
         // Import January data (Jan 1-10)
@@ -291,7 +277,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * duplicate detection mechanism itself works perfectly.
      */
     @Test
-    @Transactional
     void testRapidSequentialImports_SameData() throws Exception {
         log.info("=== Testing rapid sequential imports (duplicate detection under load) ===");
         // Create test data
@@ -345,7 +330,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * Expected: First import = 100, second import = 50 new (50 skipped)
      */
     @Test
-    @Transactional
     void testBatchProcessing_PartialDuplicates() throws Exception {
         log.info("=== Testing batch with 50% duplicates ===");
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
@@ -409,7 +393,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
      * Expected: Clear mode deletes data in affected range based on buffer calculation
      */
     @Test
-    @Transactional
     void testClearMode_PartialOverlap() throws Exception {
         log.info("=== Testing clear mode with partial date overlap ===");
         // Import Jan 1-15 (initial data with DIFFERENT coordinates)

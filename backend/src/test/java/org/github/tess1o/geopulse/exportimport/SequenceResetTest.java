@@ -136,21 +136,15 @@ class SequenceResetTest {
             reverseGeocodingLocationRepository.deleteById(9999L);
         });
         // Step 4: Import the data (this should reset sequences)
-        performStepInTransaction(() -> {
-            log.info("Step 4: Importing data (should reset sequences)");
-            ImportOptions importOptions = new ImportOptions();
-            importOptions.setDataTypes(
-                    List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.FAVORITES,
-                            ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
-            importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
-            ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);
-            try {
-                importDataService.processImportData(importJob);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            log.info("Import completed");
-        });
+        log.info("Step 4: Importing data (should reset sequences)");
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setDataTypes(
+                List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.FAVORITES,
+                        ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
+        importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
+        ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);
+        importDataService.processImportData(importJob);
+        log.info("Import completed");
         // Step 5: Verify imported data exists with original high IDs
         performStepInTransaction(() -> {
             log.info("Step 5: Verifying imported data has original high IDs");

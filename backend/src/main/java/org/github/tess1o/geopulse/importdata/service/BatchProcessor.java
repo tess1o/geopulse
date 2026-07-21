@@ -101,6 +101,8 @@ public class BatchProcessor {
                         progressContext);
             } catch (Exception e) {
                 log.error("Failed to bulk upsert GPS points sub-batch {}-{}: {}", i, endIndex - 1, e.getMessage(), e);
+                throw new ImportBatchPersistenceException(
+                        "Failed to bulk upsert GPS points sub-batch " + i + "-" + (endIndex - 1), e);
             }
         }
 
@@ -189,6 +191,7 @@ public class BatchProcessor {
     /**
      * Process GPS points in smaller batches to avoid memory issues and timeouts (merge mode)
      */
+    @Transactional
     public BatchResult processInBatches(List<GpsPointEntity> allPoints, int batchSize) {
         return processInBatches(allPoints, batchSize, false);
     }
@@ -201,6 +204,7 @@ public class BatchProcessor {
      * @param clearModeEnabled If true, use fast clear mode; if false, use merge mode
      * @return BatchResult with import statistics
      */
+    @Transactional
     public BatchResult processInBatches(List<GpsPointEntity> allPoints, int batchSize, boolean clearModeEnabled) {
         return processInBatches(allPoints, batchSize, clearModeEnabled, null, 35, 95);
     }
@@ -216,7 +220,8 @@ public class BatchProcessor {
      * @param endProgress Ending progress percentage for this operation
      * @return BatchResult with import statistics
      */
-    public BatchResult processInBatches(List<GpsPointEntity> allPoints, int batchSize, boolean clearModeEnabled, 
+    @Transactional
+    public BatchResult processInBatches(List<GpsPointEntity> allPoints, int batchSize, boolean clearModeEnabled,
                                       ImportJob job, int startProgress, int endProgress) {
         int totalImported = 0;
         int totalSkipped = 0;

@@ -121,8 +121,9 @@ class LocationPointResolverNormalizationIntegrationTest {
         GeocodingProviderFactory providerFactoryMock = Mockito.mock(GeocodingProviderFactory.class);
         QuarkusMock.installMockForType(providerFactoryMock, GeocodingProviderFactory.class);
 
-        Point point1 = coordinateScope.point(30.5234, 50.4501);
-        Point point2 = coordinateScope.point(30.5240, 50.4505);
+        Point point1 = coordinateScope.point(101.1234, -43.2101);
+        Point point2 = coordinateScope.point(101.2234, -43.3101);
+        String providerName = "photon-" + UUID.randomUUID().toString().substring(0, 8);
 
         when(providerFactoryMock.reverseGeocode(any(Point.class)))
                 .thenAnswer(invocation -> {
@@ -131,7 +132,7 @@ class LocationPointResolverNormalizationIntegrationTest {
                             .requestCoordinates(requestPoint)
                             .resultCoordinates(requestPoint)
                             .formattedDisplayName("Kyiv Area")
-                            .providerName("photon")
+                            .providerName(providerName)
                             .city("Київ")
                             .country("Україна")
                             .build());
@@ -166,7 +167,7 @@ class LocationPointResolverNormalizationIntegrationTest {
             assertEquals("Kyiv", normalizedEntity.getCity());
             assertEquals("Ukraine", normalizedEntity.getCountry());
 
-            assertHasOriginalAndUserCopyForPoint(userId, point, "photon");
+            assertHasOriginalAndUserCopyForPoint(userId, point, providerName);
         }
     }
 

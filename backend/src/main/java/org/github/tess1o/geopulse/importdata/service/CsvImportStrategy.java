@@ -142,25 +142,28 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
 
                 totalRows.incrementAndGet();
 
+                CsvRow row;
                 try {
-                    CsvRow row = parseCsvRow(line);
-                    if (row != null && row.isValid()) {
-                        // Apply date range filter if specified
-                        if (isOutsideDateRange(row.timestamp, job)) {
-                            totalSkipped.incrementAndGet();
-                            continue;
-                        }
-
-                        GpsPointEntity gpsPoint = convertRowToGpsPoint(row, user);
-                        if (gpsPoint != null) {
-                            addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                                totalImported, clearMode, job, totalExpectedPoints, batchSize);
-                        }
-                    } else {
-                        totalSkipped.incrementAndGet();
-                    }
-                } catch (Exception e) {
+                    row = parseCsvRow(line);
+                } catch (IllegalArgumentException e) {
                     log.debug("Skipping invalid CSV row (line {}): {}", totalRows.get(), e.getMessage());
+                    totalSkipped.incrementAndGet();
+                    continue;
+                }
+
+                if (row != null && row.isValid()) {
+                    // Apply date range filter if specified
+                    if (isOutsideDateRange(row.timestamp, job)) {
+                        totalSkipped.incrementAndGet();
+                        continue;
+                    }
+
+                    GpsPointEntity gpsPoint = convertRowToGpsPoint(row, user);
+                    if (gpsPoint != null) {
+                        addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
+                            totalImported, clearMode, job, totalExpectedPoints, batchSize);
+                    }
+                } else {
                     totalSkipped.incrementAndGet();
                 }
             }

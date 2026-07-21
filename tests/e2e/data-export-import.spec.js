@@ -7,9 +7,249 @@ import fs from 'fs';
 import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import {DateFormatValues} from '../utils/date-format-test-helper.js';
+import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+const hashString = (value) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash);
+};
+
+const createUniquePoint = (token, salt) => {
+    const hash = hashString(`${token}-${salt}`);
+    const lon = 20 + ((hash % 1000000) / 100000);
+    const lat = 40 + ((Math.floor(hash / 97) % 1000000) / 100000);
+    return {
+        lon: Number(lon.toFixed(6)),
+        lat: Number(lat.toFixed(6)),
+        wkt: `POINT(${lon.toFixed(6)} ${lat.toFixed(6)})`
+    };
+};
+
+const ensureDownloadsPath = () => {
+    const downloadsPath = path.join(__dirname, '..', 'downloads');
+    if (!fs.existsSync(downloadsPath)) {
+        fs.mkdirSync(downloadsPath, {recursive: true});
+    }
+    return downloadsPath;
+};
+
+const crcTable = Array.from({length: 256}, (_, index) => {
+    let crc = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+        crc = (crc & 1) ? (0xedb88320 ^ (crc >>> 1)) : (crc >>> 1);
+    }
+    return crc >>> 0;
+});
+
+const crc32 = (buffer) => {
+    let crc = 0xffffffff;
+    for (const byte of buffer) {
+        crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+};
+
+const createStoredZip = (files) => {
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const dosTime = 0;
+    const dosDate = 33; // 1980-01-01
+
+    for (const [fileName, content] of files) {
+        const nameBuffer = Buffer.from(fileName);
+        const dataBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+        const checksum = crc32(dataBuffer);
+
+        const localHeader = Buffer.alloc(30);
+        localHeader.writeUInt32LE(0x04034b50, 0);
+        localHeader.writeUInt16LE(20, 4);
+        localHeader.writeUInt16LE(0, 6);
+        localHeader.writeUInt16LE(0, 8);
+        localHeader.writeUInt16LE(dosTime, 10);
+        localHeader.writeUInt16LE(dosDate, 12);
+        localHeader.writeUInt32LE(checksum, 14);
+        localHeader.writeUInt32LE(dataBuffer.length, 18);
+        localHeader.writeUInt32LE(dataBuffer.length, 22);
+        localHeader.writeUInt16LE(nameBuffer.length, 26);
+        localHeader.writeUInt16LE(0, 28);
+
+        localParts.push(localHeader, nameBuffer, dataBuffer);
+
+        const centralHeader = Buffer.alloc(46);
+        centralHeader.writeUInt32LE(0x02014b50, 0);
+        centralHeader.writeUInt16LE(20, 4);
+        centralHeader.writeUInt16LE(20, 6);
+        centralHeader.writeUInt16LE(0, 8);
+        centralHeader.writeUInt16LE(0, 10);
+        centralHeader.writeUInt16LE(dosTime, 12);
+        centralHeader.writeUInt16LE(dosDate, 14);
+        centralHeader.writeUInt32LE(checksum, 16);
+        centralHeader.writeUInt32LE(dataBuffer.length, 20);
+        centralHeader.writeUInt32LE(dataBuffer.length, 24);
+        centralHeader.writeUInt16LE(nameBuffer.length, 28);
+        centralHeader.writeUInt16LE(0, 30);
+        centralHeader.writeUInt16LE(0, 32);
+        centralHeader.writeUInt16LE(0, 34);
+        centralHeader.writeUInt16LE(0, 36);
+        centralHeader.writeUInt32LE(0, 38);
+        centralHeader.writeUInt32LE(offset, 42);
+        centralParts.push(centralHeader, nameBuffer);
+
+        offset += localHeader.length + nameBuffer.length + dataBuffer.length;
+    }
+
+    const centralOffset = offset;
+    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+
+    const endRecord = Buffer.alloc(22);
+    endRecord.writeUInt32LE(0x06054b50, 0);
+    endRecord.writeUInt16LE(0, 4);
+    endRecord.writeUInt16LE(0, 6);
+    endRecord.writeUInt16LE(files.length, 8);
+    endRecord.writeUInt16LE(files.length, 10);
+    endRecord.writeUInt32LE(centralSize, 12);
+    endRecord.writeUInt32LE(centralOffset, 16);
+    endRecord.writeUInt16LE(0, 20);
+
+    return Buffer.concat([...localParts, ...centralParts, endRecord]);
+};
+
+const buildFailingGeoPulseZip = (filePath, testIdentity, label) => {
+    const token = `${testIdentity.uniqueToken}-${label}`;
+    const now = '2024-01-01T00:00:00Z';
+    const startDate = '2024-01-01T00:00:00Z';
+    const endDate = '2024-01-31T23:59:00Z';
+    const startPoint = createUniquePoint(token, 'start');
+    const endPoint = createUniquePoint(token, 'end');
+    const reverseDisplayName = `E2E Failed Import Geocode ${token}`;
+    const favoriteName = `E2E Failed Import Favorite ${token}`;
+
+    const metadata = {
+        exportJobId: '00000000-0000-0000-0000-000000000101',
+        userId: '00000000-0000-0000-0000-000000000102',
+        exportDate: now,
+        dataTypes: ['reversegeocodinglocation', 'favorites', 'rawgps', 'userinfo'],
+        startDate,
+        endDate,
+        format: 'geopulse',
+        version: '1.0'
+    };
+
+    const reverseGeocoding = {
+        dataType: 'reverseGeocodingLocation',
+        exportDate: now,
+        locations: [startPoint, endPoint].map((point, index) => ({
+            id: index + 1,
+            requestLatitude: point.lat,
+            requestLongitude: point.lon,
+            resultLatitude: point.lat,
+            resultLongitude: point.lon,
+            displayName: index === 0 ? reverseDisplayName : `${reverseDisplayName} End`,
+            providerName: 'e2e',
+            createdAt: now,
+            lastAccessedAt: now,
+            city: 'Boundary City',
+            country: 'Boundary Country',
+            boundingBoxNorthEastLatitude: point.lat + 0.001,
+            boundingBoxNorthEastLongitude: point.lon + 0.001,
+            boundingBoxSouthWestLatitude: point.lat - 0.001,
+            boundingBoxSouthWestLongitude: point.lon - 0.001
+        }))
+    };
+
+    const favorites = {
+        dataType: 'favorites',
+        exportDate: now,
+        points: [{
+            id: 1,
+            name: favoriteName,
+            city: 'Boundary City',
+            country: 'Boundary Country',
+            latitude: startPoint.lat,
+            longitude: startPoint.lon
+        }],
+        areas: []
+    };
+
+    const rawGpsData = {
+        dataType: 'rawGps',
+        exportDate: now,
+        startDate,
+        endDate,
+        points: [
+            {
+                id: 1,
+                timestamp: startDate,
+                latitude: startPoint.lat,
+                longitude: startPoint.lon,
+                accuracy: 5,
+                altitude: 100,
+                speed: 1.2,
+                source: 'OWNTRACKS',
+                deviceId: 'e2e-boundary-import',
+                battery: 90
+            },
+            {
+                id: 2,
+                timestamp: endDate,
+                latitude: endPoint.lat,
+                longitude: endPoint.lon,
+                accuracy: 5,
+                altitude: 101,
+                speed: 1.4,
+                source: 'OWNTRACKS',
+                deviceId: 'e2e-boundary-import',
+                battery: 89
+            }
+        ]
+    };
+
+    const files = [
+        ['metadata.json', JSON.stringify(metadata)],
+        ['reverse-geocoding.json', JSON.stringify(reverseGeocoding)],
+        ['favorites.json', JSON.stringify(favorites)],
+        ['raw-gps-data.json', JSON.stringify(rawGpsData)],
+        ['user-info.json', '{"dataType":"userinfo","user":']
+    ];
+
+    fs.writeFileSync(filePath, createStoredZip(files));
+
+    return {
+        filePath,
+        reverseDisplayName,
+        favoriteName,
+        startDate,
+        endDate
+    };
+};
+
+const insertReverseGeocodingTimelineStayForExport = async (dbManager, userId, testIdentity, label) => {
+    const token = `${testIdentity.uniqueToken}-${label}`;
+    const point = createUniquePoint(token, 'timeline-stay');
+    const displayName = `E2E Exported Reverse Geocode ${token}`;
+    const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+        dbManager,
+        point.wkt,
+        displayName,
+        'Boundary City',
+        'Boundary Country'
+    );
+
+    await dbManager.client.query(`
+        INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+        VALUES ($1, $2, 3600, ST_GeomFromText($3, 4326), $4, $5, NOW(), NOW())
+    `, [userId, '2024-01-15T12:00:00Z', point.wkt, displayName, geocodingId]);
+
+    return {displayName, geocodingId};
+};
 
 test.describe('Data Export & Import', () => {
 
@@ -707,7 +947,7 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - GeoPulse Format (using dynamic export)', () => {
-        test('should import GeoPulse export with all data types', async ({ page, isolatedUsers, dbManager}) => {
+        test('should import GeoPulse export with all data types', async ({ page, isolatedUsers, dbManager, testIdentity}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
@@ -716,6 +956,12 @@ test.describe('Data Export & Import', () => {
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
             await DataExportImportPage.insertSampleGpsData(dbManager, exportUserId, 100);
             await DataExportImportPage.insertSampleFavorites(dbManager, exportUserId, 5);
+            const exportedGeocoding = await insertReverseGeocodingTimelineStayForExport(
+                dbManager,
+                exportUserId,
+                testIdentity,
+                'all-data'
+            );
 
             // Login and create export
             await loginPage.navigate();
@@ -784,9 +1030,15 @@ test.describe('Data Export & Import', () => {
             const importUserId = (await dbManager.getUserByEmail(importUser.email)).id;
             const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId);
             const favoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, importUserId);
+            const reverseGeocodingCount = await DataExportImportPage.getReverseGeocodingLocationCount(
+                dbManager,
+                importUserId,
+                exportedGeocoding.displayName
+            );
 
             expect(gpsCount).toBe(100);
             expect(favoritesCount).toBe(5);
+            expect(reverseGeocodingCount).toBe(1);
 
             // Cleanup
             if (fs.existsSync(exportFilePath)) {
@@ -794,7 +1046,7 @@ test.describe('Data Export & Import', () => {
             }
         });
 
-        test('should import selective data types from GeoPulse export', async ({ page, isolatedUsers, dbManager}) => {
+        test('should import selective data types from GeoPulse export', async ({ page, isolatedUsers, dbManager, testIdentity}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
             const testUser = await isolatedUsers.create(page);
@@ -803,6 +1055,12 @@ test.describe('Data Export & Import', () => {
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
             await DataExportImportPage.insertSampleGpsData(dbManager, exportUserId, 50);
             await DataExportImportPage.insertSampleFavorites(dbManager, exportUserId, 3);
+            const exportedGeocoding = await insertReverseGeocodingTimelineStayForExport(
+                dbManager,
+                exportUserId,
+                testIdentity,
+                'selective'
+            );
 
             // Login and create export
             await loginPage.navigate();
@@ -862,9 +1120,15 @@ test.describe('Data Export & Import', () => {
             const importUserId = (await dbManager.getUserByEmail(importUser.email)).id;
             const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, importUserId);
             const favoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, importUserId);
+            const reverseGeocodingCount = await DataExportImportPage.getReverseGeocodingLocationCount(
+                dbManager,
+                importUserId,
+                exportedGeocoding.displayName
+            );
 
             expect(gpsCount).toBe(50);
             expect(favoritesCount).toBe(0); // Favorites should not be imported
+            expect(reverseGeocodingCount).toBe(0); // Reverse geocoding was not selected for import
 
             // Cleanup
             if (fs.existsSync(exportFilePath)) {
@@ -1103,6 +1367,106 @@ test.describe('Data Export & Import', () => {
             // Cleanup
             if (fs.existsSync(exportFilePath)) {
                 fs.unlinkSync(exportFilePath);
+            }
+        });
+
+        test('should preserve reverse geocoding and roll back imported data when GeoPulse import fails later', async ({ page, isolatedUsers, dbManager, testIdentity}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const userId = (await dbManager.getUserByEmail(testUser.email)).id;
+
+            const fixturePath = path.join(
+                ensureDownloadsPath(),
+                `failed-geopulse-import-${testIdentity.uniqueToken}.zip`
+            );
+            const fixture = buildFailingGeoPulseZip(fixturePath, testIdentity, 'rollback-imported-data');
+
+            try {
+                await loginPage.navigate();
+                await loginPage.login(testUser.email, testUser.password);
+                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+                await exportImportPage.navigate();
+                await exportImportPage.waitForPageLoad();
+                await exportImportPage.switchToTab('import');
+
+                await exportImportPage.selectImportFormat('geopulse');
+                await exportImportPage.uploadFile(fixture.filePath);
+
+                await exportImportPage.clickStartImport();
+                await exportImportPage.waitForSuccessToast();
+                await exportImportPage.waitForImportJobStatus('Failed', 120000);
+
+                const reverseGeocodingCount = await DataExportImportPage.getReverseGeocodingLocationCount(
+                    dbManager,
+                    userId,
+                    fixture.reverseDisplayName
+                );
+                const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+                const favoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, userId);
+
+                expect(reverseGeocodingCount).toBe(1);
+                expect(gpsCount).toBe(0);
+                expect(favoritesCount).toBe(0);
+            } finally {
+                if (fs.existsSync(fixture.filePath)) {
+                    fs.unlinkSync(fixture.filePath);
+                }
+            }
+        });
+
+        test('should keep existing GPS data when clear-before-import GeoPulse import fails later', async ({ page, isolatedUsers, dbManager, testIdentity}) => {
+            const loginPage = new LoginPage(page);
+            const exportImportPage = new DataExportImportPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const userId = (await dbManager.getUserByEmail(testUser.email)).id;
+
+            const fixturePath = path.join(
+                ensureDownloadsPath(),
+                `failed-clear-geopulse-import-${testIdentity.uniqueToken}.zip`
+            );
+            const fixture = buildFailingGeoPulseZip(fixturePath, testIdentity, 'rollback-clear');
+
+            await DataExportImportPage.insertSampleGpsData(dbManager, userId, 5, {
+                startDate: new Date(fixture.startDate),
+                endDate: new Date(fixture.endDate)
+            });
+            const originalGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+
+            try {
+                await loginPage.navigate();
+                await loginPage.login(testUser.email, testUser.password);
+                await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+                await exportImportPage.navigate();
+                await exportImportPage.waitForPageLoad();
+                await exportImportPage.switchToTab('import');
+
+                await exportImportPage.selectImportFormat('geopulse');
+                await exportImportPage.uploadFile(fixture.filePath);
+                await exportImportPage.enableClearDataBeforeImport();
+
+                await exportImportPage.clickStartImport();
+                await exportImportPage.waitForSuccessToast();
+                await exportImportPage.waitForImportJobStatus('Failed', 120000);
+
+                const finalGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
+                const reverseGeocodingCount = await DataExportImportPage.getReverseGeocodingLocationCount(
+                    dbManager,
+                    userId,
+                    fixture.reverseDisplayName
+                );
+                const favoritesCount = await DataExportImportPage.getFavoritesCount(dbManager, userId);
+
+                expect(originalGpsCount).toBe(5);
+                expect(finalGpsCount).toBe(originalGpsCount);
+                expect(reverseGeocodingCount).toBe(1);
+                expect(favoritesCount).toBe(0);
+            } finally {
+                if (fs.existsSync(fixture.filePath)) {
+                    fs.unlinkSync(fixture.filePath);
+                }
             }
         });
     });

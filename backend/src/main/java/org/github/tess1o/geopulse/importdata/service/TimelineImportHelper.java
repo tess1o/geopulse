@@ -61,9 +61,6 @@ public class TimelineImportHelper {
                 timelineGenerationService.generateTimelineFromTimestamp(job.getUserId(), firstGpsPointDate, timelineJobId);
                 log.info("Successfully regenerated timeline for user {} after bulk import starting from date {} (attempt {})",
                         job.getUserId(), firstGpsPointDate, attempt);
-
-                // Complete the timeline job (must happen OUTSIDE the @Transactional method)
-                finishTimelineJob(timelineJobId, job.getUserId());
                 return timelineJobId; // Success - return job ID
 
             } catch (TimelineGenerationLockException e) {
@@ -77,34 +74,33 @@ public class TimelineImportHelper {
                         Thread.sleep(delayMs);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        log.warn("Timeline generation retry interrupted for user {}", job.getUserId());
-                        return timelineJobId; // Return job ID even if interrupted
+                        log.warn("Timeline generation retry interrupted for user {}", job.getUserId(), ie);
+                        jobProgressService.failJob(timelineJobId, "Timeline generation retry interrupted");
+                        throw new RuntimeException("Timeline generation retry interrupted", ie);
                     }
                 } else {
                     log.error("Failed to trigger timeline generation for bulk import for user {} after {} attempts: {}",
                             job.getUserId(), maxRetries, e.getMessage());
                     jobProgressService.failJob(timelineJobId, "Failed to acquire timeline lock after " + maxRetries + " retries");
+                    throw e;
                 }
             } catch (Exception e) {
                 // Other types of exceptions - don't retry
                 log.error("Failed to trigger timeline generation for bulk import for user {}: {}",
                         job.getUserId(), e.getMessage(), e);
                 jobProgressService.failJob(timelineJobId, "Timeline generation failed: " + e.getMessage());
-                break;
+                throw new RuntimeException("Timeline generation failed after import", e);
             }
         }
 
-        // Don't fail the entire import - GPS data is still imported successfully
-        log.warn("Timeline generation after import failed for user {} but GPS data import completed successfully",
-                job.getUserId());
-        return timelineJobId; // Return job ID even if failed, so frontend can show the error
+        throw new IllegalStateException("Timeline generation failed after import");
     }
 
     /**
      * Complete timeline job with badge recalculation and progress updates.
      * Must be called OUTSIDE @Transactional method to avoid transaction issues.
      */
-    private void finishTimelineJob(UUID timelineJobId, UUID userId) {
+    public void finishTimelineJob(UUID timelineJobId, UUID userId) {
         try {
             // Badge recalculation (99%)
             jobProgressService.updateProgress(timelineJobId, "Recalculating achievement badges", 9, 99, null);
@@ -121,5 +117,9 @@ public class TimelineImportHelper {
         // Mark as completed (100%)
         jobProgressService.updateProgress(timelineJobId, "Timeline generation completed", 9, 100, null);
         jobProgressService.completeJob(timelineJobId);
+    }
+
+    public void failTimelineJob(UUID timelineJobId, String message) {
+        jobProgressService.failJob(timelineJobId, message);
     }
 }

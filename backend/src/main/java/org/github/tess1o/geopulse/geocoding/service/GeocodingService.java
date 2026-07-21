@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +38,7 @@ public class GeocodingService {
         // NOTE: Cache lookup is handled by LocationPointResolver with userId context.
         // This service just fetches from external provider and caches as original.
         log.info("Fetching from external geocoding service: lon={}, lat={}", longitude, latitude);
-        return fetchAndCacheLocationName(point);
+        return QuarkusTransaction.suspendingExisting().call(() -> fetchAndCacheLocationName(point));
     }
 
     private FormattableGeocodingResult fetchAndCacheLocationName(Point point) {

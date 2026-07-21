@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 export class DataExportImportPage {
@@ -126,6 +127,7 @@ export class DataExportImportPage {
 
         // Import button
         importButton: '.import-button',
+        uploadProgressCard: '.upload-progress-card',
 
         // Import job status card
         jobCard: '.job-status-card',
@@ -538,10 +540,22 @@ export class DataExportImportPage {
 
   async clickStartImport() {
     await this.page.locator(this.selectors.import.importButton).click();
+    await this.waitForImportUploadToFinish();
   }
 
   async isImportButtonDisabled() {
     return await this.page.locator(this.selectors.import.importButton).isDisabled();
+  }
+
+  async waitForImportUploadToFinish(timeout = 120000) {
+    const uploadCard = this.page.locator(this.selectors.import.uploadProgressCard);
+    const uploadStarted = await uploadCard.waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true)
+        .catch(async () => uploadCard.isVisible().catch(() => false));
+
+    if (uploadStarted) {
+      await uploadCard.waitFor({ state: 'hidden', timeout });
+    }
   }
 
   async waitForImportJobCard() {
@@ -611,15 +625,20 @@ export class DataExportImportPage {
   /**
    * Common Actions
    */
-  async waitForSuccessToast(expectedText = null) {
-    await this.page.waitForSelector(this.selectors.toastSuccess, { state: 'visible', timeout: 10000 });
+  async waitForSuccessToast(expectedText = null, options = {}) {
+    const timeout = options.timeout ?? 10000;
+    const visibleSuccessToast = `${this.selectors.toastSuccess}:visible`;
+
+    await expect.poll(
+        () => this.page.locator(visibleSuccessToast).count(),
+        { timeout }
+    ).toBeGreaterThan(0);
 
     if (expectedText) {
-      const toast = this.page.locator(this.selectors.toastSuccess).last();
-      const text = await toast.textContent();
-      if (!text.toLowerCase().includes(expectedText.toLowerCase())) {
-        throw new Error(`Toast message "${text}" does not contain expected text "${expectedText}"`);
-      }
+      await expect.poll(async () => {
+        const toastTexts = await this.page.locator(visibleSuccessToast).allInnerTexts().catch(() => []);
+        return toastTexts.join(' | ').toLowerCase();
+      }, { timeout }).toContain(expectedText.toLowerCase());
     }
   }
 
@@ -686,6 +705,22 @@ export class DataExportImportPage {
   static async getReverseGeocodingCount(dbManager, userId) {
     const query = 'SELECT COUNT(*) as count FROM reverse_geocoding_cache WHERE user_id = $1';
     const result = await dbManager.client.query(query, [userId]);
+    return parseInt(result.rows[0].count);
+  }
+
+  /**
+   * Get count of reverse geocoding location entries for a user.
+   */
+  static async getReverseGeocodingLocationCount(dbManager, userId, displayName = null) {
+    let query = 'SELECT COUNT(*) as count FROM reverse_geocoding_location WHERE user_id = $1';
+    const params = [userId];
+
+    if (displayName) {
+      query += ' AND display_name = $2';
+      params.push(displayName);
+    }
+
+    const result = await dbManager.client.query(query, params);
     return parseInt(result.rows[0].count);
   }
 

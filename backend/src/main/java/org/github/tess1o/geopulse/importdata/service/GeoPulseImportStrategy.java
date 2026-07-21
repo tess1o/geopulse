@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.importdata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.quarkus.narayana.jta.QuarkusTransaction;
+import io.quarkus.narayana.jta.QuarkusTransactionException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -613,8 +615,19 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
     }
 
-    @Transactional
     public void importReverseGeocodingData(byte[] content, ImportJob job) throws IOException {
+        try {
+            QuarkusTransaction.requiringNew()
+                    .call(() -> {
+                        importReverseGeocodingDataInTransaction(content, job);
+                        return null;
+                    });
+        } catch (QuarkusTransactionException e) {
+            throw ImportTransactionExceptions.unwrapIOExceptionOrThrowRuntime(e);
+        }
+    }
+
+    private void importReverseGeocodingDataInTransaction(byte[] content, ImportJob job) throws IOException {
         ReverseGeocodingDataDto geocodingData = objectMapper.readValue(content, ReverseGeocodingDataDto.class);
         log.info("Importing {} reverse geocoding locations for user {} with user assignment logic",
                 geocodingData.getLocations().size(), job.getUserId());

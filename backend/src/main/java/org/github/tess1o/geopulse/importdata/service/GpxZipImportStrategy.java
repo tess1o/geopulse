@@ -211,6 +211,8 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
 
                     log.debug("Completed processing GPX file: {}", fileName);
 
+                } catch (ImportBatchPersistenceException e) {
+                    throw e;
                 } catch (Exception e) {
                     log.warn("Failed to process GPX file {}: {}", fileName, e.getMessage(), e);
                     // Continue with other files - don't fail entire import for one bad file
@@ -287,7 +289,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
             totalSkipped.addAndGet(batch.size() - imported);
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
-            // Continue processing even if one batch fails
+            throw new ImportBatchPersistenceException("Failed to flush GPX ZIP import batch to database", e);
         }
     }
 

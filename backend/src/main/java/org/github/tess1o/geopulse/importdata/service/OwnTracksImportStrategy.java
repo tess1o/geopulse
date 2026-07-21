@@ -141,6 +141,8 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
                     GpsPointEntity gpsPoint = gpsPointMapper.toEntity(message, user, deviceId, GpsSourceType.OWNTRACKS);
                     addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
                         totalImported, totalSkipped, clearMode, job, totalExpectedMessages, batchSize);
+                } catch (ImportBatchPersistenceException e) {
+                    throw e;
                 } catch (Exception e) {
                     log.warn("Failed to create GPS point from message: {}", e.getMessage());
                     totalSkipped.incrementAndGet();
@@ -225,7 +227,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
 
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
-            // Continue processing even if one batch fails
+            throw new ImportBatchPersistenceException("Failed to flush OwnTracks import batch to database", e);
         }
     }
 

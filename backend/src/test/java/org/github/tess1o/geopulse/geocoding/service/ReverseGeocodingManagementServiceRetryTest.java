@@ -5,6 +5,7 @@ import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenExce
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
+import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +41,8 @@ class ReverseGeocodingManagementServiceRetryTest {
     @Mock
     GeocodingConfigurationService configService;
     @Mock
+    GeocodingEntityMapper entityMapper;
+    @Mock
     ReverseGeocodingDTOMapper dtoMapper;
     @Mock
     GeocodingCopyOnWriteHandler copyOnWriteHandler;
@@ -62,6 +65,7 @@ class ReverseGeocodingManagementServiceRetryTest {
                 geocodingRepository,
                 providerFactory,
                 configService,
+                entityMapper,
                 dtoMapper,
                 copyOnWriteHandler,
                 reconciliationService,

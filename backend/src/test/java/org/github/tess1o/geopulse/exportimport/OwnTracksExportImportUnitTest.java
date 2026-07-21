@@ -68,7 +68,6 @@ class OwnTracksExportImportUnitTest {
     void cleanupTestData() {
     }
     @Test
-    @Transactional
     void testOwnTracksJsonValidation_ValidData() throws Exception {
         // Create valid OwnTracks JSON data
         OwnTracksLocationMessage[] messages = {
@@ -107,7 +106,6 @@ class OwnTracksExportImportUnitTest {
         });
     }
     @Test
-    @Transactional
     void testOwnTracksJsonValidation_InvalidJson() {
         byte[] invalidJsonData = "{ invalid json }".getBytes();
         ImportOptions options = new ImportOptions();
@@ -120,7 +118,6 @@ class OwnTracksExportImportUnitTest {
         });
     }
     @Test
-    @Transactional
     void testOwnTracksJsonValidation_EmptyArray() throws Exception {
         byte[] emptyArrayData = "[]".getBytes();
         ImportOptions options = new ImportOptions();
@@ -133,7 +130,6 @@ class OwnTracksExportImportUnitTest {
         }, "Empty OwnTracks file should throw IllegalArgumentException");
     }
     @Test
-    @Transactional
     void testOwnTracksJsonValidation_MissingRequiredFields() throws Exception {
         // Create messages with missing required fields
         String jsonWithMissingFields = "[" +
@@ -152,7 +148,6 @@ class OwnTracksExportImportUnitTest {
         }, "OwnTracks file with invalid coordinates should throw IllegalArgumentException");
     }
     @Test
-    @Transactional
     void testDateRangeFiltering() throws Exception {
         Instant now = Instant.now();
         // Create messages with different timestamps
@@ -191,7 +186,6 @@ class OwnTracksExportImportUnitTest {
         }
     }
     @Test
-    @Transactional
     void testGpsPointMapping() throws Exception {
         // Test the actual mapping by importing OwnTracks data
         OwnTracksLocationMessage message = createOwnTracksMessage(
@@ -225,7 +219,6 @@ class OwnTracksExportImportUnitTest {
         assertNotNull(mapped.getCreatedAt());
     }
     @Test
-    @Transactional
     void testDuplicateDetectionCriteria() throws Exception {
         Instant baseTime = Instant.now();
         // Create original GPS point by importing first
@@ -284,7 +277,6 @@ class OwnTracksExportImportUnitTest {
         }
     }
     @Test
-    @Transactional
     void testDataTypeDetection() throws Exception {
         // Create valid OwnTracks data
         OwnTracksLocationMessage[] messages = {
@@ -304,7 +296,6 @@ class OwnTracksExportImportUnitTest {
         assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES));
     }
     @Test
-    @Transactional
     void testBatchProcessing() throws Exception {
         // Create a larger set of OwnTracks messages to test batch processing
         int totalMessages = 150; // Smaller number for test performance
@@ -337,7 +328,6 @@ class OwnTracksExportImportUnitTest {
         });
     }
     @Test
-    @Transactional
     void testLargeDatasetImport() throws Exception {
         // Test importing a moderately large dataset to verify performance
         int totalMessages = 50; // Reasonable size for integration test

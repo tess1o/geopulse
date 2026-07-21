@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.exportimport;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -192,41 +193,11 @@ class ExportImportIntegrationTest {
         reverseGeocodingLocationRepository.delete("providerName = ?1", "test-provider");
     }
     @Test
-    @Transactional
     void testCompleteExportImportCycle() throws Exception {
         log.info("=== Starting Complete Export/Import Integration Test ===");
         // Step 1: Capture original data for comparison
         log.info("Step 1: Capturing original data state");
-        var originalStay = timelineStayRepository.findById(testStay.getId());
-        var originalTrip = timelineTripRepository.findById(testTrip.getId());
-        var originalDataGap = timelineDataGapRepository.findById(testDataGap.getId());
-        var originalFavorite = favoritesRepository.findById(testFavorite.getId());
-        var originalGeocodingLocation = reverseGeocodingLocationRepository.findById(testGeocodingLocation.getId());
-        var originalGpsPoint = gpsPointRepository.findById(testGpsPoint.getId());
-        var originalGpsSource = gpsSourceRepository.findById(testGpsSource.getId());
-        var originalUser = userRepository.findById(testUser.getId());
-        assertNotNull(originalStay);
-        assertNotNull(originalTrip);
-        assertNotNull(originalDataGap);
-        assertNotNull(originalFavorite);
-        assertNotNull(originalGeocodingLocation);
-        assertNotNull(originalGpsPoint);
-        assertNotNull(originalGpsSource);
-        assertNotNull(originalUser);
-        // Verify foreign key relationships exist
-        assertNotNull(originalStay.getFavoriteLocation());
-        assertNotNull(originalStay.getGeocodingLocation());
-        assertEquals(testFavorite.getId(), originalStay.getFavoriteLocation().getId());
-        assertEquals(testGeocodingLocation.getId(), originalStay.getGeocodingLocation().getId());
-        // Verify trip has path data
-        assertNotNull(originalTrip.getPath(), "Original trip should have path data");
-        assertEquals(4, originalTrip.getPath().getNumPoints(), "Path should have 4 coordinate points");
-        // Verify start and end coordinates match the path
-        Coordinate[] originalPathCoords = originalTrip.getPath().getCoordinates();
-        assertEquals(-122.4194, originalPathCoords[0].x, 0.000001, "Path start longitude should match");
-        assertEquals(37.7749, originalPathCoords[0].y, 0.000001, "Path start latitude should match");
-        assertEquals(-122.4094, originalPathCoords[3].x, 0.000001, "Path end longitude should match");
-        assertEquals(37.7849, originalPathCoords[3].y, 0.000001, "Path end latitude should match");
+        OriginalData originalData = captureOriginalData();
         // Step 2: Export all data including timeline (should auto-include dependencies)
         log.info("Step 2: Exporting data");
         // Set date range to include all test data
@@ -239,11 +210,7 @@ class ExportImportIntegrationTest {
                         ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES),
                 dateRange,
                 ExportImportConstants.Formats.JSON);
-        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
-        assertNotNull(exportJob.getTempFilePath());
-        byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
-        assertNotNull(exportedData);
-        assertTrue(exportedData.length > 0);
+        byte[] exportedData = generateGeoPulseNativeExport(exportJob);
         log.info("Export completed, generated {} bytes", exportedData.length);
         // Cleanup export file after reading (optional, but good practice)
         // clean up is handled by cleanupHelper usually, or we can leave it for
@@ -275,30 +242,7 @@ class ExportImportIntegrationTest {
                 "User info should be included");
         assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.LOCATION_SOURCES),
                 "Location sources should be included");
-        // Step 4: Delete test data (simulating data loss or migration scenario)
-        log.info("Step 4: Deleting test data");
-        // Clear the entire transaction context first to avoid stale references
-        timelineStayRepository.getEntityManager().clear();
-        // Delete in dependency order (children first)
-        timelineStayRepository.deleteById(testStay.getId());
-        timelineTripRepository.deleteById(testTrip.getId());
-        timelineDataGapRepository.deleteById(testDataGap.getId());
-        gpsPointRepository.deleteById(testGpsPoint.getId());
-        gpsSourceRepository.deleteById(testGpsSource.getId());
-        favoritesRepository.deleteById(testFavorite.getId());
-        reverseGeocodingLocationRepository.deleteById(testGeocodingLocation.getId());
-        // Flush and clear the entity manager to ensure deletions are committed
-        timelineStayRepository.getEntityManager().flush();
-        timelineStayRepository.getEntityManager().clear();
-        // Verify data is deleted
-        assertNull(timelineStayRepository.findByIdOptional(testStay.getId()).orElse(null));
-        assertNull(timelineTripRepository.findByIdOptional(testTrip.getId()).orElse(null));
-        assertNull(timelineDataGapRepository.findByIdOptional(testDataGap.getId()).orElse(null));
-        assertNull(gpsPointRepository.findByIdOptional(testGpsPoint.getId()).orElse(null));
-        assertNull(gpsSourceRepository.findByIdOptional(testGpsSource.getId()).orElse(null));
-        assertNull(favoritesRepository.findByIdOptional(testFavorite.getId()).orElse(null));
-        assertNull(reverseGeocodingLocationRepository.findByIdOptional(testGeocodingLocation.getId()).orElse(null));
-        log.info("Test data successfully deleted");
+        deleteAndVerifyTestData();
         // Step 5: Import data from exported file
         log.info("Step 5: Importing data");
         ImportOptions importOptions = new ImportOptions();
@@ -312,41 +256,140 @@ class ExportImportIntegrationTest {
         log.info("Import completed");
         // Step 6: Verify imported data matches original data
         log.info("Step 6: Verifying imported data matches original");
-        // Verify reverse geocoding location (search by coordinates since IDs are
-        // regenerated on import)
-        var importedGeocodingLocation = reverseGeocodingLocationRepository.findByRequestCoordinates(
-                testUser.getId(),
-                originalGeocodingLocation.getRequestCoordinates(),
-                25.0 // tolerance in meters
-        );
-        assertNotNull(importedGeocodingLocation, "Reverse geocoding location should be imported");
-        assertEquals(originalGeocodingLocation.getDisplayName(), importedGeocodingLocation.getDisplayName(),
-                "Display name should match");
-        assertEquals(originalGeocodingLocation.getCity(), importedGeocodingLocation.getCity(), "City should match");
-        assertEquals(originalGeocodingLocation.getCountry(), importedGeocodingLocation.getCountry(),
-                "Country should match");
-        assertEquals(testUser.getId(), importedGeocodingLocation.getUser().getId(),
-                "Should be assigned to importing user");
-        // Verify GPS point (GPS points don't preserve IDs since export format doesn't
-        // include them)
-        var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(
-                testUser.getId(),
-                originalGpsPoint.getTimestamp().minusSeconds(1),
-                originalGpsPoint.getTimestamp().plusSeconds(1),
-                0, 10, "timestamp", "asc");
-        assertFalse(importedGpsPointsList.isEmpty(), "At least one GPS point should be imported");
-        var importedGpsPoint = importedGpsPointsList.get(0);
-        assertNotNull(importedGpsPoint, "GPS point should be imported");
-        assertEquals(originalGpsPoint.getLatitude(), importedGpsPoint.getLatitude(), 0.000001,
-                "GPS latitude should match");
-        assertEquals(originalGpsPoint.getAccuracy(), importedGpsPoint.getAccuracy(), 0.001,
-                "GPS accuracy should match");
-        // Verify GPS source (ID should be preserved exactly)
-        var importedGpsSource = gpsSourceRepository.findAll().firstResult();
-        assertNotNull(importedGpsSource, "GPS source should be imported with exact ID preservation");
-        assertEquals(originalGpsSource.getUsername(), importedGpsSource.getUsername(),
-                "GPS source username should match");
+        verifyImportedDataMatchesOriginal(originalData);
         log.info("=== Export/Import Integration Test Completed Successfully ===");
+    }
+
+    private OriginalData captureOriginalData() {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            var originalStay = timelineStayRepository.findById(testStay.getId());
+            var originalTrip = timelineTripRepository.findById(testTrip.getId());
+            var originalDataGap = timelineDataGapRepository.findById(testDataGap.getId());
+            var originalFavorite = favoritesRepository.findById(testFavorite.getId());
+            var originalGeocodingLocation = reverseGeocodingLocationRepository.findById(testGeocodingLocation.getId());
+            var originalGpsPoint = gpsPointRepository.findById(testGpsPoint.getId());
+            var originalGpsSource = gpsSourceRepository.findById(testGpsSource.getId());
+            var originalUser = userRepository.findById(testUser.getId());
+            assertNotNull(originalStay);
+            assertNotNull(originalTrip);
+            assertNotNull(originalDataGap);
+            assertNotNull(originalFavorite);
+            assertNotNull(originalGeocodingLocation);
+            assertNotNull(originalGpsPoint);
+            assertNotNull(originalGpsSource);
+            assertNotNull(originalUser);
+
+            assertNotNull(originalStay.getFavoriteLocation());
+            assertNotNull(originalStay.getGeocodingLocation());
+            assertEquals(testFavorite.getId(), originalStay.getFavoriteLocation().getId());
+            assertEquals(testGeocodingLocation.getId(), originalStay.getGeocodingLocation().getId());
+
+            assertNotNull(originalTrip.getPath(), "Original trip should have path data");
+            assertEquals(4, originalTrip.getPath().getNumPoints(), "Path should have 4 coordinate points");
+            Coordinate[] originalPathCoords = originalTrip.getPath().getCoordinates();
+            assertEquals(-122.4194, originalPathCoords[0].x, 0.000001, "Path start longitude should match");
+            assertEquals(37.7749, originalPathCoords[0].y, 0.000001, "Path start latitude should match");
+            assertEquals(-122.4094, originalPathCoords[3].x, 0.000001, "Path end longitude should match");
+            assertEquals(37.7849, originalPathCoords[3].y, 0.000001, "Path end latitude should match");
+
+            return new OriginalData(
+                    originalGeocodingLocation.getRequestCoordinates().getX(),
+                    originalGeocodingLocation.getRequestCoordinates().getY(),
+                    originalGeocodingLocation.getDisplayName(),
+                    originalGeocodingLocation.getCity(),
+                    originalGeocodingLocation.getCountry(),
+                    originalGpsPoint.getTimestamp(),
+                    originalGpsPoint.getLatitude(),
+                    originalGpsPoint.getAccuracy(),
+                    originalGpsSource.getUsername());
+        });
+    }
+
+    private byte[] generateGeoPulseNativeExport(ExportJob exportJob) throws Exception {
+        return QuarkusTransaction.requiringNew().call(() -> {
+            exportDataGenerator.generateGeoPulseNativeExport(exportJob);
+            assertNotNull(exportJob.getTempFilePath());
+            byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
+            assertNotNull(exportedData);
+            assertTrue(exportedData.length > 0);
+            return exportedData;
+        });
+    }
+
+    private void verifyImportedDataMatchesOriginal(OriginalData originalData) {
+        QuarkusTransaction.requiringNew().run(() -> {
+            var importedGeocodingLocation = reverseGeocodingLocationRepository.findByRequestCoordinates(
+                    testUser.getId(),
+                    GeoUtils.createPoint(originalData.geocodingLongitude(), originalData.geocodingLatitude()),
+                    25.0);
+            assertNotNull(importedGeocodingLocation, "Reverse geocoding location should be imported");
+            assertEquals(originalData.geocodingDisplayName(), importedGeocodingLocation.getDisplayName(),
+                    "Display name should match");
+            assertEquals(originalData.geocodingCity(), importedGeocodingLocation.getCity(), "City should match");
+            assertEquals(originalData.geocodingCountry(), importedGeocodingLocation.getCountry(),
+                    "Country should match");
+            assertEquals(testUser.getId(), importedGeocodingLocation.getUser().getId(),
+                    "Should be assigned to importing user");
+
+            var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(
+                    testUser.getId(),
+                    originalData.gpsTimestamp().minusSeconds(1),
+                    originalData.gpsTimestamp().plusSeconds(1),
+                    0, 10, "timestamp", "asc");
+            assertFalse(importedGpsPointsList.isEmpty(), "At least one GPS point should be imported");
+            var importedGpsPoint = importedGpsPointsList.get(0);
+            assertNotNull(importedGpsPoint, "GPS point should be imported");
+            assertEquals(originalData.gpsLatitude(), importedGpsPoint.getLatitude(), 0.000001,
+                    "GPS latitude should match");
+            assertEquals(originalData.gpsAccuracy(), importedGpsPoint.getAccuracy(), 0.001,
+                    "GPS accuracy should match");
+
+            var importedGpsSource = gpsSourceRepository.findAll().firstResult();
+            assertNotNull(importedGpsSource, "GPS source should be imported with exact ID preservation");
+            assertEquals(originalData.gpsSourceUsername(), importedGpsSource.getUsername(),
+                    "GPS source username should match");
+        });
+    }
+
+    private record OriginalData(
+            double geocodingLongitude,
+            double geocodingLatitude,
+            String geocodingDisplayName,
+            String geocodingCity,
+            String geocodingCountry,
+            Instant gpsTimestamp,
+            double gpsLatitude,
+            Double gpsAccuracy,
+            String gpsSourceUsername) {
+    }
+
+    private void deleteAndVerifyTestData() {
+        // Step 4: Delete test data (simulating data loss or migration scenario)
+        log.info("Step 4: Deleting test data");
+        QuarkusTransaction.requiringNew().run(() -> {
+            // Clear the entire transaction context first to avoid stale references
+            timelineStayRepository.getEntityManager().clear();
+            // Delete in dependency order (children first)
+            timelineStayRepository.deleteById(testStay.getId());
+            timelineTripRepository.deleteById(testTrip.getId());
+            timelineDataGapRepository.deleteById(testDataGap.getId());
+            gpsPointRepository.deleteById(testGpsPoint.getId());
+            gpsSourceRepository.deleteById(testGpsSource.getId());
+            favoritesRepository.deleteById(testFavorite.getId());
+            reverseGeocodingLocationRepository.deleteById(testGeocodingLocation.getId());
+            // Flush and clear the entity manager to ensure deletions are committed
+            timelineStayRepository.getEntityManager().flush();
+            timelineStayRepository.getEntityManager().clear();
+            // Verify data is deleted
+            assertNull(timelineStayRepository.findByIdOptional(testStay.getId()).orElse(null));
+            assertNull(timelineTripRepository.findByIdOptional(testTrip.getId()).orElse(null));
+            assertNull(timelineDataGapRepository.findByIdOptional(testDataGap.getId()).orElse(null));
+            assertNull(gpsPointRepository.findByIdOptional(testGpsPoint.getId()).orElse(null));
+            assertNull(gpsSourceRepository.findByIdOptional(testGpsSource.getId()).orElse(null));
+            assertNull(favoritesRepository.findByIdOptional(testFavorite.getId()).orElse(null));
+            assertNull(reverseGeocodingLocationRepository.findByIdOptional(testGeocodingLocation.getId()).orElse(null));
+        });
+        log.info("Test data successfully deleted");
     }
     @Test
     void testExportWithoutTimelineDependencies() throws Exception {
@@ -362,8 +405,7 @@ class ExportImportIntegrationTest {
         dateRange.setStartDate(Instant.now().minus(1, ChronoUnit.DAYS));
         dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.DAYS));
         exportJob.setDateRange(dateRange);
-        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
-        byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
+        byte[] exportedData = generateGeoPulseNativeExport(exportJob);
         // Validate that reverse geocoding is NOT auto-included
         ImportOptions validateOptions = new ImportOptions();
         validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.FAVORITES,
