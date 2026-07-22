@@ -16,10 +16,10 @@ public class MemosSearchCache {
 
     private final ConcurrentHashMap<NoteSearchCacheKey, CachedMemosSearchResult> cache = new ConcurrentHashMap<>();
 
-    @ConfigProperty(name = "memos.notes.search-cache-ttl-seconds", defaultValue = "300")
+    @ConfigProperty(name = "geopulse.memos.notes.search-cache-ttl-seconds", defaultValue = "300")
     long ttlSeconds;
 
-    @ConfigProperty(name = "memos.notes.search-cache-max-entries", defaultValue = "200")
+    @ConfigProperty(name = "geopulse.memos.notes.search-cache-max-entries", defaultValue = "200")
     int maxEntries;
 
     List<NoteDto> get(UUID userId, Instant startTime, Instant endTime, int limit) {

@@ -79,6 +79,12 @@
                 :disabled="loading || saveLoading"
               />
             </div>
+
+            <div class="form-field" data-setting-id="memosSearchCacheEnabled">
+              <label class="form-label">Enable Memos search cache</label>
+              <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="loading || saveLoading" />
+              <small class="help-text">Reuse recent Memos searches for faster timeline note loading</small>
+            </div>
           </div>
 
           <div v-if="form.enabled" class="form-field">
@@ -158,7 +164,8 @@ const form = ref({
   apiKey: '',
   enabled: false,
   defaultSaveDestination: 'GEOPULSE',
-  defaultVisibility: 'PRIVATE'
+  defaultVisibility: 'PRIVATE',
+  searchCacheEnabled: true
 })
 
 const hasChanges = computed(() => {
@@ -167,14 +174,16 @@ const hasChanges = computed(() => {
       (form.value.serverUrl?.trim() || '') !== '' ||
       (form.value.apiKey?.trim() || '') !== '' ||
       form.value.defaultSaveDestination !== 'GEOPULSE' ||
-      form.value.defaultVisibility !== 'PRIVATE'
+      form.value.defaultVisibility !== 'PRIVATE' ||
+      form.value.searchCacheEnabled !== true
   }
 
   return form.value.serverUrl !== (props.config.serverUrl || '') ||
     form.value.enabled !== (props.config.enabled || false) ||
     (form.value.apiKey?.trim() || '') !== '' ||
     form.value.defaultSaveDestination !== (props.config.defaultSaveDestination || 'GEOPULSE') ||
-    form.value.defaultVisibility !== (props.config.defaultVisibility || 'PRIVATE')
+    form.value.defaultVisibility !== (props.config.defaultVisibility || 'PRIVATE') ||
+    form.value.searchCacheEnabled !== (props.config.searchCacheEnabled ?? true)
 })
 
 const canTestConnection = computed(() => (
@@ -192,7 +201,8 @@ function loadConfig() {
     apiKey: '',
     enabled: props.config?.enabled || false,
     defaultSaveDestination: props.config?.defaultSaveDestination || 'GEOPULSE',
-    defaultVisibility: props.config?.defaultVisibility || 'PRIVATE'
+    defaultVisibility: props.config?.defaultVisibility || 'PRIVATE',
+    searchCacheEnabled: props.config?.searchCacheEnabled ?? true
   }
   apiKeyConfigured.value = !!props.config?.apiKey
   errors.value = {}
@@ -258,7 +268,8 @@ const handleSubmit = async () => {
       apiKey: form.value.apiKey?.trim() || (apiKeyConfigured.value ? 'KEEP_EXISTING' : null),
       enabled: form.value.enabled,
       defaultSaveDestination: form.value.defaultSaveDestination,
-      defaultVisibility: form.value.defaultVisibility
+      defaultVisibility: form.value.defaultVisibility,
+      searchCacheEnabled: form.value.searchCacheEnabled
     })
   } finally {
     saveLoading.value = false

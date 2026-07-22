@@ -202,5 +202,14 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     tab: 'immich',
     subtitle: 'Immich',
     keywords: ['immich key', 'immich token', 'api key']
+  },
+
+  {
+    id: 'memosSearchCacheEnabled',
+    title: 'Enable Memos Search Cache',
+    tab: 'memos',
+    subtitle: 'Memos',
+    keywords: ['memos cache', 'notes cache', 'search cache', 'performance'],
+    visibilityHint: 'Enable "Memos Integration" to edit this setting.'
   }
 ]

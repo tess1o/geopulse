@@ -67,9 +67,12 @@ public class MemosNoteService {
         }
 
         int providerLimit = Math.min(limit, Math.max(1, preferences.getMaxNotesPerRequest()));
-        List<NoteDto> cached = searchCache.get(userId, startTime, endTime, providerLimit);
-        if (cached != null) {
-            return cached;
+        boolean searchCacheEnabled = Boolean.TRUE.equals(preferences.getSearchCacheEnabled());
+        if (searchCacheEnabled) {
+            List<NoteDto> cached = searchCache.get(userId, startTime, endTime, providerLimit);
+            if (cached != null) {
+                return cached;
+            }
         }
 
         try {
@@ -85,7 +88,9 @@ public class MemosNoteService {
                     .filter(Objects::nonNull)
                     .sorted(searchSupport.noteComparator())
                     .toList();
-            searchCache.put(userId, startTime, endTime, providerLimit, notes);
+            if (searchCacheEnabled) {
+                searchCache.put(userId, startTime, endTime, providerLimit, notes);
+            }
             return notes;
         } catch (Exception e) {
             log.error("Failed to load Memos notes for user {}: {}", userId, e.getMessage(), e);
@@ -194,6 +199,9 @@ public class MemosNoteService {
                         existing.getMaxContentBytes(),
                         TimelineNoteConstants.DEFAULT_MEMOS_CONTENT_BYTES
                 ))
+                .searchCacheEnabled(request.getSearchCacheEnabled() != null
+                        ? request.getSearchCacheEnabled()
+                        : existing.getSearchCacheEnabled())
                 .build();
 
         user.setMemosPreferences(preferences);

@@ -16,12 +16,19 @@ import SecurityTab from './SecurityTab.vue'
 import TimelineDisplayTab from './TimelineDisplayTab.vue'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
+import MemosTab from './MemosTab.vue'
 
 vi.mock('@/utils/apiService', () => ({
   default: {
     get: vi.fn().mockResolvedValue({ message: 'Default AI system message' }),
     post: vi.fn().mockResolvedValue({})
   }
+}))
+
+vi.mock('@/stores/notes', () => ({
+  useNotesStore: () => ({
+    testMemosConfig: vi.fn()
+  })
 }))
 
 const CardStub = {
@@ -123,6 +130,7 @@ const globalOptions = {
     InputText: TextInputStub,
     Password: TextInputStub,
     Dropdown: DropdownStub,
+    Select: DropdownStub,
     ToggleSwitch: ToggleSwitchStub,
     Textarea: {
       props: ['modelValue'],
@@ -275,6 +283,31 @@ describe('profile tab dirty state', () => {
     await flushPromises()
 
     await wrapper.find('#immichServerUrl').setValue('https://new-photos.example.com')
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await findButtonByLabel(wrapper, 'Reset').trigger('click')
+    await flushPromises()
+    expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('emits dirty changes from the Memos cache toggle and clears after reset', async () => {
+    const wrapper = mount(MemosTab, {
+      props: {
+        config: {
+          serverUrl: 'https://memos.example.com',
+          apiKey: 'configured-key',
+          enabled: true,
+          defaultSaveDestination: 'GEOPULSE',
+          defaultVisibility: 'PRIVATE',
+          searchCacheEnabled: true
+        },
+        loading: false
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-setting-id="memosSearchCacheEnabled"] input').setValue(false)
     expect(lastDirtyValue(wrapper)).toBe(true)
 
     await findButtonByLabel(wrapper, 'Reset').trigger('click')

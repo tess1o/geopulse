@@ -29,4 +29,7 @@ public class MemosPreferences implements Serializable {
 
     @Builder.Default
     private Integer maxContentBytes = 64_000;
+
+    @Builder.Default
+    private Boolean searchCacheEnabled = true;
 }

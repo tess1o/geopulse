@@ -13,4 +13,5 @@ public class MemosConfigResponse {
     private MemosVisibility defaultVisibility;
     private Integer maxNotesPerRequest;
     private Integer maxContentBytes;
+    private Boolean searchCacheEnabled;
 }

@@ -20,6 +20,7 @@ public class MemosPreferencesService {
                 .defaultVisibility(preferences.getDefaultVisibility())
                 .maxNotesPerRequest(preferences.getMaxNotesPerRequest())
                 .maxContentBytes(preferences.getMaxContentBytes())
+                .searchCacheEnabled(Boolean.TRUE.equals(preferences.getSearchCacheEnabled()))
                 .build();
     }
 
@@ -36,6 +37,9 @@ public class MemosPreferencesService {
         }
         if (safe.getMaxContentBytes() == null || safe.getMaxContentBytes() <= 0) {
             safe.setMaxContentBytes(TimelineNoteConstants.DEFAULT_MEMOS_CONTENT_BYTES);
+        }
+        if (safe.getSearchCacheEnabled() == null) {
+            safe.setSearchCacheEnabled(true);
         }
         return safe;
     }
