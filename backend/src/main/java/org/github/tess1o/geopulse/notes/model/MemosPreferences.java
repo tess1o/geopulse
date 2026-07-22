@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -32,4 +33,10 @@ public class MemosPreferences implements Serializable {
 
     @Builder.Default
     private Boolean searchCacheEnabled = true;
+
+    @Builder.Default
+    private List<String> includeTags = List.of();
+
+    @Builder.Default
+    private List<String> excludeTags = List.of();
 }

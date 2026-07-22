@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.notes.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class MemosConfigResponse {
@@ -14,4 +16,6 @@ public class MemosConfigResponse {
     private Integer maxNotesPerRequest;
     private Integer maxContentBytes;
     private Boolean searchCacheEnabled;
+    private List<String> includeTags;
+    private List<String> excludeTags;
 }

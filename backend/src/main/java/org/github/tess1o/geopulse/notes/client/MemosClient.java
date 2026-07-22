@@ -31,11 +31,12 @@ public class MemosClient {
             String apiKey,
             Instant startTime,
             Instant endTime,
-            int requestedLimit
+            int requestedLimit,
+            List<String> includeTags
     ) {
         int limit = requestedLimit > 0 ? requestedLimit : MAX_PAGE_SIZE;
         int pageSize = Math.max(1, Math.min(DEFAULT_PAGE_SIZE, Math.min(limit, MAX_PAGE_SIZE)));
-        String filter = buildCreatedTimeFilter(startTime, endTime);
+        String filter = buildMemosFilter(startTime, endTime, includeTags);
 
         List<MemosMemo> allMemos = new ArrayList<>();
         MemosRestClient client = buildClient(baseUrl, apiKey);
@@ -147,6 +148,50 @@ public class MemosClient {
                 startTime.getEpochSecond(),
                 endTime.getEpochSecond()
         );
+    }
+
+    static String buildMemosFilter(Instant startTime, Instant endTime, List<String> includeTags) {
+        String timeFilter = buildCreatedTimeFilter(startTime, endTime);
+        String tagsFilter = buildIncludeTagsFilter(includeTags);
+        if (timeFilter == null || timeFilter.isBlank()) {
+            return tagsFilter;
+        }
+        if (tagsFilter == null || tagsFilter.isBlank()) {
+            return timeFilter;
+        }
+        return timeFilter + " && " + tagsFilter;
+    }
+
+    private static String buildIncludeTagsFilter(List<String> includeTags) {
+        if (includeTags == null || includeTags.isEmpty()) {
+            return null;
+        }
+        List<String> tagExpressions = includeTags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(String::trim)
+                .map(MemosClient::toCelStringLiteral)
+                .map(tag -> tag + " in tags")
+                .toList();
+        if (tagExpressions.isEmpty()) {
+            return null;
+        }
+        return "(" + String.join(" || ", tagExpressions) + ")";
+    }
+
+    private static String toCelStringLiteral(String value) {
+        StringBuilder escaped = new StringBuilder("\"");
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> escaped.append("\\\\");
+                case '"' -> escaped.append("\\\"");
+                case '\n' -> escaped.append("\\n");
+                case '\r' -> escaped.append("\\r");
+                case '\t' -> escaped.append("\\t");
+                default -> escaped.append(c);
+            }
+        }
+        return escaped.append('"').toString();
     }
 
     private MemosRestClient buildClient(String baseUrl, String apiKey) {

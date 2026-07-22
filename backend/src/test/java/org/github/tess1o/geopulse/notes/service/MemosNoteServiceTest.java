@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,15 +73,15 @@ class MemosNoteServiceTest {
                 .build();
 
         when(userRepository.findById(USER_ID)).thenReturn(user);
-        when(memosClient.listMemosAllPages("https://memos.example.com", "secret", START_TIME, END_TIME, 1000))
+        when(memosClient.listMemosAllPages("https://memos.example.com", "secret", START_TIME, END_TIME, 1000, List.of()))
                 .thenReturn(List.of(memo));
         when(noteMapper.mapMemosMemo(eq(memo), any(MemosPreferences.class))).thenReturn(dto);
 
         List<NoteDto> notes = service.loadNotes(USER_ID, START_TIME, END_TIME, 1000);
 
         assertSame(dto, notes.getFirst());
-        verify(searchCache, never()).get(any(), any(), any(), anyInt());
-        verify(searchCache, never()).put(any(), any(), any(), anyInt(), any());
+        verify(searchCache, never()).get(any(), any(), any(), anyInt(), any(), any());
+        verify(searchCache, never()).put(any(), any(), any(), anyInt(), any(), any(), any());
     }
 
     @Test
@@ -92,13 +93,53 @@ class MemosNoteServiceTest {
                 .build();
 
         when(userRepository.findById(USER_ID)).thenReturn(user);
-        when(searchCache.get(USER_ID, START_TIME, END_TIME, 1000)).thenReturn(List.of(cached));
+        when(searchCache.get(USER_ID, START_TIME, END_TIME, 1000, List.of(), List.of())).thenReturn(List.of(cached));
 
         List<NoteDto> notes = service.loadNotes(USER_ID, START_TIME, END_TIME, 1000);
 
         assertSame(cached, notes.getFirst());
-        verify(memosClient, never()).listMemosAllPages(any(), any(), any(), any(), anyInt());
-        verify(searchCache, never()).put(any(), any(), any(), anyInt(), any());
+        verify(memosClient, never()).listMemosAllPages(any(), any(), any(), any(), anyInt(), any());
+        verify(searchCache, never()).put(any(), any(), any(), anyInt(), any(), any(), any());
+    }
+
+    @Test
+    void loadNotesSendsIncludeTagsToMemosAndFiltersExcludedTagsLocally() {
+        UserEntity user = userWithPreferences(true, List.of("travel", "work"), List.of("private"));
+        MemosMemo visibleMemo = new MemosMemo();
+        visibleMemo.setTags(List.of("travel"));
+        MemosMemo excludedMemo = new MemosMemo();
+        excludedMemo.setTags(List.of("travel", "private"));
+        NoteDto dto = NoteDto.builder()
+                .source(NoteSource.MEMOS)
+                .eventTime(START_TIME)
+                .build();
+
+        when(userRepository.findById(USER_ID)).thenReturn(user);
+        when(searchCache.get(USER_ID, START_TIME, END_TIME, 1000, List.of("travel", "work"), List.of("private")))
+                .thenReturn(null);
+        when(memosClient.listMemosAllPages(
+                "https://memos.example.com",
+                "secret",
+                START_TIME,
+                END_TIME,
+                1000,
+                List.of("travel", "work")
+        )).thenReturn(List.of(excludedMemo, visibleMemo));
+        when(noteMapper.mapMemosMemo(eq(visibleMemo), any(MemosPreferences.class))).thenReturn(dto);
+
+        List<NoteDto> notes = service.loadNotes(USER_ID, START_TIME, END_TIME, 1000);
+
+        assertEquals(List.of(dto), notes);
+        verify(noteMapper, never()).mapMemosMemo(eq(excludedMemo), any(MemosPreferences.class));
+        verify(searchCache).put(
+                USER_ID,
+                START_TIME,
+                END_TIME,
+                1000,
+                List.of("travel", "work"),
+                List.of("private"),
+                List.of(dto)
+        );
     }
 
     @Test
@@ -108,17 +149,25 @@ class MemosNoteServiceTest {
         request.setServerUrl("https://memos.example.com/");
         request.setEnabled(true);
         request.setSearchCacheEnabled(false);
+        request.setIncludeTags(List.of(" #travel ", "travel", "#work"));
+        request.setExcludeTags(List.of("#private", "private", "archive"));
 
         when(userRepository.findById(USER_ID)).thenReturn(user);
 
         service.updateConfig(USER_ID, request);
 
         assertFalse(user.getMemosPreferences().getSearchCacheEnabled());
+        assertEquals(List.of("travel", "work"), user.getMemosPreferences().getIncludeTags());
+        assertEquals(List.of("private", "archive"), user.getMemosPreferences().getExcludeTags());
         verify(userRepository).persist(user);
         verify(searchCache).invalidateForUser(USER_ID);
     }
 
     private UserEntity userWithPreferences(boolean searchCacheEnabled) {
+        return userWithPreferences(searchCacheEnabled, List.of(), List.of());
+    }
+
+    private UserEntity userWithPreferences(boolean searchCacheEnabled, List<String> includeTags, List<String> excludeTags) {
         UserEntity user = new UserEntity();
         user.setMemosPreferences(MemosPreferences.builder()
                 .serverUrl("https://memos.example.com")
@@ -126,6 +175,8 @@ class MemosNoteServiceTest {
                 .enabled(true)
                 .defaultSaveDestination(NoteDestination.GEOPULSE)
                 .searchCacheEnabled(searchCacheEnabled)
+                .includeTags(includeTags)
+                .excludeTags(excludeTags)
                 .build());
         return user;
     }

@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.notes.model;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UpdateMemosConfigRequest {
     private String serverUrl;
@@ -17,4 +19,6 @@ public class UpdateMemosConfigRequest {
     private Integer maxNotesPerRequest;
     private Integer maxContentBytes;
     private Boolean searchCacheEnabled;
+    private List<String> includeTags;
+    private List<String> excludeTags;
 }

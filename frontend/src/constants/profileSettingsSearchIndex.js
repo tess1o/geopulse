@@ -211,5 +211,21 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     subtitle: 'Memos',
     keywords: ['memos cache', 'notes cache', 'search cache', 'performance'],
     visibilityHint: 'Enable "Memos Integration" to edit this setting.'
+  },
+  {
+    id: 'memosIncludeTags',
+    title: 'Memos Include Tags',
+    tab: 'memos',
+    subtitle: 'Memos',
+    keywords: ['memos include tags', 'memos tags', 'notes filter', 'include notes'],
+    visibilityHint: 'Enable "Memos Integration" to edit this setting.'
+  },
+  {
+    id: 'memosExcludeTags',
+    title: 'Memos Exclude Tags',
+    tab: 'memos',
+    subtitle: 'Memos',
+    keywords: ['memos exclude tags', 'memos tags', 'notes filter', 'hide notes'],
+    visibilityHint: 'Enable "Memos Integration" to edit this setting.'
   }
 ]

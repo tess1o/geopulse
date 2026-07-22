@@ -85,6 +85,40 @@
               <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="loading || saveLoading" />
               <small class="help-text">Reuse recent Memos searches for faster timeline note loading</small>
             </div>
+
+            <div class="form-field form-field-wide" data-setting-id="memosIncludeTags">
+              <label for="memosIncludeTags" class="form-label">Include tags</label>
+              <AutoComplete
+                v-model="form.includeTags"
+                inputId="memosIncludeTags"
+                multiple
+                :typeahead="false"
+                :suggestions="[]"
+                placeholder="Add a tag and press Enter"
+                :disabled="loading || saveLoading"
+                class="w-full tag-input"
+                @change="normalizeFormTags('includeTags')"
+                @blur="commitPendingTag('includeTags', $event)"
+              />
+              <small class="help-text">Only load Memos notes with at least one of these tags</small>
+            </div>
+
+            <div class="form-field form-field-wide" data-setting-id="memosExcludeTags">
+              <label for="memosExcludeTags" class="form-label">Exclude tags</label>
+              <AutoComplete
+                v-model="form.excludeTags"
+                inputId="memosExcludeTags"
+                multiple
+                :typeahead="false"
+                :suggestions="[]"
+                placeholder="Add a tag and press Enter"
+                :disabled="loading || saveLoading"
+                class="w-full tag-input"
+                @change="normalizeFormTags('excludeTags')"
+                @blur="commitPendingTag('excludeTags', $event)"
+              />
+              <small class="help-text">Hide returned Memos notes with any of these tags</small>
+            </div>
           </div>
 
           <div v-if="form.enabled" class="form-field">
@@ -123,6 +157,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Select from 'primevue/select'
+import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useNotesStore } from '@/stores/notes'
@@ -165,8 +200,36 @@ const form = ref({
   enabled: false,
   defaultSaveDestination: 'GEOPULSE',
   defaultVisibility: 'PRIVATE',
-  searchCacheEnabled: true
+  searchCacheEnabled: true,
+  includeTags: [],
+  excludeTags: []
 })
+
+const normalizeTagList = (tags) => {
+  if (!Array.isArray(tags)) return []
+  const seen = new Set()
+  const normalizedTags = []
+
+  tags.forEach((tag) => {
+    if (tag == null) return
+    let normalized = String(tag).trim()
+    while (normalized.startsWith('#')) {
+      normalized = normalized.slice(1).trim()
+    }
+    if (!normalized || seen.has(normalized)) return
+    seen.add(normalized)
+    normalizedTags.push(normalized)
+  })
+
+  return normalizedTags
+}
+
+const tagListsEqual = (left, right) => {
+  const normalizedLeft = normalizeTagList(left)
+  const normalizedRight = normalizeTagList(right)
+  return normalizedLeft.length === normalizedRight.length &&
+    normalizedLeft.every((tag, index) => tag === normalizedRight[index])
+}
 
 const hasChanges = computed(() => {
   if (!props.config) {
@@ -175,7 +238,9 @@ const hasChanges = computed(() => {
       (form.value.apiKey?.trim() || '') !== '' ||
       form.value.defaultSaveDestination !== 'GEOPULSE' ||
       form.value.defaultVisibility !== 'PRIVATE' ||
-      form.value.searchCacheEnabled !== true
+      form.value.searchCacheEnabled !== true ||
+      normalizeTagList(form.value.includeTags).length > 0 ||
+      normalizeTagList(form.value.excludeTags).length > 0
   }
 
   return form.value.serverUrl !== (props.config.serverUrl || '') ||
@@ -183,7 +248,9 @@ const hasChanges = computed(() => {
     (form.value.apiKey?.trim() || '') !== '' ||
     form.value.defaultSaveDestination !== (props.config.defaultSaveDestination || 'GEOPULSE') ||
     form.value.defaultVisibility !== (props.config.defaultVisibility || 'PRIVATE') ||
-    form.value.searchCacheEnabled !== (props.config.searchCacheEnabled ?? true)
+    form.value.searchCacheEnabled !== (props.config.searchCacheEnabled ?? true) ||
+    !tagListsEqual(form.value.includeTags, props.config.includeTags || []) ||
+    !tagListsEqual(form.value.excludeTags, props.config.excludeTags || [])
 })
 
 const canTestConnection = computed(() => (
@@ -202,7 +269,9 @@ function loadConfig() {
     enabled: props.config?.enabled || false,
     defaultSaveDestination: props.config?.defaultSaveDestination || 'GEOPULSE',
     defaultVisibility: props.config?.defaultVisibility || 'PRIVATE',
-    searchCacheEnabled: props.config?.searchCacheEnabled ?? true
+    searchCacheEnabled: props.config?.searchCacheEnabled ?? true,
+    includeTags: normalizeTagList(props.config?.includeTags || []),
+    excludeTags: normalizeTagList(props.config?.excludeTags || [])
   }
   apiKeyConfigured.value = !!props.config?.apiKey
   errors.value = {}
@@ -238,6 +307,20 @@ const validate = () => {
   return Object.keys(errors.value).length === 0
 }
 
+const normalizeFormTags = (field) => {
+  form.value[field] = normalizeTagList(form.value[field])
+}
+
+const commitPendingTag = (field, event) => {
+  const pendingTag = event?.target?.value?.trim()
+  if (pendingTag) {
+    form.value[field] = normalizeTagList([...(form.value[field] || []), pendingTag])
+    event.target.value = ''
+  } else {
+    normalizeFormTags(field)
+  }
+}
+
 const handleTestConnection = async () => {
   if (!validate()) return
   testLoading.value = true
@@ -269,7 +352,9 @@ const handleSubmit = async () => {
       enabled: form.value.enabled,
       defaultSaveDestination: form.value.defaultSaveDestination,
       defaultVisibility: form.value.defaultVisibility,
-      searchCacheEnabled: form.value.searchCacheEnabled
+      searchCacheEnabled: form.value.searchCacheEnabled,
+      includeTags: normalizeTagList(form.value.includeTags),
+      excludeTags: normalizeTagList(form.value.excludeTags)
     })
   } finally {
     saveLoading.value = false
@@ -337,6 +422,64 @@ const handleReset = () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.tag-input {
+  width: 100%;
+}
+
+.tag-input :deep(.p-autocomplete-input-multiple) {
+  width: 100%;
+  min-height: 2.75rem;
+  background: var(--gp-surface-white);
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+  box-shadow: var(--gp-shadow-subtle);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tag-input :deep(.p-autocomplete-input-multiple:hover) {
+  border-color: var(--gp-border-medium);
+}
+
+.tag-input.p-focus :deep(.p-autocomplete-input-multiple) {
+  border-color: var(--gp-primary);
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
+}
+
+.tag-input :deep(.p-autocomplete-input-chip input) {
+  color: var(--gp-text-primary);
+}
+
+.tag-input :deep(.p-autocomplete-input-chip input::placeholder) {
+  color: var(--gp-text-muted);
+}
+
+.tag-input :deep(.p-autocomplete-chip) {
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  color: var(--gp-text-primary);
+}
+
+.tag-input :deep(.p-autocomplete-chip .p-chip-label) {
+  color: var(--gp-text-primary);
+}
+
+.tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon) {
+  color: var(--gp-text-secondary);
+}
+
+.tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon:hover) {
+  color: var(--gp-text-primary);
+}
+
+.tag-input.p-disabled :deep(.p-autocomplete-input-multiple) {
+  background: var(--gp-surface-gray);
+  color: var(--gp-text-muted);
 }
 
 .form-label {

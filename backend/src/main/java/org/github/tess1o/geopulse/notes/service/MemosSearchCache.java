@@ -22,11 +22,18 @@ public class MemosSearchCache {
     @ConfigProperty(name = "geopulse.memos.notes.search-cache-max-entries", defaultValue = "200")
     int maxEntries;
 
-    List<NoteDto> get(UUID userId, Instant startTime, Instant endTime, int limit) {
+    List<NoteDto> get(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            int limit,
+            List<String> includeTags,
+            List<String> excludeTags
+    ) {
         evictExpiredEntries();
         long nowEpochMillis = Instant.now().toEpochMilli();
         CachedMemosSearchResult cached = cache.computeIfPresent(
-                new NoteSearchCacheKey(userId, startTime, endTime, limit),
+                newKey(userId, startTime, endTime, limit, includeTags, excludeTags),
                 (ignored, value) -> value.expiresAtEpochMillis() <= nowEpochMillis
                         ? null
                         : value.touch(nowEpochMillis)
@@ -34,11 +41,19 @@ public class MemosSearchCache {
         return cached != null ? cached.notes() : null;
     }
 
-    void put(UUID userId, Instant startTime, Instant endTime, int limit, List<NoteDto> notes) {
+    void put(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            int limit,
+            List<String> includeTags,
+            List<String> excludeTags,
+            List<NoteDto> notes
+    ) {
         long nowEpochMillis = Instant.now().toEpochMilli();
         long expiresAtEpochMillis = nowEpochMillis + Math.max(1L, ttlSeconds) * 1000L;
         cache.put(
-                new NoteSearchCacheKey(userId, startTime, endTime, limit),
+                newKey(userId, startTime, endTime, limit, includeTags, excludeTags),
                 new CachedMemosSearchResult(List.copyOf(notes), expiresAtEpochMillis, nowEpochMillis)
         );
         evictExpiredEntries();
@@ -68,7 +83,36 @@ public class MemosSearchCache {
                 .forEach(cache::remove);
     }
 
-    private record NoteSearchCacheKey(UUID userId, Instant startTime, Instant endTime, int limit) {
+    private NoteSearchCacheKey newKey(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            int limit,
+            List<String> includeTags,
+            List<String> excludeTags
+    ) {
+        return new NoteSearchCacheKey(
+                userId,
+                startTime,
+                endTime,
+                limit,
+                copyTags(includeTags),
+                copyTags(excludeTags)
+        );
+    }
+
+    private List<String> copyTags(List<String> tags) {
+        return tags == null || tags.isEmpty() ? List.of() : List.copyOf(tags);
+    }
+
+    private record NoteSearchCacheKey(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            int limit,
+            List<String> includeTags,
+            List<String> excludeTags
+    ) {
     }
 
     private record CachedMemosSearchResult(List<NoteDto> notes, long expiresAtEpochMillis, long lastAccessEpochMillis) {

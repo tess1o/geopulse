@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -67,9 +68,12 @@ public class MemosNoteService {
         }
 
         int providerLimit = Math.min(limit, Math.max(1, preferences.getMaxNotesPerRequest()));
+        List<String> includeTags = preferences.getIncludeTags();
+        List<String> excludeTags = preferences.getExcludeTags();
+        Set<String> excludedTagSet = excludeTags == null || excludeTags.isEmpty() ? Set.of() : Set.copyOf(excludeTags);
         boolean searchCacheEnabled = Boolean.TRUE.equals(preferences.getSearchCacheEnabled());
         if (searchCacheEnabled) {
-            List<NoteDto> cached = searchCache.get(userId, startTime, endTime, providerLimit);
+            List<NoteDto> cached = searchCache.get(userId, startTime, endTime, providerLimit, includeTags, excludeTags);
             if (cached != null) {
                 return cached;
             }
@@ -81,15 +85,17 @@ public class MemosNoteService {
                             preferences.getApiKey(),
                             startTime,
                             endTime,
-                            providerLimit
+                            providerLimit,
+                            includeTags
                     )
                     .stream()
+                    .filter(memo -> !hasExcludedTag(memo, excludedTagSet))
                     .map(memo -> noteMapper.mapMemosMemo(memo, preferences))
                     .filter(Objects::nonNull)
                     .sorted(searchSupport.noteComparator())
                     .toList();
             if (searchCacheEnabled) {
-                searchCache.put(userId, startTime, endTime, providerLimit, notes);
+                searchCache.put(userId, startTime, endTime, providerLimit, includeTags, excludeTags, notes);
             }
             return notes;
         } catch (Exception e) {
@@ -202,11 +208,24 @@ public class MemosNoteService {
                 .searchCacheEnabled(request.getSearchCacheEnabled() != null
                         ? request.getSearchCacheEnabled()
                         : existing.getSearchCacheEnabled())
+                .includeTags(preferencesService.normalizeTagList(request.getIncludeTags() != null
+                        ? request.getIncludeTags()
+                        : existing.getIncludeTags()))
+                .excludeTags(preferencesService.normalizeTagList(request.getExcludeTags() != null
+                        ? request.getExcludeTags()
+                        : existing.getExcludeTags()))
                 .build();
 
         user.setMemosPreferences(preferences);
         userRepository.persist(user);
         searchCache.invalidateForUser(userId);
+    }
+
+    private boolean hasExcludedTag(MemosMemo memo, Set<String> excludeTags) {
+        if (memo == null || excludeTags == null || excludeTags.isEmpty()) {
+            return false;
+        }
+        return preferencesService.normalizeTagList(memo.getTags()).stream().anyMatch(excludeTags::contains);
     }
 
     CompletableFuture<TestMemosConnectionResponse> testConnection(UUID userId, TestMemosConnectionRequest request) {

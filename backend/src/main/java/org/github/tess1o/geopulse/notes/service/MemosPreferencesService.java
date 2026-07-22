@@ -6,7 +6,10 @@ import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosVisibility;
 import org.github.tess1o.geopulse.notes.model.NoteDestination;
 
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @ApplicationScoped
 public class MemosPreferencesService {
@@ -21,6 +24,8 @@ public class MemosPreferencesService {
                 .maxNotesPerRequest(preferences.getMaxNotesPerRequest())
                 .maxContentBytes(preferences.getMaxContentBytes())
                 .searchCacheEnabled(Boolean.TRUE.equals(preferences.getSearchCacheEnabled()))
+                .includeTags(preferences.getIncludeTags())
+                .excludeTags(preferences.getExcludeTags())
                 .build();
     }
 
@@ -41,7 +46,30 @@ public class MemosPreferencesService {
         if (safe.getSearchCacheEnabled() == null) {
             safe.setSearchCacheEnabled(true);
         }
+        safe.setIncludeTags(normalizeTagList(safe.getIncludeTags()));
+        safe.setExcludeTags(normalizeTagList(safe.getExcludeTags()));
         return safe;
+    }
+
+    List<String> normalizeTagList(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> normalizedTags = new LinkedHashSet<>();
+        for (String tag : tags) {
+            if (tag == null) {
+                continue;
+            }
+            String normalized = tag.trim();
+            while (normalized.startsWith("#")) {
+                normalized = normalized.substring(1).trim();
+            }
+            if (!normalized.isBlank()) {
+                normalizedTags.add(normalized);
+            }
+        }
+        return List.copyOf(normalizedTags);
     }
 
     String normalizeServerUrl(String serverUrl) {
