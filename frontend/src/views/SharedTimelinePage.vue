@@ -197,6 +197,8 @@
                 :show-viewer-location-control="true"
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
+                :show-notes="shareInfo.show_notes || false"
+                :notes="sharedNotes"
                 :custom-tile-url="shareInfo.custom_map_tile_url"
                 :custom-style-url="shareInfo.custom_map_style_url"
                 :map-render-mode="shareInfo.map_render_mode"
@@ -218,6 +220,8 @@
                 v-else
                 :timeline-data="timelineData"
                 :is-public-view="true"
+                :load-notes="false"
+                :notes="sharedNotes"
                 @timeline-item-click="handleTimelineItemClick"
             />
           </div>
@@ -231,6 +235,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
+import { useNotesStore } from '@/stores/notes'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
@@ -250,6 +255,7 @@ import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 const route = useRoute()
 const router = useRouter()
 const shareLinksStore = useShareLinksStore()
+const notesStore = useNotesStore()
 const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
 const tripsStore = useTripsStore()
@@ -269,6 +275,7 @@ const shareInfo = ref(null)
 const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
+const sharedNotes = ref([])
 const timelineMapRef = ref(null)
 const shouldCenterViewerLocation = ref(false)
 
@@ -506,14 +513,20 @@ async function loadTimelineData() {
     }
     // If no filter, pass null - backend will use full share range
 
-    // Fetch timeline and path data in parallel with date parameters
-    const [timeline, path] = await Promise.all([
+    // Fetch timeline, path, and optional notes in parallel with date parameters
+    const notesPromise = shareInfo.value.show_notes
+      ? notesStore.fetchSharedNotes(linkId, shareLinksStore.sharedAccessToken, startTime, endTime)
+      : Promise.resolve([])
+
+    const [timeline, path, notes] = await Promise.all([
       shareLinksStore.fetchSharedTimeline(linkId, startTime, endTime),
-      shareLinksStore.fetchSharedPath(linkId, startTime, endTime)
+      shareLinksStore.fetchSharedPath(linkId, startTime, endTime),
+      notesPromise
     ])
 
     timelineData.value = timeline
     pathData.value = path
+    sharedNotes.value = notes
 
     // Load current location if available
     if (shareInfo.value.show_current_location &&

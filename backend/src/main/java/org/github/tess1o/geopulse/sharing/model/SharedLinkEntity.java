@@ -66,6 +66,10 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Builder.Default
     private Boolean showPhotos = false;
 
+    @Column(name = "show_notes")
+    @Builder.Default
+    private Boolean showNotes = false;
+
     @Column(name = "custom_map_tile_url", length = 1000)
     private String customMapTileUrl;
 
@@ -91,6 +95,9 @@ public class SharedLinkEntity extends PanacheEntityBase {
         }
         if (showPhotos == null) {
             showPhotos = false;
+        }
+        if (showNotes == null) {
+            showNotes = false;
         }
         if (mapRenderMode == null) {
             mapRenderMode = MapRenderMode.RASTER;

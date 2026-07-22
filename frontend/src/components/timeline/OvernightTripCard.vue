@@ -9,10 +9,13 @@
         <p class="timeline-timestamp">
           🕐 {{ getTimestampText() }}
         </p>
-        <TimelinePhotoPreviewTrigger
-          :photos="matchingPhotos"
-          @photo-show-on-map="handlePhotoShowOnMap"
-        />
+        <div class="timeline-title-actions">
+          <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
+          <TimelinePhotoPreviewTrigger
+            :photos="matchingPhotos"
+            @photo-show-on-map="handlePhotoShowOnMap"
+          />
+        </div>
       </div>
     </template>
 
@@ -68,6 +71,18 @@
   </Card>
 
   <ContextMenu ref="contextMenu" :model="contextMenuItems" />
+  <NoteEditorDialog
+    v-model:visible="noteEditorVisible"
+    anchor-type="TRIP"
+    :anchor-id="tripItem.id"
+    :event-time="tripItem.timestamp"
+    :latitude="tripItem.latitude"
+    :longitude="tripItem.longitude"
+    :memos-configured="notesStore.isMemosConfigured"
+    :default-destination="notesStore.defaultSaveDestination"
+    :default-visibility="notesStore.defaultVisibility"
+    @saved="handleNoteSaved"
+  />
 </template>
 
 <script setup>
@@ -75,7 +90,13 @@ import { ref, computed } from 'vue'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
+import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
+import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
+import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
+import NoteEditorDialog from './NoteEditorDialog.vue'
+
+const notesStore = useNotesStore()
 
 const props = defineProps({
   tripItem: {
@@ -89,41 +110,84 @@ const props = defineProps({
   immichPhotos: {
     type: Array,
     default: () => []
+  },
+  notes: {
+    type: Array,
+    default: () => []
+  },
+  allowNoteCreation: {
+    type: Boolean,
+    default: true
   }
 });
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'photo-show-on-map']);
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'photo-show-on-map', 'note-saved']);
 
 const contextMenu = ref(null)
-const contextMenuItems = ref([
-  {
-    label: 'Change movement type...',
-    icon: 'pi pi-pencil',
-    command: () => {
-      emit('edit-movement-type', props.tripItem)
+const notePreviewTrigger = ref(null)
+const noteEditorVisible = ref(false)
+const contextMenuItems = computed(() => {
+  const items = [
+    {
+      label: 'Change movement type...',
+      icon: 'pi pi-pencil',
+      command: () => {
+        emit('edit-movement-type', props.tripItem)
+      }
+    },
+    {
+      label: 'Why this classification?',
+      icon: 'pi pi-question-circle',
+      command: () => {
+        emit('show-classification', props.tripItem)
+      }
     }
-  },
-  {
-    label: 'Why this classification?',
-    icon: 'pi pi-question-circle',
-    command: () => {
-      emit('show-classification', props.tripItem)
-    }
-  },
-  {
+  ]
+
+  if (matchingNotes.value.length > 0) {
+    items.push({
+      label: getViewNotesLabel(),
+      icon: 'pi pi-file-edit',
+      command: () => {
+        openNotesViewer()
+      }
+    })
+  }
+
+  if (props.allowNoteCreation) {
+    items.push({
+      label: 'Add note...',
+      icon: 'pi pi-file-edit',
+      command: () => {
+        noteEditorVisible.value = true
+      }
+    })
+  }
+
+  items.push({
     label: 'Export as GPX',
     icon: 'pi pi-download',
     command: () => {
       emit('export-gpx', props.tripItem)
     }
-  }
-])
+  })
+
+  return items
+})
 
 const timezone = useTimezone();
 
 const { matchingPhotos } = useTimelineCardPhotoMatching({
   itemRef: computed(() => props.tripItem),
   immichPhotosRef: computed(() => props.immichPhotos),
+  durationField: 'tripDuration',
+  currentDateRef: computed(() => props.currentDate),
+  clampToCurrentDay: true
+})
+
+const { matchingNotes } = useTimelineCardNoteMatching({
+  itemRef: computed(() => props.tripItem),
+  notesRef: computed(() => props.notes),
   durationField: 'tripDuration',
   currentDateRef: computed(() => props.currentDate),
   clampToCurrentDay: true
@@ -172,6 +236,11 @@ const movementTypeSource = computed(() => props.tripItem.movementTypeSource || '
 const movementType = computed(() => props.tripItem.movementType || 'UNKNOWN')
 const isUnknownAuto = computed(() => movementType.value === 'UNKNOWN' && movementTypeSource.value === 'AUTO')
 const showInlineEditIcon = computed(() => !isUnknownAuto.value)
+const canManageMatchingNotes = computed(() => {
+  return props.allowNoteCreation && matchingNotes.value.some((note) => (
+    note?.source === 'GEOPULSE' && note?.editable !== false && note?.id != null
+  ))
+})
 
 const handleClick = () => {
   emit('click', props.tripItem);
@@ -179,6 +248,21 @@ const handleClick = () => {
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleNoteSaved = (note) => {
+  emit('note-saved', note)
+}
+
+const openNotesViewer = () => {
+  notePreviewTrigger.value?.openNotes()
+}
+
+const getViewNotesLabel = () => {
+  if (canManageMatchingNotes.value) {
+    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+  }
+  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
 }
 
 const handleEditMovementType = () => {
@@ -255,6 +339,13 @@ const showContextMenu = (event) => {
   align-items: center;
   justify-content: space-between;
   gap: var(--gp-spacing-sm);
+}
+
+.timeline-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .timeline-subtitle {

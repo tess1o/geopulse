@@ -12,6 +12,7 @@ export function useMapLayers() {
   const showPath = ref(true)
   const showRawGpsPoints = ref(false)
   const showImmich = ref(false)
+  const showNotes = ref(false)
 
   // Layer control methods
   const toggleFriends = (value) => {
@@ -50,6 +51,10 @@ export function useMapLayers() {
     console.log('useMapLayers: showImmich is now', showImmich.value)
   }
 
+  const toggleNotes = (value) => {
+    showNotes.value = value !== undefined ? value : !showNotes.value
+  }
+
   // Convenience methods
   const showAllLayers = () => {
     showFriends.value = true
@@ -58,6 +63,7 @@ export function useMapLayers() {
     showPath.value = true
     showRawGpsPoints.value = true
     showImmich.value = true
+    showNotes.value = true
   }
 
   const hideAllLayers = () => {
@@ -67,6 +73,7 @@ export function useMapLayers() {
     showPath.value = false
     showRawGpsPoints.value = false
     showImmich.value = false
+    showNotes.value = false
   }
 
   const resetToDefaults = () => {
@@ -76,11 +83,12 @@ export function useMapLayers() {
     showPath.value = true
     showRawGpsPoints.value = false
     showImmich.value = false
+    showNotes.value = false
   }
 
   // Computed
   const visibleLayerCount = computed(() => {
-    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value, showRawGpsPoints.value, showImmich.value]
+    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value, showRawGpsPoints.value, showImmich.value, showNotes.value]
       .filter(Boolean).length
   })
 
@@ -129,6 +137,13 @@ export function useMapLayers() {
       visible: showImmich.value,
       toggle: toggleImmich,
       icon: 'pi pi-camera'
+    },
+    {
+      id: 'notes',
+      label: 'Notes',
+      visible: showNotes.value,
+      toggle: toggleNotes,
+      icon: 'pi pi-file-edit'
     }
   ])
 
@@ -140,6 +155,7 @@ export function useMapLayers() {
     showPath: readonly(showPath),
     showRawGpsPoints: readonly(showRawGpsPoints),
     showImmich: readonly(showImmich),
+    showNotes: readonly(showNotes),
 
     // Methods
     toggleFriends,
@@ -148,6 +164,7 @@ export function useMapLayers() {
     togglePath,
     toggleRawGpsPoints,
     toggleImmich,
+    toggleNotes,
     showAllLayers,
     hideAllLayers,
     resetToDefaults,

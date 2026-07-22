@@ -70,6 +70,11 @@
       </div>
 
       <div class="field-checkbox">
+        <Checkbox id="show-notes" v-model="formData.show_notes" :binary="true" />
+        <label for="show-notes">Include notes from GeoPulse and Memos (if available)</label>
+      </div>
+
+      <div class="field-checkbox">
         <label for="map-render-mode">Map render mode</label>
       </div>
       <div class="field">
@@ -226,6 +231,7 @@ const formData = ref({
   map_render_mode: 'VECTOR',
   show_current_location: true,
   show_photos: false,
+  show_notes: false,
   has_password: false,
   password: '',
   use_custom_tiles: false,
@@ -262,6 +268,7 @@ watch(() => props.visible, (visible) => {
         expires_at: props.editingShare.expires_at ? new Date(props.editingShare.expires_at) : null,
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
+        show_notes: props.editingShare.show_notes ?? false,
         map_render_mode: props.editingShare.map_render_mode || 'VECTOR',
         has_password: props.editingShare.has_password || false,
         password: '',
@@ -284,6 +291,7 @@ watch(() => props.visible, (visible) => {
         expires_at: expiresAt,
         show_current_location: true,
         show_photos: false,
+        show_notes: false,
         map_render_mode: 'VECTOR',
         has_password: false,
         password: '',
@@ -308,6 +316,7 @@ function resetForm() {
     expires_at: null,
     show_current_location: true,
     show_photos: false,
+    show_notes: false,
     map_render_mode: 'VECTOR',
     has_password: false,
     password: '',
@@ -447,6 +456,7 @@ async function handleSubmit() {
       expires_at: formData.value.expires_at ? formData.value.expires_at.toISOString() : null,
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
+      show_notes: formData.value.show_notes,
       map_render_mode: formData.value.map_render_mode || 'VECTOR',
       password: formData.value.has_password ? formData.value.password : null,
       custom_map_tile_url: formData.value.use_custom_tiles ? formData.value.custom_map_tile_url : null,

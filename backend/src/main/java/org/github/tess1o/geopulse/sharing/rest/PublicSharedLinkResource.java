@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.sharing.rest;
 
+import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -7,16 +8,16 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
+import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/shared")
 @Produces(MediaType.APPLICATION_JSON)
@@ -168,6 +169,62 @@ public class PublicSharedLinkResource {
     }
 
     @GET
+    @Path("/{linkId}/notes")
+    @Blocking
+    public java.util.concurrent.CompletableFuture<Response> getSharedNotes(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return java.util.concurrent.CompletableFuture.completedFuture(
+                        Response.status(Response.Status.UNAUTHORIZED)
+                                .entity(ApiResponse.error("Authorization token required"))
+                                .build());
+            }
+
+            String token = authHeader.substring("Bearer ".length());
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+
+            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
+                return java.util.concurrent.CompletableFuture.completedFuture(
+                        Response.status(Response.Status.BAD_REQUEST)
+                                .entity(ApiResponse.error("startTime must be before endTime"))
+                                .build());
+            }
+
+            return sharedLinkService.getSharedNotes(linkId, token, startInstant, endInstant)
+                    .thenApply(Response::ok)
+                    .thenApply(Response.ResponseBuilder::build)
+                    .exceptionally(throwable -> {
+                        log.error("Error getting shared notes for linkId: {}", linkId, throwable);
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity(ApiResponse.error("Failed to retrieve notes"))
+                                .build();
+                    });
+        } catch (NotFoundException e) {
+            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Link not found or expired"))
+                    .build());
+        } catch (ForbiddenException e) {
+            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build());
+        } catch (Exception e) {
+            log.error("Error getting shared notes for linkId: {}", linkId, e);
+            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve notes"))
+                    .build());
+        }
+    }
+
+    @GET
     @Path("/{linkId}/path")
     public Response getSharedPath(
             @PathParam("linkId") UUID linkId,
@@ -274,6 +331,17 @@ public class PublicSharedLinkResource {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve current location"))
                     .build();
+        }
+    }
+
+    private Instant parseOptionalInstant(String value, String fieldName) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid " + fieldName + " format. Expected ISO-8601");
         }
     }
 }

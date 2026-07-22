@@ -9,10 +9,13 @@
         <p class="timeline-timestamp">
           🕐 {{ formattedTimestamp }}
         </p>
-        <TimelinePhotoPreviewTrigger
-          :photos="matchingPhotos"
-          @photo-show-on-map="handlePhotoShowOnMap"
-        />
+        <div class="timeline-title-actions">
+          <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
+          <TimelinePhotoPreviewTrigger
+            :photos="matchingPhotos"
+            @photo-show-on-map="handlePhotoShowOnMap"
+          />
+        </div>
       </div>
     </template>
 
@@ -65,6 +68,18 @@
   </Card>
 
   <ContextMenu ref="contextMenu" :model="contextMenuItems" />
+  <NoteEditorDialog
+    v-model:visible="noteEditorVisible"
+    anchor-type="STAY"
+    :anchor-id="stayItem.id"
+    :event-time="stayItem.timestamp"
+    :latitude="stayItem.latitude"
+    :longitude="stayItem.longitude"
+    :memos-configured="notesStore.isMemosConfigured"
+    :default-destination="notesStore.defaultSaveDestination"
+    :default-visibility="notesStore.defaultVisibility"
+    @saved="handleNoteSaved"
+  />
 </template>
 
 <script setup>
@@ -73,9 +88,14 @@ import { useRouter } from 'vue-router'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
+import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
+import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
+import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
+import NoteEditorDialog from './NoteEditorDialog.vue'
 
 const router = useRouter()
+const notesStore = useNotesStore()
 
 const props = defineProps({
   stayItem: {
@@ -85,12 +105,22 @@ const props = defineProps({
   immichPhotos: {
     type: Array,
     default: () => []
+  },
+  notes: {
+    type: Array,
+    default: () => []
+  },
+  allowNoteCreation: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'note-saved'])
 
 const contextMenu = ref(null)
+const notePreviewTrigger = ref(null)
+const noteEditorVisible = ref(false)
 
 // Check if stay has city/country info
 const hasCity = computed(() => props.stayItem.city && props.stayItem.city.trim().length > 0)
@@ -123,6 +153,26 @@ const contextMenuItems = computed(() => {
       icon: 'pi pi-refresh',
       command: () => {
         handleResetDataGapOverride()
+      }
+    })
+  }
+
+  if (matchingNotes.value.length > 0) {
+    items.push({
+      label: getViewNotesLabel(),
+      icon: 'pi pi-file-edit',
+      command: () => {
+        openNotesViewer()
+      }
+    })
+  }
+
+  if (props.allowNoteCreation) {
+    items.push({
+      label: 'Add note...',
+      icon: 'pi pi-file-edit',
+      command: () => {
+        noteEditorVisible.value = true
       }
     })
   }
@@ -173,6 +223,12 @@ const { matchingPhotos } = useTimelineCardPhotoMatching({
   durationField: 'stayDuration'
 })
 
+const { matchingNotes } = useTimelineCardNoteMatching({
+  itemRef: computed(() => props.stayItem),
+  notesRef: computed(() => props.notes),
+  durationField: 'stayDuration'
+})
+
 const canRenameStay = computed(() => {
   return Boolean(props.stayItem.favoriteId || props.stayItem.geocodingId)
 })
@@ -181,12 +237,33 @@ const canResetDataGapOverride = computed(() => {
   return Boolean(props.stayItem.dataGapOverrideId)
 })
 
+const canManageMatchingNotes = computed(() => {
+  return props.allowNoteCreation && matchingNotes.value.some((note) => (
+    note?.source === 'GEOPULSE' && note?.editable !== false && note?.id != null
+  ))
+})
+
 const handleClick = () => {
   emit('click', props.stayItem)
 }
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleNoteSaved = (note) => {
+  emit('note-saved', note)
+}
+
+const openNotesViewer = () => {
+  notePreviewTrigger.value?.openNotes()
+}
+
+const getViewNotesLabel = () => {
+  if (canManageMatchingNotes.value) {
+    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+  }
+  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
 }
 
 const handleRenameStay = () => {
@@ -314,6 +391,13 @@ const formattedTimestamp = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--gp-spacing-sm);
+}
+
+.timeline-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .timeline-subtitle {

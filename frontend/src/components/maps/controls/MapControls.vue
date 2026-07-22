@@ -107,6 +107,18 @@
           map:{{!!map}} loading:{{immichLoading}} configured:{{immichConfigured}} show:{{showImmich}}
         </div>
       </button>
+
+      <button
+        v-if="showNotesButton"
+        @click="handleToggleNotes"
+        :class="{ active: showNotes, 'notes-loading': notesLoading }"
+        :title="showNotes ? 'Hide Notes' : 'Show Notes'"
+        class="control-button"
+        :disabled="!map || notesLoading"
+      >
+        <i class="pi pi-file-edit"></i>
+        <span v-if="notesLoading" class="loading-indicator"></span>
+      </button>
     </div>
 
     <div v-if="showZoomControls" class="control-group">
@@ -185,6 +197,18 @@ const props = defineProps({
   immichLoading: {
     type: Boolean,
     default: false
+  },
+  showNotes: {
+    type: Boolean,
+    default: false
+  },
+  showNotesButton: {
+    type: Boolean,
+    default: false
+  },
+  notesLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -194,6 +218,7 @@ const emit = defineEmits([
   'toggle-path',
   'toggle-raw-gps-points',
   'toggle-immich',
+  'toggle-notes',
   'toggle-heatmap',
   'heatmap-layer-change',
   'zoom-to-data'
@@ -217,6 +242,10 @@ const handleToggleRawGpsPoints = () => {
 
 const handleToggleImmich = () => {
   emit('toggle-immich', !props.showImmich)
+}
+
+const handleToggleNotes = () => {
+  emit('toggle-notes', !props.showNotes)
 }
 
 const handleZoomToData = () => {

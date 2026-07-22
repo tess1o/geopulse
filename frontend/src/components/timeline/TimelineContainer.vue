@@ -100,22 +100,28 @@
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
               @reset-data-gap-override="handleResetDataGapOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <StayCard
               v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
               :immich-photos="immichPhotosForCards"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
               @reset-data-gap-override="handleResetDataGapOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <!-- Trip Cards -->
@@ -124,11 +130,14 @@
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
               @edit-movement-type="handleQuickEditMovementType"
               @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <TripCard
@@ -136,11 +145,14 @@
               :trip-item="slotProps.item"
               :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
               @edit-movement-type="handleQuickEditMovementType"
               @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <!-- Data Gap Cards -->
@@ -197,6 +209,7 @@ import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
 import { usePeriodTagsStore } from '@/stores/periodTags'
 import { useImmichStore } from '@/stores/immich'
+import { useNotesStore } from '@/stores/notes'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
@@ -221,6 +234,7 @@ const toast = useToast()
 const exportImportStore = useExportImportStore()
 const periodTagsStore = usePeriodTagsStore()
 const immichStore = useImmichStore()
+const notesStore = useNotesStore()
 
 // Display limit for progressive loading
 const displayLimit = ref(50)
@@ -255,6 +269,18 @@ const props = defineProps({
   loadImmichPhotos: {
     type: Boolean,
     default: true
+  },
+  loadNotes: {
+    type: Boolean,
+    default: true
+  },
+  notes: {
+    type: Array,
+    default: null
+  },
+  isPublicView: {
+    type: Boolean,
+    default: false
   },
   showTimelineLabels: {
     type: Boolean,
@@ -389,6 +415,13 @@ const immichPhotosForCards = computed(() => {
   return Array.isArray(immichStore.photos) ? immichStore.photos : []
 })
 
+const notesForCards = computed(() => {
+  if (Array.isArray(props.notes)) {
+    return props.notes
+  }
+  return Array.isArray(notesStore.notes) ? notesStore.notes : []
+})
+
 const nextItemByTimelineOrder = computed(() => {
   const map = new Map()
   const items = props.timelineData || []
@@ -432,6 +465,10 @@ const handleTagClick = (tag) => {
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleNoteSaved = async () => {
+  await loadNotesForCards(true)
 }
 
 const scrollToTimelineItem = (item) => {
@@ -595,10 +632,38 @@ const loadImmichPhotosForCards = async () => {
   }
 }
 
+const loadNotesForCards = async (forceRefresh = false) => {
+  if (!props.loadNotes || props.isPublicView) {
+    return
+  }
+
+  if (!props.dateRange || props.dateRange.length !== 2) {
+    return
+  }
+
+  const [startDate, endDate] = props.dateRange
+  if (!startDate || !endDate) {
+    return
+  }
+
+  try {
+    if (!notesStore.hasMemosConfig && !notesStore.configLoading) {
+      await notesStore.fetchMemosConfig()
+    }
+    await notesStore.fetchNotes(startDate, endDate, {
+      includeExternal: true,
+      forceRefresh
+    })
+  } catch (error) {
+    console.warn('Failed to load notes for timeline cards:', error)
+  }
+}
+
 // Watch for date range changes
 watch(() => props.dateRange, () => {
   loadPeriodTags()
   loadImmichPhotosForCards()
+  loadNotesForCards()
 }, { deep: true, immediate: true })
 
 defineExpose({

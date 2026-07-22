@@ -33,6 +33,8 @@ public class SharedLinkMapper {
                 createShareLinkRequest.getShowCurrentLocation() : true);
         sharedLinkEntity.setShowPhotos(createShareLinkRequest.getShowPhotos() != null ?
                 createShareLinkRequest.getShowPhotos() : false);
+        sharedLinkEntity.setShowNotes(createShareLinkRequest.getShowNotes() != null ?
+                createShareLinkRequest.getShowNotes() : false);
         sharedLinkEntity.setCustomMapTileUrl(createShareLinkRequest.getCustomMapTileUrl());
         sharedLinkEntity.setCustomMapStyleUrl(createShareLinkRequest.getCustomMapStyleUrl());
         sharedLinkEntity.setMapRenderMode(createShareLinkRequest.getMapRenderMode() != null ?
@@ -69,6 +71,7 @@ public class SharedLinkMapper {
                 .endDate(entity.getEndDate())
                 .showCurrentLocation(entity.getShowCurrentLocation())
                 .showPhotos(entity.getShowPhotos())
+                .showNotes(entity.getShowNotes())
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
@@ -94,6 +97,7 @@ public class SharedLinkMapper {
                 .endDate(entity.getEndDate())
                 .showCurrentLocation(entity.getShowCurrentLocation())
                 .showPhotos(entity.getShowPhotos())
+                .showNotes(entity.getShowNotes())
                 .timelineStatus(entity.getTimelineStatus())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .customMapStyleUrl(entity.getCustomMapStyleUrl())
@@ -169,6 +173,9 @@ public class SharedLinkMapper {
         }
         if (dto.getShowPhotos() != null) {
             entity.setShowPhotos(dto.getShowPhotos());
+        }
+        if (dto.getShowNotes() != null) {
+            entity.setShowNotes(dto.getShowNotes());
         }
         // Always set custom map tile URL (null is valid - means disabled)
         entity.setCustomMapTileUrl(dto.getCustomMapTileUrl());
