@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.service.TripVisitAutoMatchService;
+import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
@@ -70,6 +71,9 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     DataGapStayOverrideService dataGapStayOverrideService;
+
+    @Inject
+    TimelineNoteService timelineNoteService;
 
     @Inject
     BadgeRecalculationService badgeRecalculationService;
@@ -199,6 +203,8 @@ public class StreamingTimelineGenerationService {
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);
                 // Re-attach manual Data Gap -> Stay conversions to regenerated gaps.
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
+                // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
+                timelineNoteService.reattachAnchoredNotes(userId);
             }
 
             // Step 8: Data gap detection (90%)

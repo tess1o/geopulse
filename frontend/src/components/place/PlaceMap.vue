@@ -17,6 +17,14 @@
             :favorites-data="placeFavoriteData"
             :visible="true"
           />
+          <NotesLayer
+            v-if="map && isReady && notes.length > 0"
+            :map="map"
+            :visible="true"
+            :notes="notes"
+            :load-notes="false"
+            :can-manage-notes="true"
+          />
         </template>
       </MapContainer>
     </div>
@@ -26,7 +34,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
-import { FavoritesLayer, MapContainer } from '@/components/maps'
+import { FavoritesLayer, MapContainer, NotesLayer } from '@/components/maps'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 
@@ -44,6 +52,10 @@ const props = defineProps({
     default: () => []
   },
   photoMarkerGroups: {
+    type: Array,
+    default: () => []
+  },
+  notes: {
     type: Array,
     default: () => []
   }

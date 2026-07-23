@@ -65,12 +65,14 @@ import ProfileTab from '@/components/profile/ProfileTab.vue'
 import SecurityTab from '@/components/profile/SecurityTab.vue'
 import AIAssistantTab from '@/components/profile/AIAssistantTab.vue'
 import ImmichTab from '@/components/profile/ImmichTab.vue'
+import MemosTab from '@/components/profile/MemosTab.vue'
 import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
 import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
 
 // Store
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
+import { useNotesStore } from '@/stores/notes'
 import apiService from "@/utils/apiService"
 import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
 import { jumpToSetting } from '@/utils/settingJump'
@@ -82,14 +84,16 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const immichStore = useImmichStore()
+const notesStore = useNotesStore()
 
 // Store refs
 const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
+const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
 // State
 const activeTab = ref('profile')
-const validTabs = ['profile', 'security', 'timelineDisplay', 'ai', 'immich']
+const validTabs = ['profile', 'security', 'timelineDisplay', 'ai', 'immich', 'memos']
 const profileUnsavedConfirmGroup = 'profile-unsaved-changes'
 const settingHintsById = Object.fromEntries(
   PROFILE_SETTINGS_SEARCH_INDEX
@@ -147,6 +151,11 @@ const tabItems = ref([
     label: 'Immich',
     icon: 'pi pi-images',
     key: 'immich'
+  },
+  {
+    label: 'Memos',
+    icon: 'pi pi-file-edit',
+    key: 'memos'
   }
 ])
 
@@ -161,6 +170,7 @@ const tabComponents = {
   timelineDisplay: TimelineDisplayTab,
   ai: AIAssistantTab,
   immich: ImmichTab,
+  memos: MemosTab,
 }
 
 const currentTabComponent = computed(() => tabComponents[activeTab.value] || null)
@@ -199,6 +209,10 @@ const currentTabProps = computed(() => {
       config: immichConfig.value,
       loading: immichLoading.value,
     },
+    memos: {
+      config: memosConfig.value,
+      loading: memosLoading.value,
+    },
   }
   return allProps[activeTab.value] || {}
 })
@@ -210,6 +224,7 @@ const currentTabHandlers = computed(() => {
     timelineDisplay: { save: handleTimelineDisplaySave, 'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty) },
     ai: { save: handleAISave, 'dirty-change': (isDirty) => handleTabDirtyChange('ai', isDirty) },
     immich: { save: handleImmichSave, 'dirty-change': (isDirty) => handleTabDirtyChange('immich', isDirty) },
+    memos: { save: handleMemosSave, 'dirty-change': (isDirty) => handleTabDirtyChange('memos', isDirty) },
   }
   return handlers[activeTab.value] || {}
 })
@@ -421,6 +436,32 @@ const handleImmichSave = async (configData) => {
   }
 }
 
+// Memos Save Handler
+const handleMemosSave = async (configData) => {
+  try {
+    if (configData.apiKey === 'KEEP_EXISTING') {
+      configData.apiKey = memosConfig.value?.apiKey || null
+    }
+
+    await notesStore.updateMemosConfig(configData)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Memos Settings Updated',
+      detail: 'Your Memos integration settings have been saved successfully',
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Save Failed',
+      detail: getErrorMessage(error),
+      life: 5000
+    })
+    throw error
+  }
+}
+
 // Load AI Settings
 const loadAISettings = async () => {
   try {
@@ -564,6 +605,13 @@ onMounted(async () => {
     await immichStore.fetchConfig()
   } catch (error) {
     console.warn('Failed to load Immich config:', error)
+  }
+
+  // Load Memos config
+  try {
+    await notesStore.fetchMemosConfig()
+  } catch (error) {
+    console.warn('Failed to load Memos config:', error)
   }
 
   // Load AI settings

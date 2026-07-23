@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **271** distinct env vars.
+Backend runtime currently includes **273** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -89,7 +89,7 @@ Notes:
 | `GEOPULSE_OIDC_ENABLED` | `false` | OIDC Configuration Property: \`geopulse.oidc.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS` | `24` | JWKS (signing keys) caching Lower TTL recommended to handle provider key rotation Property: \`geopulse.oidc.jwks-cache.ttl-hours\`. | Non-negative numeric value. | Backend restart |
 
-### AI and Immich (8)
+### AI, Immich, and Memos (10)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -101,6 +101,8 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_TIMEOUT_SECONDS` | `15` | Immich search timeout Property: \`immich.photos.search-timeout-seconds\`. | Positive numeric value. | Backend restart |
+| `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_MAX_ENTRIES` | `200` | Memos notes search cache maximum entries. Property: \`geopulse.memos.notes.search-cache-max-entries\`. | Positive integer value. | Backend restart |
+| `GEOPULSE_MEMOS_NOTES_SEARCH_CACHE_TTL_SECONDS` | `300` | Memos notes search cache TTL in seconds. Property: \`geopulse.memos.notes.search-cache-ttl-seconds\`. | Positive integer seconds. | Backend restart |
 
 ### Geocoding and GeoNames (49)
 

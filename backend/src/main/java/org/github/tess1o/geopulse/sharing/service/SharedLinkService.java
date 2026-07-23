@@ -14,6 +14,8 @@ import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
+import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.sharing.mapper.SharedLinkMapper;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
@@ -59,6 +61,9 @@ public class SharedLinkService {
 
     @Inject
     StreamingTimelineAggregator timelineAggregator;
+
+    @Inject
+    TimelineNoteService timelineNoteService;
 
     @Inject
     PathSimplificationService pathSimplificationService;
@@ -163,6 +168,7 @@ public class SharedLinkService {
                 updateDto.getEndDate(),
                 updateDto.getShowCurrentLocation(),
                 updateDto.getShowPhotos(),
+                updateDto.getShowNotes(),
                 updateDto.getCustomMapTileUrl(),
                 updateDto.getCustomMapStyleUrl(),
                 updateDto.getMapRenderMode()
@@ -452,6 +458,43 @@ public class SharedLinkService {
                 linkId, timeline.getStaysCount() + timeline.getTripsCount(), effectiveRange.start(), effectiveRange.end());
 
         return timeline;
+    }
+
+    public java.util.concurrent.CompletableFuture<NoteSearchResponse> getSharedNotes(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
+        log.debug("Shared notes access attempt for linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new NotFoundException("Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        if (!Boolean.TRUE.equals(entity.getShowNotes())) {
+            return java.util.concurrent.CompletableFuture.completedFuture(NoteSearchResponse.builder()
+                    .notes(List.of())
+                    .totalCount(0)
+                    .geopulseCount(0)
+                    .memosCount(0)
+                    .build());
+        }
+
+        TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
+        return timelineNoteService.searchNotes(
+                entity.getUser().getId(),
+                effectiveRange.start(),
+                effectiveRange.end(),
+                true,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     /**

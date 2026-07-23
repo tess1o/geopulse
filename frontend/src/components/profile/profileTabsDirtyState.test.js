@@ -16,12 +16,19 @@ import SecurityTab from './SecurityTab.vue'
 import TimelineDisplayTab from './TimelineDisplayTab.vue'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
+import MemosTab from './MemosTab.vue'
 
 vi.mock('@/utils/apiService', () => ({
   default: {
     get: vi.fn().mockResolvedValue({ message: 'Default AI system message' }),
     post: vi.fn().mockResolvedValue({})
   }
+}))
+
+vi.mock('@/stores/notes', () => ({
+  useNotesStore: () => ({
+    testMemosConfig: vi.fn()
+  })
 }))
 
 const CardStub = {
@@ -111,6 +118,31 @@ const SliderControlStub = {
   `
 }
 
+const AutoCompleteStub = {
+  props: ['modelValue'],
+  emits: ['update:modelValue', 'change', 'blur'],
+  methods: {
+    parseTags(value) {
+      return String(value || '')
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    },
+    updateTags(event) {
+      const value = this.parseTags(event.target.value)
+      this.$emit('update:modelValue', value)
+      this.$emit('change', { originalEvent: event, value })
+    }
+  },
+  template: `
+    <input
+      :value="Array.isArray(modelValue) ? modelValue.join(', ') : ''"
+      @input="updateTags"
+      @blur="$emit('blur', $event)"
+    />
+  `
+}
+
 const SettingCardStub = {
   template: '<section><slot name="control" /></section>'
 }
@@ -123,6 +155,8 @@ const globalOptions = {
     InputText: TextInputStub,
     Password: TextInputStub,
     Dropdown: DropdownStub,
+    Select: DropdownStub,
+    AutoComplete: AutoCompleteStub,
     ToggleSwitch: ToggleSwitchStub,
     Textarea: {
       props: ['modelValue'],
@@ -280,5 +314,88 @@ describe('profile tab dirty state', () => {
     await findButtonByLabel(wrapper, 'Reset').trigger('click')
     await flushPromises()
     expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('emits dirty changes from the Memos cache toggle and clears after reset', async () => {
+    const wrapper = mount(MemosTab, {
+      props: {
+        config: {
+          serverUrl: 'https://memos.example.com',
+          apiKey: 'configured-key',
+          enabled: true,
+          defaultSaveDestination: 'GEOPULSE',
+          defaultVisibility: 'PRIVATE',
+          searchCacheEnabled: true,
+          includeTags: [],
+          excludeTags: []
+        },
+        loading: false
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-setting-id="memosSearchCacheEnabled"] input').setValue(false)
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await findButtonByLabel(wrapper, 'Reset').trigger('click')
+    await flushPromises()
+    expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('emits dirty changes from the Memos tag filters and clears after reset', async () => {
+    const wrapper = mount(MemosTab, {
+      props: {
+        config: {
+          serverUrl: 'https://memos.example.com',
+          apiKey: 'configured-key',
+          enabled: true,
+          defaultSaveDestination: 'GEOPULSE',
+          defaultVisibility: 'PRIVATE',
+          searchCacheEnabled: true,
+          includeTags: ['travel'],
+          excludeTags: []
+        },
+        loading: false
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-setting-id="memosExcludeTags"] input').setValue('private')
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await findButtonByLabel(wrapper, 'Reset').trigger('click')
+    await flushPromises()
+    expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('saves normalized Memos tag arrays', async () => {
+    const wrapper = mount(MemosTab, {
+      props: {
+        config: {
+          serverUrl: 'https://memos.example.com',
+          apiKey: 'configured-key',
+          enabled: true,
+          defaultSaveDestination: 'GEOPULSE',
+          defaultVisibility: 'PRIVATE',
+          searchCacheEnabled: true,
+          includeTags: [],
+          excludeTags: []
+        },
+        loading: false
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-setting-id="memosIncludeTags"] input').setValue(' #travel, travel, #work ')
+    await wrapper.find('[data-setting-id="memosExcludeTags"] input').setValue('#private, archive')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const savePayload = wrapper.emitted('save').at(-1)[0]
+    expect(savePayload.includeTags).toEqual(['travel', 'work'])
+    expect(savePayload.excludeTags).toEqual(['private', 'archive'])
   })
 })

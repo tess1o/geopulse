@@ -57,6 +57,9 @@ public class SharedLinkDto {
     @JsonProperty("show_photos")
     private Boolean showPhotos;
 
+    @JsonProperty("show_notes")
+    private Boolean showNotes;
+
     @JsonProperty("timeline_status")
     private String timelineStatus;
 

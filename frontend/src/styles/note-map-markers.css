@@ -1,0 +1,139 @@
+.gp-note-marker-wrapper {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.gp-note-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
+  font-size: 0.95rem;
+}
+
+.gp-note-marker--stack {
+  background: #7c3aed;
+}
+
+.gp-note-marker-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.gp-note-popup {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.gp-note-popup-title {
+  margin-bottom: 0.3rem;
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.gp-note-popup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+  color: #64748b;
+  font-size: 0.74rem;
+}
+
+.gp-note-popup-snippet {
+  color: #334155;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.gp-note-popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.gp-note-popup-list-item {
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.gp-note-popup-list-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.gp-note-popup-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gp-note-popup-link:hover {
+  text-decoration: underline;
+}
+
+.gp-note-popup-container .leaflet-popup-content-wrapper,
+.gp-note-popup-container .maplibregl-popup-content {
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 8px;
+}
+
+.p-dark .gp-note-popup-container .leaflet-popup-content-wrapper,
+.p-dark .gp-note-popup-container .maplibregl-popup-content {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(71, 85, 105, 0.7);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.p-dark .gp-note-popup-container .leaflet-popup-tip,
+.p-dark .gp-note-popup-container .maplibregl-popup-tip {
+  background: rgba(15, 23, 42, 0.98);
+}
+
+.p-dark .gp-note-popup-title {
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.p-dark .gp-note-popup-meta {
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.p-dark .gp-note-popup-snippet {
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.p-dark .gp-note-popup-list-item {
+  border-bottom-color: rgba(148, 163, 184, 0.25);
+}
+
+.p-dark .gp-note-popup-link {
+  color: #2dd4bf;
+}

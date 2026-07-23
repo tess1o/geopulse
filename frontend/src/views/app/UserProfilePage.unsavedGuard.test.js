@@ -51,6 +51,12 @@ const mocks = vi.hoisted(() => ({
     configLoading: { value: false },
     fetchConfig: vi.fn().mockResolvedValue(undefined),
     updateConfig: vi.fn().mockResolvedValue(undefined)
+  },
+  notesStore: {
+    memosConfig: { value: null },
+    configLoading: { value: false },
+    fetchMemosConfig: vi.fn().mockResolvedValue(undefined),
+    updateMemosConfig: vi.fn().mockResolvedValue(undefined)
   }
 }))
 
@@ -84,6 +90,10 @@ vi.mock('@/stores/auth', () => ({
 
 vi.mock('@/stores/immich', () => ({
   useImmichStore: () => mocks.immichStore
+}))
+
+vi.mock('@/stores/notes', () => ({
+  useNotesStore: () => mocks.notesStore
 }))
 
 vi.mock('@/utils/apiService', () => ({
@@ -200,6 +210,14 @@ vi.mock('@/components/profile/ImmichTab.vue', () => ({
   }
 }))
 
+vi.mock('@/components/profile/MemosTab.vue', () => ({
+  default: {
+    name: 'MemosTab',
+    emits: ['dirty-change', 'save'],
+    template: '<div />'
+  }
+}))
+
 const mountPage = async () => {
   const wrapper = mount(UserProfilePage, {
     global: {
@@ -230,6 +248,7 @@ describe('UserProfilePage unsaved changes guard', () => {
     mocks.toastAdd.mockClear()
     mocks.authStore.fetchCurrentUserProfile.mockClear()
     mocks.immichStore.fetchConfig.mockClear()
+    mocks.notesStore.fetchMemosConfig.mockClear()
   })
 
   afterEach(() => {

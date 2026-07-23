@@ -101,6 +101,7 @@
         :location-name="placeDetails.locationName"
         :photos="placePhotosForMap"
         :photo-marker-groups="placeMarkerGroupsForMap"
+        :notes="placeNotesForMap"
         @photo-click="handleMapPhotoClick"
       />
 
@@ -115,6 +116,16 @@
         @latest-photos-change="handlePlacePhotosChange"
         @map-markers-change="handlePlaceMarkerGroupsChange"
         @show-on-map="handlePlacePhotoShowOnMap"
+      />
+
+      <PlaceNotesSection
+        v-if="placeNotesSearchParams"
+        :title="`Notes near ${placeDetails.locationName}`"
+        :search-params="placeNotesSearchParams"
+        :in-memory-filter="placeNoteInMemoryFilter"
+        :in-memory-filter-cache-key="placePhotoFilterCacheKey"
+        empty-message="No nearby notes found for this place."
+        @notes-change="handlePlaceNotesChange"
       />
 
       <!-- Visits Table -->
@@ -226,6 +237,7 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import PlaceHeader from '@/components/place/PlaceHeader.vue'
 import PlaceStatsCard from '@/components/place/PlaceStatsCard.vue'
 import PlaceMap from '@/components/place/PlaceMap.vue'
+import PlaceNotesSection from '@/components/place/PlaceNotesSection.vue'
 import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 
@@ -292,7 +304,9 @@ const {
 })
 
 const PLACE_PHOTO_RADIUS_METERS = 100
+const PLACE_NOTES_LIMIT = 5000
 const placePhotoSearchWindow = ref(null)
+const placeNotesForMap = ref([])
 
 // Favorite editor composable (for editing favorite places)
 const {
@@ -383,6 +397,47 @@ const placeImmichSearchParams = computed(() => {
   return params
 })
 
+const placeNotesSearchParams = computed(() => {
+  const firstVisit = placePhotoSearchWindow.value?.minVisit || placeDetails.value?.statistics?.firstVisit
+  const lastVisit = placePhotoSearchWindow.value?.maxVisit || placeDetails.value?.statistics?.lastVisit
+  const geometry = placeDetails.value?.geometry
+
+  if (!firstVisit || !lastVisit || !geometry) {
+    return null
+  }
+
+  const params = {
+    startTime: firstVisit,
+    endTime: lastVisit,
+    includeExternal: true,
+    limit: PLACE_NOTES_LIMIT
+  }
+
+  if (geometry.type === 'area') {
+    const bounds = [
+      geometry.northEast?.[0],
+      geometry.northEast?.[1],
+      geometry.southWest?.[0],
+      geometry.southWest?.[1]
+    ].map((value) => Number(value))
+
+    return bounds.every((value) => Number.isFinite(value)) ? params : null
+  }
+
+  const latitude = Number(geometry.latitude)
+  const longitude = Number(geometry.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null
+  }
+
+  return {
+    ...params,
+    latitude,
+    longitude,
+    radiusMeters: PLACE_PHOTO_RADIUS_METERS
+  }
+})
+
 const placePhotoFilterCacheKey = computed(() => {
   const geometry = placeDetails.value?.geometry
   if (!geometry) {
@@ -408,15 +463,40 @@ const placePhotoFilterCacheKey = computed(() => {
 })
 
 // Methods
-const isPhotoInsideArea = (photoLatitude, photoLongitude, northEast, southWest) => {
+const resetPlaceNotesForMap = () => {
+  placeNotesForMap.value = []
+}
+
+const handlePlaceNotesChange = (notes) => {
+  placeNotesForMap.value = Array.isArray(notes) ? notes : []
+}
+
+const isCoordinateInsideArea = (latitude, longitude, northEast, southWest) => {
   if (!Array.isArray(northEast) || !Array.isArray(southWest)) {
     return false
   }
 
-  return photoLatitude <= northEast[0] &&
-    photoLatitude >= southWest[0] &&
-    photoLongitude <= northEast[1] &&
-    photoLongitude >= southWest[1]
+  const coordinateLatitude = Number(latitude)
+  const coordinateLongitude = Number(longitude)
+  const northEastLatitude = Number(northEast[0])
+  const northEastLongitude = Number(northEast[1])
+  const southWestLatitude = Number(southWest[0])
+  const southWestLongitude = Number(southWest[1])
+
+  if (![coordinateLatitude, coordinateLongitude, northEastLatitude, northEastLongitude, southWestLatitude, southWestLongitude]
+    .every((value) => Number.isFinite(value))) {
+    return false
+  }
+
+  const minLatitude = Math.min(northEastLatitude, southWestLatitude)
+  const maxLatitude = Math.max(northEastLatitude, southWestLatitude)
+  const minLongitude = Math.min(northEastLongitude, southWestLongitude)
+  const maxLongitude = Math.max(northEastLongitude, southWestLongitude)
+
+  return coordinateLatitude <= maxLatitude &&
+    coordinateLatitude >= minLatitude &&
+    coordinateLongitude <= maxLongitude &&
+    coordinateLongitude >= minLongitude
 }
 
 const placePhotoFilterFn = (photo) => {
@@ -430,7 +510,7 @@ const placePhotoFilterFn = (photo) => {
   }
 
   if (geometry.type === 'area' && geometry.northEast && geometry.southWest) {
-    return isPhotoInsideArea(photo.latitude, photo.longitude, geometry.northEast, geometry.southWest)
+    return isCoordinateInsideArea(photo.latitude, photo.longitude, geometry.northEast, geometry.southWest)
   }
 
   if (typeof geometry.latitude !== 'number' || typeof geometry.longitude !== 'number') {
@@ -449,6 +529,22 @@ const placePhotoInMemoryFilter = computed(() => {
   const geometry = placeDetails.value?.geometry
   if (geometry?.type === 'area' && geometry.northEast && geometry.southWest) {
     return placePhotoFilterFn
+  }
+  return null
+})
+
+const placeNoteFilterFn = (note) => {
+  const geometry = placeDetails.value?.geometry
+  if (geometry?.type === 'area' && geometry.northEast && geometry.southWest) {
+    return isCoordinateInsideArea(note?.latitude, note?.longitude, geometry.northEast, geometry.southWest)
+  }
+  return true
+}
+
+const placeNoteInMemoryFilter = computed(() => {
+  const geometry = placeDetails.value?.geometry
+  if (geometry?.type === 'area' && geometry.northEast && geometry.southWest) {
+    return placeNoteFilterFn
   }
   return null
 })
@@ -513,6 +609,7 @@ const loadPlaceData = async () => {
   error.value = null
   placePhotoSearchWindow.value = null
   resetPlacePhotosForMap()
+  resetPlaceNotesForMap()
 
   try {
     // Load place details
@@ -755,6 +852,7 @@ onMounted(async () => {
   // Clear previous data
   placeStore.clearPlaceData()
   resetPlacePhotosForMap()
+  resetPlaceNotesForMap()
 
   // Load new data
   await loadPlaceData()
@@ -769,6 +867,7 @@ watch(
       // Clear previous data
       placeStore.clearPlaceData()
       resetPlacePhotosForMap()
+      resetPlaceNotesForMap()
 
       // Load new data
       await loadPlaceData()

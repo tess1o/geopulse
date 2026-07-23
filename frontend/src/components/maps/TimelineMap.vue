@@ -41,11 +41,15 @@
           :heatmap-available="heatmapAvailable"
           :immich-configured="immichConfigured"
           :immich-loading="immichLoading"
+          :show-notes="showNotesLayer"
+          :show-notes-button="shouldShowNotesLayer"
+          :notes-loading="notesLoading"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
           @toggle-raw-gps-points="handleToggleRawGpsPoints"
           @toggle-immich="toggleImmich"
+          @toggle-notes="toggleNotes"
           @toggle-heatmap="handleToggleHeatmap"
           @heatmap-layer-change="handleHeatmapLayerChange"
           @zoom-to-data="handleZoomToData"
@@ -149,6 +153,18 @@
           @photo-click="handlePhotoClick"
           @photo-hover="handlePhotoHover"
           @error="handleImmichError"
+        />
+
+        <!-- Notes Layer -->
+        <NotesLayer
+          v-if="map && isReady && shouldShowNotesLayer"
+          ref="notesLayerRef"
+          :map="map"
+          :visible="showNotesLayer"
+          :notes="notesForLayer"
+          :load-notes="!props.isPublicView"
+          :can-manage-notes="!props.isPublicView"
+          @error="handleNotesError"
         />
 
         <!-- Current Location Layer -->
@@ -299,7 +315,7 @@ import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 
 // Map components
-import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer, RawGpsPointsLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer} from '@/components/maps'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
@@ -316,6 +332,7 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
 import {useImmichStore} from '@/stores/immich'
+import {useNotesStore} from '@/stores/notes'
 import {useDigestStore} from '@/stores/digest'
 import {useDateRangeStore} from '@/stores/dateRange'
 
@@ -373,6 +390,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  showNotes: {
+    type: Boolean,
+    default: false
+  },
+  notes: {
+    type: Array,
+    default: null
+  },
   customTileUrl: {
     type: String,
     default: null
@@ -406,6 +431,10 @@ const props = defineProps({
     default: false
   },
   showImmichByDefault: {
+    type: Boolean,
+    default: false
+  },
+  showNotesByDefault: {
     type: Boolean,
     default: false
   },
@@ -454,11 +483,13 @@ const {
   showPath,
   showRawGpsPoints,
   showImmich,
+  showNotes: showNotesLayer,
   toggleFavorites,
   toggleTimeline,
   togglePath,
   toggleRawGpsPoints,
-  toggleImmich
+  toggleImmich,
+  toggleNotes
 } = useMapLayers()
 
 const {
@@ -475,6 +506,7 @@ const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const immichStore = useImmichStore()
+const notesStore = useNotesStore()
 const digestStore = useDigestStore()
 const dateRangeStore = useDateRangeStore()
 
@@ -508,6 +540,7 @@ const timelineLayerRef = ref(null)
 const favoritesLayerRef = ref(null)
 const tripPlanLayerRef = ref(null)
 const immichLayerRef = ref(null)
+const notesLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
 const plannedItemContextMenuRef = ref(null)
@@ -606,6 +639,7 @@ const controlsProps = computed(() => ({
 // Immich computed properties
 const immichConfigured = computed(() => immichStore.isConfigured)
 const immichLoading = computed(() => immichStore.photosLoading || immichStore.configLoading)
+const notesLoading = computed(() => notesStore.notesLoading)
 
 // For public views, respect the showPhotos prop; for private views, always allow
 const shouldShowImmich = computed(() => {
@@ -614,6 +648,17 @@ const shouldShowImmich = computed(() => {
   }
   return true // For non-public views, always allow (controlled by toggle)
 })
+
+const shouldShowNotesLayer = computed(() => {
+  if (props.isPublicView) {
+    return props.showNotes
+  }
+  return true
+})
+
+const notesForLayer = computed(() => (
+  Array.isArray(props.notes) ? props.notes : null
+))
 
 const heatmapAvailable = computed(() => {
   return !props.isPublicView && dateRangeStore.hasDateRange && dateRangeStore.isValidRange
@@ -973,6 +1018,31 @@ const handleImmichError = (event) => {
     severity: 'error',
     summary: title,
     detail: detail,
+    life: 5000
+  })
+}
+
+const handleNotesError = (event) => {
+  let title = 'Notes Error'
+  let detail = 'Failed to load notes'
+
+  switch (event.type) {
+    case 'fetch':
+      title = 'Failed to Load Notes'
+      detail = event.message || 'Unable to fetch notes for this date range.'
+      break
+    case 'refresh':
+      title = 'Refresh Failed'
+      detail = event.message || 'Unable to refresh notes. Please try again.'
+      break
+    default:
+      detail = event.message || detail
+  }
+
+  toast.add({
+    severity: 'error',
+    summary: title,
+    detail,
     life: 5000
   })
 }
@@ -1595,6 +1665,9 @@ onMounted(() => {
   }
   if (props.showImmichByDefault) {
     toggleImmich(true)
+  }
+  if (props.showNotesByDefault) {
+    toggleNotes(true)
   }
 })
 

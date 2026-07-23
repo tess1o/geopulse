@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationEntit
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
+import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.hibernate.annotations.Type;
 
@@ -78,6 +79,10 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Type(JsonType.class)
     @Column(columnDefinition = "jsonb", name = "immich_preferences")
     public ImmichPreferences immichPreferences;
+
+    @Type(JsonType.class)
+    @Column(columnDefinition = "jsonb", name = "memos_preferences")
+    public MemosPreferences memosPreferences;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "timeline_status", nullable = false)
