@@ -1,11 +1,21 @@
 {{- $route := .Values.route }}
 {{- if $route.enabled }}
+{{- $useDefaultGateways := $route.useDefaultGateways | default "" }}
+{{- if and $useDefaultGateways (not (or (eq $useDefaultGateways "All") (eq $useDefaultGateways "None"))) }}
+{{- fail "route.useDefaultGateways must be either 'All' or 'None'" }}
+{{- end }}
+{{- if and (empty $route.parentRefs) (ne $useDefaultGateways "All") }}
+{{- fail "route.parentRefs must be set when route.enabled=true, unless route.useDefaultGateways is explicitly set to 'All'" }}
+{{- end }}
 apiVersion: {{ $route.apiVersion | default "gateway.networking.k8s.io/v1" }}
 kind: {{ $route.kind | default "HTTPRoute" }}
 metadata:
   name: {{ include "geopulse.fullname" . }}
   labels:
     {{- include "geopulse.labels" . | nindent 4 }}
+    {{- with $route.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with $route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -15,14 +25,14 @@ spec:
   parentRefs:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- with $route.useDefaultGateways }}
+  useDefaultGateways: {{ . | quote }}
+  {{- end }}
   {{- with $route.hostnames }}
   hostnames:
     {{- tpl (toYaml .) $ | nindent 4 }}
   {{- end }}
   rules:
-    {{- if $route.additionalRules }}
-    {{- tpl (toYaml $route.additionalRules) $ | nindent 4 }}
-    {{- end }}
     {{- if $route.httpsRedirect }}
     - filters:
         - type: RequestRedirect
@@ -30,6 +40,9 @@ spec:
             scheme: https
             statusCode: 301
     {{- else }}
+    {{- if $route.additionalRules }}
+    {{- tpl (toYaml $route.additionalRules) $ | nindent 4 }}
+    {{- end }}
     - backendRefs:
         - group: ''
           kind: Service

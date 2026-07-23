@@ -521,6 +521,34 @@ config:
 helm install geopulse ./helm/geopulse -f production-values.yaml
 ```
 
+### Production Setup with Gateway API
+
+GeoPulse can create a Gateway API `HTTPRoute` for clusters that use Gateway API instead of Ingress. This is disabled by default, so existing installs are unchanged by a normal `helm upgrade`.
+
+When `route.enabled=true`, the route must be attached to a Gateway. The recommended configuration is to set `route.parentRefs` to the Gateway listener that should serve GeoPulse:
+
+```yaml
+# gateway-values.yaml
+route:
+  enabled: true
+  hostnames:
+    - geopulse.example.com
+  parentRefs:
+    - name: public-gateway
+      namespace: gateway-system
+      sectionName: https
+
+config:
+  uiUrl: "https://geopulse.example.com"
+  authSecureCookies: true
+```
+
+```bash
+helm install geopulse ./helm/geopulse -f gateway-values.yaml
+```
+
+If your Gateway API installation uses default Gateways, you can explicitly opt in with `route.useDefaultGateways: All` instead of setting `route.parentRefs`. Leaving both `route.parentRefs` empty and `route.useDefaultGateways` unset is invalid because the `HTTPRoute` would not attach to a Gateway.
+
 ### Enable MQTT Broker
 
 ```yaml
@@ -681,6 +709,21 @@ serviceMonitor:
 | `ingress.hostname`       | Hostname           | `geopulse.example.com` |
 | `ingress.tls.enabled`    | Enable TLS         | `false`                |
 | `ingress.tls.secretName` | TLS secret name    | `geopulse-tls`         |
+
+### Gateway API Route Parameters
+
+| Parameter                  | Description                                                       | Default                     |
+|----------------------------|-------------------------------------------------------------------|-----------------------------|
+| `route.enabled`            | Enable Gateway API route creation                                 | `false`                     |
+| `route.apiVersion`         | Route API version                                                 | `gateway.networking.k8s.io/v1` |
+| `route.kind`               | Route kind                                                        | `HTTPRoute`                 |
+| `route.hostnames`          | Route hostnames                                                   | `[]`                        |
+| `route.parentRefs`         | Gateway parent references. Required unless using default Gateways. | `[]`                        |
+| `route.useDefaultGateways` | Attach to Gateway API default Gateways. Use `All` or `None`.       | `""`                        |
+| `route.matches`            | Route match rules for the default frontend backend                | Path prefix `/`             |
+| `route.filters`            | Filters for the default frontend backend rule                     | `[]`                        |
+| `route.additionalRules`    | Additional custom route rules                                     | `[]`                        |
+| `route.httpsRedirect`      | Create an HTTP-to-HTTPS redirect route                            | `false`                     |
 
 ---
 

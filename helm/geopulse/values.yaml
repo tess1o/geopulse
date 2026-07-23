@@ -595,8 +595,17 @@ route:
 
   # -- Route hostnames
   hostnames: []
-  # -- Reference to parent gateways
+  # -- Reference to parent gateways. Required when route.enabled=true unless useDefaultGateways is set to "All".
+  # Example:
+  # parentRefs:
+  #   - name: public-gateway
+  #     namespace: gateway-system
+  #     sectionName: https
   parentRefs: []
+
+  # -- Attach the route to Gateway API default Gateways. Valid values are "All" or "None".
+  # Leave empty for normal explicit parentRefs-based attachment.
+  useDefaultGateways: ""
 
   # -- Create http route for redirect (https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/#http-to-https-redirects).
   # Take care that you only enable this on the http listener of the gateway to avoid an infinite redirect.

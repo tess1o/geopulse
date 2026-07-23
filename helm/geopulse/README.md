@@ -42,6 +42,23 @@ ingress:
     enabled: true
 ```
 
+### Gateway API / HTTPRoute
+
+GeoPulse can create an optional Gateway API `HTTPRoute` instead of, or alongside, an Ingress. It is disabled by default, so existing installations that run `helm upgrade` without enabling it are unchanged.
+
+When `route.enabled=true`, the route must attach to a Gateway. Set `route.parentRefs` for the Gateway listener you want to use, or explicitly set `route.useDefaultGateways: All` if your Gateway API installation supports default Gateways. See the Gateway API docs for [attaching HTTPRoutes to Gateways](https://gateway-api.sigs.k8s.io/api-types/httproute/#attaching-to-gateways) and [`useDefaultGateways`](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.CommonRouteSpec).
+
+```yaml
+route:
+  enabled: true
+  hostnames:
+    - geopulse.example.com
+  parentRefs:
+    - name: public-gateway
+      namespace: gateway-system
+      sectionName: https
+```
+
 ### Most Common Parameters
 
 | Parameter | Description | Default |
@@ -49,6 +66,7 @@ ingress:
 | `config.uiUrl` | Frontend URL for CORS | `http://localhost:5555` |
 | `config.admin.email` | Admin user email | `""` |
 | `ingress.enabled` | Enable ingress | `false` |
+| `route.enabled` | Enable Gateway API route | `false` |
 | `postgres.persistence.enabled` | Enable PostgreSQL persistence | `true` |
 | `postgres.persistence.size` | PostgreSQL storage size | `10Gi` |
 
@@ -62,6 +80,7 @@ For the complete list of parameters, see the [values.yaml](values.yaml) file or 
 - Flexible configuration via values.yaml
 - Automatic JWT key generation
 - Ingress support with TLS
+- Gateway API HTTPRoute support
 - High availability ready
 
 ## Requirements
@@ -70,6 +89,7 @@ For the complete list of parameters, see the [values.yaml](values.yaml) file or 
 - Helm 3.2.0+
 - PV provisioner for persistence
 - (Optional) Ingress controller
+- (Optional) Gateway API CRDs and a Gateway controller
 - (Optional) cert-manager for TLS
 
 ## Support
