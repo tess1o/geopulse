@@ -58,7 +58,7 @@ public class MemosNoteService {
             throw new IllegalArgumentException("User not found: " + userId);
         }
 
-        MemosPreferences preferences = preferencesService.applyDefaults(user.getMemosPreferences());
+        MemosPreferences     preferences = preferencesService.applyDefaults(user.getMemosPreferences());
         if (!Boolean.TRUE.equals(preferences.getEnabled())) {
             return List.of();
         }
