@@ -525,7 +525,7 @@ helm install geopulse ./helm/geopulse -f production-values.yaml
 
 GeoPulse can create a Gateway API `HTTPRoute` for clusters that use Gateway API instead of Ingress. This is disabled by default, so existing installs are unchanged by a normal `helm upgrade`.
 
-When `route.enabled=true`, the route must be attached to a Gateway. The recommended configuration is to set `route.parentRefs` to the Gateway listener that should serve GeoPulse:
+When `route.enabled=true`, the route must be attached to a Gateway. The recommended configuration is to set `route.parentRefs` to the Gateway listener that should serve GeoPulse. This follows the Gateway API model for [attaching HTTPRoutes to Gateways](https://gateway-api.sigs.k8s.io/api-types/httproute/#attaching-to-gateways).
 
 ```yaml
 # gateway-values.yaml
@@ -547,7 +547,7 @@ config:
 helm install geopulse ./helm/geopulse -f gateway-values.yaml
 ```
 
-If your Gateway API installation uses default Gateways, you can explicitly opt in with `route.useDefaultGateways: All` instead of setting `route.parentRefs`. Leaving both `route.parentRefs` empty and `route.useDefaultGateways` unset is invalid because the `HTTPRoute` would not attach to a Gateway.
+If your Gateway API installation uses default Gateways, you can explicitly opt in with `route.useDefaultGateways: All` instead of setting `route.parentRefs`. Leaving both `route.parentRefs` empty and `route.useDefaultGateways` unset is invalid because the `HTTPRoute` would not attach to a Gateway. See the Gateway API [`useDefaultGateways` field](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.CommonRouteSpec) for the upstream behavior.
 
 ### Enable MQTT Broker
 
