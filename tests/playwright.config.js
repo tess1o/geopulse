@@ -9,6 +9,7 @@ const isolatedSpecs = [
   '**/gps-data.spec.js',
   '**/data-export-import.spec.js',
   '**/timeline.spec.js',
+  '**/timeline-notes.spec.js',
   '**/user-registration.spec.js',
   '**/user-validation.spec.js',
   '**/geocoding-management-visibility.spec.js',

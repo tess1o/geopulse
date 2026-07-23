@@ -33,6 +33,7 @@ export class DatabaseManager {
 
         // Clear all data from tables (in reverse dependency order)
         const clearQueries = [
+            'TRUNCATE TABLE timeline_notes CASCADE',
             'TRUNCATE TABLE timeline_trips CASCADE',
             'TRUNCATE TABLE timeline_stays CASCADE',
             'TRUNCATE TABLE timeline_data_gaps CASCADE',
