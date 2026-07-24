@@ -154,6 +154,56 @@ export const SETTING_METADATA = {
     description: 'Delay between ChibiGeo requests (milliseconds)'
   },
 
+  // Weather Settings
+  'weather.enabled': {
+    label: 'Weather Enabled',
+    description: 'Enable weather samples for timeline stays and trips'
+  },
+  'weather.open-meteo.forecast-url': {
+    label: 'Forecast URL',
+    description: 'Open-Meteo forecast API base URL'
+  },
+  'weather.open-meteo.archive-url': {
+    label: 'Archive URL',
+    description: 'Open-Meteo historical archive API base URL'
+  },
+  'weather.open-meteo.api-key': {
+    label: 'Open-Meteo API Key',
+    description: 'Optional Open-Meteo API key (encrypted)'
+  },
+  'weather.ongoing.enabled': {
+    label: 'Ongoing Weather',
+    description: 'Create weather targets for active latest stays and trips'
+  },
+  'weather.ongoing.interval-minutes': {
+    label: 'Ongoing Interval',
+    description: 'Minimum minutes between ongoing weather samples (minimum 30)'
+  },
+  'weather.backfill.enabled': {
+    label: 'Backfill Enabled',
+    description: 'Discover historical weather targets automatically'
+  },
+  'weather.quota.daily-request-limit': {
+    label: 'Daily Request Limit',
+    description: 'Maximum provider requests per UTC day'
+  },
+  'weather.quota.ongoing-reserve': {
+    label: 'Ongoing Reserve',
+    description: 'Requests reserved for ongoing weather samples each day'
+  },
+  'weather.coordinate-precision': {
+    label: 'Coordinate Precision',
+    description: 'Decimal precision for weather location buckets'
+  },
+  'weather.failed-target-retry.enabled': {
+    label: 'Retry Failed Targets',
+    description: 'Retry stale failed weather targets after cooldown'
+  },
+  'weather.failed-target-retry.cooldown-hours': {
+    label: 'Failed Retry Cooldown',
+    description: 'Hours before a failed weather target can be retried'
+  },
+
   // Import Settings
   'import.bulk-insert-batch-size': {
     label: 'Bulk Insert Batch Size',

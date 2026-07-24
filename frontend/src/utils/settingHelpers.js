@@ -57,6 +57,12 @@ export function getPlaceholder(setting) {
   }
 
   if (setting.key.includes('.url')) {
+    if (setting.key.includes('open-meteo.forecast')) {
+      return 'https://api.open-meteo.com'
+    }
+    if (setting.key.includes('open-meteo.archive')) {
+      return 'https://archive-api.open-meteo.com'
+    }
     return 'Optional custom URL'
   }
 

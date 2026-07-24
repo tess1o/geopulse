@@ -5,7 +5,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.insight.model.UserBadgeEntity;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped

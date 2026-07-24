@@ -119,6 +119,18 @@
         <i class="pi pi-file-edit"></i>
         <span v-if="notesLoading" class="loading-indicator"></span>
       </button>
+
+      <button
+        v-if="showWeatherButton"
+        @click="handleToggleWeather"
+        :class="{ active: showWeather, 'weather-loading': weatherLoading }"
+        :title="showWeather ? 'Hide Weather' : 'Show Weather'"
+        class="control-button"
+        :disabled="!map || weatherLoading"
+      >
+        <i class="pi pi-cloud"></i>
+        <span v-if="weatherLoading" class="loading-indicator"></span>
+      </button>
     </div>
 
     <div v-if="showZoomControls" class="control-group">
@@ -209,6 +221,18 @@ const props = defineProps({
   notesLoading: {
     type: Boolean,
     default: false
+  },
+  showWeather: {
+    type: Boolean,
+    default: false
+  },
+  showWeatherButton: {
+    type: Boolean,
+    default: false
+  },
+  weatherLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -219,6 +243,7 @@ const emit = defineEmits([
   'toggle-raw-gps-points',
   'toggle-immich',
   'toggle-notes',
+  'toggle-weather',
   'toggle-heatmap',
   'heatmap-layer-change',
   'zoom-to-data'
@@ -246,6 +271,10 @@ const handleToggleImmich = () => {
 
 const handleToggleNotes = () => {
   emit('toggle-notes', !props.showNotes)
+}
+
+const handleToggleWeather = () => {
+  emit('toggle-weather', !props.showWeather)
 }
 
 const handleZoomToData = () => {

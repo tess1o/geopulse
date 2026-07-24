@@ -12,7 +12,6 @@ import org.github.tess1o.geopulse.trips.repository.TripPlaceVisitMatchRepository
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 import org.github.tess1o.geopulse.trips.repository.TripRepository;
 
-import java.time.Instant;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;

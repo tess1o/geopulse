@@ -10,6 +10,7 @@
           🕐 {{ getTimestampText() }}
         </p>
         <div class="timeline-title-actions">
+          <TimelineWeatherSummary :samples="weatherSamples" />
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
@@ -85,6 +86,7 @@ import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
+import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
 
 const timezone = useTimezone()
 const router = useRouter()
@@ -105,6 +107,10 @@ const props = defineProps({
     default: () => []
   },
   notes: {
+    type: Array,
+    default: () => []
+  },
+  weatherSamples: {
     type: Array,
     default: () => []
   },
@@ -380,6 +386,8 @@ const navigateToCountryDetails = () => {
   font-size: 0.95rem;
   margin: 0;
   line-height: 1.2;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .timeline-title-row {
@@ -387,6 +395,7 @@ const navigateToCountryDetails = () => {
   align-items: center;
   justify-content: space-between;
   gap: var(--gp-spacing-sm);
+  flex-wrap: wrap;
 }
 
 .timeline-title-actions {
@@ -394,6 +403,8 @@ const navigateToCountryDetails = () => {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .timeline-subtitle {

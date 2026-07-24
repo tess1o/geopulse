@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.admin.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 
 import java.time.Instant;
 import java.util.*;
@@ -31,6 +33,7 @@ public class SystemSettingsService {
     private final SystemSettingsRepository repository;
     private final Config config;
     private final AIEncryptionService encryptionService;
+    private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
     private static final String DEFAULT_MEASURE_UNIT_KEY = "system.user.default-measure-unit";
@@ -123,6 +126,32 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.gps.max-allowed-accuracy", "100", ValueType.INTEGER, "gps", "Max allowed accuracy (meters)"));
         SETTING_DEFINITIONS.put("gps.max-allowed-speed",
                 new SettingDefinition("geopulse.gps.max-allowed-speed", "250", ValueType.INTEGER, "gps", "Max allowed speed (km/h)"));
+
+        // Weather settings
+        SETTING_DEFINITIONS.put("weather.enabled",
+                new SettingDefinition("geopulse.weather.enabled", "true", ValueType.BOOLEAN, "weather", "Enable weather samples for timeline stays and trips"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.forecast-url",
+                new SettingDefinition("geopulse.weather.open-meteo.forecast-url", "https://api.open-meteo.com", ValueType.STRING, "weather", "Open-Meteo forecast API base URL"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.archive-url",
+                new SettingDefinition("geopulse.weather.open-meteo.archive-url", "https://archive-api.open-meteo.com", ValueType.STRING, "weather", "Open-Meteo archive API base URL"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.api-key",
+                new SettingDefinition("geopulse.weather.open-meteo.api-key", "", ValueType.ENCRYPTED, "weather", "Optional Open-Meteo API key (encrypted)"));
+        SETTING_DEFINITIONS.put("weather.ongoing.enabled",
+                new SettingDefinition("geopulse.weather.ongoing.enabled", "true", ValueType.BOOLEAN, "weather", "Fetch weather for active latest stays/trips"));
+        SETTING_DEFINITIONS.put("weather.ongoing.interval-minutes",
+                new SettingDefinition("geopulse.weather.ongoing.interval-minutes", "60", ValueType.INTEGER, "weather", "Minimum minutes between ongoing weather samples"));
+        SETTING_DEFINITIONS.put("weather.backfill.enabled",
+                new SettingDefinition("geopulse.weather.backfill.enabled", "false", ValueType.BOOLEAN, "weather", "Enable historical weather backfill target discovery"));
+        SETTING_DEFINITIONS.put("weather.quota.daily-request-limit",
+                new SettingDefinition("geopulse.weather.quota.daily-request-limit", "10000", ValueType.INTEGER, "weather", "Daily provider request limit"));
+        SETTING_DEFINITIONS.put("weather.quota.ongoing-reserve",
+                new SettingDefinition("geopulse.weather.quota.ongoing-reserve", "500", ValueType.INTEGER, "weather", "Daily request reserve kept for ongoing weather samples"));
+        SETTING_DEFINITIONS.put("weather.coordinate-precision",
+                new SettingDefinition("geopulse.weather.coordinate-precision", "2", ValueType.INTEGER, "weather", "Decimal precision for weather coordinate buckets"));
+        SETTING_DEFINITIONS.put("weather.failed-target-retry.enabled",
+                new SettingDefinition("geopulse.weather.failed-target-retry.enabled", "true", ValueType.BOOLEAN, "weather", "Retry stale failed weather targets after cooldown"));
+        SETTING_DEFINITIONS.put("weather.failed-target-retry.cooldown-hours",
+                new SettingDefinition("geopulse.weather.failed-target-retry.cooldown-hours", "24", ValueType.INTEGER, "weather", "Hours before a failed weather target can be retried"));
 
         // Import settings
         SETTING_DEFINITIONS.put("import.bulk-insert-batch-size",
@@ -218,9 +247,11 @@ public class SystemSettingsService {
     @Inject
     public SystemSettingsService(
             SystemSettingsRepository repository,
-            AIEncryptionService encryptionService) {
+            AIEncryptionService encryptionService,
+            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
         this.repository = repository;
         this.encryptionService = encryptionService;
+        this.weatherSettingsChangedEvent = weatherSettingsChangedEvent;
         this.config = ConfigProvider.getConfig();
     }
 
@@ -371,6 +402,7 @@ public class SystemSettingsService {
         }
 
         log.info("Setting {} updated by user {}", key, updatedBy);
+        fireWeatherSettingsChanged(key);
     }
 
     /**
@@ -380,6 +412,13 @@ public class SystemSettingsService {
     public void resetToDefault(String key) {
         repository.deleteByKey(key);
         log.info("Setting {} reset to default", key);
+        fireWeatherSettingsChanged(key);
+    }
+
+    private void fireWeatherSettingsChanged(String key) {
+        if (key != null && key.startsWith("weather.")) {
+            weatherSettingsChangedEvent.fire(new WeatherSettingsChangedEvent(key));
+        }
     }
 
     /**
@@ -440,7 +479,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "gps", "import", "export", "system")) {
+        for (String category : List.of("auth", "geocoding", "weather", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 
@@ -483,6 +522,30 @@ public class SystemSettingsService {
         }
         if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
             parseMeasureUnit(value);
+        }
+        if ("weather.ongoing.interval-minutes".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 30) {
+                throw new IllegalArgumentException("Setting " + key + " must be at least 30 minutes");
+            }
+        }
+        if ("weather.quota.daily-request-limit".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 0) {
+                throw new IllegalArgumentException("Setting " + key + " must be zero or greater");
+            }
+        }
+        if ("weather.quota.ongoing-reserve".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 0) {
+                throw new IllegalArgumentException("Setting " + key + " must be zero or greater");
+            }
+        }
+        if ("weather.coordinate-precision".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 0 || parsed > 5) {
+                throw new IllegalArgumentException("Setting " + key + " must be between 0 and 5");
+            }
         }
     }
 

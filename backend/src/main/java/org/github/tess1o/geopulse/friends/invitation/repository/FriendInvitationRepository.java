@@ -6,7 +6,6 @@ import org.github.tess1o.geopulse.friends.invitation.model.InvitationStatus;
 import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationEntity;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped

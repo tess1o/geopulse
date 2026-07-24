@@ -83,6 +83,47 @@
         </Card>
       </div>
 
+      <Card class="weather-health-card">
+        <template #content>
+          <div class="weather-health-header">
+            <div>
+              <p class="stat-label">Weather Health</p>
+              <h3 class="weather-health-title">
+                <Skeleton v-if="loading" width="8rem" height="1.75rem" />
+                <template v-else>{{ weatherHealthLabel }}</template>
+              </h3>
+            </div>
+            <Tag
+              v-if="!loading"
+              :value="weatherHealthBadge"
+              :severity="weatherHealthSeverity"
+            />
+          </div>
+
+          <div v-if="loading" class="weather-health-details">
+            <Skeleton width="100%" height="1rem" />
+            <Skeleton width="75%" height="1rem" />
+          </div>
+          <div v-else class="weather-health-details">
+            <div class="weather-health-row">
+              <span>Provider</span>
+              <strong>{{ stats.weatherStatus?.provider || 'OPEN_METEO' }}</strong>
+            </div>
+            <div class="weather-health-row">
+              <span>Daily quota</span>
+              <strong>{{ formatNumber(stats.weatherStatus?.requestsRemainingToday || 0) }} remaining</strong>
+            </div>
+            <div v-if="weatherProviderHealth?.lastErrorMessage" class="weather-health-message">
+              {{ weatherProviderHealth.lastErrorMessage }}
+            </div>
+            <div v-if="weatherNextAction" class="weather-health-row">
+              <span>{{ weatherNextAction.label }}</span>
+              <strong>{{ weatherNextAction.value }}</strong>
+            </div>
+          </div>
+        </template>
+      </Card>
+
     <!-- Quick Actions -->
     <div class="quick-actions-grid">
       <!-- User Management -->
@@ -132,12 +173,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Skeleton from 'primevue/skeleton'
 import Breadcrumb from 'primevue/breadcrumb'
+import Tag from 'primevue/tag'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import adminService from '@/utils/adminService'
 
@@ -158,7 +200,8 @@ const stats = ref({
   totalUsers: 0,
   activeUsers24h: 0,
   totalGpsPoints: 0,
-  gpsActivity24h: 0
+  gpsActivity24h: 0,
+  weatherStatus: null
 })
 
 const loading = ref(false)
@@ -170,6 +213,66 @@ const formatNumber = (num) => {
     return (num / 1000).toFixed(1) + 'K'
   }
   return num.toString()
+}
+
+const weatherProviderHealth = computed(() => stats.value.weatherStatus?.providerHealth || null)
+
+const hasWeatherStatus = computed(() => !!stats.value.weatherStatus)
+
+const weatherHealthBadge = computed(() => weatherProviderHealth.value?.status || 'UNKNOWN')
+
+const weatherHealthLabel = computed(() => {
+  const status = weatherProviderHealth.value?.status
+  switch (status) {
+    case 'HEALTHY':
+      return 'Operational'
+    case 'PROVIDER_QUOTA_EXCEEDED':
+      return 'Open-Meteo quota reached'
+    case 'INTERNAL_QUOTA_EXCEEDED':
+      return 'Internal quota reached'
+    case 'PROVIDER_UNAVAILABLE':
+      return 'Provider unavailable'
+    case 'CONFIG_ERROR':
+      return 'Configuration error'
+    default:
+      if (!hasWeatherStatus.value) return 'Unknown'
+      return stats.value.weatherStatus?.enabled ? 'Unknown' : 'Disabled'
+  }
+})
+
+const weatherHealthSeverity = computed(() => {
+  const status = weatherProviderHealth.value?.status
+  if (status === 'HEALTHY') return 'success'
+  if (status === 'PROVIDER_QUOTA_EXCEEDED' || status === 'INTERNAL_QUOTA_EXCEEDED') return 'warn'
+  if (status === 'PROVIDER_UNAVAILABLE' || status === 'CONFIG_ERROR') return 'danger'
+  return 'secondary'
+})
+
+const weatherNextAction = computed(() => {
+  const health = weatherProviderHealth.value
+  if (!health) return null
+  if (health.circuitOpenUntil) {
+    return { label: 'Paused until', value: formatDateTime(health.circuitOpenUntil) }
+  }
+  if (health.nextProbeAt) {
+    return { label: 'Next probe', value: formatDateTime(health.nextProbeAt) }
+  }
+  if (health.lastSuccessAt) {
+    return { label: 'Last success', value: formatDateTime(health.lastSuccessAt) }
+  }
+  return null
+})
+
+const formatDateTime = (value) => {
+  if (!value) return ''
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(new Date(value))
+  } catch {
+    return value
+  }
 }
 
 const loadStats = async () => {
@@ -303,6 +406,59 @@ onMounted(() => {
 
 .stat-icon-purple {
   color: var(--purple-500);
+}
+
+.weather-health-card {
+  margin-top: 1.5rem;
+}
+
+.weather-health-card :deep(.p-card-body) {
+  padding: 1.25rem;
+}
+
+.weather-health-card :deep(.p-card-content) {
+  padding: 0;
+}
+
+.weather-health-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.weather-health-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.weather-health-details {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.weather-health-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-color-secondary);
+}
+
+.weather-health-row strong {
+  color: var(--text-color);
+  text-align: right;
+}
+
+.weather-health-message {
+  padding: 0.75rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  color: var(--text-color);
+  background: var(--surface-ground);
+  overflow-wrap: anywhere;
 }
 
 /* Quick Actions Grid */

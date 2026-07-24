@@ -14,8 +14,6 @@ import org.locationtech.jts.geom.Point;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.Map;
-
 
 @Entity
 @Getter

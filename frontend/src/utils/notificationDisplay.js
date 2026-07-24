@@ -33,6 +33,13 @@ const NOTIFICATION_SOURCE_CONFIG = {
     severity: 'secondary',
     route: '/app/friends/live',
     actionLabel: 'Open Friends'
+  },
+  WEATHER: {
+    sourceLabel: 'Weather',
+    icon: 'pi pi-cloud',
+    severity: 'warn',
+    route: '/app/admin/dashboard',
+    actionLabel: 'Open Admin Dashboard'
   }
 }
 
@@ -88,6 +95,20 @@ const NOTIFICATION_TYPE_CONFIG = {
     typeLabel: 'Friend accepted',
     route: '/app/friends/live',
     actionLabel: 'Open Friends'
+  },
+  WEATHER_QUOTA_REACHED: {
+    typeLabel: 'Weather quota reached',
+    icon: 'pi pi-exclamation-triangle',
+    severity: 'warn',
+    route: '/app/admin/dashboard',
+    actionLabel: 'Open Admin Dashboard'
+  },
+  WEATHER_QUOTA_RESTORED: {
+    typeLabel: 'Weather quota restored',
+    icon: 'pi pi-check-circle',
+    severity: 'success',
+    route: '/app/admin/dashboard',
+    actionLabel: 'Open Admin Dashboard'
   }
 }
 
@@ -115,6 +136,10 @@ const TARGET_ROUTE_CONFIG = [
   {
     prefix: '/app/friends',
     actionLabel: 'Open Friends'
+  },
+  {
+    prefix: '/app/admin/dashboard',
+    actionLabel: 'Open Admin Dashboard'
   }
 ]
 

@@ -20,6 +20,8 @@ import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
 import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
+import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
+import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -57,6 +59,9 @@ public class AdminSettingsResource {
 
     @Inject
     AppriseNotificationService appriseNotificationService;
+
+    @Inject
+    WeatherService weatherService;
 
     /**
      * Get all settings grouped by category.
@@ -232,6 +237,26 @@ public class AdminSettingsResource {
         responsePayload.put("success", result.isSuccess());
         responsePayload.put("statusCode", result.getStatusCode());
         responsePayload.put("message", message);
+
+        if (result.isSuccess()) {
+            return Response.ok(responsePayload).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(responsePayload)
+                .build();
+    }
+
+    @POST
+    @Path("/weather/test")
+    public Response testWeatherConnection() {
+        WeatherTestResponse result = weatherService.testProviderConnection();
+        Map<String, Object> responsePayload = new LinkedHashMap<>();
+        responsePayload.put("success", result.isSuccess());
+        responsePayload.put("statusCode", result.getStatusCode());
+        responsePayload.put("message", result.getMessage());
+        responsePayload.put("provider", result.getProvider());
+        responsePayload.put("url", result.getUrl());
 
         if (result.isSuccess()) {
             return Response.ok(responsePayload).build();

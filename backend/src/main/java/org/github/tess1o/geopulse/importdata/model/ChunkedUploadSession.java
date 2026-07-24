@@ -21,7 +21,7 @@ public class ChunkedUploadSession {
     private int totalChunks;
     private String importFormat;
     private String options;  // JSON string of import options
-    private Set<Integer> receivedChunks = ConcurrentHashMap.newKeySet();
+    private Set<Integer> receivedChunks;
     private Instant createdAt;
     private Instant expiresAt;
     private String tempDirectoryPath;  // /tmp/geopulse/chunks/{uploadId}/

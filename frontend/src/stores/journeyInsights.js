@@ -27,6 +27,7 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
         timePatterns: (state) => state.insights?.timePatterns || {},
         achievements: (state) => state.insights?.achievements || {},
         distance: (state) => state.insights?.distanceTraveled || {},
+        weather: (state) => state.insights?.weather || null,
         
         // Cache status
         isStale: (state) => {

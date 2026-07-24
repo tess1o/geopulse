@@ -13,6 +13,10 @@ import org.github.tess1o.geopulse.insight.model.*;
         GeographicInsights.class,
         JourneyInsights.class,
         TimePatterns.class,
+        WeatherConditionInsight.class,
+        WeatherDailyPrecipitationInsight.class,
+        WeatherInsights.class,
+        WeatherSampleInsight.class,
 })
 public class InsightNativeConfig {
 }

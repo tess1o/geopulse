@@ -114,7 +114,7 @@ class GeocodingValidationServiceTest {
 
     private static final class StubSettingsService extends SystemSettingsService {
         private StubSettingsService() {
-            super(null, null);
+            super(null, null, null);
         }
 
         @Override

@@ -101,6 +101,7 @@
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
               :notes="notesForCards"
+              :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
@@ -115,6 +116,7 @@
               :stay-item="slotProps.item"
               :immich-photos="immichPhotosForCards"
               :notes="notesForCards"
+              :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
@@ -131,6 +133,7 @@
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
               :notes="notesForCards"
+              :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
@@ -146,6 +149,7 @@
               :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
               :notes="notesForCards"
+              :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
@@ -218,6 +222,7 @@ import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
+import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -277,6 +282,10 @@ const props = defineProps({
   notes: {
     type: Array,
     default: null
+  },
+  weatherSamples: {
+    type: Array,
+    default: () => []
   },
   isPublicView: {
     type: Boolean,
@@ -435,6 +444,13 @@ const nextItemByTimelineOrder = computed(() => {
 
 const getNextTimelineItem = (item) => {
   return nextItemByTimelineOrder.value.get(item) || null
+}
+
+const getWeatherSamplesForItem = (item) => {
+  if (props.isPublicView) {
+    return []
+  }
+  return getWeatherSamplesForTimelineItem(item, props.weatherSamples)
 }
 
 // Methods

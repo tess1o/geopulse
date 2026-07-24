@@ -15,7 +15,7 @@
 
 GeoPulse transforms raw GPS data from OwnTracks, Overland, Dawarich, GPSLogger, Home Assistant, Traccar, Colota and other sources into a
 searchable timeline of stays, trips, and movement patterns. It runs fully on your own infrastructure and integrates with
-**Immich** so your photos appear directly on your map history.
+**Immich**, **Memos**, and **Weather** so photos, notes, and conditions appear directly on your map history.
 
 <div align="center">
   <img src="images/Timeline.jpg" alt="GeoPulse Timeline" width="800" style="border-radius: 8px;"/>
@@ -46,7 +46,7 @@ Need MQTT, custom domains, hardening, or another platform? See the [deployment o
 ## Why GeoPulse
 
 - **Privacy-first and self-hosted:** Your location data remains on your own infrastructure.
-- **Open ecosystem:** Works with popular GPS apps (OwnTracks, Overland) and tools like Immich/Home Assistant.
+- **Open ecosystem:** Works with popular GPS apps (OwnTracks, Overland, GPSLogger, Home Assistant, Colota, Traccar) and tools like Immich, Memos, and Weather.
 - **Full data ownership:** Import historical data and export your data in standard formats anytime.
 - **Lightweight runtime:** Typically under 100MB RAM and under 1% CPU in regular usage.
 
@@ -60,6 +60,8 @@ Need MQTT, custom domains, hardening, or another platform? See the [deployment o
 - **Custom Logic:** Fully configurable detection sensitivity and travel mode classification.
 - **Deep Insights:** Analytics for distance, visit frequency, and movement patterns over time.
 - **Immich Integration:** Photos from your library appear directly on your map timeline.
+- **Memos Integration:** Timestamped notes from Memos can appear alongside your timeline.
+- **Weather Integration:** Current weather enrichment is enabled by default for trips, stays, map layers, and journey insights; historical backfill is admin opt-in.
 
 **Sources & Syncing**
 

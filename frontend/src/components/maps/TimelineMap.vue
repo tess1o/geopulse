@@ -44,12 +44,16 @@
           :show-notes="showNotesLayer"
           :show-notes-button="shouldShowNotesLayer"
           :notes-loading="notesLoading"
+          :show-weather="showWeather"
+          :show-weather-button="!props.isPublicView && weatherSamples.length > 0"
+          :weather-loading="timelineStore.weatherLoading"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
           @toggle-raw-gps-points="handleToggleRawGpsPoints"
           @toggle-immich="toggleImmich"
           @toggle-notes="toggleNotes"
+          @toggle-weather="toggleWeather"
           @toggle-heatmap="handleToggleHeatmap"
           @heatmap-layer-change="handleHeatmapLayerChange"
           @zoom-to-data="handleZoomToData"
@@ -165,6 +169,14 @@
           :load-notes="!props.isPublicView"
           :can-manage-notes="!props.isPublicView"
           @error="handleNotesError"
+        />
+
+        <WeatherLayer
+          v-if="map && isReady && !props.isPublicView"
+          :map="map"
+          :samples="weatherSamples"
+          :visible="showWeather"
+          :highlighted-item="activeTimelineHighlight"
         />
 
         <!-- Current Location Layer -->
@@ -315,7 +327,7 @@ import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 
 // Map components
-import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
@@ -397,6 +409,10 @@ const props = defineProps({
   notes: {
     type: Array,
     default: null
+  },
+  weatherSamples: {
+    type: Array,
+    default: () => []
   },
   customTileUrl: {
     type: String,
@@ -484,12 +500,14 @@ const {
   showRawGpsPoints,
   showImmich,
   showNotes: showNotesLayer,
+  showWeather,
   toggleFavorites,
   toggleTimeline,
   togglePath,
   toggleRawGpsPoints,
   toggleImmich,
-  toggleNotes
+  toggleNotes,
+  toggleWeather
 } = useMapLayers()
 
 const {
