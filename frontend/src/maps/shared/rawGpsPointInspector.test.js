@@ -5,7 +5,7 @@ vi.mock('@/utils/calculationsHelpers', () => ({
 }))
 
 import {
-  createRawGpsPopupElement,
+  createRawGpsPopupMount,
   groupRawGpsPoints,
   STATIONARY_GROUP_METERS
 } from './rawGpsPointInspector'
@@ -103,10 +103,11 @@ describe('raw GPS point inspector grouping', () => {
       pointOffsetByMeters(2, 4, 4)
     ])[0]
 
-    const element = createRawGpsPopupElement(group, {
+    const popupMount = createRawGpsPopupMount(group, {
       timezone,
       onRender
     })
+    const element = popupMount.element
 
     await waitForRenderNotification()
     const initialRenderCount = onRender.mock.calls.length
@@ -117,9 +118,10 @@ describe('raw GPS point inspector grouping', () => {
 
     await waitForRenderNotification()
     expect(onRender.mock.calls.length).toBeGreaterThan(initialRenderCount)
+    popupMount.unmount()
   })
 
-  it('shows exact selected point telemetry for stacked GPS popups', () => {
+  it('shows exact selected point telemetry for stacked GPS popups', async () => {
     const group = groupRawGpsPoints([
       {
         ...pointOffsetByMeters(1, 0, 0),
@@ -137,7 +139,8 @@ describe('raw GPS point inspector grouping', () => {
       }
     ])[0]
 
-    const element = createRawGpsPopupElement(group, { timezone })
+    const popupMount = createRawGpsPopupMount(group, { timezone })
+    const element = popupMount.element
 
     expect(getPopupGridValue(element, 'Accuracy')).toBe('4m')
     expect(getPopupGridValue(element, 'Battery')).toBe('82%')
@@ -145,11 +148,13 @@ describe('raw GPS point inspector grouping', () => {
     expect(getPopupGridValue(element, 'Altitude')).toBe('12m')
 
     element.querySelectorAll('.raw-gps-stack-row')[1].click()
+    await waitForRenderNotification()
 
     expect(getPopupGridValue(element, 'Accuracy')).toBe('19m')
     expect(getPopupGridValue(element, 'Battery')).toBe('71%')
     expect(getPopupGridValue(element, 'Speed')).toBe('12.00 km/h')
     expect(getPopupGridValue(element, 'Altitude')).toBe('24m')
+    popupMount.unmount()
   })
 
   it('includes compact speed and battery values in each stack row', () => {
@@ -168,7 +173,8 @@ describe('raw GPS point inspector grouping', () => {
       }
     ])[0]
 
-    const element = createRawGpsPopupElement(group, { timezone })
+    const popupMount = createRawGpsPopupMount(group, { timezone })
+    const element = popupMount.element
     const rows = element.querySelectorAll('.raw-gps-stack-row')
 
     expect(rows).toHaveLength(2)
@@ -180,5 +186,6 @@ describe('raw GPS point inspector grouping', () => {
 
     expect(rows[1].textContent).toContain('12.00 km/h')
     expect(rows[1].textContent).toContain('N/A')
+    popupMount.unmount()
   })
 })

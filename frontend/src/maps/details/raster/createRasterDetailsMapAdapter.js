@@ -1,6 +1,12 @@
 import L from 'leaflet'
 import { toFiniteCoordinate } from '@/maps/shared/coordinateUtils'
-import { escapeHtml } from '@/maps/shared/popupContentBuilders'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
+import { formatDuration } from '@/utils/durationFormatter'
 
 const toTripPathCoordinates = (tripPoints) => {
   if (!Array.isArray(tripPoints)) {
@@ -26,25 +32,23 @@ const createTripEndpointIcon = (type) => L.divIcon({
   iconAnchor: [15, 15]
 })
 
-const buildStayPopupHtml = (stay, fallbackFormatter) => {
-  if (typeof fallbackFormatter === 'function') {
-    return fallbackFormatter(stay)
-  }
-
-  const durationText = formatDuration(stay?.stayDuration)
-
-  return `
-    <div class="marker-popup">
-      <strong>${escapeHtml(stay?.locationName || 'Unknown Location')}</strong><br/>
-      ${stay?.address ? `<span>${escapeHtml(stay.address)}</span><br/>` : ''}
-      <small>Duration: ${escapeHtml(durationText)}</small>
-    </div>
-  `
-}
+const buildDetailsStayPopupModel = (stay) => ({
+  title: stay?.locationName || 'Unknown location',
+  subtitle: stay?.address || '',
+  iconClass: 'pi pi-map-marker',
+  rows: [
+    {
+      label: 'Duration',
+      value: formatDuration(stay?.stayDuration)
+    }
+  ],
+  variant: 'compact'
+})
 
 export const createRasterDetailsMapAdapter = (callbacks = {}) => {
   let map = null
   let layerGroup = null
+  let stayPopupMount = null
 
   const ensureLayerGroup = () => {
     if (!map) {
@@ -59,6 +63,9 @@ export const createRasterDetailsMapAdapter = (callbacks = {}) => {
   }
 
   const clear = () => {
+    stayPopupMount?.unmount?.()
+    stayPopupMount = null
+
     if (!map || !layerGroup) {
       return
     }
@@ -85,10 +92,18 @@ export const createRasterDetailsMapAdapter = (callbacks = {}) => {
 
     clear()
 
-    const marker = L.marker([latitude, longitude])
-      .addTo(activeLayerGroup)
-      .bindPopup(buildStayPopupHtml(stay, callbacks.buildStayPopupHtml))
-      .openPopup()
+    const marker = L.marker([latitude, longitude]).addTo(activeLayerGroup)
+    if (typeof callbacks.buildStayPopupHtml === 'function') {
+      marker.bindPopup(callbacks.buildStayPopupHtml(stay)).openPopup()
+    } else {
+      stayPopupMount = mountMapPopup(MapInfoPopup, buildDetailsStayPopupModel(stay))
+      marker
+        .bindPopup(stayPopupMount.element, {
+          maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+          className: getMapPopupVariantClassName('compact', 'gp-details-stay-popup-container')
+        })
+        .openPopup()
+    }
 
     map.setView([latitude, longitude], 16)
 
@@ -158,24 +173,4 @@ export const createRasterDetailsMapAdapter = (callbacks = {}) => {
     clear,
     destroy
   }
-}
-
-function formatDuration(seconds) {
-  if (!seconds) {
-    return 'Unknown'
-  }
-
-  const totalSeconds = Number(seconds)
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
-    return 'Unknown'
-  }
-
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-
-  return `${minutes}m`
 }

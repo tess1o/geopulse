@@ -16,12 +16,11 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import {
-  createRawGpsPopupElement,
+  createRawGpsPopupMount,
   groupRawGpsPoints,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH_PX
 } from '@/maps/shared/rawGpsPointInspector'
-import '@/maps/shared/styles/rawGpsPointPopup.css'
 
 const props = defineProps({
   map: {
@@ -90,6 +89,14 @@ const renderMarkers = () => {
   const groups = groupRawGpsPoints(props.points)
 
   groups.forEach((group) => {
+    let popup = null
+    let popupMount = null
+    const cleanupPopupMount = () => {
+      popupMount?.unmount?.()
+      popupMount = null
+      popup = null
+    }
+
     const marker = L.marker([group.latitude, group.longitude], {
       icon: createRawPointIcon(group.count),
       keyboard: false,
@@ -98,8 +105,8 @@ const renderMarkers = () => {
     })
 
     marker.on('click', () => {
-      let popup = null
-      const popupContent = createRawGpsPopupElement(group, {
+      cleanupPopupMount()
+      popupMount = createRawGpsPopupMount(group, {
         timezone,
         resolveLocation: props.resolveLocation,
         onRender: () => {
@@ -107,13 +114,15 @@ const renderMarkers = () => {
         }
       })
 
-      popup = marker.bindPopup(popupContent, {
+      popup = marker.bindPopup(popupMount.element, {
         maxWidth: RAW_GPS_POPUP_MAX_WIDTH_PX,
         closeButton: true,
         autoPan: true,
         className: RAW_GPS_POPUP_CLASS_NAME
       }).openPopup().getPopup()
     })
+    marker.on('popupclose', cleanupPopupMount)
+    marker.on('remove', cleanupPopupMount)
 
     markers.push(marker)
     if (markerClusterGroup.value) {

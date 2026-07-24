@@ -6,6 +6,13 @@
 import { onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import { useTimezone } from '@/composables/useTimezone'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildViewerLocationPopupModel } from '@/maps/shared/popups/locationPopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const timezone = useTimezone()
 
@@ -22,21 +29,15 @@ const props = defineProps({
 
 let marker = null
 let accuracyCircle = null
+let popupMount = null
 
 const hasValidCoordinates = () => {
   return Number.isFinite(Number(props.location?.latitude)) && Number.isFinite(Number(props.location?.longitude))
 }
 
-const escapeHtml = (value) => {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
 const removeMarker = () => {
+  popupMount?.unmount?.()
+  popupMount = null
   if (accuracyCircle && props.map) {
     props.map.removeLayer(accuracyCircle)
   }
@@ -45,25 +46,6 @@ const removeMarker = () => {
   }
   accuracyCircle = null
   marker = null
-}
-
-const buildPopupHtml = () => {
-  const isFallback = props.location.source === 'fallback'
-  const title = props.location.label || (isFallback ? 'Your last known GeoPulse location' : 'Your location')
-  const timeLabel = props.location.timestamp
-    ? `${isFallback ? 'Last recorded' : 'Updated'} ${timezone.timeAgo(props.location.timestamp)}`
-    : ''
-  const accuracyLabel = props.location.accuracy
-    ? `<small>Accuracy about ${Math.round(props.location.accuracy)} m</small>`
-    : ''
-
-  return `
-    <div class="viewer-location-popup">
-      <strong>${escapeHtml(title)}</strong>
-      ${timeLabel ? `<br/><small>${escapeHtml(timeLabel)}</small>` : ''}
-      ${accuracyLabel ? `<br/>${accuracyLabel}` : ''}
-    </div>
-  `
 }
 
 const createMarker = () => {
@@ -96,11 +78,16 @@ const createMarker = () => {
     opacity: 1,
     fillOpacity: 1
   })
+  popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildViewerLocationPopupModel(props.location, { timezone })
+  )
 
   marker
     .addTo(props.map)
-    .bindPopup(buildPopupHtml(), {
-      className: 'gp-viewer-location-popup-container'
+    .bindPopup(popupMount.element, {
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+      className: getMapPopupVariantClassName('compact', 'gp-viewer-location-popup-container')
     })
 }
 
@@ -114,28 +101,3 @@ onUnmounted(() => {
   removeMarker()
 })
 </script>
-
-<style>
-.viewer-location-popup {
-  text-align: center;
-}
-
-.p-dark .gp-viewer-location-popup-container .leaflet-popup-content-wrapper {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));
-  border: 1px solid rgba(71, 85, 105, 0.55);
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
-}
-
-.p-dark .gp-viewer-location-popup-container .leaflet-popup-tip {
-  background: rgba(15, 23, 42, 0.95);
-}
-
-.p-dark .gp-viewer-location-popup-container .leaflet-popup-close-button {
-  color: rgba(226, 232, 240, 0.9);
-}
-
-.p-dark .gp-viewer-location-popup-container .leaflet-popup-close-button:hover {
-  color: #ffffff;
-}
-</style>

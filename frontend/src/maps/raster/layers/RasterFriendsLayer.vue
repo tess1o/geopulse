@@ -12,8 +12,14 @@ import {readonly, computed, ref, watch} from 'vue'
 import L from 'leaflet'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import {createAvatarDivIcon, createFriendIcon} from '@/utils/mapHelpers'
-import {createBasicFriendPopup} from '@/utils/friendPopupBuilder'
 import {useTimezone} from '@/composables/useTimezone'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildFriendLocationPopupModel } from '@/maps/shared/popups/friendPopupModel'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const props = defineProps({
   map: {
@@ -195,14 +201,21 @@ const renderFriendLayers = () => {
       })
     })
 
-    const popupContent = createBasicFriendPopup(friend)
-    marker.bindPopup(popupContent)
+    const popupMount = mountMapPopup(
+      MapInfoPopup,
+      buildFriendLocationPopupModel(friend, { timezone })
+    )
+    marker.bindPopup(popupMount.element, {
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+      className: getMapPopupVariantClassName('compact', 'gp-friend-location-popup-container')
+    })
 
     baseLayerRef.value.addToLayer(marker)
     friendMarkers.value.push({
       marker,
       friend,
-      index
+      index,
+      popupMount
     })
   })
 
@@ -252,7 +265,8 @@ const renderFriendTrails = () => {
 }
 
 const clearFriendMarkers = () => {
-  friendMarkers.value.forEach(({marker}) => {
+  friendMarkers.value.forEach(({marker, popupMount}) => {
+    popupMount?.unmount?.()
     baseLayerRef.value?.removeFromLayer(marker)
   })
   friendMarkers.value = []
@@ -303,8 +317,9 @@ const updateFriendLocation = (friendId, newLocation) => {
   if (friendMarker && newLocation.latitude && newLocation.longitude) {
     friendMarker.marker.setLatLng([newLocation.latitude, newLocation.longitude])
     friendMarker.friend = {...friendMarker.friend, ...newLocation}
-    const newPopupContent = createBasicFriendPopup(friendMarker.friend)
-    friendMarker.marker.setPopupContent(newPopupContent)
+    friendMarker.popupMount?.updateProps?.(
+      buildFriendLocationPopupModel(friendMarker.friend, { timezone })
+    )
   }
 }
 
@@ -338,8 +353,6 @@ defineExpose({
 </script>
 
 <style>
-@import '@/styles/friendPopup.css';
-
 .leaflet-tooltip.friend-trail-tooltip {
   background: rgba(17, 24, 39, 0.98) !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;

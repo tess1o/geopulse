@@ -7,6 +7,14 @@ import { onUnmounted, watch } from 'vue'
 import maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
 import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildSharedLocationPopupModel } from '@/maps/shared/popups/locationPopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH,
+  MAP_POPUP_OFFSET
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const timezone = useTimezone()
 
@@ -39,45 +47,7 @@ const props = defineProps({
 
 let marker = null
 let popup = null
-
-const escapeHtml = (value) => {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-const formatTelemetryValue = (item) => {
-  if (!item) return '-'
-  const value = item.value ?? '-'
-  if (!item.unit) return value
-  if (item.unit === '%') return `${value}${item.unit}`
-  return `${value} ${item.unit}`
-}
-
-const buildTelemetryHtml = () => {
-  if (!Array.isArray(props.shareData?.telemetry) || props.shareData.telemetry.length === 0) {
-    return ''
-  }
-
-  const rows = props.shareData.telemetry
-    .map((item) => `
-      <div class="shared-telemetry-row">
-        <span class="shared-telemetry-label">${escapeHtml(item.label)}:</span>
-        <span class="shared-telemetry-value">${escapeHtml(formatTelemetryValue(item))}</span>
-      </div>
-    `)
-    .join('')
-
-  return `
-    <div class="shared-telemetry">
-      <div class="shared-telemetry-title">Telemetry</div>
-      ${rows}
-    </div>
-  `
-}
+let popupMount = null
 
 const createMarkerElement = () => {
   const element = document.createElement('div')
@@ -93,6 +63,8 @@ const createMarkerElement = () => {
 }
 
 const removeMarker = () => {
+  popupMount?.unmount?.()
+  popupMount = null
   if (marker) {
     marker.remove()
     marker = null
@@ -110,17 +82,15 @@ const createMarker = () => {
   removeMarker()
 
   const markerConfig = createMarkerElement()
+  popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildSharedLocationPopupModel(props.shareData, { timezone })
+  )
   popup = new maplibregl.Popup({
-    offset: 18,
-    className: 'gp-shared-location-popup-container'
-  }).setHTML(`
-    <div class="shared-marker-popup">
-      <strong>${escapeHtml(props.shareData.sharedBy)}</strong><br/>
-      ${props.shareData.description ? `<em>${escapeHtml(props.shareData.description)}</em><br/>` : ''}
-      <small>Last seen ${escapeHtml(timezone.timeAgo(props.shareData.sharedAt))}</small>
-      ${buildTelemetryHtml()}
-    </div>
-  `)
+    offset: MAP_POPUP_OFFSET,
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+    className: getMapPopupVariantClassName('compact', 'gp-shared-location-popup-container')
+  }).setDOMContent(popupMount.element)
 
   marker = new maplibregl.Marker(markerConfig)
     .setLngLat([props.longitude, props.latitude])
@@ -166,91 +136,5 @@ onUnmounted(() => {
   background: #9c27b0;
   border: 3px solid #ffffff;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-}
-
-.gp-shared-location-popup-container .maplibregl-popup-content {
-  padding: 0.65rem 0.75rem;
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid rgba(148, 163, 184, 0.65);
-  color: #0f172a;
-}
-
-.gp-shared-location-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(255, 255, 255, 0.97);
-}
-
-.gp-shared-location-popup-container .maplibregl-popup-close-button {
-  color: #64748b;
-}
-
-.gp-shared-location-popup-container .maplibregl-popup-close-button:hover {
-  color: #0f172a;
-}
-
-.gp-shared-location-popup-container .shared-marker-popup {
-  text-align: center;
-}
-
-.gp-shared-location-popup-container .shared-telemetry {
-  margin-top: 0.5rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid #e5e7eb;
-  text-align: left;
-  min-width: 180px;
-}
-
-.gp-shared-location-popup-container .shared-telemetry-title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-}
-
-.gp-shared-location-popup-container .shared-telemetry-row {
-  font-size: 0.75rem;
-  line-height: 1.25;
-}
-
-.gp-shared-location-popup-container .shared-telemetry-label {
-  color: #4b5563;
-  margin-right: 0.25rem;
-}
-
-.gp-shared-location-popup-container .shared-telemetry-value {
-  color: #111827;
-  font-weight: 600;
-}
-
-.p-dark .gp-shared-location-popup-container .maplibregl-popup-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));
-  border: 1px solid rgba(71, 85, 105, 0.55);
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
-}
-
-.p-dark .gp-shared-location-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.95);
-}
-
-.p-dark .gp-shared-location-popup-container .maplibregl-popup-close-button {
-  color: rgba(226, 232, 240, 0.9);
-}
-
-.p-dark .gp-shared-location-popup-container .maplibregl-popup-close-button:hover {
-  color: #ffffff;
-}
-
-.p-dark .gp-shared-location-popup-container .shared-telemetry {
-  border-top-color: rgba(255, 255, 255, 0.2);
-}
-
-.p-dark .gp-shared-location-popup-container .shared-telemetry-title,
-.p-dark .gp-shared-location-popup-container .shared-telemetry-label {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.p-dark .gp-shared-location-popup-container .shared-telemetry-value {
-  color: rgba(255, 255, 255, 0.95);
 }
 </style>

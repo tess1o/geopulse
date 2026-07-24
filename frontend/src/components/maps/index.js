@@ -12,6 +12,3 @@ export { default as PlacesMap } from './dialogs/PlacesMap.vue'
 
 // Map Layers
 export * from './layers/index.js'
-
-// Map Markers
-export * from './markers/index.js'

@@ -4,6 +4,16 @@ import {
   normalizeLeafletBoundsToMapLibre
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import { buildRenderableRuleAreas, toRuleAreaBounds } from '@/maps/geofences/shared/geofenceRuleAreaUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
+
+const isHtmlElement = (value) => (
+  typeof HTMLElement !== 'undefined' && value instanceof HTMLElement
+)
 
 const toPolygonCoordinates = (bounds) => {
   if (!Array.isArray(bounds) || bounds.length !== 2) {
@@ -52,6 +62,7 @@ export const createVectorGeofenceRulesMapAdapter = () => {
   let map = null
   let styleLoadHandler = null
   let popup = null
+  let popupMount = null
   const ruleLookup = new Map()
 
   let lastEditingArea = null
@@ -73,6 +84,8 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       popup.remove()
       popup = null
     }
+    popupMount?.unmount?.()
+    popupMount = null
   }
 
   const safeMapCall = (operation, fallback = null) => {
@@ -416,17 +429,35 @@ export const createVectorGeofenceRulesMapAdapter = () => {
       }
 
       clearPopup()
+      const popupContent = lastRuleSyncState.popupBuilder(rule)
       popup = new maplibregl.Popup({
         closeButton: true,
         closeOnClick: true,
         closeOnMove: false,
-        className: 'geofence-area-popup',
-        maxWidth: '360px',
+        className: (
+          typeof popupContent === 'string' || isHtmlElement(popupContent)
+            ? 'geofence-area-popup'
+            : getMapPopupVariantClassName('compact', 'geofence-area-popup')
+        ),
+        maxWidth: (
+          typeof popupContent === 'string' || isHtmlElement(popupContent)
+            ? '360px'
+            : MAP_POPUP_COMPACT_MAX_WIDTH
+        ),
         offset: 12
       })
         .setLngLat([eventPayload.lngLat.lng, eventPayload.lngLat.lat])
-        .setHTML(lastRuleSyncState.popupBuilder(rule))
-        .addTo(map)
+
+      if (typeof popupContent === 'string') {
+        popup.setHTML(popupContent)
+      } else if (isHtmlElement(popupContent)) {
+        popup.setDOMContent(popupContent)
+      } else if (popupContent && typeof popupContent === 'object') {
+        popupMount = mountMapPopup(MapInfoPopup, popupContent)
+        popup.setDOMContent(popupMount.element)
+      }
+
+      popup.addTo(map)
     }
 
     eventHandlers.mousemove = (eventPayload) => {

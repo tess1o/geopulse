@@ -1,5 +1,4 @@
 import maplibregl from 'maplibre-gl'
-import '@/maps/shared/styles/mapPopupContent.css'
 import {
   buildBoundsPoints,
   getAreaCenterLatLng,
@@ -21,6 +20,13 @@ import {
   removeLayers,
   removeSources
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildFavoriteManagementPopupModel } from '@/maps/shared/popups/favoritePopupModel'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const TOKEN = `favorites-management-${Math.random().toString(36).slice(2, 10)}`
 
@@ -33,25 +39,12 @@ const layerIds = {
   pendingAreasLineId: `${TOKEN}-pending-areas-line`
 }
 
-const buildFavoritePopupHtml = (favorite, isArea = false) => {
-  const safeName = favorite?.name || 'Favorite'
-  return isArea
-    ? `<strong>${safeName}</strong><br>Area Favorite`
-    : `<strong>${safeName}</strong>`
-}
-
-const buildPendingPopupHtml = (pendingFavorite, isArea = false) => {
-  const safeName = pendingFavorite?.name || 'Pending favorite'
-  return isArea
-    ? `<strong>${safeName}</strong><br><span style="color: #f59e0b;">Pending Area</span>`
-    : `<strong>${safeName}</strong><br><span style="color: #f59e0b;">Pending</span>`
-}
-
 export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
   let map = null
   let styleLoadHandler = null
   let lastRenderPayload = null
   let activePopup = null
+  let activePopupMount = null
   let tempPointMarker = null
   const markers = []
 
@@ -67,24 +60,27 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
       activePopup.remove()
       activePopup = null
     }
+    activePopupMount?.unmount?.()
+    activePopupMount = null
   }
 
-  const openPopup = (lng, lat, html) => {
+  const openPopup = (lng, lat, popupModel) => {
     if (!isMapLibreMap(map)) {
       return
     }
 
     clearActivePopup()
+    activePopupMount = mountMapPopup(MapInfoPopup, popupModel)
     activePopup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: true,
       closeOnMove: false,
-      maxWidth: '300px',
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
       offset: 12,
-      className: 'gp-favorites-popup-container'
+      className: getMapPopupVariantClassName('compact', 'gp-favorites-popup-container')
     })
       .setLngLat([lng, lat])
-      .setHTML(html)
+      .setDOMContent(activePopupMount.element)
       .addTo(map)
   }
 
@@ -391,7 +387,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
       })
 
       if (shouldOpenPopup) {
-        openPopup(point.lng, point.lat, buildFavoritePopupHtml(favorite, false))
+        openPopup(point.lng, point.lat, buildFavoriteManagementPopupModel(favorite, { isArea: false }))
       }
       return
     }
@@ -415,7 +411,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
       })
 
       if (shouldOpenPopup && center) {
-        openPopup(center.lng, center.lat, buildFavoritePopupHtml(favorite, true))
+        openPopup(center.lng, center.lat, buildFavoriteManagementPopupModel(favorite, { isArea: true }))
       }
     }
   }
@@ -443,7 +439,10 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
     })
 
     if (center) {
-      openPopup(center.lng, center.lat, buildPendingPopupHtml(pendingArea, true))
+      openPopup(center.lng, center.lat, buildFavoriteManagementPopupModel(pendingArea, {
+        pending: true,
+        isArea: true
+      }))
     }
   }
 
@@ -567,7 +566,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
               center: [point.lng, point.lat],
               zoom: 15
             })
-            openPopup(point.lng, point.lat, buildFavoritePopupHtml(favorite, false))
+            openPopup(point.lng, point.lat, buildFavoriteManagementPopupModel(favorite, { isArea: false }))
           },
           onContextMenu: (point, rawEvent) => {
             callbacks.onFavoriteContextMenu?.({
@@ -584,7 +583,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
           zIndex: 180,
           onClick: (center) => {
             focusOnFavorite(favorite, { openPopup: false })
-            openPopup(center.lng, center.lat, buildFavoritePopupHtml(favorite, true))
+            openPopup(center.lng, center.lat, buildFavoriteManagementPopupModel(favorite, { isArea: true }))
           },
           onContextMenu: (center, rawEvent) => {
             callbacks.onFavoriteContextMenu?.({
@@ -607,7 +606,10 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
             center: [point.lng, point.lat],
             zoom: 15
           })
-          openPopup(point.lng, point.lat, buildPendingPopupHtml(pendingPoint, false))
+          openPopup(point.lng, point.lat, buildFavoriteManagementPopupModel(pendingPoint, {
+            pending: true,
+            isArea: false
+          }))
         },
         onContextMenu: (point, rawEvent) => {
           callbacks.onPendingFavoriteContextMenu?.({
