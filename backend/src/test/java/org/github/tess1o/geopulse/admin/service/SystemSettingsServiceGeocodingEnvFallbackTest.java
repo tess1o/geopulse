@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.admin.service;
 
+import jakarta.enterprise.event.Event;
 import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -15,7 +17,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @Tag("unit")
@@ -191,11 +196,41 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
                 () -> service.setValue("system.user.default-measure-unit", "yards", null));
     }
 
+    @Test
+    void shouldFireWeatherSettingsChangedEventWhenWeatherSettingIsUpdated() {
+        SystemSettingsRepository repository = Mockito.mock(SystemSettingsRepository.class);
+        AIEncryptionService encryptionService = Mockito.mock(AIEncryptionService.class);
+        @SuppressWarnings("unchecked")
+        Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent = Mockito.mock(Event.class);
+        when(repository.findByKey(anyString())).thenReturn(Optional.empty());
+        SystemSettingsService service = new SystemSettingsService(repository, encryptionService, weatherSettingsChangedEvent);
+
+        service.setValue("weather.enabled", "true", null);
+
+        verify(weatherSettingsChangedEvent).fire(new WeatherSettingsChangedEvent("weather.enabled"));
+    }
+
+    @Test
+    void shouldNotFireWeatherSettingsChangedEventWhenNonWeatherSettingIsUpdated() {
+        SystemSettingsRepository repository = Mockito.mock(SystemSettingsRepository.class);
+        AIEncryptionService encryptionService = Mockito.mock(AIEncryptionService.class);
+        @SuppressWarnings("unchecked")
+        Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent = Mockito.mock(Event.class);
+        when(repository.findByKey(anyString())).thenReturn(Optional.empty());
+        SystemSettingsService service = new SystemSettingsService(repository, encryptionService, weatherSettingsChangedEvent);
+
+        service.setValue("auth.registration.enabled", "true", null);
+
+        verify(weatherSettingsChangedEvent, never()).fire(any());
+    }
+
     private SystemSettingsService createService() {
         SystemSettingsRepository repository = Mockito.mock(SystemSettingsRepository.class);
         AIEncryptionService encryptionService = Mockito.mock(AIEncryptionService.class);
+        @SuppressWarnings("unchecked")
+        Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent = Mockito.mock(Event.class);
         when(repository.findByKey(anyString())).thenReturn(Optional.empty());
-        return new SystemSettingsService(repository, encryptionService);
+        return new SystemSettingsService(repository, encryptionService, weatherSettingsChangedEvent);
     }
 
     private SettingInfo findSetting(List<SettingInfo> settings, String key) {

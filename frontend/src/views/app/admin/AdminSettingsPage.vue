@@ -49,6 +49,7 @@ import { jumpToSetting } from '@/utils/settingJump'
 // Import tab components
 import AuthenticationSettingsTab from '@/components/admin/settings/tabs/AuthenticationSettingsTab.vue'
 import GeocodingSettingsTab from '@/components/admin/settings/tabs/GeocodingSettingsTab.vue'
+import WeatherSettingsTab from '@/components/admin/settings/tabs/WeatherSettingsTab.vue'
 import AISettingsTab from '@/components/admin/settings/tabs/AISettingsTab.vue'
 import GPSProcessingSettingsTab from '@/components/admin/settings/tabs/GPSProcessingSettingsTab.vue'
 import ImportSettingsTab from '@/components/admin/settings/tabs/ImportSettingsTab.vue'
@@ -88,6 +89,11 @@ const tabItems = ref([
     key: 'geocoding'
   },
   {
+    label: 'Weather',
+    icon: 'pi pi-cloud',
+    key: 'weather'
+  },
+  {
     label: 'AI Assistant',
     icon: 'pi pi-sparkles',
     key: 'ai'
@@ -119,7 +125,7 @@ const tabItems = ref([
   }
 ])
 
-const validTabs = ['authentication', 'geocoding', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
+const validTabs = ['authentication', 'geocoding', 'weather', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -129,6 +135,7 @@ const currentTabComponent = computed(() => {
   const components = {
     authentication: AuthenticationSettingsTab,
     geocoding: GeocodingSettingsTab,
+    weather: WeatherSettingsTab,
     ai: AISettingsTab,
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,

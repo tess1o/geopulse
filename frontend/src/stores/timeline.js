@@ -6,12 +6,16 @@ const timezone = useTimezone()
 
 export const useTimelineStore = defineStore('timeline', {
     state: () => ({
-        timelineData: null
+        timelineData: null,
+        weatherSamples: [],
+        weatherStatus: null,
+        weatherLoading: false
     }),
 
     getters: {
         // Direct access getter
         getTimelineData: (state) => state.timelineData,
+        getWeatherSamples: (state) => state.weatherSamples || [],
 
         // Computed getters for additional functionality
         hasTimelineData: (state) => {
@@ -116,6 +120,10 @@ export const useTimelineStore = defineStore('timeline', {
             this.timelineData = null
         },
 
+        clearWeatherSamples() {
+            this.weatherSamples = []
+        },
+
         // API Actions
         async fetchMovementTimeline(startTime, endTime) {
             try {
@@ -149,6 +157,41 @@ export const useTimelineStore = defineStore('timeline', {
             } catch (error) {
                 throw error
             }
+        },
+
+        async fetchWeatherSamples(startTime, endTime, bounds = {}) {
+            this.weatherLoading = true
+            try {
+                const response = await apiService.get('/weather/samples', {
+                    startTime,
+                    endTime,
+                    minLat: bounds.minLat,
+                    minLon: bounds.minLon,
+                    maxLat: bounds.maxLat,
+                    maxLon: bounds.maxLon
+                })
+                const payload = response?.data || {}
+                this.weatherSamples = Array.isArray(payload.samples) ? payload.samples : []
+                this.weatherStatus = {
+                    enabled: Boolean(payload.enabled),
+                    configured: Boolean(payload.configured),
+                    provider: payload.provider,
+                    attributionUrl: payload.attributionUrl,
+                    units: payload.units || {}
+                }
+                return payload
+            } catch (error) {
+                this.weatherSamples = []
+                throw error
+            } finally {
+                this.weatherLoading = false
+            }
+        },
+
+        async fetchWeatherStatus() {
+            const response = await apiService.get('/weather/status')
+            this.weatherStatus = response?.data || response
+            return this.weatherStatus
         },
 
         // Convenience methods

@@ -12,4 +12,5 @@ public class JourneyInsights {
     private TimePatterns timePatterns;
     private Achievements achievements;
     private DistanceTraveled distanceTraveled;
+    private WeatherInsights weather;
 }

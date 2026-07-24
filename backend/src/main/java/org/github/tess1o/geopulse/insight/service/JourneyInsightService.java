@@ -12,16 +12,19 @@ public class JourneyInsightService {
     private final TimePatternService timePatternService;
     private final AchievementService achievementService;
     private final DistanceCalculationService distanceCalculationService;
+    private final WeatherInsightService weatherInsightService;
 
     public JourneyInsightService(
             GeographicInsightService geographicInsightService,
             TimePatternService timePatternService,
             AchievementService achievementService,
-            DistanceCalculationService distanceCalculationService) {
+            DistanceCalculationService distanceCalculationService,
+            WeatherInsightService weatherInsightService) {
         this.geographicInsightService = geographicInsightService;
         this.timePatternService = timePatternService;
         this.achievementService = achievementService;
         this.distanceCalculationService = distanceCalculationService;
+        this.weatherInsightService = weatherInsightService;
     }
 
     public JourneyInsights getJourneyInsights(UUID userId) {
@@ -29,7 +32,8 @@ public class JourneyInsightService {
         TimePatterns timePatterns = timePatternService.calculateTimePatterns(userId);
         Achievements achievements = achievementService.calculateAchievements(userId);
         DistanceTraveled distanceTraveled = distanceCalculationService.calculateDistanceTraveled(userId);
+        WeatherInsights weather = weatherInsightService.calculateWeatherInsights(userId);
 
-        return new JourneyInsights(geographic, timePatterns, achievements, distanceTraveled);
+        return new JourneyInsights(geographic, timePatterns, achievements, distanceTraveled, weather);
     }
 }

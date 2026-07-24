@@ -27,4 +27,13 @@ public class ExecutorServiceProducer {
                 Thread.ofVirtual().name("coverage-", 0).factory()
         );
     }
+
+    @Produces
+    @ApplicationScoped
+    @Identifier("weather-processing")
+    public ExecutorService weatherProcessingExecutor() {
+        return Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("weather-", 0).factory()
+        );
+    }
 }

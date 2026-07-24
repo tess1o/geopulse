@@ -211,6 +211,11 @@
             </div>
           </div>
 
+          <JourneyWeatherInsights
+              :weather="weather"
+              :measure-unit="measureUnit"
+          />
+
           <!-- Milestones Section -->
           <div class="insights-section">
             <h2 class="insights-section-title">
@@ -275,16 +280,20 @@ const timezone = useTimezone()
 // Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
+import JourneyWeatherInsights from '@/components/insights/JourneyWeatherInsights.vue'
 
 // Store
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
+import { useAuthStore } from '@/stores/auth'
 import {formatDistanceRounded} from "../../utils/calculationsHelpers";
 
 const journeyInsightsStore = useJourneyInsightsStore()
+const authStore = useAuthStore()
 const { handleErrorWithRetry } = useErrorHandler()
 
 // Store refs
 const { insights: journeyInsights, loading: isLoading } = storeToRefs(journeyInsightsStore)
+const { measureUnit } = storeToRefs(authStore)
 
 // Computed properties
 const hasAnyData = computed(() => {
@@ -297,6 +306,7 @@ const timePatterns = computed(() => journeyInsightsStore.timePatterns)
 const achievements = computed(() => journeyInsightsStore.achievements)
 const inProgressAchievementsCount = computed(() => achievementBadges.value.filter(b => b.earned).length)
 const distanceTraveled = computed(() => journeyInsightsStore.distance)
+const weather = computed(() => journeyInsightsStore.weather)
 
 // Get current month name for display
 const currentMonthName = computed(() => {

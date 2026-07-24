@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.service;
 
 import io.quarkus.panache.common.Parameters;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +10,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
+import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
@@ -90,6 +92,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     TripVisitAutoMatchService tripVisitAutoMatchService;
 
+    @Inject
+    Event<TimelineDataChangedEvent> timelineDataChangedEvent;
+
     @ConfigProperty(name = "geopulse.trip.visit-matching.auto-apply-on-timeline-regeneration", defaultValue = "true")
     boolean autoApplyVisitMatchingOnRegeneration;
 
@@ -149,6 +154,7 @@ public class StreamingTimelineGenerationService {
                 completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
+                fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
                 return;
             }
 
@@ -227,6 +233,7 @@ public class StreamingTimelineGenerationService {
 
             log.info("Successfully completed timeline regeneration for user {} " + "from timestamp {} in {} seconds",
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
+            fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
 
         } catch (Exception e) {
             failJob(jobId, "Timeline generation failed: " + e.getMessage());
@@ -372,6 +379,13 @@ public class StreamingTimelineGenerationService {
     private void releaseLock(UUID userId) {
         UserEntity.update("timelineStatus = :status where id = :userId",
                 Parameters.with("status", TimelineStatus.IDLE).and("userId", userId));
+    }
+
+    private void fireTimelineDataChanged(UUID userId, Instant affectedFrom, Instant affectedTo, UUID jobId) {
+        if (userId == null || affectedFrom == null || affectedTo == null) {
+            return;
+        }
+        timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
     }
 
     /**
