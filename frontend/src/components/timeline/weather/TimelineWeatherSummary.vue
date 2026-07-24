@@ -248,11 +248,37 @@ onBeforeUnmount(() => {
   }
 }
 
-:global(.weather-details-popover.p-popover),
-:global(.weather-details-popover .p-popover-content) {
-  background: var(--gp-surface-white);
+:global(.weather-details-popover.p-popover) {
+  --weather-details-popover-surface: var(--gp-surface-white);
+  --weather-details-popover-border: rgba(148, 163, 184, 0.24);
+
+  background: var(--weather-details-popover-surface);
   color: var(--gp-text-primary);
-  border-color: var(--gp-border-medium);
+  border: 1px solid var(--weather-details-popover-border);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+}
+
+:global(.weather-details-popover .p-popover-content) {
+  background: var(--weather-details-popover-surface);
+  color: var(--gp-text-primary);
+}
+
+:global(.weather-details-popover.p-popover::after) {
+  border-bottom-color: var(--weather-details-popover-surface);
+}
+
+:global(.weather-details-popover.p-popover::before) {
+  display: none;
+}
+
+:global(.weather-details-popover.p-popover.p-popover-flipped::after) {
+  border-top-color: var(--weather-details-popover-surface);
+}
+
+:global(.p-dark .weather-details-popover.p-popover) {
+  --weather-details-popover-border: rgba(148, 163, 184, 0.16);
+
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.45);
 }
 
 :global(.weather-details-dialog.p-dialog) {
