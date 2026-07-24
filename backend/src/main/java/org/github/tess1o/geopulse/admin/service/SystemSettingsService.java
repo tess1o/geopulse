@@ -129,7 +129,7 @@ public class SystemSettingsService {
 
         // Weather settings
         SETTING_DEFINITIONS.put("weather.enabled",
-                new SettingDefinition("geopulse.weather.enabled", "false", ValueType.BOOLEAN, "weather", "Enable weather samples for timeline stays and trips"));
+                new SettingDefinition("geopulse.weather.enabled", "true", ValueType.BOOLEAN, "weather", "Enable weather samples for timeline stays and trips"));
         SETTING_DEFINITIONS.put("weather.open-meteo.forecast-url",
                 new SettingDefinition("geopulse.weather.open-meteo.forecast-url", "https://api.open-meteo.com", ValueType.STRING, "weather", "Open-Meteo forecast API base URL"));
         SETTING_DEFINITIONS.put("weather.open-meteo.archive-url",
@@ -141,7 +141,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("weather.ongoing.interval-minutes",
                 new SettingDefinition("geopulse.weather.ongoing.interval-minutes", "60", ValueType.INTEGER, "weather", "Minimum minutes between ongoing weather samples"));
         SETTING_DEFINITIONS.put("weather.backfill.enabled",
-                new SettingDefinition("geopulse.weather.backfill.enabled", "true", ValueType.BOOLEAN, "weather", "Enable historical weather backfill target discovery"));
+                new SettingDefinition("geopulse.weather.backfill.enabled", "false", ValueType.BOOLEAN, "weather", "Enable historical weather backfill target discovery"));
         SETTING_DEFINITIONS.put("weather.quota.daily-request-limit",
                 new SettingDefinition("geopulse.weather.quota.daily-request-limit", "10000", ValueType.INTEGER, "weather", "Daily provider request limit"));
         SETTING_DEFINITIONS.put("weather.quota.ongoing-reserve",

@@ -303,6 +303,7 @@ const sidebars = {
                         'system-administration/configuration/admin-panel',
                         'system-administration/configuration/timeline-global-config',
                         'system-administration/configuration/reverse-geocoding',
+                        'system-administration/configuration/weather',
                         'system-administration/configuration/import',
                         'system-administration/configuration/gps-data-filtering',
                         'system-administration/configuration/owntracks-additional-config',

@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **273** distinct env vars.
+Backend runtime currently includes **291** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -317,6 +317,39 @@ Notes:
 | `GEOPULSE_GPS_FILTER_INACCURATE_DATA_ENABLED` | `false` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.filter.inaccurate-data.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-accuracy\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+
+### Weather (26)
+
+Weather feature/provider/sampling/quota settings can also be managed from **Admin Dashboard > System Settings > Weather**. Saved Admin Settings values are stored in the database and take precedence over these environment defaults. By default, Weather is enabled for ongoing/current timeline activity, while historical backfill is opt-in. Scheduler cadence, target cleanup, and HTTP timeout variables are backend runtime properties and require a backend restart when changed.
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_WEATHER_ENABLED` | `true` | Master switch for weather samples on timeline stays, trips, maps, and insights. Property: \`geopulse.weather.enabled\`. Default enables ongoing/current weather collection. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_OPEN_METEO_FORECAST_URL` | `https://api.open-meteo.com` | Open-Meteo forecast/current API base URL. Property: \`geopulse.weather.open-meteo.forecast-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | Open-Meteo historical archive API base URL. Property: \`geopulse.weather.open-meteo.archive-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_OPEN_METEO_API_KEY` | `(empty)` | Optional Open-Meteo API key. Property: \`geopulse.weather.open-meteo.api-key\`. | Sensitive secret. Store in secret manager or Admin Settings; do not commit to VCS. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_OPEN_METEO_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for Open-Meteo requests. Property: \`geopulse.weather.open-meteo.connect-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WEATHER_OPEN_METEO_READ_TIMEOUT_SECONDS` | `15` | HTTP read timeout for Open-Meteo requests. Property: \`geopulse.weather.open-meteo.read-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WEATHER_ONGOING_ENABLED` | `true` | Create weather targets for each active user's latest stay/trip. Property: \`geopulse.weather.ongoing.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_ONGOING_INTERVAL_MINUTES` | `60` | Minimum interval between ongoing weather samples. Property: \`geopulse.weather.ongoing.interval-minutes\`. | Integer >= 30. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_BACKFILL_ENABLED` | `false` | Discover historical weather targets from existing timeline stays/trips. Disabled by default so past timeline locations are not sent for weather enrichment unless an admin opts in. Property: \`geopulse.weather.backfill.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_QUOTA_DAILY_REQUEST_LIMIT` | `10000` | GeoPulse-side maximum Open-Meteo requests per UTC day. Property: \`geopulse.weather.quota.daily-request-limit\`. | Integer >= 0. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_QUOTA_ONGOING_RESERVE` | `500` | Daily request reserve kept available for ongoing samples before backfill work can consume quota. Property: \`geopulse.weather.quota.ongoing-reserve\`. | Integer >= 0. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_COORDINATE_PRECISION` | `2` | Decimal precision for weather coordinate buckets; lower values reuse more samples, higher values fetch more precise locations. Property: \`geopulse.weather.coordinate-precision\`. | Integer from 0 to 5. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_FAILED_TARGET_RETRY_ENABLED` | `true` | Retry stale failed weather targets after cooldown. Property: \`geopulse.weather.failed-target-retry.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_FAILED_TARGET_RETRY_COOLDOWN_HOURS` | `24` | Cooldown before failed weather targets become retryable. Property: \`geopulse.weather.failed-target-retry.cooldown-hours\`. | Positive integer hours. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_INTERVAL` | `30m` | Scheduler interval for historical weather target discovery. Property: \`geopulse.weather.backfill.discovery.job.interval\`. | Quarkus duration expression, for example \`15m\`, \`1h\`. | Backend restart |
+| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_DELAY` | `5m` | Initial scheduler delay for historical weather target discovery. Property: \`geopulse.weather.backfill.discovery.job.delay\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_ONGOING_JOB_INTERVAL` | `15m` | Scheduler interval for ongoing weather target discovery. Property: \`geopulse.weather.ongoing.job.interval\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_ONGOING_JOB_DELAY` | `2m` | Initial scheduler delay for ongoing weather target discovery. Property: \`geopulse.weather.ongoing.job.delay\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_INTERVAL` | `10m` | Scheduler interval for fetching queued weather sample targets. Property: \`geopulse.weather.sample-fetch.job.interval\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_DELAY` | `3m` | Initial scheduler delay for the queued sample fetch job. Property: \`geopulse.weather.sample-fetch.job.delay\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_INTERVAL` | `10m` | Scheduler interval for weather provider health probes after failures/quota events. Property: \`geopulse.weather.health.probe.job.interval\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_DELAY` | `4m` | Initial scheduler delay for the weather provider health probe job. Property: \`geopulse.weather.health.probe.job.delay\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_TARGET_CLEANUP_JOB_CRON` | `0 30 3 * * ?` | Cron schedule for cleaning completed/skipped/failed weather target queue records. Property: \`geopulse.weather.target-cleanup.job.cron\`. | Valid Quarkus cron expression. | Backend restart |
+| `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped weather target queue records. Stored weather samples are not removed by this cleanup. Property: \`geopulse.weather.targets.completed-retention-days\`. | Positive integer days. | Backend restart |
+| `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed weather target queue records. Property: \`geopulse.weather.targets.failed-retention-days\`. | Positive integer days. | Backend restart |
+| `GEOPULSE_WEATHER_TARGETS_IN_PROGRESS_TIMEOUT_MINUTES` | `60` | Age after which locked in-progress weather targets are recovered for retry. Property: \`geopulse.weather.targets.in-progress-timeout-minutes\`. | Positive integer minutes. | Backend restart |
 
 ### MQTT (14)
 
