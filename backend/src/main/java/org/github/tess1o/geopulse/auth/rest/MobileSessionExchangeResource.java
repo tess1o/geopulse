@@ -11,9 +11,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
-import org.github.tess1o.geopulse.auth.service.AuthenticationService;
-import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
-import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 

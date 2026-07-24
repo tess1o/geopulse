@@ -4,7 +4,6 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
