@@ -20,6 +20,8 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @ApplicationScoped
@@ -27,6 +29,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GeonamesCountryImportService {
 
     private static final int INPUT_BUFFER_SIZE = 16 * 1024;
+    private static final Map<String, String> COUNTRY_NAME_OVERRIDES = Map.of(
+            "US", "United States of America"
+    );
 
     @ConfigProperty(name = "geopulse.geonames.country-import.enabled", defaultValue = "true")
     boolean importEnabled;
@@ -144,7 +149,7 @@ public class GeonamesCountryImportService {
                     continue;
                 }
 
-                batch.add(parsed.get());
+                batch.add(applyCountryNameOverride(parsed.get()));
                 if (batch.size() >= safeBatchSize) {
                     stagedRows += geonamesCountryRepository.upsertBatchToStaging(batch);
                     batch.clear();
@@ -168,5 +173,37 @@ public class GeonamesCountryImportService {
         long totalRows = geonamesCountryRepository.countCountries();
         log.info("GeoNames country import finished: processed={} staged={} skipped={} stagedRows={} totalTableRows={}",
                 processedLines, stagedRows, skippedLines, totalStagedRows, totalRows);
+    }
+
+    private GeonamesCountryRecord applyCountryNameOverride(GeonamesCountryRecord record) {
+        String isoAlpha2 = record.isoAlpha2();
+        String override = isoAlpha2 == null
+                ? null
+                : COUNTRY_NAME_OVERRIDES.get(isoAlpha2.toUpperCase(Locale.ROOT));
+        if (override == null) {
+            return record;
+        }
+
+        return new GeonamesCountryRecord(
+                record.isoAlpha2(),
+                record.isoAlpha3(),
+                record.isoNumeric(),
+                record.fipsCode(),
+                override,
+                record.capital(),
+                record.areaSqKm(),
+                record.population(),
+                record.continent(),
+                record.tld(),
+                record.currencyCode(),
+                record.currencyName(),
+                record.phone(),
+                record.postalCodeFormat(),
+                record.postalCodeRegex(),
+                record.languages(),
+                record.geonameId(),
+                record.neighbors(),
+                record.equivalentFipsCode()
+        );
     }
 }
