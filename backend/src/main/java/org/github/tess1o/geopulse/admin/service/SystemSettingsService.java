@@ -149,7 +149,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("weather.coordinate-precision",
                 new SettingDefinition("geopulse.weather.coordinate-precision", "2", ValueType.INTEGER, "weather", "Decimal precision for weather coordinate buckets"));
         SETTING_DEFINITIONS.put("weather.failed-target-retry.enabled",
-                new SettingDefinition("geopulse.weather.failed-target-retry.enabled", "true", ValueType.BOOLEAN, "weather", "Retry stale failed weather targets during backfill discovery"));
+                new SettingDefinition("geopulse.weather.failed-target-retry.enabled", "true", ValueType.BOOLEAN, "weather", "Retry stale failed weather targets after cooldown"));
         SETTING_DEFINITIONS.put("weather.failed-target-retry.cooldown-hours",
                 new SettingDefinition("geopulse.weather.failed-target-retry.cooldown-hours", "24", ValueType.INTEGER, "weather", "Hours before a failed weather target can be retried"));
 

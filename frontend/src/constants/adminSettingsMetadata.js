@@ -197,7 +197,7 @@ export const SETTING_METADATA = {
   },
   'weather.failed-target-retry.enabled': {
     label: 'Retry Failed Targets',
-    description: 'Retry stale failed weather targets during backfill discovery'
+    description: 'Retry stale failed weather targets after cooldown'
   },
   'weather.failed-target-retry.cooldown-hours': {
     label: 'Failed Retry Cooldown',

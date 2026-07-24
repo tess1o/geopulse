@@ -49,50 +49,47 @@
           <label>{{ apiKeySetting.label }}</label>
           <small class="text-muted">{{ apiKeySetting.description }}</small>
         </div>
-        <div class="setting-control">
-          <div class="credential-control">
-            <span class="credential-state">{{ apiKeyStateText }}</span>
-            <Password
-              v-if="editingApiKey"
-              v-model="apiKeyDraft"
-              :feedback="false"
-              toggleMask
-              autocomplete="new-password"
-              placeholder="Enter Open-Meteo API key"
-              class="credential-input"
-              @input="markDirty"
-            />
-            <div class="credential-actions">
-              <Button
-                :label="editingApiKey ? 'Cancel' : apiKeyStored ? 'Replace' : 'Set'"
-                icon="pi pi-key"
-                size="small"
-                severity="secondary"
-                outlined
-                @click="toggleApiKeyEdit"
-              />
-              <Button
-                v-if="apiKeyStored || apiKeyDraft"
-                label="Clear"
-                icon="pi pi-times"
-                size="small"
-                severity="danger"
-                text
-                @click="clearApiKey"
-              />
-            </div>
-          </div>
-          <div class="setting-status">
-            <Tag v-if="apiKeySetting.isDefault" severity="secondary" value="Default" />
+        <div class="credential-control">
+          <span class="credential-state">{{ apiKeyStateText }}</span>
+          <Password
+            v-if="editingApiKey"
+            v-model="apiKeyDraft"
+            :feedback="false"
+            toggleMask
+            autocomplete="new-password"
+            placeholder="Enter Open-Meteo API key"
+            class="credential-input"
+            @input="markDirty"
+          />
+          <div class="credential-actions">
             <Button
-              v-else
-              label="Reset"
-              icon="pi pi-refresh"
-              text
+              :label="editingApiKey ? 'Cancel' : apiKeyStored ? 'Replace' : 'Set'"
+              icon="pi pi-key"
               size="small"
-              @click="handleReset(apiKeySetting)"
+              class="api-key-action-button"
+              @click="toggleApiKeyEdit"
+            />
+            <Button
+              v-if="apiKeyStored || apiKeyDraft"
+              label="Clear"
+              icon="pi pi-times"
+              size="small"
+              severity="danger"
+              text
+              @click="clearApiKey"
             />
           </div>
+        </div>
+        <div class="setting-status">
+          <Tag v-if="apiKeySetting.isDefault" severity="secondary" value="Default" />
+          <Button
+            v-else
+            label="Reset"
+            icon="pi pi-refresh"
+            text
+            size="small"
+            @click="handleReset(apiKeySetting)"
+          />
         </div>
       </div>
 
@@ -100,8 +97,7 @@
         <Button
           label="Test Connection"
           icon="pi pi-bolt"
-          severity="secondary"
-          outlined
+          class="test-connection-button"
           :loading="testingConnection"
           @click="testConnection"
         />
@@ -491,11 +487,11 @@ const numberStep = (setting) => {
 
 .credential-row {
   display: grid;
-  grid-template-columns: 1fr minmax(280px, 460px);
+  grid-template-columns: minmax(240px, 1fr) minmax(360px, 520px) 80px;
   gap: 1rem;
-  align-items: start;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--gp-border-light);
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .credential-control {
@@ -515,12 +511,55 @@ const numberStep = (setting) => {
   width: 100%;
 }
 
+.credential-input :deep(.p-password-input),
+.credential-input :deep(input) {
+  width: 100%;
+}
+
+:deep(.api-key-action-button.p-button) {
+  color: #ffffff;
+  background: #15803d;
+  border-color: #15803d;
+  font-weight: 600;
+}
+
+:deep(.api-key-action-button.p-button:not(:disabled):hover) {
+  color: #ffffff;
+  background: #166534;
+  border-color: #166534;
+}
+
+:deep(.api-key-action-button.p-button .p-button-icon),
+:deep(.api-key-action-button.p-button .p-button-label) {
+  color: #ffffff;
+}
+
 .provider-actions {
   margin-top: 1rem;
+  padding-left: 1rem;
+}
+
+:deep(.test-connection-button.p-button) {
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #2563eb;
+  font-weight: 600;
+}
+
+:deep(.test-connection-button.p-button:not(:disabled):hover) {
+  color: #ffffff;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+:deep(.test-connection-button.p-button .p-button-icon),
+:deep(.test-connection-button.p-button .p-button-label) {
+  color: #ffffff;
 }
 
 .weather-status {
   max-width: 520px;
+  margin-left: 1rem;
   border: 1px solid var(--gp-border-light);
   border-radius: 6px;
   overflow: hidden;
@@ -549,6 +588,15 @@ const numberStep = (setting) => {
     grid-template-columns: 1fr;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .provider-actions {
+    padding-left: 0.5rem;
+  }
+
+  .weather-status {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
   }
 }
 </style>

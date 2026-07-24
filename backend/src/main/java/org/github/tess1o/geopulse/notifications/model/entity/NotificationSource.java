@@ -5,5 +5,6 @@ public enum NotificationSource {
     TIMELINE,
     IMPORT,
     EXPORT,
-    FRIEND_INVITE
+    FRIEND_INVITE,
+    WEATHER
 }

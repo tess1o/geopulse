@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.weather.dto;
 
 import lombok.*;
+import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
 
 import java.time.Instant;
 import java.util.Map;
@@ -21,4 +22,5 @@ public class WeatherStatusResponse {
     private Map<String, Long> targetsByStatus;
     private Instant oldestPendingTargetAt;
     private Instant newestPendingTargetAt;
+    private ExternalIntegrationHealthDto providerHealth;
 }

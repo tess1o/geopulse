@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.weather;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.weather.client.OpenMeteoRestClient;
+import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
+import org.github.tess1o.geopulse.weather.client.WeatherProviderException;
 import org.github.tess1o.geopulse.weather.dto.*;
 import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
 import org.github.tess1o.geopulse.weather.model.WeatherSampleTargetEntity;
@@ -13,6 +15,8 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetStatus;
         WeatherSampleTargetEntity.class,
         WeatherTargetSource.class,
         WeatherTargetStatus.class,
+        WeatherProviderException.class,
+        WeatherProviderErrorKind.class,
         WeatherSampleDTO.class,
         WeatherSamplesResponse.class,
         WeatherStatusResponse.class,

@@ -185,6 +185,16 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
     }
 
     @Transactional
+    public void releaseUntil(long targetId, Instant nextAttemptAt, String reason) {
+        findByIdOptional(targetId).ifPresent(target -> {
+            target.setStatus(WeatherTargetStatus.PENDING);
+            target.setLockedAt(null);
+            target.setNextAttemptAt(nextAttemptAt == null ? Instant.now().plusSeconds(10 * 60L) : nextAttemptAt);
+            target.setLastError(limitError(reason));
+        });
+    }
+
+    @Transactional
     public void markCompleted(WeatherSampleTargetEntity target) {
         target.setStatus(WeatherTargetStatus.COMPLETED);
         target.setLockedAt(null);
@@ -269,6 +279,32 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
                 .setParameter(3, "Retrying stale failed weather target after cooldown")
                 .setParameter(4, WeatherTargetStatus.FAILED.name())
                 .setParameter(5, retryBefore)
+                .executeUpdate();
+    }
+
+    @Transactional
+    public long resetStaleInProgressTargets(Instant lockedBefore) {
+        if (lockedBefore == null) {
+            return 0;
+        }
+
+        Instant now = Instant.now();
+        return entityManager.createNativeQuery("""
+                UPDATE weather_sample_targets
+                SET status = ?1,
+                    locked_at = NULL,
+                    next_attempt_at = ?2,
+                    last_error = ?3,
+                    updated_at = ?2
+                WHERE status = ?4
+                  AND locked_at IS NOT NULL
+                  AND locked_at < ?5
+                """)
+                .setParameter(1, WeatherTargetStatus.PENDING.name())
+                .setParameter(2, now)
+                .setParameter(3, "Recovered stale in-progress weather target")
+                .setParameter(4, WeatherTargetStatus.IN_PROGRESS.name())
+                .setParameter(5, lockedBefore)
                 .executeUpdate();
     }
 
