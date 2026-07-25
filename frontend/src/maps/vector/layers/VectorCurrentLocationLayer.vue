@@ -7,6 +7,7 @@
     :share-data="shareData"
     :avatar-url="location.avatar"
     :open-popup="false"
+    marker-type="current-location"
   />
 </template>
 

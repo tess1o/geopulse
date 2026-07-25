@@ -39,6 +39,10 @@ const props = defineProps({
     type: String,
     default: null
   },
+  markerType: {
+    type: String,
+    default: ''
+  },
   openPopup: {
     type: Boolean,
     default: true
@@ -55,11 +59,19 @@ const createMarkerElement = () => {
   if (props.avatarUrl) {
     element.className = 'maplibre-avatar-icon-container'
     element.innerHTML = `<img src="${props.avatarUrl}" class="maplibre-avatar-icon" alt="Avatar">`
-    return { element, anchor: 'bottom' }
+  } else {
+    element.className = 'maplibre-shared-location-dot'
   }
 
-  element.className = 'maplibre-shared-location-dot'
-  return { element, anchor: 'center' }
+  if (props.markerType) {
+    element.dataset.markerType = props.markerType
+    element.classList.add(`${props.markerType}-marker`)
+  }
+
+  return {
+    element,
+    anchor: props.avatarUrl ? 'bottom' : 'center'
+  }
 }
 
 const removeMarker = () => {
@@ -103,7 +115,7 @@ const createMarker = () => {
 }
 
 watch(
-  () => [props.map, props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl],
+  () => [props.map, props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl, props.markerType],
   () => {
     createMarker()
   },

@@ -35,6 +35,15 @@ const timezone = {
 
 const waitForRenderNotification = () => new Promise((resolve) => setTimeout(resolve, 20))
 
+const waitForRenderCountToIncrease = async (onRender, initialRenderCount) => {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await waitForRenderNotification()
+    if (onRender.mock.calls.length > initialRenderCount) {
+      return
+    }
+  }
+}
+
 const getPopupGridValue = (element, label) => {
   const labelElement = Array.from(element.querySelectorAll('.raw-gps-popup-label'))
     .find((node) => node.textContent === label)
@@ -116,7 +125,7 @@ describe('raw GPS point inspector grouping', () => {
 
     element.querySelectorAll('.raw-gps-stack-row')[1].click()
 
-    await waitForRenderNotification()
+    await waitForRenderCountToIncrease(onRender, initialRenderCount)
     expect(onRender.mock.calls.length).toBeGreaterThan(initialRenderCount)
     popupMount.unmount()
   })

@@ -77,7 +77,7 @@ test.describe('GPS Data Page', () => {
         test('should display GPS data for authenticated user', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = await isolatedUsers.create(page);
+            const testUser = await isolatedUsers.create(page, { timezone: 'Europe/Kyiv' });
 
             // Create user and GPS test data
             const user = await dbManager.getUserByEmail(testUser.email);
@@ -406,42 +406,30 @@ test.describe('GPS Data Page', () => {
             // Simulate GMT+3 timezone scenario
             // Create points that should count as "today" from GMT+3 perspective
 
-            // Set browser timezone to GMT+3 (Europe/Kyiv)
-            await page.addInitScript(() => {
-                // Store the original method to avoid infinite recursion
-                const originalResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
-                
-                // Override Intl.DateTimeFormat to simulate GMT+3 timezone
-                Object.defineProperty(Intl.DateTimeFormat.prototype, 'resolvedOptions', {
-                    value: function () {
-                        const original = originalResolvedOptions.call(this);
-                        return {
-                            ...original,
-                            timeZone: 'Europe/Kyiv'
-                        };
-                    }
-                });
-
-                // Override Date.prototype.getTimezoneOffset to return GMT+3 offset
-                Object.defineProperty(Date.prototype, 'getTimezoneOffset', {
-                    value: function () {
-                        return -180;
-                    } // GMT+3 = -180 minutes
-                });
-            });
-
-            // Scenario: It's 02:00 AM in GMT+3 (which is 23:00 UTC previous day)
-            const now = new Date();
-            const gmtPlus3Offset = -3 * 60; // GMT+3 in minutes
-
             // Create points that are "today" from GMT+3 perspective
             // but fall into different UTC days
             const todaysPointsGmtPlus3 = [];
 
             // Point 1: Today at 01:00 GMT+3 (yesterday 22:00 UTC)
-            const point1Time = new Date(now);
-            point1Time.setHours(1, 0, 0, 0); // 01:00 local time
-            const point1Utc = new Date(point1Time.getTime() - (gmtPlus3Offset * 60 * 1000)); // Convert to UTC
+            const kyivTodayParts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Europe/Kyiv',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).formatToParts(new Date()).reduce((parts, part) => {
+                if (part.type !== 'literal') {
+                    parts[part.type] = Number(part.value);
+                }
+                return parts;
+            }, {});
+            const point1Utc = new Date(Date.UTC(
+                kyivTodayParts.year,
+                kyivTodayParts.month - 1,
+                kyivTodayParts.day,
+                -2,
+                0,
+                0
+            ));
 
             todaysPointsGmtPlus3.push({
                 id: 88000,

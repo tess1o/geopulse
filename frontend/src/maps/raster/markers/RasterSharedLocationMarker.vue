@@ -38,6 +38,10 @@ const props = defineProps({
     type: String,
     default: null
   },
+  markerType: {
+    type: String,
+    default: ''
+  },
   openPopup: {
     type: Boolean,
     default: true
@@ -56,14 +60,17 @@ const createMarker = () => {
   }
 
   if (props.avatarUrl) {
+    const markerClassName = props.markerType
+      ? `leaflet-avatar-icon-container ${props.markerType}-marker`
+      : 'leaflet-avatar-icon-container'
     const icon = L.divIcon({
       html: `<img src="${props.avatarUrl}" class="leaflet-avatar-icon">`,
-      className: 'leaflet-avatar-icon-container',
+      className: markerClassName,
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40]
     });
-    marker = L.marker([props.latitude, props.longitude], { icon });
+    marker = L.marker([props.latitude, props.longitude], { icon, markerType: props.markerType });
   } else {
     marker = L.circleMarker([props.latitude, props.longitude], {
       radius: 12,
@@ -71,7 +78,9 @@ const createMarker = () => {
       color: '#ffffff',
       weight: 3,
       opacity: 1,
-      fillOpacity: 0.9
+      fillOpacity: 0.9,
+      className: props.markerType ? `${props.markerType}-marker` : undefined,
+      markerType: props.markerType
     });
   }
 
@@ -80,10 +89,16 @@ const createMarker = () => {
     buildSharedLocationPopupModel(props.shareData, { timezone })
   )
   marker.addTo(props.map)
-      .bindPopup(popupMount.element, {
-        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
-        className: getMapPopupVariantClassName('compact', 'gp-shared-location-popup-container')
-      })
+
+  const markerElement = marker.getElement?.()
+  if (props.markerType && typeof markerElement?.setAttribute === 'function') {
+    markerElement.setAttribute('data-marker-type', props.markerType)
+  }
+
+  marker.bindPopup(popupMount.element, {
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+    className: getMapPopupVariantClassName('compact', 'gp-shared-location-popup-container')
+  })
 
   if (props.openPopup) {
     marker.openPopup()
@@ -91,7 +106,7 @@ const createMarker = () => {
 }
 
 // Watch for prop changes and recreate marker
-watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl], createMarker, {immediate: true})
+watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl, props.markerType], createMarker, {immediate: true})
 
 onUnmounted(() => {
   popupMount?.unmount?.()

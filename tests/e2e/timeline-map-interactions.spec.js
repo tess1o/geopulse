@@ -8,8 +8,118 @@ import {buildManagedUser as createManagedUser} from '../utils/isolated-user-help
 import { randomUUID } from 'crypto';
 import { MAP_POPUP_CONTENT_SELECTOR } from '../utils/map-engine-harness.js';
 
-const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCurrentLocationTelemetry = true) => {
+const getUtcTodayDate = () => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12));
+};
+
+const getIsoDate = (date) => date.toISOString().slice(0, 10);
+
+const CURRENT_LOCATION_MARKER_SELECTOR = [
+  '.map-view-container [data-marker-type="current-location"]',
+  '.map-view-container .current-location-marker'
+].join(', ');
+
+const getPopupCard = (page) => page
+  .locator(MAP_POPUP_CONTENT_SELECTOR)
+  .locator('.gp-map-popup-card')
+  .first();
+
+const closeOpenMapPopups = (page) => page.evaluate(() => {
+  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+  const registeredMap = host?.id ? window.__GP_E2E_MAPS?.[host.id] : null;
+  registeredMap?.closePopup?.();
+  document.querySelector('.leaflet-container')?._leaflet_map?.closePopup?.();
+  document.querySelectorAll('.maplibregl-popup').forEach((popup) => popup.remove());
+});
+
+const openCurrentLocationLayer = (page) => page.evaluate((currentLocationSelector) => {
+  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+  const registeredMap = host?.id ? window.__GP_E2E_MAPS?.[host.id] : null;
+  const map = registeredMap || document.querySelector('.leaflet-container')?._leaflet_map;
+  if (!map || typeof map.eachLayer !== 'function') {
+    return false;
+  }
+
+  const currentLocationElements = new Set(document.querySelectorAll(currentLocationSelector));
+  const openLayer = (layer) => {
+    if (!layer) {
+      return false;
+    }
+
+    if (typeof layer.eachLayer === 'function') {
+      let openedChild = false;
+      layer.eachLayer((childLayer) => {
+        if (!openedChild) {
+          openedChild = openLayer(childLayer);
+        }
+      });
+      return openedChild;
+    }
+
+    const element = typeof layer.getElement === 'function' ? layer.getElement() : null;
+    const isCurrentLocationLayer = layer?.options?.markerType === 'current-location'
+      || (element && currentLocationElements.has(element));
+
+    if (isCurrentLocationLayer && typeof layer.openPopup === 'function') {
+      layer.openPopup();
+      return true;
+    }
+
+    return false;
+  };
+
+  let opened = false;
+  map.eachLayer((layer) => {
+    if (!opened) {
+      opened = openLayer(layer);
+    }
+  });
+
+  return opened;
+}, CURRENT_LOCATION_MARKER_SELECTOR);
+
+const moveRegularStaysToDate = async (dbManager, userId, date) => {
+  const isoDate = getIsoDate(date);
+  const gpsRows = await dbManager.client.query(`
+    SELECT id
+    FROM gps_points
+    WHERE user_id = $1
+    ORDER BY timestamp
+  `, [userId]);
+  const stayRows = await dbManager.client.query(`
+    SELECT id
+    FROM timeline_stays
+    WHERE user_id = $1
+    ORDER BY timestamp
+  `, [userId]);
+
+  for (let index = 0; index < gpsRows.rows.length; index += 1) {
+    const timestamp = `${isoDate}T${String(15 + index).padStart(2, '0')}:00:00Z`;
+    await dbManager.client.query(`
+      UPDATE gps_points
+      SET timestamp = $2,
+          created_at = $2
+      WHERE id = $1
+    `, [gpsRows.rows[index].id, timestamp]);
+  }
+
+  for (let index = 0; index < stayRows.rows.length; index += 1) {
+    const timestamp = `${isoDate}T${String(15 + index).padStart(2, '0')}:00:00Z`;
+    await dbManager.client.query(`
+      UPDATE timeline_stays
+      SET timestamp = $2,
+          created_at = NOW(),
+          last_updated = NOW()
+      WHERE id = $1
+    `, [stayRows.rows[index].id, timestamp]);
+  }
+};
+
+const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCurrentLocationTelemetry = true, selectedDate = getUtcTodayDate()) => {
   await TimelineTestData.insertRegularStaysTestData(dbManager, userId);
+  await moveRegularStaysToDate(dbManager, userId, selectedDate);
+  const currentPointTimestamp = `${getIsoDate(selectedDate)}T23:30:00Z`;
 
   const telemetryConfigId = randomUUID();
   const telemetryMapping = [
@@ -46,34 +156,36 @@ const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCur
     VALUES ($1, $2, 'OWNTRACKS', $3::jsonb)
   `, [telemetryConfigId, userId, JSON.stringify(telemetryMapping)]);
 
+  // Keep the current-location marker separate from timeline stay markers so
+  // the test opens the latest-position popup, not an overlapping stay popup.
   await dbManager.client.query(`
-    UPDATE gps_points
-    SET source_type = 'OWNTRACKS',
-        telemetry = $2::jsonb
-    WHERE id = (
-      SELECT id
-      FROM gps_points
-      WHERE user_id = $1
-      ORDER BY timestamp DESC
-      LIMIT 1
+    INSERT INTO gps_points (
+      device_id,
+      user_id,
+      coordinates,
+      timestamp,
+      accuracy,
+      battery,
+      velocity,
+      altitude,
+      source_type,
+      created_at,
+      telemetry
     )
-  `, [userId, JSON.stringify({ ignition: 1, lte_pct: 72 })]);
-
-  // Ensure at least one latest point exists "today" so current-location marker renders.
-  await dbManager.client.query(`
-    UPDATE gps_points
-    SET timestamp = NOW(),
-        created_at = NOW(),
-        source_type = 'OWNTRACKS',
-        telemetry = $2::jsonb
-    WHERE id = (
-      SELECT id
-      FROM gps_points
-      WHERE user_id = $1
-      ORDER BY timestamp DESC
-      LIMIT 1
+    VALUES (
+      'current-location-device',
+      $1,
+      ST_GeomFromText('POINT(-73.9854 40.7535)', 4326),
+      $3,
+      5.0,
+      88,
+      0.0,
+      15.0,
+      'OWNTRACKS',
+      $3,
+      $2::jsonb
     )
-  `, [userId, JSON.stringify({ ignition: 1, lte_pct: 72 })]);
+  `, [userId, JSON.stringify({ ignition: 1, lte_pct: 72 }), currentPointTimestamp]);
 
   await dbManager.client.query(`
     UPDATE users
@@ -125,52 +237,40 @@ const insertStayPopupTelemetryScenario = async (dbManager, userId, showCurrentLo
 };
 
 const openCurrentLocationPopup = async (page) => {
-  const vectorMarkerCandidates = page.locator('.maplibre-shared-location-dot, .maplibre-avatar-icon-container');
-  const vectorMarkerCount = await vectorMarkerCandidates.count();
-  if (vectorMarkerCount > 0) {
-    await vectorMarkerCandidates.first().click({ force: true });
-    await expect(page.locator(`${MAP_POPUP_CONTENT_SELECTOR} .shared-marker-popup`).first()).toBeVisible({ timeout: 10000 });
+  await closeOpenMapPopups(page);
+
+  await expect.poll(async () => {
+    const markerCount = await page.locator(CURRENT_LOCATION_MARKER_SELECTOR).count();
+    if (markerCount > 0) {
+      return markerCount;
+    }
+
+    const layerOpened = await openCurrentLocationLayer(page);
+    if (layerOpened) {
+      await closeOpenMapPopups(page);
+      return 1;
+    }
+
+    return 0;
+  }, { timeout: 15000 }).toBeGreaterThan(0);
+
+  await closeOpenMapPopups(page);
+  const opened = await openCurrentLocationLayer(page);
+
+  if (opened) {
+    await expect(getPopupCard(page)).toBeVisible({ timeout: 10000 });
     return;
   }
 
-  const opened = await page.evaluate(() => {
-    const mapContainer = document.querySelector('.leaflet-container');
-    const map = mapContainer?._leaflet_map;
-    if (!map) {
-      return false;
-    }
-
-    let popupOpened = false;
-    map.eachLayer((layer) => {
-      if (popupOpened || typeof layer.getPopup !== 'function' || typeof layer.openPopup !== 'function') {
-        return;
-      }
-
-      const popup = layer.getPopup();
-      const content = popup && typeof popup.getContent === 'function' ? popup.getContent() : null;
-      const contentHtml = typeof content === 'string'
-        ? content
-        : (content && typeof content.innerHTML === 'string' ? content.innerHTML : '');
-      if (contentHtml.includes('shared-marker-popup')) {
-        layer.openPopup();
-        popupOpened = true;
-      }
-    });
-
-    return popupOpened;
-  });
-
-  if (!opened) {
-    const markerCandidates = page.locator(
-      '.leaflet-overlay-pane path[fill="#9c27b0"], .leaflet-overlay-pane path[style*="156, 39, 176"]'
-    );
-    const count = await markerCandidates.count();
-    if (count > 0) {
-      await markerCandidates.first().click({ force: true });
-    }
+  const markerCandidates = page.locator(CURRENT_LOCATION_MARKER_SELECTOR);
+  const markerCount = await markerCandidates.count();
+  if (markerCount > 0) {
+    await markerCandidates.first().click({ force: true });
+    await expect(getPopupCard(page)).toBeVisible({ timeout: 10000 });
+    return;
   }
 
-  await expect(page.locator(`${MAP_POPUP_CONTENT_SELECTOR} .shared-marker-popup`).first()).toBeVisible({ timeout: 10000 });
+  await expect(getPopupCard(page)).toBeVisible({ timeout: 10000 });
 };
 
 const setupTimelineWithMapMode = (
@@ -181,11 +281,16 @@ const setupTimelineWithMapMode = (
   dateRange,
   mapMode
 ) => {
+  const effectiveDateRange = dateRange ?? {
+    startDate: new Date(),
+    endDate: new Date()
+  };
+
   return timelinePage.setupTimelineWithData(
     dbManager,
     dataInsertFunction,
     testUser,
-    dateRange,
+    effectiveDateRange,
     { mapMode }
   );
 };
@@ -297,16 +402,17 @@ test.describe('Timeline Map Interactions', () => {
     test('should show current-location telemetry from latest point when enabled', async ({page, isolatedUsers, dbManager, mapMode}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
+      const today = getUtcTodayDate();
       const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
 
       await setupTimelineWithMapMode(
         timelinePage,
         dbManager,
-        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, true),
+        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, true, today),
         testUser,
         {
-          startDate: new Date(),
-          endDate: new Date()
+          startDate: today,
+          endDate: today
         },
         mapMode
       );
@@ -315,8 +421,8 @@ test.describe('Timeline Map Interactions', () => {
       await openCurrentLocationPopup(page);
 
       const popup = mapPage.getPopupContent();
-      await expect(popup.locator('.shared-telemetry')).toBeVisible();
-      await expect(popup).toContainText('Ignition:');
+      await expect(popup.locator('.gp-map-popup-section-title', { hasText: 'Telemetry' })).toBeVisible();
+      await expect(popup).toContainText('Ignition');
       await expect(popup).toContainText('Yes');
       await expect(popup).not.toContainText('LTE Signal');
     });
@@ -324,16 +430,17 @@ test.describe('Timeline Map Interactions', () => {
     test('should hide current-location telemetry when display toggle is disabled', async ({page, isolatedUsers, dbManager, mapMode}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
+      const today = getUtcTodayDate();
       const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
 
       await setupTimelineWithMapMode(
         timelinePage,
         dbManager,
-        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, false),
+        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, false, today),
         testUser,
         {
-          startDate: new Date(),
-          endDate: new Date()
+          startDate: today,
+          endDate: today
         },
         mapMode
       );
@@ -342,7 +449,8 @@ test.describe('Timeline Map Interactions', () => {
       await openCurrentLocationPopup(page);
 
       const popup = mapPage.getPopupContent();
-      await expect(popup.locator('.shared-telemetry')).toHaveCount(0);
+      await expect(popup.locator('.gp-map-popup-section-title', { hasText: 'Telemetry' })).toHaveCount(0);
+      await expect(popup).not.toContainText('Ignition');
     });
 
     test('should show telemetry in stay popup when clicking a StayCard', async ({page, isolatedUsers, dbManager, mapMode}) => {
@@ -369,8 +477,8 @@ test.describe('Timeline Map Interactions', () => {
 
       const popup = mapPage.getPopupContent();
       await expect(popup).toBeVisible({ timeout: 15000 });
-      await expect(popup.locator('.popup-telemetry')).toBeVisible();
-      await expect(popup).toContainText('Ignition:');
+      await expect(popup.locator('.gp-map-popup-section-title', { hasText: 'Telemetry' })).toBeVisible();
+      await expect(popup).toContainText('Ignition');
       await expect(popup).toContainText('Yes');
     });
 
@@ -398,8 +506,8 @@ test.describe('Timeline Map Interactions', () => {
 
       const popup = mapPage.getPopupContent();
       await expect(popup).toBeVisible({ timeout: 15000 });
-      await expect(popup.locator('.popup-telemetry')).toHaveCount(0);
-      await expect(popup).not.toContainText('Ignition:');
+      await expect(popup.locator('.gp-map-popup-section-title', { hasText: 'Telemetry' })).toHaveCount(0);
+      await expect(popup).not.toContainText('Ignition');
     });
   });
 

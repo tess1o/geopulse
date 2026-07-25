@@ -21,7 +21,6 @@ import {
   RAW_GPS_POPUP_MAX_WIDTH,
   RAW_GPS_POPUP_OFFSET
 } from '@/maps/shared/rawGpsPointInspector'
-import '@/maps/shared/styles/rawGpsPointPopup.css'
 
 const props = defineProps({
   map: {

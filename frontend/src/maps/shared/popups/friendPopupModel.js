@@ -44,6 +44,10 @@ const formatActivity = (friend) => {
 }
 
 const formatBattery = (friend) => {
+  if (friend?.lastBattery === null || friend?.lastBattery === undefined || friend?.lastBattery === '') {
+    return ''
+  }
+
   const batteryValue = Number(friend?.lastBattery)
   return Number.isFinite(batteryValue) ? `${Math.round(batteryValue)}%` : ''
 }

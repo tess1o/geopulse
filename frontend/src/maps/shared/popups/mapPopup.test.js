@@ -163,6 +163,15 @@ describe('map popup models', () => {
     expect(model.actions[0].href).toBe('https://www.google.com/maps?q=50.45,30.52')
   })
 
+  it('omits friend battery row when the latest point has no battery value', () => {
+    const model = buildFriendLocationPopupModel({
+      fullName: 'Grace Hopper',
+      lastBattery: null
+    }, { timezone })
+
+    expect(model.rows.some((row) => row.label === 'Battery')).toBe(false)
+  })
+
   it('builds favorite management model variants', () => {
     const model = buildFavoriteManagementPopupModel({
       name: 'Home',

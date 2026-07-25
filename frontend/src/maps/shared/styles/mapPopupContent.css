@@ -176,18 +176,6 @@
   line-height: 1;
 }
 
-/* Dark theme shared text parity */
-.p-dark .leaflet-popup-content-wrapper {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
-  border: 1px solid rgba(71, 85, 105, 0.3) !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.p-dark .leaflet-popup-tip {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border: none !important;
-}
-
 .p-dark .timeline-stack-select {
   border-color: var(--gp-border-medium, rgba(148, 163, 184, 0.45));
   background: rgba(15, 23, 42, 0.75);
