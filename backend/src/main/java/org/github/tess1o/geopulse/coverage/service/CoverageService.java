@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.coverage.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
 import org.github.tess1o.geopulse.coverage.model.CoverageProcessingCursor;
@@ -17,10 +19,15 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
+@Slf4j
 public class CoverageService {
 
     private final CoverageRepository coverageRepository;
     private final UserRepository userRepository;
+
+    @ConfigProperty(name = "geopulse.coverage.processing.batch-size",
+            defaultValue = "" + CoverageDefaults.DEFAULT_BATCH_SIZE)
+    int batchSize;
 
     @Inject
     public CoverageService(CoverageRepository coverageRepository,
@@ -32,31 +39,41 @@ public class CoverageService {
     @Transactional
     public void processUserCoverage(UUID userId) {
         CoverageProcessingCursor lowerBound = coverageRepository.findProcessingCursor(userId);
-        CoverageProcessingCursor upperBound = coverageRepository.findProcessingUpperBound(
-                userId,
-                lowerBound,
-                CoverageDefaults.MAX_ACCURACY_METERS
-        );
+        int batchNum = 0;
 
-        if (upperBound == null) {
-            return;
-        }
-
-        for (int gridMeters : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
-            coverageRepository.upsertCoverageCells(
+        while (true) {
+            CoverageProcessingCursor batchUpperBound = coverageRepository.findBatchUpperBound(
                     userId,
                     lowerBound,
-                    upperBound,
-                    gridMeters,
-                    CoverageDefaults.RADIUS_METERS,
-                    CoverageDefaults.SEGMENTIZE_METERS,
-                    CoverageDefaults.MAX_GAP_SECONDS,
-                    CoverageDefaults.MAX_SPEED_MPS,
-                    CoverageDefaults.MAX_ACCURACY_METERS
+                    CoverageDefaults.MAX_ACCURACY_METERS,
+                    batchSize
             );
-        }
 
-        coverageRepository.upsertLastProcessed(userId, upperBound);
+            if (batchUpperBound == null) {
+                log.debug("Coverage processing complete for user {} after {} batches.", userId, batchNum);
+                break;
+            }
+
+            batchNum++;
+            log.debug("Processing coverage batch {} for user {} (cursor: {})", batchNum, userId, batchUpperBound);
+
+            for (int gridMeters : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
+                coverageRepository.upsertCoverageCells(
+                        userId,
+                        lowerBound,
+                        batchUpperBound,
+                        gridMeters,
+                        CoverageDefaults.RADIUS_METERS,
+                        CoverageDefaults.SEGMENTIZE_METERS,
+                        CoverageDefaults.MAX_GAP_SECONDS,
+                        CoverageDefaults.MAX_SPEED_MPS,
+                        CoverageDefaults.MAX_ACCURACY_METERS
+                );
+            }
+
+            coverageRepository.upsertLastProcessed(userId, batchUpperBound);
+            lowerBound = batchUpperBound;
+        }
     }
 
     @Transactional
