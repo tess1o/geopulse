@@ -540,7 +540,8 @@ test.describe('Friends Map Coverage', () => {
 
     const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first()
     await expect(popup).toBeVisible({ timeout: 10000 })
-    await expect(popup).toContainText('Battery: 100%')
+    await expect(popup.locator('.gp-map-popup-label', { hasText: 'Battery' })).toBeVisible()
+    await expect(popup.locator('.gp-map-popup-value', { hasText: '100%' })).toBeVisible()
   })
 
   test('should hide battery row in Live friend popup when latest point has no battery', async ({ page, isolatedUsers, dbManager, mapMode }) => {
@@ -577,7 +578,7 @@ test.describe('Friends Map Coverage', () => {
 
     const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first()
     await expect(popup).toBeVisible({ timeout: 10000 })
-    await expect(popup).not.toContainText('Battery:')
+    await expect(popup.locator('.gp-map-popup-label', { hasText: 'Battery' })).toHaveCount(0)
   })
 
   test('should render Timeline tab map in selected mode with timeline permission filtering', async ({ page, isolatedUsers, dbManager, mapMode }) => {

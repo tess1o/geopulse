@@ -15,13 +15,12 @@ import {
   setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import {
-  createRawGpsPopupElement,
+  createRawGpsPopupMount,
   groupRawGpsPoints,
   RAW_GPS_POPUP_CLASS_NAME,
   RAW_GPS_POPUP_MAX_WIDTH,
   RAW_GPS_POPUP_OFFSET
 } from '@/maps/shared/rawGpsPointInspector'
-import '@/maps/shared/styles/rawGpsPointPopup.css'
 
 const props = defineProps({
   map: {
@@ -54,6 +53,7 @@ const state = {
   stackCountLayerId: '',
   listeners: [],
   popup: null,
+  popupMount: null,
   styleLoadHandler: null,
   boundMap: null
 }
@@ -99,6 +99,10 @@ const closePopup = () => {
     state.popup.remove()
     state.popup = null
   }
+  if (state.popupMount) {
+    state.popupMount.unmount()
+    state.popupMount = null
+  }
 }
 
 const getPopupAnchor = (coordinates) => {
@@ -123,7 +127,7 @@ const openGroupPopup = (event) => {
 
   closePopup()
   let popup = null
-  const popupElement = createRawGpsPopupElement(group, {
+  const popupMount = createRawGpsPopupMount(group, {
     timezone,
     resolveLocation: props.resolveLocation,
     onRender: () => {
@@ -143,10 +147,21 @@ const openGroupPopup = (event) => {
     className: RAW_GPS_POPUP_CLASS_NAME
   })
     .setLngLat(coordinates)
-    .setDOMContent(popupElement)
+    .setDOMContent(popupMount.element)
     .addTo(props.map)
 
+  popup.on('close', () => {
+    if (state.popup === popup) {
+      state.popup = null
+    }
+    if (state.popupMount === popupMount) {
+      state.popupMount = null
+    }
+    popupMount.unmount()
+  })
+
   state.popup = popup
+  state.popupMount = popupMount
 }
 
 const registerEvents = () => {

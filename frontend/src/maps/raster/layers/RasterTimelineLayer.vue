@@ -17,8 +17,15 @@ import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { createTimelineIcon, createHighlightedTimelineIcon } from '@/utils/mapHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
-import { buildTimelineItemPopupHtml, escapeHtml } from '@/maps/shared/popupContentBuilders'
+import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import { buildTimelineStackItems } from '@/maps/shared/timelineStackContent'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildTimelineItemPopupModel } from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const timezone = useTimezone()
 
@@ -281,9 +288,13 @@ const renderTimelineMarkers = () => {
       timelineIndex: primaryIndex,
       ...props.markerOptions
     })
+    let popupMount = null
 
     if (isStack) {
-      marker.bindPopup(createStackPopupElement(marker, markerItems), { maxWidth: 320 })
+      marker.bindPopup(createStackPopupElement(marker, markerItems), {
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+        className: getMapPopupVariantClassName('compact', 'gp-timeline-stack-popup-container')
+      })
 
       marker.on('click', () => {
         marker.openPopup()
@@ -317,7 +328,14 @@ const renderTimelineMarkers = () => {
       })
 
       if (primaryItem.address || primaryItem.timestamp) {
-        marker.bindPopup(buildPopupContent(primaryItem))
+        popupMount = mountMapPopup(
+          MapInfoPopup,
+          buildPopupModel(primaryItem)
+        )
+        marker.bindPopup(popupMount.element, {
+          maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+          className: getMapPopupVariantClassName('compact', 'gp-timeline-popup-container')
+        })
       }
     }
 
@@ -333,14 +351,19 @@ const renderTimelineMarkers = () => {
       indexes: markerItems.map(({ index }) => index),
       isStack,
       isHighlighted,
-      isDimmed
+      isDimmed,
+      popupMount
     })
   })
 }
 
-const buildPopupContent = (item) => buildTimelineItemPopupHtml(item, { formatDateTimeDisplay })
+const buildPopupModel = (item) => buildTimelineItemPopupModel(item, { formatDateTimeDisplay })
 
 const clearTimelineMarkers = () => {
+  timelineMarkers.value.forEach(({ popupMount }) => {
+    popupMount?.unmount?.()
+  })
+
   if (markerClusterGroup.value) {
     // Clear all markers from cluster group
     markerClusterGroup.value.clearLayers()

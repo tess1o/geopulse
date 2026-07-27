@@ -1,0 +1,36 @@
+.weather-map-marker {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 2px solid #0f766e;
+  color: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+  box-sizing: border-box;
+}
+
+.weather-map-marker--clear {
+  border-color: #ca8a04;
+  color: #ca8a04;
+}
+
+.weather-map-marker--rain,
+.weather-map-marker--storm,
+.weather-map-marker--snow {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.weather-map-marker--highlighted {
+  width: 34px;
+  height: 34px;
+  border-width: 3px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 3px 10px rgba(15, 23, 42, 0.32);
+}
+
+.maplibregl-marker .weather-map-marker {
+  cursor: pointer;
+}

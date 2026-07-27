@@ -5,6 +5,13 @@
 <script setup>
 import {ref, watch, onUnmounted} from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildSharedLocationPopupModel } from '@/maps/shared/popups/locationPopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const timezone = useTimezone()
 import L from 'leaflet'
@@ -31,6 +38,10 @@ const props = defineProps({
     type: String,
     default: null
   },
+  markerType: {
+    type: String,
+    default: ''
+  },
   openPopup: {
     type: Boolean,
     default: true
@@ -39,60 +50,27 @@ const props = defineProps({
 
 // Local state
 let marker = null
-
-const escapeHtml = (value) => {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('\"', '&quot;')
-    .replaceAll('\'', '&#39;')
-}
-
-const formatTelemetryValue = (item) => {
-  if (!item) return '-'
-  const value = item.value ?? '-'
-  if (!item.unit) return value
-  if (item.unit === '%') return `${value}${item.unit}`
-  return `${value} ${item.unit}`
-}
-
-const buildTelemetryHtml = () => {
-  if (!Array.isArray(props.shareData?.telemetry) || props.shareData.telemetry.length === 0) {
-    return ''
-  }
-
-  const rows = props.shareData.telemetry
-    .map((item) => `
-      <div class=\"shared-telemetry-row\">
-        <span class=\"shared-telemetry-label\">${escapeHtml(item.label)}:</span>
-        <span class=\"shared-telemetry-value\">${escapeHtml(formatTelemetryValue(item))}</span>
-      </div>
-    `)
-    .join('')
-
-  return `
-    <div class=\"shared-telemetry\">
-      <div class=\"shared-telemetry-title\">Telemetry</div>
-      ${rows}
-    </div>
-  `
-}
+let popupMount = null
 
 const createMarker = () => {
+  popupMount?.unmount?.()
+  popupMount = null
   if (marker) {
     props.map.removeLayer(marker)
   }
 
   if (props.avatarUrl) {
+    const markerClassName = props.markerType
+      ? `leaflet-avatar-icon-container ${props.markerType}-marker`
+      : 'leaflet-avatar-icon-container'
     const icon = L.divIcon({
       html: `<img src="${props.avatarUrl}" class="leaflet-avatar-icon">`,
-      className: 'leaflet-avatar-icon-container',
+      className: markerClassName,
       iconSize: [40, 40],
       iconAnchor: [20, 40],
       popupAnchor: [0, -40]
     });
-    marker = L.marker([props.latitude, props.longitude], { icon });
+    marker = L.marker([props.latitude, props.longitude], { icon, markerType: props.markerType });
   } else {
     marker = L.circleMarker([props.latitude, props.longitude], {
       radius: 12,
@@ -100,19 +78,27 @@ const createMarker = () => {
       color: '#ffffff',
       weight: 3,
       opacity: 1,
-      fillOpacity: 0.9
+      fillOpacity: 0.9,
+      className: props.markerType ? `${props.markerType}-marker` : undefined,
+      markerType: props.markerType
     });
   }
 
+  popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildSharedLocationPopupModel(props.shareData, { timezone })
+  )
   marker.addTo(props.map)
-      .bindPopup(`
-      <div class="shared-marker-popup">
-        <strong>${escapeHtml(props.shareData.sharedBy)}</strong><br/>
-        ${props.shareData.description ? `<em>${escapeHtml(props.shareData.description)}</em><br/>` : ''}
-        <small>Last seen ${escapeHtml(timezone.timeAgo(props.shareData.sharedAt))}</small>
-        ${buildTelemetryHtml()}
-      </div>
-    `)
+
+  const markerElement = marker.getElement?.()
+  if (props.markerType && typeof markerElement?.setAttribute === 'function') {
+    markerElement.setAttribute('data-marker-type', props.markerType)
+  }
+
+  marker.bindPopup(popupMount.element, {
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+    className: getMapPopupVariantClassName('compact', 'gp-shared-location-popup-container')
+  })
 
   if (props.openPopup) {
     marker.openPopup()
@@ -120,9 +106,11 @@ const createMarker = () => {
 }
 
 // Watch for prop changes and recreate marker
-watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl], createMarker, {immediate: true})
+watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl, props.markerType], createMarker, {immediate: true})
 
 onUnmounted(() => {
+  popupMount?.unmount?.()
+  popupMount = null
   if (marker && props.map) {
     props.map.removeLayer(marker)
   }
@@ -143,38 +131,4 @@ onUnmounted(() => {
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
-.shared-marker-popup {
-  text-align: center;
-}
-
-.shared-telemetry {
-  margin-top: 0.5rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid #e5e7eb;
-  text-align: left;
-  min-width: 180px;
-}
-
-.shared-telemetry-title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-}
-
-.shared-telemetry-row {
-  font-size: 0.75rem;
-  line-height: 1.25;
-}
-
-.shared-telemetry-label {
-  color: #4b5563;
-  margin-right: 0.25rem;
-}
-
-.shared-telemetry-value {
-  color: #111827;
-  font-weight: 600;
-}
 </style>

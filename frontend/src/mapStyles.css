@@ -140,11 +140,6 @@
    MARKER TYPE STYLES
    ================================ */
 
-.last-marker {
-    animation: pulse 2s infinite;
-    z-index: 1000;
-}
-
 .highlight-start-marker {
     animation: bounceIn 0.3s ease-out;
 }
@@ -164,35 +159,6 @@
 .friend-marker:hover {
     animation: pulse 1.5s infinite;
     transform: scale(1.2);
-}
-
-.favorite-location-marker {
-    animation: slideUp 0.5s ease-out;
-}
-
-.favorite-location-marker:hover {
-    transform: scale(1.2) rotate(15deg);
-    filter: brightness(1.2) saturate(1.3);
-}
-
-.stay-marker {
-    transition: all 0.3s ease;
-}
-
-.stay-marker:hover {
-    filter: brightness(1.2) saturate(1.1);
-    transform: scale(1.2);
-    box-shadow: 0 6px 12px rgba(96, 125, 139, 0.4);
-}
-
-.transit-marker {
-    transition: all 0.3s ease;
-}
-
-.transit-marker:hover {
-    filter: brightness(1.2) saturate(1.1);
-    transform: scale(1.2) rotate(5deg);
-    box-shadow: 0 5px 10px rgba(0, 51, 102, 0.4);
 }
 
 /* Instant appearance for highlighted markers */
@@ -613,11 +579,9 @@
         animation: none !important;
     }
 
-    .last-marker,
     .highlight-start-marker,
     .highlight-end-marker,
-    .friend-marker:hover,
-    .favorite-location-marker {
+    .friend-marker:hover {
         animation: none !important;
     }
 

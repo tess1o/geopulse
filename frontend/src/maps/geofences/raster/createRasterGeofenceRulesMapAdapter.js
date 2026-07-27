@@ -1,10 +1,28 @@
 import L from 'leaflet'
 import { buildRenderableRuleAreas, toRuleAreaBounds } from '@/maps/geofences/shared/geofenceRuleAreaUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
+
+const isHtmlElement = (value) => (
+  typeof HTMLElement !== 'undefined' && value instanceof HTMLElement
+)
 
 export const createRasterGeofenceRulesMapAdapter = (callbacks = {}) => {
   let map = null
   let editingLayer = null
   let ruleAreasLayerGroup = null
+  const popupMounts = new Set()
+
+  const clearRuleAreaPopupMounts = () => {
+    popupMounts.forEach((popupMount) => {
+      popupMount?.unmount?.()
+    })
+    popupMounts.clear()
+  }
 
   const ensureRuleAreasLayerGroup = () => {
     if (!map) {
@@ -69,6 +87,7 @@ export const createRasterGeofenceRulesMapAdapter = (callbacks = {}) => {
       return
     }
 
+    clearRuleAreaPopupMounts()
     layerGroup.clearLayers()
 
     const ruleAreas = buildRenderableRuleAreas({
@@ -88,10 +107,20 @@ export const createRasterGeofenceRulesMapAdapter = (callbacks = {}) => {
       })
 
       if (typeof popupBuilder === 'function') {
-        rectangle.bindPopup(popupBuilder(rule), {
-          maxWidth: 360,
-          className: 'geofence-area-popup'
-        })
+        const popupContent = popupBuilder(rule)
+        if (typeof popupContent === 'string' || isHtmlElement(popupContent)) {
+          rectangle.bindPopup(popupContent, {
+            maxWidth: 360,
+            className: 'geofence-area-popup'
+          })
+        } else if (popupContent && typeof popupContent === 'object') {
+          const popupMount = mountMapPopup(MapInfoPopup, popupContent)
+          popupMounts.add(popupMount)
+          rectangle.bindPopup(popupMount.element, {
+            maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+            className: getMapPopupVariantClassName('compact', 'geofence-area-popup')
+          })
+        }
       }
 
       rectangle.addTo(layerGroup)
@@ -150,6 +179,7 @@ export const createRasterGeofenceRulesMapAdapter = (callbacks = {}) => {
 
   const destroy = () => {
     clearEditingArea()
+    clearRuleAreaPopupMounts()
 
     if (ruleAreasLayerGroup) {
       ruleAreasLayerGroup.clearLayers()

@@ -2,6 +2,8 @@
 
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
+import maplibregl from 'maplibre-gl'
+import { useTimezone } from '@/composables/useTimezone'
 import {
   createFeatureCollection,
   ensureClusterSource,
@@ -13,6 +15,14 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildLocationAnalyticsPlacePopupModel } from '@/maps/shared/popups/locationPopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH,
+  MAP_POPUP_OFFSET
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const props = defineProps({
   map: {
@@ -38,6 +48,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['marker-click', 'open-place-details'])
+const timezone = useTimezone()
 const CLUSTER_LABEL_MIN_ZOOM = 8
 const CLUSTER_LABEL_MAX_COUNT = 49
 
@@ -51,7 +62,9 @@ const state = {
   hoveredLayerId: '',
   listeners: [],
   styleLoadHandler: null,
-  boundMap: null
+  boundMap: null,
+  popup: null,
+  popupMount: null
 }
 
 state.sourceId = `${state.token}-source`
@@ -103,6 +116,63 @@ const parsePlace = (event) => {
   }
 }
 
+const closePlacePopup = () => {
+  if (state.popup) {
+    state.popup.remove()
+    state.popup = null
+  }
+  if (state.popupMount) {
+    state.popupMount.unmount()
+    state.popupMount = null
+  }
+}
+
+const openPlacePopup = (place, coordinates) => {
+  if (!isMapLibreMap(props.map) || !place) {
+    return
+  }
+
+  const longitude = toFiniteNumber(coordinates?.[0] ?? place?.longitude)
+  const latitude = toFiniteNumber(coordinates?.[1] ?? place?.latitude)
+  if (latitude === null || longitude === null) {
+    return
+  }
+
+  closePlacePopup()
+
+  const popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildLocationAnalyticsPlacePopupModel(place, {
+      timezone,
+      onOpenPlaceDetails: () => emit('open-place-details', place)
+    })
+  )
+  const popup = new maplibregl.Popup({
+    closeButton: true,
+    closeOnClick: true,
+    closeOnMove: false,
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+    offset: MAP_POPUP_OFFSET,
+    className: getMapPopupVariantClassName('compact', 'gp-location-analytics-popup-container')
+  })
+    .setLngLat([longitude, latitude])
+    .setDOMContent(popupMount.element)
+
+  popup.on('close', () => {
+    if (state.popup === popup) {
+      state.popup = null
+    }
+    if (state.popupMount === popupMount) {
+      state.popupMount = null
+    }
+    popupMount.unmount()
+  })
+
+  state.popup = popup
+  state.popupMount = popupMount
+  popup.addTo(props.map)
+}
+
 const registerEvents = () => {
   if (!isMapLibreMap(props.map)) {
     return
@@ -133,9 +203,11 @@ const registerEvents = () => {
   }
 
   const handleMarkerClick = (event) => {
+    event?.preventDefault?.()
     const place = parsePlace(event)
     if (place) {
       emit('marker-click', place)
+      openPlacePopup(place, event?.features?.[0]?.geometry?.coordinates)
     }
   }
 
@@ -317,11 +389,16 @@ const renderLayer = () => {
     props.visible
   )
 
+  if (!props.visible) {
+    closePlacePopup()
+  }
+
   unregisterEvents()
   registerEvents()
 }
 
 const clearLayer = () => {
+  closePlacePopup()
   unregisterEvents()
 
   if (state.boundMap && state.styleLoadHandler) {

@@ -14,7 +14,16 @@ import {
   setLayerVisibility,
   toFiniteNumber
 } from '@/maps/vector/utils/maplibreLayerUtils'
-import { createBasicFriendPopup } from '@/utils/friendPopupBuilder'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildFriendLocationPopupModel } from '@/maps/shared/popups/friendPopupModel'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   map: {
@@ -169,16 +178,27 @@ const createFriendMarkerElement = ({ friend, color, label }) => {
 }
 
 const createFriendPopup = (friend) => {
-  return new maplibregl.Popup({
+  const popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildFriendLocationPopupModel(friend, { timezone })
+  )
+  const popup = new maplibregl.Popup({
     closeButton: true,
     closeOnClick: false,
     offset: 24,
-    className: 'gp-friend-popup'
-  }).setHTML(createBasicFriendPopup(friend))
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+    className: getMapPopupVariantClassName('compact', 'gp-friend-location-popup-container')
+  }).setDOMContent(popupMount.element)
+
+  return {
+    popup,
+    popupMount
+  }
 }
 
 const clearFriendMarkers = () => {
-  friendMarkers.value.forEach(({ marker }) => {
+  friendMarkers.value.forEach(({ marker, popupMount }) => {
+    popupMount?.unmount?.()
     marker.remove()
   })
 
@@ -214,7 +234,7 @@ const renderFriendMarkers = () => {
       .setLngLat([longitude, latitude])
       .addTo(props.map)
 
-    const popup = createFriendPopup(friend)
+    const { popup, popupMount } = createFriendPopup(friend)
     marker.setPopup(popup)
 
     const handleClick = (event) => {
@@ -251,6 +271,7 @@ const renderFriendMarkers = () => {
       friend,
       marker,
       popup,
+      popupMount,
       index,
       handlers: {
         click: handleClick,
@@ -401,8 +422,6 @@ defineExpose({
 </script>
 
 <style>
-@import '@/styles/friendPopup.css';
-
 .gp-vector-friend-marker {
   width: 40px;
   height: 40px;
@@ -434,53 +453,7 @@ defineExpose({
   outline-offset: 2px;
 }
 
-.gp-friend-popup.maplibregl-popup .maplibregl-popup-content {
-  padding: 0.625rem;
-  margin: 0;
-  border-radius: 12px;
-  border: 1px solid var(--gp-border-light, #e2e8f0);
-  background: var(--gp-surface-white, #ffffff);
-  box-shadow: var(--gp-shadow-large, 0 10px 25px rgba(15, 23, 42, 0.2));
-}
-
-.gp-friend-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
-  border-bottom-color: var(--gp-surface-white, #ffffff);
-}
-
-.gp-friend-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-  border-top-color: var(--gp-surface-white, #ffffff);
-}
-
-.gp-friend-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--gp-surface-white, #ffffff);
-}
-
-.gp-friend-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--gp-surface-white, #ffffff);
-}
-
 .p-dark .gp-vector-friend-marker {
   border-color: var(--gp-border-dark, rgba(148, 163, 184, 0.55));
-}
-
-.p-dark .gp-friend-popup.maplibregl-popup .maplibregl-popup-content {
-  border-color: var(--gp-border-dark, rgba(148, 163, 184, 0.35));
-  background: var(--gp-surface-dark, #1e293b);
-}
-
-.p-dark .gp-friend-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
-  border-bottom-color: var(--gp-surface-dark, #1e293b);
-}
-
-.p-dark .gp-friend-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-  border-top-color: var(--gp-surface-dark, #1e293b);
-}
-
-.p-dark .gp-friend-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--gp-surface-dark, #1e293b);
-}
-
-.p-dark .gp-friend-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--gp-surface-dark, #1e293b);
 }
 </style>

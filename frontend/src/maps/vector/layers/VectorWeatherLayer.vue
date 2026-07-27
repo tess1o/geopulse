@@ -8,14 +8,19 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import {
   buildWeatherSampleTitle,
-  formatObservedTime,
-  formatPrecipitation,
-  formatTemperature,
-  formatWindSpeed,
   getWeatherCodeInfo,
   isWeatherSampleInTimelineItem
 } from '@/utils/weatherDisplay'
 import { isMapLibreMap, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildWeatherPopupModel } from '@/maps/shared/popups/weatherPopupModel'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH,
+  MAP_POPUP_OFFSET
+} from '@/maps/shared/popups/mapPopupOptions'
+import '@/maps/shared/styles/weatherMapMarkers.css'
 
 const props = defineProps({
   map: {
@@ -39,11 +44,14 @@ const props = defineProps({
 const authStore = useAuthStore()
 const { measureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
-const markers = []
+const markerEntries = []
 
 const clearMarkers = () => {
-  markers.forEach(marker => marker.remove())
-  markers.length = 0
+  markerEntries.forEach(({ marker, popupMount }) => {
+    popupMount?.unmount?.()
+    marker.remove()
+  })
+  markerEntries.length = 0
   if (isMapLibreMap(props.map)) {
     props.map.getCanvas().style.cursor = ''
   }
@@ -67,25 +75,6 @@ const createMarkerElement = (sample) => {
   return element
 }
 
-const createPopupElement = (sample) => {
-  const info = getWeatherCodeInfo(sample.weatherCode)
-  const unit = measureUnit.value || 'METRIC'
-  const precipitation = formatPrecipitation(sample.precipitation, unit)
-  const precipitationRow = precipitation
-    ? `<div class="weather-map-popup-row"><span>Precipitation</span><strong>${escapeHtml(precipitation)}</strong></div>`
-    : ''
-  const root = document.createElement('div')
-  root.className = 'weather-map-popup'
-  root.innerHTML = `
-    <div class="weather-map-popup-title"><i class="${info.icon}"></i> ${escapeHtml(info.label)}</div>
-    <div class="weather-map-popup-row"><span>Observed</span><strong>${escapeHtml(formatObservedTime(sample, timezone))}</strong></div>
-    <div class="weather-map-popup-row"><span>Temperature</span><strong>${escapeHtml(formatTemperature(sample.temperature, unit) || 'n/a')}</strong></div>
-    ${precipitationRow}
-    <div class="weather-map-popup-row"><span>Wind</span><strong>${escapeHtml(formatWindSpeed(sample.windSpeed, unit) || 'n/a')}</strong></div>
-  `
-  return root
-}
-
 const renderMarkers = () => {
   clearMarkers()
   if (!props.visible || !isMapLibreMap(props.map)) {
@@ -99,6 +88,13 @@ const renderMarkers = () => {
       return
     }
 
+    const popupMount = mountMapPopup(
+      MapInfoPopup,
+      buildWeatherPopupModel(sample, {
+        unit: measureUnit.value || 'METRIC',
+        timezone
+      })
+    )
     const marker = new maplibregl.Marker({
       element: createMarkerElement(sample),
       anchor: 'center'
@@ -107,13 +103,13 @@ const renderMarkers = () => {
       .setPopup(new maplibregl.Popup({
         closeButton: true,
         closeOnClick: true,
-        maxWidth: '260px',
-        offset: 18,
-        className: 'weather-map-popup-container'
-      }).setDOMContent(createPopupElement(sample)))
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+        offset: MAP_POPUP_OFFSET,
+        className: getMapPopupVariantClassName('compact', 'weather-map-popup-container')
+      }).setDOMContent(popupMount.element))
       .addTo(props.map)
 
-    markers.push(marker)
+    markerEntries.push({ marker, popupMount })
   })
 }
 
@@ -126,101 +122,4 @@ watch(
 onBeforeUnmount(() => {
   clearMarkers()
 })
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 </script>
-
-<style>
-.weather-map-marker {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 2px solid #0f766e;
-  color: #0f766e;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
-  box-sizing: border-box;
-  cursor: pointer;
-}
-
-.weather-map-marker--clear {
-  border-color: #ca8a04;
-  color: #ca8a04;
-}
-
-.weather-map-marker--rain,
-.weather-map-marker--storm,
-.weather-map-marker--snow {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-.weather-map-marker--highlighted {
-  width: 34px;
-  height: 34px;
-  border-width: 3px;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18), 0 3px 10px rgba(15, 23, 42, 0.32);
-}
-
-.weather-map-popup {
-  min-width: 210px;
-  color: var(--gp-text-primary);
-}
-
-.weather-map-popup-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 800;
-  margin-bottom: 8px;
-}
-
-.weather-map-popup-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  margin-top: 5px;
-  font-size: 0.82rem;
-}
-
-.weather-map-popup-row span {
-  color: var(--gp-text-secondary);
-}
-
-.weather-map-popup-container .maplibregl-popup-content {
-  background: var(--gp-surface-white);
-  color: var(--gp-text-primary);
-  border: 1px solid var(--gp-border-medium);
-  box-shadow: var(--gp-shadow-medium);
-}
-
-.weather-map-popup-container .maplibregl-popup-close-button {
-  color: var(--gp-text-secondary);
-}
-
-.weather-map-popup-container.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-  border-top-color: var(--gp-surface-white);
-}
-
-.weather-map-popup-container.maplibregl-popup-anchor-top .maplibregl-popup-tip {
-  border-bottom-color: var(--gp-surface-white);
-}
-
-.weather-map-popup-container.maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: var(--gp-surface-white);
-}
-
-.weather-map-popup-container.maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: var(--gp-surface-white);
-}
-</style>

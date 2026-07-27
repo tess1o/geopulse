@@ -6,12 +6,19 @@ import maplibregl from 'maplibre-gl'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import { isMapLibreMap, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
-import { buildTimelineItemPopupHtml, escapeHtml } from '@/maps/shared/popupContentBuilders'
+import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import { buildTimelineStackItems } from '@/maps/shared/timelineStackContent'
 import {
   createTimelineMarkerElement,
   createTimelineStackMarkerElement
 } from '@/maps/shared/timelineMarkerBuilder'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildTimelineItemPopupModel } from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const timezone = useTimezone()
 
@@ -46,6 +53,7 @@ const state = {
   boundMap: null,
   stackPopup: null,
   highlightedStayPopup: null,
+  highlightedStayPopupMount: null,
   highlightedStayPopupTimeoutId: null,
   lastHighlightedStayKey: ''
 }
@@ -110,7 +118,7 @@ const groupTimelineByCoordinate = () => {
 const formatDateTimeDisplay = (dateValue) =>
   `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
-const createPopupContent = (item) => buildTimelineItemPopupHtml(item, { formatDateTimeDisplay })
+const createPopupModel = (item) => buildTimelineItemPopupModel(item, { formatDateTimeDisplay })
 
 const closeStackPopup = () => {
   if (state.stackPopup) {
@@ -129,6 +137,8 @@ const closeHighlightedStayPopup = () => {
     state.highlightedStayPopup.remove()
     state.highlightedStayPopup = null
   }
+  state.highlightedStayPopupMount?.unmount?.()
+  state.highlightedStayPopupMount = null
 }
 
 const createStackPopupElement = (items, onSelect) => {
@@ -219,9 +229,9 @@ const openStackPopupAtCoordinates = (candidateLng, candidateLat, items) => {
     closeButton: true,
     closeOnClick: true,
     closeOnMove: false,
-    maxWidth: '340px',
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
     offset: 16,
-    className: 'gp-timeline-stack-popup-container'
+    className: getMapPopupVariantClassName('compact', 'gp-timeline-stack-popup-container')
   })
     .setLngLat([candidateLng, candidateLat])
     .setDOMContent(popupElement)
@@ -323,16 +333,20 @@ const syncHighlightedStayFocus = () => {
       return
     }
 
+    state.highlightedStayPopupMount = mountMapPopup(
+      MapInfoPopup,
+      createPopupModel(context.focusedItem)
+    )
     state.highlightedStayPopup = new maplibregl.Popup({
       closeButton: true,
       closeOnClick: true,
       closeOnMove: false,
-      className: 'gp-timeline-popup-container',
-      maxWidth: '320px',
+      className: getMapPopupVariantClassName('compact', 'gp-timeline-popup-container'),
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
       offset: 14
     })
       .setLngLat([longitude, latitude])
-      .setHTML(createPopupContent(context.focusedItem))
+      .setDOMContent(state.highlightedStayPopupMount.element)
       .addTo(props.map)
   }, 220)
 }
@@ -377,15 +391,20 @@ const renderLayer = () => {
       .addTo(props.map)
 
     let markerPopup = null
+    let markerPopupMount = null
     if (!isStack && (primaryItem?.address || primaryItem?.timestamp)) {
+      markerPopupMount = mountMapPopup(
+        MapInfoPopup,
+        createPopupModel(primaryItem)
+      )
       markerPopup = new maplibregl.Popup({
         closeButton: true,
         closeOnClick: true,
         closeOnMove: false,
-        className: 'gp-timeline-popup-container',
-        maxWidth: '320px',
+        className: getMapPopupVariantClassName('compact', 'gp-timeline-popup-container'),
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
         offset: 14
-      }).setHTML(createPopupContent(primaryItem))
+      }).setDOMContent(markerPopupMount.element)
     }
 
     const openMarkerPopup = () => {
@@ -462,6 +481,7 @@ const renderLayer = () => {
         markerSpec.element.removeEventListener('mouseenter', handleMouseEnter)
         markerSpec.element.removeEventListener('mouseleave', handleMouseLeave)
         closeMarkerPopup()
+        markerPopupMount?.unmount?.()
         marker.remove()
       }
     })
@@ -514,33 +534,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-.gp-timeline-popup-container .maplibregl-popup-content {
-  padding: 0.6rem 0.7rem;
-}
-
-.gp-timeline-stack-popup-container .maplibregl-popup-content {
-  padding: 0.7rem 0.8rem;
-}
-
-.p-dark .gp-timeline-stack-popup-container .maplibregl-popup-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
-  border: 1px solid rgba(71, 85, 105, 0.3);
-}
-
-.p-dark .gp-timeline-popup-container .maplibregl-popup-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
-  border: 1px solid rgba(71, 85, 105, 0.3);
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.p-dark .gp-timeline-stack-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.95);
-}
-
-.p-dark .gp-timeline-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.95);
-}
-
 .timeline-stack-marker {
   width: 30px;
   height: 30px;

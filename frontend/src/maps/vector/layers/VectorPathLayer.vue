@@ -14,10 +14,16 @@ import {
   removeSources,
   setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import {
-  buildTripEndpointPopupHtml,
-  buildTripPopupHtml
-} from '@/maps/shared/popupContentBuilders'
+  buildHighlightedTripPopupModel,
+  buildTripEndpointPopupModel
+} from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
 import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildHighlightedData,
@@ -105,6 +111,7 @@ const state = {
   styleLoadHandler: null,
   boundMap: null,
   highlightedTripPopup: null,
+  highlightedTripPopupMount: null,
   highlightedTripPopupKey: '',
   highlightedTripPopupTimeoutId: null,
   highlightedTripPopupAutoHideTimeoutId: null,
@@ -132,8 +139,6 @@ const hoverController = createVectorPathHoverController({
 const replayController = createVectorPathReplayController({
   getMap: () => props.map
 })
-
-const buildTripPopupContent = (trip) => buildTripPopupHtml(trip, { formatDateTimeDisplay })
 
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
@@ -193,6 +198,8 @@ const closeHighlightedTripPopup = () => {
     state.highlightedTripPopup.remove()
     state.highlightedTripPopup = null
   }
+  state.highlightedTripPopupMount?.unmount?.()
+  state.highlightedTripPopupMount = null
 
   state.highlightedTripPopupKey = ''
 }
@@ -210,10 +217,6 @@ const removeHighlightedEndpointMarkers = () => {
     state[markerKey] = null
   })
 }
-
-const buildTripEndpointPopupContent = (trip, markerType) => (
-  buildTripEndpointPopupHtml(trip, markerType, { formatDateTimeDisplay })
-)
 
 const createHighlightedEndpointMarker = ({
   markerType,
@@ -246,13 +249,18 @@ const createHighlightedEndpointMarker = ({
     .setLngLat([longitude, latitude])
     .addTo(props.map)
 
+  const popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildTripEndpointPopupModel(props.highlightedTrip, markerType, { formatDateTimeDisplay })
+  )
   const popup = new maplibregl.Popup({
     closeButton: false,
     closeOnClick: false,
     closeOnMove: false,
-    className: 'gp-trip-popup-container',
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+    className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container'),
     offset: 14
-  }).setHTML(buildTripEndpointPopupContent(props.highlightedTrip, markerType))
+  }).setDOMContent(popupMount.element)
 
   const openPopup = () => {
     if (props.replayState?.playing) {
@@ -290,6 +298,7 @@ const createHighlightedEndpointMarker = ({
       markerElement.removeEventListener('mouseleave', closePopup)
       markerElement.removeEventListener('click', handleClick)
       popup.remove()
+      popupMount.unmount()
       marker.remove()
     }
   }
@@ -358,9 +367,10 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
   }
 
   if (state.highlightedTripPopup && state.highlightedTripPopupKey === tripKey) {
-    state.highlightedTripPopup
-      .setLngLat(popupCoordinate)
-      .setHTML(buildTripPopupContent(props.highlightedTrip))
+    state.highlightedTripPopup.setLngLat(popupCoordinate)
+    state.highlightedTripPopupMount?.updateProps?.(
+      buildHighlightedTripPopupModel(props.highlightedTrip, { formatDateTimeDisplay })
+    )
     scheduleHighlightedTripPopupAutoHide(tripKey)
     return
   }
@@ -376,14 +386,19 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
       return
     }
 
+    state.highlightedTripPopupMount = mountMapPopup(
+      MapInfoPopup,
+      buildHighlightedTripPopupModel(props.highlightedTrip, { formatDateTimeDisplay })
+    )
     state.highlightedTripPopup = new maplibregl.Popup({
       closeButton: false,
       closeOnClick: false,
       closeOnMove: false,
-      className: 'gp-trip-popup-container'
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+      className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
     })
       .setLngLat(popupCoordinate)
-      .setHTML(buildTripPopupContent(props.highlightedTrip))
+      .setDOMContent(state.highlightedTripPopupMount.element)
       .addTo(props.map)
 
     scheduleHighlightedTripPopupAutoHide(tripKey)
@@ -777,28 +792,3 @@ onBeforeUnmount(() => {
   clearLayer()
 })
 </script>
-
-<style>
-.gp-trip-popup-container .maplibregl-popup-content {
-  padding: 0.65rem 0.75rem;
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid rgba(148, 163, 184, 0.65);
-  color: #0f172a;
-}
-
-.gp-trip-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(255, 255, 255, 0.97);
-}
-
-.p-dark .gp-trip-popup-container .maplibregl-popup-content {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94));
-  border: 1px solid rgba(71, 85, 105, 0.55);
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.45);
-}
-
-.p-dark .gp-trip-popup-container .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.95);
-}
-
-</style>
