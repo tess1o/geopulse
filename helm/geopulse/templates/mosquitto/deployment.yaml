@@ -55,11 +55,18 @@ spec:
             - name: mqtt
               containerPort: 1883
               protocol: TCP
+          {{- with .Values.mosquitto.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "geopulse.fullname" . }}-config
             - secretRef:
                 name: {{ include "geopulse.secretName" . }}
+            {{- with .Values.mosquitto.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: entrypoint
               mountPath: /entrypoint.sh

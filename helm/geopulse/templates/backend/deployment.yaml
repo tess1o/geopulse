@@ -64,16 +64,24 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+          {{- if or .Values.backend.javaOpts .Values.backend.extraEnv }}
           env:
             {{- if .Values.backend.javaOpts }}
             - name: JAVA_OPTS
               value: {{ .Values.backend.javaOpts | quote }}
             {{- end }}
+            {{- with .Values.backend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "geopulse.fullname" . }}-config
             - secretRef:
                 name: {{ include "geopulse.secretName" . }}
+            {{- with .Values.backend.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- if .Values.backend.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
