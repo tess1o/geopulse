@@ -373,9 +373,12 @@ config:
 
   # Admin Configuration
   admin:
-    # Email address to automatically promote to admin role on first login
-    # Leave empty if you don't want to set an initial admin
+    # Email address to automatically promote to admin role on registration, startup, or login
+    # When set, this explicit email takes precedence over firstUserAdmin
     email: ""
+    # Automatically promote the first registered user to admin when no admin email is set
+    # Disable this if the instance may be publicly reachable before the owner registers
+    firstUserAdmin: true
 
   # User defaults
   user:

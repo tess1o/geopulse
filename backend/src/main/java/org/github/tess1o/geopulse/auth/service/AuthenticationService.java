@@ -9,8 +9,7 @@ import jakarta.inject.Inject;
 import lombok.Getter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
-import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
@@ -28,7 +27,6 @@ import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
-@Slf4j
 public class AuthenticationService {
 
     @Inject
@@ -38,11 +36,6 @@ public class AuthenticationService {
     @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
     @StaticInitSafe
     String issuer;
-
-    @Inject
-    @ConfigProperty(name = "geopulse.admin.email")
-    @StaticInitSafe
-    Optional<String> adminEmail;
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.lifespan", defaultValue = "1800")
@@ -58,12 +51,15 @@ public class AuthenticationService {
 
     private final UserService userService;
     private final SecurePasswordUtils securePasswordUtils;
+    private final AdminBootstrapService adminBootstrapService;
 
     @Inject
     public AuthenticationService(UserService userService,
-                                 SecurePasswordUtils securePasswordUtils) {
+                                 SecurePasswordUtils securePasswordUtils,
+                                 AdminBootstrapService adminBootstrapService) {
         this.userService = userService;
         this.securePasswordUtils = securePasswordUtils;
+        this.adminBootstrapService = adminBootstrapService;
     }
 
     public String createAccessToken(UserEntity user) {
@@ -107,24 +103,10 @@ public class AuthenticationService {
             throw new InvalidPasswordException("Invalid password");
         }
 
-        // Check if user should be promoted to ADMIN based on admin email
-        checkAndPromoteToAdmin(user);
+        adminBootstrapService.ensureAdminForAuthenticatedUser(user);
 
         // Generate JWT tokens
         return getAuthResponse(user);
-    }
-
-    /**
-     * Check if user's email matches admin email and promote to ADMIN role if needed.
-     */
-    private void checkAndPromoteToAdmin(UserEntity user) {
-        if (adminEmail.isPresent() && !adminEmail.get().isBlank() &&
-            adminEmail.get().equalsIgnoreCase(user.getEmail()) &&
-            user.getRole() != Role.ADMIN) {
-            userService.updateRole(user.getId(), Role.ADMIN);
-            user.setRole(Role.ADMIN); // Update in-memory object for JWT generation
-            log.info("Promoted existing user {} to ADMIN role (matches admin email)", user.getEmail());
-        }
     }
 
     /**
@@ -137,8 +119,7 @@ public class AuthenticationService {
             throw new IllegalArgumentException("User account is disabled");
         }
 
-        // Check if user should be promoted to ADMIN based on admin email
-        checkAndPromoteToAdmin(user);
+        adminBootstrapService.ensureAdminForAuthenticatedUser(user);
 
         // Generate JWT tokens
         return getAuthResponse(user);

@@ -65,6 +65,7 @@ route:
 |-----------|-------------|---------|
 | `config.uiUrl` | Frontend URL for CORS | `http://localhost:5555` |
 | `config.admin.email` | Admin user email | `""` |
+| `config.admin.firstUserAdmin` | Promote first registered user to admin when no admin email is set | `true` |
 | `ingress.enabled` | Enable ingress | `false` |
 | `route.enabled` | Enable Gateway API route | `false` |
 | `postgres.persistence.enabled` | Enable PostgreSQL persistence | `true` |

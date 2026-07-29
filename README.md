@@ -143,8 +143,8 @@ helm install my-geopulse geopulse/geopulse
 
 **Post-deployment steps:**
 
-1. Set `GEOPULSE_ADMIN_EMAIL` to define the first admin.
-2. Create an account with that email and finish setup in the Admin Panel.
+1. Create the first account to become admin automatically, or set `GEOPULSE_ADMIN_EMAIL` for an explicit admin email.
+2. Finish setup in the Admin Panel.
 3. See [Initial Setup Guide](https://tess1o.github.io/geopulse/docs/system-administration/initial-setup) for more.
 
 ---

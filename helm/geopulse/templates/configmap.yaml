@@ -17,6 +17,7 @@ data:
 
   # Admin configuration
   GEOPULSE_ADMIN_EMAIL: {{ .Values.config.admin.email | quote }}
+  GEOPULSE_FIRST_USER_ADMIN: {{ .Values.config.admin.firstUserAdmin | quote }}
 
   # User defaults
   GEOPULSE_USER_DEFAULT_MEASURE_UNIT: {{ .Values.config.user.defaultMeasureUnit | quote }}

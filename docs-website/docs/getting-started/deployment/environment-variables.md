@@ -51,11 +51,12 @@ Notes:
 | `GEOPULSE_VERSION_CHECK_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.connect-timeout-seconds`. | Positive integer seconds. | Backend restart |
 | `GEOPULSE_VERSION_CHECK_READ_TIMEOUT_SECONDS` | `8` | HTTP read timeout for the GitHub latest-release lookup. Property: `geopulse.version-check.read-timeout-seconds`. | Positive integer seconds. | Backend restart |
 
-### Authentication and Access (23)
+### Authentication and Access (24)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_ADMIN_EMAIL` | `(empty)` | Admin configuration Property: \`geopulse.admin.email\`. | Valid email address. | Backend restart |
+| `GEOPULSE_FIRST_USER_ADMIN` | `true` | Promotes the first registered user to ADMIN when `GEOPULSE_ADMIN_EMAIL` is empty. Property: \`geopulse.admin.first-user-admin.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` | `true` | Property: \`geopulse.auth.admin-login-bypass.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED` | `false` | Redirect signed-out users from `/` to `/login` instead of rendering Home. Property: \`geopulse.auth.guest-root-redirect-to-login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_MOBILE_CODE_EXPIRY_SECONDS` | `5` | Lifetime of one-time mobile session exchange code in seconds. Property: \`geopulse.auth.mobile.code-expiry-seconds\`. | Positive integer seconds. | Backend restart |

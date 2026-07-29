@@ -90,7 +90,7 @@ Fine-tune how OwnTracks payloads are processed beyond the default supported sett
 ## Recommended Path for New Deployments
 
 1. Deploy GeoPulse (Docker Compose / Kubernetes / Helm).
-2. Set `GEOPULSE_ADMIN_EMAIL` to your email address to become the first administrator.
+2. Create the first account to become administrator automatically, or set `GEOPULSE_ADMIN_EMAIL` before registration for an explicit admin email.
 3. Configure Authentication cookies and optionally OIDC/SSO and User Registration settings.
 4. Configure Reverse Geocoding for place names.
 5. Create your first user and log in.

@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
@@ -47,9 +48,7 @@ public class UserService {
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final DefaultNotificationTemplateService defaultNotificationTemplateService;
     private final SystemSettingsService systemSettingsService;
-
-    @ConfigProperty(name = "geopulse.admin.email")
-    Optional<String> adminEmail;
+    private final AdminBootstrapService adminBootstrapService;
 
     @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
     boolean coverageEnabledByDefault;
@@ -82,7 +81,8 @@ public class UserService {
                        AuthConfigurationService authConfigurationService,
                        AsyncTimelineGenerationService asyncTimelineGenerationService,
                        DefaultNotificationTemplateService defaultNotificationTemplateService,
-                       SystemSettingsService systemSettingsService) {
+                       SystemSettingsService systemSettingsService,
+                       AdminBootstrapService adminBootstrapService) {
         this.userRepository = userRepository;
         this.userAvatarRepository = userAvatarRepository;
         this.securePasswordUtils = securePasswordUtils;
@@ -94,6 +94,7 @@ public class UserService {
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.defaultNotificationTemplateService = defaultNotificationTemplateService;
         this.systemSettingsService = systemSettingsService;
+        this.adminBootstrapService = adminBootstrapService;
     }
 
     /**
@@ -119,12 +120,7 @@ public class UserService {
         // Validate and set timezone (defaults to UTC if null/invalid)
         String validatedTimezone = validateTimezone(timezone);
 
-        // Determine role - check if email matches admin email
-        Role role = Role.USER;
-        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(email)) {
-            role = Role.ADMIN;
-            log.info("Promoting user {} to ADMIN role (matches admin email)", email);
-        }
+        Role role = adminBootstrapService.determineInitialRole(email);
 
         // Create a new user entity
         UserEntity user = UserEntity.builder()
@@ -169,12 +165,7 @@ public class UserService {
         // Validate and set timezone (defaults to UTC if null/invalid)
         String validatedTimezone = validateTimezone(timezone);
 
-        // Determine role - check if email matches admin email
-        Role role = Role.USER;
-        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(email)) {
-            role = Role.ADMIN;
-            log.info("Promoting user {} to ADMIN role (matches admin email) via invitation", email);
-        }
+        Role role = adminBootstrapService.determineInitialRole(email);
 
         // Create a new user entity
         UserEntity user = UserEntity.builder()

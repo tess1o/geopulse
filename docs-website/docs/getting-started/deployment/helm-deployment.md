@@ -109,6 +109,7 @@ helm install geopulse ./helm/geopulse -f my-values.yaml
 | Feature     | values.yaml Path     | Environment Variable   | Default |
 |-------------|----------------------|------------------------|---------|
 | Admin Email | `config.admin.email` | `GEOPULSE_ADMIN_EMAIL` | `""`    |
+| First User Admin | `config.admin.firstUserAdmin` | `GEOPULSE_FIRST_USER_ADMIN` | `true` |
 
 **Example:**
 
@@ -116,7 +117,10 @@ helm install geopulse ./helm/geopulse -f my-values.yaml
 config:
   admin:
     email: "admin@example.com"
+    firstUserAdmin: true
 ```
+
+When `config.admin.email` is empty and `config.admin.firstUserAdmin` is `true`, the first registered account becomes admin. Set `config.admin.email` if the instance may be publicly reachable before the owner registers.
 
 #### User Defaults
 

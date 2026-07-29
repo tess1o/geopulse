@@ -6,15 +6,24 @@ GeoPulse includes a built-in Admin Panel for managing users, user invitations, O
 
 ## Promoting the First Administrator
 
-Before accessing the Admin Panel, you need at least one user with the `ADMIN` role. Since there's no admin initially, you must use an environment variable to promote the first administrator.
+Before accessing the Admin Panel, you need at least one user with the `ADMIN` role. GeoPulse supports automatic first-user bootstrap for self-hosted installs and an explicit admin email override.
+
+### First User Admin Bootstrap
+
+| Environment Variable       | Default | Description                                                                 |
+|----------------------------|---------|-----------------------------------------------------------------------------|
+| `GEOPULSE_FIRST_USER_ADMIN` | `true` | Promote the first registered user to `ADMIN` when no admin email is set      |
+| `GEOPULSE_ADMIN_EMAIL`      | (none) | Email address of the user to automatically promote to `ADMIN`; takes priority |
+
+With the default configuration, the first account created in a fresh GeoPulse database receives the `ADMIN` role. If a database already has exactly one user and no admin, GeoPulse promotes that user on startup. If a database has multiple users and no admin, GeoPulse does not guess; use `GEOPULSE_ADMIN_EMAIL` or emergency recovery.
+
+:::warning
+If your instance is reachable by other people before you register, the first visitor could claim admin access. In that case, set `GEOPULSE_ADMIN_EMAIL` before exposing GeoPulse.
+:::
 
 ### Using GEOPULSE_ADMIN_EMAIL
 
-| Environment Variable     | Default | Description                                                    |
-|--------------------------|---------|----------------------------------------------------------------|
-| `GEOPULSE_ADMIN_EMAIL`   | (none)  | Email address of the user to automatically promote to ADMIN    |
-
-Set this variable to the email address of the user who should become an administrator:
+Set this variable to the email address of the user who should become administrator:
 
 ```bash
 GEOPULSE_ADMIN_EMAIL=admin@example.com
@@ -23,10 +32,11 @@ GEOPULSE_ADMIN_EMAIL=admin@example.com
 **How it works:**
 
 1. **New user registration:** If a user registers with this email address, they will automatically receive the `ADMIN` role.
-2. **Existing user login:** If a user with this email already exists, they will be promoted to `ADMIN` on their next login.
+2. **Existing user:** If a user with this email already exists, they will be promoted to `ADMIN` on startup or on their next login.
+3. **Precedence:** When `GEOPULSE_ADMIN_EMAIL` is set, first-user bootstrap does not promote a different first user.
 
 :::warning
-If you're already logged in when setting `GEOPULSE_ADMIN_EMAIL`, you must **log out and log back in** for the promotion to take effect. The admin role is assigned during the login process, so an existing valid session won't reflect the change until you re-authenticate.
+If you're already logged in when setting `GEOPULSE_ADMIN_EMAIL`, restart the backend and then log out and log back in so your session receives the updated role.
 :::
 
 :::note
@@ -81,6 +91,7 @@ services:
   geopulse:
     image: tess1o/geopulse:latest
     environment:
+      GEOPULSE_FIRST_USER_ADMIN: "true"
       GEOPULSE_ADMIN_EMAIL: admin@example.com
       # ... other environment variables
 ```
@@ -93,6 +104,7 @@ Configure in `values.yaml`:
 config:
   admin:
     email: "admin@example.com"
+    firstUserAdmin: true
 ```
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`

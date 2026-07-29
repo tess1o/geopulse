@@ -1057,18 +1057,19 @@ You should see the GeoPulse login page.
 ### Create First Admin User
 
 :::tip Admin User Setup
-Follow these steps to create your first administrator account:
+By default, the first registered account becomes administrator automatically.
 :::
 
-1. Set admin email environment variable:
+1. Open GeoPulse in browser
+2. Register the owner account
+3. Your account will have admin privileges
+
+If the instance may be reachable by other people before you register, set an explicit admin email first:
+
    ```bash
    sudo bash -c 'echo "GEOPULSE_ADMIN_EMAIL=admin@example.com" >> /etc/geopulse/geopulse.env'
    sudo systemctl restart geopulse-backend
    ```
-
-2. Open GeoPulse in browser
-3. Register with the admin email
-4. Your account will have admin privileges
 
 ---
 

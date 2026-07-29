@@ -32,6 +32,7 @@ import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepositor
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.admin.model.Role;
+import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
@@ -74,6 +75,9 @@ public class OidcAuthenticationService {
     @Inject
     OidcLinkingTokenService linkingTokenService;
 
+    @Inject
+    AdminBootstrapService adminBootstrapService;
+
     @ConfigProperty(name = "geopulse.oidc.callback-base-url")
     @StaticInitSafe
     Optional<String> callbackBaseUrl;
@@ -89,10 +93,6 @@ public class OidcAuthenticationService {
     @ConfigProperty(name = "geopulse.oidc.state-token.expiry-minutes", defaultValue = "10")
     @StaticInitSafe
     int stateTokenExpiryMinutes;
-
-    @ConfigProperty(name = "geopulse.admin.email")
-    @StaticInitSafe
-    Optional<String> adminEmail;
 
     @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
     @StaticInitSafe
@@ -396,12 +396,7 @@ public class OidcAuthenticationService {
     }
 
     private UserEntity createNewUserWithOidcConnection(OidcUserInfo userInfo, String providerName) {
-        // Determine role - check if email matches admin email
-        Role role = Role.USER;
-        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(userInfo.getEmail())) {
-            role = Role.ADMIN;
-            log.info("Promoting OIDC user {} to ADMIN role (matches admin email)", userInfo.getEmail());
-        }
+        Role role = adminBootstrapService.determineInitialRole(userInfo.getEmail());
 
         // Create new user (NULL password for OIDC-only users)
         UserEntity user = UserEntity.builder()

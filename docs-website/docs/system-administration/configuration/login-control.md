@@ -47,7 +47,7 @@ By default (`GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=true`), admin users bypass
 1. **Frontend**: When login is disabled, users see a message with an "Administrator Access" button
 2. **Click button**: Reveals the login form with a notice "Administrator access - login restrictions bypassed"
 3. **Backend validation**:
-   - Admin users (determined by `GEOPULSE_ADMIN_EMAIL` or ADMIN role) can log in successfully
+   - Admin users (determined by `GEOPULSE_ADMIN_EMAIL`, first-user bootstrap, or ADMIN role) can log in successfully
    - Non-admin users receive a 403 Forbidden error even if they try to bypass the UI
 
 This prevents scenarios where administrators accidentally lock themselves out of the system during maintenance or configuration changes.
@@ -200,7 +200,7 @@ Example scenarios:
 
 ### Admin Role Protection
 - Only users with the ADMIN role can bypass login restrictions
-- Admin role is assigned via `GEOPULSE_ADMIN_EMAIL` environment variable
+- Admin role is assigned via first-user bootstrap, `GEOPULSE_ADMIN_EMAIL`, or another admin
 - Cannot be escalated through registration or normal user operations
 
 ### Token Refresh
@@ -219,7 +219,7 @@ All login attempts (successful and failed) are logged for security auditing.
 ### Admin can't login after disabling
 **Possible causes:**
 1. Admin bypass is disabled (`GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=false`) - check settings
-2. User doesn't have ADMIN role (check `GEOPULSE_ADMIN_EMAIL` matches exactly)
+2. User doesn't have ADMIN role (check `GEOPULSE_ADMIN_EMAIL` matches exactly, or verify the first-user bootstrap result)
 3. Database role is not set to ADMIN (check Admin Panel → Users)
 4. Frontend shows admin button but backend rejects (check backend logs)
 

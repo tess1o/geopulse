@@ -57,7 +57,7 @@ pct exec <container-id> -- hostname -I
 
 ## Create the First Admin Account
 
-To create the first admin account, enter the GeoPulse container and run the helper script:
+By default, the first account registered in the GeoPulse UI becomes admin. If the instance may be reachable before you register, enter the GeoPulse container and run the helper script to set an explicit admin email:
 
 ```bash
 pct enter <container-id>
