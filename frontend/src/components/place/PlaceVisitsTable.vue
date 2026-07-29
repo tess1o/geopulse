@@ -263,7 +263,7 @@ const props = defineProps({
   },
   enableTimelineNavigation: {
     type: Boolean,
-    default: false
+    default: true
   },
   timelineNavigationMode: {
     type: String,

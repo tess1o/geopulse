@@ -117,6 +117,7 @@
           :loading="visitsLoading"
           :show-location-name="true"
           :show-end-time="false"
+          :enable-timeline-navigation="true"
           @page-change="handlePageChange"
           @sort-change="handleSortChange"
           @export="handleExportVisits"

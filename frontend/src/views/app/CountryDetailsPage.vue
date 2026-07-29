@@ -135,6 +135,7 @@
           :show-location-name="true"
           :enable-city-navigation="true"
           :show-end-time="false"
+          :enable-timeline-navigation="true"
           @page-change="handlePageChange"
           @sort-change="handleSortChange"
           @export="handleExportVisits"
