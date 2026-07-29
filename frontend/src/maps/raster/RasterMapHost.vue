@@ -295,9 +295,9 @@ const invalidateSize = () => {
   }
 }
 
-const setView = (center, zoom) => {
+const setView = (center, zoom, options) => {
   if (map.value) {
-    map.value.setView(center, zoom)
+    map.value.setView(center, zoom, options)
   }
 }
 

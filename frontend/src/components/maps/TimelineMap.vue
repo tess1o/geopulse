@@ -325,6 +325,7 @@ import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
+import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
@@ -491,6 +492,10 @@ const emit = defineEmits([
 // Router
 const router = useRouter()
 const MOBILE_TRIP_SELECTION_MEDIA = '(max-width: 768px), (pointer: coarse)'
+const TIMELINE_SINGLE_LOCATION_ZOOM = 14
+const TIMELINE_FIT_BOUNDS_MAX_ZOOM = 16
+const TIMELINE_COLLAPSED_BOUNDS_THRESHOLD_METERS = 250
+const TIMELINE_FIT_BOUNDS_PADDING = [20, 20]
 
 // Composables
 const {
@@ -648,6 +653,99 @@ const mapCenter = computed(() => {
   return props.defaultCenterWhenEmpty
 })
 const mapZoom = ref(13)
+
+const toFiniteMapCoordinate = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const isValidMapLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90
+const isValidMapLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180
+
+const normalizeTimelineBoundsPoint = (point) => {
+  if (Array.isArray(point) && point.length >= 2) {
+    const latitude = toFiniteMapCoordinate(point[0])
+    const longitude = toFiniteMapCoordinate(point[1])
+    if (isValidMapLatitude(latitude) && isValidMapLongitude(longitude)) {
+      return [latitude, longitude]
+    }
+  }
+
+  if (point && typeof point === 'object') {
+    const latitude = toFiniteMapCoordinate(point.latitude ?? point.lat)
+    const longitude = toFiniteMapCoordinate(point.longitude ?? point.lng ?? point.lon)
+    if (isValidMapLatitude(latitude) && isValidMapLongitude(longitude)) {
+      return [latitude, longitude]
+    }
+  }
+
+  return null
+}
+
+const addTimelineBoundsPoint = (bounds, point) => {
+  const normalizedPoint = normalizeTimelineBoundsPoint(point)
+  if (normalizedPoint) {
+    bounds.push(normalizedPoint)
+  }
+}
+
+const getTimelineBoundsViewport = (bounds) => {
+  const points = Array.isArray(bounds)
+    ? bounds.map(normalizeTimelineBoundsPoint).filter(Boolean)
+    : []
+
+  if (points.length === 0) {
+    return null
+  }
+
+  let south = Infinity
+  let west = Infinity
+  let north = -Infinity
+  let east = -Infinity
+
+  points.forEach(([latitude, longitude]) => {
+    south = Math.min(south, latitude)
+    west = Math.min(west, longitude)
+    north = Math.max(north, latitude)
+    east = Math.max(east, longitude)
+  })
+
+  if (![south, west, north, east].every(Number.isFinite)) {
+    return null
+  }
+
+  const center = [
+    (south + north) / 2,
+    (west + east) / 2
+  ]
+  const diagonalMeters = haversineDistanceMetersFromCoordinates(south, west, north, east)
+  const isCollapsedBounds = points.length === 1
+    || (Number.isFinite(diagonalMeters) && diagonalMeters <= TIMELINE_COLLAPSED_BOUNDS_THRESHOLD_METERS)
+
+  return {
+    points,
+    center,
+    isCollapsedBounds
+  }
+}
+
+const applyTimelineDataViewport = (bounds, options = {}) => {
+  const viewport = getTimelineBoundsViewport(bounds)
+  if (!viewport) {
+    return
+  }
+
+  if (viewport.isCollapsedBounds) {
+    mapContainerRef.value?.setView?.(viewport.center, TIMELINE_SINGLE_LOCATION_ZOOM, options)
+    return
+  }
+
+  mapContainerRef.value?.fitBounds?.(viewport.points, {
+    padding: TIMELINE_FIT_BOUNDS_PADDING,
+    maxZoom: TIMELINE_FIT_BOUNDS_MAX_ZOOM,
+    ...options
+  })
+}
 
 // Controls configuration
 const controlsProps = computed(() => ({
@@ -883,13 +981,7 @@ const handleMapReady = (mapInstance) => {
   // Fit map to data if available
   if (hasAnyData.value && dataBounds.value) {
     nextTick(() => {
-      if (dataBounds.value.length === 1) {
-        // Single point - center on it with a reasonable zoom
-        mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
-      } else if (dataBounds.value.length > 1) {
-        // Multiple points - fit bounds
-        mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
-      }
+      applyTimelineDataViewport(dataBounds.value)
     })
   }
 }
@@ -1151,13 +1243,7 @@ const navigateToFavoriteDetails = (favorite) => {
 
 const handleZoomToData = () => {
   if (map.value && dataBounds.value) {
-    if (dataBounds.value.length === 1) {
-      // Single point - center on it with a reasonable zoom
-      mapContainerRef.value?.setView?.(dataBounds.value[0], 14)
-    } else if (dataBounds.value.length > 1) {
-      // Multiple points - fit bounds
-      mapContainerRef.value?.fitBounds?.(dataBounds.value, { padding: [20, 20] })
-    }
+    applyTimelineDataViewport(dataBounds.value)
   }
 }
 
@@ -1567,9 +1653,7 @@ const dataBounds = computed(() => {
     processedPathData.value.forEach(pathGroup => {
       if (Array.isArray(pathGroup)) {
         pathGroup.forEach(point => {
-          if (point.latitude && point.longitude) {
-            bounds.push([point.latitude, point.longitude])
-          }
+          addTimelineBoundsPoint(bounds, point)
         })
       }
     })
@@ -1578,22 +1662,18 @@ const dataBounds = computed(() => {
   // Add timeline data bounds
   if (processedTimelineData.value.length > 0) {
     processedTimelineData.value.forEach(item => {
-      if (item.latitude && item.longitude) {
-        bounds.push([item.latitude, item.longitude])
-      }
+      addTimelineBoundsPoint(bounds, item)
     })
   }
   
   // Add favorites data bounds
   if (processedFavoritesData.value.length > 0) {
     processedFavoritesData.value.forEach(favorite => {
-      if (favorite.type === 'point' && favorite.latitude && favorite.longitude) {
-        bounds.push([favorite.latitude, favorite.longitude])
+      if (favorite.type === 'point') {
+        addTimelineBoundsPoint(bounds, favorite)
       } else if (favorite.type === 'area' && favorite.coordinates) {
         favorite.coordinates.forEach(coord => {
-          if (coord.length === 2) {
-            bounds.push(coord)
-          }
+          addTimelineBoundsPoint(bounds, coord)
         })
       }
     })
@@ -1602,9 +1682,7 @@ const dataBounds = computed(() => {
   // Add planned items bounds
   if (processedPlannedItemsData.value.length > 0) {
     processedPlannedItemsData.value.forEach(item => {
-      if (item.latitude && item.longitude) {
-        bounds.push([item.latitude, item.longitude])
-      }
+      addTimelineBoundsPoint(bounds, item)
     })
   }
   
@@ -1622,17 +1700,9 @@ watch(dataBounds, (newBounds) => {
         // Delay fitBounds to let initial tiles load
         setTimeout(() => {
           if (map.value) {
-            if (newBounds.length === 1) {
-              // Single point - center on it with a reasonable zoom
-              mapContainerRef.value?.setView?.(newBounds[0], 14, { animate: false })
-            } else if (newBounds.length > 1) {
-              // Multiple points - fit bounds
-              mapContainerRef.value?.fitBounds?.(newBounds, { 
-                padding: [20, 20],
-                maxZoom: 16,
-                animate: false // Disable animation to prevent tile issues
-              })
-            }
+            applyTimelineDataViewport(newBounds, {
+              animate: false // Disable animation to prevent tile issues
+            })
           }
         }, 200)
       })

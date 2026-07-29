@@ -67,6 +67,31 @@ export class TimelineMapPage {
   }
 
   /**
+   * Get the map's current zoom level
+   */
+  async getMapZoom() {
+    return await this.page.evaluate(() => {
+      const host = document.querySelector('[data-testid="map-host-vector"], [data-testid="map-host-raster"]');
+      const mapId = host?.id;
+      const registry = window.__GP_E2E_MAPS || {};
+      const registeredMap = mapId ? registry[mapId] : null;
+
+      if (registeredMap && typeof registeredMap.getZoom === 'function') {
+        const zoom = Number(registeredMap.getZoom());
+        return Number.isFinite(zoom) ? zoom : null;
+      }
+
+      const leafletContainer = document.querySelector('.leaflet-container');
+      if (leafletContainer && leafletContainer._leaflet_map && typeof leafletContainer._leaflet_map.getZoom === 'function') {
+        const zoom = Number(leafletContainer._leaflet_map.getZoom());
+        return Number.isFinite(zoom) ? zoom : null;
+      }
+
+      return null;
+    });
+  }
+
+  /**
    * Click on the map at specific coordinates (relative to map container)
    */
   async clickOnMap(x, y) {

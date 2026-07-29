@@ -6,6 +6,7 @@ import {
   createFeatureCollection,
   ensureGeoJsonSource,
   ensureLayer,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -130,7 +131,7 @@ const unregisterEvents = () => {
   }
 
   state.listeners.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
+    if (hasMapLibreLayer(props.map, layerId)) {
       props.map.off(event, layerId, handler)
     }
   })

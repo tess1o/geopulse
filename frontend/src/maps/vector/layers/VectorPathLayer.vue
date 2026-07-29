@@ -8,6 +8,7 @@ import '@/maps/shared/styles/mapPopupContent.css'
 import {
   ensureGeoJsonSource,
   ensureLayer,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -607,13 +608,17 @@ const unregisterEvents = () => {
   }
 
   state.listeners.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
+    if (hasMapLibreLayer(props.map, layerId)) {
       props.map.off(event, layerId, handler)
     }
   })
 
   state.listeners = []
-  props.map.getCanvas().style.cursor = ''
+  try {
+    props.map.getCanvas().style.cursor = ''
+  } catch {
+    // MapLibre may already be tearing down during route changes.
+  }
 }
 
 const renderLayer = () => {
@@ -686,7 +691,7 @@ const renderLayer = () => {
     }
   })
 
-  if (props.map.getLayer(state.highlightedLineLayerId)) {
+  if (hasMapLibreLayer(props.map, state.highlightedLineLayerId)) {
     props.map.setPaintProperty(
       state.highlightedLineLayerId,
       'line-color',
@@ -695,7 +700,7 @@ const renderLayer = () => {
     props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
   }
 
-  if (props.map.getLayer(state.lineLayerId)) {
+  if (hasMapLibreLayer(props.map, state.lineLayerId)) {
     props.map.setPaintProperty(
       state.lineLayerId,
       'line-opacity',

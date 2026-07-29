@@ -295,6 +295,41 @@ const setupTimelineWithMapMode = (
   );
 };
 
+test('should keep stationary overnight timeline data at a readable zoom level', async ({page, isolatedUsers, dbManager, mapMode}) => {
+  const timelinePage = new TimelinePage(page);
+  const mapPage = new TimelineMapPage(page);
+  const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
+
+  await setupTimelineWithMapMode(
+    timelinePage,
+    dbManager,
+    TimelineTestData.insertStationaryOvernightHomeTestData,
+    testUser,
+    {
+      startDate: new Date('2025-09-20'),
+      endDate: new Date('2025-09-21')
+    },
+    mapMode
+  );
+
+  await mapPage.waitForMapReady();
+
+  const initialZoom = await mapPage.getMapZoom();
+  expect(initialZoom).not.toBeNull();
+  expect(initialZoom).toBeLessThanOrEqual(14.5);
+
+  await mapPage.focusMapOnCoordinates(40.7128, -74.0060, 18);
+  const forcedZoom = await mapPage.getMapZoom();
+  expect(forcedZoom).not.toBeNull();
+  expect(forcedZoom).toBeGreaterThan(17);
+
+  await mapPage.clickZoomToData();
+
+  const zoomToDataZoom = await mapPage.getMapZoom();
+  expect(zoomToDataZoom).not.toBeNull();
+  expect(zoomToDataZoom).toBeLessThanOrEqual(14.5);
+});
+
 test.describe('Timeline Map Interactions', () => {
   test.use({ mapMode: 'RASTER' });
 

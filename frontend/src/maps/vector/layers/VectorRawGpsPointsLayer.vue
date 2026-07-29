@@ -8,6 +8,8 @@ import {
   createFeatureCollection,
   ensureClusterSource,
   ensureLayer,
+  getMapLibreSource,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -174,7 +176,7 @@ const registerEvents = () => {
       return
     }
 
-    const source = props.map.getSource(state.sourceId)
+    const source = getMapLibreSource(props.map, state.sourceId)
     if (!source || typeof source.getClusterExpansionZoom !== 'function') {
       return
     }
@@ -230,13 +232,17 @@ const unregisterEvents = () => {
   }
 
   state.listeners.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
+    if (hasMapLibreLayer(props.map, layerId)) {
       props.map.off(event, layerId, handler)
     }
   })
 
   state.listeners = []
-  props.map.getCanvas().style.cursor = ''
+  try {
+    props.map.getCanvas().style.cursor = ''
+  } catch {
+    // MapLibre may already be tearing down during route changes.
+  }
 }
 
 const renderLayer = () => {

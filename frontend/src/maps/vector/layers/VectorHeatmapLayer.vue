@@ -6,6 +6,7 @@ import {
   createFeatureCollection,
   ensureGeoJsonSource,
   ensureLayer,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -303,7 +304,7 @@ const renderLayer = () => {
   })
 
   // ensureLayer does not mutate existing layer paint/range, so keep them in sync explicitly.
-  if (props.map.getLayer(state.layerId)) {
+  if (hasMapLibreLayer(props.map, state.layerId)) {
     Object.entries(heatmapPaint).forEach(([property, value]) => {
       props.map.setPaintProperty(state.layerId, property, value)
     })

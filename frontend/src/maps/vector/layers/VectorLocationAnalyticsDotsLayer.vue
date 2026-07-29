@@ -8,6 +8,8 @@ import {
   createFeatureCollection,
   ensureClusterSource,
   ensureLayer,
+  getMapLibreSource,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -184,7 +186,7 @@ const registerEvents = () => {
       return
     }
 
-    const source = props.map.getSource(state.sourceId)
+    const source = getMapLibreSource(props.map, state.sourceId)
     if (!source || typeof source.getClusterExpansionZoom !== 'function') {
       return
     }
@@ -248,13 +250,17 @@ const unregisterEvents = () => {
   }
 
   state.listeners.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
+    if (hasMapLibreLayer(props.map, layerId)) {
       props.map.off(event, layerId, handler)
     }
   })
 
   state.listeners = []
-  props.map.getCanvas().style.cursor = ''
+  try {
+    props.map.getCanvas().style.cursor = ''
+  } catch {
+    // MapLibre may already be tearing down during route changes.
+  }
 }
 
 const updateHighlightFilters = () => {
@@ -262,14 +268,14 @@ const updateHighlightFilters = () => {
     return
   }
 
-  if (props.map.getLayer(state.selectedLayerId)) {
+  if (hasMapLibreLayer(props.map, state.selectedLayerId)) {
     props.map.setFilter(
       state.selectedLayerId,
       ['all', ['!', ['has', 'point_count']], ['==', ['get', 'placeKey'], props.selectedPlaceKey || '__none__']]
     )
   }
 
-  if (props.map.getLayer(state.hoveredLayerId)) {
+  if (hasMapLibreLayer(props.map, state.hoveredLayerId)) {
     props.map.setFilter(
       state.hoveredLayerId,
       ['all', ['!', ['has', 'point_count']], ['==', ['get', 'placeKey'], props.hoveredPlaceKey || '__none__']]

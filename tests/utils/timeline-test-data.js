@@ -189,6 +189,76 @@ export async function insertVerifiableOvernightStaysTestData(dbManager, userId) 
   return results; // Don't reverse, keep chronological order
 }
 
+export async function insertStationaryOvernightHomeTestData(dbManager, userId) {
+  const home = {
+    name: 'Stationary Overnight Home',
+    lat: 40.7128,
+    lon: -74.0060
+  };
+  const stayStartTime = new Date('2025-09-20T20:00:00Z');
+  const stayDurationSeconds = 12 * 60 * 60;
+  const gpsOffsets = [
+    { minutes: 0, latJitter: 0, lonJitter: 0 },
+    { minutes: 90, latJitter: 0.00002, lonJitter: -0.00002 },
+    { minutes: 180, latJitter: -0.00003, lonJitter: 0.00001 },
+    { minutes: 270, latJitter: 0.00004, lonJitter: 0.00003 },
+    { minutes: 360, latJitter: -0.00002, lonJitter: -0.00004 },
+    { minutes: 450, latJitter: 0.00003, lonJitter: 0.00002 },
+    { minutes: 540, latJitter: -0.00001, lonJitter: 0.00004 },
+    { minutes: 630, latJitter: 0.00001, lonJitter: -0.00003 }
+  ];
+
+  const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    `POINT(${home.lon} ${home.lat})`,
+    `${home.name}, New York, NY`,
+    'New York',
+    'United States'
+  );
+
+  await dbManager.client.query(`
+    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+    VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
+  `, [
+    userId,
+    stayStartTime,
+    stayDurationSeconds,
+    home.lon,
+    home.lat,
+    home.name,
+    geocodingId
+  ]);
+
+  for (const offset of gpsOffsets) {
+    const timestamp = new Date(stayStartTime.getTime() + offset.minutes * 60 * 1000);
+    const latitude = home.lat + offset.latJitter;
+    const longitude = home.lon + offset.lonJitter;
+
+    await dbManager.client.query(`
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `, [
+      'stationary-home-device',
+      userId,
+      `POINT(${longitude} ${latitude})`,
+      timestamp,
+      8.0,
+      90,
+      0.0,
+      20.0,
+      'OVERLAND',
+      timestamp
+    ]);
+  }
+
+  return {
+    home,
+    stayStartTime,
+    stayDurationSeconds,
+    gpsPointCount: gpsOffsets.length
+  };
+}
+
 export async function insertVerifiableOvernightTripsTestData(dbManager, userId) {
   // Use fixed dates for predictable test results  
   const yesterday = new Date('2025-09-20T18:00:00Z'); // Sept 20, 2025 at 6 PM UTC

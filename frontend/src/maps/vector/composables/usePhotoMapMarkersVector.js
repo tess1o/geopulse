@@ -4,6 +4,8 @@ import {
   createFeatureCollection,
   ensureClusterSource,
   ensureLayer,
+  getMapLibreSource,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -127,7 +129,11 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
 
   const clearFocusMarker = () => {
     if (focusMarker.value) {
-      focusMarker.value.remove()
+      try {
+        focusMarker.value.remove()
+      } catch {
+        // Marker cleanup can race with map removal during navigation.
+      }
       focusMarker.value = null
     }
   }
@@ -139,13 +145,17 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
     }
 
     state.listeners.forEach(({ event, layerId, handler }) => {
-      if (state.boundMap.getLayer(layerId)) {
+      if (hasMapLibreLayer(state.boundMap, layerId)) {
         state.boundMap.off(event, layerId, handler)
       }
     })
 
     state.listeners = []
-    state.boundMap.getCanvas().style.cursor = ''
+    try {
+      state.boundMap.getCanvas().style.cursor = ''
+    } catch {
+      // MapLibre may already be tearing down during route changes.
+    }
   }
 
   const emitGroupClick = (group) => {
@@ -323,12 +333,12 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
       state.clusterLayerId,
       state.clusterIconLayerId,
       state.clusterCountLayerId
-    ].filter((layerId) => mapInstance.getLayer(layerId))
+    ].filter((layerId) => hasMapLibreLayer(mapInstance, layerId))
     const pointLayerIds = [
       state.pointLayerId,
       state.pointIconLayerId,
       state.pointCountLayerId
-    ].filter((layerId) => mapInstance.getLayer(layerId))
+    ].filter((layerId) => hasMapLibreLayer(mapInstance, layerId))
 
     const findFeatureFromEvent = (event, layerIds, predicate = () => true) => {
       const eventFeature = event?.features?.find?.(predicate)
@@ -355,7 +365,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         return
       }
 
-      const source = mapInstance.getSource(state.sourceId)
+      const source = getMapLibreSource(mapInstance, state.sourceId)
       if (!source || typeof source.getClusterExpansionZoom !== 'function') {
         return
       }

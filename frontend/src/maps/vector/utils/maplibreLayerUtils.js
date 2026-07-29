@@ -9,6 +9,46 @@ export function isMapLibreMap(map) {
   return Boolean(map && typeof map.addSource === 'function' && typeof map.addLayer === 'function')
 }
 
+export function hasMapLibreStyle(map) {
+  return Boolean(isMapLibreMap(map) && map.style)
+}
+
+export function hasMapLibreLayer(map, layerId) {
+  if (!hasMapLibreStyle(map) || !layerId || typeof map.getLayer !== 'function') {
+    return false
+  }
+
+  try {
+    return Boolean(map.getLayer(layerId))
+  } catch {
+    return false
+  }
+}
+
+export function hasMapLibreSource(map, sourceId) {
+  if (!hasMapLibreStyle(map) || !sourceId || typeof map.getSource !== 'function') {
+    return false
+  }
+
+  try {
+    return Boolean(map.getSource(sourceId))
+  } catch {
+    return false
+  }
+}
+
+export function getMapLibreSource(map, sourceId) {
+  if (!hasMapLibreStyle(map) || !sourceId || typeof map.getSource !== 'function') {
+    return null
+  }
+
+  try {
+    return map.getSource(sourceId) || null
+  } catch {
+    return null
+  }
+}
+
 export function toFiniteNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
@@ -140,11 +180,11 @@ export function normalizeLeafletBoundsToMapLibre(bounds) {
 }
 
 export function ensureGeoJsonSource(map, sourceId, data) {
-  if (!isMapLibreMap(map)) {
+  if (!hasMapLibreStyle(map)) {
     return
   }
 
-  const source = map.getSource(sourceId)
+  const source = getMapLibreSource(map, sourceId)
   if (source && typeof source.setData === 'function') {
     source.setData(data)
     return
@@ -157,11 +197,11 @@ export function ensureGeoJsonSource(map, sourceId, data) {
 }
 
 export function ensureClusterSource(map, sourceId, data, options = {}) {
-  if (!isMapLibreMap(map)) {
+  if (!hasMapLibreStyle(map)) {
     return
   }
 
-  const source = map.getSource(sourceId)
+  const source = getMapLibreSource(map, sourceId)
   if (source && typeof source.setData === 'function') {
     source.setData(data)
     return
@@ -178,11 +218,11 @@ export function ensureClusterSource(map, sourceId, data, options = {}) {
 }
 
 export function ensureLayer(map, layerConfig) {
-  if (!isMapLibreMap(map) || !layerConfig?.id) {
+  if (!hasMapLibreStyle(map) || !layerConfig?.id) {
     return
   }
 
-  if (map.getLayer(layerConfig.id)) {
+  if (hasMapLibreLayer(map, layerConfig.id)) {
     return
   }
 
@@ -190,13 +230,13 @@ export function ensureLayer(map, layerConfig) {
 }
 
 export function setLayerVisibility(map, layerIds, visible) {
-  if (!isMapLibreMap(map)) {
+  if (!hasMapLibreStyle(map)) {
     return
   }
 
   const visibility = visible ? 'visible' : 'none'
   layerIds.forEach((layerId) => {
-    if (!map.getLayer(layerId)) {
+    if (!hasMapLibreLayer(map, layerId)) {
       return
     }
 
@@ -205,26 +245,34 @@ export function setLayerVisibility(map, layerIds, visible) {
 }
 
 export function removeLayers(map, layerIds = []) {
-  if (!isMapLibreMap(map)) {
+  if (!hasMapLibreStyle(map)) {
     return
   }
 
   for (let index = layerIds.length - 1; index >= 0; index -= 1) {
     const layerId = layerIds[index]
-    if (map.getLayer(layerId)) {
-      map.removeLayer(layerId)
+    if (hasMapLibreLayer(map, layerId)) {
+      try {
+        map.removeLayer(layerId)
+      } catch {
+        // MapLibre may drop its style while Vue is unmounting overlay components.
+      }
     }
   }
 }
 
 export function removeSources(map, sourceIds = []) {
-  if (!isMapLibreMap(map)) {
+  if (!hasMapLibreStyle(map)) {
     return
   }
 
   sourceIds.forEach((sourceId) => {
-    if (map.getSource(sourceId)) {
-      map.removeSource(sourceId)
+    if (hasMapLibreSource(map, sourceId)) {
+      try {
+        map.removeSource(sourceId)
+      } catch {
+        // MapLibre may drop its style while Vue is unmounting overlay components.
+      }
     }
   })
 }

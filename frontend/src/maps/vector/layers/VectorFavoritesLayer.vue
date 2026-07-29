@@ -7,6 +7,7 @@ import {
   createFeatureCollection,
   ensureGeoJsonSource,
   ensureLayer,
+  hasMapLibreLayer,
   isMapLibreMap,
   nextLayerToken,
   removeLayers,
@@ -52,6 +53,18 @@ state.areaOutlineLayerId = `${state.token}-areas-outline`
 
 const favoriteMarkers = ref([])
 const areaEventHandlers = ref([])
+
+const resetMapCursor = () => {
+  if (!isMapLibreMap(props.map) || typeof props.map.getCanvas !== 'function') {
+    return
+  }
+
+  try {
+    props.map.getCanvas().style.cursor = ''
+  } catch {
+    // MapLibre may already be tearing down during route changes.
+  }
+}
 
 const normalizeAreaRing = (favorite) => {
   if (Array.isArray(favorite?.coordinates) && favorite.coordinates.length >= 3) {
@@ -178,9 +191,7 @@ const clearPointMarkers = () => {
   })
   favoriteMarkers.value = []
 
-  if (isMapLibreMap(props.map)) {
-    props.map.getCanvas().style.cursor = ''
-  }
+  resetMapCursor()
 }
 
 const renderPointMarkers = () => {
@@ -270,7 +281,11 @@ const renderPointMarkers = () => {
         markerSpec.element.removeEventListener('mouseenter', handleMouseEnter)
         markerSpec.element.removeEventListener('mouseleave', handleMouseLeave)
         markerSpec.element.removeEventListener('contextmenu', handleContextMenu)
-        marker.remove()
+        try {
+          marker.remove()
+        } catch {
+          // Marker cleanup can race with map removal during navigation.
+        }
       }
     })
   })
@@ -394,13 +409,13 @@ const unregisterEvents = () => {
   }
 
   areaEventHandlers.value.forEach(({ event, layerId, handler }) => {
-    if (props.map.getLayer(layerId)) {
+    if (hasMapLibreLayer(props.map, layerId)) {
       props.map.off(event, layerId, handler)
     }
   })
 
   areaEventHandlers.value = []
-  props.map.getCanvas().style.cursor = ''
+  resetMapCursor()
 }
 
 const renderLayer = () => {
