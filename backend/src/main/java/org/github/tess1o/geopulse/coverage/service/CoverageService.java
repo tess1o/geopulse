@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.coverage.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
 import org.github.tess1o.geopulse.coverage.model.CoverageProcessingCursor;
@@ -17,52 +19,51 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
+@Slf4j
 public class CoverageService {
 
     private final CoverageRepository coverageRepository;
     private final UserRepository userRepository;
+    private final CoverageBatchProcessor coverageBatchProcessor;
+
+    @ConfigProperty(name = "geopulse.coverage.processing.batch-size",
+            defaultValue = "" + CoverageDefaults.DEFAULT_BATCH_SIZE)
+    int batchSize;
 
     @Inject
     public CoverageService(CoverageRepository coverageRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           CoverageBatchProcessor coverageBatchProcessor) {
         this.coverageRepository = coverageRepository;
         this.userRepository = userRepository;
+        this.coverageBatchProcessor = coverageBatchProcessor;
     }
 
-    @Transactional
     public void processUserCoverage(UUID userId) {
-        CoverageProcessingCursor lowerBound = coverageRepository.findProcessingCursor(userId);
-        CoverageProcessingCursor upperBound = coverageRepository.findProcessingUpperBound(
-                userId,
-                lowerBound,
-                CoverageDefaults.MAX_ACCURACY_METERS
-        );
+        int validatedBatchSize = validateBatchSize();
+        CoverageProcessingCursor lowerBound = coverageBatchProcessor.findProcessingCursor(userId);
+        int batchNum = 0;
 
-        if (upperBound == null) {
-            return;
-        }
-
-        for (int gridMeters : CoverageDefaults.GRID_SIZES_METERS_ORDERED) {
-            coverageRepository.upsertCoverageCells(
+        while (true) {
+            CoverageProcessingCursor batchUpperBound = coverageBatchProcessor.processNextBatch(
                     userId,
                     lowerBound,
-                    upperBound,
-                    gridMeters,
-                    CoverageDefaults.RADIUS_METERS,
-                    CoverageDefaults.SEGMENTIZE_METERS,
-                    CoverageDefaults.MAX_GAP_SECONDS,
-                    CoverageDefaults.MAX_SPEED_MPS,
-                    CoverageDefaults.MAX_ACCURACY_METERS
+                    validatedBatchSize
             );
-        }
 
-        coverageRepository.upsertLastProcessed(userId, upperBound);
+            if (batchUpperBound == null) {
+                log.debug("Coverage processing complete for user {} after {} batches.", userId, batchNum);
+                break;
+            }
+
+            batchNum++;
+            log.debug("Processing coverage batch {} for user {} (cursor: {})", batchNum, userId, batchUpperBound);
+            lowerBound = batchUpperBound;
+        }
     }
 
-    @Transactional
     public void rebuildUserCoverage(UUID userId) {
-        coverageRepository.deleteCoverageCells(userId);
-        coverageRepository.resetProcessingCursor(userId);
+        coverageBatchProcessor.resetForRebuild(userId);
         processUserCoverage(userId);
     }
 
@@ -114,5 +115,12 @@ public class CoverageService {
         if (!isGridSupported(gridMeters)) {
             throw new IllegalArgumentException("Unsupported grid size: " + gridMeters);
         }
+    }
+
+    private int validateBatchSize() {
+        if (batchSize < 1) {
+            throw new IllegalArgumentException("geopulse.coverage.processing.batch-size must be at least 1");
+        }
+        return batchSize;
     }
 }

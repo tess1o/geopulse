@@ -16,6 +16,7 @@ public final class CoverageDefaults {
     public static final double MAX_SPEED_MPS = 60.0;
     public static final double MAX_ACCURACY_METERS = 50.0;
     public static final int PROCESSING_STALE_TIMEOUT_SECONDS = 1_800;
+    public static final int DEFAULT_BATCH_SIZE = 50_000;
 
     private CoverageDefaults() {
     }
