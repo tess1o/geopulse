@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **291** distinct env vars.
+Backend runtime currently includes **292** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -194,6 +194,12 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_DIR` | `/tmp/geopulse/exports` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-directory\`. | Readable path/URI in container filesystem. | Backend restart |
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+
+### Coverage (1)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_COVERAGE_PROCESSING_BATCH_SIZE` | `50000` | Number of GPS points processed per coverage calculation batch. Larger values are faster but may use more PostgreSQL temporary disk space. Property: \`geopulse.coverage.processing.batch-size\`. | Positive integer value. | Backend restart |
 
 ### Timeline and Trip Intelligence (94)
 

@@ -190,6 +190,44 @@ public class CoverageRepository {
         );
     }
 
+    public CoverageProcessingCursor findBatchUpperBound(UUID userId,
+                                                        CoverageProcessingCursor lowerBound,
+                                                        double maxAccuracyMeters,
+                                                        int batchSize) {
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = entityManager.createNativeQuery(
+                        "SELECT sub.timestamp, sub.id FROM (" +
+                                "SELECT gp.timestamp, gp.id " +
+                                "FROM gps_points gp " +
+                                "WHERE gp.user_id = :userId " +
+                                "  AND gp.coordinates IS NOT NULL " +
+                                "  AND gp.timestamp IS NOT NULL " +
+                                "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy) " +
+                                "  AND (CAST(:lowerTs AS timestamptz) IS NULL " +
+                                "       OR gp.timestamp > CAST(:lowerTs AS timestamptz) " +
+                                "       OR (gp.timestamp = CAST(:lowerTs AS timestamptz) " +
+                                "           AND gp.id > COALESCE(CAST(:lowerPointId AS bigint), -1))) " +
+                                "ORDER BY gp.timestamp ASC, gp.id ASC " +
+                                "LIMIT :batchSize" +
+                                ") sub ORDER BY sub.timestamp DESC, sub.id DESC LIMIT 1")
+                .setParameter("userId", userId)
+                .setParameter("maxAccuracy", maxAccuracyMeters)
+                .setParameter("lowerTs", lowerBound == null ? null : lowerBound.timestamp())
+                .setParameter("lowerPointId", lowerBound == null ? null : lowerBound.pointId())
+                .setParameter("batchSize", batchSize)
+                .getResultList();
+
+        if (results.isEmpty()) {
+            return null;
+        }
+
+        Object[] row = results.get(0);
+        return new CoverageProcessingCursor(
+                TimestampUtils.getInstantSafe(row[0]),
+                row[1] == null ? null : ((Number) row[1]).longValue()
+        );
+    }
+
     public int upsertCoverageCells(UUID userId,
                                    CoverageProcessingCursor lowerBound,
                                    CoverageProcessingCursor upperBound,
