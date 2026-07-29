@@ -1,10 +1,16 @@
 import maplibregl from 'maplibre-gl'
 import { toFiniteCoordinate } from '@/maps/shared/coordinateUtils'
-import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import {
   isMapLibreMap,
   normalizeLeafletBoundsToMapLibre
 } from '@/maps/vector/utils/maplibreLayerUtils'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
+import { formatDuration } from '@/utils/durationFormatter'
 
 const toTripPathCoordinates = (tripPoints) => {
   if (!Array.isArray(tripPoints)) {
@@ -23,21 +29,18 @@ const toTripPathCoordinates = (tripPoints) => {
     .filter(Boolean)
 }
 
-const buildStayPopupHtml = (stay, fallbackFormatter) => {
-  if (typeof fallbackFormatter === 'function') {
-    return fallbackFormatter(stay)
-  }
-
-  const durationText = formatDuration(stay?.stayDuration)
-
-  return `
-    <div class="marker-popup">
-      <strong>${escapeHtml(stay?.locationName || 'Unknown Location')}</strong><br/>
-      ${stay?.address ? `<span>${escapeHtml(stay.address)}</span><br/>` : ''}
-      <small>Duration: ${escapeHtml(durationText)}</small>
-    </div>
-  `
-}
+const buildDetailsStayPopupModel = (stay) => ({
+  title: stay?.locationName || 'Unknown location',
+  subtitle: stay?.address || '',
+  iconClass: 'pi pi-map-marker',
+  rows: [
+    {
+      label: 'Duration',
+      value: formatDuration(stay?.stayDuration)
+    }
+  ],
+  variant: 'compact'
+})
 
 const createTripEndpointElement = (type) => {
   const root = document.createElement('div')
@@ -56,6 +59,7 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
   let map = null
   let stayMarker = null
   let stayPopup = null
+  let stayPopupMount = null
   let tripStartMarker = null
   let tripEndMarker = null
 
@@ -84,6 +88,8 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
       stayPopup.remove()
       stayPopup = null
     }
+    stayPopupMount?.unmount?.()
+    stayPopupMount = null
 
     if (tripStartMarker) {
       tripStartMarker.remove()
@@ -110,12 +116,24 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
 
     clear()
 
-    stayPopup = new maplibregl.Popup({
-      closeButton: true,
-      closeOnClick: true,
-      closeOnMove: false,
-      offset: 12
-    }).setHTML(buildStayPopupHtml(stay, callbacks.buildStayPopupHtml))
+    if (typeof callbacks.buildStayPopupHtml === 'function') {
+      stayPopup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: true,
+        closeOnMove: false,
+        offset: 12
+      }).setHTML(callbacks.buildStayPopupHtml(stay))
+    } else {
+      stayPopupMount = mountMapPopup(MapInfoPopup, buildDetailsStayPopupModel(stay))
+      stayPopup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: true,
+        closeOnMove: false,
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+        offset: 12,
+        className: getMapPopupVariantClassName('compact', 'gp-details-stay-popup-container')
+      }).setDOMContent(stayPopupMount.element)
+    }
 
     stayMarker = new maplibregl.Marker()
       .setLngLat([longitude, latitude])
@@ -219,24 +237,4 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
     clear,
     destroy
   }
-}
-
-function formatDuration(seconds) {
-  if (!seconds) {
-    return 'Unknown'
-  }
-
-  const totalSeconds = Number(seconds)
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
-    return 'Unknown'
-  }
-
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-
-  return `${minutes}m`
 }

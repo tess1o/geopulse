@@ -170,6 +170,7 @@
                         :longitude="shareData.longitude"
                         :share-data="shareData"
                         :open-popup="true"
+                        marker-type="current-location"
                     />
 
                     <ViewerLocationMarker

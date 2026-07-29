@@ -14,11 +14,17 @@ import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
+import { buildTripHoverTooltipHtml } from '@/maps/shared/popupContentBuilders'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
 import {
-  buildTripEndpointPopupHtml,
-  buildTripHoverTooltipHtml,
-  buildTripPopupHtml
-} from '@/maps/shared/popupContentBuilders'
+  buildHighlightedTripPopupModel,
+  buildTripEndpointPopupModel
+} from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 import {
   buildTripHoverContext as buildSharedTripHoverContext,
   projectTripHoverContext,
@@ -218,10 +224,6 @@ const unhighlightAllPaths = () => {
 const formatDateTimeDisplay = (dateValue) =>
   `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
-const buildTripPopupContent = (trip) => {
-  return buildTripPopupHtml(trip, { formatDateTimeDisplay })
-}
-
 const buildTripHoverContext = (tripPath, map) => {
   if (!Array.isArray(tripPath) || tripPath.length < 2 || !map?.distance) {
     return null
@@ -312,6 +314,9 @@ let tripContainerTouchMoveHandler = null
 let tripContainerTouchEndHandler = null
 let tripContainerTouchBoundElement = null
 let lastReplayEmissionKey = ''
+let tripPopupMount = null
+let tripStartPopupMount = null
+let tripEndPopupMount = null
 const replayController = createRasterPathReplayController({
   getMap: () => props.map,
   getLayerHost: () => baseLayerRef.value,
@@ -350,6 +355,15 @@ const clearTripHoverState = () => {
   tripHoverContext = null
   refreshTripHoverContext = null
   tripHoverContextMapHandler = null
+}
+
+const clearTripPopupMounts = () => {
+  tripPopupMount?.unmount?.()
+  tripStartPopupMount?.unmount?.()
+  tripEndPopupMount?.unmount?.()
+  tripPopupMount = null
+  tripStartPopupMount = null
+  tripEndPopupMount = null
 }
 
 const clearTripTouchInspection = ({ removeContainerListeners = false } = {}) => {
@@ -401,6 +415,7 @@ const clearTripTouchInspection = ({ removeContainerListeners = false } = {}) => 
 const clearHighlightedTripLayers = () => {
   clearTripPopupTimeout()
   clearTripPopupAutoHideTimeout()
+  clearTripPopupMounts()
   clearTripHoverState()
   clearTripTouchInspection({ removeContainerListeners: true })
   clearReplayMarker()
@@ -635,9 +650,20 @@ const renderHighlightedTrip = (newTrip) => {
     tripStartMarker.value?.setZIndexOffset((startEndpoint?.zIndex || HIGHLIGHTED_TRIP_START_Z_INDEX) * 10)
     tripEndMarker.value?.setZIndexOffset((endEndpoint?.zIndex || HIGHLIGHTED_TRIP_END_Z_INDEX) * 10)
 
-    const tripInfo = buildTripPopupContent(newTrip)
-    const startInfo = buildTripEndpointPopupHtml(newTrip, 'start', { formatDateTimeDisplay })
-    const endInfo = buildTripEndpointPopupHtml(newTrip, 'end', { formatDateTimeDisplay })
+    if (props.showHighlightedTripPopup) {
+      tripPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildHighlightedTripPopupModel(newTrip, { formatDateTimeDisplay })
+      )
+    }
+    tripStartPopupMount = mountMapPopup(
+      MapInfoPopup,
+      buildTripEndpointPopupModel(newTrip, 'start', { formatDateTimeDisplay })
+    )
+    tripEndPopupMount = mountMapPopup(
+      MapInfoPopup,
+      buildTripEndpointPopupModel(newTrip, 'end', { formatDateTimeDisplay })
+    )
 
     tripStartMarker.value?.on('click', (e) => {
       emit('trip-marker-click', {
@@ -726,11 +752,20 @@ const renderHighlightedTrip = (newTrip) => {
       }
     })
 
-    if (props.showHighlightedTripPopup) {
-      tripPathLayer.value.bindPopup(tripInfo)
+    if (props.showHighlightedTripPopup && tripPopupMount) {
+      tripPathLayer.value.bindPopup(tripPopupMount.element, {
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+        className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
+      })
     }
-    tripStartMarker.value?.bindPopup(startInfo)
-    tripEndMarker.value?.bindPopup(endInfo)
+    tripStartMarker.value?.bindPopup(tripStartPopupMount.element, {
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+      className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
+    })
+    tripEndMarker.value?.bindPopup(tripEndPopupMount.element, {
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+      className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
+    })
 
     tripVisualPathLayers.value.forEach((visualLayer) => {
       baseLayerRef.value?.addToLayer(visualLayer)

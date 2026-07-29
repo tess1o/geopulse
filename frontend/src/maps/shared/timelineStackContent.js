@@ -1,4 +1,5 @@
-import { formatDuration } from '@/utils/calculationsHelpers'
+import { formatDuration } from '@/utils/durationFormatter'
+import { formatDistanceForUnit } from '@/utils/measurementFormatters'
 
 export const STACK_MOVEMENT_TYPE_MAP = {
   WALK: { label: 'Walk', icon: '🚶' },
@@ -57,7 +58,7 @@ export const getStackItemMeta = (item) => {
   if (item?.type === 'trip') {
     const duration = item.tripDuration ? `Duration: ${formatDuration(item.tripDuration)}` : null
     const distanceValue = item.distanceMeters ?? item.totalDistanceMeters
-    const distance = distanceValue ? `Distance: ${(distanceValue / 1000).toFixed(1)} km` : null
+    const distance = distanceValue ? `Distance: ${formatDistanceForUnit(distanceValue)}` : null
     return [duration, distance].filter(Boolean).join(' | ')
   }
 

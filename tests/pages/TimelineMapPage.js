@@ -8,6 +8,12 @@ export class TimelineMapPage {
     this.selectors = {
       mapHost: '[data-testid="map-host-raster"], [data-testid="map-host-vector"]',
       popupContent: MAP_POPUP_CONTENT_SELECTOR,
+      currentLocationMarker: [
+        '.map-view-container [data-marker-type="current-location"]',
+        '.map-view-container .current-location-marker',
+        '.map-view-container .maplibre-shared-location-dot',
+        '.map-view-container .maplibre-avatar-icon-container'
+      ].join(', '),
       favoriteMarker: [
         '.map-view-container .custom-marker.favorite-marker',
         '.map-view-container .custom-marker.favorite-location-marker',
@@ -387,7 +393,7 @@ export class TimelineMapPage {
    * Get current location marker
    */
   getCurrentLocationMarker() {
-    return this.page.locator('.leaflet-marker-icon[data-marker-type="current-location"], .maplibre-shared-location-dot, .maplibre-avatar-icon-container');
+    return this.page.locator(this.selectors.currentLocationMarker);
   }
 
   /**
@@ -644,7 +650,7 @@ export class TimelineMapPage {
     const markerSelectors = {
       timeline: '.custom-marker.timeline-marker, .leaflet-marker-pane .timeline-marker',
       favorite: this.selectors.favoriteMarker,
-      'current-location': '.leaflet-marker-icon[data-marker-type="current-location"], .maplibre-shared-location-dot, .maplibre-avatar-icon-container'
+      'current-location': this.selectors.currentLocationMarker
     };
     
     const selector = markerSelectors[markerType];

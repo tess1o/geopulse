@@ -16,24 +16,22 @@ import {
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  buildFriendTimelineStayPopupModel,
+  buildFriendTimelineTripPopupModel
+} from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH
+} from '@/maps/shared/popups/mapPopupOptions'
 
-const defaultStayPopupHtml = (userTimeline, stay, color) => `
-  <div style="font-family: sans-serif;">
-    <div style="font-weight: 600; color: ${escapeHtml(color)}; margin-bottom: 4px;">${escapeHtml(userTimeline?.fullName || 'User')}</div>
-    <div style="font-weight: 500; margin-bottom: 2px;">${escapeHtml(stay?.locationName || 'Stay')}</div>
-    <div style="font-size: 0.875rem; color: #666;">${escapeHtml(formatDuration(stay?.stayDuration))}</div>
-  </div>
-`
-
-const defaultTripPopupHtml = (trip) => `
-  <div style="font-family: sans-serif;">
-    <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(trip?.userFullName || 'Trip')}</div>
-    <div style="font-weight: 500; margin-bottom: 2px;">${escapeHtml(trip?.movementType || 'Trip')}</div>
-    <div style="font-size: 0.875rem; color: #666;">
-      ${escapeHtml(formatDuration(trip?.tripDuration))} • ${escapeHtml(formatDistance(trip?.distanceMeters))}
-    </div>
-  </div>
-`
+const buildTripEndpointLabelPopupModel = (markerType) => ({
+  title: markerType === 'start' ? 'Trip Start' : 'Trip End',
+  iconClass: markerType === 'start' ? 'pi pi-play' : 'pi pi-flag',
+  variant: 'compact'
+})
 
 const toStayId = (userId, stayLike) => `${userId}-stay-${stayLike?.timestamp}`
 const toTripId = (userId, tripLike) => `${userId}-trip-${tripLike?.timestamp}`
@@ -86,17 +84,19 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
   let lineArtifacts = []
   let highlightedLine = null
   let highlightedPopup = null
+  let highlightedPopupMount = null
   let highlightedStartMarker = null
   let highlightedEndMarker = null
+  let highlightedStartPopup = null
+  let highlightedEndPopup = null
+  let highlightedStartPopupMount = null
+  let highlightedEndPopupMount = null
   let highlightedTripId = null
   let lastRenderPayload = null
   let lastFocusedItem = null
 
   const stayMarkers = new Map()
   const userPathPointsByUser = new Map()
-
-  const buildStayPopupHtml = callbacks.buildStayPopupHtml || defaultStayPopupHtml
-  const buildTripPopupHtml = callbacks.buildTripPopupHtml || defaultTripPopupHtml
 
   const clearLineArtifacts = () => {
     if (!isMapLibreMap(map)) {
@@ -119,6 +119,7 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
   const clearStayMarkers = () => {
     stayMarkers.forEach((entry) => {
       entry.cleanup?.()
+      entry.popupMount?.unmount?.()
       entry.marker?.remove?.()
     })
     stayMarkers.clear()
@@ -140,16 +141,30 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
       highlightedPopup.remove()
       highlightedPopup = null
     }
+    highlightedPopupMount?.unmount?.()
+    highlightedPopupMount = null
 
     if (highlightedStartMarker) {
       highlightedStartMarker.remove()
       highlightedStartMarker = null
     }
+    if (highlightedStartPopup) {
+      highlightedStartPopup.remove()
+      highlightedStartPopup = null
+    }
+    highlightedStartPopupMount?.unmount?.()
+    highlightedStartPopupMount = null
 
     if (highlightedEndMarker) {
       highlightedEndMarker.remove()
       highlightedEndMarker = null
     }
+    if (highlightedEndPopup) {
+      highlightedEndPopup.remove()
+      highlightedEndPopup = null
+    }
+    highlightedEndPopupMount?.unmount?.()
+    highlightedEndPopupMount = null
 
     highlightedTripId = null
   }
@@ -245,12 +260,29 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
 
         const [lat, lng] = stayLatLng
         const element = createStayMarkerElement(color)
-        const popup = new maplibregl.Popup({
-          closeButton: true,
-          closeOnClick: true,
-          closeOnMove: false,
-          offset: 12
-        }).setHTML(buildStayPopupHtml(userTimeline, stay, color))
+        let popupMount = null
+        let popup = null
+        if (typeof callbacks.buildStayPopupHtml === 'function') {
+          popup = new maplibregl.Popup({
+            closeButton: true,
+            closeOnClick: true,
+            closeOnMove: false,
+            offset: 12
+          }).setHTML(callbacks.buildStayPopupHtml(userTimeline, stay, color))
+        } else {
+          popupMount = mountMapPopup(
+            MapInfoPopup,
+            buildFriendTimelineStayPopupModel(userTimeline, stay)
+          )
+          popup = new maplibregl.Popup({
+            closeButton: true,
+            closeOnClick: true,
+            closeOnMove: false,
+            maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+            offset: 12,
+            className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+          }).setDOMContent(popupMount.element)
+        }
 
         const marker = new maplibregl.Marker({
           element,
@@ -277,6 +309,7 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
         stayMarkers.set(stayId, {
           marker,
           popup,
+          popupMount,
           cleanup: () => {
             element.removeEventListener('click', handleClick)
           }
@@ -387,15 +420,33 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     highlightedTripId = tripId
 
     const firstPoint = tripCoords[0]
-    highlightedPopup = new maplibregl.Popup({
-      closeButton: true,
-      closeOnClick: true,
-      closeOnMove: false,
-      offset: 12
-    })
-      .setLngLat([firstPoint[1], firstPoint[0]])
-      .setHTML(buildTripPopupHtml(item))
-      .addTo(map)
+    if (typeof callbacks.buildTripPopupHtml === 'function') {
+      highlightedPopup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: true,
+        closeOnMove: false,
+        offset: 12
+      })
+        .setLngLat([firstPoint[1], firstPoint[0]])
+        .setHTML(callbacks.buildTripPopupHtml(item))
+        .addTo(map)
+    } else {
+      highlightedPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildFriendTimelineTripPopupModel(item)
+      )
+      highlightedPopup = new maplibregl.Popup({
+        closeButton: true,
+        closeOnClick: true,
+        closeOnMove: false,
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+        offset: 12,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      })
+        .setLngLat([firstPoint[1], firstPoint[0]])
+        .setDOMContent(highlightedPopupMount.element)
+        .addTo(map)
+    }
 
     if (startPoint && endPoint) {
       const sameEndpoint = areSameCoordinate(startPoint, endPoint)
@@ -432,6 +483,33 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
       })
         .setLngLat([endPoint.longitude, endPoint.latitude])
         .addTo(map)
+
+      highlightedStartPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildTripEndpointLabelPopupModel('start')
+      )
+      highlightedEndPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildTripEndpointLabelPopupModel('end')
+      )
+      highlightedStartPopup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+        offset: 14,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      }).setDOMContent(highlightedStartPopupMount.element)
+      highlightedEndPopup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        closeOnMove: false,
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
+        offset: 14,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      }).setDOMContent(highlightedEndPopupMount.element)
+      highlightedStartMarker.setPopup(highlightedStartPopup)
+      highlightedEndMarker.setPopup(highlightedEndPopup)
     }
 
     const boundsPoints = [...tripCoords]
@@ -509,23 +587,4 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     clear,
     destroy
   }
-}
-
-function formatDuration(seconds) {
-  if (!seconds) return 'Unknown'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-  return `${minutes}m`
-}
-
-function formatDistance(meters) {
-  if (!meters) return 'Unknown'
-  const km = meters / 1000
-  if (km >= 1) {
-    return `${km.toFixed(1)} km`
-  }
-  return `${meters.toFixed(0)} m`
 }

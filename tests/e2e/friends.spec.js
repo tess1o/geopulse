@@ -4,6 +4,7 @@ import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../u
 import {TestSetupHelper} from "../utils/test-setup-helper.js";
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
+import {MAP_POPUP_CONTENT_SELECTOR} from '../utils/map-engine-harness.js';
 
 const RASTER_MAP_MODE = 'RASTER';
 
@@ -578,7 +579,8 @@ test.describe('Friends Page', () => {
       // Should switch to Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
 
-      const googleMapsLink = page.locator('.friend-popup .popup-google-maps-link').first();
+      const popup = page.locator(MAP_POPUP_CONTENT_SELECTOR).first();
+      const googleMapsLink = popup.locator('.gp-map-popup-action', { hasText: 'Open in Google Maps' }).first();
       await expect(googleMapsLink).toBeVisible();
       await expect(googleMapsLink).toHaveAttribute('href', /https:\/\/www\.google\.com\/maps\?q=50\.4501,30\.5234/);
       await expect(googleMapsLink).toHaveAttribute('target', '_blank');
@@ -604,7 +606,9 @@ test.describe('Friends Page', () => {
       const friendCard = page.locator('.friend-card').filter({ hasText: friendUser.email }).first();
       await expect(friendCard.locator('button:has-text("Live")')).toBeDisabled();
 
-      await expect(page.locator('.friend-popup .popup-google-maps-link')).toHaveCount(0);
+      await expect(
+        page.locator(MAP_POPUP_CONTENT_SELECTOR).locator('.gp-map-popup-action', { hasText: 'Open in Google Maps' })
+      ).toHaveCount(0);
     });
 
     test('should navigate to timeline when clicking Timeline button', async ({page, isolatedUsers, dbManager}) => {

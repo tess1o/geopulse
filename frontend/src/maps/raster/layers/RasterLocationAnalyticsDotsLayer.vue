@@ -15,6 +15,13 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildLocationAnalyticsPlacePopupModel } from '@/maps/shared/popups/locationPopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const props = defineProps({
   map: {
@@ -47,12 +54,14 @@ const selectedMarker = ref(null)
 const timezone = useTimezone()
 const hoveredMarker = ref(null)
 const markersByKey = new Map()
+const popupHandlersByMarker = new WeakMap()
 const openPopupPlaceKey = ref(null)
 const CLUSTER_LABEL_MIN_ZOOM = 8
 const CLUSTER_LABEL_MAX_COUNT = 49
 const POPUP_RESTORE_MIN_ZOOM = 12
 let hoveredMarkerKey = null
 let suppressPopupCloseTracking = false
+let activePlacePopupMount = null
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
 
@@ -64,15 +73,6 @@ const escapeHtml = (value) => {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;')
-}
-
-const formatDate = (timestamp) => {
-  if (!timestamp) return 'Unknown'
-  try {
-    return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp, { withSeconds: true })}`
-  } catch {
-    return 'Unknown'
-  }
 }
 
 const createDotIcon = ({ hovered = false } = {}) => {
@@ -127,28 +127,33 @@ const createSelectedPinIcon = () => {
   })
 }
 
-const buildPopup = (place) => {
-  const cityCountry = [place.city, place.country].filter(Boolean).join(', ')
-  return `
-    <div class="location-analytics-popup">
-      <div class="popup-name">${escapeHtml(place.locationName || 'Unknown location')}</div>
-      ${cityCountry ? `<div class="popup-sub">${escapeHtml(cityCountry)}</div>` : ''}
-      <div class="popup-meta">Visits: ${place.visitCount}</div>
-      <div class="popup-meta">Last visit: ${escapeHtml(formatDate(place.lastVisit))}</div>
-      <button type="button" class="popup-open-btn">Open place details</button>
-    </div>
-  `.trim()
-}
-
 const buildTooltip = (place) => {
   const name = escapeHtml(place.locationName || 'Unknown location')
   const cityCountry = [place.city, place.country].filter(Boolean).join(', ')
   return cityCountry ? `${name}<br><span class="dot-tooltip-sub">${escapeHtml(cityCountry)}</span>` : name
 }
 
+const clearActivePlacePopupMount = () => {
+  activePlacePopupMount?.unmount?.()
+  activePlacePopupMount = null
+}
+
+const detachPlacePopupHandlers = (marker) => {
+  const handlers = popupHandlersByMarker.get(marker)
+  if (!handlers) return
+
+  marker.off('popupclose', handlers.close)
+  marker.off('remove', handlers.remove)
+  popupHandlersByMarker.delete(marker)
+}
+
 const clearMarkers = () => {
   suppressPopupCloseTracking = true
   try {
+    clearActivePlacePopupMount()
+    for (const marker of markersByKey.values()) {
+      detachPlacePopupHandlers(marker)
+    }
     if (markerClusterGroup.value) {
       markerClusterGroup.value.clearLayers()
     } else if (baseLayerRef.value) {
@@ -218,27 +223,6 @@ const updateSelectedMarkerIcon = (_previousKey, nextKey) => {
   renderSelectedMarker(nextKey)
 }
 
-const bindPlacePopupActions = (marker, place) => {
-  const placeKey = getPlaceKey(place)
-  marker.on('popupopen', () => {
-    openPopupPlaceKey.value = placeKey
-    const popupElement = marker.getPopup()?.getElement()
-    if (!popupElement) return
-    const actionButton = popupElement.querySelector('.popup-open-btn')
-    if (!actionButton) return
-    actionButton.addEventListener('click', () => {
-      emit('open-place-details', place)
-    }, { once: true })
-  })
-
-  marker.on('popupclose', () => {
-    if (suppressPopupCloseTracking) return
-    if (openPopupPlaceKey.value === placeKey) {
-      openPopupPlaceKey.value = null
-    }
-  })
-}
-
 const setMarkerHovered = (key, hovered) => {
   const marker = markersByKey.get(key)
   if (!marker) return
@@ -270,6 +254,52 @@ const restoreOpenPopup = () => {
   if (!marker) return
   if (!marker.getElement?.()) return
 
+  const place = props.places.find((candidate) => getPlaceKey(candidate) === popupKey)
+  if (place) {
+    openPlacePopup(marker, place)
+  }
+}
+
+const openPlacePopup = (marker, place) => {
+  if (!marker || !place) return
+
+  const placeKey = getPlaceKey(place)
+  detachPlacePopupHandlers(marker)
+  clearActivePlacePopupMount()
+
+  const popupMount = mountMapPopup(
+    MapInfoPopup,
+    buildLocationAnalyticsPlacePopupModel(place, {
+      timezone,
+      onOpenPlaceDetails: () => emit('open-place-details', place)
+    })
+  )
+
+  const handlePopupClosed = () => {
+    if (activePlacePopupMount === popupMount) {
+      clearActivePlacePopupMount()
+    } else {
+      popupMount.unmount()
+    }
+    detachPlacePopupHandlers(marker)
+    if (!suppressPopupCloseTracking && openPopupPlaceKey.value === placeKey) {
+      openPopupPlaceKey.value = null
+    }
+  }
+
+  popupHandlersByMarker.set(marker, {
+    close: handlePopupClosed,
+    remove: handlePopupClosed
+  })
+  marker.on('popupclose', handlePopupClosed)
+  marker.on('remove', handlePopupClosed)
+
+  activePlacePopupMount = popupMount
+  openPopupPlaceKey.value = placeKey
+  marker.bindPopup(popupMount.element, {
+    maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+    className: getMapPopupVariantClassName('compact', 'gp-location-analytics-popup-container')
+  })
   marker.openPopup()
 }
 
@@ -280,7 +310,6 @@ const createPlaceMarker = (place) => {
     zIndexOffset: 0
   })
 
-  marker.bindPopup(buildPopup(place))
   marker.bindTooltip(buildTooltip(place), {
     direction: 'top',
     offset: [0, -8],
@@ -288,11 +317,11 @@ const createPlaceMarker = (place) => {
   })
   marker.on('click', () => {
     emit('marker-click', place)
+    openPlacePopup(marker, place)
   })
   marker.on('dblclick', () => {
     emit('open-place-details', place)
   })
-  bindPlacePopupActions(marker, place)
 
   return marker
 }
@@ -467,37 +496,6 @@ onBeforeUnmount(() => {
   font-weight: 700;
   font-size: 0.62rem;
   line-height: 1;
-}
-
-:global(.location-analytics-popup .popup-name) {
-  font-weight: 700;
-  margin-bottom: 0.2rem;
-}
-
-:global(.location-analytics-popup .popup-sub) {
-  color: var(--gp-text-secondary, #64748b);
-  margin-bottom: 0.2rem;
-  font-size: 0.82rem;
-}
-
-:global(.location-analytics-popup .popup-meta) {
-  font-size: 0.8rem;
-}
-
-:global(.location-analytics-popup .popup-open-btn) {
-  margin-top: 0.45rem;
-  border: 1px solid var(--gp-primary, #1a56db);
-  background: var(--gp-primary, #1a56db);
-  color: #fff;
-  border-radius: 6px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.32rem 0.55rem;
-  cursor: pointer;
-}
-
-:global(.location-analytics-popup .popup-open-btn:hover) {
-  filter: brightness(0.95);
 }
 
 :global(.leaflet-tooltip .dot-tooltip-sub) {

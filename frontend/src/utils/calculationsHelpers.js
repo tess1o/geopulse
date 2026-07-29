@@ -1,4 +1,6 @@
 import { useMeasureUnit } from '@/composables/useMeasureUnit';
+import { formatDistanceForUnit, formatSpeedForUnit } from '@/utils/measurementFormatters'
+export { formatDuration } from '@/utils/durationFormatter'
 
 /**
  * Convert kilometers to the display unit (km or miles) as a numeric value
@@ -40,93 +42,17 @@ export function getDistanceUnitLabel() {
 
 export function formatDistance(meters) {
     const unit = useMeasureUnit().getMeasureUnit();
-
-    if (unit === 'IMPERIAL') {
-        const feet = meters * 3.28084;
-        if (feet < 5280) {
-            return `${Math.round(feet)} ft`;
-        } else {
-            const miles = feet / 5280;
-            return `${miles.toFixed(2)} mi`;
-        }
-    }
-
-    if (meters < 1000) {
-        const d = Math.round(meters * 100) / 100
-        return `${d} m`;
-    } else {
-        const d = Math.round((meters / 1000) * 100) / 100
-        return `${d} km`;
-    }
+    return formatDistanceForUnit(meters, { unit });
 }
 
 export function formatDistanceRounded(meters) {
     const unit = useMeasureUnit().getMeasureUnit();
-
-    if (unit === 'IMPERIAL') {
-        const feet = meters * 3.28084;
-        if (feet < 5280) {
-            return `${Math.round(feet)} ft`;
-        } else {
-            const miles = feet / 5280;
-            return `${Math.round(miles)} mi`;
-        }
-    }
-
-    if (meters < 1000) {
-        const d = Math.round(meters); // no decimals for meters either
-        return `${d} m`;
-    } else {
-        const d = Math.round(meters / 1000); // whole km, no "."
-        return `${d} km`;
-    }
-}
-
-export function formatDuration(seconds) {
-    if (seconds == 0) {
-        return "0 seconds"
-    }
-    if (seconds < 60) {
-        return "less than a minute";
-    }
-    
-    const minutes = seconds / 60;
-    const days = Math.floor(minutes / (60 * 24));
-    const hrs = Math.floor((minutes % (60 * 24)) / 60);
-    const mins = Math.floor(minutes % 60);
-
-    const parts = [];
-
-    if (days > 0) {
-        parts.push(`${days} day${days > 1 ? 's' : ''}`);
-    }
-
-    if (hrs > 0) {
-        parts.push(`${hrs} hour${hrs > 1 ? 's' : ''}`);
-    }
-
-    // Only include minutes if there are no days
-    if (mins > 0 && days === 0) {
-        parts.push(`${mins} minute${mins > 1 ? 's' : ''}`);
-    }
-
-    return parts.join(' ');
+    return formatDistanceForUnit(meters, { unit, rounded: true });
 }
 
 export function formatSpeed(speedKmH) {
     const unit = useMeasureUnit().getMeasureUnit();
-    const speed = Number(speedKmH);
-
-    if (isNaN(speed)) {
-        return 'N/A';
-    }
-
-    if (unit === 'IMPERIAL') {
-        const speedMph = speed * 0.621371;
-        return `${speedMph.toFixed(2)} mph`;
-    }
-
-    return speed.toFixed(2) + ' km/h';
+    return formatSpeedForUnit(speedKmH, { unit, fallback: 'N/A' });
 }
 
 /**

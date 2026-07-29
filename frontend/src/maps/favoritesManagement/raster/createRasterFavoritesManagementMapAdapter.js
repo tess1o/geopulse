@@ -11,6 +11,13 @@ import {
   FAVORITES_MARKER_CLASSES,
   getLeafletIconShape
 } from '@/maps/favoritesManagement/shared/favoritesManagementMarkerFactory'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import { buildFavoriteManagementPopupModel } from '@/maps/shared/popups/favoritePopupModel'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
 const createLeafletDivIcon = (variant) => {
   const shape = getLeafletIconShape(variant)
@@ -22,28 +29,17 @@ const createLeafletDivIcon = (variant) => {
   })
 }
 
-const formatFavoritePopupHtml = (favorite, isArea = false) => {
-  const safeName = favorite?.name || 'Favorite'
-  return isArea
-    ? `<strong>${safeName}</strong><br>Area Favorite`
-    : `<strong>${safeName}</strong>`
-}
-
-const formatPendingPopupHtml = (pendingFavorite, isArea = false) => {
-  const safeName = pendingFavorite?.name || 'Pending favorite'
-  return isArea
-    ? `<strong>${safeName}</strong><br><span style="color: #f59e0b;">Pending Area</span>`
-    : `<strong>${safeName}</strong><br><span style="color: #f59e0b;">Pending</span>`
-}
-
 export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
   let map = null
   let layerGroup = null
   let tempPointMarker = null
   let activePopupLayer = null
+  let activePopupMount = null
 
   const clearActivePopup = () => {
     if (!activePopupLayer) {
+      activePopupMount?.unmount?.()
+      activePopupMount = null
       return
     }
 
@@ -53,7 +49,9 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
       activePopupLayer.remove()
     }
 
+    activePopupMount?.unmount?.()
     activePopupLayer = null
+    activePopupMount = null
   }
 
   const withStoppedContextEvent = (eventPayload) => {
@@ -69,13 +67,17 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
     return rawEvent
   }
 
-  const openLayerPopup = (layer, html) => {
+  const openLayerPopup = (layer, popupModel) => {
     if (!map || !layer) {
       return
     }
 
     clearActivePopup()
-    layer.bindPopup(html)
+    activePopupMount = mountMapPopup(MapInfoPopup, popupModel)
+    layer.bindPopup(activePopupMount.element, {
+      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+      className: getMapPopupVariantClassName('compact', 'gp-favorites-popup-container')
+    })
     layer.openPopup()
     activePopupLayer = layer
   }
@@ -92,7 +94,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     marker.on('click', () => {
       focusOnFavorite(favorite, { openPopup: false })
-      openLayerPopup(marker, formatFavoritePopupHtml(favorite, false))
+      openLayerPopup(marker, buildFavoriteManagementPopupModel(favorite, { isArea: false }))
     })
 
     marker.on('contextmenu', (eventPayload) => {
@@ -123,7 +125,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     rectangle.on('click', () => {
       focusOnFavorite(favorite, { openPopup: false })
-      openLayerPopup(rectangle, formatFavoritePopupHtml(favorite, true))
+      openLayerPopup(rectangle, buildFavoriteManagementPopupModel(favorite, { isArea: true }))
     })
 
     rectangle.on('contextmenu', (eventPayload) => {
@@ -143,7 +145,7 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     centerMarker.on('click', () => {
       focusOnFavorite(favorite, { openPopup: false })
-      openLayerPopup(centerMarker, formatFavoritePopupHtml(favorite, true))
+      openLayerPopup(centerMarker, buildFavoriteManagementPopupModel(favorite, { isArea: true }))
     })
 
     centerMarker.on('contextmenu', (eventPayload) => {
@@ -170,7 +172,10 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     marker.on('click', () => {
       map?.setView?.([point.lat, point.lng], 15)
-      openLayerPopup(marker, formatPendingPopupHtml(pendingPoint, false))
+      openLayerPopup(marker, buildFavoriteManagementPopupModel(pendingPoint, {
+        pending: true,
+        isArea: false
+      }))
     })
 
     marker.on('contextmenu', (eventPayload) => {
@@ -202,7 +207,10 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     rectangle.on('click', () => {
       map?.fitBounds?.(bounds, { padding: [50, 50], animate: true })
-      openLayerPopup(rectangle, formatPendingPopupHtml(pendingArea, true))
+      openLayerPopup(rectangle, buildFavoriteManagementPopupModel(pendingArea, {
+        pending: true,
+        isArea: true
+      }))
     })
 
     rectangle.on('contextmenu', (eventPayload) => {
@@ -222,7 +230,10 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
     centerMarker.on('click', () => {
       map?.fitBounds?.(bounds, { padding: [50, 50], animate: true })
-      openLayerPopup(centerMarker, formatPendingPopupHtml(pendingArea, true))
+      openLayerPopup(centerMarker, buildFavoriteManagementPopupModel(pendingArea, {
+        pending: true,
+        isArea: true
+      }))
     })
 
     centerMarker.on('contextmenu', (eventPayload) => {
@@ -353,9 +364,17 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
       map.setView([point.lat, point.lng], 15)
       if (shouldOpenPopup) {
-        const popup = L.popup()
+        clearActivePopup()
+        activePopupMount = mountMapPopup(
+          MapInfoPopup,
+          buildFavoriteManagementPopupModel(favorite, { isArea: false })
+        )
+        const popup = L.popup({
+          maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+          className: getMapPopupVariantClassName('compact', 'gp-favorites-popup-container')
+        })
           .setLatLng([point.lat, point.lng])
-          .setContent(formatFavoritePopupHtml(favorite, false))
+          .setContent(activePopupMount.element)
           .openOn(map)
         activePopupLayer = popup
       }
@@ -371,9 +390,17 @@ export const createRasterFavoritesManagementMapAdapter = (callbacks = {}) => {
 
       map.fitBounds(bounds, { padding: [50, 50], animate: true })
       if (shouldOpenPopup && center) {
-        const popup = L.popup()
+        clearActivePopup()
+        activePopupMount = mountMapPopup(
+          MapInfoPopup,
+          buildFavoriteManagementPopupModel(favorite, { isArea: true })
+        )
+        const popup = L.popup({
+          maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+          className: getMapPopupVariantClassName('compact', 'gp-favorites-popup-container')
+        })
           .setLatLng([center.lat, center.lng])
-          .setContent(formatFavoritePopupHtml(favorite, true))
+          .setContent(activePopupMount.element)
           .openOn(map)
         activePopupLayer = popup
       }

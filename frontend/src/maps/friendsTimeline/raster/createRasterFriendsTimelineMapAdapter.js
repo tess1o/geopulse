@@ -12,24 +12,22 @@ import {
   toFiniteCoordinate
 } from '@/maps/shared/coordinateUtils'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
+import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
+import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
+import {
+  buildFriendTimelineStayPopupModel,
+  buildFriendTimelineTripPopupModel
+} from '@/maps/shared/popups/timelinePopupModels'
+import {
+  getMapPopupVariantClassName,
+  MAP_POPUP_COMPACT_MAX_WIDTH_PX
+} from '@/maps/shared/popups/mapPopupOptions'
 
-const defaultStayPopupHtml = (userTimeline, stay, color) => `
-  <div style="font-family: sans-serif;">
-    <div style="font-weight: 600; color: ${escapeHtml(color)}; margin-bottom: 4px;">${escapeHtml(userTimeline?.fullName || 'User')}</div>
-    <div style="font-weight: 500; margin-bottom: 2px;">${escapeHtml(stay?.locationName || 'Stay')}</div>
-    <div style="font-size: 0.875rem; color: #666;">${escapeHtml(formatDuration(stay?.stayDuration))}</div>
-  </div>
-`
-
-const defaultTripPopupHtml = (trip) => `
-  <div style="font-family: sans-serif;">
-    <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(trip?.userFullName || 'Trip')}</div>
-    <div style="font-weight: 500; margin-bottom: 2px;">${escapeHtml(trip?.movementType || 'Trip')}</div>
-    <div style="font-size: 0.875rem; color: #666;">
-      ${escapeHtml(formatDuration(trip?.tripDuration))} • ${escapeHtml(formatDistance(trip?.distanceMeters))}
-    </div>
-  </div>
-`
+const buildTripEndpointLabelPopupModel = (markerType) => ({
+  title: markerType === 'start' ? 'Trip Start' : 'Trip End',
+  iconClass: markerType === 'start' ? 'pi pi-play' : 'pi pi-flag',
+  variant: 'compact'
+})
 
 const createStayMarkerIcon = (color) => L.divIcon({
   className: 'custom-marker',
@@ -75,11 +73,31 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
   let highlightedTripStartMarker = null
   let highlightedTripEndMarker = null
   let highlightedTripId = null
+  let highlightedTripPopupMount = null
+  let highlightedStartPopupMount = null
+  let highlightedEndPopupMount = null
+  const popupMounts = new Set()
 
-  const buildStayPopupHtml = callbacks.buildStayPopupHtml || defaultStayPopupHtml
-  const buildTripPopupHtml = callbacks.buildTripPopupHtml || defaultTripPopupHtml
+  const clearPopupMount = (popupMount) => {
+    popupMount?.unmount?.()
+    popupMounts.delete(popupMount)
+  }
+
+  const clearPopupMounts = () => {
+    popupMounts.forEach((popupMount) => {
+      popupMount?.unmount?.()
+    })
+    popupMounts.clear()
+  }
 
   const clearHighlightedTrip = () => {
+    clearPopupMount(highlightedTripPopupMount)
+    clearPopupMount(highlightedStartPopupMount)
+    clearPopupMount(highlightedEndPopupMount)
+    highlightedTripPopupMount = null
+    highlightedStartPopupMount = null
+    highlightedEndPopupMount = null
+
     if (!map) {
       highlightedTripPath = null
       highlightedTripStartMarker = null
@@ -106,6 +124,7 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
 
   const clear = () => {
     clearHighlightedTrip()
+    clearPopupMounts()
 
     markerGroups.forEach((group) => {
       map?.removeLayer?.(group)
@@ -159,7 +178,19 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
           icon: createStayMarkerIcon(color)
         })
 
-        marker.bindPopup(buildStayPopupHtml(userTimeline, stay, color))
+        if (typeof callbacks.buildStayPopupHtml === 'function') {
+          marker.bindPopup(callbacks.buildStayPopupHtml(userTimeline, stay, color))
+        } else {
+          const popupMount = mountMapPopup(
+            MapInfoPopup,
+            buildFriendTimelineStayPopupModel(userTimeline, stay)
+          )
+          popupMounts.add(popupMount)
+          marker.bindPopup(popupMount.element, {
+            maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+            className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+          })
+        }
 
         const stayId = toStayId(userId, stay)
         markerRefs.set(stayId, marker)
@@ -232,7 +263,19 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
       dashArray: '10, 5'
     })
 
-    tripPath.bindPopup(buildTripPopupHtml(item))
+    if (typeof callbacks.buildTripPopupHtml === 'function') {
+      tripPath.bindPopup(callbacks.buildTripPopupHtml(item))
+    } else {
+      highlightedTripPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildFriendTimelineTripPopupModel(item)
+      )
+      popupMounts.add(highlightedTripPopupMount)
+      tripPath.bindPopup(highlightedTripPopupMount.element, {
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      })
+    }
     tripPath.addTo(map)
     tripPath.bringToFront()
 
@@ -255,8 +298,25 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
         sameEndpoint ? { transform: 'translateX(14px)' } : {}
       )
 
-      startMarker.bindPopup('<div style="font-family: sans-serif; font-weight: 600;">Trip Start</div>')
-      endMarker.bindPopup('<div style="font-family: sans-serif; font-weight: 600;">Trip End</div>')
+      highlightedStartPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildTripEndpointLabelPopupModel('start')
+      )
+      highlightedEndPopupMount = mountMapPopup(
+        MapInfoPopup,
+        buildTripEndpointLabelPopupModel('end')
+      )
+      popupMounts.add(highlightedStartPopupMount)
+      popupMounts.add(highlightedEndPopupMount)
+
+      startMarker.bindPopup(highlightedStartPopupMount.element, {
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      })
+      endMarker.bindPopup(highlightedEndPopupMount.element, {
+        maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH_PX,
+        className: getMapPopupVariantClassName('compact', 'gp-friends-timeline-popup-container')
+      })
 
       if (sameEndpoint) {
         startMarker.setZIndexOffset(20)
@@ -326,23 +386,4 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
     clear,
     destroy
   }
-}
-
-function formatDuration(seconds) {
-  if (!seconds) return 'Unknown'
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-  return `${minutes}m`
-}
-
-function formatDistance(meters) {
-  if (!meters) return 'Unknown'
-  const km = meters / 1000
-  if (km >= 1) {
-    return `${km.toFixed(1)} km`
-  }
-  return `${meters.toFixed(0)} m`
 }

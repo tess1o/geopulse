@@ -921,7 +921,7 @@ function syncAllRuleAreasOnMap() {
     rules: rules.value,
     editingRuleId: editingRuleId.value,
     editingAreaExists: hasValidAreaBounds(ruleForm.value),
-    popupBuilder: buildRuleAreaPopupContent
+    popupBuilder: buildRuleAreaPopupModel
   })
 }
 
@@ -1573,40 +1573,40 @@ function formatRuleSubjects(rule) {
   return subjects.join(', ')
 }
 
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function buildRuleAreaPopupContent(rule) {
+function buildRuleAreaPopupModel(rule) {
   const rows = [
-    ['Subjects', formatRuleSubjects(rule)],
-    ['Status', rule?.status || '-'],
-    ['Events', eventSummary(rule) || 'None'],
-    ['Cooldown', `${Number(rule?.cooldownSeconds || 0)} sec`],
-    ['Enter template', resolveRuleTemplateLabel(rule?.enterTemplateId, 'enter')],
-    ['Leave template', resolveRuleTemplateLabel(rule?.leaveTemplateId, 'leave')]
+    {
+      label: 'Subjects',
+      value: formatRuleSubjects(rule)
+    },
+    {
+      label: 'Status',
+      value: rule?.status || '-'
+    },
+    {
+      label: 'Events',
+      value: eventSummary(rule) || 'None'
+    },
+    {
+      label: 'Cooldown',
+      value: `${Number(rule?.cooldownSeconds || 0)} sec`
+    },
+    {
+      label: 'Enter template',
+      value: resolveRuleTemplateLabel(rule?.enterTemplateId, 'enter')
+    },
+    {
+      label: 'Leave template',
+      value: resolveRuleTemplateLabel(rule?.leaveTemplateId, 'leave')
+    }
   ]
 
-  const rowsHtml = rows
-    .map(([label, value]) => (
-      `<div class="geofence-area-tooltip__row">
-        <span class="geofence-area-tooltip__label">${escapeHtml(label)}</span>
-        <span class="geofence-area-tooltip__value">${escapeHtml(value)}</span>
-      </div>`
-    ))
-    .join('')
-
-  return `
-    <div class="geofence-area-tooltip">
-      <div class="geofence-area-tooltip__title">${escapeHtml(rule?.name || 'Geofence')}</div>
-      ${rowsHtml}
-    </div>
-  `
+  return {
+    title: rule?.name || 'Geofence',
+    iconClass: 'pi pi-bell',
+    rows,
+    variant: 'compact'
+  }
 }
 
 function deliverySeverity(status) {
@@ -1908,20 +1908,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-:deep(.geofence-area-popup .leaflet-popup-content-wrapper) {
-  border-radius: 10px;
-}
-
-:deep(.geofence-area-popup .leaflet-popup-content) {
-  margin: 0;
-}
-
-:deep(.geofence-area-popup .maplibregl-popup-content) {
-  border-radius: 10px;
-  margin: 0;
-  padding: 0;
-}
-
 :deep(.geofence-area-tooltip) {
   display: grid;
   gap: 0.35rem;
@@ -1955,23 +1941,5 @@ onBeforeUnmount(() => {
   line-height: 1.25;
   color: var(--text-color);
   overflow-wrap: anywhere;
-}
-</style>
-
-<style>
-.p-dark .geofence-area-popup .leaflet-popup-content-wrapper {
-  background: #1e293b;
-}
-
-.p-dark .geofence-area-popup .leaflet-popup-tip {
-  background: #1e293b;
-}
-
-.p-dark .geofence-area-popup .maplibregl-popup-content {
-  background: #1e293b;
-}
-
-.p-dark .geofence-area-popup .maplibregl-popup-tip {
-  border-top-color: #1e293b;
 }
 </style>

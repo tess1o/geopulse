@@ -314,7 +314,7 @@ export function fixLeafletHeatLayerAnimation() {
 }
 
 // Color scheme for different marker types
-export const MARKER_COLORS = {
+const MARKER_COLORS = {
     STAY: '#607D8B',           // Blue Grey - for stay points
     PATH: '#4A90E2',           // Light Blue - for path lines
     TRANSIT: '#003366',        // Dark Blue - for transit points
@@ -327,7 +327,7 @@ export const MARKER_COLORS = {
 }
 
 // Size configurations for different marker types
-export const MARKER_SIZES = {
+const MARKER_SIZES = {
     SMALL: {
         SIZE: 16,
         ANCHOR: 8,
@@ -378,7 +378,7 @@ const TIMELINE_MARKER_DIMMED_STYLE = {
  * @param {string} config.shape - Shape type: 'circle', 'pin', 'square'
  * @returns {L.DivIcon} - Configured div icon
  */
-export function createCustomDivIcon({
+function createCustomDivIcon({
                                         color,
                                         icon = '',
                                         size = MARKER_SIZES.STANDARD,
@@ -513,28 +513,6 @@ function getPopupAnchor(shape, totalSize) {
 
 
 /**
- * Create marker for the user's last known location
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @returns {L.Marker} - Configured marker
- */
-export function createPathLastMarker(latitude, longitude) {
-    return L.marker([latitude, longitude], {
-        icon: createCustomDivIcon({
-            color: MARKER_COLORS.CURRENT,
-            icon: '📍', // Pin emoji for current location
-            size: MARKER_SIZES.HIGHLIGHT,
-            className: 'custom-marker last-marker',
-            shape: 'pin',
-            customStyle: {
-                animation: 'pulse 2s infinite',
-                background: `linear-gradient(135deg, ${MARKER_COLORS.CURRENT}, #0097A7)`
-            }
-        })
-    })
-}
-
-/**
  * Create marker for highlighted trip start point
  * @param {number} latitude - Latitude coordinate
  * @param {number} longitude - Longitude coordinate
@@ -585,39 +563,6 @@ export function createHighlightedPathEndMarker(latitude, longitude, instant = fa
 }
 
 /**
- * Create marker for friend locations
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @returns {L.Marker} - Configured marker
- */
-export function createFriendMarker(latitude, longitude) {
-    return L.marker([latitude, longitude], {
-        icon: createCustomDivIcon({
-            color: MARKER_COLORS.FRIEND,
-            icon: 'fas fa-user', // User icon for friends
-            size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
-            className: 'custom-marker friend-marker',
-            shape: 'circle',
-            customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
-                border: '3px solid white'
-            }
-        })
-    })
-}
-
-export function createAvatarMarker(latitude, longitude, avatarPath) {
-    const markerSize = 40; // Fixed size in pixels
-
-    return L.marker([latitude, longitude], {
-        icon: createAvatarDivIcon({
-            avatarPath,
-            size: markerSize
-        })
-    });
-}
-
-/**
  * Creates a custom div icon using an avatar image
  * @param {Object} options - Options for the avatar icon
  * @param {string} options.avatarPath - Path to the avatar image
@@ -658,29 +603,6 @@ export function createAvatarDivIcon({avatarPath, size}) {
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2] // Center of the icon (change if needed)
     });
-}
-
-/**
- * Create marker for favorite locations
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @returns {L.Marker} - Configured marker
- */
-export function createFavoriteLocationMarker(latitude, longitude) {
-    return L.marker([latitude, longitude], {
-        icon: createCustomDivIcon({
-            color: MARKER_COLORS.FAVORITE,
-            icon: 'fas fa-star', // Star icon for favorites
-            size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
-            className: 'custom-marker favorite-location-marker',
-            shape: 'pin',
-            customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.FAVORITE}, #AD1457)`,
-                border: '3px solid white',
-                boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
-            }
-        })
-    })
 }
 
 /**
@@ -803,254 +725,5 @@ export function createFavoriteIcon() {
             border: '3px solid white',
             boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
         }
-    })
-}
-
-/**
- * Create icon for single Immich photo markers
- * @returns {L.DivIcon} - Configured immich photo icon
- */
-export function createImmichPhotoIcon() {
-    // Use smaller size on mobile devices
-    const size = window.innerWidth < 768 ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-
-    return createCustomDivIcon({
-        color: '#6366f1', // Indigo color for Immich photos
-        icon: '📷', // Camera emoji for photos
-        size,
-        className: 'custom-marker immich-photo-marker',
-        shape: 'square',
-        customStyle: {
-            background: `linear-gradient(135deg, #6366f1, #4f46e5)`,
-            border: '2px solid white',
-            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)'
-        }
-    })
-}
-
-/**
- * Create icon for clustered Immich photo markers
- * @param {number} count - Number of photos in cluster
- * @returns {L.DivIcon} - Configured immich photo cluster icon
- */
-export function createImmichPhotoClusterIcon(count) {
-    // Responsive sizing - smaller on mobile
-    const isMobile = window.innerWidth < 768
-    let size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-    let backgroundColor = '#6366f1'
-
-    if (count > 20) {
-        size = isMobile ? MARKER_SIZES.LARGE : MARKER_SIZES.HIGHLIGHT
-        backgroundColor = '#dc2626' // Red for large clusters
-    } else if (count > 10) {
-        size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-        backgroundColor = '#ea580c' // Orange for medium-large clusters
-    } else if (count > 5) {
-        backgroundColor = '#7c3aed' // Purple for medium clusters
-    }
-
-    return createCustomDivIcon({
-        color: backgroundColor,
-        icon: count.toString(),
-        size,
-        className: 'custom-marker immich-photo-cluster-marker',
-        shape: 'circle',
-        customStyle: {
-            background: `linear-gradient(135deg, ${backgroundColor}, ${backgroundColor}dd)`,
-            border: '3px solid white',
-            boxShadow: '0 3px 8px rgba(99, 102, 241, 0.5)',
-            fontSize: `${Math.floor(size.SIZE * (isMobile ? 0.5 : 0.45))}px`,
-            fontWeight: 'bold',
-            color: 'white'
-        }
-    })
-}
-
-/**
- * Create a polyline with consistent styling
- * @param {Array} coordinates - Array of [lat, lng] coordinates
- * @param {Object} options - Polyline options
- * @returns {L.Polyline} - Configured polyline
- */
-export function createStyledPolyline(coordinates, options = {}) {
-    const defaultOptions = {
-        weight: 3,
-        opacity: 0.8,
-        lineCap: 'round',
-        lineJoin: 'round'
-    }
-
-    return L.polyline(coordinates, {...defaultOptions, ...options})
-}
-
-/**
- * Create a highlighted trip path polyline
- * @param {Array} coordinates - Array of [lat, lng] coordinates
- * @param {Object} options - Additional options
- * @returns {L.Polyline} - Configured polyline
- */
-export function createHighlightedTripPath(coordinates, options = {}) {
-    return createStyledPolyline(coordinates, {
-        color: MARKER_COLORS.TRANSIT,
-        weight: 5,
-        opacity: 0.9,
-        ...options
-    })
-}
-
-/**
- * Create a regular path polyline
- * @param {Array} coordinates - Array of [lat, lng] coordinates
- * @param {Object} options - Additional options
- * @returns {L.Polyline} - Configured polyline
- */
-export function createRegularPath(coordinates, options = {}) {
-    return createStyledPolyline(coordinates, {
-        color: MARKER_COLORS.PATH,
-        weight: 3,
-        ...options
-    })
-}
-
-/**
- * Create a modern pin-style marker with custom icon
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @param {Object} config - Configuration object
- * @returns {L.Marker} - Configured marker
- */
-export function createModernPinMarker(latitude, longitude, config = {}) {
-    const {
-        color = MARKER_COLORS.STAY,
-        icon = 'fas fa-map-marker-alt',
-        size = MARKER_SIZES.LARGE,
-        className = 'custom-marker modern-pin',
-        ...rest
-    } = config
-
-    return L.marker([latitude, longitude], {
-        icon: createCustomDivIcon({
-            color,
-            icon,
-            size,
-            className,
-            shape: 'pin',
-            ...rest
-        })
-    })
-}
-
-/**
- * Create a floating badge marker for notifications or counts
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @param {string|number} badge - Badge text or number
- * @param {Object} config - Configuration object
- * @returns {L.Marker} - Configured marker
- */
-export function createBadgeMarker(latitude, longitude, badge, config = {}) {
-    const {
-        color = MARKER_COLORS.FRIEND,
-        size = MARKER_SIZES.STANDARD,
-        className = 'custom-marker badge-marker'
-    } = config
-
-    return L.marker([latitude, longitude], {
-        icon: createCustomDivIcon({
-            color,
-            icon: badge.toString(),
-            size,
-            className,
-            shape: 'circle',
-            customStyle: {
-                fontSize: `${Math.floor(size.SIZE * 0.4)}px`,
-                fontWeight: 'bold',
-                color: 'white'
-            }
-        })
-    })
-}
-
-/**
- * Create a cluster marker for grouped locations
- * @param {number} latitude - Latitude coordinate
- * @param {number} longitude - Longitude coordinate
- * @param {number} count - Number of items in cluster
- * @returns {L.Marker} - Configured marker
- */
-export function createClusterMarker(latitude, longitude, count) {
-    let color = MARKER_COLORS.STAY
-    let size = MARKER_SIZES.STANDARD
-
-    if (count > 10) {
-        color = '#f44336' // Red for large clusters
-        size = MARKER_SIZES.HIGHLIGHT
-    } else if (count > 5) {
-        color = MARKER_COLORS.FRIEND // Orange for medium clusters
-        size = MARKER_SIZES.LARGE
-    }
-
-    return createBadgeMarker(latitude, longitude, count, {
-        color,
-        size,
-        className: 'custom-marker cluster-marker'
-    })
-}
-
-/**
- * Utility function to format tooltip content
- * @param {Object} data - Data object with properties to display
- * @param {Array} fields - Array of field configurations
- * @returns {string} - Formatted HTML string
- */
-export function formatTooltipContent(data, fields) {
-    return fields
-        .filter(field => data[field.key] !== undefined && data[field.key] !== null)
-        .map(field => {
-            const value = field.formatter ? field.formatter(data[field.key]) : data[field.key]
-            return field.label ? `<strong>${field.label}:</strong> ${value}` : `<strong>${value}</strong>`
-        })
-        .join('<br>')
-}
-
-/**
- * Color palette for multi-user timelines
- * Matches backend MultiUserTimelineService.java color assignments
- */
-export const USER_COLORS = [
-    '#3B82F6', // Blue
-    '#10B981', // Green
-    '#F59E0B', // Amber
-    '#EF4444', // Red
-    '#8B5CF6', // Purple
-    '#EC4899', // Pink
-    '#14B8A6', // Teal
-    '#F97316', // Orange
-    '#6366F1', // Indigo
-    '#84CC16'  // Lime
-]
-
-/**
- * Assign a color from the palette based on index
- * @param {number} index - User index
- * @returns {string} - Hex color code
- */
-export function assignUserColor(index) {
-    return USER_COLORS[index % USER_COLORS.length]
-}
-
-/**
- * Create a user-specific timeline marker icon
- * @param {string} color - User's assigned color
- * @param {string} userInitials - User's initials (optional)
- * @returns {L.DivIcon} - Custom marker icon
- */
-export function createUserTimelineIcon(color, userInitials = '') {
-    return createCustomDivIcon({
-        color,
-        icon: userInitials || '📍',
-        size: MARKER_SIZES.STANDARD,
-        className: 'custom-marker user-timeline-marker',
-        shape: 'circle'
     })
 }

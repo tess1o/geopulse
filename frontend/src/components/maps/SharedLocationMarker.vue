@@ -8,6 +8,7 @@
     :share-data="shareData"
     :avatar-url="avatarUrl"
     :open-popup="openPopup"
+    :marker-type="markerType"
   />
 </template>
 
@@ -37,6 +38,10 @@ const props = defineProps({
   avatarUrl: {
     type: String,
     default: null
+  },
+  markerType: {
+    type: String,
+    default: ''
   },
   openPopup: {
     type: Boolean,
