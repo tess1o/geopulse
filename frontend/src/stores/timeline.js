@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import {
+    applyStayFavoriteUpdateToTimelineItems,
+    applyStayGeocodingUpdateToTimelineItems,
+    applyTripMovementUpdateToTimelineItems
+} from '@/utils/timelineItemPatchers'
 
 const timezone = useTimezone()
 
@@ -299,52 +304,15 @@ export const useTimelineStore = defineStore('timeline', {
         },
 
         applyTripMovementUpdate(updatedTrip) {
-            if (!this.timelineData || !updatedTrip?.tripId) return
-            const index = this.timelineData.findIndex(
-                (item) => item.type === 'trip' && item.id === updatedTrip.tripId
-            )
-            if (index === -1) return
-
-            this.timelineData[index] = {
-                ...this.timelineData[index],
-                movementType: updatedTrip.movementType,
-                movementTypeSource: updatedTrip.movementTypeSource
-            }
+            this.timelineData = applyTripMovementUpdateToTimelineItems(this.timelineData, updatedTrip)
         },
 
         applyStayFavoriteUpdate(updatedFavorite) {
-            if (!this.timelineData || !updatedFavorite?.id) return
-
-            this.timelineData = this.timelineData.map((item) => {
-                if (item.type !== 'stay' || item.favoriteId !== updatedFavorite.id) {
-                    return item
-                }
-
-                return {
-                    ...item,
-                    locationName: updatedFavorite.name ?? item.locationName,
-                    city: updatedFavorite.city ?? null,
-                    country: updatedFavorite.country ?? null
-                }
-            })
+            this.timelineData = applyStayFavoriteUpdateToTimelineItems(this.timelineData, updatedFavorite)
         },
 
         applyStayGeocodingUpdate(oldGeocodingId, updatedGeocoding) {
-            if (!this.timelineData || !oldGeocodingId || !updatedGeocoding?.id) return
-
-            this.timelineData = this.timelineData.map((item) => {
-                if (item.type !== 'stay' || item.geocodingId !== oldGeocodingId) {
-                    return item
-                }
-
-                return {
-                    ...item,
-                    geocodingId: updatedGeocoding.id,
-                    locationName: updatedGeocoding.displayName ?? item.locationName,
-                    city: updatedGeocoding.city ?? null,
-                    country: updatedGeocoding.country ?? null
-                }
-            })
+            this.timelineData = applyStayGeocodingUpdateToTimelineItems(this.timelineData, oldGeocodingId, updatedGeocoding)
         },
 
         // Find timeline item index (useful for component interactions)

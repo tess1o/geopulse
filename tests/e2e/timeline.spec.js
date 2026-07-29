@@ -136,7 +136,7 @@ test.describe('Timeline Page', () => {
       const dateRangeFontSize = await dateRangeInput.evaluate((el) => getComputedStyle(el).fontSize);
       expect(parseFloat(dateRangeFontSize)).toBeGreaterThanOrEqual(16);
 
-      const sheet = page.locator('.right-pane').first();
+      const sheet = page.locator('.timeline-split-side-pane').first();
       const handle = page.locator('.timeline-sheet-handle').first();
       await expect(handle).toBeVisible();
 

@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import {
+  applyStayFavoriteUpdateToTimelineItems,
+  applyStayGeocodingUpdateToTimelineItems,
+  applyTripMovementUpdateToTimelineItems
+} from '@/utils/timelineItemPatchers'
 
 const timezone = useTimezone()
 
@@ -333,6 +338,18 @@ export const useTripsStore = defineStore('trips', {
         this.error = error.message || 'Failed to load trip path'
         throw error
       }
+    },
+
+    applyWorkspaceTripMovementUpdate(updatedTrip) {
+      this.workspaceTimeline = applyTripMovementUpdateToTimelineItems(this.workspaceTimeline, updatedTrip)
+    },
+
+    applyWorkspaceStayFavoriteUpdate(updatedFavorite) {
+      this.workspaceTimeline = applyStayFavoriteUpdateToTimelineItems(this.workspaceTimeline, updatedFavorite)
+    },
+
+    applyWorkspaceStayGeocodingUpdate(oldGeocodingId, updatedGeocoding) {
+      this.workspaceTimeline = applyStayGeocodingUpdateToTimelineItems(this.workspaceTimeline, oldGeocodingId, updatedGeocoding)
     },
 
     async fetchVisitSuggestions(tripId) {

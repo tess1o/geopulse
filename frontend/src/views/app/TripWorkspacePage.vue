@@ -103,7 +103,63 @@
         </div>
 
         <BaseCard v-if="showOverviewSection || showPlanningPanelMode" class="workspace-card">
-          <div class="workspace-layout">
+          <TimelineSplitLayout
+            v-if="showOverviewSection"
+            ref="timelineSplitLayoutRef"
+            class="workspace-timeline-split"
+            @layout-resize="triggerWorkspaceMapResize"
+          >
+            <template #map>
+              <div v-if="workspaceLoading" class="pane-loading">
+                <ProgressSpinner />
+              </div>
+              <TimelineMap
+                ref="timelineMapRef"
+                v-else
+                class="workspace-timeline-map"
+                :style="workspaceTimelineMapStyle"
+                :pathData="hasPathData ? workspacePath : null"
+                :timelineData="workspaceTimeline"
+                :weather-samples="weatherSamples"
+                :plannedItemsData="tripPlanMapItems"
+                :showFavoritesByDefault="false"
+                :showImmichByDefault="true"
+                :showPlanToVisitAction="canEditPlanItems"
+                :showFavoritesContextActions="false"
+                :showHeatmapControl="false"
+                :enableFavoriteContextMenu="canEditPlanItems"
+                :showCurrentLocation="false"
+                @timeline-marker-click="handleWorkspaceTimelineMarkerClick"
+                @highlighted-path-click="handleWorkspaceHighlightedPathClick"
+                @plan-to-visit="handlePlanToVisit"
+                @plan-item-edit="handlePlanItemEditFromMap"
+                @plan-item-delete="handlePlanItemDeleteFromMap"
+              />
+            </template>
+
+            <template #side>
+              <div v-if="workspaceLoading" class="pane-loading">
+                <ProgressSpinner />
+              </div>
+              <TimelineContainer
+                v-else
+                ref="timelineContainerRef"
+                :timeline-data="workspaceTimeline"
+                :timelineNoData="!workspaceTimeline.length"
+                :timelineDataLoading="workspaceLoading"
+                :dateRange="activeDateRangeArray"
+                :loadImmichPhotos="false"
+                :weather-samples="weatherSamples"
+                :showTimelineLabels="false"
+                @timeline-item-click="handleWorkspaceTimelineItemClick"
+                @rename-stay="handleWorkspaceRenameStay"
+                @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
+                @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
+              />
+            </template>
+          </TimelineSplitLayout>
+
+          <div v-else class="workspace-layout">
             <div class="workspace-map">
               <div v-if="workspaceLoading" class="pane-loading">
                 <ProgressSpinner />
@@ -111,8 +167,11 @@
               <TimelineMap
                 ref="timelineMapRef"
                 v-else
+                class="workspace-timeline-map"
+                :style="workspaceTimelineMapStyle"
                 :pathData="hasPathData ? workspacePath : null"
                 :timelineData="workspaceTimeline"
+                :weather-samples="weatherSamples"
                 :plannedItemsData="tripPlanMapItems"
                 :showFavoritesByDefault="false"
                 :showImmichByDefault="true"
@@ -188,15 +247,6 @@
                   </div>
                 </div>
               </div>
-              <TimelineContainer
-                v-else
-                :timeline-data="workspaceTimeline"
-                :timelineNoData="!workspaceTimeline.length"
-                :timelineDataLoading="workspaceLoading"
-                :dateRange="activeDateRangeArray"
-                :loadImmichPhotos="false"
-                :showTimelineLabels="false"
-              />
             </div>
           </div>
         </BaseCard>
@@ -469,6 +519,21 @@
       @committed="handleReconstructionCommitted"
     />
 
+    <TimelineLocationEditDialogs
+      :favorite-visible="showFavoriteDialog"
+      :selected-favorite="selectedFavorite"
+      :geocoding-visible="showGeocodingEditDialog"
+      :edit-geocoding-data="editGeocodingData"
+      v-model:regeneration-visible="locationRegenerationVisible"
+      :regeneration-type="locationRegenerationType"
+      :current-job-id="locationCurrentJobId"
+      :job-progress="locationJobProgress"
+      @save-favorite="handleWorkspaceFavoriteDialogSave"
+      @close-favorite="closeWorkspaceFavoriteEditor"
+      @save-geocoding="handleWorkspaceSaveGeocoding"
+      @close-geocoding="closeWorkspaceGeocodingDialog"
+    />
+
     <Dialog
       v-model:visible="showTimelineGenerationDialog"
       modal
@@ -546,9 +611,13 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
+import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
+import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
+import { getTimelineGeographicBounds, getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { useTripsStore } from '@/stores/trips'
 import { useImmichStore } from '@/stores/immich'
+import { useTimelineStore } from '@/stores/timeline'
 import friendsService from '@/services/friendsService'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -556,6 +625,8 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
+import TimelineLocationEditDialogs from '@/components/timeline/TimelineLocationEditDialogs.vue'
+import TimelineSplitLayout from '@/components/timeline/TimelineSplitLayout.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import TripPlanItemsTable from '@/components/trips/TripPlanItemsTable.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
@@ -587,6 +658,7 @@ const confirm = useConfirm()
 const timezone = useTimezone()
 const tripsStore = useTripsStore()
 const immichStore = useImmichStore()
+const timelineStore = useTimelineStore()
 
 const {
   currentTrip,
@@ -596,6 +668,7 @@ const {
   workspacePath,
   visitSuggestions
 } = storeToRefs(tripsStore)
+const { weatherSamples } = storeToRefs(timelineStore)
 
 const isInitialLoading = ref(true)
 const workspaceLoading = ref(false)
@@ -603,9 +676,45 @@ const pageError = ref(null)
 const selectedDateRange = ref(null)
 const activeRange = ref({ start: null, end: null })
 const timelineMapRef = ref(null)
+const timelineSplitLayoutRef = ref(null)
+const timelineContainerRef = ref(null)
 const planItemDialogMapRef = ref(null)
 const planLocationSearchRef = ref(null)
 const activeWorkspaceTab = ref('overview')
+
+const {
+  clearTimelineSelection: clearWorkspaceTimelineSelection,
+  handleTimelineItemClick: handleWorkspaceTimelineItemClick,
+  handleTimelineMarkerClick: handleWorkspaceTimelineMarkerClick,
+  handleHighlightedPathClick: handleWorkspaceHighlightedPathClick
+} = useTimelineItemSelection({
+  collapseForMobileSelection: () => {
+    timelineSplitLayoutRef.value?.collapseForMobileSelection?.()
+  }
+})
+
+const {
+  showFavoriteDialog,
+  selectedFavorite,
+  closeFavoriteEditor: closeWorkspaceFavoriteEditor,
+  handleFavoriteDialogSave: handleWorkspaceFavoriteDialogSave,
+  timelineRegenerationVisible: locationRegenerationVisible,
+  timelineRegenerationType: locationRegenerationType,
+  currentJobId: locationCurrentJobId,
+  jobProgress: locationJobProgress,
+  showGeocodingEditDialog,
+  editGeocodingData,
+  closeGeocodingDialog: closeWorkspaceGeocodingDialog,
+  handleSaveGeocoding: handleWorkspaceSaveGeocoding,
+  handleRenameStay: handleWorkspaceRenameStay
+} = useTimelineLocationEditing({
+  onFavoriteSaved: (data) => {
+    tripsStore.applyWorkspaceStayFavoriteUpdate(data)
+  },
+  onGeocodingSaved: (oldGeocodingId, updated) => {
+    tripsStore.applyWorkspaceStayGeocodingUpdate(oldGeocodingId, updated)
+  }
+})
 
 const showPlanItemDialog = ref(false)
 const editingPlanItemId = ref(null)
@@ -711,6 +820,10 @@ const mustCompletionLabel = computed(() => {
 
 const hasPathData = computed(() => Array.isArray(workspacePath.value?.points) && workspacePath.value.points.length > 0)
 const hasTimelineData = computed(() => Array.isArray(workspaceTimeline.value) && workspaceTimeline.value.length > 0)
+const workspaceTimelineMapStyle = computed(() => ({
+  height: '100%',
+  minHeight: '0'
+}))
 const isUnplannedTrip = computed(() => {
   const status = String(currentTrip.value?.status || '').toUpperCase()
   return status === 'UNPLANNED' || (!currentTrip.value?.startTime && !currentTrip.value?.endTime)
@@ -1182,17 +1295,89 @@ const updateRouteQuery = async (range) => {
 
 const fetchWorkspaceRange = async (range, syncQuery = true) => {
   workspaceLoading.value = true
+  clearWorkspaceTimelineSelection()
   try {
     await Promise.all([
       tripsStore.fetchWorkspaceTimeline(tripId.value, range.start, range.end),
       tripsStore.fetchWorkspacePath(tripId.value, range.start, range.end)
     ])
+    await fetchWorkspaceWeatherData(range)
     if (syncQuery) {
       await updateRouteQuery(range)
     }
   } finally {
     workspaceLoading.value = false
   }
+}
+
+const fetchWorkspaceWeatherData = async (range) => {
+  if (!range?.start || !range?.end || !Array.isArray(workspaceTimeline.value) || workspaceTimeline.value.length === 0) {
+    timelineStore.clearWeatherSamples()
+    return
+  }
+
+  const weatherRange = getWeatherQueryRange(range.start, range.end, workspaceTimeline.value)
+  const apiBounds = padWeatherBounds(getTimelineGeographicBounds(workspaceTimeline.value))
+
+  try {
+    await timelineStore.fetchWeatherSamples(weatherRange.startTime, weatherRange.endTime, apiBounds)
+  } catch (error) {
+    console.warn('Trip workspace weather samples unavailable:', error)
+    timelineStore.clearWeatherSamples()
+  }
+}
+
+const triggerWorkspaceMapResize = () => {
+  nextTick(() => {
+    const invalidateMap = () => {
+      timelineMapRef.value?.invalidateSize?.()
+    }
+
+    invalidateMap()
+    setTimeout(invalidateMap, 260)
+  })
+}
+
+const handleWorkspaceTimelineRefreshRequested = async () => {
+  if (isUnplannedTrip.value || !activeRange.value?.start || !activeRange.value?.end) {
+    return
+  }
+
+  await fetchWorkspaceRange(activeRange.value, false)
+  await refreshVisitComparisons()
+}
+
+const handleWorkspaceResetDataGapOverride = (stayItem) => {
+  const overrideId = stayItem?.dataGapOverrideId
+  if (!overrideId) {
+    return
+  }
+
+  confirm.require({
+    header: 'Reset Manual Stay Override',
+    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await timelineStore.resetDataGapStayOverride(overrideId)
+        await handleWorkspaceTimelineRefreshRequested()
+        toast.add({
+          severity: 'success',
+          summary: 'Override Reset',
+          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          life: 3000
+        })
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
+        toast.add({
+          severity: 'error',
+          summary: 'Reset Failed',
+          detail: errorMessage,
+          life: 5000
+        })
+      }
+    }
+  })
 }
 
 const resolveInitialRange = () => {
@@ -1263,6 +1448,7 @@ const loadWorkspace = async () => {
         segments: [],
         pointCount: 0
       }
+      timelineStore.clearWeatherSamples()
       visitSuggestions.value = []
       syncCalendarRange({ start: null, end: null })
       return
@@ -1949,6 +2135,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  clearWorkspaceTimelineSelection()
   cleanupPlanItemDialogMap()
 })
 
@@ -2190,9 +2377,46 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .workspace-layout {
+  --workspace-map-height: clamp(550px, 70vh, 760px);
   display: flex;
   gap: 0;
+  height: var(--workspace-map-height);
   min-height: 0;
+}
+
+.workspace-card .workspace-timeline-split {
+  --workspace-map-height: clamp(550px, 70vh, 760px);
+  --timeline-split-side-width: clamp(360px, 22vw, 460px);
+  height: calc(var(--workspace-map-height) + 0.5rem);
+  min-height: calc(550px + 0.5rem);
+}
+
+.workspace-timeline-split :deep(.timeline-split-main) {
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-timeline-split :deep(.timeline-split-map-pane) {
+  max-height: none;
+}
+
+.workspace-timeline-map {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.workspace-timeline-split :deep(.map-container-wrapper),
+.workspace-timeline-split :deep(.base-map),
+.workspace-map :deep(.map-container-wrapper),
+.workspace-map :deep(.base-map) {
+  height: 100%;
+}
+
+.workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
+  max-height: none;
+  background: var(--gp-surface-white);
 }
 
 .workspace-map,
@@ -2200,7 +2424,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
   border: 0;
   border-radius: 0;
   overflow: hidden;
-  min-height: 350px;
+  height: 100%;
+  min-height: 0;
   background: var(--gp-surface-white);
 }
 
@@ -2209,7 +2434,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
   margin-top: 0.5rem;
   margin-left: 0.5rem;
   margin-right: 1rem;
-  max-height: 70vh;
+  max-height: none;
+  min-height: var(--workspace-map-height);
   min-width: 0;
 }
 
@@ -2219,7 +2445,7 @@ watch(showPlanItemDialog, async (nextVisible) => {
   margin-right: 0.5rem;
   min-width: 0;
   max-width: none;
-  max-height: 70vh;
+  max-height: none;
   overflow-y: auto;
 }
 
@@ -2441,9 +2667,12 @@ watch(showPlanItemDialog, async (nextVisible) => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .workspace-card .workspace-timeline-split {
+    --timeline-split-side-width: clamp(340px, 30vw, 420px);
+  }
+
   .workspace-map {
     flex: 5;
-    max-height: 70vh;
   }
 
   .workspace-timeline {
@@ -2452,6 +2681,10 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 @media (min-width: 1280px) and (max-width: 1599px) {
+  .workspace-card .workspace-timeline-split {
+    --timeline-split-side-width: clamp(360px, 24vw, 440px);
+  }
+
   .workspace-map {
     flex: 5;
   }
@@ -2462,9 +2695,14 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 @media (min-width: 1600px) {
+  .workspace-layout,
+  .workspace-card .workspace-timeline-split {
+    --workspace-map-height: clamp(580px, 75vh, 860px);
+    --timeline-split-side-width: clamp(380px, 20vw, 460px);
+  }
+
   .workspace-map {
     flex: 4;
-    max-height: 75vh;
   }
 
   .workspace-timeline {
@@ -2475,7 +2713,14 @@ watch(showPlanItemDialog, async (nextVisible) => {
 @media (max-width: 1024px) {
   .workspace-layout {
     flex-direction: column;
+    height: auto;
     min-height: auto;
+  }
+
+  .workspace-card .workspace-timeline-split {
+    --workspace-map-height: clamp(500px, 70vh, 640px);
+    height: calc(var(--workspace-map-height) + 0.5rem);
+    min-height: calc(500px + 0.5rem);
   }
 
   .plan-item-dialog-layout {
@@ -2484,15 +2729,28 @@ watch(showPlanItemDialog, async (nextVisible) => {
 
   .workspace-map,
   .workspace-timeline {
-    min-height: 460px;
     max-height: none;
     min-width: 0;
     max-width: none;
   }
 
+  .workspace-map {
+    min-height: var(--workspace-map-height);
+  }
+
+  .workspace-timeline {
+    min-height: 460px;
+  }
+
 }
 
 @media (max-width: 768px) {
+  .workspace-card .workspace-timeline-split {
+    --workspace-map-height: clamp(460px, calc(100dvh - 240px), 560px);
+    height: calc(var(--workspace-map-height) + 0.5rem);
+    min-height: calc(460px + 0.5rem);
+  }
+
   .workspace-tabs {
     flex-wrap: wrap;
   }
