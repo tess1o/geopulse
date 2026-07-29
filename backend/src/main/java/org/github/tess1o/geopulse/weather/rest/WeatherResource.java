@@ -7,6 +7,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
 @Slf4j
+@Tag(name = "User: Weather", description = "Get Weather samples")
 public class WeatherResource {
 
     @Inject
