@@ -1,5 +1,5 @@
 <template>
-  <div ref="timelinePageRef" class="timeline-page" :style="timelinePageStyle">
+  <div class="timeline-page">
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
@@ -28,103 +28,60 @@
 
     <!-- Normal Timeline View -->
     <template v-else>
-      <div class="timeline-content-wrapper">
-        <div class="timeline-main" :class="timelineMainClasses">
-          <div class="left-pane">
-        <div v-if="mapNoData" class="loading-messages">
-          No data to show on the map. Try to select different date range.
-        </div>
-        <div v-if="mapDataLoading" class="loading-messages">
-          <ProgressSpinner />
-        </div>
-        <TimelineMap
-            v-if="mapPreferencesLoaded"
-            v-show="!mapNoData && !mapDataLoading"
-            ref="mapViewRef"
-            :pathData="pathData"
-            :timelineData="timelineDataWithStayTelemetry"
-            :weather-samples="weatherSamples"
-            :favoritePlaces="favoritePlaces"
-            :currentLocation="currentLocation"
-            :showCurrentLocation="isToday"
-            :custom-tile-url="customMapTileUrl"
-            :custom-style-url="customMapStyleUrl"
-            :map-render-mode="mapRenderMode"
-            :enable-trip-replay="true"
-            :auto-show-trip-replay-controls="autoShowTripReplayControls"
-            @timeline-marker-click="handleTimelineMarkerClick"
-            @highlighted-path-click="handleHighlightedPathClick"
-            @edit-favorite="handleEditFavorite"
-            @delete-favorite="handleFavoriteDelete"
-        />
-      </div>
+      <TimelineSplitLayout
+        ref="timelineSplitLayoutRef"
+        :show-date-navigation="isSingleDaySelected"
+        :date-label="selectedDateLabel"
+        @navigate-date="navigateTimelineDay"
+        @layout-resize="triggerMapResize"
+      >
+        <template #map>
+          <div v-if="mapNoData" class="loading-messages">
+            No data to show on the map. Try to select different date range.
+          </div>
+          <div v-if="mapDataLoading" class="loading-messages">
+            <ProgressSpinner />
+          </div>
+          <TimelineMap
+              v-if="mapPreferencesLoaded"
+              v-show="!mapNoData && !mapDataLoading"
+              ref="mapViewRef"
+              :pathData="pathData"
+              :timelineData="timelineDataWithStayTelemetry"
+              :weather-samples="weatherSamples"
+              :favoritePlaces="favoritePlaces"
+              :currentLocation="currentLocation"
+              :showCurrentLocation="isToday"
+              :custom-tile-url="customMapTileUrl"
+              :custom-style-url="customMapStyleUrl"
+              :map-render-mode="mapRenderMode"
+              :enable-trip-replay="true"
+              :auto-show-trip-replay-controls="autoShowTripReplayControls"
+              @timeline-marker-click="handleTimelineMarkerClick"
+              @highlighted-path-click="handleHighlightedPathClick"
+              @edit-favorite="handleEditFavorite"
+              @delete-favorite="handleFavoriteDelete"
+          />
+        </template>
 
-        <div
-          ref="timelineSheetRef"
-          class="right-pane"
-          :class="timelineSheetClasses"
-          :style="timelineSheetStyle"
-        >
-          <div
-            class="timeline-sheet-handle"
-            @pointerdown="handleTimelineSheetPointerDown"
-          >
-            <span class="timeline-sheet-grip"></span>
-            <button
-              type="button"
-              class="timeline-sheet-toggle-button"
-              :aria-label="timelineSheetToggleLabel"
-              :title="timelineSheetToggleLabel"
-              @pointerdown.stop
-              @click="cycleTimelineSheetState"
-            >
-              <span class="timeline-sheet-label">{{ timelineSheetLabel }}</span>
-              <i class="timeline-sheet-toggle-icon" :class="timelineSheetToggleIcon"></i>
-            </button>
-            <div
-              v-if="isSingleDaySelected && selectedDateLabel && timelineSheetState !== 'collapsed'"
-              class="timeline-sheet-date-nav"
-              aria-label="Timeline day navigation"
-              @pointerdown.stop
-            >
-              <button
-                type="button"
-                class="timeline-sheet-date-nav-button"
-                title="Previous day"
-                aria-label="Previous day"
-                @click="navigateTimelineDay(-1)"
-              >
-                <i class="pi pi-chevron-left"></i>
-              </button>
-              <span class="timeline-sheet-date-text">{{ selectedDateLabel }}</span>
-              <button
-                type="button"
-                class="timeline-sheet-date-nav-button"
-                title="Next day"
-                aria-label="Next day"
-                @click="navigateTimelineDay(1)"
-              >
-                <i class="pi pi-chevron-right"></i>
-              </button>
-            </div>
-          </div>
-        <TimelineContainer
-            ref="timelineContainerRef"
-            :timelineData="timelineDataWithStayTelemetry"
-            :weather-samples="weatherSamples"
-            :timelineNoData="timelineNoData"
-            :timelineDataLoading="timelineDataLoading"
-            :dateRange="dateRange"
-            @timeline-item-click="handleTimelineItemClick"
-            @tag-clicked="handleTagClicked"
-            @rename-stay="handleRenameStay"
-            @timeline-refresh-requested="handleTimelineRefreshRequested"
-            @reset-data-gap-override="handleResetDataGapOverride"
-            @photo-show-on-map="handleTimelinePhotoShowOnMap"
-            @navigate-date="handleNavigateDate"
-        />
-          </div>
-        </div>
+        <template #side>
+          <TimelineContainer
+              ref="timelineContainerRef"
+              :timelineData="timelineDataWithStayTelemetry"
+              :weather-samples="weatherSamples"
+              :timelineNoData="timelineNoData"
+              :timelineDataLoading="timelineDataLoading"
+              :dateRange="dateRange"
+              @timeline-item-click="handleTimelineItemClick"
+              @tag-clicked="handleTagClicked"
+              @rename-stay="handleRenameStay"
+              @timeline-refresh-requested="handleTimelineRefreshRequested"
+              @reset-data-gap-override="handleResetDataGapOverride"
+              @photo-show-on-map="handleTimelinePhotoShowOnMap"
+              @navigate-date="handleNavigateDate"
+          />
+        </template>
+      </TimelineSplitLayout>
 
         <!-- Timeline Share Dialog -->
         <TimelineShareDialog
@@ -133,29 +90,19 @@
             @created="handleShareCreated"
         />
 
-        <!-- Edit Favorite Dialog -->
-        <EditFavoriteDialog
-            v-if="selectedFavorite"
-            :visible="showFavoriteDialog"
-            :header="'Edit Favorite Location'"
-            :favorite-location="selectedFavorite"
-            @edit-favorite="handleFavoriteDialogSave"
-            @close="closeFavoriteEditor"
-        />
-
-        <GeocodingEditDialog
-            :visible="showGeocodingEditDialog"
-            :geocoding-result="editGeocodingData"
-            @save="handleSaveGeocoding"
-            @close="closeGeocodingDialog"
-        />
-
-        <!-- Timeline Regeneration Modal -->
-        <TimelineRegenerationModal
-            v-model:visible="timelineRegenerationVisible"
-            :type="timelineRegenerationType"
-            :job-id="currentJobId"
+        <TimelineLocationEditDialogs
+            :favorite-visible="showFavoriteDialog"
+            :selected-favorite="selectedFavorite"
+            :geocoding-visible="showGeocodingEditDialog"
+            :edit-geocoding-data="editGeocodingData"
+            v-model:regeneration-visible="timelineRegenerationVisible"
+            :regeneration-type="timelineRegenerationType"
+            :current-job-id="currentJobId"
             :job-progress="jobProgress"
+            @save-favorite="handleFavoriteDialogSave"
+            @close-favorite="closeFavoriteEditor"
+            @save-geocoding="handleSaveGeocoding"
+            @close-geocoding="closeGeocodingDialog"
         />
 
         <TripReconstructionDialog
@@ -174,18 +121,17 @@
             :job-id="reconstructionJobId"
             :job-progress="reconstructionJobProgress"
         />
-      </div>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, onUnmounted, computed, inject } from 'vue'
+import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { TimelineContainer } from '@/components/timeline'
+import { TimelineContainer, TimelineLocationEditDialogs, TimelineSplitLayout } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeDatasetWarning.vue'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -195,18 +141,17 @@ import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 import { readUserSnapshot } from '@/utils/authSnapshotStorage'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
-import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
-import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
-import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
+import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
+import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
+import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useFavoritesStore } from '@/stores/favorites'
-import { useGeocodingStore } from '@/stores/geocoding'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
@@ -219,36 +164,57 @@ const router = useRouter()
 const authStore = useAuthStore()
 const dateRangeStore = useDateRangeStore()
 const favoritesStore = useFavoritesStore()
-const geocodingStore = useGeocodingStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const highlightStore = useHighlightStore()
 const tripsStore = useTripsStore()
 const confirm = useConfirm()
 
-// Favorite editor composable
+const timelineSplitLayoutRef = ref(null)
+
 const {
-  showDialog: showFavoriteDialog,
+  showFavoriteDialog,
   selectedFavorite,
-  openEditor: openFavoriteEditor,
-  closeEditor: closeFavoriteEditor,
-  handleSave: handleFavoriteSave,
+  openFavoriteEditor,
+  closeFavoriteEditor,
+  handleFavoriteDialogSave,
   withTimelineRegeneration,
   timelineRegenerationVisible,
   timelineRegenerationType,
   currentJobId,
-  jobProgress
-} = useFavoriteEditor()
+  jobProgress,
+  showGeocodingEditDialog,
+  editGeocodingData,
+  closeGeocodingDialog,
+  handleSaveGeocoding,
+  handleRenameStay
+} = useTimelineLocationEditing({
+  onFavoriteSaved: (data) => {
+    timelineStore.applyStayFavoriteUpdate(data)
+  },
+  onGeocodingSaved: (oldGeocodingId, updated) => {
+    timelineStore.applyStayGeocodingUpdate(oldGeocodingId, updated)
+  }
+})
 
 const { dateRange } = storeToRefs(dateRangeStore)
 const { favoritePlaces } = storeToRefs(favoritesStore)
 const { locationPath: pathData } = storeToRefs(locationStore)
 const { timelineData, weatherSamples } = storeToRefs(timelineStore)
-const WEATHER_QUERY_TIME_PADDING_MS = 60 * 60 * 1000
-const WEATHER_QUERY_BOUNDS_PADDING_DEGREES = 0.02
 
 // Template refs
 const mapViewRef = ref(null)
+const timelineContainerRef = ref(null)
+
+const {
+  handleTimelineItemClick,
+  handleTimelineMarkerClick,
+  handleHighlightedPathClick
+} = useTimelineItemSelection({
+  collapseForMobileSelection: () => {
+    timelineSplitLayoutRef.value?.collapseForMobileSelection?.()
+  }
+})
 
 const normalizeTimelineMapRenderMode = (mode) => (
   mode === 'RASTER' ? 'RASTER' : 'VECTOR'
@@ -288,15 +254,6 @@ const mapDataLoading = ref(false)
 const mapNoData = ref(false)
 const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
-const timelinePageRef = ref(null)
-const timelineContainerRef = ref(null)
-const timelineSheetRef = ref(null)
-const timelineSheetState = ref('half')
-const timelineSheetHeight = ref(null)
-const isTimelineSheetDragging = ref(false)
-const timelineSheetDidDrag = ref(false)
-const timelineSheetDragStartY = ref(0)
-const timelineSheetDragStartHeight = ref(0)
 const lastFetchedRange = ref(null)
 const lastAppliedFocusKey = ref(null)
 const currentLocation = ref(null)
@@ -310,8 +267,6 @@ const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTr
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
-const showGeocodingEditDialog = ref(false)
-const editGeocodingData = ref(null)
 const showReconstructionDialog = ref(false)
 const {
   timelineRegenerationVisible: reconstructionRegenerationVisible,
@@ -358,22 +313,6 @@ const timelineReconstructionFallbackCenter = computed(() => {
   return [37.7749, -122.4194]
 })
 
-const timelineSheetClasses = computed(() => ({
-  [`timeline-sheet--${timelineSheetState.value}`]: true,
-  'timeline-sheet--dragging': isTimelineSheetDragging.value,
-  'timeline-sheet--compact': timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
-}))
-
-const timelineMainClasses = computed(() => ({
-  'timeline-main--sheet-collapsed': timelineSheetState.value === 'collapsed'
-}))
-
-const timelineSheetLabel = computed(() => (
-  timelineSheetState.value === 'collapsed' && !isTimelineSheetDragging.value
-    ? 'Timeline'
-    : 'Movement Timeline'
-))
-
 const selectedSingleDayDate = computed(() => {
   if (!dateRange.value || dateRange.value.length !== 2) {
     return null
@@ -389,159 +328,11 @@ const selectedDateLabel = computed(() => (
   selectedSingleDayDate.value ? timezone.formatDateLong(selectedSingleDayDate.value) : ''
 ))
 
-const timelineSheetToggleLabel = computed(() => (
-  timelineSheetState.value === 'collapsed'
-    ? 'Show movement timeline'
-    : 'Collapse movement timeline'
-))
-
-const timelineSheetToggleIcon = computed(() => (
-  timelineSheetState.value === 'collapsed'
-    ? 'pi pi-chevron-left'
-    : 'pi pi-chevron-right'
-))
-
-const timelineSheetStyle = computed(() => (
-  timelineSheetHeight.value
-    ? { '--timeline-sheet-height': `${timelineSheetHeight.value}px` }
-    : {}
-))
-
-const timelinePageStyle = computed(() => (
-  timelineSheetHeight.value
-    ? { '--timeline-mobile-sheet-height': `${timelineSheetHeight.value}px` }
-    : { '--timeline-mobile-sheet-height': '0px' }
-))
-
-const MOBILE_TIMELINE_MEDIA = '(max-width: 768px), (max-height: 520px) and (pointer: coarse)'
-
-const isMobileTimelineViewport = () => (
-  typeof window !== 'undefined'
-  && window.matchMedia(MOBILE_TIMELINE_MEDIA).matches
-)
-
-const getTimelineSheetHeights = () => {
-  const pageHeight = timelinePageRef.value?.getBoundingClientRect().height || 0
-  const viewportHeight = window.visualViewport?.height || window.innerHeight || 800
-  const containerHeight = Math.max(320, Math.min(pageHeight || viewportHeight, viewportHeight))
-  const collapsed = 44
-  const half = Math.max(collapsed + 80, containerHeight * 0.5)
-  const expanded = Math.max(half + 64, containerHeight * 0.88)
-  return {
-    collapsed,
-    half: Math.min(half, containerHeight - 48),
-    expanded: Math.min(expanded, containerHeight - 24)
-  }
-}
-
-const syncTimelineSheetHeight = () => {
-  if (!isMobileTimelineViewport()) {
-    timelineSheetHeight.value = null
-    return
-  }
-
-  timelineSheetHeight.value = getTimelineSheetHeights()[timelineSheetState.value]
-}
-
-const setTimelineSheetState = (state) => {
-  timelineSheetState.value = state
-  syncTimelineSheetHeight()
-  triggerMapResize()
-}
-
-const revealMapForMobileTripSelection = () => {
-  if (!isMobileTimelineViewport() || timelineSheetState.value === 'collapsed') {
-    return
-  }
-
-  setTimelineSheetState('collapsed')
-}
-
-const cycleTimelineSheetState = () => {
-  if (timelineSheetDidDrag.value) {
-    timelineSheetDidDrag.value = false
-    return
-  }
-
-  const nextState = isMobileTimelineViewport()
-    ? timelineSheetState.value === 'collapsed'
-      ? 'half'
-      : timelineSheetState.value === 'half'
-        ? 'expanded'
-        : 'collapsed'
-    : timelineSheetState.value === 'collapsed'
-      ? 'half'
-      : 'collapsed'
-  setTimelineSheetState(nextState)
-}
-
-const handleTimelineSheetPointerMove = (event) => {
-  if (!isTimelineSheetDragging.value) return
-  const heights = getTimelineSheetHeights()
-  const deltaY = timelineSheetDragStartY.value - event.clientY
-  if (Math.abs(deltaY) > 4) {
-    timelineSheetDidDrag.value = true
-  }
-  const nextHeight = Math.min(
-    heights.expanded,
-    Math.max(heights.collapsed, timelineSheetDragStartHeight.value + deltaY)
-  )
-  timelineSheetHeight.value = nextHeight
-}
-
-const handleTimelineSheetPointerUp = () => {
-  if (!isTimelineSheetDragging.value) return
-
-  const heights = getTimelineSheetHeights()
-  const currentHeight = timelineSheetHeight.value || heights.collapsed
-  const candidates = [
-    ['collapsed', heights.collapsed],
-    ['half', heights.half],
-    ['expanded', heights.expanded]
-  ]
-  const [nearestState] = candidates.reduce((best, candidate) => (
-    Math.abs(candidate[1] - currentHeight) < Math.abs(best[1] - currentHeight)
-      ? candidate
-      : best
-  ))
-
-  isTimelineSheetDragging.value = false
-  setTimelineSheetState(nearestState)
-  window.removeEventListener('pointermove', handleTimelineSheetPointerMove)
-  window.removeEventListener('pointerup', handleTimelineSheetPointerUp)
-  window.removeEventListener('pointercancel', handleTimelineSheetPointerUp)
-}
-
-const handleTimelineSheetPointerDown = (event) => {
-  if (!isMobileTimelineViewport()) return
-  if (event.pointerType === 'mouse' && event.button !== 0) return
-
-  event.preventDefault()
-  isTimelineSheetDragging.value = true
-  timelineSheetDidDrag.value = false
-  timelineSheetDragStartY.value = event.clientY
-  timelineSheetDragStartHeight.value = timelineSheetRef.value?.getBoundingClientRect().height
-    || getTimelineSheetHeights()[timelineSheetState.value]
-
-  window.addEventListener('pointermove', handleTimelineSheetPointerMove)
-  window.addEventListener('pointerup', handleTimelineSheetPointerUp)
-  window.addEventListener('pointercancel', handleTimelineSheetPointerUp)
-}
-
-const handleTimelineViewportResize = () => {
-  const isMobileViewport = isMobileTimelineViewport()
-  syncTimelineSheetHeight()
-  if (!isMobileViewport) {
-    triggerMapResize()
-  }
-}
-
 // Methods
 const triggerMapResize = () => {
   nextTick(() => {
     const invalidateMap = () => {
       mapViewRef.value?.invalidateSize?.()
-      mapViewRef.value?.invalidateMapSize?.()
     }
 
     invalidateMap()
@@ -549,149 +340,9 @@ const triggerMapResize = () => {
   })
 }
 
-const handleTimelineMarkerClick = (itemOrEvent) => {
-  const item = itemOrEvent?.timelineItem || itemOrEvent
-  if (!item) return
-  handleTimelineItemClick(item)
-}
-
-const handleHighlightedPathClick = (data) => {
-  handleTimelineItemClick(data)
-}
-
-const handleTimelineItemClick = (item) => {
-  // Check if this item is already highlighted
-  if (highlightStore.isItemHighlighted(item)) {
-    highlightStore.clearAllHighlights()
-    return
-  }
-
-  if (item?.type === 'trip') {
-    revealMapForMobileTripSelection()
-  }
-
-  highlightStore.setHighlightedItem(item)
-}
-
 const handleEditFavorite = (favorite) => {
   // Open the edit dialog with full favorite data
   openFavoriteEditor(favorite)
-}
-
-const getFavoriteById = (favoriteId) => {
-  const points = favoritePlaces.value?.points || []
-  const areas = favoritePlaces.value?.areas || []
-  return [...points, ...areas].find((favorite) => favorite.id === favoriteId) || null
-}
-
-const handleFavoriteDialogSave = async (data) => {
-  await handleFavoriteSave(data, {
-    onSuccess: () => {
-      favoritesStore.fetchFavoritePlaces()
-      timelineStore.applyStayFavoriteUpdate(data)
-    }
-  })
-}
-
-const closeGeocodingDialog = () => {
-  showGeocodingEditDialog.value = false
-  editGeocodingData.value = null
-}
-
-const handleSaveGeocoding = async (updatedData) => {
-  if (!editGeocodingData.value?.id) return
-
-  const oldGeocodingId = editGeocodingData.value.id
-  try {
-    const updated = await geocodingStore.updateGeocodingResult(oldGeocodingId, updatedData)
-    timelineStore.applyStayGeocodingUpdate(oldGeocodingId, updated)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Updated',
-      detail: 'Stay location name updated successfully.',
-      life: 3000
-    })
-
-    closeGeocodingDialog()
-  } catch (error) {
-    console.error('Failed to update geocoding result from timeline:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to update stay location'
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: errorMessage,
-      life: 5000
-    })
-  }
-}
-
-const openFavoriteRenameDialog = async (stayItem) => {
-  let favorite = getFavoriteById(stayItem.favoriteId)
-
-  if (!favorite) {
-    await favoritesStore.fetchFavoritePlaces()
-    favorite = getFavoriteById(stayItem.favoriteId)
-  }
-
-  if (!favorite) {
-    toast.add({
-      severity: 'error',
-      summary: 'Favorite Not Found',
-      detail: 'Could not load favorite details for this stay.',
-      life: 4000
-    })
-    return
-  }
-
-  openFavoriteEditor({ ...favorite })
-}
-
-const openGeocodingRenameDialog = async (stayItem) => {
-  try {
-    const geocoding = await geocodingStore.getGeocodingResult(stayItem.geocodingId)
-    editGeocodingData.value = {
-      id: geocoding?.id ?? stayItem.geocodingId,
-      displayName: geocoding?.displayName ?? stayItem.locationName ?? '',
-      city: geocoding?.city ?? stayItem.city ?? '',
-      country: geocoding?.country ?? stayItem.country ?? '',
-      latitude: geocoding?.latitude ?? stayItem.latitude,
-      longitude: geocoding?.longitude ?? stayItem.longitude,
-      providerName: geocoding?.providerName || 'Unknown'
-    }
-    showGeocodingEditDialog.value = true
-  } catch (error) {
-    console.error('Failed to load geocoding details for stay rename:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Could not load geocoding details'
-    toast.add({
-      severity: 'error',
-      summary: 'Unable to Rename',
-      detail: errorMessage,
-      life: 5000
-    })
-  }
-}
-
-const handleRenameStay = (stayItem) => {
-  if (!stayItem?.favoriteId && !stayItem?.geocodingId) {
-    return
-  }
-
-  const locationName = stayItem.locationName || 'this location'
-
-  confirm.require({
-    header: 'Rename Stay Location',
-    message: `Renaming "${locationName}" will update all stays with this name. Continue?`,
-    icon: 'pi pi-exclamation-triangle',
-    accept: () => {
-      if (stayItem.favoriteId) {
-        openFavoriteRenameDialog(stayItem)
-        return
-      }
-
-      openGeocodingRenameDialog(stayItem)
-    }
-  })
 }
 
 const handleFavoriteDelete = (favorite) => {
@@ -812,7 +463,7 @@ const fetchWeatherData = async (startDate, endDate) => {
     return
   }
 
-  const weatherRange = getWeatherQueryRange(startDate, endDate)
+  const weatherRange = getWeatherQueryRange(startDate, endDate, timelineData.value)
   const apiBounds = padWeatherBounds(timelineStore.getGeographicBounds)
 
   try {
@@ -821,87 +472,6 @@ const fetchWeatherData = async (startDate, endDate) => {
     console.warn('Weather samples unavailable:', error)
     timelineStore.clearWeatherSamples()
   }
-}
-
-function getWeatherQueryRange(startDate, endDate) {
-  const itemRanges = (timelineData.value || [])
-    .map(getTimelineItemWeatherTimeRange)
-    .filter(Boolean)
-
-  if (itemRanges.length > 0) {
-    const startMs = Math.min(...itemRanges.map(range => range.startMs)) - WEATHER_QUERY_TIME_PADDING_MS
-    const endMs = Math.max(...itemRanges.map(range => range.endMs)) + WEATHER_QUERY_TIME_PADDING_MS
-    return {
-      startTime: new Date(startMs).toISOString(),
-      endTime: new Date(endMs).toISOString()
-    }
-  }
-
-  const fallbackStartMs = toEpochMs(startDate)
-  const fallbackEndMs = toEpochMs(endDate)
-  if (Number.isFinite(fallbackStartMs) && Number.isFinite(fallbackEndMs)) {
-    return {
-      startTime: new Date(fallbackStartMs - WEATHER_QUERY_TIME_PADDING_MS).toISOString(),
-      endTime: new Date(fallbackEndMs + WEATHER_QUERY_TIME_PADDING_MS).toISOString()
-    }
-  }
-
-  return { startTime: startDate, endTime: endDate }
-}
-
-function getTimelineItemWeatherTimeRange(item) {
-  if (!item || (item.type !== 'stay' && item.type !== 'trip')) {
-    return null
-  }
-
-  const startMs = toEpochMs(item.timestamp || item.startTime)
-  if (!Number.isFinite(startMs)) {
-    return null
-  }
-
-  const durationSeconds = Number(item.stayDuration ?? item.tripDuration ?? 0)
-  const endMs = durationSeconds > 0
-    ? startMs + durationSeconds * 1000
-    : startMs
-
-  return { startMs, endMs: Math.max(startMs, endMs) }
-}
-
-function padWeatherBounds(bounds) {
-  if (!bounds) {
-    return {}
-  }
-
-  const north = Number(bounds.north)
-  const south = Number(bounds.south)
-  const east = Number(bounds.east)
-  const west = Number(bounds.west)
-  if (![north, south, east, west].every(Number.isFinite)) {
-    return {}
-  }
-
-  return {
-    minLat: clampLatitude(south - WEATHER_QUERY_BOUNDS_PADDING_DEGREES),
-    minLon: clampLongitude(west - WEATHER_QUERY_BOUNDS_PADDING_DEGREES),
-    maxLat: clampLatitude(north + WEATHER_QUERY_BOUNDS_PADDING_DEGREES),
-    maxLon: clampLongitude(east + WEATHER_QUERY_BOUNDS_PADDING_DEGREES)
-  }
-}
-
-function toEpochMs(value) {
-  if (!value) {
-    return NaN
-  }
-  const epochMs = new Date(value).getTime()
-  return Number.isFinite(epochMs) ? epochMs : NaN
-}
-
-function clampLatitude(value) {
-  return Math.max(-90, Math.min(90, value))
-}
-
-function clampLongitude(value) {
-  return Math.max(-180, Math.min(180, value))
 }
 
 const refreshCurrentLocation = async () => {
@@ -1189,22 +759,12 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
 // Lifecycle
 onMounted(async () => {
-  syncTimelineSheetHeight()
-  window.addEventListener('resize', handleTimelineViewportResize)
-
   await loadTimelineDisplaySettings()
   await refreshCurrentLocation()
   await favoritesStore.fetchFavoritePlaces()
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
   })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleTimelineViewportResize)
-  window.removeEventListener('pointermove', handleTimelineSheetPointerMove)
-  window.removeEventListener('pointerup', handleTimelineSheetPointerUp)
-  window.removeEventListener('pointercancel', handleTimelineSheetPointerUp)
 })
 
 // Watchers
@@ -1511,218 +1071,6 @@ watch(() => timelineReconstructionRequestToken.value, () => {
   align-items: center;
 }
 
-.timeline-content-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.timeline-main {
-  position: relative;
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-.left-pane {
-  flex: 1 1 auto;
-  display: flex;
-  margin-top: 0.5rem;
-  margin-left: 0.5rem;
-  margin-right: 1rem;
-  height: 100%;
-  max-height: 82vh;
-  min-height: 350px;
-  min-width: 0;
-  flex-direction: column;
-}
-
-.right-pane {
-  flex: 0 0 clamp(360px, 32vw, 520px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden !important;
-  height: 100%;
-  min-height: 350px;
-  min-width: 320px;
-  border-radius: var(--gp-radius-medium);
-}
-
-.timeline-sheet-handle {
-  position: relative;
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  width: 100%;
-  min-height: 44px;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.35rem 2.75rem 0.4rem var(--gp-spacing-md);
-  border: none;
-  border-bottom: 2px solid var(--gp-primary-light);
-  background: transparent;
-  color: var(--gp-primary);
-  font: inherit;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-}
-
-.timeline-sheet-handle:hover {
-  background: var(--gp-surface-light);
-}
-
-.timeline-sheet-toggle-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-basis: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-weight: inherit;
-  cursor: pointer;
-}
-
-.timeline-sheet-toggle-button:focus-visible,
-.timeline-sheet-date-nav-button:focus-visible {
-  outline: 2px solid var(--gp-primary);
-  outline-offset: 2px;
-}
-
-.timeline-sheet-grip {
-  display: none;
-}
-
-.timeline-sheet-label {
-  line-height: 1.2;
-}
-
-.timeline-sheet-date-nav {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-basis: 100%;
-  gap: var(--gp-spacing-sm);
-  max-width: 100%;
-}
-
-.timeline-sheet-date-text {
-  flex: 0 0 clamp(10rem, 38vw, 13rem);
-  width: clamp(10rem, 38vw, 13rem);
-  min-width: 0;
-  color: var(--gp-text-secondary);
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.timeline-sheet-date-nav-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 1.5rem;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
-  border: 1px solid var(--gp-border-medium);
-  border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-white);
-  color: var(--gp-text-secondary);
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.timeline-sheet-date-nav-button:hover {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: #fff;
-}
-
-.timeline-sheet-date-nav-button i {
-  font-size: 0.7rem;
-}
-
-.timeline-sheet-toggle-icon {
-  position: absolute;
-  right: var(--gp-spacing-md);
-  font-size: 0.9rem;
-}
-
-.right-pane :deep(.timeline-container) {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-}
-
-.right-pane :deep(.timeline-header) {
-  display: none;
-}
-
-.timeline-main--sheet-collapsed .left-pane {
-  margin-right: 0.5rem;
-}
-
-.timeline-main--sheet-collapsed .right-pane {
-  position: absolute;
-  top: calc(1rem + env(safe-area-inset-top));
-  right: calc(5.5rem + env(safe-area-inset-right));
-  z-index: 950;
-  flex: none;
-  width: min(12rem, calc(100% - 7rem));
-  height: 44px;
-  min-width: 0;
-  min-height: 0;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
-}
-
-.timeline-main--sheet-collapsed .timeline-sheet-handle {
-  height: 100%;
-  min-height: 44px;
-  border-bottom: none;
-  border-radius: inherit;
-  font-size: 0.9rem;
-}
-
-.timeline-main--sheet-collapsed .timeline-sheet-toggle-icon {
-  right: var(--gp-spacing-sm);
-}
-
-.timeline-sheet--compact :deep(.timeline-container) {
-  display: none;
-}
-
-.p-dark .timeline-sheet-handle:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .timeline-sheet-handle {
-  border-bottom-color: var(--gp-border-medium);
-}
-
-.p-dark .timeline-sheet-date-nav-button {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .timeline-main--sheet-collapsed .right-pane {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
 .loading-messages {
   color: var(--gp-text-secondary);
   background: var(--gp-surface-light);
@@ -1747,212 +1095,15 @@ watch(() => timelineReconstructionRequestToken.value, () => {
 
 /* Responsive design */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
-  .timeline-main {
-    position: relative;
-    flex-direction: column;
-    gap: 0;
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: contain;
-  }
-
   .timeline-page {
     height: calc(100dvh - 112px); /* Mobile navbar + tab bar */
     min-height: 0;
-  }
-
-  .left-pane {
-    position: absolute;
-    inset: 0;
-    flex: none;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    max-height: none;
-    margin: 0;
-  }
-
-  .right-pane {
-    position: absolute;
-    left: env(safe-area-inset-left);
-    right: env(safe-area-inset-right);
-    bottom: 0;
-    z-index: 1050;
-    flex: none;
-    width: auto;
-    height: var(--timeline-sheet-height, 168px);
-    max-height: calc(100% - 24px);
-    min-height: 0;
-    margin: 0;
-    overflow: hidden !important;
-    background: var(--gp-surface-white);
-    border: 1px solid var(--gp-border-light);
-    border-bottom: none;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
-    transition: height 0.22s ease;
-    will-change: height, transform;
-  }
-
-  .timeline-main--sheet-collapsed .left-pane {
-    margin: 0;
-  }
-
-  .timeline-main--sheet-collapsed .right-pane {
-    position: absolute;
-    top: auto;
-    left: env(safe-area-inset-left);
-    right: env(safe-area-inset-right);
-    bottom: 0;
-    z-index: 1050;
-    width: auto;
-    height: var(--timeline-sheet-height, 168px);
-    min-width: 320px;
-    background: var(--gp-surface-white);
-    border-bottom: none;
-    border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 28px rgba(15, 23, 42, 0.18);
-    transform: none;
-  }
-
-  .timeline-sheet--compact {
-    left: 50%;
-    right: auto;
-    bottom: calc(0.55rem + env(safe-area-inset-bottom));
-    width: min(16rem, calc(100% - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
-    height: var(--timeline-sheet-height, 44px);
-    max-height: none;
-    min-width: 0;
-    border: 1px solid var(--gp-border-light);
-    border-radius: 999px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
-    transform: translateX(-50%);
-  }
-
-  .timeline-sheet--compact :deep(.timeline-container) {
-    display: none;
-  }
-
-  .timeline-sheet--dragging {
-    transition: none;
-  }
-
-  .timeline-sheet-handle {
-    position: relative;
-    display: flex;
-    width: 100%;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.45rem 2.25rem 0.5rem;
-    border: none;
-    border-bottom: 1px solid var(--gp-border-light);
-    background: var(--gp-surface-white);
-    color: var(--gp-text-secondary);
-    font: inherit;
-    font-size: 0.85rem;
-    font-weight: 700;
-    touch-action: none;
-    cursor: grab;
-  }
-
-  .timeline-sheet-toggle-icon {
-    display: none;
-  }
-
-  .timeline-sheet--compact .timeline-sheet-handle {
-    height: 100%;
-    min-height: 44px;
-    padding: 0 1rem;
-    border-bottom: none;
-    border-radius: inherit;
-  }
-
-  .timeline-sheet--compact .timeline-sheet-toggle-button {
-    width: 100%;
-  }
-
-  .timeline-sheet--dragging .timeline-sheet-handle {
-    cursor: grabbing;
-  }
-
-  .timeline-sheet-grip {
-    display: block;
-    position: absolute;
-    top: 7px;
-    width: 42px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--gp-border-medium);
-  }
-
-  .timeline-sheet-label {
-    padding-top: 8px;
-  }
-
-  .timeline-sheet-date-nav {
-    flex-basis: 100%;
-    gap: var(--gp-spacing-xs);
-  }
-
-  .timeline-sheet-date-text {
-    flex-basis: clamp(10rem, 52vw, 14rem);
-    width: clamp(10rem, 52vw, 14rem);
-    font-size: 0.8rem;
-  }
-
-  .timeline-sheet--compact .timeline-sheet-label {
-    padding-top: 0;
-    font-size: 0.8rem;
-  }
-
-  .timeline-sheet--compact .timeline-sheet-grip {
-    position: static;
-    flex: 0 0 36px;
-    width: 36px;
-  }
-
-  .right-pane :deep(.timeline-content) {
-    padding: 0 var(--gp-spacing-sm) var(--gp-spacing-md);
-  }
-
-  .p-dark .right-pane,
-  .p-dark .timeline-sheet-handle {
-    background: var(--gp-surface-dark);
-    border-color: var(--gp-border-dark);
-  }
-
-  .p-dark .timeline-sheet-grip {
-    background: var(--gp-border-medium);
   }
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
   .timeline-page {
     height: calc(100vh - 150px);
-  }
-
-  .left-pane {
-    max-height: 76vh;
-  }
-}
-
-@media (min-width: 1024px) and (max-width: 1280px) {
-  .left-pane {
-    max-height: 80vh;
-  }
-}
-
-@media (min-width: 1280px) and (max-width: 1599px) {
-  .left-pane {
-    max-height: 82vh;
-  }
-}
-
-@media (min-width: 1600px) {
-  .left-pane {
-    max-height: 86vh;
   }
 }
 

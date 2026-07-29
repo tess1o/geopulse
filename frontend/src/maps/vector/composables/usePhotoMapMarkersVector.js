@@ -81,6 +81,43 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
   state.cameraImageId = `${state.token}-camera`
   state.thumbnailImagePrefix = `${state.token}-photo`
 
+  const safeHasImage = (mapInstance, imageId) => {
+    if (!imageId || typeof mapInstance?.hasImage !== 'function') {
+      return false
+    }
+
+    try {
+      return Boolean(mapInstance.hasImage(imageId))
+    } catch {
+      return false
+    }
+  }
+
+  const safeAddImage = (mapInstance, imageId, imageData, options = {}) => {
+    if (!imageId || !imageData || state.boundMap !== mapInstance || typeof mapInstance?.addImage !== 'function') {
+      return false
+    }
+
+    try {
+      mapInstance.addImage(imageId, imageData, options)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const safeRemoveImage = (mapInstance, imageId) => {
+    if (!safeHasImage(mapInstance, imageId) || typeof mapInstance?.removeImage !== 'function') {
+      return
+    }
+
+    try {
+      mapInstance.removeImage(imageId)
+    } catch {
+      // MapLibre may drop its image registry while Vue is unmounting layers.
+    }
+  }
+
   const emitPhotoClick = (payload) => {
     if (typeof emit === 'function') {
       emit('photo-click', payload)
@@ -88,14 +125,22 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
   }
 
   const clearPhotoMarkers = () => {
+    const targetMap = state.boundMap
+
     unregisterEvents()
 
-    if (state.boundMap && state.styleLoadHandler) {
-      state.boundMap.off('style.load', state.styleLoadHandler)
+    if (targetMap && state.styleLoadHandler) {
+      try {
+        targetMap.off('style.load', state.styleLoadHandler)
+      } catch {
+        // MapLibre may already be tearing down.
+      }
       state.styleLoadHandler = null
     }
 
-    const targetMap = state.boundMap
+    state.thumbnailLoadToken += 1
+    state.boundMap = null
+
     if (isMapLibreMap(targetMap)) {
       removeLayers(targetMap, [
         state.pointCountLayerId,
@@ -106,23 +151,15 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         state.clusterLayerId
       ])
       removeSources(targetMap, [state.sourceId])
-      if (typeof targetMap.hasImage === 'function' && targetMap.hasImage(state.cameraImageId)) {
-        targetMap.removeImage(state.cameraImageId)
-      }
-      if (typeof targetMap.hasImage === 'function' && typeof targetMap.removeImage === 'function') {
-        state.thumbnailImageIds.forEach((imageId) => {
-          if (targetMap.hasImage(imageId)) {
-            targetMap.removeImage(imageId)
-          }
-        })
-      }
+      safeRemoveImage(targetMap, state.cameraImageId)
+      state.thumbnailImageIds.forEach((imageId) => {
+        safeRemoveImage(targetMap, imageId)
+      })
     }
 
-    state.thumbnailLoadToken += 1
     state.thumbnailImageIds = new Set()
     state.thumbnailImageDataById = new Map()
     state.thumbnailImageRequests = new Map()
-    state.boundMap = null
     state.groups = []
     state.groupsByFeatureId = new Map()
   }
@@ -168,11 +205,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
   }
 
   const isThumbnailImageAvailable = (mapInstance, imageId) => {
-    return Boolean(
-      imageId &&
-      typeof mapInstance?.hasImage === 'function' &&
-      mapInstance.hasImage(imageId)
-    )
+    return safeHasImage(mapInstance, imageId)
   }
 
   const buildCollection = (mapInstance, groups) => {
@@ -232,41 +265,40 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
   }
 
   const ensureCameraImage = (mapInstance) => {
-    if (typeof mapInstance.hasImage !== 'function' || typeof mapInstance.addImage !== 'function') {
+    if (typeof mapInstance?.addImage !== 'function') {
       return false
     }
 
-    if (!mapInstance.hasImage(state.cameraImageId)) {
+    if (!safeHasImage(mapInstance, state.cameraImageId)) {
       const imageData = createCameraImage()
       if (!imageData) {
         return false
       }
-      mapInstance.addImage(state.cameraImageId, imageData, { pixelRatio: 2 })
+      safeAddImage(mapInstance, state.cameraImageId, imageData, { pixelRatio: 2 })
     }
 
-    return mapInstance.hasImage(state.cameraImageId)
+    return safeHasImage(mapInstance, state.cameraImageId)
   }
 
   const addThumbnailImage = (mapInstance, imageId, imageData) => {
-    if (!imageId || !imageData || typeof mapInstance?.hasImage !== 'function' || typeof mapInstance?.addImage !== 'function') {
+    if (!imageId || !imageData || state.boundMap !== mapInstance || typeof mapInstance?.addImage !== 'function') {
       return false
     }
 
-    if (mapInstance.hasImage(imageId)) {
+    if (safeHasImage(mapInstance, imageId)) {
       return false
     }
 
-    try {
-      mapInstance.addImage(imageId, imageData, { pixelRatio: 2 })
-      state.thumbnailImageIds.add(imageId)
-      return true
-    } catch {
+    if (!safeAddImage(mapInstance, imageId, imageData, { pixelRatio: 2 })) {
       return false
     }
+
+    state.thumbnailImageIds.add(imageId)
+    return true
   }
 
   const queueThumbnailImageLoads = (mapInstance) => {
-    if (!isMapLibreMap(mapInstance) || typeof mapInstance.addImage !== 'function' || typeof mapInstance.hasImage !== 'function') {
+    if (!isMapLibreMap(mapInstance) || typeof mapInstance.addImage !== 'function') {
       return
     }
 
@@ -277,7 +309,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
           ? { photo, imageId: buildPhotoThumbnailImageId(state.thumbnailImagePrefix, photo) }
           : null
       })
-      .filter((entry) => entry?.imageId && !mapInstance.hasImage(entry.imageId))
+      .filter((entry) => entry?.imageId && !safeHasImage(mapInstance, entry.imageId))
 
     if (thumbnailEntries.length === 0) {
       return
