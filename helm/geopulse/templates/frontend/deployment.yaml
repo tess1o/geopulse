@@ -52,9 +52,15 @@ spec:
               value: {{ .Values.frontend.nginx.clientMaxBodySize | quote }}
             - name: OSM_RESOLVER
               value: {{ .Values.frontend.nginx.osmResolver | quote }}
+            {{- with .Values.frontend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "geopulse.fullname" . }}-config
+            {{- with .Values.frontend.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- if .Values.frontend.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
