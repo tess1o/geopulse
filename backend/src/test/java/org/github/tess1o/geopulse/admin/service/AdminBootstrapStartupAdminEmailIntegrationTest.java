@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.admin.service;
 
 import io.quarkus.test.common.QuarkusTestResource;
+import io.quarkus.test.common.ResourceArg;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
@@ -16,7 +17,14 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class)
+@QuarkusTestResource(
+        value = PostgisTestResource.class,
+        initArgs = @ResourceArg(
+                name = PostgisTestResource.DATABASE_NAME_ARG,
+                value = "gp_test_admin_bootstrap_startup_admin_email"
+        ),
+        restrictToAnnotatedClass = true
+)
 @TestProfile(AdminBootstrapStartupAdminEmailIntegrationTest.StartupAdminEmailProfile.class)
 @SerializedDatabaseTest
 class AdminBootstrapStartupAdminEmailIntegrationTest {
