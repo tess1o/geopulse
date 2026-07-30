@@ -83,6 +83,26 @@ backend:
           key: password
 ```
 
+### Extra Volumes
+
+`backend`, `frontend` and `mosquitto` each accept `extraVolumes` and `extraVolumeMounts`, which are appended to the volumes the chart already defines.
+
+The backend only mounts the generated JWT / AI keys, so any other storage it has to read or write has to be attached this way. A common case is a directory of GPX or Google Takeout files produced elsewhere, made available to the backend for import:
+
+```yaml
+backend:
+  extraVolumes:
+    - name: import
+      nfs:
+        server: nas.example.com
+        path: /exports/geopulse-import
+  extraVolumeMounts:
+    - name: import
+      mountPath: /data/geopulse-import
+```
+
+A mount is only visible to the container it is declared on, so a volume shared between the backend and the frontend has to be listed under both.
+
 ### Most Common Parameters
 
 | Parameter | Description | Default |

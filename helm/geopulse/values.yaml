@@ -85,6 +85,21 @@ backend:
   #         name: my-extra-secret
   extraEnvFrom: []
 
+  # Additional volumes / volume mounts, appended to the ones the chart sets.
+  # The chart only mounts the generated keys, so anything else the backend needs
+  # to read or write - an import directory, a CA bundle - has to come from here.
+  # Example:
+  #   extraVolumes:
+  #     - name: import
+  #       nfs:
+  #         server: nas.example.com
+  #         path: /exports/geopulse-import
+  #   extraVolumeMounts:
+  #     - name: import
+  #       mountPath: /data/geopulse-import
+  extraVolumes: []
+  extraVolumeMounts: []
+
   # Security context
   # Both JVM and native images support running as non-root with arbitrary UIDs
   # Using fsGroup: 0 (root group) enables OpenShift compatibility
@@ -125,6 +140,10 @@ frontend:
   # Additional environment variables / envFrom sources. See backend.extraEnv.
   extraEnv: []
   extraEnvFrom: []
+
+  # Additional volumes / volume mounts. See backend.extraVolumes.
+  extraVolumes: []
+  extraVolumeMounts: []
 
   resources:
     limits:
@@ -296,6 +315,10 @@ mosquitto:
   # Additional environment variables / envFrom sources. See backend.extraEnv.
   extraEnv: []
   extraEnvFrom: []
+
+  # Additional volumes / volume mounts. See backend.extraVolumes.
+  extraVolumes: []
+  extraVolumeMounts: []
 
   # Persistence configuration
   persistence:
