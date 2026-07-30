@@ -110,6 +110,9 @@ spec:
             - name: keys
               mountPath: /app/keys
               readOnly: true
+            {{- with .Values.backend.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.backend.resources | nindent 12 }}
       {{- if ne .Values.backend.terminationGracePeriodSeconds nil }}
@@ -127,6 +130,9 @@ spec:
           configMap:
             name: {{ include "geopulse.fullname" . }}-keygen-script
             defaultMode: 0755
+        {{- with .Values.backend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- with .Values.backend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

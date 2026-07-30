@@ -81,8 +81,16 @@ spec:
             timeoutSeconds: {{ .Values.frontend.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.frontend.readinessProbe.failureThreshold }}
           {{- end }}
+          {{- with .Values.frontend.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+      {{- with .Values.frontend.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.frontend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

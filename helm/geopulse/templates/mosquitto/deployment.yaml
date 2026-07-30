@@ -77,6 +77,9 @@ spec:
               mountPath: /mosquitto/data
             - name: logs
               mountPath: /mosquitto/log
+            {{- with .Values.mosquitto.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.mosquitto.resources | nindent 12 }}
       volumes:
@@ -101,6 +104,9 @@ spec:
           emptyDir: {}
         - name: logs
           emptyDir: {}
+        {{- end }}
+        {{- with .Values.mosquitto.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.mosquitto.nodeSelector }}
       nodeSelector:
