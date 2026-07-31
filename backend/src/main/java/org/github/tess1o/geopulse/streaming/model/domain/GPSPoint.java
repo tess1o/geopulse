@@ -19,6 +19,7 @@ import java.time.Instant;
 @Builder
 public class GPSPoint implements GpsPoint {
 
+    private Long id; // database id used by streaming keyset pagination
     private Instant timestamp;
     private double latitude;
     private double longitude;

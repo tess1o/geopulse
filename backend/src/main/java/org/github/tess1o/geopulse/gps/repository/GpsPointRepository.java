@@ -240,38 +240,47 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      *
      * @param userId        The user ID
      * @param fromTimestamp Start timestamp for data range
-     * @param offset        Offset for pagination
+     * @param cursorTimestamp Timestamp cursor from the previous chunk
+     * @param cursorId      ID cursor from the previous chunk
      * @param limit         Number of points to fetch
      * @return List of lightweight GPS points for this chunk
      */
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
-                                                 int offset, int limit) {
-        return findEssentialDataChunk(userId, fromTimestamp, offset, limit, null);
+                                                 Instant cursorTimestamp, Long cursorId, int limit) {
+        return findEssentialDataChunk(userId, fromTimestamp, cursorTimestamp, cursorId, limit, null);
     }
 
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
-                                                 int offset, int limit, String environmentDatasetVersion) {
+                                                 Instant cursorTimestamp, Long cursorId, int limit,
+                                                 String environmentDatasetVersion) {
         String environmentSelect = environmentDatasetVersion == null
                 ? "NULL::boolean as on_water "
                 : "env.on_water as on_water ";
         String environmentJoin = environmentDatasetVersion == null
                 ? ""
                 : "LEFT JOIN gps_point_environment env ON env.gps_point_id = gp.id AND env.environment_dataset_version = :environmentDatasetVersion ";
+        String cursorPredicate = cursorTimestamp != null && cursorId != null
+                ? "AND (gp.timestamp > :cursorTimestamp OR (gp.timestamp = :cursorTimestamp AND gp.id > :cursorId)) "
+                : "";
 
         Query query = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy, " +
-                                environmentSelect +
+                                environmentSelect + ", gp.id as gps_point_id " +
                                 "FROM gps_points gp " +
                                 environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
-                                "ORDER BY gp.timestamp ASC " +
-                                "LIMIT :limit OFFSET :offset")
+                                cursorPredicate +
+                                "ORDER BY gp.timestamp ASC, gp.id ASC " +
+                                "LIMIT :limit")
                 .setParameter("userId", userId)
                 .setParameter("fromTimestamp", fromTimestamp)
-                .setParameter("limit", limit)
-                .setParameter("offset", offset);
+                .setParameter("limit", limit);
 
+        if (cursorTimestamp != null && cursorId != null) {
+            query.setParameter("cursorTimestamp", cursorTimestamp);
+            query.setParameter("cursorId", cursorId);
+        }
         if (environmentDatasetVersion != null) {
             query.setParameter("environmentDatasetVersion", environmentDatasetVersion);
         }
@@ -284,14 +293,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
-     * Load essential GPS data in chunks for large datasets.
-     * Prevents query timeouts and provides better resource management.
-     *
-     * @param userId        The user ID
-     * @param fromTimestamp Start timestamp for data range
-     * @param offset        Offset for pagination
-     * @param limit         Number of points to fetch
-     * @return List of lightweight GPS points for this chunk
+     * Load essential GPS points for a specific interval.
      */
     public List<GPSPoint> findEssentialPointsInInterval(UUID userId, Instant start, Instant end) {
         return findEssentialPointsInInterval(userId, start, end, null);
@@ -312,7 +314,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                                 "FROM gps_points gp " +
                                 environmentJoin +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :start AND gp.timestamp <= :end " +
-                                "ORDER BY gp.timestamp ASC")
+                                "ORDER BY gp.timestamp ASC, gp.id ASC")
                 .setParameter("userId", userId)
                 .setParameter("start", start)
                 .setParameter("end", end);
@@ -349,7 +351,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
 
     /**
      * Map native SQL result array to GPSPoint object.
-     * Expected array: [timestamp, latitude, longitude, speed, accuracy, onWater]
+     * Expected array: [timestamp, latitude, longitude, speed, accuracy, onWater, id?]
      */
     private GPSPoint mapToGPSPoint(Object[] row) {
         Instant timestampInstant = TimestampUtils.getInstantSafe(row[0]);
@@ -363,6 +365,9 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
 
         GPSPoint gpsPoint = new GPSPoint(latitude, longitude, speed, accuracy, timestampInstant);
         gpsPoint.setOnWater(onWater);
+        if (row.length > 6 && row[6] != null) {
+            gpsPoint.setId(((Number) row[6]).longValue());
+        }
         return gpsPoint;
     }
 

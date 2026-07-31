@@ -2,10 +2,12 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
@@ -25,6 +27,14 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
     GpsStatisticsCalculator gpsStatisticsCalculator;
     @Inject
     TripWaterClassificationService tripWaterClassificationService;
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
+    @Override
+    public abstract List<TimelineEvent> apply(UUID userId,
+                                              List<TimelineEvent> events,
+                                              TimelineConfig config,
+                                              String environmentDatasetVersion);
 
     /**
      * Validate trip against minimum distance and duration requirements.
@@ -55,7 +65,10 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
      * Merge multiple trip segments into a single trip.
      * Used by single algorithm to combine fragmented trips.
      */
-    protected Trip mergeTripSegments(UUID userId, List<Trip> trips, TimelineConfig config) {
+    protected Trip mergeTripSegments(UUID userId,
+                                     List<Trip> trips,
+                                     TimelineConfig config,
+                                     String environmentDatasetVersion) {
         if (trips.isEmpty()) {
             return null;
         }
@@ -99,9 +112,16 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
             tripWaterStatistics = TripWaterStatistics.unavailable();
             overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
         } else {
-            // Normal case: recalculate GPS statistics from actual GPS points
-            tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(userId, startTime, endTime);
-            tripWaterStatistics = calculateWaterStatistics(userId, startTime, endTime, config);
+            // Normal case: recalculate GPS and water statistics from one interval reload.
+            MergedTripStatistics mergedTripStatistics = calculateMergedTripStatistics(
+                    userId,
+                    startTime,
+                    endTime,
+                    config,
+                    environmentDatasetVersion
+            );
+            tripGpsStatistics = mergedTripStatistics.gpsStatistics();
+            tripWaterStatistics = mergedTripStatistics.waterStatistics();
             overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, tripWaterStatistics, config);
         }
 
@@ -120,13 +140,6 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 trips.size(), totalDistance, totalDuration.toMinutes(), overallTripType);
 
         return mergedTrip;
-    }
-
-    /**
-     * Classify the overall trip type for merged trips.
-     */
-    protected TripType classifyMergedTrip(double totalDistance, Duration tripDuration, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
-        return travelClassification.classifyTravelType(tripGpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
     }
 
     protected TripType classifyMergedTrip(double totalDistance,
@@ -234,10 +247,48 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 .build();
     }
 
-    private TripWaterStatistics calculateWaterStatistics(UUID userId, Instant startTime, Instant endTime, TimelineConfig config) {
+    private MergedTripStatistics calculateMergedTripStatistics(UUID userId,
+                                                               Instant startTime,
+                                                               Instant endTime,
+                                                               TimelineConfig config,
+                                                               String environmentDatasetVersion) {
+        if (gpsPointRepository == null) {
+            log.debug("GPS point repository unavailable during merged-trip statistics recalculation");
+            return new MergedTripStatistics(TripGpsStatistics.empty(), TripWaterStatistics.unavailable());
+        }
+
+        String effectiveEnvironmentDatasetVersion = resolveEnvironmentDatasetVersion(config, environmentDatasetVersion);
+        List<GPSPoint> intervalPoints = gpsPointRepository.findEssentialPointsInInterval(
+                userId,
+                startTime,
+                endTime,
+                effectiveEnvironmentDatasetVersion
+        );
+
+        return new MergedTripStatistics(
+                gpsStatisticsCalculator.calculateStatistics(intervalPoints),
+                calculateWaterStatistics(intervalPoints, config)
+        );
+    }
+
+    private String resolveEnvironmentDatasetVersion(TimelineConfig config, String environmentDatasetVersion) {
+        if (!isBoatEnabled(config) || tripWaterClassificationService == null) {
+            return null;
+        }
+        return environmentDatasetVersion;
+    }
+
+    private TripWaterStatistics calculateWaterStatistics(List<GPSPoint> gpsPoints, TimelineConfig config) {
         if (tripWaterClassificationService == null) {
             return TripWaterStatistics.unavailable();
         }
-        return tripWaterClassificationService.calculateStatistics(userId, startTime, endTime, config);
+        return tripWaterClassificationService.calculateStatistics(gpsPoints, config);
+    }
+
+    private boolean isBoatEnabled(TimelineConfig config) {
+        return config != null && Boolean.TRUE.equals(config.getBoatEnabled());
+    }
+
+    private record MergedTripStatistics(TripGpsStatistics gpsStatistics, TripWaterStatistics waterStatistics) {
     }
 }

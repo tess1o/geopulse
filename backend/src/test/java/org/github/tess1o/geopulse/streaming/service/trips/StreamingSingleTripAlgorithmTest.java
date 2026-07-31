@@ -1,7 +1,9 @@
 package org.github.tess1o.geopulse.streaming.service.trips;
 
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
+import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -32,10 +34,12 @@ class StreamingSingleTripAlgorithmTest {
         singleTripAlgorithm = new StreamingSingleTripAlgorithm();
         singleTripAlgorithm.gpsStatisticsCalculator = new GpsStatisticsCalculator();
         singleTripAlgorithm.travelClassification = new TravelClassification();
+        singleTripAlgorithm.tripWaterClassificationService = new TripWaterClassificationService();
 
         multipleTripAlgorithm = new StreamingMultipleTripAlgorithm();
         multipleTripAlgorithm.gpsStatisticsCalculator = new GpsStatisticsCalculator();
         multipleTripAlgorithm.travelClassification = new TravelClassification();
+        multipleTripAlgorithm.tripWaterClassificationService = new TripWaterClassificationService();
 
         config = TimelineConfig.builder()
                 .staypointRadiusMeters(100)
@@ -80,7 +84,7 @@ class StreamingSingleTripAlgorithmTest {
                 .build();
         List<TimelineEvent> events = Arrays.asList(trip1, dataGap, trip2);
         // 2. Apply the algorithm
-        List<TimelineEvent> processedEvents = algorithm.apply(UUID.randomUUID(), events, config);
+        List<TimelineEvent> processedEvents = algorithm.apply(UUID.randomUUID(), events, config, null);
         // 3. Assert the result
         assertEquals(3, processedEvents.size());
         assertTrue(processedEvents.get(0) instanceof Trip);
@@ -118,7 +122,7 @@ class StreamingSingleTripAlgorithmTest {
 
         // Capture log output to verify NO ERROR is logged
         // For now, just verify the algorithm doesn't crash and passes through the stays
-        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, config);
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, config, null);
 
         // The algorithm should pass through both stays unchanged
         // (The merger will handle combining them later)
@@ -146,7 +150,7 @@ class StreamingSingleTripAlgorithmTest {
                 .longitude(-74.2)
                 .build();
 
-        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config);
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config, null);
 
         assertEquals(3, result.size());
         assertTrue(result.get(0) instanceof Stay);
@@ -175,7 +179,7 @@ class StreamingSingleTripAlgorithmTest {
                 .longitude(130.8258)
                 .build();
 
-        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config);
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config, null);
 
         assertEquals(2, result.size());
         assertTrue(result.get(0) instanceof Trip);
@@ -204,7 +208,7 @@ class StreamingSingleTripAlgorithmTest {
 
         List<TimelineEvent> events = Arrays.asList(home1, home2);
 
-        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, config);
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, config, null);
 
         assertEquals(2, result.size(),
                 "Algorithm should pass through consecutive same-location stays");
@@ -230,7 +234,7 @@ class StreamingSingleTripAlgorithmTest {
                 .longitude(-74.2)
                 .build();
 
-        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config);
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(home, office), config, null);
 
         assertEquals(3, result.size());
         assertTrue(result.get(0) instanceof Stay);
@@ -259,7 +263,7 @@ class StreamingSingleTripAlgorithmTest {
                 .longitude(130.8258)
                 .build();
 
-        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config);
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), Arrays.asList(leadingTrip, firstStay), config, null);
 
         assertEquals(2, result.size());
         assertTrue(result.get(0) instanceof Trip);
@@ -294,7 +298,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(leadingTrip1, leadingTrip2, firstStay),
-                config
+                config,
+                null
         );
 
         assertEquals(3, result.size());
@@ -315,7 +320,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, boat, walk, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -340,7 +346,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, walk, boat, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -364,7 +371,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, walkBefore, shortBoat, walkAfter, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -386,7 +394,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, walk, car, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -432,7 +441,7 @@ class StreamingSingleTripAlgorithmTest {
 
         List<TimelineEvent> events = Arrays.asList(stay, shortTrip, dataGap);
 
-        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig);
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig, null);
 
         assertEquals(3, result.size());
         assertTrue(result.get(0) instanceof Stay);
@@ -474,7 +483,7 @@ class StreamingSingleTripAlgorithmTest {
 
         List<TimelineEvent> events = Arrays.asList(stay, shortTrip, dataGap);
 
-        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig);
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, strictConfig, null);
 
         assertEquals(3, result.size());
         assertTrue(result.get(0) instanceof Stay);
@@ -493,7 +502,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, carBeforeStop, carAfterStop, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -515,7 +525,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(start, bicycle, car, end),
-                config
+                config,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -546,7 +557,8 @@ class StreamingSingleTripAlgorithmTest {
         List<TimelineEvent> result = multipleTripAlgorithm.apply(
                 UUID.randomUUID(),
                 Arrays.asList(bicycle, car),
-                strictConfig
+                strictConfig,
+                null
         );
 
         List<Trip> trips = result.stream()
@@ -558,6 +570,64 @@ class StreamingSingleTripAlgorithmTest {
                 "Significant BICYCLE -> CAR segment at stream end must not drop the short bicycle leg");
         assertEquals(TripType.BICYCLE, trips.get(0).getTripType());
         assertEquals(TripType.CAR, trips.get(1).getTripType());
+    }
+
+    @Test
+    void shouldKeepWaterEvidenceAvailableWhenMergingGpsBackedTripSegments() {
+        WaterEvidenceGpsPointRepository repository = new WaterEvidenceGpsPointRepository(List.of(
+                waterPoint("2026-07-04T12:00:00Z", 0.000, 30.000),
+                waterPoint("2026-07-04T12:08:00Z", 0.000, 30.010),
+                waterPoint("2026-07-04T12:16:00Z", 0.000, 30.020),
+                waterPoint("2026-07-04T12:24:00Z", 0.000, 30.030)
+        ));
+        multipleTripAlgorithm.gpsPointRepository = repository;
+
+        TimelineConfig boatConfig = TimelineConfig.builder()
+                .staypointRadiusMeters(100)
+                .staypointMinDurationMinutes(1)
+                .walkingMaxAvgSpeed(5.0)
+                .walkingMaxMaxSpeed(8.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .shortDistanceKm(1.0)
+                .boatEnabled(true)
+                .boatMinWaterRatio(0.60)
+                .boatMinWaterDistanceMeters(500.0)
+                .boatMinContinuousWaterDistanceMeters(500.0)
+                .boatMaxPlausibleSpeed(120.0)
+                .build();
+
+        Trip firstBoatSegment = createGpsBackedTrip(
+                "2026-07-04T12:00:00Z",
+                Duration.ofMinutes(12),
+                1_200.0,
+                TripType.BOAT
+        );
+        Trip secondBoatSegment = createGpsBackedTrip(
+                "2026-07-04T12:12:00Z",
+                Duration.ofMinutes(12),
+                1_200.0,
+                TripType.BOAT
+        );
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(
+                UUID.randomUUID(),
+                Arrays.asList(createStay("2026-07-04T11:45:00Z", "Dock"), firstBoatSegment, secondBoatSegment,
+                        createStay("2026-07-04T12:30:00Z", "Harbor")),
+                boatConfig,
+                "dataset-v1"
+        );
+
+        List<Trip> trips = result.stream()
+                .filter(Trip.class::isInstance)
+                .map(Trip.class::cast)
+                .toList();
+
+        assertEquals(1, trips.size());
+        assertEquals(1, repository.intervalFetchCount);
+        assertEquals("dataset-v1", repository.lastEnvironmentDatasetVersion);
+        assertEquals(TripType.BOAT, trips.getFirst().getTripType());
+        assertTrue(trips.getFirst().getWaterStatistics().hasEvidence());
     }
 
     private Stay createStay(String startTime, String locationName) {
@@ -577,5 +647,50 @@ class StreamingSingleTripAlgorithmTest {
                 .distanceMeters(distanceMeters)
                 .tripType(tripType)
                 .build();
+    }
+
+    private Trip createGpsBackedTrip(String startTime, Duration duration, double distanceMeters, TripType tripType) {
+        Instant start = Instant.parse(startTime);
+        GPSPoint startPoint = new GPSPoint(start, 0.0, 30.0, 2.0, 5.0);
+        GPSPoint endPoint = new GPSPoint(start.plus(duration), 0.0, 30.01, 2.0, 5.0);
+        return Trip.builder()
+                .startTime(start)
+                .duration(duration)
+                .distanceMeters(distanceMeters)
+                .tripType(tripType)
+                .statistics(new TripGpsStatistics(2.0, 3.0, 0.1, 0))
+                .waterStatistics(TripWaterStatistics.unavailable())
+                .startPoint(startPoint)
+                .endPoint(endPoint)
+                .build();
+    }
+
+    private GPSPoint waterPoint(String timestamp, double latitude, double longitude) {
+        GPSPoint point = new GPSPoint(Instant.parse(timestamp), latitude, longitude, 2.0, 5.0);
+        point.setOnWater(true);
+        return point;
+    }
+
+    private static class WaterEvidenceGpsPointRepository extends GpsPointRepository {
+        private final List<GPSPoint> points;
+        private int intervalFetchCount;
+        private String lastEnvironmentDatasetVersion;
+
+        private WaterEvidenceGpsPointRepository(List<GPSPoint> points) {
+            this.points = points;
+        }
+
+        @Override
+        public List<GPSPoint> findEssentialPointsInInterval(UUID userId,
+                                                            Instant start,
+                                                            Instant end,
+                                                            String environmentDatasetVersion) {
+            intervalFetchCount++;
+            lastEnvironmentDatasetVersion = environmentDatasetVersion;
+            return points.stream()
+                    .filter(point -> !point.getTimestamp().isBefore(start))
+                    .filter(point -> !point.getTimestamp().isAfter(end))
+                    .toList();
+        }
     }
 }

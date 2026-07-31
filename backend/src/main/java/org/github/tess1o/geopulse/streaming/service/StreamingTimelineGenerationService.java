@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 @Slf4j
@@ -178,14 +179,25 @@ public class StreamingTimelineGenerationService {
             updateProgress(jobId, "Processing GPS points through state machine", 4, 40, null);
 
             // Process points using streaming iterator - loads data lazily in 10K chunks
+            long stateMachineStartNanos = System.nanoTime();
             List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId);
+            log.info("Timeline state-machine processing completed for user {} in {} ms (rawEvents={})",
+                    userId, elapsedMillis(stateMachineStartNanos), rawEvents.size());
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
             // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
 
             // Step 5: Post-processing trips (70%)
             updateProgress(jobId, "Post-processing trips and validating detections", 5, 70, null);
 
-            List<TimelineEvent> events = tripPostProcessor.postProcessTrips(userId, rawEvents, config);
+            long tripPostProcessingStartNanos = System.nanoTime();
+            List<TimelineEvent> events = tripPostProcessor.postProcessTrips(
+                    userId,
+                    rawEvents,
+                    config,
+                    environmentDatasetVersion
+            );
+            log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
+                    userId, elapsedMillis(tripPostProcessingStartNanos), events.size());
 
             if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
@@ -203,7 +215,15 @@ public class StreamingTimelineGenerationService {
                 updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
 
                 // Persist raw timeline with GPS statistics calculation
+                long persistenceStartNanos = System.nanoTime();
                 persistenceManager.persistRawTimeline(userId, rawTimeline);
+                log.info("Timeline persistence completed for user {} in {} ms (stays={}, trips={}, gaps={}, events={})",
+                        userId,
+                        elapsedMillis(persistenceStartNanos),
+                        rawTimeline.getStays().size(),
+                        rawTimeline.getTrips().size(),
+                        rawTimeline.getDataGaps().size(),
+                        rawTimeline.getTotalEventCount());
 
                 // Re-attach manual movement-type overrides to regenerated trips.
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);
@@ -211,6 +231,8 @@ public class StreamingTimelineGenerationService {
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
                 // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
                 timelineNoteService.reattachAnchoredNotes(userId);
+            } else {
+                log.info("Timeline persistence skipped for user {} because post-processing returned no events", userId);
             }
 
             // Step 8: Data gap detection (90%)
@@ -359,7 +381,9 @@ public class StreamingTimelineGenerationService {
     private String prepareBoatEvidence(UUID userId,
                                        TimelineConfig config,
                                        UUID jobId) {
+        long boatEvidenceStartNanos = System.nanoTime();
         if (boatSetupService == null || !boatSetupService.shouldUseBoatSetup(config)) {
+            log.info("Boat evidence preparation skipped for user {} in {} ms", userId, elapsedMillis(boatEvidenceStartNanos));
             return null;
         }
 
@@ -373,6 +397,10 @@ public class StreamingTimelineGenerationService {
         );
         updateProgress(jobId, "Boat water evidence ready", 3, 35,
                 Map.of("boatEvidenceAvailable", true));
+        log.info("Boat evidence preparation completed for user {} in {} ms (datasetVersionAvailable={})",
+                userId,
+                elapsedMillis(boatEvidenceStartNanos),
+                environmentDatasetVersion != null);
         return environmentDatasetVersion;
     }
 
@@ -413,5 +441,9 @@ public class StreamingTimelineGenerationService {
         if (jobId != null) {
             jobProgressService.failJob(jobId, errorMessage);
         }
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
     }
 }

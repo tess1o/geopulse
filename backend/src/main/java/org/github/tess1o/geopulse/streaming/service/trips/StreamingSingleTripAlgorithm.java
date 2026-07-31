@@ -15,7 +15,10 @@ import java.util.UUID;
 @ApplicationScoped
 @Slf4j
 public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
-    public List<TimelineEvent> apply(UUID userd, List<TimelineEvent> events, TimelineConfig config) {
+    public List<TimelineEvent> apply(UUID userId,
+                                     List<TimelineEvent> events,
+                                     TimelineConfig config,
+                                     String environmentDatasetVersion) {
         List<TimelineEvent> processedEvents = new ArrayList<>();
 
         Stay currentStay = null;
@@ -27,7 +30,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
 
                 // If we have accumulated trips, merge them into one
                 if (!tripsToMerge.isEmpty()) {
-                    Trip mergedTrip = mergeTripSegments(userd, tripsToMerge, config);
+                    Trip mergedTrip = mergeTripSegments(userId, tripsToMerge, config, environmentDatasetVersion);
                     if (mergedTrip != null) {
                         if (isValidTrip(mergedTrip, config)) {
                             processedEvents.add(mergedTrip);
@@ -75,7 +78,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
             } else {
                 // Data gaps and other events finalize the current trip segment
                 if (!tripsToMerge.isEmpty()) {
-                    Trip mergedTrip = mergeTripSegments(userd, tripsToMerge, config);
+                    Trip mergedTrip = mergeTripSegments(userId, tripsToMerge, config, environmentDatasetVersion);
                     if (mergedTrip != null) {
                         if (isValidTrip(mergedTrip, config)) {
                             processedEvents.add(mergedTrip);
@@ -95,7 +98,7 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
 
         // Handle any remaining trips at the end
         if (!tripsToMerge.isEmpty()) {
-            Trip mergedTrip = mergeTripSegments(userd, tripsToMerge, config);
+            Trip mergedTrip = mergeTripSegments(userId, tripsToMerge, config, environmentDatasetVersion);
             if (mergedTrip != null) {
                 if (isValidTrip(mergedTrip, config)) {
                     processedEvents.add(mergedTrip);

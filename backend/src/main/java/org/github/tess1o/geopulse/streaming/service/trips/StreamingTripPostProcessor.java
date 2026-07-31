@@ -28,13 +28,16 @@ public class StreamingTripPostProcessor {
      * @param config Timeline configuration with algorithm selection
      * @return Processed events with proper trip detection applied
      */
-    public List<TimelineEvent> postProcessTrips(UUID userId, List<TimelineEvent> events, TimelineConfig config) {
+    public List<TimelineEvent> postProcessTrips(UUID userId,
+                                                List<TimelineEvent> events,
+                                                TimelineConfig config,
+                                                String environmentDatasetVersion) {
         String algorithm = config.getTripDetectionAlgorithm();
 
         log.debug("Post-processing trips with algorithm: {}", algorithm);
 
         StreamTripAlgorithm streamTripAlgorithm = algorithmFactory.get(algorithm);
-        return streamTripAlgorithm.apply(userId, events, config);
+        return streamTripAlgorithm.apply(userId, events, config, environmentDatasetVersion);
 
     }
 }

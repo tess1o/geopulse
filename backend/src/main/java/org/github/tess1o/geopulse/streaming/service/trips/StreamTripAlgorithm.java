@@ -7,5 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface StreamTripAlgorithm {
-    List<TimelineEvent> apply(UUID userId, List<TimelineEvent> events, TimelineConfig config);
+    List<TimelineEvent> apply(UUID userId,
+                              List<TimelineEvent> events,
+                              TimelineConfig config,
+                              String environmentDatasetVersion);
 }

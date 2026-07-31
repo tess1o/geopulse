@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Iterator that lazily loads GPS points from database in chunks to prevent OOM.
@@ -29,7 +30,9 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
 
     private List<GPSPoint> currentBuffer;
     private int positionInBuffer;
-    private int offset;
+    private Instant cursorTimestamp;
+    private Long cursorId;
+    private int processedCount;
     private boolean hasMore;
 
     public StreamingGpsIterator(
@@ -51,7 +54,9 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
         this.fromTimestamp = fromTimestamp;
         this.bufferSize = bufferSize;
         this.environmentDatasetVersion = environmentDatasetVersion;
-        this.offset = 0;
+        this.cursorTimestamp = null;
+        this.cursorId = null;
+        this.processedCount = 0;
         this.positionInBuffer = 0;
         this.hasMore = true;
 
@@ -83,31 +88,54 @@ public class StreamingGpsIterator implements Iterator<GPSPoint> {
 
         GPSPoint point = currentBuffer.get(positionInBuffer);
         positionInBuffer++;
+        processedCount++;
 
         return point;
     }
 
     private void loadNextBuffer() {
-        // Load next chunk from database
+        Instant previousCursorTimestamp = cursorTimestamp;
+        Long previousCursorId = cursorId;
+        long loadStartNanos = System.nanoTime();
+
         currentBuffer = repository.findEssentialDataChunk(
-            userId, fromTimestamp, offset, bufferSize, environmentDatasetVersion);
+                userId,
+                fromTimestamp,
+                cursorTimestamp,
+                cursorId,
+                bufferSize,
+                environmentDatasetVersion
+        );
 
         positionInBuffer = 0;
-        offset += bufferSize;
 
-        // If we got fewer points than buffer size, we've reached the end
+        if (!currentBuffer.isEmpty()) {
+            GPSPoint lastPoint = currentBuffer.getLast();
+            cursorTimestamp = lastPoint.getTimestamp();
+            cursorId = lastPoint.getId();
+        }
+
         if (currentBuffer.size() < bufferSize) {
             hasMore = false;
         }
 
-        log.debug("Loaded GPS buffer: {} points (offset: {}, hasMore: {})",
-                  currentBuffer.size(), offset - bufferSize, hasMore);
+        log.debug("Loaded GPS stream chunk for user {}: {} points in {} ms " +
+                        "(fromTimestamp={}, cursorTimestamp={}, cursorId={}, nextCursorTimestamp={}, nextCursorId={}, hasMore={})",
+                userId,
+                currentBuffer.size(),
+                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - loadStartNanos),
+                fromTimestamp,
+                previousCursorTimestamp,
+                previousCursorId,
+                cursorTimestamp,
+                cursorId,
+                hasMore);
     }
 
     /**
      * Get count of points processed so far (for progress tracking).
      */
     public int getProcessedCount() {
-        return offset - bufferSize + positionInBuffer;
+        return processedCount;
     }
 }

@@ -32,7 +32,10 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * This is for legitimate cases like drive→walk or walk→drive transitions.
      */
     @Override
-    public List<TimelineEvent> apply(UUID userId, List<TimelineEvent> events, TimelineConfig config) {
+    public List<TimelineEvent> apply(UUID userId,
+                                     List<TimelineEvent> events,
+                                     TimelineConfig config,
+                                     String environmentDatasetVersion) {
         List<TimelineEvent> processedEvents = new ArrayList<>();
 
         Stay currentStay = null;
@@ -44,7 +47,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
                 // Process accumulated trips for multi-modal analysis
                 if (!tripSegment.isEmpty()) {
-                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
+                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config, environmentDatasetVersion);
 
                     // Ensure at least one trip between stays for continuity
                     List<Trip> validTrips = selectValidTrips(processedTrips, config);
@@ -95,7 +98,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
             } else {
                 if (!tripSegment.isEmpty()) {
-                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
+                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config, environmentDatasetVersion);
                     List<Trip> validTrips = selectValidTrips(processedTrips, config);
                     if (!validTrips.isEmpty()) {
                         processedEvents.addAll(validTrips);
@@ -116,7 +119,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         // Handle remaining trips
         if (!tripSegment.isEmpty()) {
-            List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
+            List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config, environmentDatasetVersion);
             List<Trip> validTrips = selectValidTrips(processedTrips, config);
 
             if (validTrips.isEmpty() && !processedTrips.isEmpty() && currentStay != null) {
@@ -153,7 +156,10 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Analyze trip segment for multi-modal patterns.
      * Only split if confident about legitimate mode changes.
      */
-    private List<Trip> analyzeMultiModalSegment(UUID userId, List<Trip> trips, TimelineConfig config) {
+    private List<Trip> analyzeMultiModalSegment(UUID userId,
+                                                List<Trip> trips,
+                                                TimelineConfig config,
+                                                String environmentDatasetVersion) {
         if (trips.isEmpty()) {
             return new ArrayList<>();
         }
@@ -163,7 +169,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         }
 
         // Step 1: Merge consecutive same-type trips first to avoid fragmentation
-        List<Trip> condensedTrips = mergeConsecutiveSameTypeTrips(userId, trips, config);
+        List<Trip> condensedTrips = mergeConsecutiveSameTypeTrips(userId, trips, config, environmentDatasetVersion);
 
         if (condensedTrips.size() == 1) {
             return condensedTrips;
@@ -178,7 +184,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         } else {
             // Merge remaining trips
             log.debug("Multi algorithm: merging {} similar trips", condensedTrips.size());
-            Trip merged = mergeTripSegments(userId, condensedTrips, config);
+            Trip merged = mergeTripSegments(userId, condensedTrips, config, environmentDatasetVersion);
             return merged != null ? List.of(merged) : new ArrayList<>();
         }
     }
@@ -187,7 +193,10 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Merge consecutive trips of the same type to eliminate fragmentation.
      * For example: [WALK, WALK, WALK, CAR] -> [WALK, CAR]
      */
-    private List<Trip> mergeConsecutiveSameTypeTrips(UUID userId, List<Trip> trips, TimelineConfig config) {
+    private List<Trip> mergeConsecutiveSameTypeTrips(UUID userId,
+                                                     List<Trip> trips,
+                                                     TimelineConfig config,
+                                                     String environmentDatasetVersion) {
         if (trips.isEmpty()) {
             return new ArrayList<>();
         }
@@ -203,7 +212,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 currentType = trip.getTripType();
             } else {
                 // Different type - merge current group and start new one
-                Trip merged = mergeTripSegments(userId, currentGroup, config);
+                Trip merged = mergeTripSegments(userId, currentGroup, config, environmentDatasetVersion);
                 if (merged != null) {
                     result.add(merged);
                 }
@@ -215,7 +224,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         // Merge final group
         if (!currentGroup.isEmpty()) {
-            Trip merged = mergeTripSegments(userId, currentGroup, config);
+            Trip merged = mergeTripSegments(userId, currentGroup, config, environmentDatasetVersion);
             if (merged != null) {
                 result.add(merged);
             }
