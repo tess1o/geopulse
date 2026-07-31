@@ -561,13 +561,16 @@ test.describe('Location Analytics Page', () => {
         }
       ];
 
-      await TestSetupHelper.createLocationAnalyticsData(dbManager, user.id, locations);
+      const stayIds = await TestSetupHelper.createLocationAnalyticsData(dbManager, user.id, locations);
+      expect(stayIds).toHaveLength(7);
+
+      const dbStats = await TestSetupHelper.getCityStatistics(dbManager, user.id, 'Test City');
+      expect(parseInt(dbStats.visit_count)).toBe(7);
 
       await page.reload();
       await locationAnalyticsPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
 
-      const cardData = await locationAnalyticsPage.getLocationCardByName('Test City');
+      const cardData = await locationAnalyticsPage.waitForLocationCardStat('Test City', 'visits', 7);
       expect(cardData).not.toBeNull();
       expect(cardData.stats.visits).toBe(7);
     });

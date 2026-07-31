@@ -17,7 +17,9 @@ const getIsoDate = (date) => date.toISOString().slice(0, 10);
 
 const CURRENT_LOCATION_MARKER_SELECTOR = [
   '.map-view-container [data-marker-type="current-location"]',
-  '.map-view-container .current-location-marker'
+  '.map-view-container .current-location-marker',
+  '.map-view-container .maplibre-shared-location-dot',
+  '.map-view-container .maplibre-avatar-icon-container'
 ].join(', ');
 
 const getPopupCard = (page) => page
@@ -26,7 +28,7 @@ const getPopupCard = (page) => page
   .first();
 
 const closeOpenMapPopups = (page) => page.evaluate(() => {
-  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"], .map-view-container [data-testid="map-host-vector"]');
   const registeredMap = host?.id ? window.__GP_E2E_MAPS?.[host.id] : null;
   registeredMap?.closePopup?.();
   document.querySelector('.leaflet-container')?._leaflet_map?.closePopup?.();
@@ -34,7 +36,7 @@ const closeOpenMapPopups = (page) => page.evaluate(() => {
 });
 
 const openCurrentLocationLayer = (page) => page.evaluate((currentLocationSelector) => {
-  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"]');
+  const host = document.querySelector('.map-view-container [data-testid="map-host-raster"], .map-view-container [data-testid="map-host-vector"]');
   const registeredMap = host?.id ? window.__GP_E2E_MAPS?.[host.id] : null;
   const map = registeredMap || document.querySelector('.leaflet-container')?._leaflet_map;
   if (!map || typeof map.eachLayer !== 'function') {
@@ -78,6 +80,22 @@ const openCurrentLocationLayer = (page) => page.evaluate((currentLocationSelecto
 
   return opened;
 }, CURRENT_LOCATION_MARKER_SELECTOR);
+
+const clickFirstStayCardForPopup = async (timelinePage, page) => {
+  const firstStayCard = timelinePage.getTimelineCards('stays').first();
+  await expect(firstStayCard).toBeVisible();
+
+  const stableCardBody = firstStayCard.locator('.stay-content, .overnight-stay-content').first();
+  if (await stableCardBody.isVisible().catch(() => false)) {
+    await stableCardBody.click();
+  } else {
+    await firstStayCard.click({ position: { x: 24, y: 24 } });
+  }
+
+  await expect(
+    page.locator('.p-dialog:has(.p-dialog-title:text("Rename Stay Location"))')
+  ).toHaveCount(0);
+};
 
 const moveRegularStaysToDate = async (dbManager, userId, date) => {
   const isoDate = getIsoDate(date);
@@ -418,9 +436,7 @@ test.describe('Timeline Map Interactions', () => {
     }, mapMode);
 
     await mapPage.waitForMapReady();
-    const firstStayCard = timelinePage.getTimelineCards('stays').first();
-    await expect(firstStayCard).toBeVisible();
-    await firstStayCard.click();
+    await clickFirstStayCardForPopup(timelinePage, page);
 
     const popupContent = mapPage.getPopupContent();
     await expect(popupContent).toBeVisible({ timeout: 15000 });
@@ -506,9 +522,7 @@ test.describe('Timeline Map Interactions', () => {
       );
 
       await mapPage.waitForMapReady();
-      const firstStayCard = timelinePage.getTimelineCards('stays').first();
-      await expect(firstStayCard).toBeVisible();
-      await firstStayCard.click();
+      await clickFirstStayCardForPopup(timelinePage, page);
 
       const popup = mapPage.getPopupContent();
       await expect(popup).toBeVisible({ timeout: 15000 });
@@ -535,9 +549,7 @@ test.describe('Timeline Map Interactions', () => {
       );
 
       await mapPage.waitForMapReady();
-      const firstStayCard = timelinePage.getTimelineCards('stays').first();
-      await expect(firstStayCard).toBeVisible();
-      await firstStayCard.click();
+      await clickFirstStayCardForPopup(timelinePage, page);
 
       const popup = mapPage.getPopupContent();
       await expect(popup).toBeVisible({ timeout: 15000 });

@@ -164,7 +164,7 @@ test.describe('Favorites Management Page', () => {
       await favoritesPage.searchPlaceToAdd('Central');
 
       expect(await favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
-      expect(await favoritesPage.isPlaceSearchResultVisible('Central Library')).toBe(true);
+      await favoritesPage.waitForPlaceSearchResult('Central Library');
 
       await favoritesPage.selectPlaceSearchResult('Central Library');
       expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
@@ -368,7 +368,7 @@ test.describe('Favorites Management Page', () => {
       await favoritesPage.drawRectangle(200, 200, 400, 350);
       await favoritesPage.fillAddDialog('Area 1');
       await favoritesPage.submitAddDialog();
-      await page.waitForTimeout(1000);
+      await favoritesPage.waitForPendingCount(3);
 
       // Click save pending
       await favoritesPage.clickSavePending();
@@ -567,21 +567,24 @@ test.describe('Favorites Management Page', () => {
       await favoritesPage.clickEditInTable(0);
       await favoritesPage.waitForEditDialog();
 
-      // Click "Redraw area" button
-      const redrawButton = page.locator('.p-dialog button:has-text("Redraw")');
-      await redrawButton.click();
-
       // Wait for edit map to appear and be ready
       await page.waitForSelector('#edit-area-map[data-testid="map-host-raster"], #edit-area-map[data-testid="map-host-vector"]', {
         state: 'attached',
         timeout: 5000
       });
-      await page.waitForTimeout(2000); // Give map time to fully initialize
+      await favoritesPage.waitForEditAreaMapReady();
+      const originalBoundsText = await favoritesPage.getEditAreaBoundsText();
+
+      // Click "Redraw area" button after the map is ready; earlier clicks are intentionally ignored.
+      const redrawButton = page.locator('.p-dialog button:has-text("Redraw")');
+      await expect(redrawButton).toBeEnabled({ timeout: 10000 });
+      await redrawButton.click();
+      await favoritesPage.waitForEditAreaDrawingMode();
 
       // Draw new rectangle on the edit dialog map with smaller coordinates
       // Dialog map is smaller, so use coordinates closer to top-left
       await favoritesPage.drawRectangle(50, 50, 200, 150, 'edit-area-map');
-      await page.waitForTimeout(1000);
+      await favoritesPage.waitForEditAreaBoundsToChange(originalBoundsText);
 
       // Submit the edit
       await favoritesPage.submitEditDialog();

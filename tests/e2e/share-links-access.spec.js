@@ -294,11 +294,9 @@ test.describe('Shared Links Public Access', () => {
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForPasswordPrompt();
       await sharedTimelinePage.verifyPassword('wrongpass');
-      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
       // Verify error
-      expect(await sharedTimelinePage.hasPasswordError()).toBe(true);
-      const passwordError = await sharedTimelinePage.getPasswordError();
+      const passwordError = await sharedTimelinePage.waitForPasswordError('Invalid password');
       expect(passwordError).toContain('Invalid password');
 
       // View count should NOT increment

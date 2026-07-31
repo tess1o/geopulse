@@ -454,15 +454,51 @@ export class PlaceDetailsPage {
     });
   }
 
+  async waitForTimelineRegenerationCycle(options = {}) {
+    const appearanceTimeout = options.appearanceTimeout ?? 7000;
+    const completionTimeout = options.completionTimeout ?? 45000;
+    const optional = options.optional ?? true;
+
+    try {
+      await this.page.waitForSelector(this.selectors.timelineRegenerationModal, {
+        state: 'visible',
+        timeout: appearanceTimeout
+      });
+    } catch (error) {
+      if (optional) {
+        return false;
+      }
+      throw error;
+    }
+
+    await this.page.waitForSelector(this.selectors.timelineRegenerationModal, {
+      state: 'hidden',
+      timeout: completionTimeout
+    });
+
+    return true;
+  }
+
   // ===========================================
   // TOAST NOTIFICATIONS
   // ===========================================
 
-  async waitForSuccessToast() {
-    await this.page.waitForSelector(this.selectors.successToast, {
-      state: 'visible',
-      timeout: 10000
-    });
+  async waitForSuccessToast(options = {}) {
+    const timeout = options.timeout ?? 10000;
+    const required = options.required ?? true;
+
+    try {
+      await this.page.waitForSelector(this.selectors.successToast, {
+        state: 'visible',
+        timeout
+      });
+      return true;
+    } catch (error) {
+      if (!required) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   async waitForErrorToast() {

@@ -1,3 +1,5 @@
+import { TestConfig } from '../config/test-config.js';
+
 export class TestHelpers {
   
   /**
@@ -9,6 +11,49 @@ export class TestHelpers {
   static async waitForNavigation(page, expectedUrl, timeout = 10000) {
     await page.waitForURL(expectedUrl, { timeout });
     await page.waitForLoadState('networkidle', { timeout });
+  }
+
+  static isBackendUnavailableUrl(url) {
+    return /\/error(?:\?|$)/.test(url) && url.includes('type=connection');
+  }
+
+  static async isBackendUnavailablePage(page) {
+    if (this.isBackendUnavailableUrl(page.url())) {
+      return true;
+    }
+
+    return await page
+      .locator('h1:has-text("Backend Unavailable")')
+      .isVisible()
+      .catch(() => false);
+  }
+
+  static async waitForBackendHealthy(page, options = {}) {
+    const timeout = options.timeout ?? 30000;
+    const interval = options.interval ?? 750;
+    const deadline = Date.now() + timeout;
+    let lastError = null;
+
+    while (Date.now() < deadline) {
+      try {
+        const requestTimeout = Math.max(1000, Math.min(5000, deadline - Date.now()));
+        const response = await page.request.get(`${TestConfig.API_BASE_URL}/api/health`, {
+          timeout: requestTimeout
+        });
+
+        if (response.ok()) {
+          return true;
+        }
+
+        lastError = `status ${response.status()}`;
+      } catch (error) {
+        lastError = error.message;
+      }
+
+      await page.waitForTimeout(Math.min(interval, Math.max(0, deadline - Date.now())));
+    }
+
+    throw new Error(`Backend did not become healthy within ${timeout}ms${lastError ? ` (${lastError})` : ''}`);
   }
 
   /**

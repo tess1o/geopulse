@@ -1,3 +1,6 @@
+import { expect } from '@playwright/test';
+import { TestHelpers } from '../utils/test-helpers.js';
+
 export class LoginPage {
   constructor(page) {
     this.page = page;
@@ -14,7 +17,10 @@ export class LoginPage {
   /**
    * Navigate to login page
    */
-  async navigate() {
+  async navigate(options = {}) {
+    await TestHelpers.waitForBackendHealthy(this.page, {
+      timeout: options.backendHealthTimeout ?? 30000
+    });
     await this.page.goto('/login');
     await this.page.waitForLoadState('networkidle');
   }
@@ -25,7 +31,9 @@ export class LoginPage {
   async login(email, password) {
     await this.page.fill(this.selectors.emailInput, email);
     await this.page.fill(this.selectors.passwordInput, password);
-    await this.page.click(this.selectors.loginButton);
+    const loginButton = this.page.locator(this.selectors.loginButton);
+    await expect(loginButton).toBeEnabled({ timeout: 10000 });
+    await loginButton.click();
   }
 
   /**

@@ -57,9 +57,47 @@ export class TestSetupHelper {
     await UserFactory.createUser(page, testUser);
     await this.applyMapRenderModeIfProvided(dbManager, testUser.email, mapMode);
     await DateFormatTestHelper.applyDateFormatIfProvided(dbManager, testUser);
-    await loginPage.navigate();
-    await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+    const maxLoginAttempts = options?.loginAttempts ?? 3;
+    let lastLoginError = null;
+
+    for (let attempt = 1; attempt <= maxLoginAttempts; attempt += 1) {
+      try {
+        await TestHelpers.waitForBackendHealthy(page, { timeout: options?.backendHealthTimeout ?? 30000 });
+        await loginPage.navigate();
+
+        if (await TestHelpers.isBackendUnavailablePage(page)) {
+          throw new Error('Backend unavailable while navigating to login page');
+        }
+
+        await loginPage.login(testUser.email, testUser.password);
+        await TestHelpers.waitForNavigation(page, '**/app/timeline', options?.loginNavigationTimeout ?? 30000);
+        lastLoginError = null;
+        break;
+      } catch (error) {
+        lastLoginError = error;
+
+        const canRetry = attempt < maxLoginAttempts;
+        const backendUnavailable = await TestHelpers.isBackendUnavailablePage(page);
+        const stillOnLogin = /\/login(?:\?|#|$)/.test(page.url());
+
+        if (!canRetry || (!backendUnavailable && !stillOnLogin)) {
+          throw error;
+        }
+
+        await page.context().clearCookies();
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        }).catch(() => {});
+        await TestHelpers.waitForBackendHealthy(page, { timeout: options?.backendHealthTimeout ?? 30000 });
+        await page.waitForTimeout(500 * attempt);
+      }
+    }
+
+    if (lastLoginError) {
+      throw lastLoginError;
+    }
 
     const user = await dbManager.getUserByEmail(testUser.email);
 

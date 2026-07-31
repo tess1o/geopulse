@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import { MapEngineHarness } from '../utils/map-engine-harness.js';
+import { TestHelpers } from '../utils/test-helpers.js';
 
 export class FavoritesManagementPage {
   constructor(page) {
@@ -87,9 +88,33 @@ export class FavoritesManagementPage {
   }
 
   async waitForPageLoad() {
-    await this.page.waitForSelector(this.selectors.pageContainer, { timeout: 10000 });
-    await this.page.waitForSelector(this.selectors.pageTitle, { timeout: 5000 });
-    await this.waitForMapReady();
+    const attempts = 3;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        if (await TestHelpers.isBackendUnavailablePage(this.page)) {
+          throw new Error('Backend unavailable while loading favorites management page');
+        }
+
+        await this.page.waitForSelector(this.selectors.pageContainer, { timeout: 15000 });
+        await this.page.waitForSelector(this.selectors.pageTitle, { timeout: 10000 });
+        await this.waitForMapReady();
+        return;
+      } catch (error) {
+        lastError = error;
+        const backendUnavailable = await TestHelpers.isBackendUnavailablePage(this.page);
+
+        if (attempt >= attempts || !backendUnavailable) {
+          throw error;
+        }
+
+        await TestHelpers.waitForBackendHealthy(this.page, { timeout: 30000 });
+        await this.navigate();
+      }
+    }
+
+    throw lastError;
   }
 
   async isOnFavoritesPage() {
@@ -137,6 +162,14 @@ export class FavoritesManagementPage {
     });
   }
 
+  async waitForEditAreaMapReady() {
+    await this.mapHarness.waitForMapReady({
+      mapId: 'edit-area-map',
+      timeout: 15000,
+      settleMs: 1200
+    });
+  }
+
   async rightClickOnMap(x, y) {
     await this.mapHarness.rightClickOnMap(x, y, { mapId: 'favorites-map' });
     await this.page.waitForTimeout(700);
@@ -160,7 +193,7 @@ export class FavoritesManagementPage {
 
   async drawRectangle(startX, startY, endX, endY, mapId = null) {
     const resolvedMapId = mapId || 'favorites-map';
-    await this.waitForDrawingMode(resolvedMapId, { required: false });
+    await this.waitForDrawingMode(resolvedMapId, { required: true, timeout: 10000 });
     await this.page.waitForTimeout(120);
     await this.mapHarness.drawRectangle(startX, startY, endX, endY, {
       mapId: resolvedMapId
@@ -169,11 +202,21 @@ export class FavoritesManagementPage {
 
   async waitForDrawingMode(mapId = 'favorites-map', options = {}) {
     const mapHost = this.mapHarness.getMapHostLocator({ mapId });
+    const drawingInstruction = mapId === 'edit-area-map'
+      ? this.page.locator(`${this.selectors.editDialog} .drawing-instruction`).first()
+      : null;
     const timeout = options.timeout ?? 3500;
     const required = options.required ?? false;
 
     try {
       await expect.poll(async () => {
+        if (drawingInstruction) {
+          const hasDrawingInstruction = await drawingInstruction.isVisible().catch(() => false);
+          if (hasDrawingInstruction) {
+            return true;
+          }
+        }
+
         return mapHost.evaluate((element) => {
           const nodes = [element, ...element.querySelectorAll('*')];
           return nodes.some((node) => {
@@ -190,6 +233,12 @@ export class FavoritesManagementPage {
       }
       return false;
     }
+  }
+
+  async waitForEditAreaDrawingMode(options = {}) {
+    const timeout = options.timeout ?? 10000;
+    const drawingInstruction = this.page.locator(`${this.selectors.editDialog} .drawing-instruction`).first();
+    await expect(drawingInstruction).toBeVisible({ timeout });
   }
 
   async cancelDrawing() {
@@ -229,14 +278,24 @@ export class FavoritesManagementPage {
 
   async searchPlaceToAdd(query) {
     const input = this.page.locator(this.selectors.placeSearchInput).first();
+    const searchResponse = this.page.waitForResponse((response) => {
+      return response.url().includes('/api/trips/plan-search')
+        && response.request().method() === 'GET';
+    }, { timeout: 10000 }).catch(() => {});
     await input.fill(query);
-    await this.page.waitForTimeout(800);
+    await searchResponse;
   }
 
   async selectPlaceSearchResult(text) {
     const option = this.page.locator(this.selectors.placeSearchOption, { hasText: text }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     await option.click();
+  }
+
+  async waitForPlaceSearchResult(text, options = {}) {
+    const timeout = options.timeout ?? 10000;
+    const option = this.page.locator(this.selectors.placeSearchOption, { hasText: text }).first();
+    await expect(option).toBeVisible({ timeout });
   }
 
   async isPlaceSearchResultVisible(text) {
@@ -263,7 +322,10 @@ export class FavoritesManagementPage {
   }
 
   async clickSavePending() {
-    await this.page.click(this.selectors.savePendingButton);
+    const button = this.page.locator(this.selectors.savePendingButton);
+    await expect(button).toBeVisible({ timeout: 10000 });
+    await expect(button).toBeEnabled({ timeout: 10000 });
+    await button.click();
   }
 
   async getPendingCount() {
@@ -271,6 +333,14 @@ export class FavoritesManagementPage {
     const text = await button.textContent();
     const match = text.match(/Save (\d+) Pending/);
     return match ? parseInt(match[1]) : 0;
+  }
+
+  async waitForPendingCount(expectedCount, options = {}) {
+    const timeout = options.timeout ?? 15000;
+    await expect.poll(
+      () => this.getPendingCount(),
+      { timeout }
+    ).toBe(expectedCount);
   }
 
   async isSavePendingButtonVisible() {
@@ -477,6 +547,20 @@ export class FavoritesManagementPage {
       state: 'visible',
       timeout: 10000
     });
+  }
+
+  async getEditAreaBoundsText() {
+    const dialog = this.page.locator(this.selectors.editDialog).first();
+    const text = await dialog.locator('.bounds-info-text').textContent();
+    return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  async waitForEditAreaBoundsToChange(previousBoundsText, options = {}) {
+    const timeout = options.timeout ?? 15000;
+    await expect.poll(async () => {
+      const currentBoundsText = await this.getEditAreaBoundsText().catch(() => '');
+      return currentBoundsText && currentBoundsText !== previousBoundsText;
+    }, { timeout }).toBe(true);
   }
 
   async fillEditDialog(newName) {

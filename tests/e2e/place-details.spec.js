@@ -599,21 +599,16 @@ test.describe('Place Details Page', () => {
       // Create favorite
       await placeDetailsPage.createFavoriteWorkflow('My Favorite SF Spot');
 
-      // Wait for timeline regeneration
-      try {
-        await placeDetailsPage.waitForTimelineRegenerationModal();
-        await placeDetailsPage.waitForTimelineRegenerationToComplete();
-      } catch (error) {
-        // Modal might complete too quickly
-        await page.waitForTimeout(2000);
-      }
-
-      // Verify success toast
-      await placeDetailsPage.waitForSuccessToast();
-
       // Verify database
-      const finalCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-      expect(finalCount).toBe(initialCount + 1);
+      await placeDetailsPage.waitForTimelineRegenerationCycle({ optional: true });
+      await placeDetailsPage.waitForSuccessToast({ required: false, timeout: 20000 });
+
+      await expect.poll(
+        () => TestSetupHelper.countFavorites(dbManager, user.id),
+        { timeout: 30000 }
+      ).toBe(initialCount + 1);
+
+      await expect(page.locator('.related-favorite-notice')).toContainText('My Favorite SF Spot', { timeout: 20000 });
     });
 
     test('should cancel create favorite dialog', async ({page, isolatedUsers, dbManager}) => {

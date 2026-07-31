@@ -208,6 +208,18 @@ export class SharedTimelinePage {
         return await this.page.locator(this.selectors.passwordError).textContent();
     }
 
+    async waitForPasswordError(expectedText = null, options = {}) {
+        const timeout = options.timeout ?? 10000;
+        const error = this.page.locator(this.selectors.passwordError).first();
+
+        await expect(error).toBeVisible({timeout});
+        if (expectedText) {
+            await expect(error).toContainText(expectedText, {timeout});
+        }
+
+        return (await error.textContent()).trim();
+    }
+
     async waitForPasswordPrompt() {
         await this.page.waitForSelector(this.selectors.passwordCard, {state: 'visible', timeout: 5000});
     }

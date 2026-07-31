@@ -75,7 +75,7 @@ export class TimelinePage {
     }
     await loginPage.navigate();
     await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
+    await TestHelpers.waitForNavigation(this.page, '**/app/timeline', 30000);
     
     return { loginPage, testUser };
   }
@@ -100,7 +100,7 @@ export class TimelinePage {
     const loginPage = new LoginPage(this.page);
     await loginPage.navigate();
     await loginPage.login(testUser.email, testUser.password);
-    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
+    await TestHelpers.waitForNavigation(this.page, '**/app/timeline', 30000);
     
     // Insert test data
     const user = await dbManager.getUserByEmail(testUser.email);

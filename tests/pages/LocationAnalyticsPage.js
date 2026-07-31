@@ -265,6 +265,17 @@ export class LocationAnalyticsPage {
     return cards.find(card => card.name === name) || null;
   }
 
+  async waitForLocationCardStat(name, statLabel, expectedValue, options = {}) {
+    const timeout = options.timeout ?? 15000;
+
+    await expect.poll(async () => {
+      const card = await this.getLocationCardByName(name);
+      return card?.stats?.[statLabel] ?? null;
+    }, { timeout }).toBe(expectedValue);
+
+    return await this.getLocationCardByName(name);
+  }
+
   async clickLocationCard(index) {
     const cards = this.page.locator(this.selectors.locationCard);
     await cards.nth(index).click();
