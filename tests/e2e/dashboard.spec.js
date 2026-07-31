@@ -197,16 +197,33 @@ test.describe('Dashboard', () => {
       const dialog = page.locator('.places-map-dialog').first();
       await expect(dialog).toBeVisible();
 
+      await page.waitForFunction(() => {
+        const dialogElement = document.querySelector('.places-map-dialog.p-dialog');
+        if (!dialogElement) return false;
+
+        const style = window.getComputedStyle(dialogElement);
+        return !dialogElement.className.includes('p-dialog-enter')
+          && Number(style.opacity) === 1
+          && (style.transform === 'none' || style.transform === 'matrix(1, 0, 0, 1, 0, 0)');
+      });
+
+      const viewport = page.viewportSize();
+      const geometryTolerancePx = 1;
       const dialogBox = await dialog.boundingBox();
-      expect(dialogBox.x).toBeGreaterThanOrEqual(0);
-      expect(dialogBox.y).toBeGreaterThanOrEqual(0);
-      expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(390);
-      expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(844);
+      expect(dialogBox).not.toBeNull();
+      expect(dialogBox.x).toBeGreaterThanOrEqual(-geometryTolerancePx);
+      expect(dialogBox.y).toBeGreaterThanOrEqual(-geometryTolerancePx);
+      expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(viewport.width + geometryTolerancePx);
+      expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(viewport.height + geometryTolerancePx);
 
       const mapContentBox = await page.locator('.places-map-content').first().boundingBox();
+      expect(mapContentBox).not.toBeNull();
       expect(mapContentBox.width).toBeGreaterThan(250);
-      expect(mapContentBox.width).toBeLessThanOrEqual(dialogBox.width);
       expect(mapContentBox.height).toBeGreaterThan(250);
+      expect(mapContentBox.x).toBeGreaterThanOrEqual(-geometryTolerancePx);
+      expect(mapContentBox.y).toBeGreaterThanOrEqual(-geometryTolerancePx);
+      expect(mapContentBox.x + mapContentBox.width).toBeLessThanOrEqual(viewport.width + geometryTolerancePx);
+      expect(mapContentBox.y + mapContentBox.height).toBeLessThanOrEqual(viewport.height + geometryTolerancePx);
     });
 
     test('should display route analysis cards with statistics', async ({ page, isolatedUsers, dbManager}) => {

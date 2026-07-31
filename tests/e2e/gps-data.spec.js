@@ -398,7 +398,8 @@ test.describe('GPS Data Page', () => {
         test('should handle timezone correctly for points today count - GMT+3 scenario', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = await isolatedUsers.create(page);
+            const gmtPlus3Timezone = 'Africa/Nairobi';
+            const testUser = await isolatedUsers.create(page, { timezone: gmtPlus3Timezone });
 
             // Create user
             const user = await dbManager.getUserByEmail(testUser.email);
@@ -411,8 +412,8 @@ test.describe('GPS Data Page', () => {
             const todaysPointsGmtPlus3 = [];
 
             // Point 1: Today at 01:00 GMT+3 (yesterday 22:00 UTC)
-            const kyivTodayParts = new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'Europe/Kyiv',
+            const gmtPlus3TodayParts = new Intl.DateTimeFormat('en-CA', {
+                timeZone: gmtPlus3Timezone,
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
@@ -423,9 +424,9 @@ test.describe('GPS Data Page', () => {
                 return parts;
             }, {});
             const point1Utc = new Date(Date.UTC(
-                kyivTodayParts.year,
-                kyivTodayParts.month - 1,
-                kyivTodayParts.day,
+                gmtPlus3TodayParts.year,
+                gmtPlus3TodayParts.month - 1,
+                gmtPlus3TodayParts.day,
                 -2,
                 0,
                 0
