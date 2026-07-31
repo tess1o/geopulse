@@ -185,6 +185,62 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
+     * Stream GPS points for export with keyset pagination.
+     * Results are ordered by timestamp and id so duplicate timestamps are handled deterministically.
+     */
+    public void streamByUserAndDateRangeForExport(UUID userId, Instant startTime, Instant endTime,
+                                                  int batchSize, Consumer<List<GpsPointEntity>> consumer) {
+        Instant cursorTimestamp = null;
+        Long cursorId = null;
+        int normalizedBatchSize = Math.max(1, batchSize);
+
+        while (true) {
+            List<GpsPointEntity> batch = findExportDateRangeChunk(
+                    userId, startTime, endTime, cursorTimestamp, cursorId, normalizedBatchSize);
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            consumer.accept(batch);
+
+            GpsPointEntity lastPoint = batch.get(batch.size() - 1);
+            cursorTimestamp = lastPoint.getTimestamp();
+            cursorId = lastPoint.getId();
+
+            // Clear the persistence context to keep long exports memory-bounded.
+            getEntityManager().clear();
+        }
+    }
+
+    private List<GpsPointEntity> findExportDateRangeChunk(UUID userId, Instant startTime, Instant endTime,
+                                                          Instant cursorTimestamp, Long cursorId, int batchSize) {
+        String cursorPredicate = cursorTimestamp != null && cursorId != null
+                ? " AND (gp.timestamp > :cursorTimestamp OR (gp.timestamp = :cursorTimestamp AND gp.id > :cursorId))"
+                : "";
+
+        Query query = getEntityManager().createQuery(
+                        "SELECT gp FROM GpsPointEntity gp " +
+                                "WHERE gp.user.id = :userId " +
+                                "AND gp.timestamp IS NOT NULL " +
+                                "AND gp.timestamp >= :startTime " +
+                                "AND gp.timestamp <= :endTime" +
+                                cursorPredicate +
+                                " ORDER BY gp.timestamp ASC, gp.id ASC",
+                        GpsPointEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("startTime", startTime)
+                .setParameter("endTime", endTime)
+                .setMaxResults(batchSize);
+
+        if (cursorTimestamp != null && cursorId != null) {
+            query.setParameter("cursorTimestamp", cursorTimestamp);
+            query.setParameter("cursorId", cursorId);
+        }
+
+        return query.getResultList();
+    }
+
+    /**
      * Validate and map sort field to database column name.
      * Prevents SQL injection by only allowing whitelisted fields.
      *
@@ -439,20 +495,44 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      */
     public void streamByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
                                        int batchSize, Consumer<List<GpsPointEntity>> consumer) {
-        long totalCount = countByUserAndFilters(userId, filters);
-        int totalBatches = (int) Math.ceil((double) totalCount / batchSize);
+        Instant cursorTimestamp = null;
+        Long cursorId = null;
+        int normalizedBatchSize = Math.max(1, batchSize);
 
-        for (int batch = 0; batch < totalBatches; batch++) {
-            List<GpsPointEntity> batchData = findByUserAndFilters(
-                    userId, filters, batch, batchSize, "timestamp", "asc");
-
-            if (!batchData.isEmpty()) {
-                consumer.accept(batchData);
-
-                // Clear the persistence context to free memory
-                getEntityManager().clear();
+        while (true) {
+            List<GpsPointEntity> batch = findFilteredExportChunk(
+                    userId, filters, cursorTimestamp, cursorId, normalizedBatchSize);
+            if (batch.isEmpty()) {
+                break;
             }
+
+            consumer.accept(batch);
+
+            GpsPointEntity lastPoint = batch.get(batch.size() - 1);
+            cursorTimestamp = lastPoint.getTimestamp();
+            cursorId = lastPoint.getId();
+
+            // Clear the persistence context to free memory.
+            getEntityManager().clear();
         }
+    }
+
+    private List<GpsPointEntity> findFilteredExportChunk(UUID userId, GpsPointFilterDTO filters,
+                                                         Instant cursorTimestamp, Long cursorId, int batchSize) {
+        QueryBuilder queryBuilder = buildFilterQuery(userId, filters);
+        queryBuilder.query.append(" AND gp.timestamp IS NOT NULL");
+        if (cursorTimestamp != null && cursorId != null) {
+            queryBuilder.query.append(" AND (gp.timestamp > :cursorTimestamp OR (gp.timestamp = :cursorTimestamp AND gp.id > :cursorId))");
+            queryBuilder.params.put("cursorTimestamp", cursorTimestamp);
+            queryBuilder.params.put("cursorId", cursorId);
+        }
+        queryBuilder.query.append(" ORDER BY gp.timestamp ASC, gp.id ASC");
+
+        Query query = getEntityManager().createQuery(queryBuilder.query.toString(), GpsPointEntity.class);
+        queryBuilder.params.forEach(query::setParameter);
+        query.setMaxResults(batchSize);
+
+        return query.getResultList();
     }
 
     /**

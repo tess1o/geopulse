@@ -104,7 +104,7 @@ class OwnTracksExportServiceTest {
         int pointCount = 2000;
         for (int i = 0; i < pointCount; i++) {
             createGpsPoint(
-                    testStartDate.plus(i, ChronoUnit.SECONDS),
+                    testStartDate.plus(i / 3, ChronoUnit.SECONDS),
                     37.7749 + (i * 0.0001),
                     -122.4194 + (i * 0.0001),
                     100.0, 15.0, 95.0);
@@ -121,6 +121,9 @@ class OwnTracksExportServiceTest {
         byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         JsonNode root = objectMapper.readTree(content);
         assertEquals(pointCount, root.size());
+        for (int i = 1; i < root.size(); i++) {
+            assertTrue(root.get(i - 1).get("tst").asLong() <= root.get(i).get("tst").asLong());
+        }
         log.info("Streaming export validated: {} messages", root.size());
         // cleanup
         tempFileService.deleteTempFile(job.getTempFilePath());

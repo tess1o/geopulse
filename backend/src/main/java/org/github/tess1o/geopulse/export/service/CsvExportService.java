@@ -13,8 +13,8 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * Service responsible for generating CSV format exports using streaming
@@ -61,45 +61,40 @@ public class CsvExportService {
 
             job.updateProgress(10, "Starting to stream GPS data...");
 
-            int page = 0;
-            int totalWritten = 0;
-
-            while (true) {
-                // Fetch batch of GPS points
-                List<GpsPointEntity> batch = gpsPointRepository.findByUserAndDateRange(
+            int[] totalWritten = {0};
+            int[] batchCount = {0};
+            try {
+                gpsPointRepository.streamByUserAndDateRangeForExport(
                         job.getUserId(),
                         job.getDateRange().getStartDate(),
                         job.getDateRange().getEndDate(),
-                        page,
                         batchSize,
-                        "timestamp",
-                        "asc");
+                        batch -> {
+                            try {
+                                for (GpsPointEntity point : batch) {
+                                    writer.write(formatCsvRow(point));
+                                    totalWritten[0]++;
+                                }
+                                writer.flush();
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
 
-                if (batch.isEmpty()) {
-                    break;
-                }
+                            batchCount[0]++;
 
-                // Write each GPS point as CSV row
-                for (GpsPointEntity point : batch) {
-                    writer.write(formatCsvRow(point));
-                    totalWritten++;
-                }
+                            int progress = 10 + (int) (80.0 * totalWritten[0] / Math.max(totalWritten[0] + batchSize, 1));
+                            progress = Math.min(progress, 90);
+                            job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten[0]));
 
-                writer.flush(); // Flush after each batch
-                page++;
-
-                // Update progress (10% to 90%)
-                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + batchSize, 1));
-                progress = Math.min(progress, 90);
-                job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten));
-
-                // Log progress periodically
-                if (page % 10 == 0) {
-                    log.debug("Streamed {} records in {} batches", totalWritten, page);
-                }
+                            if (batchCount[0] % 10 == 0) {
+                                log.debug("Streamed {} records in {} batches", totalWritten[0], batchCount[0]);
+                            }
+                        });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
             }
 
-            log.info("Completed streaming CSV export: {} records in {} batches", totalWritten, page);
+            log.info("Completed streaming CSV export: {} records in {} batches", totalWritten[0], batchCount[0]);
         }
 
         // Update job with file info

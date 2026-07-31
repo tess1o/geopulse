@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
@@ -145,17 +146,14 @@ public class DebugExportService {
 
         // Stream OwnTracks messages with shifted coordinates
         var batchSize = streamingExportService.getBatchSize();
-        streamingExportService.streamJsonArray(
+        streamingExportService.<GpsPointEntity, OwnTracksLocationMessage>streamJsonArray(
                 baos,
-                // Fetch batch function
-                page -> gpsPointRepository.findByUserAndDateRange(
+                batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
                         userId,
                         request.getStartDate(),
                         request.getEndDate(),
-                        page,
                         batchSize,
-                        "timestamp",
-                        "asc"
+                        batchConsumer
                 ),
                 // Convert GPS point to OwnTracks message with shifted coordinates
                 gpsPoint -> {

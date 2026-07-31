@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 
 import java.io.IOException;
-import java.util.List;
+import java.io.UncheckedIOException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.zip.ZipEntry;
@@ -39,7 +39,7 @@ public class StreamingZipExportService {
      * @param fileName name of the JSON file to add to ZIP
      * @param writeMetadata callback to write JSON object metadata fields
      * @param arrayFieldName name of the array field (e.g., "points", "trips")
-     * @param fetchBatch function to fetch data in batches
+     * @param batchProducer callback that publishes data batches
      * @param toDto function to convert entity to DTO
      * @param job export job for progress tracking
      * @param progressStart starting progress percentage
@@ -53,7 +53,7 @@ public class StreamingZipExportService {
             String fileName,
             BiConsumer<JsonGenerator, ObjectMapper> writeMetadata,
             String arrayFieldName,
-            Function<Integer, List<T>> fetchBatch,
+            StreamingExportService.BatchProducer<T> batchProducer,
             Function<T, D> toDto,
             ExportJob job,
             int progressStart,
@@ -81,47 +81,50 @@ public class StreamingZipExportService {
             // Write array field
             gen.writeArrayFieldStart(arrayFieldName);
 
-            int page = 0;
-            int totalWritten = 0;
             int progressRange = progressEnd - progressStart;
+            int[] totalWritten = {0};
+            int[] batchCount = {0};
 
-            while (true) {
-                List<T> batch = fetchBatch.apply(page);
-                if (batch.isEmpty()) {
-                    break;
-                }
+            try {
+                batchProducer.produce(batch -> {
+                    if (batch == null || batch.isEmpty()) {
+                        return;
+                    }
 
-                // Write each item in batch
-                for (T entity : batch) {
-                    D dto = toDto.apply(entity);
-                    gen.writeObject(dto);
-                    totalWritten++;
-                }
+                    try {
+                        for (T entity : batch) {
+                            D dto = toDto.apply(entity);
+                            gen.writeObject(dto);
+                            totalWritten[0]++;
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
 
-                page++;
+                    batchCount[0]++;
 
-                // Update progress
-                if (job != null) {
-                    // Progress within this file's range
-                    int currentProgress = progressStart + (page % 10) * progressRange / 10;
-                    job.updateProgress(
-                        Math.min(currentProgress, progressEnd),
-                        String.format("%s %s: %d records", progressPrefix, fileName, totalWritten)
-                    );
-                }
+                    if (job != null) {
+                        int currentProgress = progressStart + (batchCount[0] % 10) * progressRange / 10;
+                        job.updateProgress(
+                                Math.min(currentProgress, progressEnd),
+                                String.format("%s %s: %d records", progressPrefix, fileName, totalWritten[0])
+                        );
+                    }
 
-                // Log progress periodically
-                if (page % 10 == 0) {
-                    log.debug("Streamed {} records to {} in {} batches", totalWritten, fileName, page);
-                }
+                    if (batchCount[0] % 10 == 0) {
+                        log.debug("Streamed {} records to {} in {} batches", totalWritten[0], fileName, batchCount[0]);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
             }
 
             gen.writeEndArray(); // End array field
             gen.writeEndObject(); // End root object
             gen.flush();
 
-            log.info("Completed streaming {} records to {}", totalWritten, fileName);
-            return totalWritten;
+            log.info("Completed streaming {} records to {}", totalWritten[0], fileName);
+            return totalWritten[0];
 
         } finally {
             // Don't close the generator (it would close the ZIP stream)

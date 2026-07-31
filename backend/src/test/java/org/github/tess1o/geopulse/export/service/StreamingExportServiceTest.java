@@ -54,9 +54,10 @@ class StreamingExportServiceTest {
         ExportJob job = new ExportJob();
         job.setProgress(0);
         // Act
-        int totalWritten = streamingExportService.streamJsonArray(
+        int totalWritten = streamingExportService.<TestEntity, TestEntity>streamJsonArray(
             baos,
-            page -> List.of(), // Empty data
+            batchConsumer -> {
+            }, // Empty data
             entity -> entity,
             job,
             0,
@@ -81,9 +82,9 @@ class StreamingExportServiceTest {
             new TestEntity(3, "C")
         );
         // Act
-        int totalWritten = streamingExportService.streamJsonArray(
+        int totalWritten = streamingExportService.<TestEntity, TestDto>streamJsonArray(
             baos,
-            page -> page == 0 ? data : List.of(),
+            batchConsumer -> batchConsumer.accept(data),
             entity -> new TestDto(entity.id, entity.name.toLowerCase()),
             job,
             3,
@@ -113,9 +114,9 @@ class StreamingExportServiceTest {
             List.of(new TestEntity(5, "E"))
         );
         // Act
-        int totalWritten = streamingExportService.streamJsonArray(
+        int totalWritten = streamingExportService.<TestEntity, TestDto>streamJsonArray(
             baos,
-            page -> page < batches.size() ? batches.get(page) : List.of(),
+            batchConsumer -> batches.forEach(batchConsumer),
             entity -> new TestDto(entity.id, entity.name),
             job,
             5,
@@ -144,9 +145,9 @@ class StreamingExportServiceTest {
             data.add(new TestEntity(i, "Item" + i));
         }
         // Act
-        int totalWritten = streamingExportService.streamJsonArray(
+        int totalWritten = streamingExportService.<TestEntity, TestDto>streamJsonArray(
             baos,
-            page -> page == 0 ? data : List.of(),
+            batchConsumer -> batchConsumer.accept(data),
             entity -> new TestDto(entity.id, entity.name),
             job,
             10,
@@ -167,7 +168,7 @@ class StreamingExportServiceTest {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ExportJob job = new ExportJob();
         // Act
-        int totalWritten = streamingExportService.streamJsonObjectWithArray(
+        int totalWritten = streamingExportService.<TestEntity>streamJsonObjectWithArray(
             baos,
             (gen, mapper) -> {
                 try {
@@ -178,7 +179,8 @@ class StreamingExportServiceTest {
                 }
             },
             "items",
-            page -> List.of(),
+            batchConsumer -> {
+            },
             (gen, entity, mapper) -> gen.writeObject(entity),
             job,
             0,
@@ -203,7 +205,7 @@ class StreamingExportServiceTest {
             new TestEntity(2, "Second")
         );
         // Act
-        int totalWritten = streamingExportService.streamJsonObjectWithArray(
+        int totalWritten = streamingExportService.<TestEntity>streamJsonObjectWithArray(
             baos,
             (gen, mapper) -> {
                 try {
@@ -214,7 +216,7 @@ class StreamingExportServiceTest {
                 }
             },
             "records",
-            page -> page == 0 ? data : List.of(),
+            batchConsumer -> batchConsumer.accept(data),
             (gen, entity, mapper) -> {
                 TestDto dto = new TestDto(entity.id, entity.name);
                 gen.writeObject(dto);
@@ -243,19 +245,17 @@ class StreamingExportServiceTest {
         int totalRecords = 5000;
         int batchSize = streamingExportService.getBatchSize();
         // Act
-        int totalWritten = streamingExportService.streamJsonArray(
+        int totalWritten = streamingExportService.<TestEntity, TestDto>streamJsonArray(
             baos,
-            page -> {
-                int start = page * batchSize;
-                if (start >= totalRecords) {
-                    return List.of();
+            batchConsumer -> {
+                for (int start = 0; start < totalRecords; start += batchSize) {
+                    int end = Math.min(start + batchSize, totalRecords);
+                    List<TestEntity> batch = new ArrayList<>();
+                    for (int i = start; i < end; i++) {
+                        batch.add(new TestEntity(i, "Item" + i));
+                    }
+                    batchConsumer.accept(batch);
                 }
-                int end = Math.min(start + batchSize, totalRecords);
-                List<TestEntity> batch = new ArrayList<>();
-                for (int i = start; i < end; i++) {
-                    batch.add(new TestEntity(i, "Item" + i));
-                }
-                return batch;
             },
             entity -> new TestDto(entity.id, entity.name),
             job,
@@ -279,8 +279,8 @@ class StreamingExportServiceTest {
     @Test
     void testEstimateRecordCount_KnownCount() {
         // Act
-        int estimated = streamingExportService.estimateRecordCount(
-            page -> List.of(new TestEntity(1, "A")),
+        int estimated = streamingExportService.<TestEntity>estimateRecordCount(
+            batchConsumer -> batchConsumer.accept(List.of(new TestEntity(1, "A"))),
             1000
         );
         // Assert
@@ -294,8 +294,8 @@ class StreamingExportServiceTest {
             new TestEntity(2, "B")
         );
         // Act
-        int estimated = streamingExportService.estimateRecordCount(
-            page -> smallBatch,
+        int estimated = streamingExportService.<TestEntity>estimateRecordCount(
+            batchConsumer -> batchConsumer.accept(smallBatch),
             0 // Unknown
         );
         // Assert
@@ -309,8 +309,8 @@ class StreamingExportServiceTest {
             fullBatch.add(new TestEntity(i, "Item" + i));
         }
         // Act
-        int estimated = streamingExportService.estimateRecordCount(
-            page -> fullBatch,
+        int estimated = streamingExportService.<TestEntity>estimateRecordCount(
+            batchConsumer -> batchConsumer.accept(fullBatch),
             0 // Unknown
         );
         // Assert
@@ -319,8 +319,9 @@ class StreamingExportServiceTest {
     @Test
     void testEstimateRecordCount_EmptyData() {
         // Act
-        int estimated = streamingExportService.estimateRecordCount(
-            page -> List.of(),
+        int estimated = streamingExportService.<TestEntity>estimateRecordCount(
+            batchConsumer -> {
+            },
             0
         );
         // Assert
@@ -336,9 +337,9 @@ class StreamingExportServiceTest {
             data.add(new TestEntity(i, "Item" + i));
         }
         // Act
-        streamingExportService.streamJsonArray(
+        streamingExportService.<TestEntity, TestDto>streamJsonArray(
             baos,
-            page -> page == 0 ? data : List.of(),
+            batchConsumer -> batchConsumer.accept(data),
             entity -> new TestDto(entity.id, entity.name),
             job,
             100,

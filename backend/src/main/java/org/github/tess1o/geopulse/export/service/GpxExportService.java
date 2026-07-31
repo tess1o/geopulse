@@ -210,85 +210,82 @@ public class GpxExportService {
             throws XMLStreamException {
 
         int batchSize = settingsService.getInteger("export.batch-size");
-        int page = 0;
-        long totalPoints = 0;
-        boolean trackStarted = false;
+        int[] batchCount = {0};
+        long[] totalPoints = {0};
+        boolean[] trackStarted = {false};
 
         log.info("Starting streaming export of raw GPS data");
 
         job.updateProgress(15, "Streaming raw GPS data...");
 
-        while (true) {
-            // Fetch batch of GPS points
-            var batch = dataCollectorService.getGpsPointRepository().findByUserAndDateRange(
+        try {
+            dataCollectorService.getGpsPointRepository().streamByUserAndDateRangeForExport(
                     job.getUserId(),
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
-                    page,
                     batchSize,
-                    "timestamp",
-                    "asc");
+                    batch -> {
+                        try {
+                            // Start track on first batch
+                            if (!trackStarted[0]) {
+                                xml.writeStartElement("trk");
+                                xml.writeStartElement("name");
+                                xml.writeCharacters("Raw GPS Data");
+                                xml.writeEndElement(); // name
+                                xml.writeStartElement("desc");
+                                xml.writeCharacters("All GPS points for the selected date range");
+                                xml.writeEndElement(); // desc
+                                xml.writeStartElement("trkseg");
+                                trackStarted[0] = true;
+                            }
 
-            if (batch.isEmpty()) {
-                break;
-            }
+                            for (var gpsPoint : batch) {
+                                xml.writeStartElement("trkpt");
+                                xml.writeAttribute("lat", String.valueOf(gpsPoint.getCoordinates().getY()));
+                                xml.writeAttribute("lon", String.valueOf(gpsPoint.getCoordinates().getX()));
 
-            // Start track on first batch
-            if (!trackStarted) {
-                xml.writeStartElement("trk");
-                xml.writeStartElement("name");
-                xml.writeCharacters("Raw GPS Data");
-                xml.writeEndElement(); // name
-                xml.writeStartElement("desc");
-                xml.writeCharacters("All GPS points for the selected date range");
-                xml.writeEndElement(); // desc
-                xml.writeStartElement("trkseg");
-                trackStarted = true;
-            }
+                                if (gpsPoint.getAltitude() != null) {
+                                    xml.writeStartElement("ele");
+                                    xml.writeCharacters(String.valueOf(gpsPoint.getAltitude()));
+                                    xml.writeEndElement(); // ele
+                                }
 
-            // Write each GPS point in batch
-            for (var gpsPoint : batch) {
-                xml.writeStartElement("trkpt");
-                xml.writeAttribute("lat", String.valueOf(gpsPoint.getCoordinates().getY()));
-                xml.writeAttribute("lon", String.valueOf(gpsPoint.getCoordinates().getX()));
+                                xml.writeStartElement("time");
+                                xml.writeCharacters(gpsPoint.getTimestamp().toString());
+                                xml.writeEndElement(); // time
 
-                if (gpsPoint.getAltitude() != null) {
-                    xml.writeStartElement("ele");
-                    xml.writeCharacters(String.valueOf(gpsPoint.getAltitude()));
-                    xml.writeEndElement(); // ele
-                }
+                                if (gpsPoint.getVelocity() != null) {
+                                    xml.writeStartElement("speed");
+                                    xml.writeCharacters(String.valueOf(gpsPoint.getVelocity() / 3.6)); // km/h to m/s
+                                    xml.writeEndElement(); // speed
+                                }
 
-                xml.writeStartElement("time");
-                xml.writeCharacters(gpsPoint.getTimestamp().toString());
-                xml.writeEndElement(); // time
+                                xml.writeEndElement(); // trkpt
+                                totalPoints[0]++;
+                            }
+                        } catch (XMLStreamException e) {
+                            throw new GpxStreamRuntimeException(e);
+                        }
 
-                if (gpsPoint.getVelocity() != null) {
-                    xml.writeStartElement("speed");
-                    xml.writeCharacters(String.valueOf(gpsPoint.getVelocity() / 3.6)); // km/h to m/s
-                    xml.writeEndElement(); // speed
-                }
+                        batchCount[0]++;
 
-                xml.writeEndElement(); // trkpt
-                totalPoints++;
-            }
-
-            page++;
-
-            // Update progress periodically
-            if (page % 10 == 0) {
-                log.debug("Streamed {} GPS points so far...", totalPoints);
-                job.updateProgress(15 + (page % 50), String.format("Streamed %d GPS points...", totalPoints));
-            }
+                        if (batchCount[0] % 10 == 0) {
+                            log.debug("Streamed {} GPS points so far...", totalPoints[0]);
+                            job.updateProgress(15 + (batchCount[0] % 50), String.format("Streamed %d GPS points...", totalPoints[0]));
+                        }
+                    });
+        } catch (GpxStreamRuntimeException e) {
+            throw e.xmlCause();
         }
 
         // Close track if we wrote any points
-        if (trackStarted) {
+        if (trackStarted[0]) {
             xml.writeEndElement(); // trkseg
             xml.writeEndElement(); // trk
-            log.info("Completed streaming {} raw GPS points", totalPoints);
+            log.info("Completed streaming {} raw GPS points", totalPoints[0]);
         }
 
-        job.updateProgress(60, String.format("Completed streaming %d raw GPS points", totalPoints));
+        job.updateProgress(60, String.format("Completed streaming %d raw GPS points", totalPoints[0]));
     }
 
     /**
@@ -883,5 +880,15 @@ public class GpxExportService {
         gpxFile.setWaypoints(List.of(createWaypointFromStay(stay)));
 
         return gpxFile;
+    }
+
+    private static class GpxStreamRuntimeException extends RuntimeException {
+        GpxStreamRuntimeException(XMLStreamException cause) {
+            super(cause);
+        }
+
+        XMLStreamException xmlCause() {
+            return (XMLStreamException) getCause();
+        }
     }
 }

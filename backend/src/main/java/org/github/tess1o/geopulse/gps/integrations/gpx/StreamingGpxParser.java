@@ -152,7 +152,7 @@ public class StreamingGpxParser {
         Double lon = getDoubleAttribute(reader, "lon");
 
         if (lat == null || lon == null) {
-            skipElement(reader, "trkpt");
+            skipCurrentElement(reader);
             return null;
         }
 
@@ -197,7 +197,7 @@ public class StreamingGpxParser {
         Double lon = getDoubleAttribute(reader, "lon");
 
         if (lat == null || lon == null) {
-            skipElement(reader, "wpt");
+            skipCurrentElement(reader);
             return null;
         }
 
@@ -302,9 +302,10 @@ public class StreamingGpxParser {
     }
 
     /**
-     * Skip entire element and its children
+     * Skip the current start element and all of its children.
+     * The reader must be positioned on a START_ELEMENT when this method is called.
      */
-    private void skipElement(XMLStreamReader reader, String elementName) throws XMLStreamException {
+    private void skipCurrentElement(XMLStreamReader reader) throws XMLStreamException {
         int depth = 1;
 
         while (reader.hasNext() && depth > 0) {

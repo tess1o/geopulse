@@ -6,8 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.mapper.ExportDataMapper;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
@@ -169,7 +171,7 @@ public class GeoPulseExportService {
 
         int batchSize = streamingExportService.getBatchSize();
 
-        streamingZipExportService.addStreamingJsonFileToZip(
+        streamingZipExportService.<GpsPointEntity, RawGpsDataDto.GpsPointDto>addStreamingJsonFileToZip(
                 zos,
                 ExportImportConstants.FileNames.RAW_GPS_DATA,
                 // Write metadata fields
@@ -185,15 +187,12 @@ public class GeoPulseExportService {
                 },
                 // Array field name
                 "points",
-                // Fetch batch function
-                page -> gpsPointRepository.findByUserAndDateRange(
+                batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
                         job.getUserId(),
                         job.getDateRange().getStartDate(),
                         job.getDateRange().getEndDate(),
-                        page,
                         batchSize,
-                        "timestamp",
-                        "asc"),
+                        batchConsumer),
                 // Convert entity to DTO
                 gpsPoint -> exportDataMapper.toGpsPointDto(gpsPoint),
                 // Progress tracking
@@ -218,7 +217,7 @@ public class GeoPulseExportService {
 
         // Timeline data is already aggregated/simplified, so it's usually small enough
         // But we'll still stream it for consistency
-        streamingZipExportService.addStreamingJsonFileToZip(
+        streamingZipExportService.<TimelineDataGapEntity, TimelineDataDto.DataGapDto>addStreamingJsonFileToZip(
                 zos,
                 ExportImportConstants.FileNames.TIMELINE_DATA,
                 // Write metadata fields
@@ -259,14 +258,11 @@ public class GeoPulseExportService {
                 // Array field name for data gaps
                 "dataGaps",
                 // Fetch data gaps batch
-                page -> {
-                    if (page > 0)
-                        return java.util.Collections.emptyList(); // Only one batch
-                    return timelineDataGapRepository.findByUserIdAndTimeRange(
+                batchConsumer -> batchConsumer.accept(
+                        timelineDataGapRepository.findByUserIdAndTimeRange(
                             job.getUserId(),
                             job.getDateRange().getStartDate(),
-                            job.getDateRange().getEndDate());
-                },
+                            job.getDateRange().getEndDate())),
                 // Convert entity to DTO
                 gap -> exportDataMapper.toDataGapDto(gap),
                 // Progress tracking

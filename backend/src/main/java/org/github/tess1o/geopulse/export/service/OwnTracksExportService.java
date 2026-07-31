@@ -4,7 +4,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 
 import java.io.IOException;
@@ -54,17 +56,14 @@ public class OwnTracksExportService {
 
             // Stream as simple JSON array
             int batchSize = streamingExportService.getBatchSize();
-            int totalWritten = streamingExportService.streamJsonArray(
+            int totalWritten = streamingExportService.<GpsPointEntity, OwnTracksLocationMessage>streamJsonArray(
                     bos,
-                    // Fetch batch function
-                    page -> gpsPointRepository.findByUserAndDateRange(
+                    batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
                             job.getUserId(),
                             job.getDateRange().getStartDate(),
                             job.getDateRange().getEndDate(),
-                            page,
                             batchSize,
-                            "timestamp",
-                            "asc"),
+                            batchConsumer),
                     // Convert GPS point to OwnTracks message DTO
                     gpsPoint -> gpsPointMapper.toOwnTracksLocationMessage(gpsPoint),
                     // Progress tracking

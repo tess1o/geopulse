@@ -58,7 +58,7 @@ public class GeoJsonExportService {
             int batchSize = streamingExportService.getBatchSize();
 
             // Stream GeoJSON FeatureCollection with features array
-            streamingExportService.streamJsonObjectWithArray(
+            streamingExportService.<GpsPointEntity>streamJsonObjectWithArray(
                     bos,
                     // Write GeoJSON FeatureCollection metadata
                     (gen, mapper) -> {
@@ -70,15 +70,12 @@ public class GeoJsonExportService {
                     },
                     // Array field name
                     "features",
-                    // Fetch batch function
-                    page -> gpsPointRepository.findByUserAndDateRange(
+                    batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
                             job.getUserId(),
                             job.getDateRange().getStartDate(),
                             job.getDateRange().getEndDate(),
-                            page,
                             batchSize,
-                            "timestamp",
-                            "asc"),
+                            batchConsumer),
                     // Write each GPS point as GeoJSON feature
                     this::writeGpsPointAsGeoJsonFeature,
                     // Progress tracking

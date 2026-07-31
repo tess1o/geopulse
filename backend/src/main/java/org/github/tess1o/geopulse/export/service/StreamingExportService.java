@@ -12,8 +12,10 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -52,7 +54,7 @@ public class StreamingExportService {
      * @param <T> the entity type
      * @param <D> the DTO type
      * @param outputStream the output stream to write to
-     * @param fetchBatch function to fetch a batch of entities (page number -> list of entities)
+     * @param batchProducer callback that publishes entity batches
      * @param toDto function to convert entity to DTO
      * @param job the export job for progress tracking
      * @param totalRecords estimated total records for progress calculation
@@ -64,7 +66,7 @@ public class StreamingExportService {
      */
     public <T, D> int streamJsonArray(
             OutputStream outputStream,
-            Function<Integer, List<T>> fetchBatch,
+            BatchProducer<T> batchProducer,
             Function<T, D> toDto,
             ExportJob job,
             int totalRecords,
@@ -78,45 +80,49 @@ public class StreamingExportService {
         try {
             gen.writeStartArray();
 
-            int page = 0;
-            int totalWritten = 0;
             int progressRange = progressEnd - progressStart;
+            int[] totalWritten = {0};
+            int[] batchCount = {0};
 
-            while (true) {
-                List<T> batch = fetchBatch.apply(page);
-                if (batch.isEmpty()) {
-                    break;
-                }
+            try {
+                batchProducer.produce(batch -> {
+                    if (batch == null || batch.isEmpty()) {
+                        return;
+                    }
 
-                // Write each item in batch
-                for (T entity : batch) {
-                    D dto = toDto.apply(entity);
-                    gen.writeObject(dto);
-                    totalWritten++;
-                }
+                    try {
+                        for (T entity : batch) {
+                            D dto = toDto.apply(entity);
+                            gen.writeObject(dto);
+                            totalWritten[0]++;
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
 
-                page++;
+                    batchCount[0]++;
 
-                // Update progress
-                if (totalRecords > 0 && job != null) {
-                    int currentProgress = progressStart + (int) ((double) totalWritten / totalRecords * progressRange);
-                    job.updateProgress(
-                        Math.min(currentProgress, progressEnd),
-                        String.format("%s %d / %d records", progressPrefix, totalWritten, totalRecords)
-                    );
-                }
+                    if (totalRecords > 0 && job != null) {
+                        int currentProgress = progressStart + (int) ((double) totalWritten[0] / totalRecords * progressRange);
+                        job.updateProgress(
+                                Math.min(currentProgress, progressEnd),
+                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords)
+                        );
+                    }
 
-                // Log progress periodically
-                if (page % 10 == 0) {
-                    log.debug("Streamed {} records in {} batches", totalWritten, page);
-                }
+                    if (batchCount[0] % 10 == 0) {
+                        log.debug("Streamed {} records in {} batches", totalWritten[0], batchCount[0]);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
             }
 
             gen.writeEndArray();
             gen.flush();
 
-            log.info("Completed streaming {} records in {} batches", totalWritten, page);
-            return totalWritten;
+            log.info("Completed streaming {} records in {} batches", totalWritten[0], batchCount[0]);
+            return totalWritten[0];
 
         } finally {
             gen.close();
@@ -131,7 +137,7 @@ public class StreamingExportService {
      * @param outputStream the output stream to write to
      * @param writeObjectFields callback to write object fields before array
      * @param arrayFieldName name of the array field (e.g., "features", "points")
-     * @param fetchBatch function to fetch a batch of entities
+     * @param batchProducer callback that publishes entity batches
      * @param writeArrayItem callback to write each array item using JsonGenerator
      * @param job the export job for progress tracking
      * @param totalRecords estimated total records
@@ -145,7 +151,7 @@ public class StreamingExportService {
             OutputStream outputStream,
             BiConsumer<JsonGenerator, ObjectMapper> writeObjectFields,
             String arrayFieldName,
-            Function<Integer, List<T>> fetchBatch,
+            BatchProducer<T> batchProducer,
             TriConsumer<JsonGenerator, T, ObjectMapper> writeArrayItem,
             ExportJob job,
             int totalRecords,
@@ -167,49 +173,58 @@ public class StreamingExportService {
             // Start array field
             gen.writeArrayFieldStart(arrayFieldName);
 
-            int page = 0;
-            int totalWritten = 0;
             int progressRange = progressEnd - progressStart;
+            int[] totalWritten = {0};
+            int[] batchCount = {0};
 
-            while (true) {
-                List<T> batch = fetchBatch.apply(page);
-                if (batch.isEmpty()) {
-                    break;
-                }
+            try {
+                batchProducer.produce(batch -> {
+                    if (batch == null || batch.isEmpty()) {
+                        return;
+                    }
 
-                // Write each item in batch
-                for (T entity : batch) {
-                    writeArrayItem.accept(gen, entity, objectMapper);
-                    totalWritten++;
-                }
+                    try {
+                        for (T entity : batch) {
+                            writeArrayItem.accept(gen, entity, objectMapper);
+                            totalWritten[0]++;
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
 
-                page++;
+                    batchCount[0]++;
 
-                // Update progress
-                if (totalRecords > 0 && job != null) {
-                    int currentProgress = progressStart + (int) ((double) totalWritten / totalRecords * progressRange);
-                    job.updateProgress(
-                        Math.min(currentProgress, progressEnd),
-                        String.format("%s %d / %d records", progressPrefix, totalWritten, totalRecords)
-                    );
-                }
+                    if (totalRecords > 0 && job != null) {
+                        int currentProgress = progressStart + (int) ((double) totalWritten[0] / totalRecords * progressRange);
+                        job.updateProgress(
+                                Math.min(currentProgress, progressEnd),
+                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords)
+                        );
+                    }
 
-                // Log progress periodically
-                if (page % 10 == 0) {
-                    log.debug("Streamed {} records in {} batches", totalWritten, page);
-                }
+                    if (batchCount[0] % 10 == 0) {
+                        log.debug("Streamed {} records in {} batches", totalWritten[0], batchCount[0]);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
             }
 
             gen.writeEndArray(); // End array field
             gen.writeEndObject(); // End root object
             gen.flush();
 
-            log.info("Completed streaming {} records in {} batches", totalWritten, page);
-            return totalWritten;
+            log.info("Completed streaming {} records in {} batches", totalWritten[0], batchCount[0]);
+            return totalWritten[0];
 
         } finally {
             gen.close();
         }
+    }
+
+    @FunctionalInterface
+    public interface BatchProducer<T> {
+        void produce(Consumer<List<T>> batchConsumer);
     }
 
     /**
@@ -222,25 +237,38 @@ public class StreamingExportService {
 
     /**
      * Counts total records for progress tracking.
-     * Uses repository count method if available, otherwise estimates from first batch.
+     * Uses repository count method if available, otherwise estimates from the first published batch.
      */
-    public int estimateRecordCount(Function<Integer, List<?>> fetchBatch, int knownCount) {
+    public <T> int estimateRecordCount(BatchProducer<T> batchProducer, int knownCount) {
         if (knownCount > 0) {
             return knownCount;
         }
 
-        // Estimate from first batch
-        List<?> firstBatch = fetchBatch.apply(0);
-        if (firstBatch.isEmpty()) {
+        List<?>[] firstBatch = new List<?>[1];
+        try {
+            batchProducer.produce(batch -> {
+                if (firstBatch[0] == null) {
+                    firstBatch[0] = batch;
+                    throw new BatchPeekCompleteException();
+                }
+            });
+        } catch (BatchPeekCompleteException ignored) {
+            // Expected control flow: stop after one batch when no count query is available.
+        }
+
+        if (firstBatch[0] == null || firstBatch[0].isEmpty()) {
             return 0;
         }
 
-        // If first batch is full, there are likely more batches
-        if (firstBatch.size() >= getBatchSize()) {
+        // If first batch is full, there are likely more batches.
+        if (firstBatch[0].size() >= getBatchSize()) {
             log.debug("Estimating record count based on batch size (actual count unavailable)");
-            return -1; // Unknown, will skip progress percentage
+            return -1;
         }
 
-        return firstBatch.size();
+        return firstBatch[0].size();
+    }
+
+    private static class BatchPeekCompleteException extends RuntimeException {
     }
 }
