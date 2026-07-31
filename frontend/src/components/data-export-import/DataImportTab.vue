@@ -334,7 +334,10 @@
 
               <div class="timeline-progress-details">
                 <div v-if="timelineJobProgress" class="timeline-current-step">
-                  <i class="pi pi-sync pi-spin" style="font-size: 0.875rem; margin-right: 0.5rem;"></i>
+                  <i
+                    :class="timelineJobProgress.status === 'COMPLETED' ? 'pi pi-check-circle' : 'pi pi-sync pi-spin'"
+                    style="font-size: 0.875rem; margin-right: 0.5rem;"
+                  ></i>
                   <span>{{ timelineJobProgress.currentStep }}</span>
                 </div>
                 <div v-else class="timeline-current-step">
@@ -464,6 +467,17 @@ const {jobProgress: timelineJobProgress, startPolling: startTimelinePolling, sto
 
 // Import polling canceller
 let importPollCanceller = null
+
+const startImportStatusPolling = (importJobId) => {
+  if (!importJobId) {
+    return
+  }
+
+  if (importPollCanceller) {
+    importPollCanceller.cancel()
+  }
+  importPollCanceller = exportImportStore.pollJobStatus(importJobId, false)
+}
 
 // Store refs
 const {
@@ -646,7 +660,7 @@ const startImport = async () => {
 
     // Start polling for status updates
     if (currentImportJob.value) {
-      importPollCanceller = exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
+      startImportStatusPolling(currentImportJob.value.importJobId)
     }
   } catch (error) {
     console.error('Import error:', error)
@@ -804,9 +818,10 @@ const currentImportStatus = computed(() => currentImportJob.value?.status)
 
 // Watch for timeline job ID changes to start/stop polling
 watch(currentTimelineJobId, (newTimelineJobId, oldTimelineJobId) => {
-  // Only start polling when ID first appears (null -> uuid)
-  if (newTimelineJobId && !oldTimelineJobId && currentImportStatus.value === 'processing') {
-    // Start polling timeline job progress
+  if (newTimelineJobId && newTimelineJobId !== oldTimelineJobId && currentImportStatus.value === 'processing') {
+    if (oldTimelineJobId) {
+      stopTimelinePolling()
+    }
     startTimelinePolling(newTimelineJobId)
   } else if (!newTimelineJobId && oldTimelineJobId) {
     // Stop polling if timeline job ID is removed
@@ -886,11 +901,11 @@ onMounted(async () => {
     if (activeJob) {
       console.log('Found active import job on mount:', activeJob.importJobId)
       exportImportStore.setCurrentImportJob(activeJob)
-      importPollCanceller = exportImportStore.pollJobStatus(activeJob.importJobId, false)
+      startImportStatusPolling(activeJob.importJobId)
     } else if (currentImportJob.value && ['processing', 'validating'].includes(currentImportJob.value.status)) {
       // Fallback: if currentImportJob is set but not in the jobs list, poll it anyway
       console.log('Resuming polling for current import job:', currentImportJob.value.importJobId)
-      importPollCanceller = exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
+      startImportStatusPolling(currentImportJob.value.importJobId)
     }
   } catch (error) {
     console.error('Failed to fetch import jobs on mount:', error)

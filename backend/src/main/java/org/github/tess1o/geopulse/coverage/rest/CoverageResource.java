@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.coverage.model.CoverageSummary;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -37,14 +38,17 @@ public class CoverageResource {
     private final CoverageService coverageService;
     private final CoverageProcessingService processingService;
     private final CurrentUserService currentUserService;
+    private final ImportJobService importJobService;
 
     @Inject
     public CoverageResource(CoverageService coverageService,
                             CoverageProcessingService processingService,
-                            CurrentUserService currentUserService) {
+                            CurrentUserService currentUserService,
+                            ImportJobService importJobService) {
         this.coverageService = coverageService;
         this.processingService = processingService;
         this.currentUserService = currentUserService;
+        this.importJobService = importJobService;
     }
 
     @GET
@@ -88,6 +92,12 @@ public class CoverageResource {
         }
 
         UUID userId = user.getId();
+        if (importJobService.hasActiveImportJob(userId)) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(ApiResponse.error("Coverage recalculation is already managed by the active import job"))
+                    .build();
+        }
+
         processingService.startFullRecalculationAsync(userId);
 
         CoverageStatus status = coverageService.getCoverageStatus(userId);

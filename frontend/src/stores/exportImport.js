@@ -2,6 +2,21 @@ import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import chunkedUploadService from '../utils/chunkedUploadService'
 
+const TERMINAL_IMPORT_STATUSES = new Set(['completed', 'failed'])
+
+const shouldIgnoreImportUpdate = (existingJob, incomingJob) => {
+    if (!existingJob || !incomingJob) {
+        return false
+    }
+    if (existingJob.importJobId !== incomingJob.importJobId) {
+        return false
+    }
+
+    const existingStatus = existingJob.status
+    const incomingStatus = incomingJob.status
+    return TERMINAL_IMPORT_STATUSES.has(existingStatus) && existingStatus !== incomingStatus
+}
+
 export const useExportImportStore = defineStore('exportImport', {
     state: () => ({
         // Export state
@@ -99,12 +114,18 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         setCurrentImportJob(job) {
+            if (shouldIgnoreImportUpdate(this.currentImportJob, job)) {
+                return
+            }
             this.currentImportJob = job
         },
 
         addImportJob(job) {
             const existingIndex = this.importJobs.findIndex(j => j.importJobId === job.importJobId)
             if (existingIndex !== -1) {
+                if (shouldIgnoreImportUpdate(this.importJobs[existingIndex], job)) {
+                    return
+                }
                 this.importJobs[existingIndex] = job
             } else {
                 this.importJobs.unshift(job)
@@ -114,10 +135,17 @@ export const useExportImportStore = defineStore('exportImport', {
         updateImportJob(jobId, updates) {
             const job = this.importJobs.find(j => j.importJobId === jobId)
             if (job) {
-                Object.assign(job, updates)
+                if (!shouldIgnoreImportUpdate(job, { ...job, ...updates, importJobId: jobId })) {
+                    Object.assign(job, updates)
+                }
             }
             if (this.currentImportJob?.importJobId === jobId) {
-                Object.assign(this.currentImportJob, updates)
+                if (!shouldIgnoreImportUpdate(
+                    this.currentImportJob,
+                    { ...this.currentImportJob, ...updates, importJobId: jobId }
+                )) {
+                    Object.assign(this.currentImportJob, updates)
+                }
             }
         },
 

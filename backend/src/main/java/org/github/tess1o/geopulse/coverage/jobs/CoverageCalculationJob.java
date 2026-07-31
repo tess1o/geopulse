@@ -13,6 +13,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,7 @@ public class CoverageCalculationJob {
 
     private final CoverageRepository coverageRepository;
     private final CoverageProcessingService processingService;
+    private final ImportJobService importJobService;
 
     @Inject
     @Identifier("coverage-processing")
@@ -45,9 +47,11 @@ public class CoverageCalculationJob {
 
     @Inject
     public CoverageCalculationJob(CoverageRepository coverageRepository,
-                                  CoverageProcessingService processingService) {
+                                  CoverageProcessingService processingService,
+                                  ImportJobService importJobService) {
         this.coverageRepository = coverageRepository;
         this.processingService = processingService;
+        this.importJobService = importJobService;
     }
 
     @PostConstruct
@@ -76,9 +80,23 @@ public class CoverageCalculationJob {
             return;
         }
 
-        log.info("Starting coverage update for {} users", usersToProcess.size());
+        List<UUID> eligibleUsers = usersToProcess.stream()
+                .filter(userId -> {
+                    boolean hasActiveImport = importJobService.hasActiveImportJob(userId);
+                    if (hasActiveImport) {
+                        log.info("Skipping scheduled coverage update for user {} because an import is active", userId);
+                    }
+                    return !hasActiveImport;
+                })
+                .toList();
 
-        for (UUID userId : usersToProcess) {
+        if (eligibleUsers.isEmpty()) {
+            return;
+        }
+
+        log.info("Starting coverage update for {} users", eligibleUsers.size());
+
+        for (UUID userId : eligibleUsers) {
             try {
                 semaphore.acquire();
             } catch (InterruptedException e) {
