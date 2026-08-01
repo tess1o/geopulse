@@ -21,11 +21,12 @@ public class WeatherSampleFetchJob {
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP
     )
     public void fetchWeatherSamples() {
+        log.info("Weather sample fetch job triggered");
         try {
             int processed = weatherService.fetchQueuedSamples();
-            log.debug("Weather sample fetch completed: {} targets processed", processed);
+            log.info("Weather sample fetch job completed: processedTargets={}", processed);
         } catch (Exception e) {
-            log.warn("Weather sample fetch failed: {}", e.getMessage(), e);
+            log.error("Weather sample fetch job failed: {}", e.getMessage(), e);
         }
     }
 }

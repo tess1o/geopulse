@@ -320,6 +320,23 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
         return result;
     }
 
+    public long countClaimablePendingTargets(Instant now) {
+        if (now == null) {
+            return 0;
+        }
+        return count("status = ?1 and nextAttemptAt <= ?2", WeatherTargetStatus.PENDING, now);
+    }
+
+    public long countClaimablePendingBackfillTargets(Instant now) {
+        if (now == null) {
+            return 0;
+        }
+        return count("status = ?1 and source <> ?2 and nextAttemptAt <= ?3",
+                WeatherTargetStatus.PENDING,
+                WeatherTargetSource.ONGOING,
+                now);
+    }
+
     public Instant oldestPendingTargetAt() {
         return find("status = ?1 order by targetAt asc", WeatherTargetStatus.PENDING)
                 .firstResultOptional()

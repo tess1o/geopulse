@@ -18,12 +18,13 @@ public class WeatherOngoingDiscoveryJob {
     @RunOnVirtualThread
     @Scheduled(every = "${geopulse.weather.ongoing.job.interval:15m}", delayed = "${geopulse.weather.ongoing.job.delay:2m}")
     public void discoverOngoingWeatherTargets() {
+        log.info("Weather ongoing discovery job triggered");
         try {
             WeatherTargetQueueResponse response = weatherService.discoverOngoingTargets();
-            log.debug("Weather ongoing discovery queued: created={}, known={}, skipped={}",
+            log.info("Weather ongoing discovery job completed: created={}, known={}, skipped={}",
                     response.getTargetsCreated(), response.getTargetsAlreadyKnown(), response.getTargetsSkipped());
         } catch (Exception e) {
-            log.warn("Weather ongoing discovery failed: {}", e.getMessage(), e);
+            log.error("Weather ongoing discovery job failed: {}", e.getMessage(), e);
         }
     }
 }

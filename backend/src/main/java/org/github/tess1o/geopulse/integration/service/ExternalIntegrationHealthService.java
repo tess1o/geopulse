@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
 import org.github.tess1o.geopulse.integration.event.ExternalIntegrationHealthEvent;
 import org.github.tess1o.geopulse.integration.event.ExternalIntegrationHealthEventType;
@@ -15,6 +16,7 @@ import org.github.tess1o.geopulse.integration.repository.ExternalIntegrationHeal
 import java.time.Instant;
 
 @ApplicationScoped
+@Slf4j
 public class ExternalIntegrationHealthService {
 
     private static final int MAX_ERROR_LENGTH = 1000;
@@ -27,8 +29,22 @@ public class ExternalIntegrationHealthService {
 
     @Transactional
     public boolean isFetchBlocked(ExternalIntegrationType integrationType, String providerKey, Instant now) {
+        Instant effectiveNow = now == null ? Instant.now() : now;
         return healthRepository.findByIntegrationAndProvider(integrationType, providerKey)
-                .map(health -> health.getStatus() != ExternalIntegrationHealthStatus.HEALTHY)
+                .map(health -> {
+                    if (health.getStatus() == ExternalIntegrationHealthStatus.HEALTHY) {
+                        return false;
+                    }
+
+                    Instant circuitOpenUntil = health.getCircuitOpenUntil();
+                    boolean blocked = circuitOpenUntil != null && circuitOpenUntil.isAfter(effectiveNow);
+                    if (!blocked) {
+                        log.info("External integration {} provider {} is {} but circuit backoff is not active "
+                                        + "(circuitOpenUntil={}, now={}); allowing fetch retry",
+                                integrationType, providerKey, health.getStatus(), circuitOpenUntil, effectiveNow);
+                    }
+                    return blocked;
+                })
                 .orElse(false);
     }
 
@@ -60,6 +76,11 @@ public class ExternalIntegrationHealthService {
         health.setLastErrorCode(null);
         health.setLastErrorMessage(null);
         health.setFailureCount(0);
+
+        if (previousStatus != ExternalIntegrationHealthStatus.HEALTHY) {
+            log.info("External integration {} provider {} recovered from {} after incidentStartedAt={}",
+                    integrationType, providerKey, previousStatus, previousIncidentStartedAt);
+        }
 
         if (isQuotaStatus(previousStatus) && previousIncidentStartedAt != null) {
             healthEvents.fire(new ExternalIntegrationHealthEvent(
@@ -115,6 +136,17 @@ public class ExternalIntegrationHealthService {
         health.setNextProbeAt(nextProbeAt);
         health.setFailureCount(health.getFailureCount() + 1);
 
+        log.error("External integration failure recorded: integration={}, provider={}, status={}, errorCode={}, "
+                        + "message={}, circuitOpenUntil={}, nextProbeAt={}, failureCount={}",
+                integrationType,
+                providerKey,
+                quotaStatus,
+                limitedErrorCode,
+                limitedErrorMessage,
+                circuitOpenUntil,
+                nextProbeAt,
+                health.getFailureCount());
+
         if (newIncident) {
             healthEvents.fire(new ExternalIntegrationHealthEvent(
                     ExternalIntegrationHealthEventType.QUOTA_REACHED,
@@ -154,6 +186,17 @@ public class ExternalIntegrationHealthService {
         health.setCircuitOpenUntil(circuitOpenUntil);
         health.setNextProbeAt(nextProbeAt);
         health.setFailureCount(health.getFailureCount() + 1);
+
+        log.error("External integration failure recorded: integration={}, provider={}, status={}, errorCode={}, "
+                        + "message={}, circuitOpenUntil={}, nextProbeAt={}, failureCount={}",
+                integrationType,
+                providerKey,
+                status,
+                health.getLastErrorCode(),
+                health.getLastErrorMessage(),
+                circuitOpenUntil,
+                nextProbeAt,
+                health.getFailureCount());
         return circuitOpenUntil;
     }
 

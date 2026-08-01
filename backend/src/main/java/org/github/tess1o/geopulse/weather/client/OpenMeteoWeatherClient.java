@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.weather.dto.OpenMeteoResponse;
+import org.github.tess1o.geopulse.weather.dto.WeatherEndpointTestResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherProviderSample;
 import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
@@ -54,9 +55,10 @@ public class OpenMeteoWeatherClient {
     long readTimeoutSeconds;
 
     public WeatherProviderSample fetchCurrent(double latitude, double longitude) {
+        String forecastUrl = configurationService.forecastUrl();
         OpenMeteoRestClient client = null;
         try {
-            client = buildClient(configurationService.forecastUrl());
+            client = buildClient(forecastUrl);
             Response response = client.forecast(latitude, longitude, WEATHER_VARIABLES, null, null, null, "UTC", apiKeyOrNull());
             OpenMeteoResponse payload = readPayload(response);
             return fromCurrent(payload, latitude, longitude);
@@ -65,7 +67,10 @@ public class OpenMeteoWeatherClient {
         } catch (IllegalArgumentException e) {
             throw new WeatherProviderException(WeatherProviderErrorKind.CONFIG_ERROR, "Open-Meteo URL is invalid: " + e.getMessage(), e);
         } catch (RuntimeException e) {
-            throw new WeatherProviderException(WeatherProviderErrorKind.PROVIDER_UNAVAILABLE, "Open-Meteo current weather request failed: " + e.getMessage(), e);
+            throw new WeatherProviderException(
+                    WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
+                    failureMessage("forecast current weather", forecastUrl, e),
+                    e);
         } finally {
             closeClient(client);
         }
@@ -74,9 +79,11 @@ public class OpenMeteoWeatherClient {
     public WeatherProviderSample fetchHourly(double latitude, double longitude, Instant targetAt) {
         Instant hour = targetAt.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
         boolean archive = hour.isBefore(Instant.now().minus(java.time.Duration.ofDays(2)));
+        String baseUrl = archive ? configurationService.archiveUrl() : configurationService.forecastUrl();
+        String endpoint = archive ? "archive hourly weather" : "forecast hourly weather";
         OpenMeteoRestClient client = null;
         try {
-            client = buildClient(archive ? configurationService.archiveUrl() : configurationService.forecastUrl());
+            client = buildClient(baseUrl);
             OpenMeteoResponse payload;
             if (archive) {
                 LocalDate date = LocalDateTime.ofInstant(hour, ZoneOffset.UTC).toLocalDate();
@@ -98,7 +105,10 @@ public class OpenMeteoWeatherClient {
         } catch (IllegalArgumentException e) {
             throw new WeatherProviderException(WeatherProviderErrorKind.CONFIG_ERROR, "Open-Meteo URL is invalid: " + e.getMessage(), e);
         } catch (RuntimeException e) {
-            throw new WeatherProviderException(WeatherProviderErrorKind.PROVIDER_UNAVAILABLE, "Open-Meteo hourly weather request failed: " + e.getMessage(), e);
+            throw new WeatherProviderException(
+                    WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
+                    failureMessage(endpoint, baseUrl, e),
+                    e);
         } finally {
             closeClient(client);
         }
@@ -106,11 +116,33 @@ public class OpenMeteoWeatherClient {
 
     public WeatherTestResponse testConnection() {
         String forecastUrl = configurationService.forecastUrl();
-        if (forecastUrl.isBlank()) {
-            return WeatherTestResponse.builder()
+        WeatherEndpointTestResponse forecast = testForecastEndpoint(forecastUrl);
+        WeatherEndpointTestResponse archive = testArchiveEndpoint(configurationService.archiveUrl());
+        boolean success = forecast.isSuccess() && archive.isSuccess();
+        WeatherEndpointTestResponse failedEndpoint = !forecast.isSuccess() ? forecast : archive;
+        String message = success
+                ? "Open-Meteo forecast and archive endpoints are reachable"
+                : "Open-Meteo " + (!forecast.isSuccess() ? "forecast" : "archive")
+                + " endpoint failed: " + failedEndpoint.getMessage();
+        int statusCode = success ? forecast.getStatusCode() : failedEndpoint.getStatusCode();
+        String url = success ? forecast.getUrl() : failedEndpoint.getUrl();
+
+        return WeatherTestResponse.builder()
+                .success(success)
+                .statusCode(statusCode)
+                .provider(WeatherConfigurationService.PROVIDER_OPEN_METEO)
+                .url(url)
+                .message(message)
+                .forecast(forecast)
+                .archive(archive)
+                .build();
+    }
+
+    private WeatherEndpointTestResponse testForecastEndpoint(String forecastUrl) {
+        if (forecastUrl == null || forecastUrl.isBlank()) {
+            return WeatherEndpointTestResponse.builder()
                     .success(false)
                     .statusCode(0)
-                    .provider(WeatherConfigurationService.PROVIDER_OPEN_METEO)
                     .url(forecastUrl)
                     .message("Forecast URL is empty")
                     .build();
@@ -120,38 +152,68 @@ public class OpenMeteoWeatherClient {
         try {
             client = buildClient(forecastUrl);
             Response response = client.forecast(51.5074, -0.1278, WEATHER_VARIABLES, null, null, null, "UTC", apiKeyOrNull());
-            int status = response.getStatus();
-            if (status >= 200 && status < 300) {
-                response.close();
-                return WeatherTestResponse.builder()
-                        .success(true)
-                        .statusCode(status)
-                        .provider(WeatherConfigurationService.PROVIDER_OPEN_METEO)
-                        .url(forecastUrl)
-                        .message("Open-Meteo endpoint is reachable")
-                        .build();
-            }
-
-            String error = safeErrorBody(response);
-            return WeatherTestResponse.builder()
-                    .success(false)
-                    .statusCode(status)
-                    .provider(WeatherConfigurationService.PROVIDER_OPEN_METEO)
-                    .url(forecastUrl)
-                    .message(error.isBlank() ? "Open-Meteo endpoint returned HTTP " + status : error)
-                    .build();
+            return endpointTestResponse("forecast", forecastUrl, response);
         } catch (Exception e) {
-            log.warn("Open-Meteo test failed: {}", e.getMessage());
-            return WeatherTestResponse.builder()
+            log.error("Open-Meteo forecast test failed for {}: {}", forecastUrl, rootCauseMessage(e), e);
+            return WeatherEndpointTestResponse.builder()
                     .success(false)
                     .statusCode(0)
-                    .provider(WeatherConfigurationService.PROVIDER_OPEN_METEO)
                     .url(forecastUrl)
-                    .message(e.getMessage())
+                    .message(rootCauseMessage(e))
                     .build();
         } finally {
             closeClient(client);
         }
+    }
+
+    private WeatherEndpointTestResponse testArchiveEndpoint(String archiveUrl) {
+        if (archiveUrl == null || archiveUrl.isBlank()) {
+            return WeatherEndpointTestResponse.builder()
+                    .success(false)
+                    .statusCode(0)
+                    .url(archiveUrl)
+                    .message("Archive URL is empty")
+                    .build();
+        }
+
+        OpenMeteoRestClient client = null;
+        try {
+            client = buildClient(archiveUrl);
+            LocalDate date = LocalDate.now(ZoneOffset.UTC).minusDays(5);
+            Response response = client.archive(51.5074, -0.1278, WEATHER_VARIABLES, date.toString(), date.toString(), "UTC", apiKeyOrNull());
+            return endpointTestResponse("archive", archiveUrl, response);
+        } catch (Exception e) {
+            log.error("Open-Meteo archive test failed for {}: {}", archiveUrl, rootCauseMessage(e), e);
+            return WeatherEndpointTestResponse.builder()
+                    .success(false)
+                    .statusCode(0)
+                    .url(archiveUrl)
+                    .message(rootCauseMessage(e))
+                    .build();
+        } finally {
+            closeClient(client);
+        }
+    }
+
+    private WeatherEndpointTestResponse endpointTestResponse(String endpoint, String url, Response response) {
+        int status = response.getStatus();
+        if (status >= 200 && status < 300) {
+            response.close();
+            return WeatherEndpointTestResponse.builder()
+                    .success(true)
+                    .statusCode(status)
+                    .url(url)
+                    .message("Open-Meteo " + endpoint + " endpoint is reachable")
+                    .build();
+        }
+
+        String error = safeErrorBody(response);
+        return WeatherEndpointTestResponse.builder()
+                .success(false)
+                .statusCode(status)
+                .url(url)
+                .message(error.isBlank() ? "Open-Meteo " + endpoint + " endpoint returned HTTP " + status : error)
+                .build();
     }
 
     private OpenMeteoRestClient buildClient(String url) {
@@ -272,6 +334,22 @@ public class OpenMeteoWeatherClient {
     private String apiKeyOrNull() {
         String apiKey = configurationService.apiKey();
         return apiKey.isBlank() ? null : apiKey;
+    }
+
+    private String failureMessage(String operation, String baseUrl, RuntimeException e) {
+        return "Open-Meteo " + operation + " request failed for " + baseUrl + ": " + rootCauseMessage(e);
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable root = throwable;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+        String message = root.getMessage();
+        if (message == null || message.isBlank()) {
+            message = throwable.getMessage();
+        }
+        return root.getClass().getName() + (message == null || message.isBlank() ? "" : ": " + message);
     }
 
     private String safeErrorBody(Response response) {

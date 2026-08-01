@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -100,5 +101,50 @@ class ExternalIntegrationHealthServiceTest {
         assertThat(event.incidentStartedAt()).isEqualTo(incidentStartedAt);
         assertThat(event.errorCode()).isNull();
         assertThat(event.errorMessage()).isNull();
+    }
+
+    @Test
+    void fetchIsBlockedOnlyWhileCircuitOpenUntilIsInTheFuture() {
+        Instant now = Instant.parse("2026-08-01T20:22:10Z");
+        ExternalIntegrationHealthEntity health = ExternalIntegrationHealthEntity.builder()
+                .integrationType(ExternalIntegrationType.WEATHER)
+                .providerKey("OPEN_METEO")
+                .status(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE)
+                .circuitOpenUntil(now.plusSeconds(60))
+                .build();
+        when(healthRepository.findByIntegrationAndProvider(ExternalIntegrationType.WEATHER, "OPEN_METEO"))
+                .thenReturn(Optional.of(health));
+
+        assertThat(service.isFetchBlocked(ExternalIntegrationType.WEATHER, "OPEN_METEO", now)).isTrue();
+    }
+
+    @Test
+    void fetchIsAllowedWhenProviderCircuitBackoffExpired() {
+        Instant now = Instant.parse("2026-08-01T20:22:10Z");
+        ExternalIntegrationHealthEntity health = ExternalIntegrationHealthEntity.builder()
+                .integrationType(ExternalIntegrationType.WEATHER)
+                .providerKey("OPEN_METEO")
+                .status(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE)
+                .circuitOpenUntil(now.minusSeconds(60))
+                .build();
+        when(healthRepository.findByIntegrationAndProvider(ExternalIntegrationType.WEATHER, "OPEN_METEO"))
+                .thenReturn(Optional.of(health));
+
+        assertThat(service.isFetchBlocked(ExternalIntegrationType.WEATHER, "OPEN_METEO", now)).isFalse();
+    }
+
+    @Test
+    void fetchIsAllowedWhenProviderIsNonHealthyWithoutActiveCircuit() {
+        Instant now = Instant.parse("2026-08-01T20:22:10Z");
+        ExternalIntegrationHealthEntity health = ExternalIntegrationHealthEntity.builder()
+                .integrationType(ExternalIntegrationType.WEATHER)
+                .providerKey("OPEN_METEO")
+                .status(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE)
+                .circuitOpenUntil(null)
+                .build();
+        when(healthRepository.findByIntegrationAndProvider(ExternalIntegrationType.WEATHER, "OPEN_METEO"))
+                .thenReturn(Optional.of(health));
+
+        assertThat(service.isFetchBlocked(ExternalIntegrationType.WEATHER, "OPEN_METEO", now)).isFalse();
     }
 }

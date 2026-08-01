@@ -31,54 +31,67 @@ public class WeatherBackfillDiscoveryJob {
     ExecutorService executorService;
 
     private final AtomicBoolean discoveryRunning = new AtomicBoolean(false);
+    private final AtomicBoolean fullKickstartPending = new AtomicBoolean(false);
 
     void onStartup(@Observes StartupEvent ignored) {
+        log.info("Weather backfill discovery job triggered: startup");
         runKickstartAsync("startup");
     }
 
     void onWeatherSettingsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) WeatherSettingsChangedEvent event) {
+        log.info("Weather backfill discovery job triggered: weather setting changed key={}", event.key());
         runKickstartAsync("weather setting changed: " + event.key());
     }
 
     void onTimelineDataChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) TimelineDataChangedEvent event) {
+        log.info("Weather backfill discovery job triggered: timeline data changed userId={}, affectedFrom={}, affectedTo={}",
+                event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
         runKickstartAsync(event);
     }
 
     @RunOnVirtualThread
     @Scheduled(every = "${geopulse.weather.backfill.discovery.job.interval:30m}", delayed = "${geopulse.weather.backfill.discovery.job.delay:5m}")
     public void discoverHistoricalWeatherTargets() {
-        discoverHistoricalTargets("scheduled", weatherService::discoverHistoricalBackfillTargets);
+        log.info("Weather backfill discovery job triggered: scheduled");
+        discoverHistoricalTargets("scheduled", weatherService::discoverHistoricalBackfillTargets, false);
     }
 
     private void runKickstartAsync(String reason) {
+        log.info("Submitting weather backfill kickstart: reason={}", reason);
         try {
             CompletableFuture.runAsync(() -> runKickstart(reason), executorService)
                     .exceptionally(throwable -> {
-                        log.warn("Weather backfill discovery kickstart failed on {}: {}", reason, throwable.getMessage(), throwable);
+                        fullKickstartPending.set(true);
+                        log.error("Weather backfill discovery kickstart failed on {}: {}", reason, throwable.getMessage(), throwable);
                         return null;
                     });
         } catch (RuntimeException e) {
-            log.warn("Failed to submit weather backfill discovery kickstart on {}: {}", reason, e.getMessage(), e);
+            fullKickstartPending.set(true);
+            log.error("Failed to submit weather backfill discovery kickstart on {}: {}", reason, e.getMessage(), e);
         }
     }
 
     private void runKickstartAsync(TimelineDataChangedEvent event) {
+        log.info("Submitting weather backfill kickstart after timeline change: userId={}, affectedFrom={}, affectedTo={}",
+                event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
         try {
             CompletableFuture.runAsync(() -> runKickstart(event), executorService)
                     .exceptionally(throwable -> {
-                        log.warn("Weather backfill discovery kickstart failed after timeline change {}: {}",
+                        log.error("Weather backfill discovery kickstart failed after timeline change {}: {}",
                                 event, throwable.getMessage(), throwable);
                         return null;
                     });
         } catch (RuntimeException e) {
-            log.warn("Failed to submit weather backfill discovery kickstart after timeline change {}: {}",
+            log.error("Failed to submit weather backfill discovery kickstart after timeline change {}: {}",
                     event, e.getMessage(), e);
         }
     }
 
     private void runKickstart(String reason) {
-        DiscoveryOutcome outcome = discoverHistoricalTargets(reason, weatherService::discoverHistoricalBackfillTargets);
+        fullKickstartPending.set(false);
+        DiscoveryOutcome outcome = discoverHistoricalTargets(reason, weatherService::discoverHistoricalBackfillTargets, true);
         if (!shouldFetchAfterDiscovery(outcome)) {
+            log.info("Weather backfill kickstart skipped fetch after {}: no discovered or reset targets", reason);
             return;
         }
 
@@ -96,9 +109,11 @@ public class WeatherBackfillDiscoveryJob {
                         event.getUserId(),
                         event.getAffectedFrom(),
                         event.getAffectedTo()
-                )
+                ),
+                false
         );
         if (!shouldFetchAfterDiscovery(outcome)) {
+            log.info("Weather backfill kickstart skipped fetch after {}: no discovered or reset targets", reason);
             return;
         }
 
@@ -106,13 +121,21 @@ public class WeatherBackfillDiscoveryJob {
         log.info("Weather backfill kickstart fetched {} queued samples after {}", fetched, reason);
     }
 
-    private DiscoveryOutcome discoverHistoricalTargets(String reason, Supplier<WeatherTargetQueueResponse> discovery) {
+    private DiscoveryOutcome discoverHistoricalTargets(String reason,
+                                                       Supplier<WeatherTargetQueueResponse> discovery,
+                                                       boolean queueFullKickstartIfRunning) {
         if (!discoveryRunning.compareAndSet(false, true)) {
-            log.info("Weather backfill discovery is already running, skipping {}", reason);
+            if (queueFullKickstartIfRunning) {
+                fullKickstartPending.set(true);
+                log.info("Weather backfill discovery is already running; queued one full kickstart after {}", reason);
+            } else {
+                log.info("Weather backfill discovery is already running, skipping {}", reason);
+            }
             return null;
         }
 
         try {
+            log.info("Weather backfill discovery starting on {}", reason);
             long resetFailedTargets = weatherService.resetStaleFailedTargetsForRetry();
             if (resetFailedTargets > 0) {
                 log.info("Weather backfill discovery reset {} stale failed targets on {}", resetFailedTargets, reason);
@@ -123,16 +146,27 @@ public class WeatherBackfillDiscoveryJob {
                 log.info("Weather backfill discovery completed on {}: created={}, known={}, skipped={}",
                         reason, response.getTargetsCreated(), response.getTargetsAlreadyKnown(), response.getTargetsSkipped());
             } else {
-                log.debug("Weather backfill discovery completed on {}: created={}, known={}, skipped={}",
+                log.info("Weather backfill discovery completed on {}: created={}, known={}, skipped={}",
                         reason, response.getTargetsCreated(), response.getTargetsAlreadyKnown(), response.getTargetsSkipped());
             }
             return new DiscoveryOutcome(response, resetFailedTargets);
         } catch (Exception e) {
-            log.warn("Weather backfill discovery failed on {}: {}", reason, e.getMessage(), e);
+            log.error("Weather backfill discovery failed on {}: {}", reason, e.getMessage(), e);
             return null;
         } finally {
             discoveryRunning.set(false);
+            schedulePendingFullKickstart(reason);
         }
+    }
+
+    private void schedulePendingFullKickstart(String completedReason) {
+        if (!fullKickstartPending.compareAndSet(true, false)) {
+            return;
+        }
+
+        String reason = "queued full weather backfill after " + completedReason;
+        log.info("Weather backfill discovery completed {}; scheduling {}", completedReason, reason);
+        runKickstartAsync(reason);
     }
 
     private boolean shouldFetchAfterDiscovery(DiscoveryOutcome outcome) {

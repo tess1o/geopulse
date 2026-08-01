@@ -20,6 +20,8 @@ public class WeatherStatusResponse {
     private long requestsRemainingToday;
     private long samples;
     private Map<String, Long> targetsByStatus;
+    private long claimablePendingTargets;
+    private String fetchBlockedReason;
     private Instant oldestPendingTargetAt;
     private Instant newestPendingTargetAt;
     private ExternalIntegrationHealthDto providerHealth;

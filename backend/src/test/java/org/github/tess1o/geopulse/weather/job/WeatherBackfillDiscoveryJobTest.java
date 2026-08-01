@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.weather.job;
 
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.weather.dto.WeatherTargetQueueResponse;
+import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,39 @@ class WeatherBackfillDiscoveryJobTest {
     @AfterEach
     void tearDown() {
         executorService.shutdownNow();
+    }
+
+    @Test
+    void weatherSettingsChangedDiscoversAndFetchesQueuedSamples() {
+        when(weatherService.discoverHistoricalBackfillTargets())
+                .thenReturn(WeatherTargetQueueResponse.builder().targetsCreated(2).build());
+
+        job.onWeatherSettingsChanged(new WeatherSettingsChangedEvent("weather.backfill.enabled"));
+
+        verify(weatherService).resetStaleFailedTargetsForRetry();
+        verify(weatherService).discoverHistoricalBackfillTargets();
+        verify(weatherService).fetchQueuedSamples();
+    }
+
+    @Test
+    void weatherSettingsChangedQueuesFullKickstartWhenDiscoveryIsRunning() {
+        UUID userId = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        Instant affectedFrom = Instant.parse("2026-06-25T08:00:00Z");
+        Instant affectedTo = Instant.parse("2026-06-26T08:00:00Z");
+        when(weatherService.discoverHistoricalBackfillTargets(userId, affectedFrom, affectedTo))
+                .thenAnswer(invocation -> {
+                    job.onWeatherSettingsChanged(new WeatherSettingsChangedEvent("weather.backfill.enabled"));
+                    return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
+                });
+        when(weatherService.discoverHistoricalBackfillTargets())
+                .thenReturn(WeatherTargetQueueResponse.builder().targetsCreated(3).build());
+
+        job.onTimelineDataChanged(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
+
+        verify(weatherService).discoverHistoricalBackfillTargets(userId, affectedFrom, affectedTo);
+        verify(weatherService).discoverHistoricalBackfillTargets();
+        verify(weatherService).fetchQueuedSamples();
     }
 
     @Test

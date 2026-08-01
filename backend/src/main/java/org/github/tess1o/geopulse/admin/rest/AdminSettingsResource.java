@@ -257,6 +257,8 @@ public class AdminSettingsResource {
         responsePayload.put("message", result.getMessage());
         responsePayload.put("provider", result.getProvider());
         responsePayload.put("url", result.getUrl());
+        responsePayload.put("forecast", result.getForecast());
+        responsePayload.put("archive", result.getArchive());
 
         if (result.isSuccess()) {
             return Response.ok(responsePayload).build();

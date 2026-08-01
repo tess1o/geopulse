@@ -24,11 +24,13 @@ public class WeatherTargetCleanupJob {
     @RunOnVirtualThread
     @Scheduled(cron = "${geopulse.weather.target-cleanup.job.cron:0 30 3 * * ?}")
     public void cleanupWeatherTargets() {
+        log.info("Weather target cleanup job triggered: completedRetentionDays={}, failedRetentionDays={}",
+                completedRetentionDays, failedRetentionDays);
         try {
             long deleted = weatherService.cleanupTargets(completedRetentionDays, failedRetentionDays);
-            log.debug("Weather target cleanup deleted {} queue rows", deleted);
+            log.info("Weather target cleanup job completed: deletedTargets={}", deleted);
         } catch (Exception e) {
-            log.warn("Weather target cleanup failed: {}", e.getMessage(), e);
+            log.error("Weather target cleanup job failed: {}", e.getMessage(), e);
         }
     }
 }

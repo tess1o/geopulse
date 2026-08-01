@@ -169,6 +169,18 @@
           <strong>{{ pendingTargets }}</strong>
         </div>
         <div class="weather-status-row">
+          <span>Claimable pending</span>
+          <strong>{{ claimablePendingTargets }}</strong>
+        </div>
+        <div class="weather-status-row">
+          <span>Fetch status</span>
+          <strong class="weather-status-message">{{ fetchStatusText }}</strong>
+        </div>
+        <div class="weather-status-row">
+          <span>Provider health</span>
+          <Tag :value="providerHealthStatus" :severity="providerHealthSeverity" />
+        </div>
+        <div class="weather-status-row">
           <span>In progress targets</span>
           <strong>{{ inProgressTargets }}</strong>
         </div>
@@ -256,6 +268,17 @@ const apiKeyStateText = computed(() => {
   return 'Not set'
 })
 const pendingTargets = computed(() => status.value?.targetsByStatus?.PENDING || 0)
+const claimablePendingTargets = computed(() => status.value?.claimablePendingTargets || 0)
+const fetchStatusText = computed(() => status.value?.fetchBlockedReason || 'Ready')
+const providerHealth = computed(() => status.value?.providerHealth || null)
+const providerHealthStatus = computed(() => providerHealth.value?.status || 'UNKNOWN')
+const providerHealthSeverity = computed(() => {
+  const healthStatus = providerHealth.value?.status
+  if (healthStatus === 'HEALTHY') return 'success'
+  if (healthStatus === 'PROVIDER_QUOTA_EXCEEDED' || healthStatus === 'INTERNAL_QUOTA_EXCEEDED') return 'warn'
+  if (healthStatus === 'PROVIDER_UNAVAILABLE' || healthStatus === 'CONFIG_ERROR') return 'danger'
+  return 'secondary'
+})
 const inProgressTargets = computed(() => status.value?.targetsByStatus?.IN_PROGRESS || 0)
 const completedTargets = computed(() => status.value?.targetsByStatus?.COMPLETED || 0)
 const skippedTargets = computed(() => status.value?.targetsByStatus?.SKIPPED || 0)
@@ -580,6 +603,12 @@ const numberStep = (setting) => {
 
 .weather-status-row span {
   color: var(--gp-text-secondary);
+}
+
+.weather-status-message {
+  max-width: 320px;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 768px) {

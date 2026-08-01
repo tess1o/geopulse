@@ -21,13 +21,15 @@ public class WeatherProviderHealthProbeJob {
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP
     )
     public void probeWeatherProviderHealth() {
+        log.info("Weather provider health probe job triggered");
         try {
             boolean restored = weatherService.probeProviderHealth();
             if (restored) {
                 log.info("Weather provider health probe restored provider health");
             }
+            log.info("Weather provider health probe job completed: restored={}", restored);
         } catch (Exception e) {
-            log.warn("Weather provider health probe failed: {}", e.getMessage(), e);
+            log.error("Weather provider health probe job failed: {}", e.getMessage(), e);
         }
     }
 }

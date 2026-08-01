@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetStatus;
         WeatherTargetQueueResponse.class,
         WeatherBackfillRequest.class,
         WeatherTestResponse.class,
+        WeatherEndpointTestResponse.class,
         WeatherProviderSample.class,
         OpenMeteoResponse.class,
         OpenMeteoResponse.OpenMeteoCurrent.class,

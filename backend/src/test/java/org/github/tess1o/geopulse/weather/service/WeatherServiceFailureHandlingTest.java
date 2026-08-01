@@ -6,7 +6,11 @@ import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthS
 import org.github.tess1o.geopulse.weather.client.OpenMeteoWeatherClient;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderException;
+import org.github.tess1o.geopulse.weather.dto.WeatherEndpointTestResponse;
+import org.github.tess1o.geopulse.weather.dto.WeatherStatusResponse;
+import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
 import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
+import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetClaim;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,8 +21,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import javax.net.ssl.SSLHandshakeException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +35,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,6 +60,9 @@ class WeatherServiceFailureHandlingTest {
     WeatherSampleTargetRepository targetRepository;
 
     @Mock
+    WeatherSampleRepository sampleRepository;
+
+    @Mock
     OpenMeteoWeatherClient weatherClient;
 
     private WeatherService service;
@@ -62,16 +73,18 @@ class WeatherServiceFailureHandlingTest {
         service.configurationService = configurationService;
         service.quotaService = quotaService;
         service.integrationHealthService = integrationHealthService;
+        service.sampleRepository = sampleRepository;
         service.targetRepository = targetRepository;
         service.weatherClient = weatherClient;
         service.inProgressTimeoutMinutes = 60;
+        service.sslHandshakeRetryAttempts = 2;
 
-        when(configurationService.isEnabled()).thenReturn(true);
-        when(configurationService.isConfigured()).thenReturn(true);
-        when(configurationService.dailyRequestLimit()).thenReturn(5);
-        when(configurationService.ongoingReserve()).thenReturn(0);
-        when(quotaService.requestsUsedToday()).thenReturn(0L);
-        when(targetRepository.resetStaleInProgressTargets(any(Instant.class))).thenReturn(0L);
+        lenient().when(configurationService.isEnabled()).thenReturn(true);
+        lenient().when(configurationService.isConfigured()).thenReturn(true);
+        lenient().when(configurationService.dailyRequestLimit()).thenReturn(5);
+        lenient().when(configurationService.ongoingReserve()).thenReturn(0);
+        lenient().when(quotaService.requestsUsedToday()).thenReturn(0L);
+        lenient().when(targetRepository.resetStaleInProgressTargets(any(Instant.class))).thenReturn(0L);
     }
 
     @Test
@@ -175,6 +188,132 @@ class WeatherServiceFailureHandlingTest {
         verify(integrationHealthService, never()).recordQuotaExceeded(any(), anyString(), any(), anyString(), anyString(), any(), any());
     }
 
+    @Test
+    void sslHandshakeFailureRetriesBeforeProviderCircuitFlow() {
+        allowFetches();
+        WeatherSampleTargetClaim first = target(1L);
+        WeatherProviderException sslFailure = new WeatherProviderException(
+                WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
+                "Open-Meteo archive hourly weather request failed",
+                new SSLHandshakeException("Failed to create SSL connection"));
+        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first));
+        when(weatherClient.fetchCurrent(first.latitude(), first.longitude()))
+                .thenThrow(sslFailure)
+                .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "no archive data"));
+
+        int processed = service.fetchQueuedSamples();
+
+        assertThat(processed).isZero();
+        verify(weatherClient, times(2)).fetchCurrent(first.latitude(), first.longitude());
+        verify(targetRepository).markAttemptStarted(1L);
+        verify(targetRepository).markSkipped(1L, "Weather provider has no data: no archive data");
+        verify(integrationHealthService, never()).recordFailure(any(), anyString(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void successfulProviderConnectionTestClearsProviderHealth() {
+        WeatherTestResponse response = WeatherTestResponse.builder()
+                .success(true)
+                .statusCode(200)
+                .provider(PROVIDER)
+                .message("Open-Meteo forecast and archive endpoints are reachable")
+                .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
+                .archive(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://archive-api.open-meteo.com").build())
+                .build();
+        when(weatherClient.testConnection()).thenReturn(response);
+
+        WeatherTestResponse result = service.testProviderConnection();
+
+        assertThat(result).isSameAs(response);
+        verify(integrationHealthService).recordSuccess(any(), eq(PROVIDER));
+    }
+
+    @Test
+    void successfulProviderConnectionTestRetriesTransientArchiveSslFailureBeforeClearingProviderHealth() {
+        WeatherTestResponse sslFailure = WeatherTestResponse.builder()
+                .success(false)
+                .statusCode(0)
+                .provider(PROVIDER)
+                .message("Open-Meteo archive endpoint failed: javax.net.ssl.SSLHandshakeException")
+                .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
+                .archive(WeatherEndpointTestResponse.builder()
+                        .success(false)
+                        .statusCode(0)
+                        .url("https://archive-api.open-meteo.com")
+                        .message("javax.net.ssl.SSLHandshakeException")
+                        .build())
+                .build();
+        WeatherTestResponse success = WeatherTestResponse.builder()
+                .success(true)
+                .statusCode(200)
+                .provider(PROVIDER)
+                .message("Open-Meteo forecast and archive endpoints are reachable")
+                .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
+                .archive(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://archive-api.open-meteo.com").build())
+                .build();
+        when(weatherClient.testConnection()).thenReturn(sslFailure, success);
+
+        WeatherTestResponse result = service.testProviderConnection();
+
+        assertThat(result).isSameAs(success);
+        verify(weatherClient, times(2)).testConnection();
+        verify(integrationHealthService).recordSuccess(any(), eq(PROVIDER));
+    }
+
+    @Test
+    void archiveProviderConnectionFailureIsReportedWithoutClearingProviderHealth() {
+        WeatherTestResponse response = WeatherTestResponse.builder()
+                .success(false)
+                .statusCode(0)
+                .provider(PROVIDER)
+                .message("Open-Meteo archive endpoint failed: javax.net.ssl.SSLHandshakeException")
+                .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
+                .archive(WeatherEndpointTestResponse.builder()
+                        .success(false)
+                        .statusCode(0)
+                        .url("https://archive-api.open-meteo.com")
+                        .message("javax.net.ssl.SSLHandshakeException")
+                        .build())
+                .build();
+        when(weatherClient.testConnection()).thenReturn(response);
+
+        WeatherTestResponse result = service.testProviderConnection();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getMessage()).contains("archive").contains("SSLHandshakeException");
+        assertThat(result.getArchive().getMessage()).contains("SSLHandshakeException");
+        verify(integrationHealthService, never()).recordSuccess(any(), eq(PROVIDER));
+    }
+
+    @Test
+    void statusReportsClaimablePendingTargetsAndProviderBlockReason() {
+        Instant circuitOpenUntil = Instant.now().plusSeconds(300);
+        ExternalIntegrationHealthDto providerHealth = ExternalIntegrationHealthDto.builder()
+                .status(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE)
+                .lastErrorCode("PROVIDER_UNAVAILABLE")
+                .lastErrorMessage("Open-Meteo archive hourly weather request failed for https://archive-api.open-meteo.com: javax.net.ssl.SSLHandshakeException")
+                .circuitOpenUntil(circuitOpenUntil)
+                .nextProbeAt(circuitOpenUntil)
+                .failureCount(1)
+                .build();
+        when(configurationService.dailyRequestLimit()).thenReturn(10_000);
+        when(configurationService.ongoingReserve()).thenReturn(100);
+        when(quotaService.requestsUsedToday()).thenReturn(203L);
+        when(sampleRepository.countSamples()).thenReturn(202L);
+        when(targetRepository.countByStatus()).thenReturn(Map.of("PENDING", 4525L));
+        when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(4525L);
+        when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(4525L);
+        when(integrationHealthService.currentHealth(any(), eq(PROVIDER))).thenReturn(providerHealth);
+
+        WeatherStatusResponse status = service.status();
+
+        assertThat(status.getClaimablePendingTargets()).isEqualTo(4525);
+        assertThat(status.getFetchBlockedReason())
+                .contains("Provider health blocks fetch")
+                .contains("PROVIDER_UNAVAILABLE")
+                .contains("SSLHandshakeException");
+    }
+
     private WeatherSampleTargetClaim target(long id) {
         return new WeatherSampleTargetClaim(
                 id,
@@ -191,5 +330,7 @@ class WeatherServiceFailureHandlingTest {
 
     private void allowFetches() {
         when(integrationHealthService.isFetchBlocked(any(), eq(PROVIDER), any(Instant.class))).thenReturn(false);
+        when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(5L);
+        when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(0L);
     }
 }

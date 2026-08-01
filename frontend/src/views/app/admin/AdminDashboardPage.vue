@@ -113,6 +113,18 @@
               <span>Daily quota</span>
               <strong>{{ formatNumber(stats.weatherStatus?.requestsRemainingToday || 0) }} remaining</strong>
             </div>
+            <div class="weather-health-row">
+              <span>Pending targets</span>
+              <strong>{{ formatNumber(weatherPendingTargets) }}</strong>
+            </div>
+            <div class="weather-health-row">
+              <span>Claimable pending</span>
+              <strong>{{ formatNumber(weatherClaimablePendingTargets) }}</strong>
+            </div>
+            <div class="weather-health-row">
+              <span>Fetch status</span>
+              <strong class="weather-health-status">{{ weatherFetchStatus }}</strong>
+            </div>
             <div v-if="weatherProviderHealth?.lastErrorMessage" class="weather-health-message">
               {{ weatherProviderHealth.lastErrorMessage }}
             </div>
@@ -216,6 +228,9 @@ const formatNumber = (num) => {
 }
 
 const weatherProviderHealth = computed(() => stats.value.weatherStatus?.providerHealth || null)
+const weatherPendingTargets = computed(() => stats.value.weatherStatus?.targetsByStatus?.PENDING || 0)
+const weatherClaimablePendingTargets = computed(() => stats.value.weatherStatus?.claimablePendingTargets || 0)
+const weatherFetchStatus = computed(() => stats.value.weatherStatus?.fetchBlockedReason || 'Ready')
 
 const hasWeatherStatus = computed(() => !!stats.value.weatherStatus)
 
@@ -251,10 +266,10 @@ const weatherHealthSeverity = computed(() => {
 const weatherNextAction = computed(() => {
   const health = weatherProviderHealth.value
   if (!health) return null
-  if (health.circuitOpenUntil) {
+  if (health.circuitOpenUntil && isFutureTimestamp(health.circuitOpenUntil)) {
     return { label: 'Paused until', value: formatDateTime(health.circuitOpenUntil) }
   }
-  if (health.nextProbeAt) {
+  if (health.nextProbeAt && isFutureTimestamp(health.nextProbeAt)) {
     return { label: 'Next probe', value: formatDateTime(health.nextProbeAt) }
   }
   if (health.lastSuccessAt) {
@@ -262,6 +277,12 @@ const weatherNextAction = computed(() => {
   }
   return null
 })
+
+const isFutureTimestamp = (value) => {
+  if (!value) return false
+  const timestamp = new Date(value).getTime()
+  return Number.isFinite(timestamp) && timestamp > Date.now()
+}
 
 const formatDateTime = (value) => {
   if (!value) return ''
@@ -450,6 +471,11 @@ onMounted(() => {
 .weather-health-row strong {
   color: var(--text-color);
   text-align: right;
+}
+
+.weather-health-status {
+  max-width: 420px;
+  overflow-wrap: anywhere;
 }
 
 .weather-health-message {
