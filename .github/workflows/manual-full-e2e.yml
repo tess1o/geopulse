@@ -55,7 +55,7 @@ jobs:
           npx playwright test --project=chromium --project=chromium-vector
         env:
           BASE_URL: http://localhost:5556
-          PLAYWRIGHT_WORKERS: 2
+          PLAYWRIGHT_WORKERS: 3
           CI: true
 
       - name: Upload Playwright HTML report
