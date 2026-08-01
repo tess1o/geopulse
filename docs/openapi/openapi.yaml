@@ -17,6 +17,8 @@ tags:
   description: "Preview, create, inspect, and retry timeline regeneration campaigns."
 - name: "Admin: Users"
   description: "Manage users, roles, status, passwords, and account deletion."
+- name: "Admin: Weather"
+  description: Backfill weather samples
 - name: "User: AI Assistant"
   description: Manage AI assistant settings and chat with the configured AI provider.
 - name: "User: API Tokens"
@@ -51,6 +53,10 @@ tags:
   description: Read journey insight summaries.
 - name: "User: Location Analytics"
   description: "Search and analyze visited cities, countries, places, and visits."
+- name: "User: Memos"
+  description: Manage Memos configuration for live notes integration.
+- name: "User: Notes"
+  description: Manage GeoPulse notes and live Memos integration.
 - name: "User: Notifications"
   description: Read and update notification seen state.
 - name: "User: Period Tags"
@@ -72,6 +78,8 @@ tags:
 - name: "User: Users"
   description: "Register users and manage the authenticated user profile, avatar,\
     \ password, and preferences."
+- name: "User: Weather"
+  description: Get Weather samples
 components:
   schemas:
     Achievements:
@@ -515,6 +523,34 @@ components:
           type: boolean
         cityRuleValid:
           type: boolean
+    CreateNoteRequest:
+      required:
+      - contentMarkdown
+      type: object
+      properties:
+        destination:
+          $ref: "#/components/schemas/NoteDestination"
+        title:
+          maxLength: 255
+          type: string
+        contentMarkdown:
+          pattern: \S
+          type: string
+        eventTime:
+          $ref: "#/components/schemas/Instant"
+        anchorType:
+          $ref: "#/components/schemas/NoteAnchorType"
+        anchorId:
+          format: int64
+          type: integer
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        visibility:
+          $ref: "#/components/schemas/MemosVisibility"
     CreateNotificationTemplateRequest:
       required:
       - name
@@ -638,6 +674,8 @@ components:
         show_current_location:
           type: boolean
         show_photos:
+          type: boolean
+        show_notes:
           type: boolean
         custom_map_tile_url:
           maxLength: 1000
@@ -1139,6 +1177,8 @@ components:
           $ref: "#/components/schemas/Achievements"
         distanceTraveled:
           $ref: "#/components/schemas/DistanceTraveled"
+        weather:
+          $ref: "#/components/schemas/WeatherInsights"
     JsonNode:
       type: object
       properties:
@@ -1239,6 +1279,12 @@ components:
       - METRIC
       - IMPERIAL
       type: string
+    MemosVisibility:
+      enum:
+      - PRIVATE
+      - PROTECTED
+      - PUBLIC
+      type: string
     MobileSessionExchangeRequest:
       required:
       - sessionCode
@@ -1252,6 +1298,17 @@ components:
       - COUNTRY
       - CITY
       type: string
+    NoteAnchorType:
+      enum:
+      - TIMESTAMP
+      - STAY
+      - TRIP
+      type: string
+    NoteDestination:
+      enum:
+      - GEOPULSE
+      - MEMOS
+      type: string
     NotificationSource:
       enum:
       - GEOFENCE
@@ -1259,6 +1316,7 @@ components:
       - IMPORT
       - EXPORT
       - FRIEND_INVITE
+      - WEATHER
       type: string
     NotificationType:
       enum:
@@ -1271,6 +1329,8 @@ components:
       - EXPORT_FAILED
       - FRIEND_INVITE_RECEIVED
       - FRIEND_INVITE_ACCEPTED
+      - WEATHER_QUOTA_REACHED
+      - WEATHER_QUOTA_RESTORED
       type: string
     OidcCallbackRequest:
       required:
@@ -1394,6 +1454,16 @@ components:
         isApiKeyNeeded:
           type: boolean
     TestImmichConnectionRequest:
+      required:
+      - serverUrl
+      type: object
+      properties:
+        serverUrl:
+          pattern: \S
+          type: string
+        apiKey:
+          type: string
+    TestMemosConnectionRequest:
       required:
       - serverUrl
       type: object
@@ -1746,6 +1816,37 @@ components:
       properties:
         shareLiveLocation:
           type: boolean
+    UpdateMemosConfigRequest:
+      required:
+      - enabled
+      type: object
+      properties:
+        serverUrl:
+          type: string
+        apiKey:
+          type: string
+        enabled:
+          type: boolean
+        defaultSaveDestination:
+          $ref: "#/components/schemas/NoteDestination"
+        defaultVisibility:
+          $ref: "#/components/schemas/MemosVisibility"
+        maxNotesPerRequest:
+          format: int32
+          type: integer
+        maxContentBytes:
+          format: int32
+          type: integer
+        searchCacheEnabled:
+          type: boolean
+        includeTags:
+          type: array
+          items:
+            type: string
+        excludeTags:
+          type: array
+          items:
+            type: string
     UpdateNormalizationRuleRequest:
       required:
       - ruleType
@@ -1769,6 +1870,25 @@ components:
           type: boolean
         cityRuleValid:
           type: boolean
+    UpdateNoteRequest:
+      required:
+      - contentMarkdown
+      type: object
+      properties:
+        title:
+          maxLength: 255
+          type: string
+        contentMarkdown:
+          pattern: \S
+          type: string
+        eventTime:
+          $ref: "#/components/schemas/Instant"
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
     UpdateNotificationTemplateRequest:
       type: object
       properties:
@@ -1915,6 +2035,8 @@ components:
         show_current_location:
           type: boolean
         show_photos:
+          type: boolean
+        show_notes:
           type: boolean
         custom_map_tile_url:
           maxLength: 1000
@@ -2312,6 +2434,93 @@ components:
       properties:
         password:
           type: string
+    WeatherBackfillRequest:
+      type: object
+      properties:
+        userId:
+          $ref: "#/components/schemas/UUID"
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+    WeatherConditionInsight:
+      type: object
+      properties:
+        weatherCode:
+          format: int32
+          type: integer
+        label:
+          type: string
+        severity:
+          type: string
+        samplesCount:
+          format: int64
+          type: integer
+    WeatherDailyPrecipitationInsight:
+      type: object
+      properties:
+        date:
+          type: string
+        precipitation:
+          format: double
+          type: number
+    WeatherInsights:
+      type: object
+      properties:
+        samplesCount:
+          format: int64
+          type: integer
+        coldestTemperature:
+          $ref: "#/components/schemas/WeatherSampleInsight"
+        hottestTemperature:
+          $ref: "#/components/schemas/WeatherSampleInsight"
+        averageTemperature:
+          format: double
+          type: number
+        wettestDay:
+          $ref: "#/components/schemas/WeatherDailyPrecipitationInsight"
+        rainySamplesCount:
+          format: int64
+          type: integer
+        snowySamplesCount:
+          format: int64
+          type: integer
+        windiestSample:
+          $ref: "#/components/schemas/WeatherSampleInsight"
+        dominantCondition:
+          $ref: "#/components/schemas/WeatherConditionInsight"
+        weatherCoverageStart:
+          $ref: "#/components/schemas/Instant"
+        weatherCoverageEnd:
+          $ref: "#/components/schemas/Instant"
+    WeatherSampleInsight:
+      type: object
+      properties:
+        observedAt:
+          $ref: "#/components/schemas/Instant"
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        weatherCode:
+          format: int32
+          type: integer
+        condition:
+          type: string
+        temperature:
+          format: double
+          type: number
+        precipitation:
+          format: double
+          type: number
+        snowfall:
+          format: double
+          type: number
+        windSpeed:
+          format: double
+          type: number
   securitySchemes:
     jwt:
       type: http
@@ -2915,6 +3124,27 @@ paths:
       security:
       - jwt:
         - ADMIN
+  /api/admin/settings/weather/test:
+    post:
+      operationId: AdminSettingsResource_testWeatherConnection
+      tags:
+      - "Admin: System Settings"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Test Weather Connection
+      security:
+      - jwt:
+        - ADMIN
   /api/admin/settings/{category}:
     get:
       operationId: AdminSettingsResource_getSettingsByCategory
@@ -3378,6 +3608,56 @@ paths:
         "400":
           description: Bad Request
       summary: Update User Status
+      security:
+      - jwt:
+        - ADMIN
+  /api/admin/weather/backfill:
+    post:
+      operationId: AdminWeatherResource_backfill
+      tags:
+      - "Admin: Weather"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeatherBackfillRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Backfill
+      security:
+      - jwt:
+        - ADMIN
+  /api/admin/weather/status:
+    get:
+      operationId: AdminWeatherResource_status
+      tags:
+      - "Admin: Weather"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Status
       security:
       - jwt:
         - ADMIN
@@ -7925,6 +8205,193 @@ paths:
         "400":
           description: Bad Request
       summary: Exchange Session Code
+  /api/notes:
+    post:
+      operationId: TimelineNoteResource_createNote
+      tags:
+      - "User: Notes"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNoteRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Create Note
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/notes/map-markers:
+    get:
+      operationId: TimelineNoteResource_getNoteMapMarkers
+      tags:
+      - "User: Notes"
+      parameters:
+      - name: coordinatePrecision
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: includeExternal
+        in: query
+        schema:
+          default: true
+          type: boolean
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Note Map Markers
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/notes/search:
+    get:
+      operationId: TimelineNoteResource_searchNotes
+      tags:
+      - "User: Notes"
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: includeExternal
+        in: query
+        schema:
+          default: true
+          type: boolean
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Search Notes
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/notes/{noteId}:
+    patch:
+      operationId: TimelineNoteResource_updateNote
+      tags:
+      - "User: Notes"
+      parameters:
+      - name: noteId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNoteRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Update Note
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+    delete:
+      operationId: TimelineNoteResource_deleteNote
+      tags:
+      - "User: Notes"
+      parameters:
+      - name: noteId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Delete Note
+      security:
+      - jwt:
+        - USER
+        - ADMIN
   /api/notifications:
     get:
       operationId: NotificationResource_getNotifications
@@ -8785,6 +9252,31 @@ paths:
             application/json:
               schema: {}
       summary: Get Shared Location
+  /api/shared/{linkId}/notes:
+    get:
+      operationId: PublicSharedLinkResource_getSharedNotes
+      tags:
+      - "Public: Sharing: Shared Links"
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+      summary: Get Shared Notes
   /api/shared/{linkId}/path:
     get:
       operationId: PublicSharedLinkResource_getSharedPath
@@ -10477,6 +10969,86 @@ paths:
       - jwt:
         - USER
         - ADMIN
+  /api/users/me/memos-config:
+    put:
+      operationId: MemosResource_updateCurrentUserMemosConfig
+      tags:
+      - "User: Memos"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemosConfigRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Update Current User Memos Config
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+    get:
+      operationId: MemosResource_getCurrentUserMemosConfig
+      tags:
+      - "User: Memos"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Current User Memos Config
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/users/me/memos-config/test:
+    post:
+      operationId: MemosResource_testCurrentUserMemosConnection
+      tags:
+      - "User: Memos"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestMemosConnectionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+        "400":
+          description: Bad Request
+      summary: Test Current User Memos Connection
+      security:
+      - jwt:
+        - USER
+        - ADMIN
   /api/users/preferences/timeline:
     put:
       operationId: UserResource_updateTimelinePreferences
@@ -11052,9 +11624,82 @@ paths:
             application/json:
               schema: {}
       summary: Get Version Status
+  /api/weather/samples:
+    get:
+      operationId: WeatherResource_getSamples
+      tags:
+      - "User: Weather"
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: maxLat
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: maxLon
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: minLat
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: minLon
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Samples
+      security:
+      - jwt:
+        - USER
+        - ADMIN
+  /api/weather/status:
+    get:
+      operationId: WeatherResource_getStatus
+      tags:
+      - "User: Weather"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Status
+      security:
+      - jwt:
+        - USER
+        - ADMIN
 info:
   title: GeoPulse API
-  version: 1.35.1
+  version: 1.36.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
