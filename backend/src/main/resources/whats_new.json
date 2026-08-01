@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.36.0",
+    "title": "GeoPulse 1.36.0",
+    "highlights": [
+      "Added Weather integration with Timeline, map, Journey Insights, badges, admin status, and Open-Meteo configuration",
+      "Ongoing weather is captured by default; historical weather requires GEOPULSE_WEATHER_BACKFILL_ENABLED=true or Admin panel opt-in",
+      "Added Notes integration with GeoPulse notes and Memos sync on Timeline, maps, place details, and shared timelines",
+      "Set up Memos from Menu -> Profile -> Notes with server URL, API key, default save destination, visibility, cache, and tag filters",
+      "Kubernetes Helm deployments now support Gateway API HTTPRoute, extra environment variables, and extra volume mounts",
+      "Improved large exports, coverage processing, and water-aware timeline regeneration performance",
+      "Fixed map zoom and navigation edge cases, Trip Workspace interactions, City/Country visit links, and Immich US country matching",
+      "Other UI and performance improvements"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.36.0"
+  },
+  {
     "version": "1.35.1",
     "title": "GeoPulse 1.35.1",
     "highlights": [
