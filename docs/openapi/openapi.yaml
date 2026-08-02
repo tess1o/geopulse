@@ -11699,7 +11699,7 @@ paths:
         - ADMIN
 info:
   title: GeoPulse API
-  version: 1.36.0
+  version: 1.36.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
