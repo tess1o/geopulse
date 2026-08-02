@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.36.1",
+    "title": "GeoPulse 1.36.1",
+    "highlights": [
+      "Emergency fix for GPS integration REST endpoints returning 404 in 1.36.0 Docker and native deployments",
+      "Restored OwnTracks, Colota, GPS Logger, Traccar, Home Assistant, and Overland ingestion endpoints"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.36.1"
+  },
+  {
     "version": "1.36.0",
     "title": "GeoPulse 1.36.0",
     "highlights": [

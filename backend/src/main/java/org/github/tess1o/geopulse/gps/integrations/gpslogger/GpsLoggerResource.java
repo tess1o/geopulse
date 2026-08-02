@@ -21,7 +21,7 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/gpslogger")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -41,7 +41,6 @@ public class GpsLoggerResource {
     }
 
     @POST
-    @Path("/api/gpslogger")
     @Operation(summary = "Ingest GPS Logger location",
             description = "Receives a GPS Logger location update and stores it as a GPS point for the matching source token.")
     public Response handleGpsLogger(Map<String, Object> payload,

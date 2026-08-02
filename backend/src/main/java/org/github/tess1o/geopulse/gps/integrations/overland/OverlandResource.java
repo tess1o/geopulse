@@ -17,7 +17,7 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/overland")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -35,7 +35,6 @@ public class OverlandResource {
     }
 
     @POST
-    @Path("/api/overland")
     @Operation(summary = "Ingest Overland locations",
             description = "Receives an Overland location batch and stores the points for the matching source token.")
     public Response handleOverland(OverlandLocations overlandLocations,

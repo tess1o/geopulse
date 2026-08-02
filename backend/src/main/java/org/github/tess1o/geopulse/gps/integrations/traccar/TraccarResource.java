@@ -20,7 +20,7 @@ import java.util.Locale;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/traccar")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -38,7 +38,6 @@ public class TraccarResource {
     }
 
     @POST
-    @Path("/api/traccar")
     @Operation(summary = "Ingest Traccar position",
             description = "Receives a Traccar position update and routes it to matching active Traccar source configurations.")
     public Response handleTraccar(TraccarPositionData payload,

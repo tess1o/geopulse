@@ -14,7 +14,7 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/colota")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -32,7 +32,6 @@ public class ColotaResource {
     }
 
     @POST
-    @Path("/api/colota")
     @Operation(summary = "Ingest Colota location",
             description = "Receives a Colota-compatible location update and stores it for the matching source token.")
     public Response handleColota(ColotaLocationMessage payload,

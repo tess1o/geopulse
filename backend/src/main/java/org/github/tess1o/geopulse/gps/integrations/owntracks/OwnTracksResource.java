@@ -20,7 +20,7 @@ import java.util.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/owntracks")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -50,7 +50,6 @@ public class OwnTracksResource {
     }
 
     @POST
-    @Path("/api/owntracks")
     @Operation(summary = "Ingest OwnTracks location",
             description = "Receives an OwnTracks location update and stores it as a GPS point for the matching source token.")
     public Response handleOwnTracks(Map<String, Object> payload,

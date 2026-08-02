@@ -14,7 +14,7 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/")
+@Path("/api/homeassistant")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -30,7 +30,6 @@ public class HomeAssistantResource {
     }
 
     @POST
-    @Path("/api/homeassistant")
     @Operation(summary = "Ingest Home Assistant location",
             description = "Receives a Home Assistant location update and stores it for the matching source token.")
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
