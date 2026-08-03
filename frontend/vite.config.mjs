@@ -22,7 +22,7 @@ export default defineConfig({
         }),
         VitePWA({
             registerType: 'autoUpdate',
-            injectRegister: 'script-defer',
+            injectRegister: 'auto',
             includeAssets: [
                 'favicon-16x16.png',
                 'favicon-32x32.png',
@@ -63,14 +63,15 @@ export default defineConfig({
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
                 skipWaiting: true,
-                navigateFallback: '/index.html',
-                navigateFallbackDenylist: [
-                    /^\/api\//,
-                    /^\/config\.js$/,
-                    /^\/osm\/tiles\//
+                navigateFallback: null,
+                importScripts: [
+                    'sw-client-reload.js'
                 ],
                 globPatterns: [
-                    '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
+                    '**/*.{js,css,ico,png,svg,woff,woff2,ttf,eot}'
+                ],
+                globIgnores: [
+                    '**/index.html'
                 ],
                 maximumFileSizeToCacheInBytes: 5 * 1024 * 1024
             }

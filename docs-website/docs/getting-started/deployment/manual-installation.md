@@ -791,6 +791,50 @@ server {
     gzip_comp_level 6;
     gzip_min_length 1000;
 
+    # Runtime config and app shell must stay fresh after deployments
+    location = /config.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /index.html {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+
+    # PWA entry files must stay fresh so service worker updates are not delayed
+    location = /manifest.webmanifest {
+        types {
+            application/manifest+json webmanifest;
+        }
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /sw.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /registerSW.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /sw-client-reload.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
     # Cache static assets (but exclude OSM tiles path)
     location ~* ^/(?!osm/).*\.(jpg|jpeg|png|gif|ico|css|js)$ {
         expires 1y;
@@ -849,6 +893,11 @@ server {
     # Handle all routes for SPA (Single Page Application)
     location / {
         try_files $uri $uri/ /index.html;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 
     # Security headers
@@ -905,6 +954,50 @@ server {
     gzip_comp_level 6;
     gzip_min_length 1000;
 
+    # Runtime config and app shell must stay fresh after deployments
+    location = /config.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /index.html {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+
+    # PWA entry files must stay fresh so service worker updates are not delayed
+    location = /manifest.webmanifest {
+        types {
+            application/manifest+json webmanifest;
+        }
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /sw.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /registerSW.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    location = /sw-client-reload.js {
+        try_files $uri =404;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
     # Cache static assets (but exclude OSM tiles path)
     location ~* ^/(?!osm/).*\.(jpg|jpeg|png|gif|ico|css|js)$ {
         expires 1y;
@@ -963,6 +1056,11 @@ server {
     # Handle all routes for SPA (Single Page Application)
     location / {
         try_files $uri $uri/ /index.html;
+        expires -1;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 
     # Security headers
