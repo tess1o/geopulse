@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.exportimport;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -152,9 +153,13 @@ class OwnTracksExportImportIntegrationTest {
                                 "owntracks");
                 // Process the export job
                 byte[] exportedJsonData = generateOwnTracksExport(exportJob);
-                // Verify it's valid JSON array
+                // Verify it's valid official OwnTracks Recorder/ocat JSON
                 String jsonContent = new String(exportedJsonData);
-                OwnTracksLocationMessage[] exportedMessages = objectMapper.readValue(jsonContent,
+                JsonNode root = objectMapper.readTree(jsonContent);
+                assertTrue(root.isObject(), "Default OwnTracks export should use ocat wrapper format");
+                assertEquals(testGpsPoints.size(), root.get("count").asInt(),
+                                "Exported count should match GPS points");
+                OwnTracksLocationMessage[] exportedMessages = objectMapper.treeToValue(root.get("locations"),
                                 OwnTracksLocationMessage[].class);
                 assertEquals(testGpsPoints.size(), exportedMessages.length,
                                 "Exported message count should match GPS points");

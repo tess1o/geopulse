@@ -106,6 +106,39 @@ class OwnTracksExportImportUnitTest {
         });
     }
     @Test
+    void testOwnTracksJsonValidation_OcatWrapperData() throws Exception {
+        String jsonContent = """
+                {
+                  "count": 2,
+                  "locations": [
+                    {"_type":"location","lat":37.7749,"lon":-122.4194,"tst":1767225600,"acc":5.0,"tid":"test-device"},
+                    {"_type":"location","lat":37.7849,"lon":-122.4094,"tst":1767225660,"acc":6.0,"tid":"test-device"}
+                  ]
+                }
+                """;
+        byte[] jsonData = jsonContent.getBytes();
+        ImportOptions options = new ImportOptions();
+        options.setImportFormat("owntracks");
+        options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
+        ImportJob job = new ImportJob(testUser.getId(), options, "ocat.json", jsonData);
+
+        List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(job);
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS));
+
+        importDataService.processImportData(job);
+
+        List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserAndDateRange(
+                testUser.getId(),
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-01-01T00:02:00Z"),
+                0, 10, "timestamp", "asc"
+        );
+        assertEquals(2, importedPoints.size());
+        for (GpsPointEntity point : importedPoints) {
+            assertEquals(GpsSourceType.OWNTRACKS, point.getSourceType());
+        }
+    }
+    @Test
     void testOwnTracksJsonValidation_InvalidJson() {
         byte[] invalidJsonData = "{ invalid json }".getBytes();
         ImportOptions options = new ImportOptions();

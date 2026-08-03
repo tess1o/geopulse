@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Comprehensive unit tests for OwnTracks streaming export service.
@@ -73,8 +74,10 @@ class OwnTracksExportServiceTest {
         // precise verification of content
         byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         JsonNode root = objectMapper.readTree(content);
-        assertTrue(root.isArray());
-        assertEquals(0, root.size());
+        assertTrue(root.isObject());
+        assertEquals(0, root.get("count").asInt());
+        assertTrue(root.get("locations").isArray());
+        assertEquals(0, root.get("locations").size());
         // cleanup
         tempFileService.deleteTempFile(job.getTempFilePath());
     }
@@ -87,8 +90,10 @@ class OwnTracksExportServiceTest {
         assertNotNull(job.getTempFilePath());
         byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         JsonNode root = objectMapper.readTree(content);
-        assertEquals(1, root.size());
-        JsonNode message = root.get(0);
+        assertEquals(1, root.get("count").asInt());
+        JsonNode locations = root.get("locations");
+        assertEquals(1, locations.size());
+        JsonNode message = locations.get(0);
         assertEquals(37.7749, message.get("lat").asDouble(), 0.0001);
         assertEquals(-122.4194, message.get("lon").asDouble(), 0.0001);
         assertEquals(100.0, message.get("alt").asDouble(), 0.1);
@@ -120,11 +125,13 @@ class OwnTracksExportServiceTest {
         assertNotNull(job.getTempFilePath());
         byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         JsonNode root = objectMapper.readTree(content);
-        assertEquals(pointCount, root.size());
-        for (int i = 1; i < root.size(); i++) {
-            assertTrue(root.get(i - 1).get("tst").asLong() <= root.get(i).get("tst").asLong());
+        assertEquals(pointCount, root.get("count").asInt());
+        JsonNode locations = root.get("locations");
+        assertEquals(pointCount, locations.size());
+        for (int i = 1; i < locations.size(); i++) {
+            assertTrue(locations.get(i - 1).get("tst").asLong() <= locations.get(i).get("tst").asLong());
         }
-        log.info("Streaming export validated: {} messages", root.size());
+        log.info("Streaming export validated: {} messages", locations.size());
         // cleanup
         tempFileService.deleteTempFile(job.getTempFilePath());
     }
@@ -147,7 +154,7 @@ class OwnTracksExportServiceTest {
     }
     @Test
     @Transactional
-    void testGenerateOwnTracksExport_ValidJsonArrayFormat() throws Exception {
+    void testGenerateOwnTracksExport_DefaultOcatFormat() throws Exception {
         for (int i = 0; i < 10; i++) {
             createGpsPoint(
                     testStartDate.plus(i, ChronoUnit.MINUTES),
@@ -158,6 +165,29 @@ class OwnTracksExportServiceTest {
         assertNotNull(job.getTempFilePath());
         byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
         String json = new String(result);
+        JsonNode root = objectMapper.readTree(json);
+        assertTrue(root.isObject());
+        assertEquals(10, root.get("count").asInt());
+        assertDoesNotThrow(() -> objectMapper.treeToValue(root.get("locations"), OwnTracksLocationMessage[].class));
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
+    }
+    @Test
+    @Transactional
+    void testGenerateOwnTracksExport_LegacyArrayFormat() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            createGpsPoint(
+                    testStartDate.plus(i, ChronoUnit.MINUTES),
+                    37.7749, -122.4194, 100.0, 15.0, 95.0);
+        }
+        ExportJob job = createExportJob();
+        job.setOptions(Map.of("owntracksFormat", "array"));
+        ownTracksExportService.generateOwnTracksExport(job);
+        assertNotNull(job.getTempFilePath());
+        byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
+        String json = new String(result);
+        JsonNode root = objectMapper.readTree(json);
+        assertTrue(root.isArray());
         assertDoesNotThrow(() -> objectMapper.readValue(json, OwnTracksLocationMessage[].class));
         // cleanup
         tempFileService.deleteTempFile(job.getTempFilePath());

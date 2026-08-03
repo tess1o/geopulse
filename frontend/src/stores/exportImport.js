@@ -157,14 +157,19 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Export
-        async createExportJob(dataTypes, dateRange, format = 'json') {
+        async createExportJob(dataTypes, dateRange, format = 'json', options = null) {
             this.isExporting = true
             try {
-                const response = await apiService.post('/export/create', {
+                const payload = {
                     dataTypes,
                     dateRange,
                     format
-                })
+                }
+                if (options) {
+                    payload.options = options
+                }
+
+                const response = await apiService.post('/export/create', payload)
 
                 // Handle successful response
                 if (response.success) {
@@ -265,8 +270,8 @@ export const useExportImportStore = defineStore('exportImport', {
 
         // API Actions - Export (OwnTracks)
         // Convenience wrapper for createExportJob with OwnTracks format
-        async createOwnTracksExportJob(dateRange) {
-            return this.createExportJob(['raw_gps'], dateRange, 'owntracks')
+        async createOwnTracksExportJob(dateRange, owntracksFormat = 'ocat') {
+            return this.createExportJob(['raw_gps'], dateRange, 'owntracks', { owntracksFormat })
         },
 
         // API Actions - Export (GeoJSON)

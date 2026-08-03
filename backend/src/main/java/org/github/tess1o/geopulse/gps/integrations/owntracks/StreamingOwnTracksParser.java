@@ -46,9 +46,10 @@ public class StreamingOwnTracksParser {
     /**
      * Parse OwnTracks messages one-by-one and invoke callback for each message.
      *
-     * This method reads the JSON array incrementally:
-     * 1. Validates the root is a JSON array
-     * 2. Streams through the array elements
+     * This method reads OwnTracks exports incrementally. It supports both the
+     * legacy GeoPulse array format and the official ocat wrapper format:
+     * 1. Root array: streams array elements directly
+     * 2. Root object: finds and streams the "locations" array, skipping metadata
      * 3. Deserializes each message individually
      * 4. Invokes callback with message and current statistics
      *
@@ -60,20 +61,53 @@ public class StreamingOwnTracksParser {
         ParsingStats stats = new ParsingStats();
 
         try (JsonParser parser = jsonFactory.createParser(inputStream)) {
-            // Expect root array to start
             JsonToken firstToken = parser.nextToken();
-            if (firstToken != JsonToken.START_ARRAY) {
+            if (firstToken == JsonToken.START_ARRAY) {
+                parseMessageArray(parser, callback, stats);
+            } else if (firstToken == JsonToken.START_OBJECT) {
+                parseOwnTracksObject(parser, callback, stats);
+            } else {
                 throw new IllegalArgumentException(
-                    "OwnTracks JSON must be an array, found: " + firstToken);
+                    "OwnTracks JSON must be an array or an object with a locations array, found: " + firstToken);
             }
-
-            // Stream through array elements
-            parseMessageArray(parser, callback, stats);
 
             log.info("Streaming parse completed: {} messages, {} valid messages",
                     stats.totalMessages, stats.validMessages);
 
             return stats;
+        }
+    }
+
+    /**
+     * Parse official ocat format: {"count": n, "locations": [...]}
+     */
+    private void parseOwnTracksObject(JsonParser parser, MessageCallback callback, ParsingStats stats)
+            throws IOException {
+        boolean foundLocations = false;
+
+        while (parser.nextToken() != JsonToken.END_OBJECT) {
+            if (parser.currentToken() != JsonToken.FIELD_NAME) {
+                parser.skipChildren();
+                continue;
+            }
+
+            String fieldName = parser.currentName();
+            JsonToken valueToken = parser.nextToken();
+            if ("locations".equals(fieldName)) {
+                if (valueToken != JsonToken.START_ARRAY) {
+                    throw new IllegalArgumentException(
+                            "OwnTracks JSON object field 'locations' must be an array, found: " + valueToken);
+                }
+                foundLocations = true;
+                parseMessageArray(parser, callback, stats);
+            } else {
+                parser.skipChildren();
+            }
+        }
+
+        if (!foundLocations) {
+            throw new IllegalArgumentException(
+                    "OwnTracks JSON object must contain a locations array");
         }
     }
 

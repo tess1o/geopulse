@@ -69,6 +69,54 @@
             </div>
           </div>
 
+          <!-- OwnTracks Export Options (only for OwnTracks format) -->
+          <div v-if="exportFormat === 'owntracks'" class="form-section">
+            <h3 class="form-section-title">OwnTracks Export Options</h3>
+            <div class="gpx-export-options">
+              <div
+                  class="gpx-option"
+                  :class="{ 'selected': owntracksExportFormat === 'ocat' }"
+                  @click="owntracksExportFormat = 'ocat'"
+              >
+                <RadioButton
+                    v-model="owntracksExportFormat"
+                    inputId="owntracks-ocat"
+                    value="ocat"
+                    class="gpx-radio"
+                />
+                <div class="gpx-option-info">
+                  <label for="owntracks-ocat" class="gpx-option-label">
+                    Official Recorder Format
+                  </label>
+                  <p class="gpx-option-description">
+                    JSON object with count and locations fields, compatible with OwnTracks ocat exports
+                  </p>
+                </div>
+              </div>
+
+              <div
+                  class="gpx-option"
+                  :class="{ 'selected': owntracksExportFormat === 'array' }"
+                  @click="owntracksExportFormat = 'array'"
+              >
+                <RadioButton
+                    v-model="owntracksExportFormat"
+                    inputId="owntracks-array"
+                    value="array"
+                    class="gpx-radio"
+                />
+                <div class="gpx-option-info">
+                  <label for="owntracks-array" class="gpx-option-label">
+                    Legacy GeoPulse Array
+                  </label>
+                  <p class="gpx-option-description">
+                    JSON array of location messages, matching older GeoPulse OwnTracks exports
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- GPX Export Options (only for GPX format) -->
           <div v-if="exportFormat === 'gpx'" class="form-section">
             <h3 class="form-section-title">GPX Export Options</h3>
@@ -432,6 +480,7 @@ const selectedDataTypes = ref(['rawgps', 'favorites', 'reversegeocodinglocation'
 const exportStartDate = ref(null)
 const exportEndDate = ref(null)
 const exportFormat = ref('geopulse')
+const owntracksExportFormat = ref('ocat') // 'ocat' or 'array'
 const gpxExportMode = ref('single') // 'single' or 'zip'
 const gpxZipGroupBy = ref('individual') // 'individual' or 'daily'
 
@@ -514,9 +563,8 @@ const startExport = async () => {
       endDate: exportEndDate.value.toISOString()
     }
 
-    // For OwnTracks, use only GPS data and different endpoint
     if (exportFormat.value === 'owntracks') {
-      await exportImportStore.createOwnTracksExportJob(dateRange)
+      await exportImportStore.createOwnTracksExportJob(dateRange, owntracksExportFormat.value)
     } else if (exportFormat.value === 'geojson') {
       // For GeoJSON, use only GPS data and different endpoint
       await exportImportStore.createGeoJsonExportJob(dateRange)

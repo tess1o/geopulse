@@ -171,12 +171,8 @@ class StreamingExportServiceTest {
         int totalWritten = streamingExportService.<TestEntity>streamJsonObjectWithArray(
             baos,
             (gen, mapper) -> {
-                try {
-                    gen.writeStringField("type", "test");
-                    gen.writeNumberField("count", 0);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                gen.writeStringField("type", "test");
+                gen.writeNumberField("count", 0);
             },
             "items",
             batchConsumer -> {
@@ -208,12 +204,8 @@ class StreamingExportServiceTest {
         int totalWritten = streamingExportService.<TestEntity>streamJsonObjectWithArray(
             baos,
             (gen, mapper) -> {
-                try {
-                    gen.writeStringField("dataType", "test");
-                    gen.writeStringField("version", "1.0");
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                gen.writeStringField("dataType", "test");
+                gen.writeStringField("version", "1.0");
             },
             "records",
             batchConsumer -> batchConsumer.accept(data),

@@ -24,7 +24,7 @@ GeoPulse supports five export formats, each optimized for different use cases:
 | Format | Description | Best For | Data Included |
 |--------|-------------|----------|---------------|
 | **GeoPulse** | Native format with all data types | Full backups, migration between GeoPulse instances | All data types (configurable) |
-| **OwnTracks** | OwnTracks JSON format | Importing into OwnTracks apps | GPS data only |
+| **OwnTracks** | OwnTracks JSON format | OwnTracks Recorder/ocat compatibility | GPS data only |
 | **GeoJSON** | Standard GIS format | GIS tools, mapping software, custom analysis | GPS data only |
 | **GPX** | GPS Exchange Format | GPX viewers (GPXSee, QGIS), Garmin devices | GPS tracks, trips, stay waypoints |
 | **CSV** | Comma-Separated Values | Excel, data analysis, custom scripts | GPS data with metadata |
@@ -64,6 +64,10 @@ Exports GPS data with the following fields:
 - `battery` - Battery percentage (if available)
 - `device_id` - Device identifier (if available)
 - `source_type` - Data source type
+
+**OwnTracks Format:**
+- **Official Recorder Format** - Default export shape: a JSON object with `count` and `locations`, compatible with OwnTracks Recorder/`ocat`
+- **Legacy GeoPulse Array** - JSON array of OwnTracks location messages, matching older GeoPulse exports
 
 #### 3. Select Date Range
 
@@ -158,6 +162,25 @@ Select which data types to import (same options as export). You can choose to im
 
 **Other Formats (OwnTracks, Google Timeline, GPX, GeoJSON, CSV):**
 An information message explains what data will be imported. These formats only support GPS location data.
+
+OwnTracks import accepts both official OwnTracks Recorder/`ocat` JSON:
+
+```json
+{
+  "count": 2,
+  "locations": [
+    {"_type": "location", "lat": 37.7749, "lon": -122.4194, "tst": 1705329000}
+  ]
+}
+```
+
+and legacy GeoPulse OwnTracks JSON arrays:
+
+```json
+[
+  {"_type": "location", "lat": 37.7749, "lon": -122.4194, "tst": 1705329000}
+]
+```
 
 **CSV Format:**
 When CSV is selected, you'll see:

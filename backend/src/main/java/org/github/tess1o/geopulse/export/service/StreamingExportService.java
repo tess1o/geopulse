@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -149,7 +148,7 @@ public class StreamingExportService {
      */
     public <T> int streamJsonObjectWithArray(
             OutputStream outputStream,
-            BiConsumer<JsonGenerator, ObjectMapper> writeObjectFields,
+            ObjectFieldsWriter writeObjectFields,
             String arrayFieldName,
             BatchProducer<T> batchProducer,
             TriConsumer<JsonGenerator, T, ObjectMapper> writeArrayItem,
@@ -167,7 +166,7 @@ public class StreamingExportService {
 
             // Write object fields (metadata, type, etc.)
             if (writeObjectFields != null) {
-                writeObjectFields.accept(gen, objectMapper);
+                writeObjectFields.write(gen, objectMapper);
             }
 
             // Start array field
@@ -225,6 +224,11 @@ public class StreamingExportService {
     @FunctionalInterface
     public interface BatchProducer<T> {
         void produce(Consumer<List<T>> batchConsumer);
+    }
+
+    @FunctionalInterface
+    public interface ObjectFieldsWriter {
+        void write(JsonGenerator gen, ObjectMapper objectMapper) throws IOException;
     }
 
     /**

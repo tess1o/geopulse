@@ -61,13 +61,7 @@ public class GeoJsonExportService {
             streamingExportService.<GpsPointEntity>streamJsonObjectWithArray(
                     bos,
                     // Write GeoJSON FeatureCollection metadata
-                    (gen, mapper) -> {
-                        try {
-                            gen.writeStringField("type", "FeatureCollection");
-                        } catch (IOException e) {
-                            throw new RuntimeException("Failed to write GeoJSON metadata", e);
-                        }
-                    },
+                    (gen, mapper) -> gen.writeStringField("type", "FeatureCollection"),
                     // Array field name
                     "features",
                     batchConsumer -> gpsPointRepository.streamByUserAndDateRangeForExport(
