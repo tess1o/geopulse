@@ -39,7 +39,7 @@ docker compose up -d
 **Access:** [http://localhost:5555](http://localhost:5555)  
 *Note: For production, review your `.env` for security-related settings first.*
 
-Need MQTT, custom domains, hardening, or another platform? See the [deployment options](#deployment-options).
+Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal installation? See the [deployment options](#deployment-options).
 
 ---
 
@@ -127,6 +127,7 @@ Choose the installation path that matches your environment:
 | Installation type | Best for | Guide |
 |-------------------|----------|-------|
 | Docker Compose | Fastest path for local and single-server use | [Docker Compose Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) |
+| Unraid | Unraid NAS and homelab servers using Docker Compose | [Unraid Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/unraid) |
 | Proxmox VE LXC | Proxmox homelabs and VM hosts that prefer LXC containers | [Proxmox VE LXC Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) |
 | Kubernetes / Helm | Managed clusters and production Kubernetes environments | [Kubernetes Quick Install](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) |
 | Helm values reference | Advanced Helm customization | [Helm Values Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-deployment) |
@@ -153,7 +154,7 @@ helm install my-geopulse geopulse/geopulse
 
 * **New users:** [Quick Start Guide](https://tess1o.github.io/geopulse/docs/getting-started/quick-start)
 * **GPS setup:** [GPS Sources Overview](https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview)
-* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Proxmox](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
+* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Unraid](https://tess1o.github.io/geopulse/docs/getting-started/deployment/unraid) | [Proxmox](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
 * **Administration:** [Admin Panel](https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://tess1o.github.io/geopulse/docs/system-administration/configuration/oidc-sso)
 * **Maintenance:** [Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore) | [Updating](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/updating)
 * **Full documentation:** [Documentation Portal](https://tess1o.github.io/geopulse/)

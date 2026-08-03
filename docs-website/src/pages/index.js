@@ -144,7 +144,7 @@ const quickDocs = [
     },
     {
         title: 'Deployment',
-        text: 'Choose Docker Compose, Proxmox, Kubernetes, Helm, or manual install.',
+        text: 'Choose Docker Compose, Unraid, Proxmox, Kubernetes, Helm, or manual install.',
         link: '/docs/getting-started/deployment/docker-compose',
     },
     {
@@ -165,7 +165,7 @@ const landingFaqs = [
     },
     {
         question: 'Can I self-host GeoPulse?',
-        answer: 'Yes. Self-hosting is the primary way to use GeoPulse, with Docker Compose for a quick start and Kubernetes or Helm for larger deployments.',
+        answer: 'Yes. Self-hosting is the primary way to use GeoPulse, with Docker Compose for a quick start, Unraid and Proxmox for homelabs, and Kubernetes or Helm for larger deployments.',
     },
     {
         question: 'Who can see my location data?',
@@ -495,8 +495,8 @@ function InstallPreview() {
                         Start small, then scale into your preferred self-hosted setup.
                     </Heading>
                     <p className={styles.sectionLead}>
-                        Docker Compose is the fastest path for a single server. Kubernetes and Helm are available when
-                        you want charted releases, values, and production-style operations.
+                        Docker Compose is the fastest path for a single server. Unraid and Proxmox fit homelabs, while
+                        Kubernetes and Helm are available for charted releases and production-style operations.
                     </p>
                     <div className={styles.previewActions}>
                         <Link className={clsx('button', styles.heroPrimary)} to="/docs/getting-started/deployment/docker-compose">

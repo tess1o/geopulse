@@ -137,6 +137,11 @@ const sidebars = {
                 },
                 {
                     type: 'doc',
+                    id: 'getting-started/deployment/unraid',
+                    label: 'Unraid',
+                },
+                {
+                    type: 'doc',
                     id: 'getting-started/deployment/proxmox-lxc',
                     label: 'Proxmox VE LXC',
                 },

@@ -1,0 +1,186 @@
+services:
+  geopulse-keygen:
+    image: alpine:latest
+    container_name: geopulse-keygen
+    restart: "no"
+    volumes:
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/keys:/keys
+    command:
+      - sh
+      - -ec
+      - |
+        set -e
+        mkdir -p /keys
+        if [ ! -f /keys/jwt-private-key.pem ] || [ ! -f /keys/jwt-public-key.pem ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem
+          openssl rsa -pubout -in /keys/jwt-private-key.pem -out /keys/jwt-public-key.pem
+          chmod 644 /keys/jwt-private-key.pem /keys/jwt-public-key.pem
+        fi
+        if [ ! -f /keys/ai-encryption-key.txt ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl rand -base64 32 > /keys/ai-encryption-key.txt
+          chmod 644 /keys/ai-encryption-key.txt
+        fi
+
+  geopulse-backend:
+    image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
+    # For modern CPUs, you can use the optimized image instead:
+    # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+    # image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
+    container_name: geopulse-backend
+    mem_limit: 512m
+    mem_reservation: 128m
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
+    volumes:
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/keys:/app/keys
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/import-drop:/data/geopulse-import
+    depends_on:
+      geopulse-keygen:
+        condition: service_completed_successfully
+      geopulse-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+
+  geopulse-ui:
+    image: tess1o/geopulse-ui:${GEOPULSE_VERSION}
+    # image: ghcr.io/tess1o/geopulse-ui:${GEOPULSE_VERSION}
+    container_name: geopulse-ui
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - ${GEOPULSE_UI_PORT:-5555}:80
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:80]/"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/tess1o/GeoPulse/main/frontend/public/geopulse-logo.svg"
+    depends_on:
+      geopulse-backend:
+        condition: service_healthy
+
+  geopulse-postgres:
+    image: postgis/postgis:17-3.5
+    container_name: geopulse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
+    volumes:
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/postgres:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c timezone=UTC
+      -c shared_buffers=${GEOPULSE_POSTGRES_SHARED_BUFFERS:-256MB}
+      -c work_mem=${GEOPULSE_POSTGRES_WORK_MEM:-8MB}
+      -c maintenance_work_mem=${GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+      -c effective_cache_size=${GEOPULSE_POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      -c max_wal_size=${GEOPULSE_POSTGRES_MAX_WAL_SIZE:-512MB}
+      -c checkpoint_completion_target=${GEOPULSE_POSTGRES_CHECKPOINT_TARGET:-0.9}
+      -c wal_buffers=${GEOPULSE_POSTGRES_WAL_BUFFERS:-16MB}
+      -c random_page_cost=${GEOPULSE_POSTGRES_RANDOM_PAGE_COST:-1.1}
+      -c effective_io_concurrency=${GEOPULSE_POSTGRES_IO_CONCURRENCY:-100}
+      -c autovacuum_naptime=${GEOPULSE_POSTGRES_AUTOVACUUM_NAPTIME:-60s}
+      -c autovacuum_vacuum_scale_factor=${GEOPULSE_POSTGRES_VACUUM_SCALE_FACTOR:-0.2}
+      -c log_min_duration_statement=${GEOPULSE_POSTGRES_LOG_SLOW_QUERIES:-5000}
+      -c track_io_timing=on
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  geopulse-mosquitto:
+    image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
+    container_name: geopulse-mosquitto
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "1883:1883"
+    volumes:
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/config:/mosquitto/config
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/data:/mosquitto/data
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/log:/mosquitto/log
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        set -e
+        CONF_FILE="/mosquitto/config/mosquitto.conf"
+        ADMIN_USER_FILE="/mosquitto/config/admin_user"
+        ADMIN_ACL_FILE="/mosquitto/config/admin_acl"
+
+        if [ ! -f "$$CONF_FILE" ]; then
+          : "$${GEOPULSE_MQTT_USERNAME:?GEOPULSE_MQTT_USERNAME is not set.}"
+          : "$${GEOPULSE_MQTT_PASSWORD:?GEOPULSE_MQTT_PASSWORD is not set.}"
+          : "$${GEOPULSE_POSTGRES_HOST:?GEOPULSE_POSTGRES_HOST is not set.}"
+          : "$${GEOPULSE_POSTGRES_PORT:?GEOPULSE_POSTGRES_PORT is not set.}"
+          : "$${GEOPULSE_POSTGRES_DB:?GEOPULSE_POSTGRES_DB is not set.}"
+          : "$${GEOPULSE_POSTGRES_USERNAME:?GEOPULSE_POSTGRES_USERNAME is not set.}"
+          : "$${GEOPULSE_POSTGRES_PASSWORD:?GEOPULSE_POSTGRES_PASSWORD is not set.}"
+
+          cat > "$$CONF_FILE" <<EOF
+        listener 1883
+        allow_anonymous false
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest file /mosquitto/log/mosquitto.log
+        log_type all
+        connection_messages true
+        log_timestamp true
+        auth_plugin /mosquitto/go-auth.so
+        auth_opt_log_dest stdout
+        auth_opt_log_level debug
+        auth_opt_backends files,postgres
+        auth_opt_files_acl_path $${ADMIN_ACL_FILE}
+        auth_opt_check_prefix false
+        auth_opt_files_password_path $${ADMIN_USER_FILE}
+        auth_opt_files_hasher bcrypt
+        auth_opt_pg_host $${GEOPULSE_POSTGRES_HOST}
+        auth_opt_pg_port $${GEOPULSE_POSTGRES_PORT}
+        auth_opt_pg_dbname $${GEOPULSE_POSTGRES_DB}
+        auth_opt_pg_user $${GEOPULSE_POSTGRES_USERNAME}
+        auth_opt_pg_password $${GEOPULSE_POSTGRES_PASSWORD}
+        auth_opt_pg_sslmode disable
+        auth_opt_pg_connect_tries 10
+        auth_opt_pg_userquery SELECT password_hash FROM gps_source_config WHERE username = \$1 AND connection_type = 'MQTT' AND source_type = 'OWNTRACKS' AND active = true LIMIT 1
+        auth_opt_pg_aclquery SELECT CONCAT('owntracks/', username, '/+') as topic FROM gps_source_config WHERE username = \$1 AND active = true AND connection_type = 'MQTT' and \$2 = \$2 LIMIT 1
+        auth_opt_pg_hasher bcrypt
+        auth_opt_pg_hasher_cost 12
+        EOF
+
+          ADMIN_PASSWORD_HASH=$$(perl -e '
+            my $$password = $$ARGV[0];
+            my $$cost = "12";
+            my @chars = (".", "/", 0..9, "A".."Z", "a".."z");
+            my $$salt_chars = join("", map { $$chars[rand @chars] } 1..22);
+            my $$bcrypt_salt = "\$$2b\$$$$cost\$$$$salt_chars";
+            my $$hash = crypt($$password, $$bcrypt_salt);
+            if ($$hash eq $$bcrypt_salt || length($$hash) < 30) {
+              print "\$$2b\$$$$cost\$$$$salt_chars" . substr(crypt($$password, "salt"), 0, 31);
+            } else {
+              print $$hash;
+            }
+          ' "$$GEOPULSE_MQTT_PASSWORD")
+
+          echo "$$GEOPULSE_MQTT_USERNAME:$$ADMIN_PASSWORD_HASH" > "$$ADMIN_USER_FILE"
+          cat > "$$ADMIN_ACL_FILE" <<EOF
+        user $$GEOPULSE_MQTT_USERNAME
+        topic readwrite #
+        EOF
+        fi
+
+        exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
+    depends_on:
+      geopulse-postgres:
+        condition: service_healthy
