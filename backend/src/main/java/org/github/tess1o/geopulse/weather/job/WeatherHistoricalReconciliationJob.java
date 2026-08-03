@@ -9,17 +9,18 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.github.tess1o.geopulse.weather.service.WeatherBackfillRunResult;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
+import org.github.tess1o.geopulse.weather.service.WeatherReconciliationQueueStatus;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Orchestrates durable historical weather reconciliation.
@@ -47,11 +48,9 @@ public class WeatherHistoricalReconciliationJob {
     @Identifier("weather-processing")
     ExecutorService executorService;
 
-    @ConfigProperty(name = "geopulse.weather.backfill.discovery.chunks-per-run", defaultValue = "4")
-    int chunksPerRun = 4;
-
     private final AtomicBoolean processingRunning = new AtomicBoolean(false);
     private final AtomicBoolean processingPending = new AtomicBoolean(false);
+    private final AtomicInteger submittedProcessingTasks = new AtomicInteger();
 
     void onStartup(@Observes StartupEvent ignored) {
         if (!shouldRunBackfillDiscovery("startup")) {
@@ -63,9 +62,6 @@ public class WeatherHistoricalReconciliationJob {
 
     void onWeatherSettingsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) WeatherSettingsChangedEvent event) {
         String reason = "weather setting changed: " + event.key();
-        if (!shouldRunBackfillDiscovery(reason)) {
-            return;
-        }
         if (!WeatherConfigurationService.WEATHER_ENABLED.equals(event.key())
                 && !WeatherConfigurationService.BACKFILL_ENABLED.equals(event.key())
                 && !WeatherConfigurationService.COORDINATE_PRECISION.equals(event.key())) {
@@ -73,7 +69,10 @@ public class WeatherHistoricalReconciliationJob {
             return;
         }
 
-        weatherService.queueFullHistoricalBackfill();
+        WeatherReconciliationQueueStatus status = weatherService.queueFullHistoricalBackfill();
+        if (!handleQueueStatus(reason, status)) {
+            return;
+        }
         submitProcessing(reason, true);
     }
 
@@ -81,15 +80,14 @@ public class WeatherHistoricalReconciliationJob {
         String reason = "timeline data changed for user " + event.getUserId()
                 + " from " + event.getAffectedFrom()
                 + " to " + event.getAffectedTo();
-        if (!shouldRunBackfillDiscovery(reason)) {
-            return;
-        }
-
-        weatherService.queueHistoricalBackfill(
+        WeatherReconciliationQueueStatus status = weatherService.queueHistoricalBackfill(
                 event.getUserId(),
                 event.getAffectedFrom(),
                 event.getAffectedTo()
         );
+        if (!handleQueueStatus(reason, status)) {
+            return;
+        }
         submitProcessing(reason, true);
     }
 
@@ -105,6 +103,7 @@ public class WeatherHistoricalReconciliationJob {
     }
 
     private void submitProcessing(String reason, boolean fetchAfterDiscovery) {
+        submittedProcessingTasks.incrementAndGet();
         try {
             CompletableFuture.runAsync(() -> {
                 if (!shouldRunBackfillDiscovery(reason)) {
@@ -115,8 +114,9 @@ public class WeatherHistoricalReconciliationJob {
                 processingPending.set(true);
                 log.error("Weather historical reconciliation failed on {}: {}", reason, throwable.getMessage(), throwable);
                 return null;
-            });
+            }).whenComplete((ignored, throwable) -> submittedProcessingTasks.decrementAndGet());
         } catch (RuntimeException e) {
+            submittedProcessingTasks.decrementAndGet();
             processingPending.set(true);
             log.error("Failed to submit weather historical reconciliation on {}: {}", reason, e.getMessage(), e);
         }
@@ -137,16 +137,17 @@ public class WeatherHistoricalReconciliationJob {
         try {
             log.info("Weather historical reconciliation starting on {}", reason);
             long resetFailedTargets = weatherService.resetStaleFailedTargetsForRetry();
-            WeatherBackfillRunResult result = weatherService.processPendingHistoricalBackfillChunks(chunksPerRun);
+            WeatherBackfillRunResult result = weatherService.processPendingHistoricalBackfillChunks(
+                    configurationService.backfillDiscoveryChunksPerRun());
             log.info("Weather historical reconciliation completed on {}: durationMs={}, chunks={}, created={}, known={}, "
-                            + "skipped={}, pendingRanges={}",
+                            + "skipped={}, pendingUserRanges={}",
                     reason,
                     elapsedMillis(startedAtNanos),
                     result.chunksProcessed(),
                     result.targetsCreated(),
                     result.targetsAlreadyKnown(),
                     result.targetsSkipped(),
-                    result.pendingRanges());
+                    result.pendingUserRanges());
 
             if (fetchAfterDiscovery && (result.targetsCreated() > 0 || resetFailedTargets > 0)) {
                 int fetched = weatherService.fetchQueuedSamples();
@@ -175,7 +176,29 @@ public class WeatherHistoricalReconciliationJob {
         return true;
     }
 
+    private boolean handleQueueStatus(String reason, WeatherReconciliationQueueStatus status) {
+        return switch (status) {
+            case QUEUED -> true;
+            case WEATHER_DISABLED -> {
+                log.info("Weather historical reconciliation skipped on {}: weather is disabled", reason);
+                yield false;
+            }
+            case BACKFILL_DISABLED -> {
+                log.info("Weather historical reconciliation skipped on {}: weather backfill is disabled", reason);
+                yield false;
+            }
+            case INVALID_RANGE -> {
+                log.warn("Weather historical reconciliation skipped on {}: affected range is invalid", reason);
+                yield false;
+            }
+        };
+    }
+
     private long elapsedMillis(long startedAtNanos) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAtNanos);
+    }
+
+    boolean hasSubmittedProcessingTasks() {
+        return submittedProcessingTasks.get() > 0;
     }
 }

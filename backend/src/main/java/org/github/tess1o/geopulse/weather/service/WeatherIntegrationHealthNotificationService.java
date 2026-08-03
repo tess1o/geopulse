@@ -26,7 +26,7 @@ public class WeatherIntegrationHealthNotificationService {
     @Inject
     EntityManager entityManager;
 
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public void onIntegrationHealthEvent(@Observes(during = TransactionPhase.AFTER_SUCCESS) ExternalIntegrationHealthEvent event) {
         if (event.integrationType() != ExternalIntegrationType.WEATHER
                 || !WeatherConfigurationService.PROVIDER_OPEN_METEO.equals(event.providerKey())) {

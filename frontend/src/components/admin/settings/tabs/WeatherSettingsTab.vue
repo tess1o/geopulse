@@ -132,7 +132,7 @@
 
     <SettingSection title="Quota & Processing">
       <SettingItem
-        v-for="setting in quotaSettings"
+        v-for="setting in quotaAndProcessingSettings"
         :key="setting.key"
         :setting="setting"
         @reset="handleReset(setting)"
@@ -249,16 +249,17 @@ const samplingKeys = [
   'weather.failed-target-retry.enabled',
   'weather.failed-target-retry.cooldown-hours'
 ]
-const quotaKeys = [
+const quotaAndProcessingKeys = [
   'weather.quota.daily-request-limit',
-  'weather.quota.ongoing-reserve'
+  'weather.quota.ongoing-reserve',
+  'weather.backfill.discovery.chunks-per-run'
 ]
 
 const getSetting = (key) => settings.value.find(setting => setting.key === key)
 const getOriginalSetting = (key) => originalSettings.value.find(setting => setting.key === key)
 const providerSettings = computed(() => providerKeys.map(getSetting).filter(Boolean))
 const samplingSettings = computed(() => samplingKeys.map(getSetting).filter(Boolean))
-const quotaSettings = computed(() => quotaKeys.map(getSetting).filter(Boolean))
+const quotaAndProcessingSettings = computed(() => quotaAndProcessingKeys.map(getSetting).filter(Boolean))
 const apiKeySetting = computed(() => getSetting('weather.open-meteo.api-key'))
 const apiKeyStored = computed(() => !apiKeyCleared.value && apiKeySetting.value?.currentValue && apiKeySetting.value.currentValue !== '')
 const apiKeyStateText = computed(() => {
@@ -404,6 +405,11 @@ const validateChanges = () => {
     return 'Coordinate precision must be between 0 and 5'
   }
 
+  const chunksPerRun = Number(getSetting('weather.backfill.discovery.chunks-per-run')?.currentValue)
+  if (Number.isFinite(chunksPerRun) && chunksPerRun < 1) {
+    return 'Backfill chunks per run must be at least 1'
+  }
+
   return null
 }
 
@@ -474,6 +480,7 @@ const testConnection = async () => {
 
 const numberMin = (setting) => {
   if (setting.key === 'weather.ongoing.interval-minutes') return 30
+  if (setting.key === 'weather.backfill.discovery.chunks-per-run') return 1
   if (setting.key === 'weather.coordinate-precision') return 0
   return 0
 }

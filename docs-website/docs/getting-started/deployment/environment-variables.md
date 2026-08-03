@@ -325,7 +325,7 @@ Notes:
 | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-accuracy\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Weather (26)
+### Weather (27)
 
 Weather feature/provider/sampling/quota settings can also be managed from **Admin Dashboard > System Settings > Weather**. Saved Admin Settings values are stored in the database and take precedence over these environment defaults. By default, Weather is enabled for ongoing/current timeline activity, while historical backfill is opt-in. Scheduler cadence, target cleanup, and HTTP timeout variables are backend runtime properties and require a backend restart when changed.
 
@@ -347,6 +347,7 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_WEATHER_FAILED_TARGET_RETRY_COOLDOWN_HOURS` | `24` | Cooldown before failed weather targets become retryable. Property: \`geopulse.weather.failed-target-retry.cooldown-hours\`. | Positive integer hours. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_INTERVAL` | `30m` | Scheduler interval for historical weather target discovery. Property: \`geopulse.weather.backfill.discovery.job.interval\`. | Quarkus duration expression, for example \`15m\`, \`1h\`. | Backend restart |
 | `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_DELAY` | `5m` | Initial scheduler delay for historical weather target discovery. Property: \`geopulse.weather.backfill.discovery.job.delay\`. | Quarkus duration expression. | Backend restart |
+| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_CHUNKS_PER_RUN` | `4` | Maximum number of 90-day user-range chunks checked by each historical reconciliation run. This is a global per-run limit, not a per-user limit. Property: \`geopulse.weather.backfill.discovery.chunks-per-run\`. | Integer >= 1. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_ONGOING_JOB_INTERVAL` | `15m` | Scheduler interval for ongoing weather target discovery. Property: \`geopulse.weather.ongoing.job.interval\`. | Quarkus duration expression. | Backend restart |
 | `GEOPULSE_WEATHER_ONGOING_JOB_DELAY` | `2m` | Initial scheduler delay for ongoing weather target discovery. Property: \`geopulse.weather.ongoing.job.delay\`. | Quarkus duration expression. | Backend restart |
 | `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_INTERVAL` | `10m` | Scheduler interval for fetching queued weather sample targets. Property: \`geopulse.weather.sample-fetch.job.interval\`. | Quarkus duration expression. | Backend restart |

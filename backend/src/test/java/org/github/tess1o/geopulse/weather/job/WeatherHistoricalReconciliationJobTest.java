@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.github.tess1o.geopulse.weather.service.WeatherBackfillRunResult;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
+import org.github.tess1o.geopulse.weather.service.WeatherReconciliationQueueStatus;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,11 @@ class WeatherHistoricalReconciliationJobTest {
     void setUp() {
         lenient().when(configurationService.isEnabled()).thenReturn(true);
         lenient().when(configurationService.backfillEnabled()).thenReturn(true);
+        lenient().when(configurationService.backfillDiscoveryChunksPerRun()).thenReturn(4);
+        lenient().when(weatherService.queueFullHistoricalBackfill())
+                .thenReturn(WeatherReconciliationQueueStatus.QUEUED);
+        lenient().when(weatherService.queueHistoricalBackfill(any(), any(), any()))
+                .thenReturn(WeatherReconciliationQueueStatus.QUEUED);
         lenient().when(weatherService.processPendingHistoricalBackfillChunks(anyInt()))
                 .thenReturn(new WeatherBackfillRunResult(0, 0, 0, 0, 0));
 
@@ -38,7 +44,6 @@ class WeatherHistoricalReconciliationJobTest {
         job.weatherService = weatherService;
         job.configurationService = configurationService;
         job.executorService = executorService;
-        job.chunksPerRun = 4;
     }
 
     @AfterEach
@@ -96,10 +101,12 @@ class WeatherHistoricalReconciliationJobTest {
 
     @Test
     void scheduledRunOnlyDrainsPersistedWork() {
+        when(configurationService.backfillDiscoveryChunksPerRun()).thenReturn(7);
+
         job.reconcileHistoricalWeatherTargets();
 
         verify(weatherService).resetStaleFailedTargetsForRetry();
-        verify(weatherService).processPendingHistoricalBackfillChunks(4);
+        verify(weatherService).processPendingHistoricalBackfillChunks(7);
         verify(weatherService, never()).queueFullHistoricalBackfill();
         verify(weatherService, never()).fetchQueuedSamples();
     }
@@ -107,6 +114,10 @@ class WeatherHistoricalReconciliationJobTest {
     @Test
     void weatherDisabledSkipsEveryBackfillEntrypointWithoutSubmittingWork() {
         when(configurationService.isEnabled()).thenReturn(false);
+        when(weatherService.queueFullHistoricalBackfill())
+                .thenReturn(WeatherReconciliationQueueStatus.WEATHER_DISABLED);
+        when(weatherService.queueHistoricalBackfill(any(), any(), any()))
+                .thenReturn(WeatherReconciliationQueueStatus.WEATHER_DISABLED);
         UUID userId = UUID.randomUUID();
         Instant affectedFrom = Instant.parse("2026-06-25T08:00:00Z");
         Instant affectedTo = Instant.parse("2026-06-26T08:00:00Z");
@@ -116,13 +127,19 @@ class WeatherHistoricalReconciliationJobTest {
         job.onTimelineDataChanged(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, null));
         job.reconcileHistoricalWeatherTargets();
 
-        verifyNoInteractions(weatherService);
+        verify(weatherService).queueFullHistoricalBackfill();
+        verify(weatherService).queueHistoricalBackfill(userId, affectedFrom, affectedTo);
+        verifyNoMoreInteractions(weatherService);
         assertThat(executorService.executionCount()).isZero();
     }
 
     @Test
     void backfillDisabledSkipsEveryBackfillEntrypointWithoutSubmittingWork() {
         when(configurationService.backfillEnabled()).thenReturn(false);
+        when(weatherService.queueFullHistoricalBackfill())
+                .thenReturn(WeatherReconciliationQueueStatus.BACKFILL_DISABLED);
+        when(weatherService.queueHistoricalBackfill(any(), any(), any()))
+                .thenReturn(WeatherReconciliationQueueStatus.BACKFILL_DISABLED);
         UUID userId = UUID.randomUUID();
         Instant affectedFrom = Instant.parse("2026-06-25T08:00:00Z");
         Instant affectedTo = Instant.parse("2026-06-26T08:00:00Z");
@@ -132,7 +149,9 @@ class WeatherHistoricalReconciliationJobTest {
         job.onTimelineDataChanged(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, null));
         job.reconcileHistoricalWeatherTargets();
 
-        verifyNoInteractions(weatherService);
+        verify(weatherService).queueFullHistoricalBackfill();
+        verify(weatherService).queueHistoricalBackfill(userId, affectedFrom, affectedTo);
+        verifyNoMoreInteractions(weatherService);
         assertThat(executorService.executionCount()).isZero();
     }
 

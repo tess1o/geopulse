@@ -156,7 +156,7 @@ export const SETTING_METADATA = {
 
   // Weather Settings
   'weather.enabled': {
-    label: 'Weather Enabled',
+    label: 'Enable Weather',
     description: 'Enable weather samples for timeline stays and trips'
   },
   'weather.open-meteo.forecast-url': {
@@ -180,8 +180,12 @@ export const SETTING_METADATA = {
     description: 'Minimum minutes between ongoing weather samples (minimum 30)'
   },
   'weather.backfill.enabled': {
-    label: 'Backfill Enabled',
+    label: 'Historical Weather Backfill',
     description: 'Discover historical weather targets automatically'
+  },
+  'weather.backfill.discovery.chunks-per-run': {
+    label: 'Historical Backfill Chunks per Run',
+    description: 'Maximum 90-day user-range chunks checked by each reconciliation run'
   },
   'weather.quota.daily-request-limit': {
     label: 'Daily Request Limit',

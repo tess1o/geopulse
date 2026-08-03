@@ -5,6 +5,6 @@ public record WeatherBackfillRunResult(
         int targetsCreated,
         int targetsAlreadyKnown,
         int targetsSkipped,
-        long pendingRanges
+        long pendingUserRanges
 ) {
 }

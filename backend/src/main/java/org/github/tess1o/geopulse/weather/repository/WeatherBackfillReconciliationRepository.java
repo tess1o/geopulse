@@ -143,7 +143,7 @@ public class WeatherBackfillReconciliationRepository {
                 .executeUpdate();
     }
 
-    public long countPending() {
+    public long countPendingUserRanges() {
         return ((Number) entityManager.createNativeQuery("SELECT COUNT(*) FROM weather_backfill_reconciliations")
                 .getSingleResult()).longValue();
     }

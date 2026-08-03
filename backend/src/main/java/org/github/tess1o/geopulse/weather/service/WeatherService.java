@@ -118,31 +118,49 @@ public class WeatherService {
 
     /**
      * Marks every active user's complete timeline as needing historical reconciliation.
-     * Used only when a setting changes the definition of weather coverage.
+     * Used only when a setting changes the definition of weather coverage. The new transaction
+     * is required because this method is called from an {@code AFTER_SUCCESS} observer, where
+     * the producer transaction is complete but can still be associated with the callback thread.
+     *
+     * @return whether work was queued or why it was skipped
      */
-    @Transactional
-    public void queueFullHistoricalBackfill() {
-        if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
-            return;
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public WeatherReconciliationQueueStatus queueFullHistoricalBackfill() {
+        if (!configurationService.isEnabled()) {
+            return WeatherReconciliationQueueStatus.WEATHER_DISABLED;
+        }
+        if (!configurationService.backfillEnabled()) {
+            return WeatherReconciliationQueueStatus.BACKFILL_DISABLED;
         }
 
         backfillReconciliationRepository.enqueueAllActiveUsers(Instant.now());
+        return WeatherReconciliationQueueStatus.QUEUED;
     }
 
     /**
      * Durably records the exact timeline range that may need historical weather targets.
-     * Repeated ranges for a user are coalesced by the repository.
+     * Repeated ranges for a user are coalesced by the repository. This transaction commits
+     * after the timeline/import transaction and before asynchronous reconciliation is submitted.
+     *
+     * @return whether work was queued or why it was skipped
      */
-    @Transactional
-    public void queueHistoricalBackfill(UUID userId, Instant startTime, Instant endTime) {
-        if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
-            return;
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public WeatherReconciliationQueueStatus queueHistoricalBackfill(
+            UUID userId,
+            Instant startTime,
+            Instant endTime) {
+        if (!configurationService.isEnabled()) {
+            return WeatherReconciliationQueueStatus.WEATHER_DISABLED;
+        }
+        if (!configurationService.backfillEnabled()) {
+            return WeatherReconciliationQueueStatus.BACKFILL_DISABLED;
         }
         if (userId == null || startTime == null || endTime == null || !endTime.isAfter(startTime)) {
-            return;
+            return WeatherReconciliationQueueStatus.INVALID_RANGE;
         }
 
         backfillReconciliationRepository.enqueue(userId, startTime, endTime);
+        return WeatherReconciliationQueueStatus.QUEUED;
     }
 
     /**
@@ -172,13 +190,14 @@ public class WeatherService {
             skipped += response.getTargetsSkipped();
         }
 
-        long pendingRanges = QuarkusTransaction.requiringNew().call(backfillReconciliationRepository::countPending);
+        long pendingUserRanges = QuarkusTransaction.requiringNew()
+                .call(backfillReconciliationRepository::countPendingUserRanges);
         return new WeatherBackfillRunResult(
                 chunksProcessed,
                 created,
                 known,
                 skipped,
-                pendingRanges
+                pendingUserRanges
         );
     }
 

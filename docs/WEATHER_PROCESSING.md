@@ -59,8 +59,10 @@ sample or a queued target. It is incremental rather than a periodic full-history
 
 1. A successful timeline rebuild publishes `TimelineDataChangedEvent` with the affected user
    and time range.
-2. The event observer synchronously upserts that range into
-   `weather_backfill_reconciliations`. The range is durable before asynchronous work starts.
+2. After the timeline transaction commits, the event observer synchronously upserts that range
+   into `weather_backfill_reconciliations` in a new transaction. The separate transaction keeps
+   optional weather failures from rolling back an import or timeline rebuild, and commits the
+   durable range before asynchronous work starts.
 3. Multiple ranges for one user are coalesced using the earliest start and latest end. If an
    earlier range arrives, the cursor is rewound. This can intentionally recheck already known
    targets; inserts remain idempotent.
@@ -85,7 +87,7 @@ in the queue and becomes eligible on a later scheduled run. This avoids historic
 competing with ongoing weather discovery.
 
 Each run processes at most four chunks by default, so one invocation covers at most 360 days of
-timeline data. Remaining rows are reported as `pendingRanges` and resumed by later runs.
+timeline data. Remaining rows are reported as `pendingUserRanges` and resumed by later runs.
 
 ### Triggers
 
@@ -169,7 +171,7 @@ Example:
 
 ```text
 Weather historical reconciliation completed on scheduled: durationMs=420,
-chunks=4, created=12, known=340, skipped=0, pendingRanges=1
+chunks=4, created=12, known=340, skipped=0, pendingUserRanges=1
 ```
 
 - `durationMs`: total reconciliation time, including retry reset and all chunks.
@@ -177,7 +179,7 @@ chunks=4, created=12, known=340, skipped=0, pendingRanges=1
 - `created`: new provider targets inserted.
 - `known`: candidates already represented by a sample or target, plus duplicates in the chunk.
 - `skipped`: candidates rejected because their coordinates were invalid.
-- `pendingRanges`: user ranges still present, including a recent tail waiting for eligibility.
+- `pendingUserRanges`: user ranges still present, including a recent tail waiting for eligibility.
 
 `created=0` does not mean the run did no work. It means reconciliation checked the reported
 chunks and proved that their candidates were already known. The bounded chunk count prevents
