@@ -8,6 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
+/**
+ * Consumes pending weather targets and stores provider responses as weather samples.
+ * Quotas, ongoing capacity reservation, provider health, retry timing, and concurrent
+ * claims are enforced by {@code WeatherService} and the target repository.
+ */
 @ApplicationScoped
 @Slf4j
 public class WeatherSampleFetchJob {

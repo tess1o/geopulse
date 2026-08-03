@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @ApplicationScoped
@@ -33,6 +34,13 @@ public class WeatherSamplingPolicy {
                 .toList();
     }
 
+    public List<Instant> sampleTimesForStay(Instant start, long durationSeconds, Instant rangeStart, Instant rangeEnd) {
+        if (start == null || durationSeconds <= 0) {
+            return List.of();
+        }
+        return sampleTimes(start, start.plusSeconds(durationSeconds), false, rangeStart, rangeEnd);
+    }
+
     public List<Instant> sampleTimesForTrip(TimelineTripEntity trip) {
         if (trip == null) {
             return List.of();
@@ -40,6 +48,13 @@ public class WeatherSamplingPolicy {
         Instant start = truncateToHour(trip.getTimestamp());
         Instant end = trip.getTimestamp().plusSeconds(trip.getTripDuration());
         return sampleTimes(start, end, true);
+    }
+
+    public List<Instant> sampleTimesForTrip(Instant start, long durationSeconds, Instant rangeStart, Instant rangeEnd) {
+        if (start == null || durationSeconds <= 0) {
+            return List.of();
+        }
+        return sampleTimes(start, start.plusSeconds(durationSeconds), true, rangeStart, rangeEnd);
     }
 
     public Instant ongoingSampleTime(Instant now, int intervalMinutes) {
@@ -50,13 +65,17 @@ public class WeatherSamplingPolicy {
     }
 
     private List<Instant> sampleTimes(Instant start, Instant end, boolean trip) {
+        return sampleTimes(start, end, trip, null, null);
+    }
+
+    private List<Instant> sampleTimes(Instant start, Instant end, boolean trip, Instant rangeStart, Instant rangeEnd) {
         if (start == null || end == null || !end.isAfter(start)) {
             return List.of();
         }
 
         Duration duration = Duration.between(start, end);
         if (duration.compareTo(LONG_ITEM_THRESHOLD) < 0) {
-            return List.of(truncateToHour(start.plus(duration.dividedBy(2))));
+            return inRange(List.of(truncateToHour(start.plus(duration.dividedBy(2)))), rangeStart, rangeEnd);
         }
 
         long durationHours = Math.max(1, duration.toHours());
@@ -69,18 +88,48 @@ public class WeatherSamplingPolicy {
         }
 
         if (desiredCount <= 1) {
-            return List.of(truncateToHour(start.plus(duration.dividedBy(2))));
+            return inRange(List.of(truncateToHour(start.plus(duration.dividedBy(2)))), rangeStart, rangeEnd);
         }
 
-        List<Instant> result = new ArrayList<>(desiredCount);
         double stepSeconds = duration.toSeconds() / (double) desiredCount;
-        for (int i = 0; i < desiredCount; i++) {
+        int firstIndex = candidateIndex(rangeStart, start, stepSeconds, desiredCount, false);
+        int lastIndex = candidateIndex(rangeEnd, start, stepSeconds, desiredCount, true);
+        List<Instant> result = new ArrayList<>(Math.max(0, lastIndex - firstIndex + 1));
+        for (int i = firstIndex; i <= lastIndex; i++) {
             long offsetSeconds = Math.round((i + 0.5) * stepSeconds);
             Instant sampleAt = start.plusSeconds(Math.max(0, Math.min(duration.toSeconds(), offsetSeconds)));
             result.add(truncateToHour(sampleAt));
         }
 
-        return result.stream().distinct().toList();
+        return inRange(result, rangeStart, rangeEnd);
+    }
+
+    private int candidateIndex(Instant boundary, Instant start, double stepSeconds, int desiredCount, boolean upper) {
+        if (boundary == null) {
+            return upper ? desiredCount - 1 : 0;
+        }
+
+        double offsetSeconds = Duration.between(start, boundary).toMillis() / 1000.0;
+        if (upper) {
+            offsetSeconds += ChronoUnit.HOURS.getDuration().toSeconds();
+        }
+        int index = (int) Math.floor((offsetSeconds / stepSeconds) - 0.5);
+        index += upper ? 2 : -2;
+        return Math.max(0, Math.min(desiredCount - 1, index));
+    }
+
+    private List<Instant> inRange(List<Instant> values, Instant rangeStart, Instant rangeEnd) {
+        LinkedHashSet<Instant> result = new LinkedHashSet<>();
+        for (Instant value : values) {
+            if (rangeStart != null && value.isBefore(rangeStart)) {
+                continue;
+            }
+            if (rangeEnd != null && value.isAfter(rangeEnd)) {
+                continue;
+            }
+            result.add(value);
+        }
+        return List.copyOf(result);
     }
 
     public Instant truncateToHour(Instant value) {

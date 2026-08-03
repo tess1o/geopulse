@@ -8,6 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
+/**
+ * Attempts an external provider probe only when weather integration health is blocking
+ * fetches and its retry time has arrived. A healthy provider makes scheduled runs a local
+ * health-state check without an external request.
+ */
 @ApplicationScoped
 @Slf4j
 public class WeatherProviderHealthProbeJob {

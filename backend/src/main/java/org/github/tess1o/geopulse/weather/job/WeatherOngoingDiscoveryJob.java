@@ -9,6 +9,11 @@ import org.github.tess1o.geopulse.weather.dto.WeatherTargetQueueResponse;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
+/**
+ * Periodically creates at most one current weather target per active user from the latest
+ * active stay or trip. This job only discovers targets; provider calls are handled by
+ * {@link WeatherSampleFetchJob}.
+ */
 @ApplicationScoped
 @Slf4j
 public class WeatherOngoingDiscoveryJob {

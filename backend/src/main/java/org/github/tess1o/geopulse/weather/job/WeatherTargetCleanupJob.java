@@ -9,6 +9,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
+/**
+ * Deletes terminal weather target queue records after their configured retention period.
+ * Stored weather samples are not deleted by this job.
+ */
 @ApplicationScoped
 @Slf4j
 public class WeatherTargetCleanupJob {

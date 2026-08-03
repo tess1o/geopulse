@@ -61,7 +61,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Deep Insights:** Analytics for distance, visit frequency, and movement patterns over time.
 - **Immich Integration:** Photos from your library appear directly on your map timeline.
 - **Memos Integration:** Timestamped notes from Memos can appear alongside your timeline.
-- **Weather Integration:** Current weather enrichment is enabled by default for trips, stays, map layers, and journey insights; historical backfill is admin opt-in.
+- **Weather Integration:** Current weather enrichment is enabled by default for trips, stays, map layers, and journey insights; historical backfill is admin opt-in. See [Weather processing architecture](docs/WEATHER_PROCESSING.md).
 
 **Sources & Syncing**
 

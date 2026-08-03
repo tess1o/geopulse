@@ -16,10 +16,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 @ApplicationScoped
 public class WeatherSampleTargetRepository implements PanacheRepository<WeatherSampleTargetEntity> {
+
+    private static final int TARGET_INSERT_BATCH_SIZE = 250;
 
     @Inject
     EntityManager entityManager;
@@ -101,6 +104,119 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
                 .setParameter(11, now)
                 .executeUpdate();
         return inserted > 0;
+    }
+
+    @Transactional
+    public int enqueueMissingBatch(
+            UUID userId,
+            String provider,
+            List<WeatherTargetBatchRow> candidates,
+            WeatherTargetSource source,
+            int priority) {
+        if (userId == null || provider == null || provider.isBlank() || candidates == null || candidates.isEmpty()) {
+            return 0;
+        }
+
+        int inserted = 0;
+        for (int offset = 0; offset < candidates.size(); offset += TARGET_INSERT_BATCH_SIZE) {
+            int end = Math.min(candidates.size(), offset + TARGET_INSERT_BATCH_SIZE);
+            inserted += enqueueMissingBatchPart(userId, provider, candidates.subList(offset, end), source, priority);
+        }
+        return inserted;
+    }
+
+    private int enqueueMissingBatchPart(
+            UUID userId,
+            String provider,
+            List<WeatherTargetBatchRow> candidates,
+            WeatherTargetSource source,
+            int priority) {
+        StringJoiner values = new StringJoiner(", ");
+        int parameter = 1;
+        for (int i = 0; i < candidates.size(); i++) {
+            values.add("(?" + parameter++ + ", ?" + parameter++ + ", ?" + parameter++
+                    + ", ?" + parameter++ + ", CAST(?" + parameter++ + " AS TIMESTAMPTZ))");
+        }
+
+        int userParameter = parameter++;
+        int providerParameter = parameter++;
+        int sourceParameter = parameter++;
+        int priorityParameter = parameter++;
+        int nowParameter = parameter;
+        String sql = """
+                WITH candidates (latitude, longitude, latitude_bucket, longitude_bucket, target_at) AS (
+                    VALUES %s
+                )
+                INSERT INTO weather_sample_targets (
+                    user_id,
+                    provider,
+                    latitude,
+                    longitude,
+                    latitude_bucket,
+                    longitude_bucket,
+                    target_at,
+                    source,
+                    priority,
+                    status,
+                    attempts,
+                    next_attempt_at,
+                    created_at,
+                    updated_at
+                )
+                SELECT ?%d,
+                       ?%d,
+                       candidate.latitude,
+                       candidate.longitude,
+                       candidate.latitude_bucket,
+                       candidate.longitude_bucket,
+                       candidate.target_at,
+                       ?%d,
+                       ?%d,
+                       'PENDING',
+                       0,
+                       ?%d,
+                       ?%d,
+                       ?%d
+                FROM candidates candidate
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM weather_samples sample
+                    WHERE sample.user_id = ?%d
+                      AND sample.provider = ?%d
+                      AND sample.latitude_bucket = candidate.latitude_bucket
+                      AND sample.longitude_bucket = candidate.longitude_bucket
+                      AND sample.observed_at = candidate.target_at
+                )
+                ON CONFLICT ON CONSTRAINT uq_weather_targets_user_provider_bucket_time DO NOTHING
+                """.formatted(
+                values,
+                userParameter,
+                providerParameter,
+                sourceParameter,
+                priorityParameter,
+                nowParameter,
+                nowParameter,
+                nowParameter,
+                userParameter,
+                providerParameter
+        );
+
+        var query = entityManager.createNativeQuery(sql);
+        parameter = 1;
+        for (WeatherTargetBatchRow candidate : candidates) {
+            query.setParameter(parameter++, candidate.latitude());
+            query.setParameter(parameter++, candidate.longitude());
+            query.setParameter(parameter++, candidate.latitudeBucket());
+            query.setParameter(parameter++, candidate.longitudeBucket());
+            query.setParameter(parameter++, candidate.targetAt());
+        }
+        Instant now = Instant.now();
+        query.setParameter(userParameter, userId);
+        query.setParameter(providerParameter, provider);
+        query.setParameter(sourceParameter, source.name());
+        query.setParameter(priorityParameter, priority);
+        query.setParameter(nowParameter, now);
+        return query.executeUpdate();
     }
 
     @Transactional
