@@ -45,11 +45,11 @@ export const useImmichStore = defineStore('immich', {
 
   actions: {
     // Configuration actions
-    async fetchConfig() {
-      if (this.hasConfig && !this.configError) {
+    async fetchConfig(force = false) {
+      if (!force && this.hasConfig && !this.configError) {
         return this.config
       }
-      if (inFlightConfigRequest) {
+      if (!force && inFlightConfigRequest) {
         return inFlightConfigRequest
       }
       
@@ -96,7 +96,7 @@ export const useImmichStore = defineStore('immich', {
       try {
         const response = await apiService.put('/users/me/immich-config', configData)
         // Refresh config after successful update
-        await this.fetchConfig()
+        await this.fetchConfig(true)
         return response
       } catch (error) {
         console.error('Failed to update Immich config:', error)
