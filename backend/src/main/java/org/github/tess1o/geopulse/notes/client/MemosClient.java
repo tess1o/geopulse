@@ -144,7 +144,7 @@ public class MemosClient {
             return null;
         }
         return String.format(
-                "created_ts >= %d && created_ts <= %d",
+                "created_ts >= timestamp(%d) && created_ts <= timestamp(%d)",
                 startTime.getEpochSecond(),
                 endTime.getEpochSecond()
         );

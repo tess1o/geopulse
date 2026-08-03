@@ -19,7 +19,7 @@ class MemosClientTest {
                 Instant.parse("2026-06-20T20:59:59.999Z")
         );
 
-        assertEquals("created_ts >= 1781902800 && created_ts <= 1781989199", filter);
+        assertEquals("created_ts >= timestamp(1781902800) && created_ts <= timestamp(1781989199)", filter);
     }
 
     @Test
@@ -37,7 +37,7 @@ class MemosClientTest {
         );
 
         assertEquals(
-                "created_ts >= 1781902800 && created_ts <= 1781989199 && (\"travel\" in tags || \"work/project\" in tags)",
+                "created_ts >= timestamp(1781902800) && created_ts <= timestamp(1781989199) && (\"travel\" in tags || \"work/project\" in tags)",
                 filter
         );
     }
