@@ -1,6 +1,7 @@
 <template>
   <Card
     class="timeline-card timeline-card--overnight-trip"
+    v-bind="longPressBindings"
     @click="handleClick"
     @contextmenu="showContextMenu"
   >
@@ -92,6 +93,7 @@ import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
+import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
 import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
@@ -132,6 +134,19 @@ const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-mo
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
 const noteEditorVisible = ref(false)
+
+const openContextMenu = (event) => {
+  contextMenu.value?.show(event)
+}
+
+const {
+  longPressBindings,
+  handleContextMenu: showContextMenu,
+  shouldSuppressClick
+} = useLongPressContextMenu({
+  open: openContextMenu
+})
+
 const contextMenuItems = computed(() => {
   const items = [
     {
@@ -248,7 +263,8 @@ const canManageMatchingNotes = computed(() => {
   ))
 })
 
-const handleClick = () => {
+const handleClick = (event) => {
+  if (shouldSuppressClick(event)) return
   emit('click', props.tripItem);
 };
 
@@ -275,10 +291,6 @@ const handleEditMovementType = () => {
   emit('edit-movement-type', props.tripItem)
 }
 
-const showContextMenu = (event) => {
-  event.preventDefault()
-  contextMenu.value.show(event)
-}
 </script>
 
 <style scoped>
@@ -319,6 +331,15 @@ const showContextMenu = (event) => {
   
   .transition-title {
     font-size: 0.875rem;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .timeline-card {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
   }
 }
 

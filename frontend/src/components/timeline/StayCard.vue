@@ -1,6 +1,7 @@
 <template>
   <Card
     class="timeline-card timeline-card--stay"
+    v-bind="longPressBindings"
     @click="handleClick"
     @contextmenu="showContextMenu"
   >
@@ -90,6 +91,7 @@ import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
+import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
 import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
@@ -127,6 +129,18 @@ const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-st
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
 const noteEditorVisible = ref(false)
+
+const openContextMenu = (event) => {
+  contextMenu.value?.show(event)
+}
+
+const {
+  longPressBindings,
+  handleContextMenu: showContextMenu,
+  shouldSuppressClick
+} = useLongPressContextMenu({
+  open: openContextMenu
+})
 
 // Check if stay has city/country info
 const hasCity = computed(() => props.stayItem.city && props.stayItem.city.trim().length > 0)
@@ -249,7 +263,8 @@ const canManageMatchingNotes = computed(() => {
   ))
 })
 
-const handleClick = () => {
+const handleClick = (event) => {
+  if (shouldSuppressClick(event)) return
   emit('click', props.stayItem)
 }
 
@@ -280,11 +295,6 @@ const handleRenameStay = () => {
 const handleResetDataGapOverride = () => {
   if (!canResetDataGapOverride.value) return
   emit('reset-data-gap-override', props.stayItem)
-}
-
-const showContextMenu = (event) => {
-  event.preventDefault()
-  contextMenu.value.show(event)
 }
 
 const navigateToPlaceDetails = () => {
@@ -371,6 +381,15 @@ const formattedTimestamp = computed(() => {
   .duration-detail {
     margin: 2px 0;
     font-size: 0.8rem;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .timeline-card {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
   }
 }
 
