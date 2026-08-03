@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 @ApplicationScoped
@@ -14,6 +15,9 @@ public class WeatherTargetCleanupJob {
 
     @Inject
     WeatherService weatherService;
+
+    @Inject
+    WeatherConfigurationService configurationService;
 
     @ConfigProperty(name = "geopulse.weather.targets.completed-retention-days", defaultValue = "7")
     int completedRetentionDays;
@@ -24,6 +28,11 @@ public class WeatherTargetCleanupJob {
     @RunOnVirtualThread
     @Scheduled(cron = "${geopulse.weather.target-cleanup.job.cron:0 30 3 * * ?}")
     public void cleanupWeatherTargets() {
+        if (!configurationService.isEnabled()) {
+            log.info("Weather target cleanup job skipped: weather is disabled");
+            return;
+        }
+
         log.info("Weather target cleanup job triggered: completedRetentionDays={}, failedRetentionDays={}",
                 completedRetentionDays, failedRetentionDays);
         try {

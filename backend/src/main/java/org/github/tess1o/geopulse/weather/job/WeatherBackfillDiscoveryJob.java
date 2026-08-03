@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.weather.dto.WeatherTargetQueueResponse;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
+import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +28,9 @@ public class WeatherBackfillDiscoveryJob {
     WeatherService weatherService;
 
     @Inject
+    WeatherConfigurationService configurationService;
+
+    @Inject
     @Identifier("weather-processing")
     ExecutorService executorService;
 
@@ -34,16 +38,32 @@ public class WeatherBackfillDiscoveryJob {
     private final AtomicBoolean fullKickstartPending = new AtomicBoolean(false);
 
     void onStartup(@Observes StartupEvent ignored) {
+        if (!shouldRunBackfillDiscovery("startup")) {
+            return;
+        }
+
         log.info("Weather backfill discovery job triggered: startup");
         runKickstartAsync("startup");
     }
 
     void onWeatherSettingsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) WeatherSettingsChangedEvent event) {
+        String reason = "weather setting changed: " + event.key();
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         log.info("Weather backfill discovery job triggered: weather setting changed key={}", event.key());
-        runKickstartAsync("weather setting changed: " + event.key());
+        runKickstartAsync(reason);
     }
 
     void onTimelineDataChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) TimelineDataChangedEvent event) {
+        String reason = "timeline data changed for user " + event.getUserId()
+                + " from " + event.getAffectedFrom()
+                + " to " + event.getAffectedTo();
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         log.info("Weather backfill discovery job triggered: timeline data changed userId={}, affectedFrom={}, affectedTo={}",
                 event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
         runKickstartAsync(event);
@@ -52,11 +72,19 @@ public class WeatherBackfillDiscoveryJob {
     @RunOnVirtualThread
     @Scheduled(every = "${geopulse.weather.backfill.discovery.job.interval:30m}", delayed = "${geopulse.weather.backfill.discovery.job.delay:5m}")
     public void discoverHistoricalWeatherTargets() {
+        if (!shouldRunBackfillDiscovery("scheduled")) {
+            return;
+        }
+
         log.info("Weather backfill discovery job triggered: scheduled");
         discoverHistoricalTargets("scheduled", weatherService::discoverHistoricalBackfillTargets, false);
     }
 
     private void runKickstartAsync(String reason) {
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         log.info("Submitting weather backfill kickstart: reason={}", reason);
         try {
             CompletableFuture.runAsync(() -> runKickstart(reason), executorService)
@@ -72,6 +100,13 @@ public class WeatherBackfillDiscoveryJob {
     }
 
     private void runKickstartAsync(TimelineDataChangedEvent event) {
+        String reason = "timeline data changed for user " + event.getUserId()
+                + " from " + event.getAffectedFrom()
+                + " to " + event.getAffectedTo();
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         log.info("Submitting weather backfill kickstart after timeline change: userId={}, affectedFrom={}, affectedTo={}",
                 event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
         try {
@@ -88,6 +123,10 @@ public class WeatherBackfillDiscoveryJob {
     }
 
     private void runKickstart(String reason) {
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         fullKickstartPending.set(false);
         DiscoveryOutcome outcome = discoverHistoricalTargets(reason, weatherService::discoverHistoricalBackfillTargets, true);
         if (!shouldFetchAfterDiscovery(outcome)) {
@@ -103,6 +142,10 @@ public class WeatherBackfillDiscoveryJob {
         String reason = "timeline data changed for user " + event.getUserId()
                 + " from " + event.getAffectedFrom()
                 + " to " + event.getAffectedTo();
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return;
+        }
+
         DiscoveryOutcome outcome = discoverHistoricalTargets(
                 reason,
                 () -> weatherService.discoverHistoricalBackfillTargets(
@@ -124,6 +167,10 @@ public class WeatherBackfillDiscoveryJob {
     private DiscoveryOutcome discoverHistoricalTargets(String reason,
                                                        Supplier<WeatherTargetQueueResponse> discovery,
                                                        boolean queueFullKickstartIfRunning) {
+        if (!shouldRunBackfillDiscovery(reason)) {
+            return null;
+        }
+
         if (!discoveryRunning.compareAndSet(false, true)) {
             if (queueFullKickstartIfRunning) {
                 fullKickstartPending.set(true);
@@ -173,8 +220,19 @@ public class WeatherBackfillDiscoveryJob {
         return outcome != null
                 && (outcome.resetFailedTargets() > 0
                 || (outcome.response() != null
-                && (outcome.response().getTargetsCreated() > 0
-                || outcome.response().getTargetsAlreadyKnown() > 0)));
+                && outcome.response().getTargetsCreated() > 0));
+    }
+
+    private boolean shouldRunBackfillDiscovery(String reason) {
+        if (!configurationService.isEnabled()) {
+            log.info("Weather backfill discovery skipped on {}: weather is disabled", reason);
+            return false;
+        }
+        if (!configurationService.backfillEnabled()) {
+            log.info("Weather backfill discovery skipped on {}: weather backfill is disabled", reason);
+            return false;
+        }
+        return true;
     }
 
     private record DiscoveryOutcome(WeatherTargetQueueResponse response, long resetFailedTargets) {

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.weather.dto.WeatherTargetQueueResponse;
+import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 @ApplicationScoped
@@ -15,9 +16,21 @@ public class WeatherOngoingDiscoveryJob {
     @Inject
     WeatherService weatherService;
 
+    @Inject
+    WeatherConfigurationService configurationService;
+
     @RunOnVirtualThread
     @Scheduled(every = "${geopulse.weather.ongoing.job.interval:15m}", delayed = "${geopulse.weather.ongoing.job.delay:2m}")
     public void discoverOngoingWeatherTargets() {
+        if (!configurationService.isEnabled()) {
+            log.info("Weather ongoing discovery job skipped: weather is disabled");
+            return;
+        }
+        if (!configurationService.ongoingEnabled()) {
+            log.info("Weather ongoing discovery job skipped: weather ongoing is disabled");
+            return;
+        }
+
         log.info("Weather ongoing discovery job triggered");
         try {
             WeatherTargetQueueResponse response = weatherService.discoverOngoingTargets();
