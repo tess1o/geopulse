@@ -16,39 +16,10 @@ import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
-import { registerSW } from 'virtual:pwa-register'
 import { useTimezone } from '@/composables/useTimezone'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 
 initializeThemeMode()
-
-let hasReloadedForServiceWorkerUpdate = false
-
-registerSW({
-    immediate: true,
-    onNeedReload() {
-        if (hasReloadedForServiceWorkerUpdate) {
-            return
-        }
-
-        hasReloadedForServiceWorkerUpdate = true
-        window.location.reload()
-    },
-    onRegisteredSW(_swUrl, registration) {
-        if (!registration) {
-            return
-        }
-
-        window.setInterval(() => {
-            registration.update().catch((error) => {
-                console.error('Service worker update check failed', error)
-            })
-        }, 5 * 60 * 1000)
-    },
-    onRegisterError(error) {
-        console.error('Service worker registration failed', error)
-    }
-})
 
 const app = createApp(App);
 const timezone = useTimezone()

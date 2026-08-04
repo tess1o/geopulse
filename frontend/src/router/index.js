@@ -135,9 +135,9 @@ const routes = [
                     await authStore.checkAuth()
                 }
 
-                // If authenticated and has default redirect URL, redirect there
-                if (authStore.isAuthenticated && authStore.defaultRedirectUrl) {
-                    next(authStore.defaultRedirectUrl)
+                // If authenticated, redirect to the user's landing page or the app default
+                if (authStore.isAuthenticated) {
+                    next(authStore.defaultRedirectUrl || '/app/timeline')
                     return
                 }
 
@@ -151,7 +151,7 @@ const routes = [
                     }
                 }
 
-                // Show home page for guests (default) or authenticated users without redirect URL
+                // Show home page for guests by default
                 next()
             } catch (error) {
                 // On error, show home page

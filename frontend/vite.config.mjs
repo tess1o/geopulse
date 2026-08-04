@@ -22,7 +22,7 @@ export default defineConfig({
         }),
         VitePWA({
             registerType: 'autoUpdate',
-            injectRegister: 'auto',
+            injectRegister: 'script-defer',
             includeAssets: [
                 'favicon-16x16.png',
                 'favicon-32x32.png',
@@ -64,9 +64,6 @@ export default defineConfig({
                 clientsClaim: true,
                 skipWaiting: true,
                 navigateFallback: null,
-                importScripts: [
-                    'sw-client-reload.js'
-                ],
                 globPatterns: [
                     '**/*.{js,css,ico,png,svg,woff,woff2,ttf,eot}'
                 ],
