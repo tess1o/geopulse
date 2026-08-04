@@ -80,10 +80,12 @@ public class TimelineJobProgressService {
             return;
         }
 
+        int boundedPercentage = Math.min(100, Math.max(0, percentage));
+
         job.setStatus(TimelineJobProgress.JobStatus.RUNNING);
         job.setCurrentStep(step);
         job.setCurrentStepIndex(stepIndex);
-        job.setProgressPercentage(Math.min(100, Math.max(0, percentage)));
+        job.setProgressPercentage(Math.max(job.getProgressPercentage(), boundedPercentage));
 
         if (details != null) {
             job.getDetails().putAll(details);

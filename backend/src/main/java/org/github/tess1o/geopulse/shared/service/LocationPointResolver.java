@@ -364,8 +364,8 @@ public class LocationPointResolver {
                                         int favoritesResolved, int cachedResolved,
                                         int externalPending, int externalCompleted, int totalResolved) {
         if (jobId != null) {
-            // Progress from 40% to 65% during geocoding (happens in step 4, not step 7!)
-            int progress = 40 + (int)((double)totalResolved / totalLocations * 25);
+            // Progress from 55% to 70% during geocoding, after GPS state-machine processing.
+            int progress = 55 + (int)((double)totalResolved / totalLocations * 15);
 
             Map<String, Object> details = new java.util.HashMap<>();
             details.put("totalLocations", totalLocations);

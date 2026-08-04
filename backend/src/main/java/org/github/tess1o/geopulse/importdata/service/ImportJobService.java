@@ -242,7 +242,7 @@ public class ImportJobService {
                     // - 75-95% when coverage recalculation still needs to run
                     // - 75-100% otherwise
                     int importProgress = 75 + (timelineJob.getProgressPercentage() * timelineProgressRange / 100);
-                    importJob.setProgress(Math.min(100, importProgress));
+                    importJob.setProgress(Math.min(100, Math.max(importJob.getProgress(), importProgress)));
 
                     // Update progress message based on timeline step
                     String progressMessage = "Timeline generation: " + timelineJob.getCurrentStep();

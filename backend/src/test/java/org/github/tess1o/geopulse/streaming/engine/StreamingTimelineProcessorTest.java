@@ -3,10 +3,12 @@ package org.github.tess1o.geopulse.streaming.engine;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 /**
  * Unit tests for the streaming timeline processor state machine.
@@ -39,6 +42,8 @@ class StreamingTimelineProcessorTest {
     private TimelineEventFinalizationService finalizationService;
     @Mock
     private FavoriteLocationService favoriteLocationService;
+    @Mock
+    private TimelineJobProgressService jobProgressService;
     @Spy
     private TripStopHeuristicsService tripStopHeuristicsService = new TripStopHeuristicsService();
     private TimelineConfig config;
@@ -122,6 +127,30 @@ class StreamingTimelineProcessorTest {
             .build();
         List<TimelineEvent> result = processor.processPoints(Arrays.asList(), configDisabled, testUserId);
         assertNotNull(result);
+    }
+
+    @Test
+    void processingProgressCapsAtFiftyFivePercent() throws Exception {
+        UUID jobId = UUID.randomUUID();
+        Method method = StreamingTimelineProcessor.class.getDeclaredMethod(
+            "updateProcessingProgress",
+            UUID.class,
+            int.class,
+            Long.class
+        );
+        method.setAccessible(true);
+
+        method.invoke(processor, jobId, 10, 10L);
+
+        ArgumentCaptor<Integer> percentageCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(jobProgressService).updateProgress(
+            eq(jobId),
+            eq("Processing GPS points through state machine"),
+            eq(4),
+            percentageCaptor.capture(),
+            any()
+        );
+        assertEquals(55, percentageCaptor.getValue());
     }
 
     @Test

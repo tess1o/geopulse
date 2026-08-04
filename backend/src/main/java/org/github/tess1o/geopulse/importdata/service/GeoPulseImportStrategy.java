@@ -149,7 +149,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Reset sequences after import to prevent future ID conflicts
         log.info("Resetting sequences after import...");
         sequenceResetService.resetAllSequences();
-        job.setProgress(100);
+        if (job.getTimelineJobId() == null) {
+            job.setProgress(100);
+        }
     }
 
     private Map<String, byte[]> extractZipContents(ImportJob job) throws IOException {

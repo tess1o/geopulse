@@ -107,6 +107,36 @@ class ImportJobServiceCoverageTest {
         verifyNoInteractions(badgeRecalculationService);
     }
 
+    @Test
+    void processImportJobs_doesNotRegressImportProgressFromTimelineUpdate() {
+        ImportJob job = importJobService.createImportJob(
+                userId,
+                importOptions(),
+                "locations.json",
+                "{}".getBytes()
+        );
+        job.setStatus(ImportStatus.PROCESSING);
+        job.setDetectedDataTypes(List.of("rawgps"));
+        job.setDataProcessingCompleted(true);
+        job.setProgress(90);
+        job.setTimelineJobId(timelineJobId);
+
+        TimelineJobProgress timelineJob = TimelineJobProgress.builder()
+                .jobId(timelineJobId)
+                .userId(userId)
+                .status(TimelineJobProgress.JobStatus.RUNNING)
+                .currentStep("Geocoding location 1/10")
+                .progressPercentage(20)
+                .build();
+        when(timelineJobProgressService.getJobProgress(timelineJobId))
+                .thenReturn(Optional.of(timelineJob));
+
+        importJobService.processImportJobs();
+
+        assertThat(job.getProgress()).isEqualTo(90);
+        assertThat(job.getProgressMessage()).isEqualTo("Timeline generation: Geocoding location 1/10");
+    }
+
     private ImportOptions importOptions() {
         ImportOptions options = new ImportOptions();
         options.setImportFormat("owntracks");

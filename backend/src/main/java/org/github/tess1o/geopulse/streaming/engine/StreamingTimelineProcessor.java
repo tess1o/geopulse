@@ -148,15 +148,15 @@ public class StreamingTimelineProcessor {
      * @param totalPoints    total number of points to process (null if unknown)
      */
     private void updateProcessingProgress(UUID jobId, int processedCount, Long totalPoints) {
-        // Calculate percentage in the 40-70% range
+        // Calculate percentage in the 40-55% range. Geocoding owns 55-70%.
         int percentage;
         Map<String, Object> details = new HashMap<>();
 
         if (totalPoints != null && totalPoints > 0) {
-            // Calculate proportional progress from 40% to 70%
+            // Calculate proportional progress from 40% to 55%
             double progressRatio = (double) processedCount / totalPoints;
-            percentage = 40 + (int) (progressRatio * 30); // Maps 0-100% progress to 40-70%
-            percentage = Math.min(70, percentage); // Cap at 70%
+            percentage = 40 + (int) (progressRatio * 15); // Maps 0-100% progress to 40-55%
+            percentage = Math.min(55, percentage); // Cap at 55%
 
             details.put("processedPoints", processedCount);
             details.put("totalPoints", totalPoints);

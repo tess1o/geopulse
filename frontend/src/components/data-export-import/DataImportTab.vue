@@ -320,25 +320,25 @@
                  class="timeline-progress-container">
               <div class="timeline-progress-header">
                 <h4 class="timeline-progress-title">Timeline Generation</h4>
-                <span v-if="timelineJobProgress" class="timeline-progress-percentage">
+                <span v-if="showTimelineSubProgress" class="timeline-progress-percentage">
                   {{ timelineJobProgress.progressPercentage }}%
                 </span>
               </div>
 
               <ProgressBar
-                  v-if="timelineJobProgress"
+                  v-if="showTimelineSubProgress"
                   :value="timelineJobProgress.progressPercentage"
                   :showValue="false"
                   class="timeline-progress-bar"
               />
 
               <div class="timeline-progress-details">
-                <div v-if="timelineJobProgress" class="timeline-current-step">
+                <div v-if="timelineDisplayStep" class="timeline-current-step">
                   <i
-                    :class="timelineJobProgress.status === 'COMPLETED' ? 'pi pi-check-circle' : 'pi pi-sync pi-spin'"
+                    :class="isTimelineCompleteForImport ? 'pi pi-check-circle' : 'pi pi-sync pi-spin'"
                     style="font-size: 0.875rem; margin-right: 0.5rem;"
                   ></i>
-                  <span>{{ timelineJobProgress.currentStep }}</span>
+                  <span>{{ timelineDisplayStep }}</span>
                 </div>
                 <div v-else class="timeline-current-step">
                   <i class="pi pi-sync pi-spin" style="font-size: 0.875rem; margin-right: 0.5rem;"></i>
@@ -815,6 +815,22 @@ const openTimelineJobDetails = (timelineJobId) => {
 // Extract timeline job ID as computed to avoid watch triggering on every poll update
 const currentTimelineJobId = computed(() => currentImportJob.value?.timelineJobId)
 const currentImportStatus = computed(() => currentImportJob.value?.status)
+const isCoverageRecalculationPhase = computed(() => {
+  const message = currentImportJob.value?.progressMessage || ''
+  return currentImportJob.value?.status === 'processing' && message.toLowerCase().includes('coverage')
+})
+const showTimelineSubProgress = computed(() =>
+  Boolean(timelineJobProgress.value && timelineJobProgress.value.status !== 'COMPLETED' && !isCoverageRecalculationPhase.value)
+)
+const isTimelineCompleteForImport = computed(() =>
+  isCoverageRecalculationPhase.value || timelineJobProgress.value?.status === 'COMPLETED'
+)
+const timelineDisplayStep = computed(() => {
+  if (isCoverageRecalculationPhase.value) {
+    return 'Timeline generation completed'
+  }
+  return timelineJobProgress.value?.currentStep || ''
+})
 
 // Watch for timeline job ID changes to start/stop polling
 watch(currentTimelineJobId, (newTimelineJobId, oldTimelineJobId) => {
