@@ -27,7 +27,7 @@ The Unraid compose files use conservative defaults for homelab hardware:
 | Frontend | `tess1o/geopulse-ui:${GEOPULSE_VERSION}` | Same UI image used by Docker Compose installs. |
 | Postgres/PostGIS | `postgis/postgis:17-3.5` | Unraid runs on x86_64, so the standard PostGIS image is the right default. |
 
-Use `native-compat` unless you know your CPU supports the optimized native image. For modern CPUs, edit the backend image in the Unraid compose file:
+For modern CPUs, edit the backend image in the Unraid compose file:
 
 ```yaml
 image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
@@ -173,7 +173,7 @@ For database-aware backup and restore procedures, see [Backup & Restore](../../s
 
 **Backend crashes immediately**
 
-The Unraid files already use `native-compat`. If you changed to `native`, switch back to:
+The Unraid files already use the compatible native image. If you changed to `native`, switch back to:
 
 ```yaml
 image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat

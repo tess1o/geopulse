@@ -71,11 +71,13 @@ build-backend-native: build-backend-native-arm64 build-backend-native-amd64
 	@echo "🧩 Creating multi-arch manifest for Docker Hub..."
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):$(VERSION_NATIVE),$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64,$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64)
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):native-latest,$(BACKEND_IMAGE):native-latest-amd64,$(BACKEND_IMAGE):native-latest-arm64)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):latest-native,$(BACKEND_IMAGE):native-latest-amd64,$(BACKEND_IMAGE):native-latest-arm64)
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):latest,$(BACKEND_IMAGE):native-latest-amd64,$(BACKEND_IMAGE):native-latest-arm64)
 
 	@echo "🧩 Creating multi-arch manifest for GHCR..."
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE),$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64)
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):native-latest,$(GHCR_BACKEND_IMAGE):native-latest-amd64,$(GHCR_BACKEND_IMAGE):native-latest-arm64)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):latest-native,$(GHCR_BACKEND_IMAGE):native-latest-amd64,$(GHCR_BACKEND_IMAGE):native-latest-arm64)
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):latest,$(GHCR_BACKEND_IMAGE):native-latest-amd64,$(GHCR_BACKEND_IMAGE):native-latest-arm64)
 	@echo "✅ Multi-arch native images built and pushed successfully (Docker Hub + GHCR)."
 
@@ -115,11 +117,13 @@ build-backend-native-compat: build-backend-native-amd64-compat build-backend-nat
 	@echo "🧩 Creating multi-arch compatible manifest for Docker Hub..."
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):$(VERSION_NATIVE)-compat,$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat,$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat)
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):native-compat-latest,$(BACKEND_IMAGE):native-compat-amd64,$(BACKEND_IMAGE):native-compat-arm64)
+	$(call create_annotated_manifest,$(BACKEND_IMAGE):latest-native-compat,$(BACKEND_IMAGE):native-compat-amd64,$(BACKEND_IMAGE):native-compat-arm64)
 	$(call create_annotated_manifest,$(BACKEND_IMAGE):compat-latest,$(BACKEND_IMAGE):native-compat-amd64,$(BACKEND_IMAGE):native-compat-arm64)
 
 	@echo "🧩 Creating multi-arch compatible manifest for GHCR..."
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-compat,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat,$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat)
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):native-compat-latest,$(GHCR_BACKEND_IMAGE):native-compat-amd64,$(GHCR_BACKEND_IMAGE):native-compat-arm64)
+	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):latest-native-compat,$(GHCR_BACKEND_IMAGE):native-compat-amd64,$(GHCR_BACKEND_IMAGE):native-compat-arm64)
 	$(call create_annotated_manifest,$(GHCR_BACKEND_IMAGE):compat-latest,$(GHCR_BACKEND_IMAGE):native-compat-amd64,$(GHCR_BACKEND_IMAGE):native-compat-arm64)
 	@echo "✅ Multi-arch compatible native images built and pushed successfully (Docker Hub + GHCR)."
 

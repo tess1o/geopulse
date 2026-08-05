@@ -541,6 +541,10 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
           create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest-native \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
+          create_manifest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
@@ -576,6 +580,10 @@ jobs:
           # Create latest manifests
           create_manifest \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:latest-native \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
           create_manifest \
@@ -635,6 +643,10 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
           create_manifest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest-native-compat \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
+          create_manifest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:compat-latest \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
@@ -670,6 +682,10 @@ jobs:
           # Create latest compat manifest
           create_manifest \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
+          create_manifest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:latest-native-compat \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
           create_manifest \

@@ -120,36 +120,62 @@ If these checks pass, your deployment is up and running. The sections below are 
 >     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 >     image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 > ```
->
-> #### Multi-Architecture Support
-> The native backend images support both AMD64 and ARM64 architectures, including Raspberry Pi. Docker will automatically pull the correct image for your platform.
->
-> #### CPU Compatibility Issues
-> If your backend container fails to start with an error about missing CPU features like:
-> ```
-> The current machine does not support all of the following CPU features that are required by the image:
-> [AVX2, BMI1, BMI2, FMA, F16C, LZCNT] (AMD64) or [FP, ASIMD, CRC32, LSE] (ARM64)
-> ```
->
-> **This means you have an older CPU** that doesn't support the optimized instructions used by the default image.
->
-> **Solution**: Use the compatible image variant instead:
->
-> Edit your `docker-compose.yml` and replace the backend image:
-> ```yaml
->   geopulse-backend:
->     # Comment out the default optimized image:
->     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
->     # Use the compatible image instead:
->     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
-> ```
->
-> **Who needs the compatible image?**
-> - **Old x86 CPUs**: Intel pre-Haswell (before 2013), AMD pre-Excavator (before 2015)
->   - Examples: Intel Core i5-3470T (Ivy Bridge), Core i7-2600 (Sandy Bridge)
-> - **Raspberry Pi 3/4**: ARM Cortex-A53/A72 processors
->
-> **Performance Note**: The compatible image uses x86-64-v2 (AMD64) or armv8-a+nolse (ARM64) instruction sets, which sacrifice some performance for broader compatibility. Modern CPUs (2015+) should use the default optimized image for best performance.
+
+### Multi-Architecture Support
+
+The native backend images support both AMD64 and ARM64 architectures, including Raspberry Pi. Docker automatically pulls
+the correct backend image for your platform.
+
+### CPU Compatibility Mode
+
+GeoPulse uses optimized native backend images by default. Some older CPUs and Raspberry Pi models cannot run those
+optimized images and need the compatible variant instead.
+
+If your backend container fails to start with an error about missing CPU features, check the backend logs:
+
+```bash
+docker compose logs geopulse-backend
+```
+
+Look for errors like:
+
+```text
+The current machine does not support all of the following CPU features that are required by the image:
+[AVX2, BMI1, BMI2, FMA, F16C, LZCNT] (AMD64) or [FP, ASIMD, CRC32, LSE] (ARM64)
+```
+
+Switch the backend image to the compatible variant:
+
+```yaml
+services:
+  geopulse-backend:
+    # Comment out the default optimized image:
+    # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+    # Use the compatible image instead:
+    image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
+```
+
+Use compatibility mode for:
+
+- **Old x86 CPUs**: Intel pre-Haswell (before 2013), AMD pre-Excavator (before 2015)
+- **Raspberry Pi 3/4**: ARM Cortex-A53/A72 processors
+
+The compatible image uses x86-64-v2 (AMD64) or armv8-a+nolse (ARM64) instruction sets, which sacrifice some performance
+for broader compatibility. Modern CPUs should use the default optimized image for best performance.
+
+### PostGIS On ARM64
+
+The default PostGIS image in the compose files, `postgis/postgis:17-3.5`, currently publishes an AMD64 image. On
+ARM64 hosts such as Raspberry Pi, replace the PostGIS image with `imresamu/postgis:17-3.5-alpine`:
+
+```yaml
+services:
+  geopulse-postgres:
+    # image: postgis/postgis:17-3.5
+    image: imresamu/postgis:17-3.5-alpine
+```
+
+Keep the rest of the `geopulse-postgres` service configuration unchanged.
 
 ### 2. Configure Environment (`.env`)
 
@@ -589,7 +615,7 @@ Look for errors like:
 - `[AVX2, BMI1, BMI2, FMA, F16C, LZCNT]` (AMD64 CPUs)
 - `[FP, ASIMD, CRC32, LSE]` (ARM64/Raspberry Pi)
 
-**Solution**: Switch to the compatible image tag as described in the "CPU Compatibility Issues" section above. Edit your `docker-compose.yml` to use `${GEOPULSE_VERSION}-native-compat` instead of `${GEOPULSE_VERSION}-native`.
+**Solution**: Switch to the compatible image tag as described in the "CPU Compatibility Mode" section above. Edit your `docker-compose.yml` to use `${GEOPULSE_VERSION}-native-compat` instead of `${GEOPULSE_VERSION}-native`.
 
 **Check your CPU capabilities:**
 ```bash
