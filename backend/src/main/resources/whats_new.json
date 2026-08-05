@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.36.2",
+    "title": "GeoPulse 1.36.2",
+    "highlights": [
+      "Fixed Memos integration for latest Memos instances - breaking change by Memos",
+      "Fixed Immich UI saving issue",
+      "Fixed stale UI cache issues after deployment",
+      "Added instructions for unRAID",
+      "Improved Weather integration to reduce CPU usage",
+      "Adjusted OwnTracks export and import formats to support ocat tool",
+      "Added long press (right click alternative) on mobile on Timeline cards",
+      "Documentation improvements"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.36.2"
+  },
+  {
     "version": "1.36.1",
     "title": "GeoPulse 1.36.1",
     "highlights": [
