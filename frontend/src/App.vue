@@ -1,5 +1,6 @@
 <template>
   <div id="app">
+    <DemoModeBanner />
     <div class="page-container">
       <div class="main-content">
         <router-view/>
@@ -9,7 +10,12 @@
 </template>
 
 <script>
+import DemoModeBanner from '@/components/demo/DemoModeBanner.vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    DemoModeBanner
+  }
 }
 </script>

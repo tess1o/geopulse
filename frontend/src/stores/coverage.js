@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 
+const extractCoverageErrorMessage = (error, fallback) => (
+  error?.response?.data?.message
+  || error?.response?.data?.error?.message
+  || error?.response?.data?.error
+  || error?.userMessage
+  || error?.message
+  || fallback
+)
+
 export const useCoverageStore = defineStore('coverage', {
   state: () => ({
     cells: [],
@@ -56,7 +65,7 @@ export const useCoverageStore = defineStore('coverage', {
       } catch (error) {
         console.error('Error fetching coverage status:', error)
         if (!silent) {
-          this.statusError = error.message || 'Failed to fetch coverage status'
+          this.statusError = extractCoverageErrorMessage(error, 'Failed to fetch coverage status')
         }
         return silent ? this.status : null
       } finally {
@@ -78,7 +87,7 @@ export const useCoverageStore = defineStore('coverage', {
         return data
       } catch (error) {
         console.error('Error updating coverage settings:', error)
-        this.statusError = error.message || 'Failed to update coverage settings'
+        this.statusError = extractCoverageErrorMessage(error, 'Failed to update coverage settings')
         throw error
       } finally {
         this.settingsUpdating = false
@@ -97,7 +106,7 @@ export const useCoverageStore = defineStore('coverage', {
         return data
       } catch (error) {
         console.error('Error recalculating coverage:', error)
-        this.statusError = error.message || 'Failed to recalculate coverage'
+        this.statusError = extractCoverageErrorMessage(error, 'Failed to recalculate coverage')
         throw error
       } finally {
         this.settingsUpdating = false
@@ -129,7 +138,7 @@ export const useCoverageStore = defineStore('coverage', {
       } catch (error) {
         console.error('Error fetching coverage cells:', error)
         if (!silent && requestSeq === this.cellsRequestSeq) {
-          this.cellsError = error.message || 'Failed to fetch coverage cells'
+          this.cellsError = extractCoverageErrorMessage(error, 'Failed to fetch coverage cells')
         }
         return null
       } finally {
@@ -161,7 +170,7 @@ export const useCoverageStore = defineStore('coverage', {
       } catch (error) {
         console.error('Error fetching coverage summary:', error)
         if (!silent) {
-          this.summaryError = error.message || 'Failed to fetch coverage summary'
+          this.summaryError = extractCoverageErrorMessage(error, 'Failed to fetch coverage summary')
         }
         return null
       } finally {

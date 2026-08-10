@@ -48,10 +48,15 @@
                       <li>Location names are anonymized</li>
                       <li>Includes timeline configuration for analysis</li>
                     </ul>
+                    <p v-if="demoModeEnabled" class="demo-disabled-text">
+                      Debug data export is disabled in demo mode to protect the shared demo dataset.
+                    </p>
                     <Button
                       label="Export Debug Data"
                       icon="pi pi-download"
                       severity="info"
+                      :disabled="demoModeEnabled"
+                      v-tooltip.bottom="demoModeEnabled ? 'Debug data export is disabled in demo mode' : 'Export Debug Data'"
                       @click="goToDebugExport"
                       class="action-button"
                     />
@@ -216,14 +221,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const router = useRouter()
+const toast = useToast()
+const authStore = useAuthStore()
+const { demoModeEnabled } = storeToRefs(authStore)
 const appVersion = ref(null)
 
 const docLinks = ref([
@@ -266,6 +278,11 @@ const docLinks = ref([
 ])
 
 const goToDebugExport = () => {
+  if (demoModeEnabled.value) {
+    showDemoModeToast(toast, 'Debug data export is disabled in demo mode.')
+    return
+  }
+
   router.push('/app/debug-export')
 }
 
@@ -503,6 +520,11 @@ onMounted(() => {
 
 .action-button {
   margin-top: 0.5rem;
+}
+
+.demo-disabled-text {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
 }
 
 /* Documentation Grid */

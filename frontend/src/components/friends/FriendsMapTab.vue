@@ -16,9 +16,14 @@
       <p class="empty-description">
         Add friends to see their locations on the map
       </p>
+      <p v-if="readOnly" class="demo-disabled-text">
+        Inviting friends is disabled in demo mode.
+      </p>
       <Button
           label="Invite Friends"
           icon="pi pi-user-plus"
+          :disabled="readOnly"
+          v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite Friends'"
           @click="$emit('invite-friend')"
       />
     </div>
@@ -32,6 +37,9 @@
         Your friends haven't shared their location yet. This could be because they've disabled location sharing
         or haven't used location tracking apps.
       </p>
+      <p v-if="readOnly" class="demo-disabled-text">
+        Inviting more friends is disabled in demo mode.
+      </p>
       <div class="empty-actions">
         <Button
             label="Refresh"
@@ -43,6 +51,8 @@
         <Button
             label="Invite More Friends"
             icon="pi pi-user-plus"
+            :disabled="readOnly"
+            v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite More Friends'"
             @click="$emit('invite-friend')"
         />
       </div>
@@ -142,6 +152,10 @@ const props = defineProps({
     default: false
   },
   loading: {
+    type: Boolean,
+    default: false
+  },
+  readOnly: {
     type: Boolean,
     default: false
   }
@@ -348,6 +362,11 @@ defineExpose({
   margin: 0 0 1.5rem 0;
   max-width: 400px;
   line-height: 1.5;
+}
+
+.demo-disabled-text {
+  margin: -0.5rem 0 1rem 0;
+  font-size: 0.9rem;
 }
 
 .empty-actions {

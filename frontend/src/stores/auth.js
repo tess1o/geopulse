@@ -48,6 +48,9 @@ function normalizeUser(source) {
         timeFormat: raw.timeFormat || '24h',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
         autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
+        demoMode: !!raw.demoMode,
+        canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
+        adminReadOnly: !!raw.adminReadOnly,
         role: raw.role || 'USER'
     }
 }
@@ -55,7 +58,14 @@ function normalizeUser(source) {
 export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
-        isAuthenticated: false
+        isAuthenticated: false,
+        authStatus: {
+            demoModeEnabled: false,
+            demoAdminReadOnlyEnabled: false,
+            demoResetIntervalHours: 2,
+            demoDeployUrl: 'https://geopulse.cc',
+            demoPersonas: []
+        }
     }),
 
     getters: {
@@ -79,6 +89,14 @@ export const useAuthStore = defineStore('auth', {
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
+        demoMode: (state) => !!state.user?.demoMode,
+        demoModeEnabled: (state) => !!state.authStatus?.demoModeEnabled || !!state.user?.demoMode,
+        demoReadOnly: (state) => (!!state.authStatus?.demoModeEnabled || !!state.user?.demoMode) && state.user?.role !== 'ADMIN',
+        demoResetIntervalHours: (state) => state.authStatus?.demoResetIntervalHours || 2,
+        demoDeployUrl: (state) => state.authStatus?.demoDeployUrl || 'https://geopulse.cc',
+        demoPersonas: (state) => state.authStatus?.demoPersonas || [],
+        canViewAdmin: (state) => !!state.user?.canViewAdmin || state.user?.role === 'ADMIN',
+        adminReadOnly: (state) => !!state.user?.adminReadOnly,
     },
 
     actions: {
@@ -142,6 +160,18 @@ export const useAuthStore = defineStore('auth', {
         async login(email, password) {
             try {
                 const response = await apiService.login(email, password)
+                return this.consumeBrowserAuthResponse(response?.data)
+            } catch (error) {
+                if (!shouldPreserveAuthSnapshot(error)) {
+                    this.clearUser()
+                }
+                throw error
+            }
+        },
+
+        async demoLogin(personaId) {
+            try {
+                const response = await apiService.post('/auth/demo-login', {personaId})
                 return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
                 if (!shouldPreserveAuthSnapshot(error)) {
@@ -407,26 +437,28 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async getAuthStatus() {
+            const fallback = {
+                passwordRegistrationEnabled: false,
+                oidcRegistrationEnabled: false,
+                passwordLoginEnabled: true,
+                oidcLoginEnabled: true,
+                adminLoginBypassEnabled: true,
+                guestRootRedirectToLoginEnabled: false,
+                demoModeEnabled: false,
+                demoAdminReadOnlyEnabled: false,
+                demoResetIntervalHours: 2,
+                demoDeployUrl: 'https://geopulse.cc',
+                demoPersonas: []
+            }
             try {
                 const response = await apiService.get('/auth/status')
-                return response.data || {
-                    passwordRegistrationEnabled: false,
-                    oidcRegistrationEnabled: false,
-                    passwordLoginEnabled: true,
-                    oidcLoginEnabled: true,
-                    adminLoginBypassEnabled: true,
-                    guestRootRedirectToLoginEnabled: false
-                }
+                const status = {...fallback, ...(response.data || {})}
+                this.authStatus = status
+                return status
             } catch (error) {
                 console.error('Failed to get auth status:', error)
-                return {
-                    passwordRegistrationEnabled: false,
-                    oidcRegistrationEnabled: false,
-                    passwordLoginEnabled: true,
-                    oidcLoginEnabled: true,
-                    adminLoginBypassEnabled: true,
-                    guestRootRedirectToLoginEnabled: false
-                }
+                this.authStatus = fallback
+                return fallback
             }
         }
     }

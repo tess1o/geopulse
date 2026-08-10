@@ -19,6 +19,9 @@ public class UserResponse {
     private UUID userId;
     private String fullName;
     private String role;
+    private boolean demoMode;
+    private boolean canViewAdmin;
+    private boolean adminReadOnly;
     private String email;
     private String timezone;
     private String avatar;

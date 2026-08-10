@@ -42,7 +42,9 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 ApiTokenResponse.class,
                 CreateApiTokenRequest.class,
                 CreateApiTokenResponse.class,
-                UpdateApiTokenRequest.class
+                UpdateApiTokenRequest.class,
+                DemoPersonaResponse.class,
+                DemoLoginRequest.class,
         }
 )
 public class AuthNativeConfig {

@@ -28,6 +28,9 @@ export function writeUserSnapshot(user) {
         timeFormat: user.timeFormat,
         defaultDateRangePreset: user.defaultDateRangePreset,
         autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
+        demoMode: !!user.demoMode,
+        canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',
+        adminReadOnly: !!user.adminReadOnly,
         role: user.role
     }))
 }

@@ -15,6 +15,10 @@
 
     <!-- Data Tables Content -->
     <template v-else>
+      <Message v-if="demoReadOnly" severity="warn" :closable="false" class="demo-export-disabled-message">
+        Demo mode: timeline report exports are disabled. You can view report data, but CSV downloads are unavailable.
+      </Message>
+
       <!-- Header with Date Range and Quick Stats -->
       <div class="tables-header">
         <div class="date-range-info">
@@ -26,6 +30,8 @@
           icon="pi pi-download"
           @click="exportAllData"
           outlined
+          :disabled="demoReadOnly"
+          v-tooltip.bottom="demoReadOnly ? 'Timeline report exports are disabled in demo mode' : 'Export all report data'"
           class="export-all-button"
         />
         <div class="quick-stats">
@@ -67,6 +73,7 @@
             :stays="filteredStays"
             :dateRange="dateRange"
             :loading="staysLoading"
+            :export-disabled="demoReadOnly"
             @export="exportStays"
             @row-select="handleRowSelect"
           />
@@ -79,6 +86,7 @@
             :stays="filteredStays"
             :dateRange="dateRange"
             :loading="tripsLoading"
+            :export-disabled="demoReadOnly"
             @export="exportTrips"
             @row-select="handleRowSelect"
           />
@@ -90,6 +98,7 @@
             :dataGaps="filteredDataGaps"
             :dateRange="dateRange"
             :loading="dataGapsLoading"
+            :export-disabled="demoReadOnly"
             @export="exportDataGaps"
             @analyze="analyzeDataGap"
             @row-select="handleRowSelect"
@@ -121,6 +130,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import ProgressSpinner from 'primevue/progressspinner'
+import Message from 'primevue/message'
 
 // Layout Components
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -137,16 +147,20 @@ import DataGapsTable from '@/components/datatables/DataGapsTable.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTimelineStore } from '@/stores/timeline'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { useAuthStore } from '@/stores/auth'
 import { DataExporter } from '@/utils/dataExporter'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const timezone = useTimezone()
 const timelineStore = useTimelineStore()
 const dateRangeStore = useDateRangeStore()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // Store refs
 const { timelineData } = storeToRefs(timelineStore)
 const { dateRange, startDate, endDate, isValidRange } = storeToRefs(dateRangeStore)
+const { demoReadOnly } = storeToRefs(authStore)
 
 // Local state
 const activeTab = ref('stays')
@@ -201,6 +215,10 @@ const filteredDataGaps = computed(() => {
 
 
 // Methods
+const showDemoExportDisabledToast = () => {
+  showDemoModeToast(toast, 'Timeline report exports are disabled in demo mode.')
+}
+
 const handleTabChange = async (event) => {
   try {
     const selectedTab = tableTabs.value[event.index]
@@ -244,6 +262,11 @@ const fetchTimelineData = async () => {
 }
 
 const exportStays = async () => {
+  if (demoReadOnly.value) {
+    showDemoExportDisabledToast()
+    return
+  }
+
   try {
     await DataExporter.exportStays(filteredStays.value, dateRange.value)
     toast.add({
@@ -264,6 +287,11 @@ const exportStays = async () => {
 }
 
 const exportTrips = async () => {
+  if (demoReadOnly.value) {
+    showDemoExportDisabledToast()
+    return
+  }
+
   try {
     await DataExporter.exportTrips(filteredStays.value, filteredTrips.value, dateRange.value)
     toast.add({
@@ -284,6 +312,11 @@ const exportTrips = async () => {
 }
 
 const exportDataGaps = async () => {
+  if (demoReadOnly.value) {
+    showDemoExportDisabledToast()
+    return
+  }
+
   try {
     await DataExporter.exportDataGaps(filteredDataGaps.value, dateRange.value)
     toast.add({
@@ -304,6 +337,11 @@ const exportDataGaps = async () => {
 }
 
 const exportAllData = async () => {
+  if (demoReadOnly.value) {
+    showDemoExportDisabledToast()
+    return
+  }
+
   try {
     await Promise.all([
       DataExporter.exportStays(filteredStays.value, dateRange.value),
@@ -342,6 +380,26 @@ watch(dateRange, async (newValue) => {
 </script>
 
 <style scoped>
+.demo-export-disabled-message {
+  margin-bottom: var(--gp-spacing-lg);
+  border-left: 4px solid #f59e0b;
+  font-weight: 600;
+}
+
+.demo-export-disabled-message :deep(.p-message-content) {
+  color: #92400e;
+}
+
+.p-dark .demo-export-disabled-message {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(251, 191, 36, 0.45);
+  border-left-color: #f59e0b;
+}
+
+.p-dark .demo-export-disabled-message :deep(.p-message-content) {
+  color: #fde68a;
+}
+
 /* Header Styles */
 .tables-header {
   display: flex;

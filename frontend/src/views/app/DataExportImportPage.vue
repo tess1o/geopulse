@@ -14,6 +14,10 @@
           </div>
         </div>
 
+        <Message v-if="demoModeEnabled" severity="error" :closable="false" class="demo-disabled-message">
+          Demo mode: exporting and importing data are disabled to keep the shared demo dataset stable.
+        </Message>
+
         <!-- Info Banner -->
         <Card class="info-banner">
           <template #content>
@@ -39,10 +43,10 @@
             class="export-import-tabs"
         >
           <!-- Export Tab -->
-          <DataExportTab v-if="activeTab === 'export'" />
+          <DataExportTab v-if="activeTab === 'export'" :read-only="demoModeEnabled" />
 
           <!-- Import Tab -->
-          <DataImportTab v-if="activeTab === 'import'" />
+          <DataImportTab v-if="activeTab === 'import'" :read-only="demoModeEnabled" />
         </TabContainer>
       </div>
     </PageContainer>
@@ -52,6 +56,8 @@
 <script setup>
 import {ref, computed, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
+import {storeToRefs} from 'pinia'
+import Message from 'primevue/message'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -61,9 +67,12 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 // Tab components
 import DataExportTab from '@/components/data-export-import/DataExportTab.vue'
 import DataImportTab from '@/components/data-export-import/DataImportTab.vue'
+import {useAuthStore} from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const {demoModeEnabled} = storeToRefs(authStore)
 
 const normalizeTab = (value) => {
   return value === 'import' ? 'import' : 'export'

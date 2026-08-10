@@ -17,6 +17,7 @@
                 :feedback="false"
                 toggleMask
                 :invalid="!!errors.currentPassword"
+                :disabled="readOnly"
                 class="w-full"
               />
               <small v-if="errors.currentPassword" class="error-message">
@@ -33,6 +34,7 @@
                 :feedback="true"
                 toggleMask
                 :invalid="!!errors.newPassword"
+                :disabled="readOnly"
                 class="w-full"
               />
               <small v-if="errors.newPassword" class="error-message">
@@ -49,6 +51,7 @@
                 :feedback="false"
                 toggleMask
                 :invalid="!!errors.confirmPassword"
+                :disabled="readOnly"
                 class="w-full"
               />
               <small v-if="errors.confirmPassword" class="error-message">
@@ -64,13 +67,13 @@
               label="Cancel"
               outlined
               @click="handleReset"
-              :disabled="loading"
+              :disabled="loading || readOnly"
             />
             <Button
               type="submit"
               :label="hasPassword ? 'Change Password' : 'Set Password'"
               :loading="loading"
-              :disabled="!hasChanges"
+              :disabled="!hasChanges || readOnly"
             />
           </div>
         </form>
@@ -78,9 +81,9 @@
     </Card>
 
     <div class="security-followup-section">
-      <OidcManagement />
+      <OidcManagement :read-only="readOnly" />
     </div>
-    <ApiTokensManagement class="mt-6" />
+    <ApiTokensManagement class="mt-6" :read-only="readOnly" />
   </div>
 </template>
 
@@ -91,6 +94,10 @@ import ApiTokensManagement from '@/components/profile/ApiTokensManagement.vue'
 
 // Props
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   hasPassword: {
     type: Boolean,
     required: true
@@ -145,6 +152,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
+  if (props.readOnly) return
   if (!validate()) return
 
   loading.value = true
@@ -163,6 +171,7 @@ const handleSubmit = async () => {
 }
 
 const handleReset = () => {
+  if (props.readOnly) return
   form.value = {
     currentPassword: '',
     newPassword: '',

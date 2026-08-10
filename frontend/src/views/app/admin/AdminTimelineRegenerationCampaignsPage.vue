@@ -21,9 +21,12 @@
             label="Create Campaign"
             icon="pi pi-plus"
             @click="openCreateDialog"
+            :disabled="adminReadOnly"
           />
         </div>
       </div>
+
+      <DemoReadOnlyBanner />
 
       <div class="card desktop-only">
         <DataTable
@@ -111,7 +114,7 @@
                   text
                   severity="warning"
                   v-tooltip="'Retry Failed Users'"
-                  :disabled="data.failedUsers === 0"
+                  :disabled="adminReadOnly || data.failedUsers === 0"
                   :loading="retryingCampaignId === data.id"
                   @click="retryFailed(data)"
                 />
@@ -161,7 +164,7 @@
                 size="small"
                 text
                 severity="warning"
-                :disabled="campaign.failedUsers === 0"
+                :disabled="adminReadOnly || campaign.failedUsers === 0"
                 :loading="retryingCampaignId === campaign.id"
                 @click="retryFailed(campaign)"
               />
@@ -241,7 +244,7 @@
           <Button
             label="Review Create"
             icon="pi pi-check"
-            :disabled="!canReviewCreate"
+            :disabled="adminReadOnly || !canReviewCreate"
             @click="confirmationVisible = true"
           />
         </template>
@@ -335,7 +338,7 @@
               icon="pi pi-replay"
               severity="warning"
               size="small"
-              :disabled="campaignDetails.campaign.failedUsers === 0"
+              :disabled="adminReadOnly || campaignDetails.campaign.failedUsers === 0"
               :loading="retryingCampaignId === campaignDetails.campaign.id"
               @click="retryFailed(campaignDetails.campaign)"
             />
@@ -395,13 +398,18 @@ import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import adminService from '@/utils/adminService'
 import { useTimezone } from '@/composables/useTimezone'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',

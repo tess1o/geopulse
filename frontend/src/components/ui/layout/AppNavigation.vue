@@ -34,7 +34,7 @@
             />
 
             <!-- Administration (Admin only) -->
-            <template v-if="isAdmin">
+            <template v-if="canViewAdmin">
               <div class="gp-nav-admin-header">
                 <span class="gp-nav-section-title">Administration</span>
               </div>
@@ -145,7 +145,7 @@ const { handleError } = useErrorHandler()
 const { themeMode, themeModes } = useThemeMode()
 
 // Store refs
-const { userName, isAdmin } = storeToRefs(authStore)
+const { userName, canViewAdmin, adminReadOnly } = storeToRefs(authStore)
 const { receivedInvitesCount } = storeToRefs(friendsStore)
 const { unreadCount: notificationUnreadCount } = storeToRefs(notificationsStore)
 
@@ -335,32 +335,39 @@ const adminUserManagementItems = computed(() => [
   }
 ])
 
-const adminSystemItems = computed(() => [
-  {
-    label: 'System Settings',
-    icon: 'pi pi-cog',
-    to: '/app/admin/settings',
-    key: 'admin-settings'
-  },
-  {
-    label: 'Admin Dashboard',
-    icon: 'pi pi-th-large',
-    to: '/app/admin',
-    key: 'admin-dashboard'
-  },
-  {
-    label: 'Timeline Regeneration',
-    icon: 'pi pi-refresh',
-    to: '/app/admin/timeline-regeneration-campaigns',
-    key: 'admin-timeline-regeneration'
-  },
-  {
-    label: 'Audit Logs',
-    icon: 'pi pi-history',
-    to: '/app/admin/audit-logs',
-    key: 'admin-audit-logs'
+const adminSystemItems = computed(() => {
+  const items = [
+    {
+      label: 'System Settings',
+      icon: 'pi pi-cog',
+      to: '/app/admin/settings',
+      key: 'admin-settings'
+    },
+    {
+      label: 'Admin Dashboard',
+      icon: 'pi pi-th-large',
+      to: '/app/admin',
+      key: 'admin-dashboard'
+    },
+    {
+      label: 'Timeline Regeneration',
+      icon: 'pi pi-refresh',
+      to: '/app/admin/timeline-regeneration-campaigns',
+      key: 'admin-timeline-regeneration'
+    }
+  ]
+
+  if (!adminReadOnly.value) {
+    items.push({
+      label: 'Audit Logs',
+      icon: 'pi pi-history',
+      to: '/app/admin/audit-logs',
+      key: 'admin-audit-logs'
+    })
   }
-])
+
+  return items
+})
 
 // Methods
 const handleItemClick = (item) => {

@@ -103,6 +103,7 @@
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
+              :read-only="readOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
@@ -118,6 +119,7 @@
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
+              :read-only="readOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
@@ -135,6 +137,7 @@
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
+              :read-only="readOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -151,6 +154,7 @@
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
+              :read-only="readOnly"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -184,6 +188,7 @@
     <TripClassificationDialog
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
+      :read-only="readOnly"
       @movement-updated="handleMovementTypeUpdated"
       @close="handleCloseClassificationDialog"
     />
@@ -191,6 +196,7 @@
     <TripMovementTypeQuickEditDialog
       :visible="quickEditDialogVisible"
       :trip="selectedTripForQuickEdit"
+      :read-only="readOnly"
       @movement-updated="handleMovementTypeUpdated"
       @close="handleCloseQuickEditDialog"
     />
@@ -223,6 +229,7 @@ import OvernightDataGapCard from './OvernightDataGapCard.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
 import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -291,6 +298,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   showTimelineLabels: {
     type: Boolean,
     default: true
@@ -333,6 +344,10 @@ const getMarkerClassForItem = computed(() => (item, dateKey) => {
   const baseClass = getMarkerClass.value(item.type)
   return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass
 })
+
+const showReadOnlyToast = () => {
+  showDemoModeToast(toast)
+}
 
 // Get period tags for a specific date
 const getPeriodsForDate = (dateString) => {
@@ -509,10 +524,18 @@ const scrollToTimelineItem = (item) => {
 }
 
 const handleRenameStay = (stayItem) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
   emit('rename-stay', stayItem)
 }
 
 const handleResetDataGapOverride = (stayItem) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
   emit('reset-data-gap-override', stayItem)
 }
 
@@ -567,6 +590,10 @@ const handleCloseClassificationDialog = () => {
 }
 
 const handleQuickEditMovementType = (tripItem) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
   selectedTripForQuickEdit.value = tripItem
   quickEditDialogVisible.value = true
 }

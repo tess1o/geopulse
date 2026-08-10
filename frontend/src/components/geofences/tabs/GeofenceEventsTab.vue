@@ -20,9 +20,10 @@
             label="Mark all seen"
             severity="secondary"
             outlined
-            :disabled="unreadCount === 0"
+            :disabled="readOnly || unreadCount === 0"
             :loading="markingAllSeen"
-            @click="$emit('mark-all-events-seen')"
+            v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark all geofence events as seen'"
+            @click="emitMarkAllEventsSeen"
           />
           <Button
             icon="pi pi-refresh"
@@ -34,6 +35,10 @@
           />
         </div>
       </div>
+
+      <p v-if="readOnly" class="demo-disabled-text">
+        Demo mode: marking geofence events as seen is disabled. Filters and refresh remain available.
+      </p>
 
       <div class="filters-row">
         <div class="filter-item filter-item--preset">
@@ -180,8 +185,10 @@
                 size="small"
                 severity="secondary"
                 outlined
+                :disabled="readOnly"
                 :loading="markingEventId === slotProps.data.id"
-                @click="$emit('mark-event-seen', slotProps.data)"
+                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                @click="emitMarkEventSeen(slotProps.data)"
               />
             </template>
           </Column>
@@ -213,8 +220,10 @@
                 size="small"
                 severity="secondary"
                 outlined
+                :disabled="readOnly"
                 :loading="markingEventId === slotProps.data.id"
-                @click="$emit('mark-event-seen', slotProps.data)"
+                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                @click="emitMarkEventSeen(slotProps.data)"
               />
             </div>
           </template>
@@ -268,8 +277,10 @@
                 severity="secondary"
                 outlined
                 class="mobile-mark-seen"
+                :disabled="readOnly"
                 :loading="markingEventId === event.id"
-                @click="$emit('mark-event-seen', event)"
+                v-tooltip.bottom="readOnly ? 'Updating event seen states is disabled in demo mode' : 'Mark event as seen'"
+                @click="emitMarkEventSeen(event)"
               />
             </div>
 
@@ -368,6 +379,10 @@ const props = defineProps({
   userId: {
     type: [String, Number],
     default: null
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -455,6 +470,20 @@ function loadColumnPreference() {
   } catch {
     detailColumns.value = []
   }
+}
+
+function emitMarkAllEventsSeen() {
+  if (props.readOnly) {
+    return
+  }
+  emit('mark-all-events-seen')
+}
+
+function emitMarkEventSeen(event) {
+  if (props.readOnly) {
+    return
+  }
+  emit('mark-event-seen', event)
 }
 
 function onUnreadOnlyChange(value) {
@@ -614,6 +643,10 @@ onUnmounted(() => {
 
 .panel-card {
   padding: 1rem;
+}
+
+.demo-disabled-text {
+  margin: -0.25rem 0 1rem 0;
 }
 
 .table-header {

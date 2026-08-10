@@ -6,6 +6,7 @@
         <div class="gp-navbar-logo">
           <router-link to="/" class="gp-navbar-logo-link">
             <span class="gp-navbar-logo-text">GeoPulse</span>
+            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">DEMO</span>
           </router-link>
         </div>
       </div>
@@ -45,10 +46,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
 import NotificationBell from './NotificationBell.vue'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   variant: {
@@ -75,6 +78,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['navigate', 'date-change'])
+const authStore = useAuthStore()
+const { demoModeEnabled } = storeToRefs(authStore)
 
 // Computed properties
 const toolbarClasses = computed(() => ({
@@ -137,6 +142,7 @@ const handleNavigate = (item) => {
   color: inherit;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   transition: color 0.2s ease;
 }
 
@@ -148,7 +154,22 @@ const handleNavigate = (item) => {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--gp-primary);
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
+}
+
+.gp-navbar-demo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.125rem 0.375rem;
+  border: 1px solid #b91c1c;
+  border-radius: 4px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 /* Navbar End Section */
@@ -212,6 +233,12 @@ const handleNavigate = (item) => {
 /* Dark Mode */
 .p-dark .gp-navbar-logo-text {
   color: var(--gp-primary-light);
+}
+
+:global(.p-dark) .gp-navbar-demo-badge {
+  background: #ef4444;
+  border-color: #f87171;
+  color: #111827;
 }
 
 .p-dark .gp-navbar--minimal .gp-navbar-logo-text {

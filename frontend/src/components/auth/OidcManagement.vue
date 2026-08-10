@@ -31,8 +31,8 @@
                 outlined
                 size="small"
                 @click="confirmUnlinkProvider(connection.providerName)"
-                :disabled="!canUnlink(connection.providerName)"
-                v-tooltip.bottom="!canUnlink(connection.providerName) ? 'Cannot unlink the only authentication method without a password set.' : 'Unlink this account'"
+                :disabled="readOnly || !canUnlink(connection.providerName)"
+                v-tooltip.bottom="readOnly ? 'Disabled in demo mode' : (!canUnlink(connection.providerName) ? 'Cannot unlink the only authentication method without a password set.' : 'Unlink this account')"
               />
             </div>
           </div>
@@ -59,6 +59,7 @@
                 label="Link"
                 @click="linkProvider(provider.name)"
                 size="small"
+                :disabled="readOnly"
               />
             </div>
           </div>
@@ -87,6 +88,13 @@ const authStore = useAuthStore();
 const toast = useToast();
 const confirm = useConfirm();
 
+const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  }
+})
+
 const linkedProviders = ref([]);
 const allProviders = ref([]);
 const hasPassword = computed(() => authStore.user?.hasPassword);
@@ -108,6 +116,7 @@ const getProviderDisplayName = (providerName) => {
 }
 
 const linkProvider = async (providerName) => {
+  if (props.readOnly) return
   try {
     await authStore.linkOidcProvider(providerName);
   } catch (error) {
@@ -122,6 +131,7 @@ const linkProvider = async (providerName) => {
 };
 
 const confirmUnlinkProvider = (providerName) => {
+    if (props.readOnly) return
     confirm.require({
         message: `Are you sure you want to unlink your ${getProviderDisplayName(providerName)} account? This action cannot be undone.`,
         header: 'Confirm Unlink',
@@ -134,6 +144,7 @@ const confirmUnlinkProvider = (providerName) => {
 };
 
 const unlinkProvider = async (providerName) => {
+  if (props.readOnly) return
   try {
     await authStore.unlinkOidcProvider(providerName);
     await loadData();

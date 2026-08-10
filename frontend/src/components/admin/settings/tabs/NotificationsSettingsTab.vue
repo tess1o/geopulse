@@ -96,6 +96,7 @@
           label="Run Test"
           icon="pi pi-send"
           @click="openTestDialog"
+          :disabled="adminReadOnly"
         />
       </div>
     </BaseCard>
@@ -149,6 +150,7 @@
           label="Test Connection"
           icon="pi pi-send"
           :loading="testingConnection"
+          :disabled="adminReadOnly"
           @click="testAppriseConnection"
         />
       </template>
@@ -167,14 +169,19 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Message from 'primevue/message'
+import { storeToRefs } from 'pinia'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService'
+import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
 const toast = useToast()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const systemSettings = ref([])
 const showTestDialog = ref(false)
@@ -224,6 +231,11 @@ const openTestDialog = () => {
 }
 
 const testAppriseConnection = async () => {
+  if (adminReadOnly.value) {
+    showDemoReadOnlyToast(toast)
+    return
+  }
+
   testingConnection.value = true
   try {
     const payload = {

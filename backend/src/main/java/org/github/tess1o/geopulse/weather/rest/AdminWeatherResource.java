@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherBackfillRequest;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
@@ -15,7 +16,6 @@ import org.github.tess1o.geopulse.weather.service.WeatherService;
 @Path("/api/admin/weather")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @RequestScoped
 @Slf4j
 @Tag(name = "Admin: Weather", description = "Backfill weather samples")
@@ -26,6 +26,7 @@ public class AdminWeatherResource {
 
     @POST
     @Path("/backfill")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response backfill(WeatherBackfillRequest request) {
         try {
             return Response.ok(ApiResponse.success(weatherService.discoverAdminBackfillTargets(request))).build();
@@ -47,6 +48,7 @@ public class AdminWeatherResource {
 
     @GET
     @Path("/status")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response status() {
         return Response.ok(ApiResponse.success(weatherService.status())).build();
     }

@@ -1,5 +1,9 @@
 <template>
   <div class="invites-content">
+    <p v-if="readOnly" class="demo-disabled-text">
+      Invitation actions are disabled in demo mode.
+    </p>
+
     <!-- Received Invites -->
     <Card v-if="receivedInvites?.length > 0" class="invites-section">
       <template #title>
@@ -14,6 +18,7 @@
                 size="small"
                 @click="$emit('accept-all')"
                 :loading="bulkActionsLoading.acceptAll"
+                :disabled="readOnly"
             />
             <Button
                 label="Reject All"
@@ -22,6 +27,7 @@
                 outlined
                 @click="$emit('reject-all')"
                 :loading="bulkActionsLoading.rejectAll"
+                :disabled="readOnly"
             />
           </div>
         </div>
@@ -48,6 +54,7 @@
                   size="small"
                   @click="$emit('accept-invite', invite.id)"
                   :loading="inviteActionsLoading[invite.id]?.accept"
+                  :disabled="readOnly"
               />
               <Button
                   label="Reject"
@@ -57,6 +64,7 @@
                   outlined
                   @click="$emit('reject-invite', invite.id)"
                   :loading="inviteActionsLoading[invite.id]?.reject"
+                  :disabled="readOnly"
               />
             </div>
           </div>
@@ -80,6 +88,7 @@
                 outlined
                 @click="$emit('cancel-all')"
                 :loading="bulkActionsLoading.cancelAll"
+                :disabled="readOnly"
             />
           </div>
         </div>
@@ -109,6 +118,7 @@
                   outlined
                   @click="$emit('cancel-invite', invite.id)"
                   :loading="inviteActionsLoading[invite.id]?.cancel"
+                  :disabled="readOnly"
               />
             </div>
           </div>
@@ -154,6 +164,10 @@ defineProps({
       rejectAll: false,
       cancelAll: false
     })
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -176,6 +190,11 @@ const formatDate = (dateString) => {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+.demo-disabled-text {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .invites-section {

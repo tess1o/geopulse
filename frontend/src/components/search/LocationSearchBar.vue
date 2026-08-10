@@ -56,7 +56,7 @@ const tagsLoaded = ref(false)
 const isSearching = computed(() => searchLoading.value)
 
 const pageItems = computed(() => {
-  return buildPageIndex(router.getRoutes(), authStore.isAdmin).map((item) => ({
+  return buildPageIndex(router.getRoutes(), authStore.canViewAdmin).map((item) => ({
     id: `page:${item.id}`,
     resultType: 'page',
     displayName: item.title,
@@ -71,7 +71,7 @@ const pageItems = computed(() => {
 })
 
 const settingItems = computed(() => {
-  return buildSettingsIndex(authStore.isAdmin).map((item) => ({
+  return buildSettingsIndex(authStore.canViewAdmin).map((item) => ({
     id: `setting:${item.id}`,
     resultType: 'setting',
     displayName: item.title,

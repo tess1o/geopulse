@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": "missing-email",
+      "label": "Login as Missing Email",
+      "detail": "(Invalid profile)"
+    },
+    "not-an-object",
+    {
+      "id": "valid",
+      "label": "Login as Valid",
+      "detail": "(Valid profile)",
+      "email": "valid-demo@example.com"
+    }
+  ]
+}

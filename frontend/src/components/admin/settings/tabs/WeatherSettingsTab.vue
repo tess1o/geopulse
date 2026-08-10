@@ -16,6 +16,7 @@
           label="Save Changes"
           icon="pi pi-save"
           :loading="isSaving"
+          :disabled="adminReadOnly"
           @click="saveAllChanges"
         />
       </div>
@@ -99,6 +100,7 @@
           icon="pi pi-bolt"
           class="test-connection-button"
           :loading="testingConnection"
+          :disabled="adminReadOnly"
           @click="testConnection"
         />
       </div>
@@ -215,14 +217,19 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
 import Tag from 'primevue/tag'
+import { storeToRefs } from 'pinia'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService'
+import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { getPlaceholder as getPlaceholderHelper, parseSettingValue } from '@/utils/settingHelpers'
 
 const toast = useToast()
 const { loadSettings, resetSetting } = useAdminSettings()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const settings = ref([])
 const originalSettings = ref([])
@@ -414,6 +421,11 @@ const validateChanges = () => {
 }
 
 const saveAllChanges = async () => {
+  if (adminReadOnly.value) {
+    showDemoReadOnlyToast(toast)
+    return
+  }
+
   const validationError = validateChanges()
   if (validationError) {
     toast.add({
@@ -456,6 +468,11 @@ const saveAllChanges = async () => {
 }
 
 const testConnection = async () => {
+  if (adminReadOnly.value) {
+    showDemoReadOnlyToast(toast)
+    return
+  }
+
   testingConnection.value = true
   try {
     const response = await apiService.post('/admin/settings/weather/test')

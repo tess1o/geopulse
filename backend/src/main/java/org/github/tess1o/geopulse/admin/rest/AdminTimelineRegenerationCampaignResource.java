@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.streaming.model.dto.CreateTimelineRegenerationCampaignRequest;
@@ -28,7 +29,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @Slf4j
 @Tag(name = "Admin: Timeline Regeneration", description = "Preview, create, inspect, and retry timeline regeneration campaigns.")
 public class AdminTimelineRegenerationCampaignResource {
@@ -47,6 +47,7 @@ public class AdminTimelineRegenerationCampaignResource {
 
     @POST
     @Path("/preview")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response previewCampaign(TimelineRegenerationCampaignPreviewRequest request) {
         try {
             TimelineRegenerationCampaignPreviewDTO preview = campaignService.previewAdminCampaign(request);
@@ -64,6 +65,7 @@ public class AdminTimelineRegenerationCampaignResource {
     }
 
     @POST
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response createCampaign(CreateTimelineRegenerationCampaignRequest request) {
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -95,6 +97,7 @@ public class AdminTimelineRegenerationCampaignResource {
     }
 
     @GET
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response listCampaigns() {
         List<TimelineRegenerationCampaignSummaryDTO> campaigns = campaignService.listCampaigns();
         return Response.ok(campaigns).build();
@@ -102,6 +105,7 @@ public class AdminTimelineRegenerationCampaignResource {
 
     @GET
     @Path("/{campaignId}")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getCampaign(@PathParam("campaignId") UUID campaignId) {
         try {
             TimelineRegenerationCampaignDetailDTO details = campaignService.getCampaignDetails(campaignId);
@@ -115,6 +119,7 @@ public class AdminTimelineRegenerationCampaignResource {
 
     @POST
     @Path("/{campaignId}/retry-failed")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response retryFailed(@PathParam("campaignId") UUID campaignId) {
         UUID adminId = currentUserService.getCurrentUserId();
 

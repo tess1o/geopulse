@@ -20,7 +20,7 @@
             <label class="form-label">Enable Immich Integration</label>
             <ToggleSwitch
               v-model="form.enabled"
-              :disabled="loading || saveLoading"
+              :disabled="readOnly || loading || saveLoading"
             />
             <small class="help-text">Turn on to sync photos from your Immich server</small>
           </div>
@@ -33,7 +33,7 @@
               v-model="form.serverUrl"
               placeholder="https://photos.example.com"
               :invalid="!!errors.serverUrl"
-              :disabled="!form.enabled || loading || saveLoading"
+              :disabled="readOnly || !form.enabled || loading || saveLoading"
               class="w-full"
             />
             <small v-if="errors.serverUrl" class="error-message">
@@ -54,7 +54,7 @@
               :feedback="false"
               toggleMask
               :invalid="!!errors.apiKey"
-              :disabled="!form.enabled || loading || saveLoading"
+              :disabled="readOnly || !form.enabled || loading || saveLoading"
               class="w-full"
             />
             <small v-if="errors.apiKey" class="error-message">
@@ -77,7 +77,7 @@
               icon="pi pi-link"
               outlined
               :loading="testLoading"
-              :disabled="!canTestConnection || loading || saveLoading"
+              :disabled="readOnly || !canTestConnection || loading || saveLoading"
               @click="handleTestConnection"
               class="test-connection-btn"
             />
@@ -119,13 +119,13 @@
             label="Reset"
             outlined
             @click="handleReset"
-            :disabled="loading || saveLoading"
+            :disabled="readOnly || loading || saveLoading"
           />
           <Button
             type="submit"
             label="Save Settings"
             :loading="saveLoading"
-            :disabled="!hasChanges || loading"
+            :disabled="readOnly || !hasChanges || loading"
           />
         </div>
       </form>
@@ -139,6 +139,10 @@ import apiService from '@/utils/apiService'
 
 // Props
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   config: {
     type: Object,
     default: null
@@ -195,6 +199,7 @@ const canTestConnection = computed(() => {
 
 // Methods
 const handleTestConnection = async () => {
+  if (props.readOnly) return
   if (!form.value.serverUrl?.trim()) {
     return
   }
@@ -262,6 +267,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
+  if (props.readOnly) return
   if (!validate()) return
 
   saveLoading.value = true
@@ -281,6 +287,7 @@ const handleSubmit = async () => {
 }
 
 const handleReset = () => {
+  if (props.readOnly) return
   form.value = {
     serverUrl: props.config?.serverUrl || '',
     // Never populate existing API key for security

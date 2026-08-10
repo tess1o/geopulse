@@ -1,7 +1,6 @@
 package org.github.tess1o.geopulse.admin.service;
 
 import io.quarkus.runtime.StartupEvent;
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -26,12 +25,13 @@ public class AdminBootstrapService {
     private final EntityManager entityManager;
 
     @ConfigProperty(name = "geopulse.admin.email")
-    @StaticInitSafe
     Optional<String> adminEmail;
 
     @ConfigProperty(name = "geopulse.admin.first-user-admin.enabled", defaultValue = "true")
-    @StaticInitSafe
     boolean firstUserAdminEnabled;
+
+    @ConfigProperty(name = "geopulse.demo.enabled", defaultValue = "false")
+    boolean demoModeEnabled;
 
     @Inject
     public AdminBootstrapService(UserRepository userRepository, EntityManager entityManager) {
@@ -53,7 +53,7 @@ public class AdminBootstrapService {
             return;
         }
 
-        if (!firstUserAdminEnabled) {
+        if (demoModeEnabled || !firstUserAdminEnabled) {
             return;
         }
 
@@ -93,7 +93,7 @@ public class AdminBootstrapService {
             return Role.USER;
         }
 
-        if (!firstUserAdminEnabled) {
+        if (demoModeEnabled || !firstUserAdminEnabled) {
             return Role.USER;
         }
 

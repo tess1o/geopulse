@@ -32,7 +32,8 @@
           v-if="canRenameStay"
           class="location-edit-icon-btn"
           aria-label="Rename stay place"
-          title="Rename stay place"
+          :title="readOnly ? 'Rename is disabled in demo mode' : 'Rename stay place'"
+          :disabled="readOnly"
           @click.stop="handleRenameStay"
         >
           <i class="pi pi-pencil"></i>
@@ -41,7 +42,8 @@
           v-if="canResetDataGapOverride"
           class="location-reset-icon-btn"
           aria-label="Reset data gap override"
-          title="Reset to automatic data gap"
+          :title="readOnly ? 'Reset is disabled in demo mode' : 'Reset to automatic data gap'"
+          :disabled="readOnly"
           @click.stop="handleResetDataGapOverride"
         >
           <i class="pi pi-refresh"></i>
@@ -121,6 +123,10 @@ const props = defineProps({
   allowNoteCreation: {
     type: Boolean,
     default: true
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -161,6 +167,7 @@ const contextMenuItems = computed(() => {
     items.push({
       label: 'Rename place...',
       icon: 'pi pi-pencil',
+      disabled: props.readOnly,
       command: () => {
         handleRenameStay()
       }
@@ -171,6 +178,7 @@ const contextMenuItems = computed(() => {
     items.push({
       label: 'Reset to automatic data gap',
       icon: 'pi pi-refresh',
+      disabled: props.readOnly,
       command: () => {
         handleResetDataGapOverride()
       }
@@ -288,12 +296,12 @@ const getViewNotesLabel = () => {
 }
 
 const handleRenameStay = () => {
-  if (!canRenameStay.value) return
+  if (!canRenameStay.value || props.readOnly) return
   emit('rename-stay', props.stayItem)
 }
 
 const handleResetDataGapOverride = () => {
-  if (!canResetDataGapOverride.value) return
+  if (!canResetDataGapOverride.value || props.readOnly) return
   emit('reset-data-gap-override', props.stayItem)
 }
 
@@ -454,6 +462,12 @@ const formattedTimestamp = computed(() => {
 
 .location-edit-icon-btn i {
   font-size: 0.85rem;
+}
+
+.location-edit-icon-btn:disabled,
+.location-reset-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .location-reset-icon-btn {

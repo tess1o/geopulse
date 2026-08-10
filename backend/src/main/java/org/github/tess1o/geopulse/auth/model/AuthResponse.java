@@ -18,6 +18,9 @@ public class AuthResponse {
     private String id;
     private String email;
     private String role;
+    private boolean demoMode;
+    private boolean canViewAdmin;
+    private boolean adminReadOnly;
     private String fullName;
     private String avatar;
     private String timezone;

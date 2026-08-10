@@ -18,6 +18,8 @@
         </router-link>
       </div>
 
+      <DemoReadOnlyBanner />
+
     <!-- Search Bar (Mobile & Desktop) -->
     <div class="search-container">
       <InputText
@@ -97,7 +99,7 @@
                 :severity="data.active ? 'warning' : 'success'"
                 @click="toggleUserStatus(data)"
                 v-tooltip="data.active ? 'Disable User' : 'Enable User'"
-                :disabled="data.id === currentUserId"
+                :disabled="adminReadOnly || data.id === currentUserId"
               />
               <Button
                 icon="pi pi-trash"
@@ -106,7 +108,7 @@
                 severity="danger"
                 @click="confirmDelete(data)"
                 v-tooltip="'Delete User'"
-                :disabled="data.id === currentUserId"
+                :disabled="adminReadOnly || data.id === currentUserId"
               />
             </div>
           </template>
@@ -169,7 +171,7 @@
               text
               :severity="user.active ? 'warning' : 'success'"
               @click="toggleUserStatus(user)"
-              :disabled="user.id === currentUserId"
+              :disabled="adminReadOnly || user.id === currentUserId"
               size="small"
             />
             <Button
@@ -178,7 +180,7 @@
               text
               severity="danger"
               @click="confirmDelete(user)"
-              :disabled="user.id === currentUserId"
+              :disabled="adminReadOnly || user.id === currentUserId"
               size="small"
             />
           </div>
@@ -255,14 +257,17 @@ import Dialog from 'primevue/dialog'
 import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const breadcrumbHome = ref({

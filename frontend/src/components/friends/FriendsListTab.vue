@@ -8,9 +8,14 @@
       <p class="empty-description">
         Start building your network by inviting friends to connect and share locations
       </p>
+      <p v-if="readOnly" class="demo-disabled-text">
+        Inviting friends is disabled in demo mode.
+      </p>
       <Button
           label="Invite Your First Friend"
           icon="pi pi-user-plus"
+          :disabled="readOnly"
+          v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite Your First Friend'"
           @click="$emit('invite-friend')"
       />
     </div>
@@ -77,11 +82,15 @@
               <i class="pi pi-lock"></i>
               <span>What you share with this friend:</span>
             </div>
+            <p v-if="readOnly" class="demo-disabled-text demo-disabled-text--inline">
+              Sharing permissions are read-only in demo mode.
+            </p>
             <div class="permission-item">
               <i class="pi pi-map-marker permission-icon"></i>
               <span class="permission-label">Live Location</span>
               <InputSwitch
                   v-model="friend.shareLiveLocationPermission"
+                  :disabled="readOnly"
                   @change="handleLiveLocationPermissionChange(friend)"
                   class="permission-switch"
               />
@@ -94,6 +103,7 @@
               <span class="permission-label">Timeline History</span>
               <InputSwitch
                   v-model="friend.shareTimelinePermission"
+                  :disabled="readOnly"
                   @change="handleTimelinePermissionChange(friend)"
                   class="permission-switch"
               />
@@ -126,8 +136,9 @@
                 size="small"
                 severity="danger"
                 outlined
+                :disabled="readOnly"
                 @click="$emit('delete-friend', friend)"
-                v-tooltip.bottom="'Remove friend'"
+                v-tooltip.bottom="readOnly ? 'Removing friends is disabled in demo mode' : 'Remove friend'"
             />
           </div>
         </template>
@@ -143,6 +154,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import friendsService from '@/services/friendsService'
 import InputSwitch from 'primevue/inputswitch'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -152,6 +164,10 @@ const props = defineProps({
   friends: {
     type: Array,
     default: () => []
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -194,6 +210,11 @@ async function loadAllPermissions() {
 
 async function handleTimelinePermissionChange(friend) {
   const newValue = friend.shareTimelinePermission
+  if (props.readOnly) {
+    friend.shareTimelinePermission = !newValue
+    showDemoModeToast(toast, 'Sharing permissions are read-only in demo mode.')
+    return
+  }
 
   // Show confirmation dialog
   confirm.require({
@@ -241,6 +262,11 @@ async function handleTimelinePermissionChange(friend) {
 
 async function handleLiveLocationPermissionChange(friend) {
   const newValue = friend.shareLiveLocationPermission
+  if (props.readOnly) {
+    friend.shareLiveLocationPermission = !newValue
+    showDemoModeToast(toast, 'Sharing permissions are read-only in demo mode.')
+    return
+  }
 
   // Show confirmation dialog
   confirm.require({
@@ -369,6 +395,15 @@ const getLastSeenText = (lastSeen) => {
   margin: 0 0 1.5rem 0;
   max-width: 400px;
   line-height: 1.5;
+}
+
+.demo-disabled-text {
+  margin: -0.5rem 0 1rem 0;
+  font-size: 0.9rem;
+}
+
+.demo-disabled-text--inline {
+  margin: 0 0 0.5rem 0;
 }
 
 /* Friends Grid */

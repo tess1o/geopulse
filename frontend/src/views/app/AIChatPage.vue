@@ -64,8 +64,13 @@
                       label="Configure AI Settings"
                       icon="pi pi-cog"
                       class="p-button-primary"
-                      @click="$router.push('/app/profile?tab=ai')"
+                      :disabled="configureAISettingsDisabled"
+                      v-tooltip.bottom="configureAISettingsDisabled ? 'AI settings are read-only in demo mode' : 'Configure AI Settings'"
+                      @click="goToAISettings"
                     />
+                    <p v-if="demoReadOnly" class="demo-disabled-text">
+                      AI settings are read-only in demo mode, so this configuration action is disabled.
+                    </p>
                   </div>
                 </div>
 
@@ -218,14 +223,20 @@
 
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService.js'
 
 const toast = useToast()
 const timezone = useTimezone()
+const router = useRouter()
+const authStore = useAuthStore()
+const { demoReadOnly } = storeToRefs(authStore)
 
 // Constants
 const MESSAGE_RETENTION_DAYS = 7
@@ -254,6 +265,7 @@ const checkingAIStatus = ref(true)
 // Computed properties
 const hasMessages = computed(() => messages.value.length > 0)
 const showExamples = computed(() => !hasMessages.value && !hasExpiredConversation.value)
+const configureAISettingsDisabled = computed(() => demoReadOnly.value)
 
 // Utility functions
 const generateMessageId = () => {
@@ -434,6 +446,14 @@ const sendMessage = async (messageText) => {
 
 const handleSendMessage = () => {
   sendMessage()
+}
+
+const goToAISettings = () => {
+  if (configureAISettingsDisabled.value) {
+    return
+  }
+
+  router.push('/app/profile?tab=ai')
 }
 
 const findScrollableAncestor = (element) => {
@@ -638,7 +658,9 @@ onMounted(async () => {
   if (!isAIAvailable.value) {
     let detail = 'Please configure your AI settings in your profile to use the chat assistant.'
 
-    if (!aiSettings.value.enabled) {
+    if (demoReadOnly.value) {
+      detail = 'AI settings are read-only in demo mode, so they cannot be configured from this demo account.'
+    } else if (!aiSettings.value.enabled) {
       detail = 'AI Assistant is disabled. Please enable it in your profile settings.'
     } else if (aiSettings.value.apiKeyRequired && !aiSettings.value.openaiApiKeyConfigured) {
       detail = 'Please configure your OpenAI API key in your profile to use the chat assistant.'
@@ -1182,6 +1204,16 @@ onBeforeUnmount(() => {
 
 .config-actions {
   margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.demo-disabled-text {
+  max-width: 32rem;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .input-warning {

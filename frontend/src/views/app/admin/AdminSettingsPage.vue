@@ -19,6 +19,8 @@
         </div>
       </div>
 
+      <DemoReadOnlyBanner />
+
       <TabContainer
         :tabs="tabItems"
         :activeIndex="activeTabIndex"
@@ -44,6 +46,7 @@ import Breadcrumb from 'primevue/breadcrumb'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { jumpToSetting } from '@/utils/settingJump'
 
 // Import tab components

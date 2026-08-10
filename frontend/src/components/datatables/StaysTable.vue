@@ -30,6 +30,8 @@
             icon="pi pi-download"
             @click="$emit('export')"
             outlined
+            :disabled="exportDisabled"
+            v-tooltip.bottom="exportDisabled ? 'Export is disabled in demo mode' : 'Export stays to CSV'"
             class="export-button"
             :class="{ 'export-button--icon': isMobile }"
           />
@@ -277,7 +279,11 @@ const props = defineProps({
     default: () => []
   },
   dateRange: Array,
-  loading: Boolean
+  loading: Boolean,
+  exportDisabled: {
+    type: Boolean,
+    default: false
+  }
 })
 
 const emit = defineEmits(['export', 'row-select'])

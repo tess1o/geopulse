@@ -17,7 +17,7 @@
         <div class="form-section">
           <div class="form-field" data-setting-id="memos-enabled">
             <label class="form-label">Enable Memos Integration</label>
-            <ToggleSwitch v-model="form.enabled" :disabled="loading || saveLoading" />
+            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" />
             <small class="help-text">Turn on to fetch notes from your Memos server</small>
           </div>
 
@@ -28,7 +28,7 @@
               v-model="form.serverUrl"
               placeholder="https://memos.example.com"
               :invalid="!!errors.serverUrl"
-              :disabled="!form.enabled || loading || saveLoading"
+              :disabled="readOnly || !form.enabled || loading || saveLoading"
               class="w-full"
             />
             <small v-if="errors.serverUrl" class="error-message">{{ errors.serverUrl }}</small>
@@ -44,7 +44,7 @@
               :feedback="false"
               toggleMask
               :invalid="!!errors.apiKey"
-              :disabled="!form.enabled || loading || saveLoading"
+              :disabled="readOnly || !form.enabled || loading || saveLoading"
               class="w-full"
             />
             <small v-if="errors.apiKey" class="error-message">{{ errors.apiKey }}</small>
@@ -64,7 +64,7 @@
                 :options="destinationOptions"
                 optionLabel="label"
                 optionValue="value"
-                :disabled="loading || saveLoading"
+                :disabled="readOnly || loading || saveLoading"
               />
             </div>
 
@@ -76,13 +76,13 @@
                 :options="visibilityOptions"
                 optionLabel="label"
                 optionValue="value"
-                :disabled="loading || saveLoading"
+                :disabled="readOnly || loading || saveLoading"
               />
             </div>
 
             <div class="form-field" data-setting-id="memosSearchCacheEnabled">
               <label class="form-label">Enable Memos search cache</label>
-              <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="loading || saveLoading" />
+              <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="readOnly || loading || saveLoading" />
               <small class="help-text">Reuse recent Memos searches for faster timeline note loading</small>
             </div>
 
@@ -95,7 +95,7 @@
                 :typeahead="false"
                 :suggestions="[]"
                 placeholder="Add a tag and press Enter"
-                :disabled="loading || saveLoading"
+                :disabled="readOnly || loading || saveLoading"
                 class="w-full tag-input"
                 @change="normalizeFormTags('includeTags')"
                 @blur="commitPendingTag('includeTags', $event)"
@@ -112,7 +112,7 @@
                 :typeahead="false"
                 :suggestions="[]"
                 placeholder="Add a tag and press Enter"
-                :disabled="loading || saveLoading"
+                :disabled="readOnly || loading || saveLoading"
                 class="w-full tag-input"
                 @change="normalizeFormTags('excludeTags')"
                 @blur="commitPendingTag('excludeTags', $event)"
@@ -128,7 +128,7 @@
               icon="pi pi-link"
               outlined
               :loading="testLoading"
-              :disabled="!canTestConnection || loading || saveLoading"
+              :disabled="readOnly || !canTestConnection || loading || saveLoading"
               @click="handleTestConnection"
             />
           </div>
@@ -142,8 +142,8 @@
         </div>
 
         <div class="form-actions">
-          <Button type="button" label="Reset" outlined @click="handleReset" :disabled="loading || saveLoading" />
-          <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="!hasChanges || loading" />
+          <Button type="button" label="Reset" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
+          <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
         </div>
       </form>
     </template>
@@ -163,6 +163,10 @@ import Message from 'primevue/message'
 import { useNotesStore } from '@/stores/notes'
 
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   config: {
     type: Object,
     default: null
@@ -322,6 +326,7 @@ const commitPendingTag = (field, event) => {
 }
 
 const handleTestConnection = async () => {
+  if (props.readOnly) return
   if (!validate()) return
   testLoading.value = true
   try {
@@ -343,6 +348,7 @@ const handleTestConnection = async () => {
 }
 
 const handleSubmit = async () => {
+  if (props.readOnly) return
   if (!validate()) return
   saveLoading.value = true
   try {
@@ -362,6 +368,7 @@ const handleSubmit = async () => {
 }
 
 const handleReset = () => {
+  if (props.readOnly) return
   loadConfig()
 }
 </script>

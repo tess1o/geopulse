@@ -57,6 +57,25 @@
                 <p class="form-subtitle">Sign in to continue your journey</p>
               </div>
 
+              <!-- Demo Quick Login -->
+              <div v-if="hasDemoPersonasAvailable" class="demo-login-section">
+                <Button
+                  v-for="persona in demoPersonas"
+                  :key="persona.id"
+                  type="button"
+                  class="demo-login-button"
+                  :loading="demoLoginPersonaId === persona.id"
+                  :disabled="isLoading"
+                  :aria-label="persona.label"
+                  @click="handleDemoLogin(persona)"
+                >
+                  <span class="demo-login-button__content">
+                    <span class="demo-login-button__label">{{ persona.label }}</span>
+                    <span class="demo-login-button__detail">{{ persona.detail }}</span>
+                  </span>
+                </Button>
+              </div>
+
               <!-- Login Form (show if password login enabled OR admin override) -->
               <form v-if="shouldShowPasswordForm" @submit.prevent="handleSubmit" class="login-form">
                 <!-- Admin Override Notice -->
@@ -167,11 +186,12 @@ const { handleError } = useErrorHandler()
 // State
 const isLoading = ref(false)
 const loginError = ref('')
+const demoLoginPersonaId = ref(null)
 
 const oidcProviders = ref([])
 
 const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
-const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true });
+const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true, demoModeEnabled: false });
 const showAdminLogin = ref(false);
 
 // Form data
@@ -193,6 +213,12 @@ const shouldShowPasswordForm = computed(() => {
   return loginStatus.value.passwordLoginEnabled || showAdminLogin.value
 })
 
+const demoPersonas = computed(() => authStore.demoPersonas || [])
+
+const hasDemoPersonasAvailable = computed(() => {
+  return loginStatus.value.demoModeEnabled && demoPersonas.value.length > 0
+})
+
 // Check if OIDC is actually available (enabled AND has providers configured)
 const hasOidcProvidersAvailable = computed(() => {
   return loginStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0
@@ -200,7 +226,7 @@ const hasOidcProvidersAvailable = computed(() => {
 
 // Check if any login method is actually available
 const hasAnyLoginMethodAvailable = computed(() => {
-  return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value
+  return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value || hasDemoPersonasAvailable.value
 })
 
 // Methods
@@ -269,6 +295,42 @@ const handleSubmit = async () => {
   }
 }
 
+const handleDemoLogin = async (persona) => {
+  if (!persona?.id) return
+
+  isLoading.value = true
+  demoLoginPersonaId.value = persona.id
+  loginError.value = ''
+
+  try {
+    await authStore.demoLogin(persona.id)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Welcome Back!',
+      detail: 'You have successfully signed in',
+      life: 3000
+    })
+
+    const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+    await router.push(redirectUrl)
+  } catch (error) {
+    console.error('Demo login error:', error)
+    const formattedError = formatError(error)
+    loginError.value = getDemoLoginErrorMessage(error, formattedError)
+
+    toast.add({
+      severity: 'error',
+      summary: 'Demo Login Failed',
+      detail: loginError.value,
+      life: 5000
+    })
+  } finally {
+    isLoading.value = false
+    demoLoginPersonaId.value = null
+  }
+}
+
 
 const getLoginErrorMessage = (error, formattedError) => {
   // If the server provided a specific message, prioritize it
@@ -289,6 +351,23 @@ const getLoginErrorMessage = (error, formattedError) => {
     default:
       // Fall back to the formatted error message from our error handler
       return formattedError.message
+  }
+}
+
+const getDemoLoginErrorMessage = (error, formattedError) => {
+  if (error.response?.data?.message) {
+    return error.response.data.message
+  }
+
+  switch (error.response?.status) {
+    case 400:
+      return 'Please choose a demo profile and try again.'
+    case 403:
+      return 'Demo login is currently disabled.'
+    case 404:
+      return 'This demo profile is not available right now.'
+    default:
+      return formattedError.message || 'Demo login failed. Please try again.'
   }
 }
 
@@ -333,7 +412,8 @@ onMounted(() => {
     loginStatus.value = {
       passwordLoginEnabled: status.passwordLoginEnabled,
       oidcLoginEnabled: status.oidcLoginEnabled,
-      adminLoginBypassEnabled: status.adminLoginBypassEnabled
+      adminLoginBypassEnabled: status.adminLoginBypassEnabled,
+      demoModeEnabled: status.demoModeEnabled
     };
   }).catch(err => {
     console.error("Failed to load auth status", err);
@@ -520,6 +600,47 @@ onMounted(() => {
   font-size: 1rem;
   color: var(--gp-text-secondary);
   margin: 0;
+}
+
+.demo-login-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.demo-login-button {
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: var(--gp-surface-light);
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+}
+
+.demo-login-button:hover:not(:disabled) {
+  background: rgba(26, 86, 219, 0.08);
+  border-color: var(--gp-primary);
+  color: var(--gp-text-primary);
+}
+
+.demo-login-button__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.demo-login-button__label {
+  font-weight: 700;
+}
+
+.demo-login-button__detail {
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  white-space: normal;
 }
 
 /* Form */

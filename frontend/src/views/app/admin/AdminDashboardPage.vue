@@ -3,6 +3,8 @@
     <div class="admin-dashboard">
       <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
 
+      <DemoReadOnlyBanner />
+
       <div class="page-header">
         <h1>Admin Dashboard</h1>
         <p class="text-muted">System overview and quick actions</p>
@@ -193,6 +195,7 @@ import Skeleton from 'primevue/skeleton'
 import Breadcrumb from 'primevue/breadcrumb'
 import Tag from 'primevue/tag'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import adminService from '@/utils/adminService'
 
 const router = useRouter()

@@ -14,8 +14,11 @@
           icon="pi pi-plus"
           @click="openCreateDialog"
           class="add-provider-button"
+          :disabled="adminReadOnly"
         />
       </div>
+
+      <DemoReadOnlyBanner />
 
       <!-- Desktop Table View -->
       <div class="card desktop-only">
@@ -82,6 +85,7 @@
                   severity="info"
                   @click="openEditDialog(data)"
                   v-tooltip="'Edit Provider'"
+                  :disabled="adminReadOnly"
                 />
                 <Button
                   :icon="data.enabled ? 'pi pi-ban' : 'pi pi-check'"
@@ -90,6 +94,7 @@
                   :severity="data.enabled ? 'warning' : 'success'"
                   @click="toggleProviderStatus(data)"
                   v-tooltip="data.enabled ? 'Disable Provider' : 'Enable Provider'"
+                  :disabled="adminReadOnly"
                 />
                 <Button
                   icon="pi pi-wifi"
@@ -99,6 +104,7 @@
                   @click="testProvider(data)"
                   v-tooltip="'Test Connection'"
                   :loading="testingProvider === data.name"
+                  :disabled="adminReadOnly"
                 />
                 <Button
                   icon="pi pi-trash"
@@ -107,7 +113,7 @@
                   severity="danger"
                   @click="confirmDelete(data)"
                   v-tooltip="getDeleteTooltip(data)"
-                  :disabled="!canDeleteProvider(data)"
+                  :disabled="adminReadOnly || !canDeleteProvider(data)"
                 />
               </div>
             </template>
@@ -176,6 +182,7 @@
                 text
                 severity="info"
                 @click="openEditDialog(provider)"
+                :disabled="adminReadOnly"
                 size="small"
               />
               <Button
@@ -185,6 +192,7 @@
                 text
                 :severity="provider.enabled ? 'warning' : 'success'"
                 @click="toggleProviderStatus(provider)"
+                :disabled="adminReadOnly"
                 size="small"
               />
               <Button
@@ -195,6 +203,7 @@
                 severity="success"
                 @click="testProvider(provider)"
                 :loading="testingProvider === provider.name"
+                :disabled="adminReadOnly"
                 size="small"
               />
               <Button
@@ -204,7 +213,7 @@
                 text
                 severity="danger"
                 @click="confirmDelete(provider)"
-                :disabled="!canDeleteProvider(provider)"
+                :disabled="adminReadOnly || !canDeleteProvider(provider)"
                 size="small"
               />
             </div>
@@ -334,14 +343,19 @@ import Dialog from 'primevue/dialog'
 import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import adminService from '@/utils/adminService'
 import PageContainer from "@/components/ui/layout/PageContainer.vue";
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const toast = useToast()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',

@@ -20,6 +20,7 @@
                   icon="pi pi-upload"
                   size="small"
                   outlined
+                  :disabled="readOnly"
                   @click="triggerAvatarUpload"
                 />
                 <input
@@ -42,7 +43,7 @@
             <div
               v-for="(avatar, index) in avatarOptions"
               :key="index"
-              :class="['avatar-option', { active: avatar === localAvatar }]"
+              :class="['avatar-option', { active: avatar === localAvatar, disabled: readOnly }]"
               @click="selectBuiltInAvatar(avatar)"
             >
               <Avatar :image="avatar" size="large" />
@@ -59,6 +60,7 @@
               v-model="form.fullName"
               placeholder="Enter your full name"
               :invalid="!!errors.fullName"
+              :disabled="readOnly"
               class="w-full"
             />
             <small v-if="errors.fullName" class="error-message">
@@ -89,6 +91,7 @@
               filter
               :filterMatchMode="'contains'"
               :invalid="!!errors.timezone"
+              :disabled="readOnly"
               class="w-full"
               scrollHeight="300px"
             />
@@ -112,6 +115,7 @@
               optionLabel="label"
               optionValue="value"
               placeholder="Select your preferred date format"
+              :disabled="readOnly"
               class="w-full"
             />
             <small class="help-text">
@@ -131,6 +135,7 @@
               optionLabel="label"
               optionValue="value"
               placeholder="Select your preferred time format"
+              :disabled="readOnly"
               class="w-full"
             />
             <small class="help-text">
@@ -150,6 +155,7 @@
                 optionLabel="label"
                 optionValue="value"
                 placeholder="Select your measurement unit"
+                :disabled="readOnly"
                 class="w-full"
             />
             <small class="help-text">
@@ -170,6 +176,7 @@
                 optionValue="value"
                 placeholder="Select your default page"
                 :invalid="!!errors.defaultRedirectUrl"
+                :disabled="readOnly"
                 class="w-full"
                 showClear
             />
@@ -188,6 +195,7 @@
                 v-model="form.customRedirectUrl"
                 placeholder="/app/your-custom-page"
                 :invalid="!!errors.customRedirectUrl"
+                :disabled="readOnly"
                 class="w-full"
               />
               <small v-if="errors.customRedirectUrl" class="error-message">
@@ -208,13 +216,13 @@
             label="Reset"
             outlined
             @click="handleReset"
-            :disabled="loading"
+            :disabled="loading || readOnly"
           />
           <Button
             type="submit"
             label="Save Changes"
             :loading="loading"
-            :disabled="!hasChanges"
+            :disabled="!hasChanges || readOnly"
           />
         </div>
       </form>
@@ -227,6 +235,10 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // Props
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   userName: {
     type: String,
     required: true
@@ -441,12 +453,14 @@ const clearCustomAvatarSelection = () => {
 }
 
 const selectBuiltInAvatar = (avatar) => {
+  if (props.readOnly) return
   clearCustomAvatarSelection()
   delete errors.value.avatar
   localAvatar.value = avatar
 }
 
 const triggerAvatarUpload = () => {
+  if (props.readOnly) return
   avatarFileInput.value?.click()
 }
 
@@ -578,6 +592,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
+  if (props.readOnly) return
   if (!validate()) return
 
   loading.value = true
@@ -604,6 +619,7 @@ const handleSubmit = async () => {
 }
 
 const handleReset = () => {
+  if (props.readOnly) return
   form.value.fullName = props.userName || ''
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.dateFormat = props.userDateFormat || 'MDY'
@@ -753,6 +769,17 @@ onUnmounted(() => {
   border-color: var(--gp-primary);
   background: var(--gp-primary-light);
   box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.1);
+}
+
+.avatar-option.disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.avatar-option.disabled:hover {
+  border-color: transparent;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Form Sections */

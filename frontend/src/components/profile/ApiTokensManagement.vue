@@ -8,6 +8,7 @@
           label="Create Token"
           icon="pi pi-plus"
           size="small"
+          :disabled="readOnly"
           @click="openCreateDialog"
         />
       </div>
@@ -49,7 +50,7 @@
                 rounded
                 text
                 severity="info"
-                :disabled="data.status === 'REVOKED'"
+                :disabled="readOnly || data.status === 'REVOKED'"
                 @click="openEditDialog(data)"
                 v-tooltip="'Edit token'"
               />
@@ -58,7 +59,7 @@
                 rounded
                 text
                 severity="danger"
-                :disabled="data.status === 'REVOKED'"
+                :disabled="readOnly || data.status === 'REVOKED'"
                 @click="openRevokeDialog(data)"
                 v-tooltip="'Revoke token'"
               />
@@ -85,6 +86,7 @@
               placeholder="Automation token"
               class="w-full"
               :invalid="!!formError"
+              :disabled="readOnly"
             />
             <small v-if="formError" class="error-message">{{ formError }}</small>
           </div>
@@ -100,6 +102,7 @@
               dateFormat="yy-mm-dd"
               placeholder="No expiration"
               class="expiration-picker w-full"
+              :disabled="readOnly"
             />
             <small class="muted">Leave empty for no expiration.</small>
           </div>
@@ -110,6 +113,7 @@
             :label="editingToken ? 'Save' : 'Create'"
             icon="pi pi-check"
             :loading="saving"
+            :disabled="readOnly"
             @click="saveToken"
           />
         </template>
@@ -150,6 +154,7 @@
             icon="pi pi-ban"
             severity="danger"
             :loading="revoking"
+            :disabled="readOnly"
             @click="revokeToken"
           />
         </template>
@@ -173,6 +178,13 @@ import apiService from '@/utils/apiService'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
 const toast = useToast()
+
+const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const tokens = ref([])
 const loading = ref(false)
@@ -203,6 +215,7 @@ const loadTokens = async () => {
 }
 
 const openCreateDialog = () => {
+  if (props.readOnly) return
   editingToken.value = null
   form.value = { name: '', expiresAt: null }
   formError.value = ''
@@ -210,6 +223,7 @@ const openCreateDialog = () => {
 }
 
 const openEditDialog = (token) => {
+  if (props.readOnly) return
   editingToken.value = token
   form.value = {
     name: token.name || '',
@@ -226,6 +240,7 @@ const closeEditDialog = () => {
 }
 
 const saveToken = async () => {
+  if (props.readOnly) return
   const name = form.value.name.trim()
   if (!name) {
     formError.value = 'Token name is required'
@@ -264,11 +279,13 @@ const saveToken = async () => {
 }
 
 const openRevokeDialog = (token) => {
+  if (props.readOnly) return
   tokenToRevoke.value = token
   revokeDialogVisible.value = true
 }
 
 const revokeToken = async () => {
+  if (props.readOnly) return
   if (!tokenToRevoke.value) return
 
   revoking.value = true

@@ -6,11 +6,14 @@
 import { ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import apiService from '@/utils/apiService'
+import { useAuthStore } from '@/stores/auth'
 import { getSettingMetadata } from '@/constants/adminSettingsMetadata'
+import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { transformSettingValue, parseSettingValue, shouldSkipEncryptedUpdate } from '@/utils/settingHelpers'
 
 export function useAdminSettings() {
   const toast = useToast()
+  const authStore = useAuthStore()
   const loading = ref(false)
 
   /**
@@ -28,7 +31,7 @@ export function useAdminSettings() {
           ...setting,
           label: metadata.label,
           description: metadata.description,
-          readOnly: metadata.readOnly || false,
+          readOnly: metadata.readOnly || authStore.adminReadOnly || false,
           currentValue: transformSettingValue(setting)
         }
       })
@@ -55,6 +58,11 @@ export function useAdminSettings() {
    */
   const updateSetting = async (setting, validationFn = null, reloadFn = null) => {
     try {
+      if (setting.readOnly || authStore.adminReadOnly) {
+        showDemoReadOnlyToast(toast)
+        return
+      }
+
       // Skip update for unchanged encrypted fields
       if (shouldSkipEncryptedUpdate(setting)) {
         return
@@ -117,6 +125,11 @@ export function useAdminSettings() {
    */
   const resetSetting = async (setting) => {
     try {
+      if (setting.readOnly || authStore.adminReadOnly) {
+        showDemoReadOnlyToast(toast)
+        return
+      }
+
       const response = await apiService.delete(`/admin/settings/${setting.key}`)
 
       setting.isDefault = true
