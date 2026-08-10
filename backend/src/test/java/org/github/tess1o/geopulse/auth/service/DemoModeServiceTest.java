@@ -33,6 +33,10 @@ class DemoModeServiceTest {
         assertEquals("🗽 Login as New York",newYork.label());
         assertEquals("(Miles, 12-hour clock, US date format)", newYork.detail());
         assertEquals(Optional.of("new-york@demo.geopulse.cc"), service.findPersonaEmail("NEW-YORK"));
+        assertEquals("America/New_York", service.getProvisioningPersonas().get(1).timezone());
+        assertEquals("IMPERIAL", service.getProvisioningPersonas().get(1).measureUnit().name());
+        assertEquals("MDY", service.getProvisioningPersonas().get(1).dateFormat());
+        assertEquals("12h", service.getProvisioningPersonas().get(1).timeFormat());
 
         JsonNode serializedPersona = objectMapper.valueToTree(newYork);
         assertFalse(serializedPersona.has("email"));
@@ -46,6 +50,7 @@ class DemoModeServiceTest {
 
         assertTrue(service.getPublicPersonas().isEmpty());
         assertTrue(service.findPersonaEmail("new-york").isEmpty());
+        assertTrue(service.getProvisioningPersonas().isEmpty());
     }
 
     @Test

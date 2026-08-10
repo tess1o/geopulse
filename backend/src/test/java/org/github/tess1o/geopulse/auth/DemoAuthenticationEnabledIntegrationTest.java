@@ -113,6 +113,30 @@ class DemoAuthenticationEnabledIntegrationTest {
     }
 
     @Test
+    void demoLogin_WithStartupProvisionedPersona_IssuesBrowserAuthCookies() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("""
+                        {
+                            "personaId": "kyiv"
+                        }
+                        """)
+                .when()
+                .post("/api/auth/demo-login")
+                .then()
+                .statusCode(200)
+                .body("status", equalTo("success"))
+                .body("data.user.email", equalTo("kyiv@demo.geopulse.cc"))
+                .body("data.user.demoMode", equalTo(true))
+                .body("data.user.measureUnit", equalTo("METRIC"))
+                .body("data.user.dateFormat", equalTo("DMY"))
+                .body("data.user.timeFormat", equalTo("24h"))
+                .cookie("access_token", notNullValue())
+                .cookie("refresh_token", notNullValue())
+                .cookie("token_expires_at", notNullValue());
+    }
+
+    @Test
     void demoLogin_WithUnknownPersona_ReturnsNotFoundWithoutCookies() {
         Response response = given()
                 .contentType(ContentType.JSON)

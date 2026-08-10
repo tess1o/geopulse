@@ -53,12 +53,12 @@
             <div class="login-form-content">
               <!-- Form Header -->
               <div class="form-header">
-                <h2 class="form-title">Welcome Back</h2>
-                <p class="form-subtitle">Sign in to continue your journey</p>
+                <h2 class="form-title">{{ formTitle }}</h2>
+                <p class="form-subtitle">{{ formSubtitle }}</p>
               </div>
 
               <!-- Demo Quick Login -->
-              <div v-if="hasDemoPersonasAvailable" class="demo-login-section">
+              <div v-if="shouldShowDemoChooser" class="demo-login-section">
                 <Button
                   v-for="persona in demoPersonas"
                   :key="persona.id"
@@ -74,12 +74,31 @@
                     <span class="demo-login-button__detail">{{ persona.detail }}</span>
                   </span>
                 </Button>
+
+                <Button
+                  v-if="loginStatus.adminLoginBypassEnabled"
+                  type="button"
+                  label="Administrator Access"
+                  icon="pi pi-shield"
+                  severity="warning"
+                  size="small"
+                  outlined
+                  :disabled="isLoading"
+                  class="admin-login-button"
+                  @click="showAdminLogin = true"
+                />
+              </div>
+
+              <!-- Error Display -->
+              <div v-if="loginError && !shouldShowPasswordForm" class="login-error">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ loginError }}</span>
               </div>
 
               <!-- Login Form (show if password login enabled OR admin override) -->
               <form v-if="shouldShowPasswordForm" @submit.prevent="handleSubmit" class="login-form">
                 <!-- Admin Override Notice -->
-                <div v-if="showAdminLogin && !loginStatus.passwordLoginEnabled" class="admin-override-notice">
+                <div v-if="showAdminLogin" class="admin-override-notice">
                   <i class="pi pi-shield"></i>
                   <span>Administrator access - login restrictions bypassed</span>
                 </div>
@@ -142,7 +161,7 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
-                v-if="hasOidcProvidersAvailable"
+                v-if="shouldShowOidcProviders"
                 :providers="oidcProviders"
                 :disabled="isLoading"
                 @provider-selected="handleOidcLogin"
@@ -150,7 +169,7 @@
               />
 
               <!-- Register Link -->
-              <div v-if="registrationStatus.passwordRegistrationEnabled || registrationStatus.oidcRegistrationEnabled" class="register-section">
+              <div v-if="shouldShowRegisterLink" class="register-section">
                 <span class="register-text">Don't have an account?</span>
                 <router-link to="/register" class="register-link">
                   Create account
@@ -209,14 +228,28 @@ const isFormValid = computed(() => {
          Object.keys(formErrors.value).length === 0
 })
 
+const isDemoMode = computed(() => loginStatus.value.demoModeEnabled)
+
 const shouldShowPasswordForm = computed(() => {
-  return loginStatus.value.passwordLoginEnabled || showAdminLogin.value
+  return (!isDemoMode.value && loginStatus.value.passwordLoginEnabled) || showAdminLogin.value
 })
 
 const demoPersonas = computed(() => authStore.demoPersonas || [])
 
 const hasDemoPersonasAvailable = computed(() => {
-  return loginStatus.value.demoModeEnabled && demoPersonas.value.length > 0
+  return isDemoMode.value && demoPersonas.value.length > 0
+})
+
+const shouldShowDemoChooser = computed(() => {
+  return hasDemoPersonasAvailable.value && !showAdminLogin.value
+})
+
+const formTitle = computed(() => {
+  return shouldShowDemoChooser.value ? 'Try GeoPulse' : 'Welcome Back'
+})
+
+const formSubtitle = computed(() => {
+  return shouldShowDemoChooser.value ? 'Choose a demo profile' : 'Sign in to continue your journey'
 })
 
 // Check if OIDC is actually available (enabled AND has providers configured)
@@ -224,8 +257,21 @@ const hasOidcProvidersAvailable = computed(() => {
   return loginStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0
 })
 
+const shouldShowOidcProviders = computed(() => {
+  return !isDemoMode.value && hasOidcProvidersAvailable.value
+})
+
+const shouldShowRegisterLink = computed(() => {
+  return !isDemoMode.value &&
+         (registrationStatus.value.passwordRegistrationEnabled || registrationStatus.value.oidcRegistrationEnabled)
+})
+
 // Check if any login method is actually available
 const hasAnyLoginMethodAvailable = computed(() => {
+  if (isDemoMode.value) {
+    return hasDemoPersonasAvailable.value
+  }
+
   return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value || hasDemoPersonasAvailable.value
 })
 

@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.dto.DemoPersonaResponse;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.IOException;
@@ -36,8 +37,8 @@ public class DemoModeService {
     private final ObjectMapper objectMapper;
     private final String demoUsersResourcePath;
 
-    private volatile List<DemoPersona> personas = List.of();
-    private volatile Map<String, DemoPersona> personasById = Map.of();
+    private volatile List<DemoPersonaConfig> personas = List.of();
+    private volatile Map<String, DemoPersonaConfig> personasById = Map.of();
 
     @Inject
     public DemoModeService(ObjectMapper objectMapper) {
@@ -73,6 +74,14 @@ public class DemoModeService {
                 .toList();
     }
 
+    public List<DemoPersonaConfig> getProvisioningPersonas() {
+        if (!demoModeEnabled) {
+            return List.of();
+        }
+
+        return personas;
+    }
+
     public Optional<String> findPersonaEmail(String personaId) {
         if (!demoModeEnabled) {
             return Optional.empty();
@@ -82,8 +91,8 @@ public class DemoModeService {
             return Optional.empty();
         }
 
-        DemoPersona persona = personasById.get(normalizeId(personaId));
-        return Optional.ofNullable(persona).map(DemoPersona::email);
+        DemoPersonaConfig persona = personasById.get(normalizeId(personaId));
+        return Optional.ofNullable(persona).map(DemoPersonaConfig::email);
     }
 
     public boolean isDemoRestricted(SecurityIdentity identity) {
@@ -114,14 +123,14 @@ public class DemoModeService {
                 && SecurityRoles.ADMIN.equals(user.getRole().name());
     }
 
-    private List<DemoPersona> loadPersonas() {
+    private List<DemoPersonaConfig> loadPersonas() {
         JsonNode root = readResourceRoot();
         JsonNode usersNode = root.isArray() ? root : root.path("users");
         if (!usersNode.isArray()) {
             return List.of();
         }
 
-        List<DemoPersona> parsedPersonas = new ArrayList<>();
+        List<DemoPersonaConfig> parsedPersonas = new ArrayList<>();
         for (JsonNode userNode : usersNode) {
             parsePersona(userNode).ifPresent(parsedPersonas::add);
         }
@@ -144,7 +153,7 @@ public class DemoModeService {
         }
     }
 
-    private Optional<DemoPersona> parsePersona(JsonNode userNode) {
+    private Optional<DemoPersonaConfig> parsePersona(JsonNode userNode) {
         if (!userNode.isObject()) {
             return Optional.empty();
         }
@@ -157,12 +166,31 @@ public class DemoModeService {
             return Optional.empty();
         }
 
-        return Optional.of(new DemoPersona(normalizeId(id), label, detail, email));
+        String fullName = Optional.ofNullable(textValue(userNode, "fullName"))
+                .orElse(email);
+        String timezone = Optional.ofNullable(textValue(userNode, "timezone"))
+                .orElse("UTC");
+        MeasureUnit measureUnit = parseMeasureUnit(textValue(userNode, "measureUnit"));
+        String dateFormat = textValue(userNode, "dateFormat");
+        String timeFormat = Optional.ofNullable(textValue(userNode, "timeFormat"))
+                .orElse("24h");
+
+        return Optional.of(new DemoPersonaConfig(
+                normalizeId(id),
+                label,
+                detail,
+                email,
+                fullName,
+                timezone,
+                measureUnit,
+                dateFormat,
+                timeFormat
+        ));
     }
 
-    private Map<String, DemoPersona> indexPersonas(List<DemoPersona> loadedPersonas) {
-        Map<String, DemoPersona> indexed = new LinkedHashMap<>();
-        for (DemoPersona persona : loadedPersonas) {
+    private Map<String, DemoPersonaConfig> indexPersonas(List<DemoPersonaConfig> loadedPersonas) {
+        Map<String, DemoPersonaConfig> indexed = new LinkedHashMap<>();
+        for (DemoPersonaConfig persona : loadedPersonas) {
             indexed.putIfAbsent(persona.id(), persona);
         }
         return Map.copyOf(indexed);
@@ -182,11 +210,29 @@ public class DemoModeService {
         return value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private record DemoPersona(
+    private MeasureUnit parseMeasureUnit(String value) {
+        if (value == null) {
+            return MeasureUnit.METRIC;
+        }
+
+        try {
+            return MeasureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            log.warn("Invalid measureUnit '{}' in bundled demo users file; using METRIC", value);
+            return MeasureUnit.METRIC;
+        }
+    }
+
+    public record DemoPersonaConfig(
             String id,
             String label,
             String detail,
-            String email
+            String email,
+            String fullName,
+            String timezone,
+            MeasureUnit measureUnit,
+            String dateFormat,
+            String timeFormat
     ) {
     }
 }

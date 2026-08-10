@@ -134,7 +134,7 @@ const orbitChips = [
 const quickDocs = [
     {
         title: 'Quick Start',
-        text: 'Install GeoPulse and reach the first login flow.',
+        text: 'Finish first login and connect your first location source.',
         link: '/docs/getting-started/quick-start',
     },
     {
@@ -145,7 +145,7 @@ const quickDocs = [
     {
         title: 'Deployment',
         text: 'Choose Docker Compose, Unraid, Proxmox, Kubernetes, Helm, or manual install.',
-        link: '/docs/getting-started/deployment/docker-compose',
+        link: '/docs/getting-started/deployment',
     },
     {
         title: 'REST API',
@@ -335,8 +335,8 @@ function Hero() {
                         insights, all under your control.
                     </p>
                     <div className={styles.heroActions}>
-                        <Link className={clsx('button', styles.heroPrimary)} to="/docs/getting-started/quick-start">
-                            <span>Start Your Journey</span>
+                        <Link className={clsx('button', styles.heroPrimary)} to="/docs/getting-started/deployment">
+                            <span>Install GeoPulse</span>
                             <Icon name="arrowRight" className={styles.actionArrow} />
                         </Link>
                         <Link className={clsx('button', styles.heroSecondary)} to="/docs/getting-started/introduction">
