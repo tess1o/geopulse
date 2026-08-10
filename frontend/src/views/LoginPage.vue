@@ -191,7 +191,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import { useErrorHandler } from '@/composables/useErrorHandler'
 import { formatError } from '@/utils/errorHandler'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
@@ -200,7 +199,6 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
-const { handleError } = useErrorHandler()
 
 // State
 const isLoading = ref(false)

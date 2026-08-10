@@ -7,10 +7,11 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.Role;
-import org.github.tess1o.geopulse.geofencing.service.DefaultNotificationTemplateService;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
+import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
+import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.util.List;
 
@@ -18,17 +19,22 @@ import java.util.List;
 @Slf4j
 public class DemoUserProvisioningService {
 
+    private static final String DEMO_USER_PASSWORD = "demo";
+
     private final DemoModeService demoModeService;
     private final UserRepository userRepository;
-    private final DefaultNotificationTemplateService defaultNotificationTemplateService;
+    private final UserService userService;
+    private final SecurePasswordUtils securePasswordUtils;
 
     @Inject
     public DemoUserProvisioningService(DemoModeService demoModeService,
                                        UserRepository userRepository,
-                                       DefaultNotificationTemplateService defaultNotificationTemplateService) {
+                                       UserService userService,
+                                       SecurePasswordUtils securePasswordUtils) {
         this.demoModeService = demoModeService;
         this.userRepository = userRepository;
-        this.defaultNotificationTemplateService = defaultNotificationTemplateService;
+        this.userService = userService;
+        this.securePasswordUtils = securePasswordUtils;
     }
 
     @Transactional
@@ -82,11 +88,9 @@ public class DemoUserProvisioningService {
         user.setActive(true);
         user.setEmailVerified(true);
         user.setRole(Role.USER);
+        user.setPasswordHash(securePasswordUtils.hashPassword(DEMO_USER_PASSWORD));
 
-        if (isNewUser) {
-            userRepository.persistAndFlush(user);
-        }
-        defaultNotificationTemplateService.ensureDefaultsForUser(user.getId());
+        userService.persist(user);
 
         return isNewUser;
     }
