@@ -82,7 +82,15 @@
               <Button icon="pi pi-sign-out" severity="secondary" text @click="handleSignOut" />
             </template>
             <template v-else>
-              <Button v-if="isLoginAvailable" label="Sign In" icon="pi pi-sign-in" as="router-link" to="/login" severity="secondary" text class="nav-signin" />
+              <Button
+                  v-if="isLoginAvailable"
+                  :label="isDemoModeEnabled ? 'Try Demo' : 'Sign In'"
+                  :icon="isDemoModeEnabled ? 'pi pi-play' : 'pi pi-sign-in'"
+                  as="router-link"
+                  to="/login"
+                  severity="secondary"
+                  text
+                  class="nav-signin" />
             </template>
           </div>
         </div>
@@ -121,14 +129,20 @@
                 </div>
 
                 <template v-else>
-                  <div v-if="showRegistrationDisabledNotice" class="access-status access-status-info">
+                  <div v-if="isDemoModeEnabled" class="access-status access-status-demo">
+                    <i class="pi pi-play-circle"></i>
+                    <span>Public demo. Choose a sample profile on the next screen. Data resets every {{ demoResetIntervalHours }} hours; settings and write actions are read-only.</span>
+                  </div>
+
+                  <div v-else-if="showRegistrationDisabledNotice" class="access-status access-status-info">
                     <i class="pi pi-info-circle"></i>
                     <span>Registration is disabled. Existing users can still sign in.</span>
                   </div>
 
                   <div class="hero-actions">
-                    <Button v-if="isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
-                    <Button v-if="isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                    <Button v-if="isDemoModeEnabled" label="Try Demo" icon="pi pi-play" iconPos="right" as="router-link" to="/login" size="large" class="btn-hero-primary" />
+                    <Button v-if="!isDemoModeEnabled && isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
+                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
                   </div>
                 </template>
 
@@ -275,6 +289,8 @@ const DEFAULT_AUTH_STATUS = {
   oidcLoginEnabled: true,
   adminLoginBypassEnabled: true,
   guestRootRedirectToLoginEnabled: false,
+  demoModeEnabled: false,
+  demoResetIntervalHours: 2,
 }
 
 const isResolvingAuth = ref(true)
@@ -307,8 +323,14 @@ const isLoginAvailable = computed(() => {
     hasOidcProvidersAvailable.value ||
     authStatus.value.adminLoginBypassEnabled
 })
+const isDemoModeEnabled = computed(() => {
+  return !!authStatus.value.demoModeEnabled || authStore.demoModeEnabled
+})
+const demoResetIntervalHours = computed(() => {
+  return authStatus.value.demoResetIntervalHours || authStore.demoResetIntervalHours || 2
+})
 const showRegistrationDisabledNotice = computed(() => {
-  return !isRegistrationAvailable.value && isLoginAvailable.value
+  return !isDemoModeEnabled.value && !isRegistrationAvailable.value && isLoginAvailable.value
 })
 
 watch(filteredTips, (tips) => {
@@ -612,6 +634,7 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .access-status i { margin-top: 0.06rem; font-size: 0.9rem; flex-shrink: 0; }
 .access-status-warning { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.35); color: #92400e; }
 .access-status-info { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: #1e3a8a; }
+.access-status-demo { background: rgba(20, 184, 166, 0.12); border-color: rgba(20, 184, 166, 0.35); color: #0f766e; }
 
 :deep(.btn-hero-primary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 :deep(.btn-hero-primary:hover) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
@@ -829,6 +852,7 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .p-dark .orbit-ring { border-color: rgba(255,255,255,0.05); }
 .p-dark .access-status-warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.38); color: #fcd34d; }
 .p-dark .access-status-info { background: rgba(37, 99, 235, 0.16); border-color: rgba(96, 165, 250, 0.38); color: #bfdbfe; }
+.p-dark .access-status-demo { background: rgba(20, 184, 166, 0.14); border-color: rgba(45, 212, 191, 0.38); color: #99f6e4; }
 
 .p-dark .github-badge { background: rgba(30, 41, 59, 0.4); border-color: rgba(255, 255, 255, 0.08); }
 .p-dark .github-badge:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
