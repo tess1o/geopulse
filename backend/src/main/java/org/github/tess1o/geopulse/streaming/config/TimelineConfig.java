@@ -311,7 +311,7 @@ public class TimelineConfig {
 
     /**
      * Maximum peak speed in km/h for bicycle classification.
-     * Allows for downhill segments or e-bikes while staying below car speeds.
+     * Allows for downhill segments, road bikes, or e-bikes.
      * Default: 35.0 km/h
      */
     private Double bicycleMaxMaxSpeed;

@@ -128,7 +128,7 @@ public class UpdateTimelinePreferencesRequest {
     private Double bicycleMaxAvgSpeed;
 
     @DecimalMin(value = "20.0", message = "Bicycle max max speed must be at least 20.0 km/h")
-    @DecimalMax(value = "50.0", message = "Bicycle max max speed must be at most 50.0 km/h")
+    @DecimalMax(value = "80.0", message = "Bicycle max max speed must be at most 80.0 km/h")
     private Double bicycleMaxMaxSpeed;
 
     // Optional Trip Types - Running

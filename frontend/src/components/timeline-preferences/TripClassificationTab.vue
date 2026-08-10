@@ -157,15 +157,15 @@
         <div class="parameter-group" data-setting-id="bicycleMaxMaxSpeed">
           <label class="parameter-label">Maximum Peak Speed</label>
           <p class="parameter-description">
-            Allows for downhill segments or e-bikes, but below car speeds
+            Allows for downhill segments, road bikes, or e-bikes
           </p>
           <div class="control-value">{{ modelValue.bicycleMaxMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.bicycleMaxMaxSpeed !== undefined"
             :model-value="modelValue.bicycleMaxMaxSpeed"
             @update:model-value="updatePref('bicycleMaxMaxSpeed', $event)"
-            :min="20.0" :max="50.0" :step="5.0"
-            :labels="['20.0 km/h (City)', '35.0 km/h (Default)', '50.0 km/h (E-bike)']"
+            :min="20.0" :max="80.0" :step="5.0"
+            :labels="['20.0 km/h (City)', '35.0 km/h (Default)', '80.0 km/h (Road bike)']"
             suffix=" km/h" :decimal-places="1"
           />
         </div>
