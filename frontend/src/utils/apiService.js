@@ -180,6 +180,7 @@ const apiService = {
         // Skip auth check for public endpoints
         const publicEndpoints = [
             '/auth/login',
+            '/auth/demo-login',
             '/auth/status',
             '/users/register',
             '/auth/refresh',

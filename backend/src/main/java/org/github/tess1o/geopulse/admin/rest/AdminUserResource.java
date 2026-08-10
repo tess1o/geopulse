@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.service.AdminUserService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -27,7 +28,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/admin/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @Slf4j
 @Tag(name = "Admin: Users", description = "Manage users, roles, status, passwords, and account deletion.")
 public class AdminUserResource {
@@ -48,6 +48,7 @@ public class AdminUserResource {
      * Get paginated list of users.
      */
     @GET
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getUsers(
             @QueryParam("search") String search,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -78,6 +79,7 @@ public class AdminUserResource {
      */
     @GET
     @Path("/{id}")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getUserById(@PathParam("id") UUID id) {
         return adminUserService.getUserById(id)
                 .map(this::toUserDetailsResponse)
@@ -91,6 +93,7 @@ public class AdminUserResource {
      */
     @PUT
     @Path("/{id}/status")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response updateUserStatus(
             @PathParam("id") UUID id,
             UpdateUserStatusRequest request,
@@ -120,6 +123,7 @@ public class AdminUserResource {
      */
     @PUT
     @Path("/{id}/role")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response updateUserRole(
             @PathParam("id") UUID id,
             UpdateUserRoleRequest request,
@@ -153,6 +157,7 @@ public class AdminUserResource {
      */
     @POST
     @Path("/{id}/reset-password")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response resetPassword(
             @PathParam("id") UUID id,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -176,6 +181,7 @@ public class AdminUserResource {
      */
     @DELETE
     @Path("/{id}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response deleteUser(
             @PathParam("id") UUID id,
             @HeaderParam("X-Forwarded-For") String forwardedFor,

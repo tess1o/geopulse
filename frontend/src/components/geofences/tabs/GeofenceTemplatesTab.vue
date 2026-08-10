@@ -2,6 +2,9 @@
   <div class="tab-panel">
     <BaseCard class="panel-card">
       <h3>{{ editingTemplateId ? 'Edit Template' : 'Create Template' }}</h3>
+      <p v-if="readOnly" class="demo-disabled-text">
+        Demo mode: geofence notification templates are read-only. Create, update, test, and delete actions are disabled.
+      </p>
 
       <div class="editor-layout">
         <div class="editor-column editor-form">
@@ -14,6 +17,7 @@
                 :ref="templateNameInput"
                 v-model="templateNameModel"
                 placeholder="Telegram Enter Alert"
+                :disabled="readOnly"
                 :class="{ 'p-invalid': !!templateFormErrors.name }"
               />
               <small v-if="templateFormErrors.name" class="error-text">{{ templateFormErrors.name }}</small>
@@ -25,6 +29,7 @@
                 :ref="templateTitleInput"
                 v-model="templateTitleModel"
                 placeholder="{{subjectName}} {{eventVerb}} {{geofenceName}}"
+                :disabled="readOnly"
                 :class="{ 'p-invalid': !!templateFormErrors.titleTemplate }"
                 @focus="$emit('focus-template-field', 'titleTemplate')"
               />
@@ -38,6 +43,7 @@
                 v-model="templateBodyModel"
                 rows="4"
                 autoResize
+                :disabled="readOnly"
                 :class="{ 'p-invalid': !!templateFormErrors.bodyTemplate }"
                 @focus="$emit('focus-template-field', 'bodyTemplate')"
               />
@@ -53,6 +59,7 @@
                 inputId="template-send-in-app"
                 v-model="templateSendInAppModel"
                 :binary="true"
+                :disabled="readOnly"
               />
               <label for="template-send-in-app" class="checkbox-label">
                 Send in-app
@@ -64,7 +71,7 @@
                 inputId="template-send-external"
                 v-model="templateSendExternalModel"
                 :binary="true"
-                :disabled="!appriseConfigured"
+                :disabled="readOnly || !appriseConfigured"
               />
               <label for="template-send-external" class="checkbox-label">
                 Send via Apprise
@@ -87,7 +94,8 @@
                   outlined
                   size="small"
                   :loading="testingTemplateConnection"
-                  :disabled="!appriseConfigured"
+                  :disabled="readOnly || !appriseConfigured"
+                  v-tooltip.bottom="readOnly ? 'Testing geofence notification templates is disabled in demo mode' : 'Test notification delivery'"
                   @click="$emit('test-template-connection')"
                 />
               </div>
@@ -99,7 +107,7 @@
                     v-for="option in appriseRoutingModeOptions"
                     :key="option.value"
                     class="routing-mode-option"
-                    :class="{ 'is-active': templateExternalRoutingModeModel === option.value }"
+                    :class="{ 'is-active': templateExternalRoutingModeModel === option.value, 'is-disabled': readOnly }"
                   >
                     <input
                       :id="`routing-mode-${option.value}`"
@@ -108,6 +116,7 @@
                       type="radio"
                       name="routing-mode"
                       :value="option.value"
+                      :disabled="readOnly"
                     />
                     <span class="routing-mode-card">
                       <span class="routing-mode-dot" />
@@ -124,6 +133,7 @@
                   :ref="templateConfigKeyInput"
                   v-model="templateAppriseConfigKeyModel"
                   placeholder="my-apprise-config"
+                  :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.appriseConfigKey }"
                 />
                 <small v-if="templateFormErrors.appriseConfigKey" class="error-text">{{ templateFormErrors.appriseConfigKey }}</small>
@@ -132,6 +142,7 @@
                 <InputText
                   v-model="templateAppriseTagModel"
                   placeholder="critical"
+                  :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.appriseTag }"
                 />
                 <small v-if="templateFormErrors.appriseTag" class="error-text">{{ templateFormErrors.appriseTag }}</small>
@@ -145,6 +156,7 @@
                   rows="3"
                   autoResize
                   placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
+                  :disabled="readOnly"
                   :class="{ 'p-invalid': !!templateFormErrors.destination }"
                 />
                 <small v-if="templateFormErrors.destination" class="error-text">{{ templateFormErrors.destination }}</small>
@@ -175,7 +187,7 @@
                   <span>Default for Enter</span>
                   <small class="muted-text">Current: {{ currentDefaultEnterName }}</small>
                 </div>
-                <InputSwitch v-model="templateDefaultForEnterModel" />
+                <InputSwitch v-model="templateDefaultForEnterModel" :disabled="readOnly" />
               </div>
 
               <div class="logic-item">
@@ -183,7 +195,7 @@
                   <span>Default for Leave</span>
                   <small class="muted-text">Current: {{ currentDefaultLeaveName }}</small>
                 </div>
-                <InputSwitch v-model="templateDefaultForLeaveModel" />
+                <InputSwitch v-model="templateDefaultForLeaveModel" :disabled="readOnly" />
               </div>
 
               <div class="logic-item">
@@ -191,7 +203,7 @@
                   <span>Enabled</span>
                   <small class="muted-text">Disabled templates are not used for delivery.</small>
                 </div>
-                <InputSwitch v-model="templateEnabledModel" />
+                <InputSwitch v-model="templateEnabledModel" :disabled="readOnly" />
               </div>
             </div>
 
@@ -243,7 +255,13 @@
               </div>
               <div class="macro-grid">
                 <div v-for="macro in templateMacros" :key="macro.key" class="macro-item">
-                  <button type="button" class="macro-chip" @click="$emit('insert-macro', macro.key)">
+                  <button
+                    type="button"
+                    class="macro-chip"
+                    :disabled="readOnly"
+                    v-tooltip.top="readOnly ? 'Editing templates is disabled in demo mode' : `Insert ${macro.key}`"
+                    @click="$emit('insert-macro', macro.key)"
+                  >
                     <code>{{ macro.key }}</code>
                   </button>
                   <span class="macro-description">{{ macro.description }}</span>
@@ -261,6 +279,8 @@
           icon="pi pi-save"
           @click="$emit('save-template')"
           :loading="savingTemplate"
+          :disabled="readOnly || savingTemplate"
+          v-tooltip.bottom="readOnly ? 'Creating and updating geofence templates is disabled in demo mode' : 'Save geofence template'"
         />
         <Button
           v-if="editingTemplateId"
@@ -297,8 +317,21 @@
         <Column header="Actions">
           <template #body="slotProps">
             <div class="row-actions">
-              <Button icon="pi pi-pencil" text @click="$emit('edit-template', slotProps.data)" />
-              <Button icon="pi pi-trash" text severity="danger" @click="$emit('delete-template', slotProps.data)" />
+              <Button
+                icon="pi pi-pencil"
+                text
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Editing geofence templates is disabled in demo mode' : 'Edit template'"
+                @click="$emit('edit-template', slotProps.data)"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                severity="danger"
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Deleting geofence templates is disabled in demo mode' : 'Delete template'"
+                @click="$emit('delete-template', slotProps.data)"
+              />
             </div>
           </template>
         </Column>
@@ -404,6 +437,10 @@ const props = defineProps({
   defaultSummary: {
     type: Function,
     required: true
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -446,7 +483,12 @@ const {
 function createFieldModel(field) {
   return computed({
     get: () => templateForm.value?.[field],
-    set: (value) => emit('update-template-field', { field, value })
+    set: (value) => {
+      if (props.readOnly) {
+        return
+      }
+      emit('update-template-field', { field, value })
+    }
   })
 }
 
@@ -473,6 +515,10 @@ const templateEnabledModel = createFieldModel('enabled')
 
 .panel-card {
   padding: 1rem;
+}
+
+.demo-disabled-text {
+  margin: -0.25rem 0 1rem 0;
 }
 
 .editor-layout {
@@ -569,6 +615,16 @@ const templateEnabledModel = createFieldModel('enabled')
 .routing-mode-option:hover .routing-mode-card {
   border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 60%, var(--surface-border));
   background: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, var(--surface-card));
+}
+
+.routing-mode-option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.routing-mode-option.is-disabled:hover .routing-mode-card {
+  border-color: color-mix(in srgb, var(--surface-border) 85%, #000);
+  background: color-mix(in srgb, var(--surface-card) 70%, #fff);
 }
 
 .routing-mode-input:focus-visible + .routing-mode-card {
@@ -739,6 +795,15 @@ const templateEnabledModel = createFieldModel('enabled')
 
 .macro-chip:hover {
   border-color: var(--primary-500);
+}
+
+.macro-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.macro-chip:disabled:hover {
+  border-color: var(--primary-300);
 }
 
 .macro-description {

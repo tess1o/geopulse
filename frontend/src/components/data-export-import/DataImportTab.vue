@@ -12,12 +12,13 @@
                   v-for="format in importFormatOptions"
                   :key="format.value"
                   class="format-option"
-                  :class="{ 'selected': importFormat === format.value }"
+                  :class="{ 'selected': importFormat === format.value, 'disabled': readOnly }"
               >
                 <RadioButton
                     v-model="importFormat"
                     :inputId="`import-${format.value}`"
                     :value="format.value"
+                    :disabled="readOnly"
                     class="format-radio"
                 />
                 <label :for="`import-${format.value}`" class="format-info">
@@ -43,10 +44,11 @@
                   chooseLabel="Choose Import File"
                   class="file-uploader"
                   :auto="false"
+                  :disabled="readOnly"
               />
             </div>
             <small class="upload-note">
-              {{ getUploadNote() }}
+              {{ readOnly ? 'File upload is disabled in demo mode.' : getUploadNote() }}
             </small>
           </div>
 
@@ -60,6 +62,7 @@
                 icon="pi pi-download"
                 size="small"
                 outlined
+                :disabled="readOnly"
                 @click="downloadCsvTemplate"
                 class="template-button"
               />
@@ -118,6 +121,7 @@
                       :label="importOptions.dataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
                       outlined
                       size="small"
+                      :disabled="readOnly"
                       @click="toggleAllImportDataTypes"
                       class="select-all-button"
                   />
@@ -131,11 +135,13 @@
                       v-for="dataType in availableDataTypes"
                       :key="dataType.key"
                       class="import-data-type"
+                      :class="{ 'disabled': readOnly }"
                   >
                     <Checkbox
                         v-model="importOptions.dataTypes"
                         :inputId="`import-${dataType.key}`"
                         :value="dataType.key"
+                        :disabled="readOnly"
                     />
                     <div class="import-type-info">
                       <label :for="`import-${dataType.key}`" class="import-type-label">
@@ -161,6 +167,7 @@
                       v-model="enableDateFilter"
                       inputId="dateFilter"
                       :binary="true"
+                      :disabled="readOnly"
                   />
                   <label for="dateFilter" class="option-label">
                     Import only data within date range
@@ -174,6 +181,7 @@
                       v-model="clearDataBeforeImport"
                       inputId="clearDataBeforeImport"
                       :binary="true"
+                      :disabled="readOnly"
                   />
                   <label for="clearDataBeforeImport" class="option-label">
                     Replace existing data in time range
@@ -200,6 +208,7 @@
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                       placeholder="Select start date"
                       showIcon
+                      :disabled="readOnly"
                       class="date-picker"
                   />
                 </div>
@@ -211,6 +220,7 @@
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                       placeholder="Select end date"
                       showIcon
+                      :disabled="readOnly"
                       class="date-picker"
                   />
                 </div>
@@ -229,6 +239,9 @@
                 class="import-button"
             />
             <div class="import-info">
+              <small v-if="readOnly" class="demo-disabled-note">
+                Import is disabled in demo mode. Uploading data would change the shared demo dataset.
+              </small>
               <small class="import-note">
                 Import process may take several minutes depending on file size.
               </small>
@@ -456,11 +469,19 @@ import {useToast} from 'primevue/usetoast'
 import {useTimezone} from '@/composables/useTimezone'
 import {useExportImportStore} from '@/stores/exportImport'
 import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
+import {showDemoModeToast} from '@/utils/demoMode'
 
 const router = useRouter()
 const timezone = useTimezone()
 const toast = useToast()
 const exportImportStore = useExportImportStore()
+
+const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  }
+})
 
 // Timeline job progress tracking
 const {jobProgress: timelineJobProgress, startPolling: startTimelinePolling, stopPolling: stopTimelinePolling} = useTimelineJobProgress()
@@ -595,6 +616,10 @@ const importFormatOptions = ref([
 
 // Computed
 const canStartImport = computed(() => {
+  if (props.readOnly) {
+    return false
+  }
+
   const hasValidFile = selectedFile.value
   const hasValidDateFilter = !enableDateFilter.value || (importStartDate.value && importEndDate.value)
   const formatConfig = getCurrentFormatConfig()
@@ -610,6 +635,12 @@ const canStartImport = computed(() => {
 
 // Methods
 const onFileSelect = (event) => {
+  if (props.readOnly) {
+    selectedFile.value = null
+    fileUpload.value?.clear?.()
+    return
+  }
+
   selectedFile.value = event.files[0]
 }
 
@@ -618,6 +649,11 @@ const onFileClear = () => {
 }
 
 const startImport = async () => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   try {
     const options = {importFormat: importFormat.value}
     const formatConfig = getCurrentFormatConfig()
@@ -704,6 +740,11 @@ const formatDate = (dateString) => {
 }
 
 const downloadCsvTemplate = async () => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   try {
     await exportImportStore.downloadCsvTemplate()
     toast.add({
@@ -728,6 +769,10 @@ const {getDataTypeDisplayName, getFileSizeDisplay, getStatusDisplayInfo} = expor
 
 // Toggle all import data types
 const toggleAllImportDataTypes = () => {
+  if (props.readOnly) {
+    return
+  }
+
   if (importOptions.value.dataTypes.length === availableDataTypes.value.length) {
     // Deselect all
     importOptions.value.dataTypes = []
@@ -735,6 +780,10 @@ const toggleAllImportDataTypes = () => {
     // Select all
     importOptions.value.dataTypes = availableDataTypes.value.map(dt => dt.key)
   }
+}
+
+const showDemoDisabledToast = () => {
+  showDemoModeToast(toast, 'Import is disabled in demo mode.')
 }
 
 // Helper methods to get current format configuration
@@ -935,6 +984,23 @@ onMounted(async () => {
 .import-history-card,
 .upload-progress-card {
   margin-bottom: 2rem;
+}
+
+.demo-disabled-note {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.format-option.disabled,
+.import-data-type.disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.format-option.disabled:hover,
+.import-data-type.disabled:hover {
+  border-color: var(--gp-border-light);
+  background: var(--gp-surface-light);
 }
 
 /* Upload Progress */

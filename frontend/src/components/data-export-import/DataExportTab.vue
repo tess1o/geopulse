@@ -12,12 +12,13 @@
                   v-for="format in exportFormatOptions"
                   :key="format.value"
                   class="format-option"
-                  :class="{ 'selected': exportFormat === format.value }"
+                  :class="{ 'selected': exportFormat === format.value, 'disabled': readOnly }"
               >
                 <RadioButton
                     v-model="exportFormat"
                     :inputId="format.value"
                     :value="format.value"
+                    :disabled="readOnly"
                     class="format-radio"
                 />
                 <label :for="format.value" class="format-info">
@@ -38,6 +39,7 @@
                 :label="selectedDataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
                 outlined
                 size="small"
+                :disabled="readOnly"
                 @click="toggleAllExportDataTypes"
                 class="select-all-button"
               />
@@ -51,11 +53,13 @@
                   v-for="dataType in availableDataTypes"
                   :key="dataType.key"
                   class="data-type-option"
+                  :class="{ 'disabled': readOnly }"
               >
                 <Checkbox
                     v-model="selectedDataTypes"
                     :inputId="dataType.key"
                     :value="dataType.key"
+                    :disabled="readOnly"
                     class="data-type-checkbox"
                 />
                 <div class="data-type-info">
@@ -75,13 +79,14 @@
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
-                  :class="{ 'selected': owntracksExportFormat === 'ocat' }"
-                  @click="owntracksExportFormat = 'ocat'"
+                  :class="{ 'selected': owntracksExportFormat === 'ocat', 'disabled': readOnly }"
+                  @click="!readOnly && (owntracksExportFormat = 'ocat')"
               >
                 <RadioButton
                     v-model="owntracksExportFormat"
                     inputId="owntracks-ocat"
                     value="ocat"
+                    :disabled="readOnly"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -96,13 +101,14 @@
 
               <div
                   class="gpx-option"
-                  :class="{ 'selected': owntracksExportFormat === 'array' }"
-                  @click="owntracksExportFormat = 'array'"
+                  :class="{ 'selected': owntracksExportFormat === 'array', 'disabled': readOnly }"
+                  @click="!readOnly && (owntracksExportFormat = 'array')"
               >
                 <RadioButton
                     v-model="owntracksExportFormat"
                     inputId="owntracks-array"
                     value="array"
+                    :disabled="readOnly"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -123,13 +129,14 @@
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
-                  :class="{ 'selected': gpxExportMode === 'single' }"
-                  @click="gpxExportMode = 'single'"
+                  :class="{ 'selected': gpxExportMode === 'single', 'disabled': readOnly }"
+                  @click="!readOnly && (gpxExportMode = 'single')"
               >
                 <RadioButton
                     v-model="gpxExportMode"
                     inputId="gpx-single"
                     value="single"
+                    :disabled="readOnly"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -144,13 +151,14 @@
 
               <div
                   class="gpx-option"
-                  :class="{ 'selected': gpxExportMode === 'zip' }"
-                  @click="gpxExportMode = 'zip'"
+                  :class="{ 'selected': gpxExportMode === 'zip', 'disabled': readOnly }"
+                  @click="!readOnly && (gpxExportMode = 'zip')"
               >
                 <RadioButton
                     v-model="gpxExportMode"
                     inputId="gpx-zip"
                     value="zip"
+                    :disabled="readOnly"
                     class="gpx-radio"
                 />
                 <div class="gpx-option-info">
@@ -170,13 +178,14 @@
               <div class="grouping-options">
                 <div
                     class="grouping-option"
-                    :class="{ 'selected': gpxZipGroupBy === 'individual' }"
-                    @click="gpxZipGroupBy = 'individual'"
+                    :class="{ 'selected': gpxZipGroupBy === 'individual', 'disabled': readOnly }"
+                    @click="!readOnly && (gpxZipGroupBy = 'individual')"
                 >
                   <RadioButton
                       v-model="gpxZipGroupBy"
                       inputId="gpx-group-individual"
                       value="individual"
+                      :disabled="readOnly"
                       class="grouping-radio"
                   />
                   <div class="grouping-option-info">
@@ -191,13 +200,14 @@
 
                 <div
                     class="grouping-option"
-                    :class="{ 'selected': gpxZipGroupBy === 'daily' }"
-                    @click="gpxZipGroupBy = 'daily'"
+                    :class="{ 'selected': gpxZipGroupBy === 'daily', 'disabled': readOnly }"
+                    @click="!readOnly && (gpxZipGroupBy = 'daily')"
                 >
                   <RadioButton
                       v-model="gpxZipGroupBy"
                       inputId="gpx-group-daily"
                       value="daily"
+                      :disabled="readOnly"
                       class="grouping-radio"
                   />
                   <div class="grouping-option-info">
@@ -259,6 +269,7 @@
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                     placeholder="Select start date"
                     showIcon
+                    :disabled="readOnly"
                     class="date-picker"
                 />
               </div>
@@ -270,6 +281,7 @@
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
                     placeholder="Select end date"
                     showIcon
+                    :disabled="readOnly"
                     class="date-picker"
                 />
               </div>
@@ -279,24 +291,28 @@
                   label="Last 30 Days"
                   outlined
                   size="small"
+                  :disabled="readOnly"
                   @click="setDateRange(30)"
               />
               <Button
                   label="Last 90 Days"
                   outlined
                   size="small"
+                  :disabled="readOnly"
                   @click="setDateRange(90)"
               />
               <Button
                   label="Last Year"
                   outlined
                   size="small"
+                  :disabled="readOnly"
                   @click="setDateRange(365)"
               />
               <Button
                   label="All Time"
                   outlined
                   size="small"
+                  :disabled="readOnly"
                   @click="setDateRange(null)"
               />
             </div>
@@ -312,6 +328,9 @@
                 :disabled="!canStartExport"
                 class="export-button"
             />
+            <small v-if="readOnly" class="demo-disabled-note">
+              Export is disabled in demo mode. The demo dataset is reset regularly and cannot be exported.
+            </small>
           </div>
         </div>
       </template>
@@ -364,6 +383,8 @@
                 label="Download"
                 icon="pi pi-download"
                 @click="downloadExport(currentExportJob.exportJobId)"
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Downloads are disabled in demo mode' : 'Download export'"
                 outlined
             />
             <Button
@@ -371,6 +392,8 @@
                 icon="pi pi-trash"
                 severity="danger"
                 outlined
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Deleting exports is disabled in demo mode' : 'Delete export'"
                 @click="confirmDeleteExport(currentExportJob.exportJobId)"
             />
           </div>
@@ -431,14 +454,16 @@
                     outlined
                     size="small"
                     @click="downloadExport(job.exportJobId)"
-                    :disabled="isJobExpired(job)"
-                    v-tooltip="isJobExpired(job) ? 'Export has expired' : 'Download export'"
+                    :disabled="readOnly || isJobExpired(job)"
+                    v-tooltip="readOnly ? 'Downloads are disabled in demo mode' : (isJobExpired(job) ? 'Export has expired' : 'Download export')"
                 />
                 <Button
                     icon="pi pi-trash"
                     severity="danger"
                     outlined
                     size="small"
+                    :disabled="readOnly"
+                    v-tooltip="readOnly ? 'Deleting exports is disabled in demo mode' : 'Delete export'"
                     @click="confirmDeleteExport(job.exportJobId)"
                 />
               </div>
@@ -461,11 +486,19 @@ import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useTimezone} from '@/composables/useTimezone'
 import {useExportImportStore} from '@/stores/exportImport'
+import {showDemoModeToast} from '@/utils/demoMode'
 
 const timezone = useTimezone()
 const toast = useToast()
 const confirm = useConfirm()
 const exportImportStore = useExportImportStore()
+
+const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  }
+})
 
 // Store refs
 const {
@@ -529,6 +562,10 @@ const exportFormatOptions = ref([
 
 // Computed
 const canStartExport = computed(() => {
+  if (props.readOnly) {
+    return false
+  }
+
   const hasValidDates = exportStartDate.value &&
       exportEndDate.value &&
       exportStartDate.value <= exportEndDate.value
@@ -544,6 +581,10 @@ const canStartExport = computed(() => {
 
 // Methods
 const setDateRange = (days) => {
+  if (props.readOnly) {
+    return
+  }
+
   const end = timezone.now().toDate()
   exportEndDate.value = end
 
@@ -557,6 +598,11 @@ const setDateRange = (days) => {
 }
 
 const startExport = async () => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   try {
     const dateRange = {
       startDate: exportStartDate.value.toISOString(),
@@ -608,6 +654,11 @@ const startExport = async () => {
 }
 
 const downloadExport = async (exportJobId) => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   try {
     await exportImportStore.downloadExportFile(exportJobId)
 
@@ -629,6 +680,11 @@ const downloadExport = async (exportJobId) => {
 }
 
 const confirmDeleteExport = (exportJobId) => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   confirm.require({
     message: 'Are you sure you want to delete this export? This action cannot be undone.',
     header: 'Delete Export',
@@ -647,6 +703,11 @@ const confirmDeleteExport = (exportJobId) => {
 }
 
 const deleteExport = async (exportJobId) => {
+  if (props.readOnly) {
+    showDemoDisabledToast()
+    return
+  }
+
   try {
     await exportImportStore.deleteExportJob(exportJobId)
 
@@ -702,6 +763,10 @@ const {getDataTypeDisplayName, getFileSizeDisplay, getStatusDisplayInfo} = expor
 
 // Toggle all export data types
 const toggleAllExportDataTypes = () => {
+  if (props.readOnly) {
+    return
+  }
+
   if (selectedDataTypes.value.length === availableDataTypes.value.length) {
     // Deselect all
     selectedDataTypes.value = []
@@ -709,6 +774,10 @@ const toggleAllExportDataTypes = () => {
     // Select all
     selectedDataTypes.value = availableDataTypes.value.map(dt => dt.key)
   }
+}
+
+const showDemoDisabledToast = () => {
+  showDemoModeToast(toast, 'Export is disabled in demo mode.')
 }
 
 // Watch for export job completion
@@ -734,6 +803,26 @@ onMounted(() => {
 .export-form-card,
 .export-history-card {
   margin-bottom: 2rem;
+}
+
+.demo-disabled-note {
+  text-align: center;
+}
+
+.format-option.disabled,
+.data-type-option.disabled,
+.gpx-option.disabled,
+.grouping-option.disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.format-option.disabled:hover,
+.data-type-option.disabled:hover,
+.gpx-option.disabled:hover,
+.grouping-option.disabled:hover {
+  border-color: var(--gp-border-light);
+  background: var(--gp-surface-light);
 }
 
 /* GPX Export Options */

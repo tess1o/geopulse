@@ -57,6 +57,7 @@
               :map-render-mode="mapRenderMode"
               :enable-trip-replay="true"
               :auto-show-trip-replay-controls="autoShowTripReplayControls"
+              :read-only="demoReadOnly"
               @timeline-marker-click="handleTimelineMarkerClick"
               @highlighted-path-click="handleHighlightedPathClick"
               @edit-favorite="handleEditFavorite"
@@ -72,6 +73,7 @@
               :timelineNoData="timelineNoData"
               :timelineDataLoading="timelineDataLoading"
               :dateRange="dateRange"
+              :read-only="demoReadOnly"
               @timeline-item-click="handleTimelineItemClick"
               @tag-clicked="handleTagClicked"
               @rename-stay="handleRenameStay"
@@ -111,6 +113,7 @@
             :context-start-time="timelineReconstructionStart"
             :context-end-time="timelineReconstructionEnd"
             :fallback-center="timelineReconstructionFallbackCenter"
+            :read-only="demoReadOnly"
             @close="showReconstructionDialog = false"
             @committed="handleReconstructionCommitted"
         />
@@ -147,6 +150,7 @@ import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
 import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
@@ -198,6 +202,7 @@ const {
 })
 
 const { dateRange } = storeToRefs(dateRangeStore)
+const { demoReadOnly } = storeToRefs(authStore)
 const { favoritePlaces } = storeToRefs(favoritesStore)
 const { locationPath: pathData } = storeToRefs(locationStore)
 const { timelineData, weatherSamples } = storeToRefs(timelineStore)
@@ -340,12 +345,26 @@ const triggerMapResize = () => {
   })
 }
 
+const showDemoReadOnlyToast = () => {
+  showDemoModeToast(toast)
+}
+
 const handleEditFavorite = (favorite) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   // Open the edit dialog with full favorite data
   openFavoriteEditor(favorite)
 }
 
 const handleFavoriteDelete = (favorite) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   confirm.require({
     message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
     header: 'Delete Favorite',

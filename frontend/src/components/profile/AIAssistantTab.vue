@@ -18,11 +18,12 @@
           <!-- Enable/Disable Toggle -->
           <div class="form-group" data-setting-id="ai-enabled">
             <label for="ai-enabled" class="form-label">Enable AI Assistant</label>
-            <ToggleSwitch
-              id="ai-enabled"
-              v-model="form.enabled"
-              class="w-full"
-            />
+              <ToggleSwitch
+                id="ai-enabled"
+                v-model="form.enabled"
+                class="w-full"
+                :disabled="readOnly"
+              />
             <small class="text-secondary">
               Enable or disable the AI Assistant functionality
             </small>
@@ -36,6 +37,7 @@
                 id="api-key-required"
                 v-model="form.apiKeyRequired"
                 class="w-full"
+                :disabled="readOnly"
               />
               <small class="text-secondary">
                 Disable if your self-hosted LLM does not require an API key
@@ -56,7 +58,7 @@
                   'data-lpignore': 'true',
                   'data-form-type': 'other'
                 }"
-                :disabled="!form.apiKeyRequired"
+                :disabled="readOnly || !form.apiKeyRequired"
               />
               <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="text-secondary">
                 <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
@@ -73,6 +75,7 @@
                 v-model="form.openaiApiUrl"
                 placeholder="https://api.openai.com/v1"
                 class="w-full"
+                :disabled="readOnly"
               />
               <small class="text-secondary">
                 Use default OpenAI URL or enter a custom OpenAI-compatible API endpoint
@@ -88,12 +91,14 @@
                   placeholder="Select or enter model name"
                   class="w-full"
                   editable
+                  :disabled="readOnly"
                 />
                 <Button
                   type="button"
                   icon="pi pi-sync"
                   @click="fetchModels"
                   :loading="modelsLoading"
+                  :disabled="readOnly"
                   v-tooltip.bottom="'Fetch models from server'"
                 />
               </div>
@@ -119,6 +124,7 @@
                 rows="8"
                 class="w-full"
                 autoResize
+                :disabled="readOnly"
               />
               <small class="text-secondary">
                 Edit the AI system message to customize behavior. Clear the field to reset to default.
@@ -138,6 +144,7 @@
             label="Test Connection"
             icon="pi pi-plug"
             :loading="testConnectionLoading"
+            :disabled="readOnly"
             @click="testConnection"
             class="p-button-secondary"
           />
@@ -146,6 +153,7 @@
             label="Save AI Settings"
             icon="pi pi-save"
             :loading="loading"
+            :disabled="readOnly"
             class="p-button-primary"
           />
         </div>
@@ -161,6 +169,10 @@ import Textarea from 'primevue/textarea';
 
 // Props
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   initialSettings: {
     type: Object,
     default: () => ({
@@ -227,6 +239,7 @@ const hasChanges = computed(() => {
 })
 
 const fetchModels = async () => {
+  if (props.readOnly) return
   modelsLoading.value = true;
   testConnectionStatus.value = null;
   try {
@@ -247,6 +260,7 @@ const fetchModels = async () => {
 };
 
 const testConnection = async () => {
+  if (props.readOnly) return
   testConnectionLoading.value = true;
   await fetchModels();
   testConnectionLoading.value = false;
@@ -254,6 +268,7 @@ const testConnection = async () => {
 
 // Methods
 const handleSubmit = async () => {
+  if (props.readOnly) return
   loading.value = true
 
   try {

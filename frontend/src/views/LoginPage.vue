@@ -53,14 +53,52 @@
             <div class="login-form-content">
               <!-- Form Header -->
               <div class="form-header">
-                <h2 class="form-title">Welcome Back</h2>
-                <p class="form-subtitle">Sign in to continue your journey</p>
+                <h2 class="form-title">{{ formTitle }}</h2>
+                <p class="form-subtitle">{{ formSubtitle }}</p>
+              </div>
+
+              <!-- Demo Quick Login -->
+              <div v-if="shouldShowDemoChooser" class="demo-login-section">
+                <Button
+                  v-for="persona in demoPersonas"
+                  :key="persona.id"
+                  type="button"
+                  class="demo-login-button"
+                  :loading="demoLoginPersonaId === persona.id"
+                  :disabled="isLoading"
+                  :aria-label="persona.label"
+                  @click="handleDemoLogin(persona)"
+                >
+                  <span class="demo-login-button__content">
+                    <span class="demo-login-button__label">{{ persona.label }}</span>
+                    <span class="demo-login-button__detail">{{ persona.detail }}</span>
+                  </span>
+                </Button>
+
+                <Button
+                  v-if="loginStatus.adminLoginBypassEnabled"
+                  type="button"
+                  label="Administrator Access"
+                  icon="pi pi-shield"
+                  severity="warning"
+                  size="small"
+                  outlined
+                  :disabled="isLoading"
+                  class="admin-login-button"
+                  @click="showAdminLogin = true"
+                />
+              </div>
+
+              <!-- Error Display -->
+              <div v-if="loginError && !shouldShowPasswordForm" class="login-error">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ loginError }}</span>
               </div>
 
               <!-- Login Form (show if password login enabled OR admin override) -->
               <form v-if="shouldShowPasswordForm" @submit.prevent="handleSubmit" class="login-form">
                 <!-- Admin Override Notice -->
-                <div v-if="showAdminLogin && !loginStatus.passwordLoginEnabled" class="admin-override-notice">
+                <div v-if="showAdminLogin" class="admin-override-notice">
                   <i class="pi pi-shield"></i>
                   <span>Administrator access - login restrictions bypassed</span>
                 </div>
@@ -123,7 +161,7 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
-                v-if="hasOidcProvidersAvailable"
+                v-if="shouldShowOidcProviders"
                 :providers="oidcProviders"
                 :disabled="isLoading"
                 @provider-selected="handleOidcLogin"
@@ -131,7 +169,7 @@
               />
 
               <!-- Register Link -->
-              <div v-if="registrationStatus.passwordRegistrationEnabled || registrationStatus.oidcRegistrationEnabled" class="register-section">
+              <div v-if="shouldShowRegisterLink" class="register-section">
                 <span class="register-text">Don't have an account?</span>
                 <router-link to="/register" class="register-link">
                   Create account
@@ -153,7 +191,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import { useErrorHandler } from '@/composables/useErrorHandler'
 import { formatError } from '@/utils/errorHandler'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
@@ -162,16 +199,16 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
-const { handleError } = useErrorHandler()
 
 // State
 const isLoading = ref(false)
 const loginError = ref('')
+const demoLoginPersonaId = ref(null)
 
 const oidcProviders = ref([])
 
 const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
-const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true });
+const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true, demoModeEnabled: false });
 const showAdminLogin = ref(false);
 
 // Form data
@@ -189,8 +226,28 @@ const isFormValid = computed(() => {
          Object.keys(formErrors.value).length === 0
 })
 
+const isDemoMode = computed(() => loginStatus.value.demoModeEnabled)
+
 const shouldShowPasswordForm = computed(() => {
-  return loginStatus.value.passwordLoginEnabled || showAdminLogin.value
+  return (!isDemoMode.value && loginStatus.value.passwordLoginEnabled) || showAdminLogin.value
+})
+
+const demoPersonas = computed(() => authStore.demoPersonas || [])
+
+const hasDemoPersonasAvailable = computed(() => {
+  return isDemoMode.value && demoPersonas.value.length > 0
+})
+
+const shouldShowDemoChooser = computed(() => {
+  return hasDemoPersonasAvailable.value && !showAdminLogin.value
+})
+
+const formTitle = computed(() => {
+  return shouldShowDemoChooser.value ? 'Try GeoPulse' : 'Welcome Back'
+})
+
+const formSubtitle = computed(() => {
+  return shouldShowDemoChooser.value ? 'Choose a demo profile' : 'Sign in to continue your journey'
 })
 
 // Check if OIDC is actually available (enabled AND has providers configured)
@@ -198,9 +255,22 @@ const hasOidcProvidersAvailable = computed(() => {
   return loginStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0
 })
 
+const shouldShowOidcProviders = computed(() => {
+  return !isDemoMode.value && hasOidcProvidersAvailable.value
+})
+
+const shouldShowRegisterLink = computed(() => {
+  return !isDemoMode.value &&
+         (registrationStatus.value.passwordRegistrationEnabled || registrationStatus.value.oidcRegistrationEnabled)
+})
+
 // Check if any login method is actually available
 const hasAnyLoginMethodAvailable = computed(() => {
-  return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value
+  if (isDemoMode.value) {
+    return hasDemoPersonasAvailable.value
+  }
+
+  return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value || hasDemoPersonasAvailable.value
 })
 
 // Methods
@@ -269,6 +339,42 @@ const handleSubmit = async () => {
   }
 }
 
+const handleDemoLogin = async (persona) => {
+  if (!persona?.id) return
+
+  isLoading.value = true
+  demoLoginPersonaId.value = persona.id
+  loginError.value = ''
+
+  try {
+    await authStore.demoLogin(persona.id)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Welcome Back!',
+      detail: 'You have successfully signed in',
+      life: 3000
+    })
+
+    const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+    await router.push(redirectUrl)
+  } catch (error) {
+    console.error('Demo login error:', error)
+    const formattedError = formatError(error)
+    loginError.value = getDemoLoginErrorMessage(error, formattedError)
+
+    toast.add({
+      severity: 'error',
+      summary: 'Demo Login Failed',
+      detail: loginError.value,
+      life: 5000
+    })
+  } finally {
+    isLoading.value = false
+    demoLoginPersonaId.value = null
+  }
+}
+
 
 const getLoginErrorMessage = (error, formattedError) => {
   // If the server provided a specific message, prioritize it
@@ -289,6 +395,23 @@ const getLoginErrorMessage = (error, formattedError) => {
     default:
       // Fall back to the formatted error message from our error handler
       return formattedError.message
+  }
+}
+
+const getDemoLoginErrorMessage = (error, formattedError) => {
+  if (error.response?.data?.message) {
+    return error.response.data.message
+  }
+
+  switch (error.response?.status) {
+    case 400:
+      return 'Please choose a demo profile and try again.'
+    case 403:
+      return 'Demo login is currently disabled.'
+    case 404:
+      return 'This demo profile is not available right now.'
+    default:
+      return formattedError.message || 'Demo login failed. Please try again.'
   }
 }
 
@@ -333,7 +456,8 @@ onMounted(() => {
     loginStatus.value = {
       passwordLoginEnabled: status.passwordLoginEnabled,
       oidcLoginEnabled: status.oidcLoginEnabled,
-      adminLoginBypassEnabled: status.adminLoginBypassEnabled
+      adminLoginBypassEnabled: status.adminLoginBypassEnabled,
+      demoModeEnabled: status.demoModeEnabled
     };
   }).catch(err => {
     console.error("Failed to load auth status", err);
@@ -520,6 +644,47 @@ onMounted(() => {
   font-size: 1rem;
   color: var(--gp-text-secondary);
   margin: 0;
+}
+
+.demo-login-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.demo-login-button {
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  background: var(--gp-surface-light);
+  border-color: var(--gp-border-medium);
+  color: var(--gp-text-primary);
+}
+
+.demo-login-button:hover:not(:disabled) {
+  background: rgba(26, 86, 219, 0.08);
+  border-color: var(--gp-primary);
+  color: var(--gp-text-primary);
+}
+
+.demo-login-button__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.demo-login-button__label {
+  font-weight: 700;
+}
+
+.demo-login-button__detail {
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  white-space: normal;
 }
 
 /* Form */

@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.prometheus.UserMetrics;
 import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 import java.util.HashMap;
@@ -21,7 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
  */
 @Path("/api/admin/dashboard")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
+@RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
 @Slf4j
 @Tag(name = "Admin: Dashboard", description = "Read administrator dashboard metrics and system statistics.")
 public class AdminDashboardResource {

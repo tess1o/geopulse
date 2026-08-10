@@ -21,9 +21,12 @@
             label="Create Invitation"
             icon="pi pi-plus"
             @click="showCreateDialog = true"
+            :disabled="adminReadOnly"
           />
         </div>
       </div>
+
+      <DemoReadOnlyBanner />
 
       <!-- Status Filter (Mobile & Desktop) -->
       <div class="filter-container">
@@ -100,7 +103,7 @@
                   severity="info"
                   @click="copyInvitationLink(data)"
                   v-tooltip="'Copy Link'"
-                  :disabled="data.status !== 'PENDING'"
+                  :disabled="adminReadOnly || data.status !== 'PENDING'"
                 />
                 <Button
                   icon="pi pi-ban"
@@ -167,7 +170,7 @@
                 text
                 severity="info"
                 @click="copyInvitationLink(invitation)"
-                :disabled="invitation.status !== 'PENDING'"
+                :disabled="adminReadOnly || invitation.status !== 'PENDING'"
                 size="small"
               />
               <Button
@@ -313,6 +316,7 @@
             severity="warning"
             @click="revokeInvitation"
             :loading="revoking"
+            :disabled="adminReadOnly"
           />
         </template>
       </Dialog>
@@ -337,14 +341,19 @@ import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',

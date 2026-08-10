@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
+import org.github.tess1o.geopulse.auth.dto.DemoLoginRequest;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
@@ -17,9 +18,14 @@ import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
+import org.github.tess1o.geopulse.auth.service.DemoModeService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.user.service.UserService;
+
+import java.util.Optional;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -32,17 +38,23 @@ public class AuthenticationResource {
     private final AuthenticationService authenticationService;
     private final CookieService cookieService;
     private final BrowserAuthResponseMapper browserAuthResponseMapper;
+    private final DemoModeService demoModeService;
+    private final UserService userService;
     private AuthConfigurationService authConfigurationService;
 
     @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
                                   CookieService cookieService,
                                   BrowserAuthResponseMapper browserAuthResponseMapper,
-                                  AuthConfigurationService authConfigurationService) {
+                                  AuthConfigurationService authConfigurationService,
+                                  DemoModeService demoModeService,
+                                  UserService userService) {
         this.authenticationService = authenticationService;
         this.cookieService = cookieService;
         this.browserAuthResponseMapper = browserAuthResponseMapper;
         this.authConfigurationService = authConfigurationService;
+        this.demoModeService = demoModeService;
+        this.userService = userService;
     }
 
     /**
@@ -64,17 +76,7 @@ public class AuthenticationResource {
             }
 
             AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
-
-            // Create cookies for web app
-            var accessTokenCookie = cookieService.createAccessTokenCookie(authResponse.getAccessToken(), authResponse.getExpiresIn());
-            var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
-            var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
-
-            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
-                    .cookie(accessTokenCookie)
-                    .cookie(refreshTokenCookie)
-                    .cookie(tokenExpirationCookie)
-                    .build();
+            return createBrowserLoginResponse(authResponse);
         } catch (UserNotFoundException e) {
             log.warn("Login failed: user not found for email={}", request.getEmail());
             return Response.status(Response.Status.UNAUTHORIZED)
@@ -94,6 +96,52 @@ public class AuthenticationResource {
             log.error("Authentication failed for user {}", request.getEmail(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Authentication failed"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/demo-login")
+    public Response demoLogin(DemoLoginRequest request) {
+        if (!demoModeService.isEnabled()) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Demo login is not available"))
+                    .build();
+        }
+
+        String personaId = request != null ? request.getPersonaId() : null;
+        if (personaId == null || personaId.isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Demo persona is required"))
+                    .build();
+        }
+
+        Optional<String> personaEmail = demoModeService.findPersonaEmail(personaId);
+        if (personaEmail.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Demo persona is not available"))
+                    .build();
+        }
+
+        try {
+            UserEntity user = userService.findByEmail(personaEmail.get())
+                    .orElseThrow(() -> new UserNotFoundException("Demo user not found"));
+            AuthResponse authResponse = authenticationService.createAuthResponse(user);
+            return createBrowserLoginResponse(authResponse);
+        } catch (UserNotFoundException e) {
+            log.warn("Demo login failed: user not found for personaId={}", personaId);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Demo user is not available"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            log.warn("Demo login failed: forbidden for personaId={}, reason={}", personaId, e.getMessage());
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Demo login failed for personaId={}", personaId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Demo login failed"))
                     .build();
         }
     }
@@ -266,15 +314,31 @@ public class AuthenticationResource {
     @GET
     @Path("/status")
     public Response getAuthStatus() {
+        boolean demoModeEnabled = demoModeService.isEnabled();
         AuthStatusResponse status = AuthStatusResponse.builder()
-                .passwordRegistrationEnabled(authConfigurationService.isPasswordRegistrationEnabled())
-                .oidcRegistrationEnabled(authConfigurationService.isOidcRegistrationEnabled())
+                .passwordRegistrationEnabled(!demoModeEnabled && authConfigurationService.isPasswordRegistrationEnabled())
+                .oidcRegistrationEnabled(!demoModeEnabled && authConfigurationService.isOidcRegistrationEnabled())
                 .passwordLoginEnabled(authConfigurationService.isPasswordLoginEnabled())
                 .oidcLoginEnabled(authConfigurationService.isOidcLoginEnabled())
                 .adminLoginBypassEnabled(authConfigurationService.isAdminLoginBypassEnabled())
                 .guestRootRedirectToLoginEnabled(authConfigurationService.isGuestRootRedirectToLoginEnabled())
+                .demoModeEnabled(demoModeEnabled)
+                .demoAdminReadOnlyEnabled(demoModeService.isAdminReadOnlyEnabled())
+                .demoPersonas(demoModeService.getPublicPersonas())
                 .build();
         return Response.ok(ApiResponse.success(status)).build();
+    }
+
+    private Response createBrowserLoginResponse(AuthResponse authResponse) {
+        var accessTokenCookie = cookieService.createAccessTokenCookie(authResponse.getAccessToken(), authResponse.getExpiresIn());
+        var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
+        var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
+
+        return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
+                .cookie(accessTokenCookie)
+                .cookie(refreshTokenCookie)
+                .cookie(tokenExpirationCookie)
+                .build();
     }
 
 }

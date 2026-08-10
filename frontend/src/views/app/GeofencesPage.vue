@@ -6,6 +6,10 @@
       subtitle="Monitor enter/leave events for you and friends"
       variant="fullwidth"
     >
+      <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+        Demo mode: geofence rules, notification templates, and event seen states are read-only. Create, update, delete, test, and mark-seen actions are disabled.
+      </Message>
+
       <TabContainer
         :tabs="tabs"
         :activeIndex="activeTabIndex"
@@ -30,6 +34,7 @@
           :savingRule="savingRule"
           :rules="rules"
           :eventSummary="eventSummary"
+          :read-only="demoReadOnly"
           @start-rectangle-draw="startRectangleDraw"
           @map-ready="handleMapReady"
           @save-rule="saveRule"
@@ -62,6 +67,7 @@
           :templates="templates"
           :formatExternalRoute="formatExternalRoute"
           :defaultSummary="defaultSummary"
+          :read-only="demoReadOnly"
           @update-template-field="updateTemplateField"
           @focus-template-field="setFocusedTemplateField"
           @insert-macro="insertMacro"
@@ -86,6 +92,7 @@
           :formatDate="formatDate"
           :deliverySeverity="deliverySeverity"
           :userId="authStore.userId"
+          :read-only="demoReadOnly"
           @update-query="handleEventsQueryUpdate"
           @mark-all-events-seen="markAllEventsSeen"
           @refresh-events="refreshEvents"
@@ -117,6 +124,8 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import GeofenceRulesTab from '@/components/geofences/tabs/GeofenceRulesTab.vue'
 import GeofenceTemplatesTab from '@/components/geofences/tabs/GeofenceTemplatesTab.vue'
 import GeofenceEventsTab from '@/components/geofences/tabs/GeofenceEventsTab.vue'
+import Message from 'primevue/message'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -195,6 +204,7 @@ const APPRISE_EXTERNAL_ROUTING_MODES = {
 }
 
 const unreadCount = computed(() => geofenceUnreadCount.value)
+const demoReadOnly = computed(() => authStore.demoReadOnly)
 
 function defaultGeofenceEventsQuery() {
   return {
@@ -563,6 +573,10 @@ function setFocusedTemplateField(field) {
 }
 
 function updateTemplateField({ field, value }) {
+  if (demoReadOnly.value) {
+    return
+  }
+
   if (!field || !Object.prototype.hasOwnProperty.call(templateForm.value, field)) {
     return
   }
@@ -777,6 +791,11 @@ function renderTemplateWithContext(template, context) {
 }
 
 function insertMacro(macroKey) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Editing notification templates is disabled in demo mode.')
+    return
+  }
+
   const targetField = focusedTemplateField.value === 'titleTemplate' ? 'titleTemplate' : 'bodyTemplate'
   const currentValue = templateForm.value[targetField] || ''
   const input = resolveInputElement(targetField)
@@ -809,6 +828,10 @@ function extractApiErrorMessage(error, fallback) {
     || error?.userMessage
     || error?.message
     || fallback
+}
+
+function showDemoGeofenceReadOnlyToast(detail = 'Geofence changes are disabled in demo mode.') {
+  showDemoModeToast(toast, detail)
 }
 
 function validateRuleForm() {
@@ -884,6 +907,11 @@ function handleMapReady(map) {
 }
 
 function startRectangleDraw() {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Drawing geofence areas is disabled in demo mode.')
+    return
+  }
+
   if (!geofenceMap.value) {
     return
   }
@@ -1013,6 +1041,11 @@ async function loadTemplateDeliveryCapabilities() {
 }
 
 async function testTemplateConnection() {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Testing geofence notification templates is disabled in demo mode.')
+    return
+  }
+
   if (!appriseEnabled.value) {
     return
   }
@@ -1174,6 +1207,11 @@ async function loadFriends() {
 }
 
 async function saveRule() {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Creating and updating geofence rules is disabled in demo mode.')
+    return
+  }
+
   if (!validateRuleForm()) {
     toast.add({
       severity: 'warn',
@@ -1219,6 +1257,11 @@ async function saveRule() {
 }
 
 function editRule(rule) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Editing geofence rules is disabled in demo mode.')
+    return
+  }
+
   clearRuleFormErrors()
   editingRuleId.value = rule.id
   ruleForm.value = {
@@ -1242,6 +1285,11 @@ function editRule(rule) {
 }
 
 async function deleteRule(rule) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Deleting geofence rules is disabled in demo mode.')
+    return
+  }
+
   const confirmed = await confirmAction({
     header: 'Delete Rule',
     message: `Delete geofence rule "${rule.name}"?`,
@@ -1277,6 +1325,11 @@ function resetRuleForm() {
 }
 
 async function saveTemplate() {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Creating and updating geofence templates is disabled in demo mode.')
+    return
+  }
+
   if (!validateTemplateForm()) {
     toast.add({
       severity: 'warn',
@@ -1365,6 +1418,11 @@ async function saveTemplate() {
 }
 
 function editTemplate(template) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Editing geofence templates is disabled in demo mode.')
+    return
+  }
+
   clearTemplateFormErrors()
   templateConnectionTestResult.value = null
   editingTemplateId.value = template.id
@@ -1394,6 +1452,11 @@ function editTemplate(template) {
 }
 
 async function deleteTemplate(template) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Deleting geofence templates is disabled in demo mode.')
+    return
+  }
+
   const usages = rules.value.filter(rule =>
     rule.enterTemplateId === template.id || rule.leaveTemplateId === template.id
   )
@@ -1436,6 +1499,11 @@ function resetTemplateForm() {
 }
 
 async function markEventSeen(event) {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Updating geofence event seen states is disabled in demo mode.')
+    return
+  }
+
   if (!event?.id) {
     return
   }
@@ -1457,6 +1525,11 @@ async function markEventSeen(event) {
 }
 
 async function markAllEventsSeen() {
+  if (demoReadOnly.value) {
+    showDemoGeofenceReadOnlyToast('Updating geofence event seen states is disabled in demo mode.')
+    return
+  }
+
   markingAllSeen.value = true
   try {
     await apiService.post('/geofences/events/seen-all', {})

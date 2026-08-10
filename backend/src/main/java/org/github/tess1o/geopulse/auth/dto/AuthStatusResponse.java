@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.auth.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 public class AuthStatusResponse {
@@ -17,4 +19,9 @@ public class AuthStatusResponse {
 
     // Guest root navigation
     private boolean guestRootRedirectToLoginEnabled;
+
+    // Demo mode
+    private boolean demoModeEnabled;
+    private boolean demoAdminReadOnlyEnabled;
+    private List<DemoPersonaResponse> demoPersonas;
 }

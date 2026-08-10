@@ -64,6 +64,9 @@
         <Message v-else severity="info" :closable="false">
           If this looks incorrect, override it manually.
         </Message>
+        <Message v-if="readOnly" severity="error" :closable="false">
+          Movement type edits are read-only in demo mode.
+        </Message>
         <div class="override-controls">
           <Select
             v-model="selectedMovementType"
@@ -72,14 +75,14 @@
             optionValue="value"
             placeholder="Select movement type"
             class="movement-select"
-            :disabled="savingMovementType"
+            :disabled="savingMovementType || readOnly"
           />
           <div class="override-actions">
             <Button
               label="Save Override"
               icon="pi pi-save"
               :loading="savingMovementType"
-              :disabled="!selectedMovementType || savingMovementType"
+              :disabled="readOnly || !selectedMovementType || savingMovementType"
               @click="saveManualMovementType"
             />
             <Button
@@ -88,7 +91,7 @@
               severity="secondary"
               outlined
               :loading="savingMovementType"
-              :disabled="!canResetMovementType || savingMovementType"
+              :disabled="readOnly || !canResetMovementType || savingMovementType"
               @click="resetToAutomaticMovementType"
             />
           </div>
@@ -234,6 +237,10 @@ const props = defineProps({
   trip: {
     type: Object,
     default: null
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -288,7 +295,7 @@ watch(() => props.visible, async (visible) => {
   }
 })
 
-const fetchClassificationDetails = async (tripId) => {
+async function fetchClassificationDetails(tripId) {
   loading.value = true
   error.value = null
 
@@ -318,6 +325,7 @@ const fetchClassificationDetails = async (tripId) => {
 }
 
 const saveManualMovementType = async () => {
+  if (props.readOnly) return
   if (!props.trip?.id || !selectedMovementType.value) return
   savingMovementType.value = true
   try {
@@ -353,6 +361,7 @@ const saveManualMovementType = async () => {
 }
 
 const resetToAutomaticMovementType = async () => {
+  if (props.readOnly) return
   if (!props.trip?.id) return
   savingMovementType.value = true
   try {

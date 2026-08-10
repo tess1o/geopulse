@@ -26,7 +26,7 @@
             </a>
             <button class="nav-version-badge" aria-label="What's new" @click="toggleVersionPopover">{{ navVersionBadge }} <i class="pi pi-chevron-down" style="font-size:0.55rem;opacity:0.55;margin-left:2px;"></i></button>
             <a
-                v-if="updateAvailable && latestVersion"
+                v-if="showUpdateBadge"
                 :href="releaseUrl"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -36,12 +36,12 @@
             </a>
           </div>
           <button
-              v-if="!(updateAvailable && latestVersion)"
+              v-if="!showUpdateBadge"
               class="nav-version-badge nav-version-badge-mobile"
               aria-label="What's new"
               @click="toggleVersionPopover">{{ navVersionBadge }}</button>
           <a
-              v-if="updateAvailable && latestVersion"
+              v-if="showUpdateBadge"
               :href="releaseUrl"
               target="_blank"
               rel="noopener noreferrer"
@@ -127,8 +127,9 @@
                   </div>
 
                   <div class="hero-actions">
-                    <Button v-if="isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
-                    <Button v-if="isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                    <Button v-if="isDemoModeEnabled" label="Try Demo" icon="pi pi-play" iconPos="right" as="router-link" to="/login" size="large" class="btn-hero-primary btn-hero-static" />
+                    <Button v-if="!isDemoModeEnabled && isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
+                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
                   </div>
                 </template>
 
@@ -275,6 +276,7 @@ const DEFAULT_AUTH_STATUS = {
   oidcLoginEnabled: true,
   adminLoginBypassEnabled: true,
   guestRootRedirectToLoginEnabled: false,
+  demoModeEnabled: false,
 }
 
 const isResolvingAuth = ref(true)
@@ -307,8 +309,14 @@ const isLoginAvailable = computed(() => {
     hasOidcProvidersAvailable.value ||
     authStatus.value.adminLoginBypassEnabled
 })
+const isDemoModeEnabled = computed(() => {
+  return !!authStatus.value.demoModeEnabled || authStore.demoModeEnabled
+})
+const showUpdateBadge = computed(() => {
+  return !isDemoModeEnabled.value && updateAvailable.value && latestVersion.value
+})
 const showRegistrationDisabledNotice = computed(() => {
-  return !isRegistrationAvailable.value && isLoginAvailable.value
+  return !isDemoModeEnabled.value && !isRegistrationAvailable.value && isLoginAvailable.value
 })
 
 watch(filteredTips, (tips) => {
@@ -615,6 +623,17 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 
 :deep(.btn-hero-primary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 :deep(.btn-hero-primary:hover) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+:deep(.btn-hero-static.p-button),
+:deep(.btn-hero-static.p-button:hover),
+:deep(.btn-hero-static.p-button:focus),
+:deep(.btn-hero-static.p-button:active) {
+  padding: 0.875rem 1.75rem !important;
+  border: none !important;
+  transform: none !important;
+  transition: none !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25) !important;
+}
 
 :deep(.btn-hero-secondary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: rgba(241, 245, 249, 0.8); border: 1px solid rgba(226, 232, 240, 0.8); color: #334155; transition: transform 0.2s ease, background 0.2s ease; }
 :deep(.btn-hero-secondary:hover) { transform: translateY(-2px); background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }

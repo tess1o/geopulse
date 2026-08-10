@@ -1,0 +1,85 @@
+name: Promote Docker Images to Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_version:
+        description: "Existing image version/tag to promote, e.g. dev or 1.36.1. A leading v is stripped."
+        required: true
+        type: string
+
+env:
+  DOCKERHUB_BACKEND_IMAGE: tess1o/geopulse-backend
+  DOCKERHUB_FRONTEND_IMAGE: tess1o/geopulse-ui
+  DEMO_VERSION: demo
+
+permissions:
+  contents: read
+
+jobs:
+  promote-demo-tags:
+    name: Promote Docker images to demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Normalize source version
+        id: version
+        shell: bash
+        env:
+          SOURCE_VERSION_INPUT: ${{ inputs.source_version }}
+        run: |
+          SOURCE_VERSION="$SOURCE_VERSION_INPUT"
+          SOURCE_VERSION="${SOURCE_VERSION#v}"
+
+          if [[ -z "$SOURCE_VERSION" ]]; then
+            echo "source_version cannot be empty" >&2
+            exit 1
+          fi
+
+          if [[ ! "$SOURCE_VERSION" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "source_version is not a valid Docker tag: $SOURCE_VERSION" >&2
+            exit 1
+          fi
+
+          echo "source_version=$SOURCE_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Verify source images exist
+        shell: bash
+        run: |
+          docker buildx imagetools inspect \
+            "${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ steps.version.outputs.source_version }}" >/dev/null
+
+          docker buildx imagetools inspect \
+            "${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ steps.version.outputs.source_version }}-native" >/dev/null
+
+      - name: Promote images to demo tags
+        shell: bash
+        run: |
+          docker buildx imagetools create \
+            -t "${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEMO_VERSION }}" \
+            "${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ steps.version.outputs.source_version }}"
+
+          docker buildx imagetools create \
+            -t "${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEMO_VERSION }}-native" \
+            "${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ steps.version.outputs.source_version }}-native"
+
+      - name: Write summary
+        shell: bash
+        run: |
+          {
+            echo "## Demo image promotion"
+            echo
+            echo "- Source frontend: \`${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ steps.version.outputs.source_version }}\`"
+            echo "- Demo frontend: \`${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEMO_VERSION }}\`"
+            echo "- Source backend: \`${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ steps.version.outputs.source_version }}-native\`"
+            echo "- Demo backend: \`${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEMO_VERSION }}-native\`"
+          } >> "$GITHUB_STEP_SUMMARY"

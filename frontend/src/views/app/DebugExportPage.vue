@@ -33,6 +33,10 @@
           </template>
         </Card>
 
+        <Message v-if="demoModeEnabled" severity="error" :closable="false" class="demo-disabled-message">
+          Demo mode: debug data export is disabled. The form is read-only to avoid actions that are blocked in the public demo.
+        </Message>
+
         <!-- Export Configuration Card -->
         <Card class="export-config-card">
           <template #content>
@@ -49,6 +53,7 @@
                       dateFormat="yy-mm-dd"
                       placeholder="Start Date"
                       :maxDate="new Date()"
+                      :disabled="demoModeEnabled"
                       class="date-input"
                   />
                   <span class="date-separator">to</span>
@@ -58,6 +63,7 @@
                       dateFormat="yy-mm-dd"
                       placeholder="End Date"
                       :maxDate="new Date()"
+                      :disabled="demoModeEnabled"
                       class="date-input"
                   />
                 </div>
@@ -74,6 +80,7 @@
                       label="Generate New Random Shift"
                       icon="pi pi-refresh"
                       size="small"
+                      :disabled="demoModeEnabled"
                       @click="generateRandomShift"
                       text
                   />
@@ -87,6 +94,7 @@
                         :maxFractionDigits="6"
                         :allowEmpty="false"
                         placeholder="e.g., 12.345678"
+                        :disabled="demoModeEnabled"
                         class="shift-input"
                     />
                   </div>
@@ -98,6 +106,7 @@
                         :maxFractionDigits="6"
                         :allowEmpty="false"
                         placeholder="e.g., 45.678901"
+                        :disabled="demoModeEnabled"
                         class="shift-input"
                     />
                   </div>
@@ -113,7 +122,7 @@
                 <label class="form-label">Export Options</label>
                 <div class="checkbox-group">
                   <div class="checkbox-item">
-                    <Checkbox v-model="includeConfiguration" :binary="true" inputId="includeConfig" />
+                    <Checkbox v-model="includeConfiguration" :binary="true" inputId="includeConfig" :disabled="demoModeEnabled" />
                     <label for="includeConfig" class="checkbox-label">
                       Include Timeline Configuration
                     </label>
@@ -130,7 +139,7 @@
                     label="Export Debug Data"
                     icon="pi pi-download"
                     :loading="isExporting"
-                    :disabled="!isFormValid"
+                    :disabled="!isFormValid || demoModeEnabled"
                     @click="exportDebugData"
                     class="export-button"
                 />
@@ -202,6 +211,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -211,10 +221,15 @@ import Calendar from 'primevue/calendar'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
+import Message from 'primevue/message'
+import { useAuthStore } from '@/stores/auth'
 import apiService from "@/utils/apiService";
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const toast = useToast()
 const timezone = useTimezone()
+const authStore = useAuthStore()
+const { demoModeEnabled } = storeToRefs(authStore)
 
 // Form state
 const startDate = ref(null)
@@ -241,6 +256,10 @@ const initializeDates = () => {
 // Latitude: -20 to +20 (safe for most locations except near poles)
 // Longitude: -40 to +40 (longitude wraps, but smaller shifts are safer)
 const generateRandomShift = () => {
+  if (demoModeEnabled.value) {
+    return
+  }
+
   latitudeShift.value = parseFloat((Math.random() * 40 - 20).toFixed(6))
   longitudeShift.value = parseFloat((Math.random() * 80 - 40).toFixed(6))
 }
@@ -253,6 +272,11 @@ onMounted(() => {
 
 // Form validation
 const isFormValid = computed(() => {
+  if (demoModeEnabled.value) {
+    validationError.value = null
+    return false
+  }
+
   if (!startDate.value || !endDate.value) {
     validationError.value = 'Please select start and end dates'
     return false
@@ -279,6 +303,11 @@ const isFormValid = computed(() => {
 
 // Export debug data
 const exportDebugData = async () => {
+  if (demoModeEnabled.value) {
+    showDemoModeToast(toast, 'Debug data export is disabled in demo mode.')
+    return
+  }
+
   if (!isFormValid.value) {
     return
   }

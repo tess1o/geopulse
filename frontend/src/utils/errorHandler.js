@@ -159,6 +159,28 @@ export function formatError(error) {
   return formattedError
 }
 
+export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected error occurred. Please try again.') {
+  if (!error) {
+    return fallbackMessage
+  }
+
+  const userMessage = getErrorText(error.userMessage)
+  if (userMessage) {
+    return userMessage
+  }
+
+  const data = error.response?.data
+  const apiMessage = getErrorText(data?.message)
+    || getErrorText(data?.error)
+    || getErrorText(data?.userMessage)
+    || getErrorText(data)
+  if (apiMessage) {
+    return apiMessage
+  }
+
+  return getErrorText(formatError(error).message) || fallbackMessage
+}
+
 /**
  * Create a toast notification from an error
  * @param {Function} toastAdd - The toast.add function from PrimeVue

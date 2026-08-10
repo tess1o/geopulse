@@ -250,13 +250,14 @@
             severity="secondary"
             outlined
             @click="handleReset"
-            :disabled="loading"
+            :disabled="loading || readOnly"
           />
           <Button
             type="submit"
             label="Save Changes"
             :loading="loading"
             icon="pi pi-check"
+            :disabled="readOnly"
           />
         </div>
       </form>
@@ -275,6 +276,10 @@ import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 
 const props = defineProps({
+  readOnly: {
+    type: Boolean,
+    default: false
+  },
   initialPreferences: {
     type: Object,
     required: true
@@ -422,6 +427,10 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
+  if (props.readOnly) {
+    return
+  }
+
   if (!validateForm()) {
     return
   }
@@ -448,6 +457,7 @@ const handleSubmit = async () => {
 }
 
 const handleReset = () => {
+  if (props.readOnly) return
   form.value = {
     customMapTileUrl: '',
     customMapStyleUrl: '',

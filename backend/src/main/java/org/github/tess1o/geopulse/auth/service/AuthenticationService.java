@@ -52,14 +52,17 @@ public class AuthenticationService {
     private final UserService userService;
     private final SecurePasswordUtils securePasswordUtils;
     private final AdminBootstrapService adminBootstrapService;
+    private final DemoModeService demoModeService;
 
     @Inject
     public AuthenticationService(UserService userService,
                                  SecurePasswordUtils securePasswordUtils,
-                                 AdminBootstrapService adminBootstrapService) {
+                                 AdminBootstrapService adminBootstrapService,
+                                 DemoModeService demoModeService) {
         this.userService = userService;
         this.securePasswordUtils = securePasswordUtils;
         this.adminBootstrapService = adminBootstrapService;
+        this.demoModeService = demoModeService;
     }
 
     public String createAccessToken(UserEntity user) {
@@ -135,6 +138,9 @@ public class AuthenticationService {
                 .refreshToken(refreshToken)
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .demoMode(demoModeService.isEnabled())
+                .canViewAdmin(demoModeService.canViewAdmin(user))
+                .adminReadOnly(demoModeService.isAdminReadOnly(user))
                 .avatar(user.getAvatar())
                 .fullName(user.getFullName())
                 .timezone(user.getTimezone())

@@ -364,6 +364,7 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useGeocodingStore} from '@/stores/geocoding'
 import {useRectangleDrawingRuntime} from '@/composables/useRectangleDrawingRuntime'
 import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
+import {getFriendlyErrorMessage} from '@/utils/errorHandler'
 import {
   getTripPlanSuggestionCoordinates,
   useTripPlanLocationSearch
@@ -530,7 +531,7 @@ const {
 
 // Helper function to extract error message
 const getErrorMessage = (error, fallbackMessage) => {
-  return error.response?.data?.message || error.userMessage || error.message || fallbackMessage
+  return getFriendlyErrorMessage(error, fallbackMessage)
 }
 
 // Computed properties

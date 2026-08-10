@@ -1,10 +1,14 @@
 <template>
   <AppLayout
     :showInviteFriendButton="true"
-    @invite-friend="showInviteDialog = true"
+    @invite-friend="openInviteDialog"
   >
     <PageContainer padding="none" maxWidth="none">
       <div class="friends-page">
+        <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+          Demo mode: friend invitations, permission changes, and friend removal are disabled. Existing shared demo locations remain viewable.
+        </Message>
+
         <!-- Main Content Tabs -->
         <TabContainer
             :tabs="tabItems"
@@ -24,6 +28,7 @@
 
         <!-- Invite Friend Dialog -->
         <Dialog
+            v-if="!demoReadOnly"
             v-model:visible="showInviteDialog"
             header="Invite Friend"
             modal
@@ -88,7 +93,9 @@ import {useConfirm} from 'primevue/useconfirm'
 import {useLocationStore} from '@/stores/location'
 import {useAuthStore} from '@/stores/auth'
 import AutoComplete from 'primevue/autocomplete'
+import Message from 'primevue/message'
 import {useTimezone} from '@/composables/useTimezone'
+import {showDemoModeToast} from '@/utils/demoMode'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -130,6 +137,7 @@ const router = useRouter()
 
 // Store refs
 const {friends, receivedInvites, sentInvitations: sentInvites} = storeToRefs(friendsStore)
+const {demoReadOnly} = storeToRefs(authStore)
 
 // Computed: Filter friends based on what they share with current user
 const friendsWithLiveLocation = computed(() => {
@@ -253,6 +261,19 @@ const hasLiveFriendFilterQuery = computed(() => {
 const activeTab = ref()
 const showInviteDialog = ref(false)
 
+const showDemoReadOnlyToast = () => {
+  showDemoModeToast(toast, 'Friend changes are disabled in demo mode.')
+}
+
+const openInviteDialog = () => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
+  showInviteDialog.value = true
+}
+
 // Tab configuration
 const tabItems = computed(() => {
   const tabs = [
@@ -313,10 +334,11 @@ const currentTabConfig = computed(() => {
         friendTrails: friendLocationTrails.value,
         showFriendLocationTrails: showFriendLocationTrails.value,
         trailRange: selectedTrailRange.value,
-        trailRangeOptions: FRIEND_TRAIL_RANGE_OPTIONS
+        trailRangeOptions: FRIEND_TRAIL_RANGE_OPTIONS,
+        readOnly: demoReadOnly.value
       },
       handlers: {
-        onInviteFriend: () => { showInviteDialog.value = true },
+        onInviteFriend: openInviteDialog,
         onRefresh: refreshFriendsData,
         onFriendLocated: handleFriendLocated,
         onShowAll: handleShowAll,
@@ -335,10 +357,11 @@ const currentTabConfig = computed(() => {
     friends: {
       component: FriendsListTab,
       props: {
-        friends: friends.value  // All friends (for managing permissions)
+        friends: friends.value,  // All friends (for managing permissions)
+        readOnly: demoReadOnly.value
       },
       handlers: {
-        onInviteFriend: () => { showInviteDialog.value = true },
+        onInviteFriend: openInviteDialog,
         onShowOnMap: showFriendOnLiveMap,
         onShowTimeline: showFriendTimeline,
         onDeleteFriend: confirmDeleteFriend
@@ -350,7 +373,8 @@ const currentTabConfig = computed(() => {
         receivedInvites: receivedInvites.value,
         sentInvites: sentInvites.value,
         inviteActionsLoading: inviteActionsLoading,
-        bulkActionsLoading: bulkActionsLoading
+        bulkActionsLoading: bulkActionsLoading,
+        readOnly: demoReadOnly.value
       },
       handlers: {
         onAcceptInvite: handleAcceptInvite,
@@ -543,6 +567,11 @@ const validateInviteForm = () => {
 }
 
 const sendInvite = async () => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   if (!validateInviteForm()) return
 
   inviteLoading.value = true
@@ -582,6 +611,11 @@ const closeInviteDialog = () => {
 }
 
 const confirmDeleteFriend = (friend) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   confirm.require({
     message: `Are you sure you want to remove ${friend.fullName} from your friends?`,
     header: 'Remove Friend',
@@ -600,6 +634,11 @@ const confirmDeleteFriend = (friend) => {
 }
 
 const deleteFriend = async (friendId) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     await friendsStore.deleteFriendship(friendId)
     toast.add({
@@ -649,6 +688,11 @@ const showFriendTimeline = (friend) => {
 }
 
 const handleAcceptInvite = async (inviteId) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   inviteActionsLoading[inviteId] = {accept: true}
 
   try {
@@ -672,6 +716,11 @@ const handleAcceptInvite = async (inviteId) => {
 }
 
 const handleRejectInvite = async (inviteId) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   inviteActionsLoading[inviteId] = {reject: true}
 
   try {
@@ -695,6 +744,11 @@ const handleRejectInvite = async (inviteId) => {
 }
 
 const handleCancelInvite = async (inviteId) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   inviteActionsLoading[inviteId] = {cancel: true}
 
   try {
@@ -718,6 +772,11 @@ const handleCancelInvite = async (inviteId) => {
 }
 
 const handleAcceptAllInvites = async () => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   bulkActionsLoading.acceptAll = true
 
   try {
@@ -742,6 +801,11 @@ const handleAcceptAllInvites = async () => {
 }
 
 const handleRejectAllInvites = async () => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   bulkActionsLoading.rejectAll = true
 
   try {
@@ -766,6 +830,11 @@ const handleRejectAllInvites = async () => {
 }
 
 const handleCancelAllInvites = async () => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   bulkActionsLoading.cancelAll = true
 
   try {
@@ -1101,6 +1170,11 @@ const handleVisibilityChange = () => {
 }
 
 const searchUsers = async (event) => {
+  if (demoReadOnly.value) {
+    filteredUsers.value = []
+    return
+  }
+
   try {
     const users = await friendsStore.searchUsersToInvite(event.query)
     filteredUsers.value = users.map(user => ({

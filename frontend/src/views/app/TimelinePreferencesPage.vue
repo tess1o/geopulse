@@ -28,13 +28,13 @@
                 severity="danger"
                 outlined
                 @click="confirmRegenerateTimeline"
-                :disabled="timelineRegenerationVisible"
+                :disabled="timelineRegenerationVisible || demoReadOnly"
               />
               <Button
                 label="Save Changes"
                 icon="pi pi-save"
                 @click="confirmSavePreferences"
-                :disabled="!hasUnsavedChanges || !isFormValid || timelineRegenerationVisible"
+                :disabled="!hasUnsavedChanges || !isFormValid || timelineRegenerationVisible || demoReadOnly"
               />
 
               <div class="toolbar-secondary-actions">
@@ -79,6 +79,10 @@
           </template>
         </Card>
 
+        <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+          Demo mode: all timeline preference settings are read-only. Saving changes, importing config, resetting defaults, and regenerating the timeline are disabled.
+        </Message>
+
         <!-- Unsaved Changes Warning -->
         <Message v-if="hasUnsavedChanges" severity="warn" class="unsaved-warning">
           <div class="warning-content">
@@ -98,19 +102,19 @@
                 label="Save Now" 
                 size="small" 
                 @click="confirmSavePreferences"
-                :disabled="timelineRegenerationVisible"
+                :disabled="timelineRegenerationVisible || demoReadOnly"
               />
             </div>
           </div>
         </Message>
 
         <!-- Preferences Tabs -->
-        <TabContainer
-          :tabs="tabItems"
-          :activeIndex="activeTabIndex"
-          @tab-change="handleTabChange"
-          class="preferences-tabs"
-        >
+          <TabContainer
+            :tabs="tabItems"
+            :activeIndex="activeTabIndex"
+            @tab-change="handleTabChange"
+            :class="['preferences-tabs', { 'demo-readonly-tabs': demoReadOnly }]"
+          >
           <!-- Stay Point Detection Tab -->
           <StayPointDetectionTab
             v-if="activeTab === 'staypoints'"
@@ -292,6 +296,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import Menu from 'primevue/menu'
+import Message from 'primevue/message'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -311,6 +316,7 @@ import TimelineRegenerationModal from '@/components/dialogs/TimelineRegeneration
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
 import { useBoatSetupStore } from '@/stores/boatSetup'
+import { useAuthStore } from '@/stores/auth'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useClassificationValidation } from '@/composables/useClassificationValidation'
 import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
@@ -320,6 +326,7 @@ import {
   TIMELINE_PREFERENCE_VISIBILITY_HINTS
 } from '@/constants/timelinePreferencesMetadata'
 import { jumpToSetting } from '@/utils/settingJump'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const CLASSIFICATION_FIELDS = [
   'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
@@ -448,6 +455,7 @@ const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
 const timelineStore = useTimelineStore()
 const boatSetupStore = useBoatSetupStore()
+const authStore = useAuthStore()
 const { checkActiveJob } = useTimelineJobCheck()
 
 // Composables
@@ -469,6 +477,7 @@ const {
 
 // Store refs
 const { timelinePreferences: originalPrefs } = storeToRefs(timelinePreferencesStore)
+const { demoReadOnly } = storeToRefs(authStore)
 
 // State - Initialize from URL query parameter
 const activeTab = ref(route.query.tab || 'staypoints')
@@ -565,13 +574,13 @@ const headerSecondaryActionsMenu = computed(() => {
     {
       label: 'Import Config',
       icon: 'pi pi-upload',
-      disabled: timelineRegenerationVisible.value,
+      disabled: timelineRegenerationVisible.value || demoReadOnly.value,
       command: () => openImportPicker()
     },
     {
       label: 'Reset to Defaults',
       icon: 'pi pi-refresh',
-      disabled: timelineRegenerationVisible.value,
+      disabled: timelineRegenerationVisible.value || demoReadOnly.value,
       command: () => confirmResetDefaults()
     }
   ]
@@ -682,7 +691,15 @@ const toggleActionsMenu = (event) => {
   actionsMenuRef.value?.toggle(event)
 }
 
+const showDemoTimelineReadOnlyToast = () => {
+  showDemoModeToast(toast, 'Timeline preference changes are disabled in demo mode.', { severity: 'info' })
+}
+
 const openImportPicker = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
   importFileInput.value?.click()
 }
 
@@ -818,6 +835,11 @@ const handleImportFileChange = async (event) => {
 }
 
 const applyImportedPreferences = async () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   if (isImportApplying.value) {
     return
   }
@@ -941,6 +963,11 @@ const formatBytes = (bytes) => {
 }
 
 const confirmStartBoatSetup = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   const setupReady = boatSetupStatus.value?.status === 'READY'
   const datasetReady = boatSetupStatus.value?.datasetStatus === 'READY'
   const message = setupReady
@@ -967,6 +994,11 @@ const confirmStartBoatSetup = () => {
 }
 
 const startBoatSetup = async () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   try {
     await boatSetupStore.fetchStatus()
     if (boatSetupStatus.value?.status === 'READY') {
@@ -1046,6 +1078,11 @@ const getBoatEnablementConfirmation = (status, hasStructuralChanges) => {
 }
 
 const confirmSavePreferences = async () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   if (!isFormValid.value) {
     return;
   }
@@ -1149,6 +1186,11 @@ const hasStructuralParameters = (changes) => {
 }
 
 const savePreferences = async (saveType = 'full', explicitChanges = null) => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   if (!isFormValid.value && !explicitChanges) return
 
   const changes = explicitChanges || getChangedPrefs()
@@ -1260,6 +1302,11 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
 }
 
 const confirmResetDefaults = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   confirm.require({
     message: 'This will reset all settings to their default values. Are you sure?',
     header: 'Reset to Defaults',
@@ -1278,6 +1325,11 @@ const confirmResetDefaults = () => {
 }
 
 const resetDefaults = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   withTimelineRegeneration(
     () => timelinePreferencesStore.resetTimelinePreferencesToDefaults(),
     {
@@ -1302,6 +1354,11 @@ const discardChanges = () => {
 }
 
 const confirmRegenerateTimeline = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   confirm.require({
     message: 'This will completely delete your current timeline data and regenerate it from scratch.\n\nThis operation may take several minutes depending on your GPS data volume.\n\nDo you want to proceed?',
     header: 'Regenerate Complete Timeline',
@@ -1320,6 +1377,11 @@ const confirmRegenerateTimeline = () => {
 }
 
 const regenerateTimeline = () => {
+  if (demoReadOnly.value) {
+    showDemoTimelineReadOnlyToast()
+    return
+  }
+
   withTimelineRegeneration(
     () => timelineStore.regenerateAllTimeline(),
     {
@@ -1708,6 +1770,11 @@ onUnmounted(() => {
 /* Preferences Tabs */
 .preferences-tabs {
   margin-bottom: 2rem;
+}
+
+.demo-readonly-tabs :deep(.gp-tab-content) {
+  opacity: 0.78;
+  pointer-events: none;
 }
 
 .hidden-file-input {

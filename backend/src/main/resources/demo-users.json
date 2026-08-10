@@ -1,0 +1,37 @@
+{
+  "users": [
+    {
+      "id": "kyiv",
+      "label": "\uD83C\uDDFA\uD83C\uDDE6 Login as Kyiv",
+      "detail": "(Kilometers, 24-hour clock, EU date format)",
+      "email": "kyiv@demo.geopulse.cc",
+      "fullName": "Kyiv Demo",
+      "timezone": "Europe/Kyiv",
+      "measureUnit": "METRIC",
+      "dateFormat": "DMY",
+      "timeFormat": "24h"
+    },
+    {
+      "id": "new-york",
+      "label": "🗽 Login as New York",
+      "detail": "(Miles, 12-hour clock, US date format)",
+      "email": "new-york@demo.geopulse.cc",
+      "fullName": "New York Demo",
+      "timezone": "America/New_York",
+      "measureUnit": "IMPERIAL",
+      "dateFormat": "MDY",
+      "timeFormat": "12h"
+    },
+    {
+      "id": "london",
+      "label": "🌧️ Login as London",
+      "detail": "(Miles, 24-hour clock, UK date format)",
+      "email": "london@demo.geopulse.cc",
+      "fullName": "London Demo",
+      "timezone": "Europe/London",
+      "measureUnit": "IMPERIAL",
+      "dateFormat": "DMY",
+      "timeFormat": "24h"
+    }
+  ]
+}

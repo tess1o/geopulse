@@ -54,7 +54,8 @@
               v-if="showInlineEditIcon"
               class="movement-edit-icon-btn"
               aria-label="Edit movement type"
-              title="Edit movement type"
+              :title="readOnly ? 'Movement type edits are disabled in demo mode' : 'Edit movement type'"
+              :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
               <i class="pi pi-pencil"></i>
@@ -62,6 +63,7 @@
             <button
               v-if="isUnknownAuto"
               class="movement-set-btn"
+              :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
               Set movement type
@@ -129,6 +131,10 @@ const props = defineProps({
   allowNoteCreation: {
     type: Boolean,
     default: true
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -155,7 +161,9 @@ const contextMenuItems = computed(() => {
     {
       label: 'Change movement type...',
       icon: 'pi pi-pencil',
+      disabled: props.readOnly,
       command: () => {
+        if (props.readOnly) return
         emit('edit-movement-type', props.tripItem)
       }
     },
@@ -280,6 +288,7 @@ const getViewNotesLabel = () => {
 }
 
 const handleEditMovementType = () => {
+  if (props.readOnly) return
   emit('edit-movement-type', props.tripItem)
 }
 
@@ -426,6 +435,12 @@ const formattedTimestamp = computed(() => {
   cursor: pointer;
   text-decoration: underline;
   padding: 0;
+}
+
+.movement-set-btn:disabled,
+.movement-edit-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .movement-edit-icon-btn {

@@ -7,6 +7,8 @@
         <h1>User Details</h1>
       </div>
 
+      <DemoReadOnlyBanner />
+
     <div v-if="loading" class="text-center p-4">
       <i class="pi pi-spin pi-spinner text-4xl"></i>
     </div>
@@ -106,7 +108,7 @@
                   :icon="user.active ? 'pi pi-ban' : 'pi pi-check'"
                   :severity="user.active ? 'warning' : 'success'"
                   @click="toggleStatus"
-                  :disabled="isCurrentUser"
+                  :disabled="adminReadOnly || isCurrentUser"
                   class="action-button-full"
                 />
 
@@ -116,6 +118,7 @@
                   severity="secondary"
                   outlined
                   @click="toggleRole"
+                  :disabled="adminReadOnly"
                   class="action-button-full"
                 />
 
@@ -125,6 +128,7 @@
                   severity="info"
                   outlined
                   @click="resetPassword"
+                  :disabled="adminReadOnly"
                   class="action-button-full"
                 />
 
@@ -135,7 +139,7 @@
                   icon="pi pi-trash"
                   severity="danger"
                   @click="confirmDelete"
-                  :disabled="isCurrentUser"
+                  :disabled="adminReadOnly || isCurrentUser"
                   class="action-button-full"
                 />
               </div>
@@ -189,7 +193,7 @@
                 rounded
                 text
                 severity="danger"
-                :disabled="data.status === 'REVOKED'"
+                :disabled="adminReadOnly || data.status === 'REVOKED'"
                 @click="confirmRevokeApiToken(data)"
                 v-tooltip="'Revoke token'"
               />
@@ -226,7 +230,7 @@
       </div>
       <template #footer>
         <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" />
+        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" :disabled="adminReadOnly" />
       </template>
     </Dialog>
 
@@ -267,6 +271,7 @@
           icon="pi pi-ban"
           severity="danger"
           :loading="apiTokenRevoking"
+          :disabled="adminReadOnly"
           @click="revokeApiToken"
         />
       </template>
@@ -291,9 +296,11 @@ import Column from 'primevue/column'
 import Toast from 'primevue/toast'
 import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import apiService from '@/utils/apiService'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
@@ -301,6 +308,7 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 const { timeAgo } = timezone
 

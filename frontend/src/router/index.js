@@ -81,7 +81,7 @@ const requireGuest = async (to, from, next) => {
     }
 }
 
-// Admin guard function
+// Admin visibility guard function. Real admin writes are still enforced server-side.
 const requireAdmin = async (to, from, next) => {
     const authStore = useAuthStore()
 
@@ -94,7 +94,9 @@ const requireAdmin = async (to, from, next) => {
         // If not authenticated, redirect to login
         if (!authStore.isAuthenticated) {
             next('/login')
-        } else if (!authStore.isAdmin) {
+        } else if (to.meta.requiresRealAdmin && !authStore.isAdmin) {
+            next('/app/admin')
+        } else if (!authStore.canViewAdmin) {
             // If not admin, redirect to timeline
             next('/app/timeline')
         } else {
@@ -457,7 +459,7 @@ const routes = [
         path: '/app/admin/audit-logs',
         name: 'Admin Audit Logs',
         component: () => import('@/views/app/admin/AdminAuditLogsPage.vue'),
-        meta: {title: 'Audit Logs'},
+        meta: {title: 'Audit Logs', requiresRealAdmin: true},
         beforeEnter: requireAdmin
     },
     {

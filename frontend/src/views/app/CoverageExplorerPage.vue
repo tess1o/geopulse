@@ -27,6 +27,7 @@
                 inputId="coverage-toggle"
                 v-model="userCoverageEnabled"
                 :disabled="!canToggleCoverage"
+                v-tooltip.bottom="demoReadOnly ? 'Coverage settings are read-only in demo mode' : 'Enable or disable coverage processing'"
                 @change="handleCoverageToggle"
                 aria-label="Enable or disable coverage processing"
               />
@@ -40,11 +41,20 @@
               icon="pi pi-refresh"
               :disabled="!canRecalculateCoverage"
               :loading="settingsUpdating && !statusLoading"
+              v-tooltip.bottom="demoReadOnly ? 'Coverage recalculation is disabled in demo mode' : 'Recalculate coverage from GPS history'"
               @click="handleCoverageRecalculation"
             />
           </div>
         </div>
       </template>
+
+      <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+        Demo mode: coverage settings are read-only. Enabling, disabling, and recalculating coverage are disabled.
+      </Message>
+
+      <Message v-if="coverageActionError" severity="error" :closable="false" class="coverage-action-error">
+        {{ coverageActionError }}
+      </Message>
 
       <div class="coverage-page">
 
@@ -124,6 +134,7 @@
                 icon="pi pi-power-off"
                 class="overlay-enable-button"
                 :disabled="!canToggleCoverage || settingsUpdating"
+                v-tooltip.bottom="demoReadOnly ? 'Enabling coverage is disabled in demo mode' : 'Enable coverage processing'"
                 @click="enableCoverageFromOverlay"
               />
             </div>
@@ -179,17 +190,23 @@ import {storeToRefs} from 'pinia'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import InputSwitch from 'primevue/inputswitch'
+import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import {useToast} from 'primevue/usetoast'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import {MapContainer, CoverageLayer} from '@/components/maps'
+import {useAuthStore} from '@/stores/auth'
 import {useCoverageStore} from '@/stores/coverage'
 import {useLocationStore} from '@/stores/location'
+import {showDemoModeToast} from '@/utils/demoMode'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 const coverageStore = useCoverageStore()
+const authStore = useAuthStore()
 const locationStore = useLocationStore()
+const toast = useToast()
 
 const mapContainerRef = ref(null)
 const mapInstance = ref(null)
@@ -227,8 +244,10 @@ const statusReady = computed(() => status.value !== null)
 const coverageAllowed = computed(() => userEnabled.value)
 const statusErrorMessage = computed(() => statusError.value ? 'Coverage status unavailable' : '')
 const cellsErrorMessage = computed(() => cellsError.value ? 'Failed to refresh current view' : '')
+const demoReadOnly = computed(() => authStore.demoReadOnly)
 
 const userCoverageEnabled = ref(false)
+const coverageActionError = ref('')
 
 const summary = ref(null)
 const summaryLoading = ref(false)
@@ -241,10 +260,11 @@ const gridModeLabel = computed(() => selectedGrid.value === 'auto'
 const coverageToggleLabel = computed(() => {
   if (statusLoading.value) return 'Loading...'
   if (settingsUpdating.value) return 'Updating...'
+  if (demoReadOnly.value) return userEnabled.value ? 'Enabled (read-only)' : 'Disabled (read-only)'
   return userEnabled.value ? 'Enabled' : 'Disabled'
 })
 const canToggleCoverage = computed(() =>
-  statusReady.value && !settingsUpdating.value && !processing.value
+  statusReady.value && !settingsUpdating.value && !processing.value && !demoReadOnly.value
 )
 const canRecalculateCoverage = computed(() =>
   statusReady.value
@@ -252,7 +272,21 @@ const canRecalculateCoverage = computed(() =>
   && !settingsUpdating.value
   && !processing.value
   && !statusLoading.value
+  && !demoReadOnly.value
 )
+
+const extractCoverageErrorMessage = (error, fallback) => (
+  error?.response?.data?.message
+  || error?.response?.data?.error?.message
+  || error?.response?.data?.error
+  || error?.userMessage
+  || error?.message
+  || fallback
+)
+
+const showDemoCoverageReadOnlyToast = () => {
+  showDemoModeToast(toast, 'Coverage settings are read-only in demo mode.')
+}
 
 const getGridForZoom = (zoom) => {
   if (zoom <= 4) return 40000
@@ -422,13 +456,24 @@ const stopSummaryRefresh = () => {
 }
 
 const handleCoverageToggle = async () => {
+  if (demoReadOnly.value) {
+    userCoverageEnabled.value = userEnabled.value
+    showDemoCoverageReadOnlyToast()
+    return
+  }
+
   if (!statusReady.value || settingsUpdating.value) {
+    userCoverageEnabled.value = userEnabled.value
     return
   }
   const desired = userCoverageEnabled.value
+  coverageActionError.value = ''
   try {
     const updated = await coverageStore.updateCoverageSettings(desired)
-    if (!updated) return
+    if (!updated) {
+      userCoverageEnabled.value = userEnabled.value
+      return
+    }
 
     if (!desired) {
       stopStatusPolling()
@@ -453,12 +498,25 @@ const handleCoverageToggle = async () => {
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
-    userCoverageEnabled.value = !desired
+    userCoverageEnabled.value = userEnabled.value
+    const detail = extractCoverageErrorMessage(error, coverageStore.statusError || 'Failed to update coverage settings')
+    coverageActionError.value = detail
+    toast.add({
+      severity: 'error',
+      summary: 'Coverage Settings Error',
+      detail,
+      life: 5000
+    })
     console.error('Failed to update coverage settings:', error)
   }
 }
 
 const enableCoverageFromOverlay = async () => {
+  if (demoReadOnly.value) {
+    showDemoCoverageReadOnlyToast()
+    return
+  }
+
   if (!canToggleCoverage.value || userCoverageEnabled.value) {
     return
   }
@@ -467,9 +525,15 @@ const enableCoverageFromOverlay = async () => {
 }
 
 const handleCoverageRecalculation = async () => {
+  if (demoReadOnly.value) {
+    showDemoCoverageReadOnlyToast()
+    return
+  }
+
   if (!canRecalculateCoverage.value) {
     return
   }
+  coverageActionError.value = ''
   try {
     const updated = await coverageStore.recalculateCoverage()
     if (updated?.processing) {
@@ -481,6 +545,14 @@ const handleCoverageRecalculation = async () => {
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
+    const detail = extractCoverageErrorMessage(error, coverageStore.statusError || 'Failed to recalculate coverage')
+    coverageActionError.value = detail
+    toast.add({
+      severity: 'error',
+      summary: 'Coverage Recalculation Error',
+      detail,
+      life: 5000
+    })
     console.error('Failed to recalculate coverage:', error)
   }
 }
@@ -795,27 +867,27 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 
-:global(.p-dark) .map-overlay {
+.p-dark .map-overlay {
   background: rgba(2, 6, 23, 0.74);
   color: #f8fafc;
 }
 
-:global(.p-dark) .map-overlay-content {
+.p-dark .map-overlay-content {
   background: rgba(15, 23, 42, 0.9);
   border-color: rgba(148, 163, 184, 0.35);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
-:global(.p-dark) .map-overlay .empty-icon {
+.p-dark .map-overlay .empty-icon {
   color: #cbd5e1;
 }
 
-:global(.p-dark) .map-overlay p {
+.p-dark .map-overlay p {
   color: #cbd5e1;
 }
 
-:global(.p-dark) .map-overlay strong,
-:global(.p-dark) .map-overlay span {
+.p-dark .map-overlay strong,
+.p-dark .map-overlay span {
   color: #f8fafc;
 }
 

@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.model.InvitationStatus;
 import org.github.tess1o.geopulse.admin.model.UserInvitationEntity;
 import org.github.tess1o.geopulse.admin.service.UserInvitationService;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
@@ -26,7 +27,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/admin/invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @Slf4j
 @Tag(name = "Admin: Invitations", description = "Manage account invitations and registration links.")
 public class AdminInvitationResource {
@@ -48,6 +48,7 @@ public class AdminInvitationResource {
      * Get all invitations with optional status filter
      */
     @GET
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getInvitations(
             @QueryParam("status") InvitationStatus status,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -79,6 +80,7 @@ public class AdminInvitationResource {
      */
     @GET
     @Path("/base-url")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getBaseUrl() {
         String url = this.baseUrl.orElse("");
         return Response.ok(Map.of("baseUrl", url)).build();
@@ -88,6 +90,7 @@ public class AdminInvitationResource {
      * Create a new invitation
      */
     @POST
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response createInvitation(
             @Valid CreateInvitationRequest createRequest,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -128,6 +131,7 @@ public class AdminInvitationResource {
      */
     @DELETE
     @Path("/{id}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response revokeInvitation(
             @PathParam("id") UUID invitationId,
             @HeaderParam("X-Forwarded-For") String forwardedFor,

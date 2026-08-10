@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
@@ -37,7 +38,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/admin/settings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @Slf4j
 @Tag(name = "Admin: System Settings", description = "View, update, reset, and test system-wide settings.")
 public class AdminSettingsResource {
@@ -67,6 +67,7 @@ public class AdminSettingsResource {
      * Get all settings grouped by category.
      */
     @GET
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getAllSettings() {
         Map<String, List<SettingInfo>> settings = settingsService.getAllSettings();
         return Response.ok(settings).build();
@@ -77,6 +78,7 @@ public class AdminSettingsResource {
      */
     @GET
     @Path("/{category}")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getSettingsByCategory(@PathParam("category") String category) {
         List<SettingInfo> settings = settingsService.getSettingsByCategory(category);
         return Response.ok(settings).build();
@@ -91,6 +93,7 @@ public class AdminSettingsResource {
      */
     @PUT
     @Path("/{key}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response updateSetting(
             @PathParam("key") String key,
             UpdateSettingRequest request,
@@ -114,6 +117,7 @@ public class AdminSettingsResource {
      */
     @DELETE
     @Path("/{key}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response resetSetting(
             @PathParam("key") String key,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -143,6 +147,7 @@ public class AdminSettingsResource {
     @POST
     @Path("/bulk")
     @Transactional
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response bulkUpdateSettings(
             BulkUpdateRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -217,6 +222,7 @@ public class AdminSettingsResource {
      */
     @POST
     @Path("/system/notifications/apprise/test")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response testAppriseConnection(AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {
@@ -249,6 +255,7 @@ public class AdminSettingsResource {
 
     @POST
     @Path("/weather/test")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response testWeatherConnection() {
         WeatherTestResponse result = weatherService.testProviderConnection();
         Map<String, Object> responsePayload = new LinkedHashMap<>();

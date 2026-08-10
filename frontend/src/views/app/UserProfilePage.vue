@@ -21,6 +21,10 @@
           </div>
         </div>
 
+        <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+          Demo mode: profile, security, display, AI, Immich, and Memos settings are read-only. Changes cannot be saved in this demo.
+        </Message>
+
         <!-- Profile Content -->
         <div class="profile-content">
           <TabContainer
@@ -54,6 +58,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Message from 'primevue/message'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -76,6 +81,7 @@ import { useNotesStore } from '@/stores/notes'
 import apiService from "@/utils/apiService"
 import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
 import { jumpToSetting } from '@/utils/settingJump'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 // Composables
 const toast = useToast()
@@ -87,7 +93,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -187,6 +193,7 @@ const handleTabDirtyChange = (tabKey, isDirty) => {
 const currentTabProps = computed(() => {
   const allProps = {
     profile: {
+      readOnly: demoReadOnly.value,
       userName: userName.value,
       userEmail: userEmail.value,
       userAvatar: userAvatar.value,
@@ -197,19 +204,24 @@ const currentTabProps = computed(() => {
       userTimeFormat: timeFormat.value || '24h',
     },
     security: {
+      readOnly: demoReadOnly.value,
       hasPassword: hasPassword.value,
     },
     timelineDisplay: {
+      readOnly: demoReadOnly.value,
       initialPreferences: timelineDisplayPrefs.value,
     },
     ai: {
+      readOnly: demoReadOnly.value,
       initialSettings: aiSettings.value,
     },
     immich: {
+      readOnly: demoReadOnly.value,
       config: immichConfig.value,
       loading: immichLoading.value,
     },
     memos: {
+      readOnly: demoReadOnly.value,
       config: memosConfig.value,
       loading: memosLoading.value,
     },
@@ -256,6 +268,10 @@ const getErrorMessage = (error) => {
   return error.message || 'An unexpected error occurred'
 }
 
+const showDemoReadOnlyToast = () => {
+  showDemoModeToast(toast, 'Profile changes are disabled in demo mode.', { severity: 'info' })
+}
+
 const jumpToRouteSetting = async (settingId, hintOverride = null) => {
   if (!settingId || route.path !== '/app/profile') return false
 
@@ -295,6 +311,11 @@ const handleSettingsSearchNavigate = async (item) => {
 
 // Profile Save Handler
 const handleProfileSave = async (data) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     let avatarToSave = data.avatar
     if (data.avatarFile) {
@@ -330,6 +351,11 @@ const handleProfileSave = async (data) => {
 
 // Timeline Display Save Handler
 const handleTimelineDisplaySave = async (displayPrefs) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return false
+  }
+
   try {
     const savedDisplayPrefs = await authStore.updateTimelineDisplayPreferences(displayPrefs)
 
@@ -360,6 +386,11 @@ const handleTimelineDisplaySave = async (displayPrefs) => {
 
 // Password Save Handler
 const handlePasswordSave = async (data) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     await authStore.changePassword(
       data.currentPassword,
@@ -385,6 +416,11 @@ const handlePasswordSave = async (data) => {
 
 // AI Settings Save Handler
 const handleAISave = async (payload) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     await apiService.post('/ai/settings', payload)
 
@@ -411,6 +447,11 @@ const handleAISave = async (payload) => {
 
 // Immich Save Handler
 const handleImmichSave = async (configData) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     // Handle special case where we want to keep existing API key
     if (configData.apiKey === 'KEEP_EXISTING') {
@@ -438,6 +479,11 @@ const handleImmichSave = async (configData) => {
 
 // Memos Save Handler
 const handleMemosSave = async (configData) => {
+  if (demoReadOnly.value) {
+    showDemoReadOnlyToast()
+    return
+  }
+
   try {
     if (configData.apiKey === 'KEEP_EXISTING') {
       configData.apiKey = memosConfig.value?.apiKey || null

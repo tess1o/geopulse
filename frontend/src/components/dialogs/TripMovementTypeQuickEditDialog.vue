@@ -19,6 +19,9 @@
       <Message v-if="(trip.movementType || 'UNKNOWN') === 'UNKNOWN'" severity="warn" :closable="false">
         Algorithm did not recognize this movement type. Set it manually.
       </Message>
+      <Message v-if="readOnly" severity="error" :closable="false">
+        Movement type edits are read-only in demo mode.
+      </Message>
 
       <div class="movement-edit-controls">
         <Select
@@ -28,14 +31,14 @@
           optionValue="value"
           placeholder="Select movement type"
           class="movement-select"
-          :disabled="saving"
+          :disabled="saving || readOnly"
         />
 
         <div class="movement-edit-actions">
           <Button
             label="Save"
             icon="pi pi-save"
-            :disabled="!selectedMovementType || saving"
+            :disabled="readOnly || !selectedMovementType || saving"
             :loading="saving"
             @click="save"
           />
@@ -44,7 +47,7 @@
             icon="pi pi-refresh"
             severity="secondary"
             outlined
-            :disabled="!canReset || saving"
+            :disabled="readOnly || !canReset || saving"
             :loading="saving"
             @click="reset"
           />
@@ -77,6 +80,10 @@ const props = defineProps({
   trip: {
     type: Object,
     default: null
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -121,6 +128,7 @@ watch(
 )
 
 const save = async () => {
+  if (props.readOnly) return
   if (!props.trip?.id || !selectedMovementType.value) return
 
   saving.value = true
@@ -154,6 +162,7 @@ const save = async () => {
 }
 
 const reset = async () => {
+  if (props.readOnly) return
   if (!props.trip?.id) return
 
   saving.value = true

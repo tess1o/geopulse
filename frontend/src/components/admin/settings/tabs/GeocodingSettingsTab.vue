@@ -17,6 +17,7 @@
           icon="pi pi-save"
           @click="saveAllChanges"
           :loading="isSaving"
+          :disabled="adminReadOnly"
         />
       </div>
     </div>
@@ -274,15 +275,20 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
+import { storeToRefs } from 'pinia'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
+import { useAuthStore } from '@/stores/auth'
 import { GEOCODING_PROVIDER_OPTIONS } from '@/constants/adminSettingsMetadata'
 import { getPlaceholder as getPlaceholderHelper, parseSettingValue } from '@/utils/settingHelpers'
 import apiService from '@/utils/apiService'
+import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
 const { loadSettings } = useAdminSettings()
 const toast = useToast()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 const geocodingSettings = ref([])
 const ALLOWED_PHOTON_LANGUAGES = ['de', 'pl', 'el', 'en', 'es', 'fa', 'fr', 'it', 'ja', 'ko']
 const ALLOWED_PHOTON_LANGUAGE_SET = new Set(ALLOWED_PHOTON_LANGUAGES)
@@ -641,6 +647,11 @@ const buildChangedSettings = () => {
 }
 
 const saveAllChanges = async () => {
+  if (adminReadOnly.value) {
+    showDemoReadOnlyToast(toast)
+    return
+  }
+
   const validationError = validateAllSettings()
   if (validationError) {
     toast.add({

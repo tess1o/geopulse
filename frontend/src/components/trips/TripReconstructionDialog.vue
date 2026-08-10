@@ -61,26 +61,33 @@
     </div>
 
     <template #footer>
-      <div class="footer-actions">
-        <Button
-          label="Cancel"
-          icon="pi pi-times"
-          outlined
-          @click="handleClose"
-        />
-        <Button
-          label="Validate"
-          icon="pi pi-check-circle"
-          outlined
-          :loading="isPreviewLoading"
-          @click="previewReconstruction"
-        />
-        <Button
-          label="Commit & Regenerate"
-          icon="pi pi-check"
-          :loading="isCommitLoading"
-          @click="commitReconstruction"
-        />
+      <div class="footer-stack">
+        <p v-if="readOnly" class="demo-disabled-text">
+          Demo mode: generated timeline data cannot be committed or regenerated. You can still validate the plan.
+        </p>
+        <div class="footer-actions">
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            outlined
+            @click="handleClose"
+          />
+          <Button
+            label="Validate"
+            icon="pi pi-check-circle"
+            outlined
+            :loading="isPreviewLoading"
+            @click="previewReconstruction"
+          />
+          <Button
+            label="Commit & Regenerate"
+            icon="pi pi-check"
+            :loading="isCommitLoading"
+            :disabled="readOnly || isCommitLoading"
+            v-tooltip.bottom="readOnly ? 'Committing generated points is disabled in demo mode' : 'Commit generated points and regenerate timeline'"
+            @click="commitReconstruction"
+          />
+        </div>
       </div>
     </template>
   </Dialog>
@@ -106,6 +113,7 @@ import { fitMapToActiveSegment } from '@/maps/tripReconstruction/shared/tripReco
 import TripReconstructionSegmentsPanel from '@/components/trips/reconstruction/TripReconstructionSegmentsPanel.vue'
 import TripReconstructionMapPanel from '@/components/trips/reconstruction/TripReconstructionMapPanel.vue'
 import TripReconstructionPreviewSummary from '@/components/trips/reconstruction/TripReconstructionPreviewSummary.vue'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 const props = defineProps({
   visible: {
@@ -135,6 +143,10 @@ const props = defineProps({
   fallbackCenter: {
     type: Array,
     default: () => [37.7749, -122.4194]
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -428,6 +440,11 @@ const previewReconstruction = async () => {
 }
 
 const commitReconstruction = async () => {
+  if (props.readOnly) {
+    showDemoModeToast(toast, 'Committing generated timeline data is disabled in demo mode.')
+    return
+  }
+
   const { payload, error } = buildValidatedPayload(props.tripId)
   if (error) {
     toast.add({
@@ -550,6 +567,12 @@ watch(activeSegmentId, () => {
   min-height: 0;
 }
 
+.footer-stack {
+  width: 100%;
+  display: grid;
+  gap: var(--gp-spacing-sm);
+}
+
 .footer-actions {
   width: 100%;
   display: flex;
@@ -557,6 +580,11 @@ watch(activeSegmentId, () => {
   justify-content: flex-end;
   gap: var(--gp-spacing-xs);
   flex-wrap: wrap;
+}
+
+.demo-disabled-text {
+  margin: 0;
+  text-align: right;
 }
 
 @media (max-width: 1080px) {

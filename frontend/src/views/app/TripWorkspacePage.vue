@@ -515,6 +515,7 @@
       :trip-id="tripId"
       :trip="currentTrip"
       :fallback-center="workspaceFallbackCenter"
+      :read-only="demoReadOnly"
       @close="showReconstructionDialog = false"
       @committed="handleReconstructionCommitted"
     />
@@ -616,6 +617,7 @@ import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEdi
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { getTimelineGeographicBounds, getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { useTripsStore } from '@/stores/trips'
+import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import { useTimelineStore } from '@/stores/timeline'
 import friendsService from '@/services/friendsService'
@@ -656,6 +658,7 @@ const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const timezone = useTimezone()
+const authStore = useAuthStore()
 const tripsStore = useTripsStore()
 const immichStore = useImmichStore()
 const timelineStore = useTimelineStore()
@@ -668,6 +671,7 @@ const {
   workspacePath,
   visitSuggestions
 } = storeToRefs(tripsStore)
+const { demoReadOnly } = storeToRefs(authStore)
 const { weatherSamples } = storeToRefs(timelineStore)
 
 const isInitialLoading = ref(true)

@@ -326,6 +326,7 @@ import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculation
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
+import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
@@ -396,6 +397,10 @@ const props = defineProps({
     default: false
   },
   isPublicView: {
+    type: Boolean,
+    default: false
+  },
+  readOnly: {
     type: Boolean,
     default: false
   },
@@ -876,6 +881,10 @@ const {
 const hideTimelineMarkersForReplay = computed(() => showTripReplayBar.value && isReplayPlaying.value)
 const timelineLayerVisible = computed(() => showTimeline.value && !hideTimelineMarkersForReplay.value)
 
+const showReadOnlyToast = () => {
+  showDemoModeToast(toast)
+}
+
 // Context menu items
 const mapMenuItems = computed(() => {
   const items = []
@@ -884,7 +893,12 @@ const mapMenuItems = computed(() => {
     items.push({
       label: 'Plan to visit here',
       icon: 'pi pi-map-marker',
+      disabled: props.readOnly,
       command: () => {
+        if (props.readOnly) {
+          showReadOnlyToast()
+          return
+        }
         if (!dialogState.value.addToFavoritesLatLng) {
           return
         }
@@ -898,14 +912,24 @@ const mapMenuItems = computed(() => {
       {
         label: 'Add to Favorites',
         icon: 'pi pi-star',
+        disabled: props.readOnly,
         command: () => {
+          if (props.readOnly) {
+            showReadOnlyToast()
+            return
+          }
           dialogState.value.addToFavoritesVisible = true
         }
       },
       {
         label: 'Add an area to Favorites',
         icon: 'pi pi-star',
+        disabled: props.readOnly,
         command: () => {
+          if (props.readOnly) {
+            showReadOnlyToast()
+            return
+          }
           startDrawing()
         }
       }
@@ -916,7 +940,7 @@ const mapMenuItems = computed(() => {
 })
 
 // Favorite context menu items
-const favoriteMenuItems = ref([
+const favoriteMenuItems = computed(() => [
   {
     label: 'View all visits',
     icon: 'pi pi-chart-line',
@@ -932,7 +956,12 @@ const favoriteMenuItems = ref([
   {
     label: 'Edit',
     icon: 'pi pi-pencil',
+    disabled: props.readOnly,
     command: () => {
+      if (props.readOnly) {
+        showReadOnlyToast()
+        return
+      }
       if (dialogState.value.selectedFavorite) {
         handleFavoriteEdit(dialogState.value.selectedFavorite)
       }
@@ -941,7 +970,12 @@ const favoriteMenuItems = ref([
   {
     label: 'Delete',
     icon: 'pi pi-trash',
+    disabled: props.readOnly,
     command: () => {
+      if (props.readOnly) {
+        showReadOnlyToast()
+        return
+      }
       if (dialogState.value.selectedFavorite) {
         handleFavoriteDelete(dialogState.value.selectedFavorite)
       }
@@ -1159,11 +1193,19 @@ const handleNotesError = (event) => {
 
 
 const handleFavoriteEdit = (event) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
   const favorite = event.favorite || event
   emit('edit-favorite', favorite)
 }
 
 const handleFavoriteDelete = (event) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
   const favorite = event.favorite || event
   emit('delete-favorite', favorite)
 }
@@ -1301,6 +1343,12 @@ const initAreaDrawControl = () => {
 
 // Dialog handlers
 const onFavoritePointSubmit = (favoriteData) => {
+  if (props.readOnly) {
+    closeAddFavoritePoint()
+    showReadOnlyToast()
+    return
+  }
+
   const pointLatLng = dialogState.value.addToFavoritesLatLng
 
   if (!pointLatLng) {
@@ -1342,6 +1390,12 @@ const onFavoritePointSubmit = (favoriteData) => {
 }
 
 const onFavoriteAreaSubmit = (favoriteData) => {
+  if (props.readOnly) {
+    closeAddFavoriteArea()
+    showReadOnlyToast()
+    return
+  }
+
   if (!drawingState.value.tempAreaLayer) return
 
   // Extract bounds from drawn rectangle

@@ -436,6 +436,7 @@ import { useGeocodingStore } from '@/stores/geocoding'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useTimezone } from '@/composables/useTimezone'
 import { useReconciliationJobProgress } from '@/composables/useReconciliationJobProgress'
+import { getFriendlyErrorMessage } from '@/utils/errorHandler'
 
 const timezone = useTimezone()
 
@@ -977,7 +978,7 @@ const handleReconcile = async (reconcileData) => {
     toast.add({
       severity: 'error',
       summary: 'Reconciliation Failed',
-      detail: error.message || 'Failed to start reconciliation',
+      detail: getFriendlyErrorMessage(error, 'Failed to start reconciliation'),
       life: 5000
     })
     showReconcileDialog.value = false

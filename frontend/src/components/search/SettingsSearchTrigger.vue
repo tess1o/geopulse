@@ -107,7 +107,7 @@ const props = defineProps({
 const emit = defineEmits(['navigate'])
 
 const authStore = useAuthStore()
-const { isAdmin } = storeToRefs(authStore)
+const { canViewAdmin } = storeToRefs(authStore)
 
 const searchQuery = ref('')
 const filteredResults = ref([])
@@ -118,7 +118,7 @@ const searchPopoverRef = ref(null)
 const isInline = computed(() => props.triggerMode === 'inline')
 
 const scopedSettingItems = computed(() => {
-  return buildSettingsIndexForPage(props.pageKey, isAdmin.value).map((item) => ({
+  return buildSettingsIndexForPage(props.pageKey, canViewAdmin.value).map((item) => ({
     id: item.id,
     displayName: item.title,
     metaLine: item.subtitle,

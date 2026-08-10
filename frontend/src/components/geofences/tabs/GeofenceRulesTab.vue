@@ -2,6 +2,9 @@
   <div class="tab-panel">
     <BaseCard class="panel-card">
       <h3>{{ editingRuleId ? 'Edit Rule' : 'Create Rule' }}</h3>
+      <p v-if="readOnly" class="demo-disabled-text">
+        Demo mode: geofence rules are read-only. Create, update, draw, and delete actions are disabled.
+      </p>
       <div class="form-layout">
         <section :class="['form-section', 'form-section--area', { 'form-section--needs-area': !selectedAreaSummary }]">
           <div class="section-header">
@@ -13,6 +16,7 @@
               <InputText
                 v-model="ruleForm.name"
                 placeholder="Home area"
+                :disabled="readOnly"
                 :class="{ 'p-invalid': !!ruleFormErrors.name }"
               />
               <small v-if="ruleFormErrors.name" class="error-text">{{ ruleFormErrors.name }}</small>
@@ -29,6 +33,7 @@
                 display="chip"
                 :maxSelectedLabels="3"
                 placeholder="Select subjects"
+                :disabled="readOnly"
                 :class="['subjects-select', { 'p-invalid': !!ruleFormErrors.subjectUserIds }]"
               >
                 <template #option="slotProps">
@@ -48,6 +53,7 @@
                 :options="statusOptions"
                 optionLabel="label"
                 optionValue="value"
+                :disabled="readOnly"
               />
             </div>
           </div>
@@ -64,7 +70,9 @@
               icon="pi pi-pencil"
               :severity="selectedAreaSummary ? 'secondary' : 'primary'"
               :outlined="!!selectedAreaSummary"
+              :disabled="readOnly"
               :class="['draw-rectangle-button', { 'draw-rectangle-button--required': !selectedAreaSummary }]"
+              v-tooltip.bottom="readOnly ? 'Drawing geofence areas is disabled in demo mode' : 'Draw geofence rectangle'"
               @click="$emit('start-rectangle-draw')"
             />
           </div>
@@ -97,7 +105,7 @@
                   <i class="pi pi-sign-in rule-toggle-chip-icon" />
                   Enter
                 </span>
-                <InputSwitch v-model="ruleForm.monitorEnter" />
+                <InputSwitch v-model="ruleForm.monitorEnter" :disabled="readOnly" />
               </div>
               <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorEnter }]">
                 enters the area, send:
@@ -108,6 +116,7 @@
                 optionLabel="label"
                 optionValue="value"
                 :placeholder="hasEnabledDefaultEnterTemplate ? `Default: ${enabledDefaultEnterTemplate?.name}` : 'Built-in message'"
+                :disabled="readOnly"
                 :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorEnter }]"
               />
               <i
@@ -122,7 +131,7 @@
                   <i class="pi pi-sign-out rule-toggle-chip-icon" />
                   Leave
                 </span>
-                <InputSwitch v-model="ruleForm.monitorLeave" />
+                <InputSwitch v-model="ruleForm.monitorLeave" :disabled="readOnly" />
               </div>
               <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorLeave }]">
                 leaves the area, send:
@@ -133,6 +142,7 @@
                 optionLabel="label"
                 optionValue="value"
                 :placeholder="hasEnabledDefaultLeaveTemplate ? `Default: ${enabledDefaultLeaveTemplate?.name}` : 'Built-in message'"
+                :disabled="readOnly"
                 :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorLeave }]"
               />
               <i
@@ -143,7 +153,7 @@
 
             <div class="rule-sentence-cooldown">
               <span>Wait at least</span>
-              <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" class="rule-sentence-cooldown-input" />
+              <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" :disabled="readOnly" class="rule-sentence-cooldown-input" />
               <span>seconds between notifications.</span>
               <i
                 class="pi pi-info-circle help-icon"
@@ -163,6 +173,8 @@
           icon="pi pi-save"
           @click="$emit('save-rule')"
           :loading="savingRule"
+          :disabled="readOnly || savingRule"
+          v-tooltip.bottom="readOnly ? 'Creating and updating geofence rules is disabled in demo mode' : 'Save geofence rule'"
         />
         <Button
           v-if="editingRuleId"
@@ -212,8 +224,21 @@
         <Column header="Actions">
           <template #body="slotProps">
             <div class="row-actions">
-              <Button icon="pi pi-pencil" text @click="$emit('edit-rule', slotProps.data)" />
-              <Button icon="pi pi-trash" text severity="danger" @click="$emit('delete-rule', slotProps.data)" />
+              <Button
+                icon="pi pi-pencil"
+                text
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Editing geofence rules is disabled in demo mode' : 'Edit rule'"
+                @click="$emit('edit-rule', slotProps.data)"
+              />
+              <Button
+                icon="pi pi-trash"
+                text
+                severity="danger"
+                :disabled="readOnly"
+                v-tooltip.bottom="readOnly ? 'Deleting geofence rules is disabled in demo mode' : 'Delete rule'"
+                @click="$emit('delete-rule', slotProps.data)"
+              />
             </div>
           </template>
         </Column>
@@ -303,6 +328,10 @@ defineProps({
   eventSummary: {
     type: Function,
     required: true
+  },
+  readOnly: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -343,6 +372,10 @@ function remainingSubjectsCount(rule) {
 
 .panel-card {
   padding: 1rem;
+}
+
+.demo-disabled-text {
+  margin: -0.25rem 0 1rem 0;
 }
 
 .form-layout {

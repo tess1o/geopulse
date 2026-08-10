@@ -129,6 +129,10 @@ const sidebars = {
         {
             type: 'category',
             label: 'Install & Upgrade',
+            link: {
+                type: 'doc',
+                id: 'getting-started/deployment/overview',
+            },
             items: [
                 {
                     type: 'doc',

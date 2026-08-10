@@ -47,6 +47,7 @@
               outlined
               @click="loadBuiltInDefault"
               :loading="loadingBuiltInDefault"
+              :disabled="adminReadOnly"
               v-tooltip.left="'Reset to the built-in default system message'"
             />
             <Button
@@ -55,7 +56,7 @@
               size="small"
               @click="saveAISystemMessage"
               :loading="savingAIMessage"
-              :disabled="!aiSystemMessageChanged"
+              :disabled="adminReadOnly || !aiSystemMessageChanged"
             />
           </div>
         </div>
@@ -66,6 +67,7 @@
           class="ai-system-message-input"
           placeholder="Loading system message..."
           @input="aiSystemMessageChanged = true"
+          :disabled="adminReadOnly"
         />
         <small class="text-muted">
           This global default will be used for all users. Users can override this in their profile settings. Leave empty and save to use the built-in default.
@@ -82,13 +84,18 @@ import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
+import { storeToRefs } from 'pinia'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
+import { useAuthStore } from '@/stores/auth'
 import apiService from '@/utils/apiService'
+import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const toast = useToast()
+const authStore = useAuthStore()
+const { adminReadOnly } = storeToRefs(authStore)
 
 const aiSettings = ref([])
 const aiSystemMessage = ref('')
@@ -139,6 +146,11 @@ const loadBuiltInDefault = async () => {
 }
 
 const saveAISystemMessage = async () => {
+  if (adminReadOnly.value) {
+    showDemoReadOnlyToast(toast)
+    return
+  }
+
   savingAIMessage.value = true
   try {
     const value = aiSystemMessage.value?.trim() || ''

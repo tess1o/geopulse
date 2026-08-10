@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.OidcProviderConfigurationService;
+import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcDiscoveryDocument;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
@@ -34,7 +35,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/admin/oidc/providers")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("ADMIN")
 @Slf4j
 @Tag(name = "Admin: OIDC Providers", description = "Manage OpenID Connect provider configuration.")
 public class AdminOidcProviderResource {
@@ -55,6 +55,7 @@ public class AdminOidcProviderResource {
      * Get all OIDC providers (from DB and environment).
      */
     @GET
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getAllProviders() {
         List<OidcProviderConfiguration> providers = configurationService.loadAllProviders();
 
@@ -70,6 +71,7 @@ public class AdminOidcProviderResource {
      */
     @GET
     @Path("/{name}")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response getProvider(@PathParam("name") String name) {
         return configurationService.getProviderByName(name)
                 .map(this::mapToResponse)
@@ -83,6 +85,7 @@ public class AdminOidcProviderResource {
      * Create a new OIDC provider.
      */
     @POST
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response createProvider(
             @Valid CreateOidcProviderRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -146,6 +149,7 @@ public class AdminOidcProviderResource {
      */
     @PUT
     @Path("/{name}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response updateProvider(
             @PathParam("name") String name,
             @Valid UpdateOidcProviderRequest request,
@@ -224,6 +228,7 @@ public class AdminOidcProviderResource {
      */
     @DELETE
     @Path("/{name}")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response deleteProvider(
             @PathParam("name") String name,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -294,6 +299,7 @@ public class AdminOidcProviderResource {
      */
     @POST
     @Path("/{name}/reset")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response resetProvider(
             @PathParam("name") String name,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -342,6 +348,7 @@ public class AdminOidcProviderResource {
      */
     @POST
     @Path("/{name}/test")
+    @RolesAllowed(SecurityRoles.ADMIN)
     public Response testProvider(@PathParam("name") String name) {
         try {
             // Get provider configuration
