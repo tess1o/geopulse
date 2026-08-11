@@ -191,8 +191,21 @@ const handlePointerMove = (event) => {
   sheetHeight.value = nextHeight
 }
 
+const stopDragging = () => {
+  isDragging.value = false
+  window.removeEventListener('pointermove', handlePointerMove)
+  window.removeEventListener('pointerup', handlePointerUp)
+  window.removeEventListener('pointercancel', handlePointerUp)
+}
+
 const handlePointerUp = () => {
   if (!isDragging.value) return
+
+  if (!didDrag.value && sheetState.value === 'collapsed') {
+    stopDragging()
+    setSheetState('half')
+    return
+  }
 
   const heights = getSheetHeights()
   const currentHeight = sheetHeight.value || heights.collapsed
@@ -207,11 +220,8 @@ const handlePointerUp = () => {
       : best
   ))
 
-  isDragging.value = false
+  stopDragging()
   setSheetState(nearestState)
-  window.removeEventListener('pointermove', handlePointerMove)
-  window.removeEventListener('pointerup', handlePointerUp)
-  window.removeEventListener('pointercancel', handlePointerUp)
 }
 
 const handlePointerDown = (event) => {

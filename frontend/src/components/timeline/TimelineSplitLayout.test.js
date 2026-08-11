@@ -118,4 +118,33 @@ describe('TimelineSplitLayout', () => {
 
     wrapper.unmount()
   })
+
+  it('expands collapsed mobile sheet when tapping the handle', async () => {
+    setMatchMedia(true)
+    const wrapper = mount(TimelineSplitLayout, {
+      props: {
+        initialState: 'collapsed'
+      },
+      slots: {
+        map: '<div>Map</div>',
+        side: '<div>Timeline content</div>'
+      },
+      attachTo: document.body
+    })
+
+    const sidePane = wrapper.find('.timeline-split-side-pane')
+    expect(sidePane.classes()).toContain('timeline-sheet--compact')
+
+    wrapper.find('.timeline-sheet-handle').element.dispatchEvent(createPointerEvent('pointerdown', {
+      clientY: 760
+    }))
+    window.dispatchEvent(createPointerEvent('pointerup', { clientY: 760 }))
+    await nextTick()
+
+    expect(sidePane.classes()).toContain('timeline-sheet--half')
+    expect(sidePane.classes()).not.toContain('timeline-sheet--compact')
+    expect(wrapper.emitted('layout-resize')).toBeTruthy()
+
+    wrapper.unmount()
+  })
 })

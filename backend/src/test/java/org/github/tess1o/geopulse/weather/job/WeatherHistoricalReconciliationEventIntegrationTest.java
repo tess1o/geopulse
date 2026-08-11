@@ -88,7 +88,7 @@ class WeatherHistoricalReconciliationEventIntegrationTest {
 
     @Test
     void timelineChangeAfterCommitPersistsReconciliationRange() {
-        Instant affectedTo = Instant.now();
+        Instant affectedTo = Instant.parse("2026-08-10T18:59:58.633696Z");
         Instant affectedFrom = affectedTo.minus(Duration.ofMinutes(30));
 
         QuarkusTransaction.requiringNew().run(() -> timelineDataChangedEvent.fire(
