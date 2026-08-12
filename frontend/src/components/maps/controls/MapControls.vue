@@ -136,11 +136,11 @@
     <div v-if="showZoomControls" class="control-group">
       <button
         @click="handleZoomToData"
-        title="Zoom to Data"
+        :title="zoomControlTitle"
         class="control-button"
         :disabled="!map"
       >
-        <i class="pi pi-map-marker"></i>
+        <i :class="zoomControlIcon"></i>
       </button>
     </div>
   </div>
@@ -201,6 +201,14 @@ const props = defineProps({
   showZoomControls: {
     type: Boolean,
     default: true
+  },
+  zoomControlTitle: {
+    type: String,
+    default: 'Zoom to Data'
+  },
+  zoomControlIcon: {
+    type: String,
+    default: 'pi pi-arrows-alt'
   },
   immichConfigured: {
     type: Boolean,

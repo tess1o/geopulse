@@ -47,6 +47,8 @@
           :show-weather="showWeather"
           :show-weather-button="!props.isPublicView && weatherSamples.length > 0"
           :weather-loading="timelineStore.weatherLoading"
+          :zoom-control-title="zoomControlTitle"
+          :zoom-control-icon="zoomControlIcon"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
@@ -752,9 +754,30 @@ const applyTimelineDataViewport = (bounds, options = {}) => {
   })
 }
 
+const hasValidCurrentLocation = computed(() => {
+  const latitude = Number(props.currentLocation?.latitude)
+  const longitude = Number(props.currentLocation?.longitude)
+
+  return Number.isFinite(latitude) && Number.isFinite(longitude)
+})
+
+const canZoomToCurrentLocation = computed(() => (
+  props.showCurrentLocation && hasValidCurrentLocation.value
+))
+
+const zoomControlTitle = computed(() => (
+  canZoomToCurrentLocation.value ? 'Zoom to Current Location' : 'Zoom to Data'
+))
+
+const zoomControlIcon = computed(() => (
+  canZoomToCurrentLocation.value ? 'pi pi-map-marker' : 'pi pi-arrows-alt'
+))
+
 // Controls configuration
 const controlsProps = computed(() => ({
-  showZoomControls: true
+  showZoomControls: true,
+  zoomControlTitle: zoomControlTitle.value,
+  zoomControlIcon: zoomControlIcon.value
 }))
 
 // Immich computed properties
@@ -1284,7 +1307,18 @@ const navigateToFavoriteDetails = (favorite) => {
 }
 
 const handleZoomToData = () => {
-  if (map.value && dataBounds.value) {
+  if (!map.value) {
+    return
+  }
+
+  if (canZoomToCurrentLocation.value) {
+    const latitude = Number(props.currentLocation.latitude)
+    const longitude = Number(props.currentLocation.longitude)
+    mapContainerRef.value?.setView?.([latitude, longitude], 15, { animate: true })
+    return
+  }
+
+  if (dataBounds.value) {
     applyTimelineDataViewport(dataBounds.value)
   }
 }

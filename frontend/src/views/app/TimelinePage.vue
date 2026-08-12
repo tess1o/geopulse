@@ -51,7 +51,7 @@
               :weather-samples="weatherSamples"
               :favoritePlaces="favoritePlaces"
               :currentLocation="currentLocation"
-              :showCurrentLocation="isToday"
+              :showCurrentLocation="timeframeIncludesToday"
               :custom-tile-url="customMapTileUrl"
               :custom-style-url="customMapStyleUrl"
               :map-render-mode="mapRenderMode"
@@ -496,7 +496,7 @@ const fetchWeatherData = async (startDate, endDate) => {
 const refreshCurrentLocation = async () => {
   const requestToken = ++currentLocationRequestToken
 
-  if (!isToday.value) {
+  if (!timeframeIncludesToday.value) {
     currentLocation.value = null
     return
   }
@@ -504,7 +504,7 @@ const refreshCurrentLocation = async () => {
   try {
     const latestPoint = await locationStore.getLastKnownPosition()
 
-    if (requestToken !== currentLocationRequestToken || !isToday.value) {
+    if (requestToken !== currentLocationRequestToken || !timeframeIncludesToday.value) {
       return
     }
 
@@ -842,7 +842,7 @@ const matchingTripWorkspace = computed(() => {
   }) || null
 })
 
-const isToday = computed(() => {
+const timeframeIncludesToday = computed(() => {
   if (!dateRange.value || !Array.isArray(dateRange.value) || dateRange.value.length !== 2) {
     return false
   }
@@ -850,12 +850,13 @@ const isToday = computed(() => {
   const [startDate, endDate] = dateRange.value
   if (!startDate || !endDate) return false
   
-  const today = timezone.now().startOf('day');
+  const todayStart = timezone.now().startOf('day')
+  const todayEnd = timezone.now().endOf('day')
   
-  const start = timezone.fromUtc(startDate).startOf('day');
-  const end = timezone.fromUtc(endDate).startOf('day');
+  const start = timezone.fromUtc(startDate)
+  const end = timezone.fromUtc(endDate)
   
-  return start.isSame(today) && end.isSame(today);
+  return start.isSameOrBefore(todayEnd) && end.isSameOrAfter(todayStart)
 })
 
 const telemetryPathPoints = computed(() => {
@@ -1048,8 +1049,8 @@ watch(
   { immediate: true }
 )
 
-// Watch for today's date and get current location
-watch(isToday, () => {
+// Watch for date ranges that include today and get current location
+watch(timeframeIncludesToday, () => {
   refreshCurrentLocation()
 }, { immediate: true })
 
