@@ -91,8 +91,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Compile integration test classes
-        run: ./mvnw -pl backend -DskipITs=false test-compile
+      - name: Package backend for integration tests
+        run: ./mvnw -pl backend -DskipTests -DskipITs package
         env:
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/geopulse_test
           QUARKUS_DATASOURCE_USERNAME: geopulse_test
