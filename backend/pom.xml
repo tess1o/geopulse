@@ -37,6 +37,7 @@
         <jbcrypt.version>0.4</jbcrypt.version>
         <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
+        <bouncycastle.version>1.85.2</bouncycastle.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -245,6 +246,11 @@
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
             <version>${org.eclipse.paho.client.mqttv3.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
         <!-- OIDC and OAuth2 Support -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -364,6 +370,7 @@
                     <excludedGroups>unit</excludedGroups>
                     <includes>
                         <include>**/*Test.java</include>
+                        <include>**/*IT.java</include>
                     </includes>
                     <skipITs>${skipITs}</skipITs>
                     <reuseForks>true</reuseForks>

@@ -34,6 +34,13 @@ public class GpsSourceConfigEntity {
     private String token;         // For Overland
     @Column(name = "device_id")
     private String deviceId;      // Optional Traccar device uniqueId filter
+
+    @Column(name = "payload_encryption_secret_encrypted", columnDefinition = "TEXT")
+    private String payloadEncryptionSecretEncrypted;
+
+    @Column(name = "payload_encryption_secret_key_id", length = 50)
+    private String payloadEncryptionSecretKeyId;
+
     private boolean active;
 
     @Enumerated(EnumType.STRING)

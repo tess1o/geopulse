@@ -123,6 +123,34 @@
             />
             <small v-if="formErrors.password" class="error-message">{{ formErrors.password }}</small>
           </div>
+
+          <div v-if="formData.type === 'OWNTRACKS'" class="form-field">
+            <label for="location-source-payload-encryption-secret" class="form-label">Payload Encryption Secret</label>
+            <Password
+              id="location-source-payload-encryption-secret"
+              v-model="formData.payloadEncryptionSecret"
+              :placeholder="isEditMode ? 'Enter new secret (leave empty to keep current)' : 'Optional OwnTracks encryptionKey'"
+              :feedback="false"
+              toggleMask
+              :invalid="!!formErrors.payloadEncryptionSecret"
+            />
+            <small v-if="formErrors.payloadEncryptionSecret" class="error-message">{{ formErrors.payloadEncryptionSecret }}</small>
+            <small v-else class="text-muted">Optional. Must match OwnTracks encryptionKey and be 32 UTF-8 bytes or fewer.</small>
+          </div>
+
+          <div
+            v-if="isEditMode && formData.type === 'OWNTRACKS' && editingSource?.hasPayloadEncryptionSecret"
+            class="form-field clear-secret-field"
+          >
+            <Checkbox
+              v-model="formData.clearPayloadEncryptionSecret"
+              inputId="location-source-clear-payload-secret"
+              binary
+            />
+            <label for="location-source-clear-payload-secret" class="form-label clear-secret-label">
+              Clear payload encryption secret
+            </label>
+          </div>
         </div>
 
         <div v-else-if="formData.type === 'OVERLAND'" class="form-section">
@@ -256,6 +284,8 @@ const formData = ref({
   password: '',
   token: '',
   deviceId: '',
+  payloadEncryptionSecret: '',
+  clearPayloadEncryptionSecret: false,
   connectionType: 'HTTP',
   filterInaccurateData: null,
   maxAllowedAccuracy: null,
@@ -297,6 +327,8 @@ const resetDialogForm = () => {
     password: '',
     token: '',
     deviceId: '',
+    payloadEncryptionSecret: '',
+    clearPayloadEncryptionSecret: false,
     connectionType: 'HTTP',
     filterInaccurateData: defaults.filterInaccurateData,
     maxAllowedAccuracy: defaults.maxAllowedAccuracy,
@@ -335,6 +367,8 @@ const openEdit = (source) => {
     password: '',
     token: source.token || '',
     deviceId: source.deviceId || '',
+    payloadEncryptionSecret: '',
+    clearPayloadEncryptionSecret: false,
     connectionType: source.connectionType || 'HTTP',
     filterInaccurateData: source.filterInaccurateData ?? false,
     maxAllowedAccuracy: source.maxAllowedAccuracy ?? null,
@@ -387,11 +421,16 @@ const clearErrorIfFieldNowValid = (field) => {
   if (field === 'token' && !isBlank(formData.value.token)) {
     delete formErrors.value.token
   }
+
+  if (field === 'payloadEncryptionSecret' && !isPayloadEncryptionSecretTooLong()) {
+    delete formErrors.value.payloadEncryptionSecret
+  }
 }
 
 watch(() => formData.value.username, () => clearErrorIfFieldNowValid('username'))
 watch(() => formData.value.password, () => clearErrorIfFieldNowValid('password'))
 watch(() => formData.value.token, () => clearErrorIfFieldNowValid('token'))
+watch(() => formData.value.payloadEncryptionSecret, () => clearErrorIfFieldNowValid('payloadEncryptionSecret'))
 
 watch(() => formData.value.type, () => {
   // Switching source type changes required fields; clear stale errors.
@@ -407,6 +446,9 @@ const validateForm = () => {
     }
     if (!isEditMode.value && isBlank(formData.value.password)) {
       formErrors.value.password = 'Password is required'
+    }
+    if (formData.value.type === 'OWNTRACKS' && isPayloadEncryptionSecretTooLong()) {
+      formErrors.value.payloadEncryptionSecret = 'Secret must be 32 UTF-8 bytes or fewer'
     }
   } else if (formData.value.type === 'OVERLAND') {
     if (isBlank(formData.value.token)) {
@@ -427,6 +469,11 @@ const validateForm = () => {
   }
 
   return Object.keys(formErrors.value).length === 0
+}
+
+const isPayloadEncryptionSecretTooLong = () => {
+  if (isBlank(formData.value.payloadEncryptionSecret)) return false
+  return new TextEncoder().encode(formData.value.payloadEncryptionSecret).length > 32
 }
 
 const submit = () => {
@@ -618,9 +665,19 @@ defineExpose({
   gap: 0.5rem;
 }
 
+.clear-secret-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .form-label {
   font-weight: 600;
   color: var(--gp-text-primary);
+}
+
+.clear-secret-label {
+  margin: 0;
 }
 
 .connection-type-selection {

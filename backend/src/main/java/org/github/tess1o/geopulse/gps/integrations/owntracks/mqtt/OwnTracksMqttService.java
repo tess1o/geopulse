@@ -12,6 +12,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPayloadDecryptionService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
@@ -57,6 +58,9 @@ public class OwnTracksMqttService {
 
     @Inject
     OwnTracksTagService ownTracksTagService;
+
+    @Inject
+    OwnTracksPayloadDecryptionService payloadDecryptionService;
 
     private MqttClient mqttClient;
     private MqttConnectOptions connectOptions;
@@ -192,7 +196,7 @@ public class OwnTracksMqttService {
                 } catch (Exception e) {
                     // Log the error but don't let it propagate to MQTT client
                     // This ensures subsequent messages are still processed
-                    log.error("Error processing MQTT message from topic: {} - {}", topic, new String(message.getPayload()), e);
+                    log.error("Error processing MQTT message from topic: {}", topic, e);
                 }
             }
 
@@ -279,7 +283,7 @@ public class OwnTracksMqttService {
      */
     private void handleMqttMessage(String topic, String payload) {
         try {
-            log.info("Received MQTT message on topic: {} - {}", topic, payload);
+            log.info("Received OwnTracks MQTT message on topic: {}", topic);
 
             // Parse topic: owntracks/{username}/{deviceId}
             String[] topicParts = topic.split("/");
@@ -291,15 +295,6 @@ public class OwnTracksMqttService {
             String username = topicParts[1];
             String deviceId = topicParts[2];
 
-            // Parse message payload
-            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, Map.class);
-
-            // Skip non-location messages
-            if (!"location".equals(messageData.get("_type"))) {
-                log.error("Skipping non-location message: {}", messageData.get("_type"));
-                return;
-            }
-
             // Authenticate user
             Optional<GpsAuthenticationResult> userIdOpt = authRegistry.authenticateByUsername(username, GpsSourceType.OWNTRACKS);
             if (userIdOpt.isEmpty()) {
@@ -308,6 +303,20 @@ public class OwnTracksMqttService {
             }
 
             GpsAuthenticationResult authenticationResult = userIdOpt.get();
+            Map<String, Object> messageData = OBJECT_MAPPER.readValue(payload, Map.class);
+            Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(messageData, authenticationResult.getConfig());
+            if (resolvedPayload.isEmpty()) {
+                return;
+            }
+
+            messageData = resolvedPayload.get();
+
+            // Skip non-location messages
+            if (!"location".equals(messageData.get("_type"))) {
+                log.error("Skipping non-location message: {}", messageData.get("_type"));
+                return;
+            }
+
             OwnTracksLocationMessage locationMessage = OBJECT_MAPPER.convertValue(messageData, OwnTracksLocationMessage.class);
 
             if (timestampOverride) {
@@ -340,7 +349,7 @@ public class OwnTracksMqttService {
             log.info("Successfully processed MQTT location message for user: {}, device: {}", username, deviceId);
 
         } catch (Exception e) {
-            log.error("Error processing MQTT message from topic: {} - {}", topic, payload, e);
+            log.error("Error processing MQTT message from topic: {}", topic, e);
         }
     }
 

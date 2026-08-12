@@ -12,6 +12,8 @@ public class UpdateGpsSourceConfigDto {
     private String password;
     private String token;
     private String deviceId;
+    private String payloadEncryptionSecret;
+    private boolean clearPayloadEncryptionSecret;
     private String userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
     private boolean filterInaccurateData;

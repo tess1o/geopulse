@@ -45,6 +45,14 @@
                   <div class="step-value">Use your configured password</div>
                 </div>
               </div>
+
+              <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                  <div class="step-title">Payload Encryption</div>
+                  <div class="step-value">Optional: set OwnTracks <code>encryptionKey</code> to the payload encryption secret configured on this source.</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -116,6 +124,14 @@
                     TLS: <strong>{{ mqttTlsEnabled ? 'Enabled' : 'Disabled' }}</strong><br>
                     <small class="text-muted">{{ mqttTlsHint }}</small>
                   </div>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                  <div class="step-title">Payload Encryption</div>
+                  <div class="step-value">Optional: set OwnTracks <code>encryptionKey</code> to the payload encryption secret configured on this source.</div>
                 </div>
               </div>
             </div>

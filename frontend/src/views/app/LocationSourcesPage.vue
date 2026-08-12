@@ -324,7 +324,8 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
           formData.maxAllowedSpeed,
           formData.enableDuplicateDetection,
           formData.duplicateDetectionThresholdMinutes,
-          null
+          null,
+          formData.type === 'OWNTRACKS' ? formData.payloadEncryptionSecret : null
         )
       } else {
         // Token-only sources (Overland, Traccar, Dawarich, Home Assistant).

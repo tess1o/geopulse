@@ -31,7 +31,7 @@ public class UserInvitationService {
     @Inject
     AuditLogService auditLogService;
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private final SecureRandom secureRandom = new SecureRandom();
     private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final int TOKEN_BYTES = 48; // 48 bytes = 64 characters in base64
 
@@ -40,7 +40,7 @@ public class UserInvitationService {
      */
     private String generateSecureToken() {
         byte[] randomBytes = new byte[TOKEN_BYTES];
-        SECURE_RANDOM.nextBytes(randomBytes);
+        secureRandom.nextBytes(randomBytes);
         return BASE64_ENCODER.encodeToString(randomBytes);
     }
 

@@ -16,6 +16,7 @@ public class CreateGpsSourceConfigDto {
     private String password;
     private String token;
     private String deviceId;
+    private String payloadEncryptionSecret;
     private UUID userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
     // Use Boolean wrapper to allow null from frontend, will be converted to false in mapper if null

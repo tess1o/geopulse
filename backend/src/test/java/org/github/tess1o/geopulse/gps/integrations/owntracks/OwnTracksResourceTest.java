@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.gps.integrations.owntracks;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPayloadDecryptionService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
@@ -44,6 +45,9 @@ class OwnTracksResourceTest {
     @Mock
     private OwnTracksTagService ownTracksTagService;
 
+    @Mock
+    private OwnTracksPayloadDecryptionService payloadDecryptionService;
+
     private OwnTracksResource resource;
 
     @BeforeEach
@@ -52,7 +56,8 @@ class OwnTracksResourceTest {
                 gpsPointService,
                 authRegistry,
                 ownTracksPoiService,
-                ownTracksTagService
+                ownTracksTagService,
+                payloadDecryptionService
         );
     }
 
@@ -79,12 +84,37 @@ class OwnTracksResourceTest {
                 "lon", 23.3,
                 "tst", 1715770000L
         );
+        when(payloadDecryptionService.decryptIfNeeded(payload, config)).thenReturn(Optional.of(payload));
 
         Response response = resource.handleOwnTracks(payload, "Basic token", "device-a");
 
         assertEquals(200, response.getStatus());
         assertEquals("[]", response.getEntity());
         verify(gpsPointService).saveOwnTracksGpsPoint(any(), eq(userId), eq("device-a"), eq(GpsSourceType.OWNTRACKS), eq(config));
+    }
+
+    @Test
+    void encryptedPayloadUsesDecryptedTopicAsFallbackDevice() {
+        UUID userId = UUID.randomUUID();
+        GpsSourceConfigEntity config = new GpsSourceConfigEntity();
+        Map<String, Object> encryptedPayload = Map.of("_type", "encrypted", "data", "ciphertext");
+        Map<String, Object> decryptedPayload = Map.of(
+                "_type", "location",
+                "lat", 42.7,
+                "lon", 23.3,
+                "tst", 1715770000L,
+                "topic", "owntracks/user-a/device-from-topic"
+        );
+
+        when(payloadDecryptionService.isEncryptedPayload(encryptedPayload)).thenReturn(true);
+        when(authRegistry.authenticate(eq(GpsSourceType.OWNTRACKS), anyString()))
+                .thenReturn(Optional.of(new GpsAuthenticationResult(userId, config)));
+        when(payloadDecryptionService.decryptIfNeeded(encryptedPayload, config)).thenReturn(Optional.of(decryptedPayload));
+
+        Response response = resource.handleOwnTracks(encryptedPayload, "Basic token", null);
+
+        assertEquals(200, response.getStatus());
+        verify(gpsPointService).saveOwnTracksGpsPoint(any(), eq(userId), eq("device-from-topic"), eq(GpsSourceType.OWNTRACKS), eq(config));
     }
 
     @Test

@@ -21,7 +21,8 @@ First, create a new location source in GeoPulse to receive data from your device
     *   **HTTP:** A simple and direct web request from your phone to GeoPulse. Recommended for most users.
     *   **MQTT:** A more complex but potentially more real-time method that requires a separate MQTT broker. See [Deployment Guide](/docs/getting-started/deployment/docker-compose) how to install GeoPulse with MQTT broker
 4.  Enter a unique **Username** and a strong **Password**. You will need these credentials for the OwnTracks app.
-5.  Click **Save** to create the new location source.
+5.  Optional: enter a **Payload Encryption Secret** if you want GeoPulse to decrypt OwnTracks encrypted payloads. This must match OwnTracks' `encryptionKey` and be 32 UTF-8 bytes or fewer.
+6.  Click **Save** to create the new location source.
 
 ---
 
@@ -41,6 +42,7 @@ This is the simplest method to get started.
     ```
 4.  Enable **Authentication**.
 5.  Enter the **Username** and **Password** you created in GeoPulse.
+6.  Optional: if you configured a payload encryption secret in GeoPulse, set OwnTracks `encryptionKey` to the same value.
 
 ### MQTT Configuration
 
@@ -55,5 +57,8 @@ This method requires that you have the GeoPulse MQTT broker enabled and accessib
     *   **TLS:** For the built-in GeoPulse broker, keep TLS/SSL **disabled** (default setup is plain MQTT on port `1883`).
       If you use an **external TLS-enabled broker**, configure backend TLS variables and certificates as documented in
       [External MQTT Broker TLS (OwnTracks)](/docs/system-administration/configuration/owntracks-mqtt-external-tls).
+    *   **Payload Encryption:** Optional. If you configured a payload encryption secret in GeoPulse, set OwnTracks `encryptionKey` to the same value.
+
+Payload encryption secrets are stored encrypted in GeoPulse and are not included in GeoPulse exports.
 
 Once saved, the OwnTracks app will begin sending location updates to your GeoPulse account, which will be automatically processed to build your timeline.

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPayloadDecryptionService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
@@ -38,15 +39,18 @@ public class OwnTracksResource {
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
     private final OwnTracksPoiService ownTracksPoiService;
     private final OwnTracksTagService ownTracksTagService;
+    private final OwnTracksPayloadDecryptionService payloadDecryptionService;
 
     public OwnTracksResource(GpsPointService gpsPointService,
                            GpsIntegrationAuthenticatorRegistry authRegistry,
                            OwnTracksPoiService ownTracksPoiService,
-                           OwnTracksTagService ownTracksTagService) {
+                           OwnTracksTagService ownTracksTagService,
+                           OwnTracksPayloadDecryptionService payloadDecryptionService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
         this.ownTracksPoiService = ownTracksPoiService;
         this.ownTracksTagService = ownTracksTagService;
+        this.payloadDecryptionService = payloadDecryptionService;
     }
 
     @POST
@@ -55,9 +59,9 @@ public class OwnTracksResource {
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {
-        log.info("Received payload: {}, device: {}", payload, deviceId);
+        log.info("Received OwnTracks HTTP payload type: {}, device: {}", payload.get("_type"), deviceId);
 
-        if (!"location".equals(payload.get("_type"))) {
+        if (!"location".equals(payload.get("_type")) && !payloadDecryptionService.isEncryptedPayload(payload)) {
             return Response.ok(EMPTY_JSON_ARRAY).build();
         }
 
@@ -68,7 +72,18 @@ public class OwnTracksResource {
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(payload, OwnTracksLocationMessage.class);
+        Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(payload, config);
+        if (resolvedPayload.isEmpty()) {
+            return Response.ok(EMPTY_JSON_ARRAY).build();
+        }
+
+        Map<String, Object> locationPayload = resolvedPayload.get();
+        if (!"location".equals(locationPayload.get("_type"))) {
+            return Response.ok(EMPTY_JSON_ARRAY).build();
+        }
+
+        OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(locationPayload, OwnTracksLocationMessage.class);
+        String resolvedDeviceId = resolveDeviceId(deviceId, ownTracksLocationMessage.getTopic());
 
         if (timestampOverride) {
             if ("p".equals(ownTracksLocationMessage.getT())) {
@@ -94,8 +109,23 @@ public class OwnTracksResource {
             // Continue processing GPS point even if tag handling fails
         }
 
-        gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS, config);
+        gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
         return Response.ok(EMPTY_JSON_ARRAY).build();
+    }
+
+    private String resolveDeviceId(String headerDeviceId, String payloadTopic) {
+        if (headerDeviceId != null && !headerDeviceId.isBlank()) {
+            return headerDeviceId;
+        }
+        if (payloadTopic == null || payloadTopic.isBlank()) {
+            return headerDeviceId;
+        }
+
+        String[] topicParts = payloadTopic.split("/");
+        if (topicParts.length == 3 && "owntracks".equals(topicParts[0])) {
+            return topicParts[2];
+        }
+        return headerDeviceId;
     }
 
 }

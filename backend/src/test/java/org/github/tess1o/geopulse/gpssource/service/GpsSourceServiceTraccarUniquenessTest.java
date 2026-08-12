@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gpssource.service;
 
 import jakarta.persistence.EntityManager;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.gpssource.mapper.GpsSourceConfigMapper;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigDTO;
@@ -23,6 +24,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,11 +49,14 @@ class GpsSourceServiceTraccarUniquenessTest {
     @Mock
     private EntityManager em;
 
+    @Mock
+    private AIEncryptionService encryptionService;
+
     private GpsSourceService service;
 
     @BeforeEach
     void setUp() {
-        service = new GpsSourceService(gpsSourceRepository, gpsSourceMapper, passwordUtils, em);
+        service = new GpsSourceService(gpsSourceRepository, gpsSourceMapper, passwordUtils, em, encryptionService);
     }
 
     @Test
@@ -63,6 +68,7 @@ class GpsSourceServiceTraccarUniquenessTest {
                 null,
                 "shared-token",
                 "  Phone-A  ",
+                null,
                 userId,
                 GpsSourceConfigEntity.ConnectionType.HTTP,
                 false,
@@ -101,6 +107,7 @@ class GpsSourceServiceTraccarUniquenessTest {
                 null,
                 "shared-token",
                 "Phone-A",
+                null,
                 userId,
                 GpsSourceConfigEntity.ConnectionType.HTTP,
                 false,
@@ -128,6 +135,7 @@ class GpsSourceServiceTraccarUniquenessTest {
                 null,
                 "shared-token",
                 "   ",
+                null,
                 userId,
                 GpsSourceConfigEntity.ConnectionType.HTTP,
                 false,
@@ -165,6 +173,8 @@ class GpsSourceServiceTraccarUniquenessTest {
                 null,
                 null,
                 "Phone-B",
+                null,
+                false,
                 userId.toString(),
                 null,
                 false,
@@ -195,6 +205,8 @@ class GpsSourceServiceTraccarUniquenessTest {
                 null,
                 null,
                 "  PHONE-A ",
+                null,
+                false,
                 userId.toString(),
                 null,
                 false,
@@ -210,6 +222,74 @@ class GpsSourceServiceTraccarUniquenessTest {
         assertEquals("phone-a", current.getDeviceId());
     }
 
+    @Test
+    void updateOwnTracks_replacesPayloadEncryptionSecret() {
+        UUID userId = UUID.randomUUID();
+        UUID configId = UUID.randomUUID();
+        GpsSourceConfigEntity current = ownTracksConfig(configId, userId);
+        when(gpsSourceRepository.findByConfigIdAndUserId(configId, userId)).thenReturn(Optional.of(current));
+        when(encryptionService.encrypt("payload-secret")).thenReturn("encrypted-payload-secret");
+        when(encryptionService.getCurrentKeyId()).thenReturn("v1");
+
+        UpdateGpsSourceConfigDto dto = new UpdateGpsSourceConfigDto(
+                configId.toString(),
+                "OWNTRACKS",
+                "owntracks-user",
+                null,
+                null,
+                null,
+                "payload-secret",
+                false,
+                userId.toString(),
+                GpsSourceConfigEntity.ConnectionType.HTTP,
+                false,
+                null,
+                null,
+                false,
+                null
+        );
+
+        boolean updated = service.updateGpsConfigSource(dto, userId);
+
+        assertTrue(updated);
+        assertEquals("encrypted-payload-secret", current.getPayloadEncryptionSecretEncrypted());
+        assertEquals("v1", current.getPayloadEncryptionSecretKeyId());
+    }
+
+    @Test
+    void updateOwnTracks_clearsPayloadEncryptionSecret() {
+        UUID userId = UUID.randomUUID();
+        UUID configId = UUID.randomUUID();
+        GpsSourceConfigEntity current = ownTracksConfig(configId, userId);
+        current.setPayloadEncryptionSecretEncrypted("encrypted-payload-secret");
+        current.setPayloadEncryptionSecretKeyId("v1");
+        when(gpsSourceRepository.findByConfigIdAndUserId(configId, userId)).thenReturn(Optional.of(current));
+
+        UpdateGpsSourceConfigDto dto = new UpdateGpsSourceConfigDto(
+                configId.toString(),
+                "OWNTRACKS",
+                "owntracks-user",
+                null,
+                null,
+                null,
+                null,
+                true,
+                userId.toString(),
+                GpsSourceConfigEntity.ConnectionType.HTTP,
+                false,
+                null,
+                null,
+                false,
+                null
+        );
+
+        boolean updated = service.updateGpsConfigSource(dto, userId);
+
+        assertTrue(updated);
+        assertNull(current.getPayloadEncryptionSecretEncrypted());
+        assertNull(current.getPayloadEncryptionSecretKeyId());
+    }
+
     private GpsSourceConfigEntity traccarConfig(UUID configId, UUID userId, String token, String deviceId) {
         UserEntity user = new UserEntity();
         user.setId(userId);
@@ -220,6 +300,19 @@ class GpsSourceServiceTraccarUniquenessTest {
         config.setSourceType(GpsSourceType.TRACCAR);
         config.setToken(token);
         config.setDeviceId(deviceId);
+        config.setActive(true);
+        return config;
+    }
+
+    private GpsSourceConfigEntity ownTracksConfig(UUID configId, UUID userId) {
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+
+        GpsSourceConfigEntity config = new GpsSourceConfigEntity();
+        config.setId(configId);
+        config.setUser(user);
+        config.setSourceType(GpsSourceType.OWNTRACKS);
+        config.setUsername("owntracks-user");
         config.setActive(true);
         return config;
     }

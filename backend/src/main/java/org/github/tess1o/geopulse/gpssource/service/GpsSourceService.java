@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksEncryptionKeyUtil;
 import org.github.tess1o.geopulse.gpssource.mapper.GpsSourceConfigMapper;
 import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigDTO;
@@ -30,6 +32,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     private final GpsSourceConfigMapper gpsSourceMapper;
     private final SecurePasswordUtils passwordUtils;
     private final EntityManager em;
+    private final AIEncryptionService encryptionService;
 
     @Getter
     @ConfigProperty(name = "geopulse.gps.filter.inaccurate-data.enabled", defaultValue = "false")
@@ -55,11 +58,13 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
                             GpsSourceConfigMapper gpsSourceMapper,
                             SecurePasswordUtils passwordUtils,
-                            EntityManager em) {
+                            EntityManager em,
+                            AIEncryptionService encryptionService) {
         this.gpsSourceRepository = gpsSourceRepository;
         this.gpsSourceMapper = gpsSourceMapper;
         this.passwordUtils = passwordUtils;
         this.em = em;
+        this.encryptionService = encryptionService;
     }
 
 
@@ -72,6 +77,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     @Transactional
     public GpsSourceConfigDTO addGpsSourceConfig(CreateGpsSourceConfigDto newConfig) {
         normalizeTraccarConfig(newConfig);
+        validatePayloadEncryptionSecret(newConfig.getType(), newConfig.getPayloadEncryptionSecret());
         validateUniqueness(newConfig);
         UserEntity user = em.getReference(UserEntity.class, newConfig.getUserId());
         GpsSourceConfigEntity gpsSourceConfigEntity = gpsSourceMapper.toEntity(newConfig, user);
@@ -139,6 +145,17 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             // Only update password if a new one is provided
             if (config.getPassword() != null && !config.getPassword().isEmpty()) {
                 dbConfig.setPasswordHash(passwordUtils.hashPassword(config.getPassword()));
+            }
+        }
+        if (dbConfig.getSourceType() == GpsSourceType.OWNTRACKS) {
+            if (config.isClearPayloadEncryptionSecret()) {
+                dbConfig.setPayloadEncryptionSecretEncrypted(null);
+                dbConfig.setPayloadEncryptionSecretKeyId(null);
+            }
+            if (hasText(config.getPayloadEncryptionSecret())) {
+                validatePayloadEncryptionSecret(GpsSourceType.OWNTRACKS, config.getPayloadEncryptionSecret());
+                dbConfig.setPayloadEncryptionSecretEncrypted(encryptionService.encrypt(config.getPayloadEncryptionSecret()));
+                dbConfig.setPayloadEncryptionSecretKeyId(encryptionService.getCurrentKeyId());
             }
         }
         if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
@@ -265,6 +282,12 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private void validatePayloadEncryptionSecret(GpsSourceType sourceType, String secret) {
+        if (sourceType == GpsSourceType.OWNTRACKS && hasText(secret)) {
+            OwnTracksEncryptionKeyUtil.toSecretBoxKey(secret);
+        }
     }
 
 }

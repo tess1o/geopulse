@@ -24,6 +24,12 @@
                 :severity="source.connectionType === 'MQTT' ? 'info' : 'warn'"
                 class="connection-badge"
               />
+              <Badge
+                v-if="source.type === 'OWNTRACKS' && source.hasPayloadEncryptionSecret"
+                value="Encrypted"
+                severity="success"
+                class="connection-badge"
+              />
             </div>
           </div>
         </template>
