@@ -642,6 +642,9 @@
           "deviceId" : {
             "type" : "string"
           },
+          "payloadEncryptionSecret" : {
+            "type" : "string"
+          },
           "userId" : {
             "$ref" : "#/components/schemas/UUID"
           },
@@ -1130,6 +1133,14 @@
           },
           "includeConfiguration" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "DemoLoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "personaId" : {
+            "type" : "string"
           }
         }
       },
@@ -2303,6 +2314,12 @@
           "deviceId" : {
             "type" : "string"
           },
+          "payloadEncryptionSecret" : {
+            "type" : "string"
+          },
+          "clearPayloadEncryptionSecret" : {
+            "type" : "boolean"
+          },
           "userId" : {
             "type" : "string"
           },
@@ -2897,7 +2914,7 @@
           },
           "bicycleMaxMaxSpeed" : {
             "format" : "double",
-            "maximum" : 50.0,
+            "maximum" : 80.0,
             "minimum" : 20.0,
             "type" : "number"
           },
@@ -3516,7 +3533,7 @@
         },
         "summary" : "Get Dashboard Stats",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -3565,7 +3582,7 @@
         },
         "summary" : "Get Invitations",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       },
       "post" : {
@@ -3641,7 +3658,7 @@
         },
         "summary" : "Get Base Url",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -3713,7 +3730,7 @@
         },
         "summary" : "Get All Providers",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       },
       "post" : {
@@ -3854,7 +3871,7 @@
         },
         "summary" : "Get Provider",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       },
       "delete" : {
@@ -4004,7 +4021,7 @@
         },
         "summary" : "Get All Settings",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -4155,7 +4172,7 @@
         },
         "summary" : "Get Settings By Category",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -4284,7 +4301,7 @@
         },
         "summary" : "List Campaigns",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       },
       "post" : {
@@ -4394,7 +4411,7 @@
         },
         "summary" : "Get Campaign",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -4491,7 +4508,7 @@
         },
         "summary" : "Get Users",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -4525,7 +4542,7 @@
         },
         "summary" : "Get User By Id",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       },
       "delete" : {
@@ -4798,7 +4815,7 @@
         },
         "summary" : "Status",
         "security" : [ {
-          "jwt" : [ "ADMIN" ]
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
         } ]
       }
     },
@@ -5150,6 +5167,36 @@
           }
         },
         "summary" : "Api Login"
+      }
+    },
+    "/api/auth/demo-login" : {
+      "post" : {
+        "operationId" : "AuthenticationResource_demoLogin",
+        "tags" : [ "Public: Auth: Sessions" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DemoLoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Demo Login"
       }
     },
     "/api/auth/invitation/register" : {
@@ -15101,7 +15148,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.36.2",
+    "version" : "1.36.3",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",

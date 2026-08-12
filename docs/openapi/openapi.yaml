@@ -478,6 +478,8 @@ components:
           type: string
         deviceId:
           type: string
+        payloadEncryptionSecret:
+          type: string
         userId:
           $ref: "#/components/schemas/UUID"
         connectionType:
@@ -841,6 +843,11 @@ components:
           type: boolean
         includeConfiguration:
           type: boolean
+    DemoLoginRequest:
+      type: object
+      properties:
+        personaId:
+          type: string
     DistanceTraveled:
       type: object
       properties:
@@ -1774,6 +1781,10 @@ components:
           type: string
         deviceId:
           type: string
+        payloadEncryptionSecret:
+          type: string
+        clearPayloadEncryptionSecret:
+          type: boolean
         userId:
           type: string
         connectionType:
@@ -2218,7 +2229,7 @@ components:
           type: number
         bicycleMaxMaxSpeed:
           format: double
-          maximum: 50.0
+          maximum: 80.0
           minimum: 20.0
           type: number
         runningEnabled:
@@ -2682,6 +2693,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/invitations:
     get:
       operationId: AdminInvitationResource_getInvitations
@@ -2720,6 +2732,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
     post:
       operationId: AdminInvitationResource_createInvitation
       tags:
@@ -2778,6 +2791,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/invitations/{id}:
     delete:
       operationId: AdminInvitationResource_revokeInvitation
@@ -2834,6 +2848,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
     post:
       operationId: AdminOidcProviderResource_createProvider
       tags:
@@ -2940,6 +2955,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
     delete:
       operationId: AdminOidcProviderResource_deleteProvider
       tags:
@@ -3057,6 +3073,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/settings/bulk:
     post:
       operationId: AdminSettingsResource_bulkUpdateSettings
@@ -3172,6 +3189,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/settings/{key}:
     put:
       operationId: AdminSettingsResource_updateSetting
@@ -3270,6 +3288,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
     post:
       operationId: AdminTimelineRegenerationCampaignResource_createCampaign
       tags:
@@ -3354,6 +3373,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/timeline-regeneration-campaigns/{campaignId}/retry-failed:
     post:
       operationId: AdminTimelineRegenerationCampaignResource_retryFailed
@@ -3429,6 +3449,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/admin/users/{id}:
     get:
       operationId: AdminUserResource_getUserById
@@ -3456,6 +3477,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
     delete:
       operationId: AdminUserResource_deleteUser
       tags:
@@ -3661,6 +3683,7 @@ paths:
       security:
       - jwt:
         - ADMIN
+        - DEMO_ADMIN_READ
   /api/ai/builtin-system-message:
     get:
       operationId: AIResource_getBuiltinSystemMessage
@@ -3916,6 +3939,26 @@ paths:
         "400":
           description: Bad Request
       summary: Api Login
+  /api/auth/demo-login:
+    post:
+      operationId: AuthenticationResource_demoLogin
+      tags:
+      - "Public: Auth: Sessions"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemoLoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: {}
+        "400":
+          description: Bad Request
+      summary: Demo Login
   /api/auth/invitation/register:
     post:
       operationId: InvitationAuthResource_registerViaInvitation
@@ -11699,7 +11742,7 @@ paths:
         - ADMIN
 info:
   title: GeoPulse API
-  version: 1.36.2
+  version: 1.36.3
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
