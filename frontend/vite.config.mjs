@@ -7,6 +7,95 @@ import {PrimeVueResolver} from '@primevue/auto-import-resolver';
 
 const appDescription = 'A self-hosted, privacy-first location tracking platform with automatic trip detection, Immich integration, and detailed analytics.';
 
+const noStoreHeaders = {
+    'Content-Type': 'application/javascript; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    'Service-Worker-Allowed': '/'
+};
+
+const devServiceWorkerCleanupScript = `
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil((async () => {
+        if ('caches' in self) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+        }
+
+        await self.clients.claim();
+        await self.registration.unregister();
+    })());
+});
+`;
+
+const devRegisterServiceWorkerCleanupScript = `
+(function () {
+    async function cleanupDevelopmentServiceWorkers() {
+        try {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                await registration.update();
+            }
+        } catch (error) {
+            console.warn('Failed to register development service worker cleanup', error);
+        }
+
+        try {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations.map((registration) => registration.unregister()));
+            }
+        } catch (error) {
+            console.warn('Failed to unregister development service workers', error);
+        }
+
+        try {
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+            }
+        } catch (error) {
+            console.warn('Failed to clear development caches', error);
+        }
+    }
+
+    if ('serviceWorker' in navigator || 'caches' in window) {
+        window.addEventListener('load', () => {
+            cleanupDevelopmentServiceWorkers();
+        });
+    }
+}());
+`;
+
+function devServiceWorkerCleanupPlugin() {
+    return {
+        name: 'geopulse-dev-service-worker-cleanup',
+        apply: 'serve',
+        configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+                const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+
+                if (pathname === '/sw.js') {
+                    res.writeHead(200, noStoreHeaders);
+                    res.end(devServiceWorkerCleanupScript);
+                    return;
+                }
+
+                if (pathname === '/registerSW.js') {
+                    res.writeHead(200, noStoreHeaders);
+                    res.end(devRegisterServiceWorkerCleanupScript);
+                    return;
+                }
+
+                next();
+            });
+        }
+    };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
     build: {
@@ -15,6 +104,7 @@ export default defineConfig({
     base: "/",
     plugins: [
         vue(),
+        devServiceWorkerCleanupPlugin(),
         Components({
             resolvers: [
                 PrimeVueResolver()

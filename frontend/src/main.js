@@ -21,6 +21,30 @@ import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 
 initializeThemeMode()
 
+if (import.meta.env.DEV) {
+    void cleanupDevelopmentServiceWorkers()
+}
+
+async function cleanupDevelopmentServiceWorkers() {
+    try {
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations()
+            await Promise.all(registrations.map((registration) => registration.unregister()))
+        }
+    } catch (error) {
+        console.warn('Failed to unregister development service workers', error)
+    }
+
+    try {
+        if ('caches' in window) {
+            const cacheNames = await caches.keys()
+            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)))
+        }
+    } catch (error) {
+        console.warn('Failed to clear development caches', error)
+    }
+}
+
 const app = createApp(App);
 const timezone = useTimezone()
 
