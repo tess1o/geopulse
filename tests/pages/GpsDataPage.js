@@ -23,8 +23,10 @@ export class GpsDataPage {
       
       // Date filter controls
       filterSection: '.filter-section',
-      dateRangePicker: '.date-picker input',
-      clearFilterButton: 'button:has-text("Clear All")',
+      startDateTimeInput: 'input#gps-start-date-time-input',
+      endDateTimeInput: 'input#gps-end-date-time-input',
+      applyDateFilterButton: '.filter-controls button:has-text("Apply")',
+      clearFilterButton: '.filter-controls button:has-text("Clear")',
       
       // GPS Points table
       gpsTable: '.gps-data-table',
@@ -295,51 +297,61 @@ export class GpsDataPage {
    * Set date range filter
    */
   async setDateRangeFilter(startDate, endDate) {
-    // Click on date picker
-    await this.page.locator(this.selectors.dateRangePicker).click();
-    
-    // Wait for date picker to open
-    await this.page.waitForSelector('.p-datepicker', { state: 'visible' });
-    
-    // Select start date
-    await this.selectDateInPicker(startDate);
-    await this.setPickerTime(startDate);
-    
-    // Select end date  
-    await this.selectDateInPicker(endDate);
-    await this.setPickerTime(endDate);
-    
-    // Wait for the filter to be applied
-    await this.page.waitForTimeout(1000);
+    await this.setDateTimePickerValue(this.selectors.startDateTimeInput, startDate);
+    await this.page.keyboard.press('Escape').catch(() => {});
+
+    await this.setDateTimePickerValue(this.selectors.endDateTimeInput, endDate);
+
+    await this.page.keyboard.press('Escape').catch(() => {});
+    await this.page.locator(this.selectors.applyDateFilterButton).click();
+  }
+
+  /**
+   * Set one of the explicit date-time picker fields.
+   */
+  async setDateTimePickerValue(inputSelector, date) {
+    await this.page.locator(inputSelector).click();
+    await this.page.waitForSelector('.p-datepicker-panel:visible', { state: 'visible' });
+    const panel = this.getActiveDatePickerPanel();
+
+    await this.selectDateInPicker(date, panel);
+    await this.setPickerTime(date, panel);
+  }
+
+  /**
+   * Get the currently active DatePicker panel. PrimeVue can briefly leave more
+   * than one panel visible when moving between the From and To fields.
+   */
+  getActiveDatePickerPanel() {
+    return this.page.locator('.p-datepicker-panel:visible').last();
   }
 
   /**
    * Helper to select a date in the date picker
    */
-  async selectDateInPicker(date) {
+  async selectDateInPicker(date, panel = this.getActiveDatePickerPanel()) {
     // Format: date should be a Date object
     const year = date.getFullYear();
     const month = date.getMonth(); // 0-indexed
     const day = date.getDate();
     
     // Navigate to correct month/year if needed
-    await this.navigateToMonthYear(year, month);
+    await this.navigateToMonthYear(year, month, panel);
     
     // Click on the day using aria-label
     const daySelector = `.p-datepicker-calendar td[aria-label="${day}"]`;
-    await this.page.locator(daySelector).click();
+    await panel.locator(daySelector).first().click();
   }
 
   /**
    * Set hour/minute in the open date picker using time controls.
    */
-  async setPickerTime(date) {
+  async setPickerTime(date, panel = this.getActiveDatePickerPanel()) {
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-      console.log('returning');
       return;
     }
 
-    await this.adjustTimePickerValue({
+    await this.adjustTimePickerValue(panel, {
       pickerSelector: '.p-datepicker-hour-picker',
       valueSelector: '[data-pc-section="hour"]',
       incrementButtonSelector: 'button[aria-label="Next Hour"]',
@@ -348,7 +360,7 @@ export class GpsDataPage {
       cycle: 24
     });
 
-    await this.adjustTimePickerValue({
+    await this.adjustTimePickerValue(panel, {
       pickerSelector: '.p-datepicker-minute-picker',
       valueSelector: '[data-pc-section="minute"]',
       incrementButtonSelector: 'button[aria-label="Next Minute"]',
@@ -361,7 +373,7 @@ export class GpsDataPage {
   /**
    * Adjust a date picker unit (hours/minutes) to the target value.
    */
-  async adjustTimePickerValue({
+  async adjustTimePickerValue(panel, {
     pickerSelector,
     valueSelector,
     incrementButtonSelector,
@@ -369,9 +381,7 @@ export class GpsDataPage {
     targetValue,
     cycle
   }) {
-    const picker = this.page
-      .locator(`.p-datepicker-panel:visible .p-datepicker-time-picker ${pickerSelector}`)
-      .first();
+    const picker = panel.locator(`.p-datepicker-time-picker ${pickerSelector}`).first();
     const pickerVisible = await picker.isVisible().catch(() => false);
     if (!pickerVisible) {
       return;
@@ -403,18 +413,20 @@ export class GpsDataPage {
   /**
    * Navigate to specific month and year in date picker
    */
-  async navigateToMonthYear(targetYear, targetMonth) {
+  async navigateToMonthYear(targetYear, targetMonth, panel = this.getActiveDatePickerPanel()) {
     // Get current displayed month/year
-    const monthButton = this.page.locator('.p-datepicker-select-month');
-    const yearButton = this.page.locator('.p-datepicker-select-year');
+    const monthButton = panel.locator('.p-datepicker-select-month').first();
+    const yearButton = panel.locator('.p-datepicker-select-year').first();
+    const nextButton = panel.locator('.p-datepicker-next-button').first();
+    const prevButton = panel.locator('.p-datepicker-prev-button').first();
     
     // Navigate to correct year first
     let currentYear = parseInt(await yearButton.textContent());
     while (currentYear !== targetYear) {
       if (currentYear < targetYear) {
-        await this.page.locator('.p-datepicker-next-button').click();
+        await nextButton.click();
       } else {
-        await this.page.locator('.p-datepicker-prev-button').click();
+        await prevButton.click();
       }
       await this.page.waitForTimeout(200);
       currentYear = parseInt(await yearButton.textContent());
@@ -430,9 +442,9 @@ export class GpsDataPage {
       const currentMonthIndex = monthNames.indexOf(currentMonthText);
       
       if (currentMonthIndex < targetMonth) {
-        await this.page.locator('.p-datepicker-next-button').click();
+        await nextButton.click();
       } else {
-        await this.page.locator('.p-datepicker-prev-button').click();
+        await prevButton.click();
       }
       await this.page.waitForTimeout(200);
       currentMonthText = await monthButton.textContent();

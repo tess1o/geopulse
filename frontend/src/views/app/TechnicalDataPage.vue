@@ -137,22 +137,46 @@
       </div>
 
       <div class="filter-controls">
-        <div class="filter-group filter-group-wide">
-          <label class="filter-label">Date & Time Range:</label>
-          <DatePicker
-            v-model="dateRange"
-            selection-mode="range"
-            show-time
-            hour-format="24"
-            :number-of-months="1"
-            :date-format="timezone.getPrimeVueDatePickerFormat()"
-            placeholder="Select range"
-            class="date-picker date-picker-wide"
-            @date-select="handleDateChange"
-          />
+        <div class="date-time-filter-group">
+          <div class="date-time-field">
+            <label class="filter-label" for="gps-start-date-time-input">From</label>
+            <DatePicker
+              input-id="gps-start-date-time-input"
+              v-model="startDateTime"
+              show-time
+              hour-format="24"
+              show-icon
+              icon-display="input"
+              :date-format="timezone.getPrimeVueDatePickerFormat()"
+              placeholder="Start date and time"
+              class="date-picker date-time-picker"
+            />
+          </div>
+          <div class="date-time-field">
+            <label class="filter-label" for="gps-end-date-time-input">To</label>
+            <DatePicker
+              input-id="gps-end-date-time-input"
+              v-model="endDateTime"
+              show-time
+              hour-format="24"
+              show-icon
+              icon-display="input"
+              :date-format="timezone.getPrimeVueDatePickerFormat()"
+              placeholder="End date and time"
+              class="date-picker date-time-picker"
+            />
+          </div>
         </div>
         <Button
-          v-if="hasDateFilter"
+          label="Apply"
+          icon="pi pi-check"
+          size="small"
+          :disabled="!canApplyDateFilter"
+          @click="applyDateFilter"
+          class="date-filter-apply-button"
+        />
+        <Button
+          v-if="hasDateFilter || hasDateFilterDraft"
           label="Clear"
           severity="secondary"
           size="small"
@@ -160,6 +184,10 @@
           icon="pi pi-times"
           @click="clearDateFilter"
         />
+      </div>
+      <div v-if="dateFilterValidationMessage" class="filter-validation-message">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ dateFilterValidationMessage }}</span>
       </div>
 
       <!-- Advanced Filters -->
@@ -229,7 +257,7 @@
       <div v-if="hasActiveFilters" class="active-filter-chips">
         <Chip
           v-if="hasDateFilter"
-          :label="`Date: ${formatDateRange(dateRange)}`"
+          :label="`Date: ${formatDateRange(appliedStartDateTime, appliedEndDateTime)}`"
           removable
           @remove="clearDateFilter"
         />
@@ -740,7 +768,10 @@ const toast = useToast()
 // Reactive state
 const isMobile = ref(false)
 const isTablet = ref(false)
-const dateRange = ref(null)
+const startDateTime = ref(null)
+const endDateTime = ref(null)
+const appliedStartDateTime = ref(null)
+const appliedEndDateTime = ref(null)
 const pageSize = ref(50)
 const currentPage = ref(0)
 const sortField = ref('timestamp')
@@ -827,10 +858,23 @@ const gpsPointsWithDelta = computed(() =>
 )
 
 const hasData = computed(() => summaryStats.value.totalPoints > 0)
+const isValidDateValue = (date) => date instanceof Date && Number.isFinite(date.getTime())
+const hasDateFilterDraft = computed(() => Boolean(startDateTime.value || endDateTime.value))
+const hasCompleteDateFilterDraft = computed(() =>
+  isValidDateValue(startDateTime.value) && isValidDateValue(endDateTime.value)
+)
+const dateFilterValidationMessage = computed(() => {
+  if (!hasCompleteDateFilterDraft.value) return ''
+  if (startDateTime.value.getTime() > endDateTime.value.getTime()) {
+    return 'From must be before To.'
+  }
+  return ''
+})
+const canApplyDateFilter = computed(() =>
+  hasCompleteDateFilterDraft.value && !dateFilterValidationMessage.value
+)
 const hasDateFilter = computed(() =>
-  dateRange.value &&
-  ((Array.isArray(dateRange.value) && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]) ||
-   (dateRange.value[0] && dateRange.value[1]))
+  isValidDateValue(appliedStartDateTime.value) && isValidDateValue(appliedEndDateTime.value)
 )
 
 const hasActiveFilters = computed(() => {
@@ -968,10 +1012,10 @@ const formatTelemetryValue = (item) => {
   return `${value} ${item.unit}`
 }
 
-const formatDateRange = (range) => {
-  if (!range || range.length < 2) return ''
-  const start = timezone.formatDateDisplay(range[0])
-  const end = timezone.formatDateDisplay(range[1])
+const formatDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) return ''
+  const start = formatPickerDateTime(startDate)
+  const end = formatPickerDateTime(endDate)
   return `${start} - ${end}`
 }
 
@@ -981,6 +1025,11 @@ const formatDateForAPI = (date) => {
   // Preserve selected hour/minute from DatePicker while still interpreting in user timezone.
   const { start } = timezone.createDateTimeRangeFromPicker(date, date)
   return start
+}
+
+const formatPickerDateTime = (date) => {
+  const utcDateTime = formatDateForAPI(date)
+  return utcDateTime ? timezone.formatDateTimeDisplay(utcDateTime) : '-'
 }
 
 const getSourceSeverity = (sourceType) => {
@@ -1138,23 +1187,27 @@ const handleResize = () => {
   pageSize.value = isMobile.value ? 25 : 50
 }
 
-const handleDateChange = async () => {
-  if (hasDateFilter.value) {
-    currentPage.value = 0
-    selectedRows.value = [] // Clear selection when date filter changes
-    lastSelectedIndex.value = null // Reset shift-click tracking
-    await loadGPSPoints()
-    await loadSummaryStats()
-  }
-}
-
-const clearDateFilter = async () => {
-  dateRange.value = null
+const refreshAfterFilterChange = async () => {
   currentPage.value = 0
-  selectedRows.value = [] // Clear selection when clearing filters
+  selectedRows.value = [] // Clear selection when filters change
   lastSelectedIndex.value = null // Reset shift-click tracking
   await loadGPSPoints()
   await loadSummaryStats()
+}
+
+const applyDateFilter = async () => {
+  if (!canApplyDateFilter.value) return
+  appliedStartDateTime.value = new Date(startDateTime.value.getTime())
+  appliedEndDateTime.value = new Date(endDateTime.value.getTime())
+  await refreshAfterFilterChange()
+}
+
+const clearDateFilter = async () => {
+  startDateTime.value = null
+  endDateTime.value = null
+  appliedStartDateTime.value = null
+  appliedEndDateTime.value = null
+  await refreshAfterFilterChange()
 }
 
 // Quick date preset methods
@@ -1162,8 +1215,9 @@ const setToday = () => {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-  dateRange.value = [start, end]
-  handleDateChange()
+  startDateTime.value = start
+  endDateTime.value = end
+  applyDateFilter()
 }
 
 const setYesterday = () => {
@@ -1171,8 +1225,9 @@ const setYesterday = () => {
   yesterday.setDate(yesterday.getDate() - 1)
   const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0)
   const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59)
-  dateRange.value = [start, end]
-  handleDateChange()
+  startDateTime.value = start
+  endDateTime.value = end
+  applyDateFilter()
 }
 
 const setLast7Days = () => {
@@ -1181,8 +1236,9 @@ const setLast7Days = () => {
   start.setDate(start.getDate() - 7)
   start.setHours(0, 0, 0, 0)
   end.setHours(23, 59, 59, 999)
-  dateRange.value = [start, end]
-  handleDateChange()
+  startDateTime.value = start
+  endDateTime.value = end
+  applyDateFilter()
 }
 
 const setLast30Days = () => {
@@ -1191,12 +1247,16 @@ const setLast30Days = () => {
   start.setDate(start.getDate() - 30)
   start.setHours(0, 0, 0, 0)
   end.setHours(23, 59, 59, 999)
-  dateRange.value = [start, end]
-  handleDateChange()
+  startDateTime.value = start
+  endDateTime.value = end
+  applyDateFilter()
 }
 
 const clearAllFilters = async () => {
-  dateRange.value = null
+  startDateTime.value = null
+  endDateTime.value = null
+  appliedStartDateTime.value = null
+  appliedEndDateTime.value = null
   filters.value = {
     sourceTypes: [],
     accuracyMin: null,
@@ -1204,11 +1264,7 @@ const clearAllFilters = async () => {
     speedMin: null,
     speedMax: null
   }
-  currentPage.value = 0
-  selectedRows.value = [] // Clear selection when clearing all filters
-  lastSelectedIndex.value = null // Reset shift-click tracking
-  await loadGPSPoints()
-  await loadSummaryStats()
+  await refreshAfterFilterChange()
 }
 
 const onPageChange = async (event) => {
@@ -1251,9 +1307,8 @@ const buildFilterParams = () => {
 
   // Date/time range
   if (hasDateFilter.value) {
-    const dates = Array.isArray(dateRange.value) ? dateRange.value : [dateRange.value[0], dateRange.value[1]]
-    if (dates[0]) params.startTime = formatDateForAPI(dates[0])
-    if (dates[1]) params.endTime = formatDateForAPI(dates[1])
+    params.startTime = formatDateForAPI(appliedStartDateTime.value)
+    params.endTime = formatDateForAPI(appliedEndDateTime.value)
   }
 
   // Advanced filters
@@ -1680,7 +1735,7 @@ watch(filters, async () => {
 
 .filter-controls {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--gp-spacing-lg);
   flex-wrap: wrap;
 }
@@ -1704,14 +1759,41 @@ watch(filters, async () => {
   max-width: 300px;
 }
 
-.date-picker-wide {
-  max-width: 500px !important;
-  min-width: 400px;
+.date-time-filter-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: var(--gp-spacing-md);
+  flex: 1 1 560px;
+  max-width: 760px;
 }
 
-.filter-group-wide {
-  flex: 1;
-  max-width: 600px;
+.date-time-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+  min-width: 0;
+}
+
+.date-time-picker {
+  width: 100%;
+  max-width: none;
+}
+
+.date-filter-apply-button {
+  flex-shrink: 0;
+}
+
+.filter-validation-message {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  margin-top: var(--gp-spacing-sm);
+  color: var(--red-600);
+  font-size: 0.875rem;
+}
+
+.filter-validation-message i {
+  font-size: 0.875rem;
 }
 
 .telemetry-mapping-section {
@@ -1854,6 +1936,10 @@ watch(filters, async () => {
   
   .date-picker {
     max-width: 400px;
+  }
+
+  .date-time-picker {
+    max-width: none;
   }
 }
 
@@ -2235,15 +2321,24 @@ watch(filters, async () => {
     max-width: 100%;
   }
 
+  .date-time-filter-group {
+    grid-template-columns: 1fr;
+    flex-basis: auto;
+    max-width: 100%;
+    width: 100%;
+  }
+
   .date-picker,
-  .date-picker-wide {
+  .date-time-picker {
     max-width: 100%;
     width: 100%;
     min-width: unset;
   }
 
-  .filter-group-wide {
-    max-width: 100%;
+  .date-filter-apply-button,
+  .filter-controls > .p-button {
+    width: 100%;
+    justify-content: center;
   }
 
   /* Ensure datepicker component fits */
