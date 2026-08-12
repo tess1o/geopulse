@@ -1,4 +1,15 @@
 [
+   {
+    "version": "1.36.3",
+    "title": "GeoPulse 1.36.3",
+    "highlights": [
+      "Added support for DEMO mode. Stay tuned, public demo instance will be provided soon",
+      "UI improvements on mobile devices",
+      "Added option to use encryption secret for OwnTracks messages so GeoPulse can decrtypt the messages encypted by OwnTracks",
+      "Increased max allowed speed for bicycles from 50 to 80 km/h"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.36.3"
+  },
   {
     "version": "1.36.2",
     "title": "GeoPulse 1.36.2",
