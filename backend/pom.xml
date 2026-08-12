@@ -370,7 +370,6 @@
                     <excludedGroups>unit</excludedGroups>
                     <includes>
                         <include>**/*Test.java</include>
-                        <include>**/*IT.java</include>
                     </includes>
                     <skipITs>${skipITs}</skipITs>
                     <reuseForks>true</reuseForks>

@@ -1,13 +1,14 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.service;
 
 import io.quarkus.test.common.QuarkusTestResource;
-import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.bouncycastle.crypto.Mac;
 import org.bouncycastle.crypto.engines.XSalsa20Engine;
 import org.bouncycastle.crypto.macs.Poly1305;
 import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.crypto.params.ParametersWithIV;
+import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.junit.jupiter.api.Test;
@@ -19,19 +20,19 @@ import java.util.Map;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
-@QuarkusIntegrationTest
-@QuarkusTestResource(value = OwnTracksPayloadEncryptionNativeTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTest
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
-class OwnTracksPayloadEncryptionNativeIT {
+class OwnTracksPayloadEncryptionIntegrationTest {
 
     private static final String PASSWORD = "password123";
     private static final String OWNTRACKS_PASSWORD = "owntracks-password";
     private static final String PAYLOAD_SECRET = "native-secret";
 
     @Test
-    void nativeExecutableDecryptsEncryptedOwnTracksHttpPayloads() {
-        String accessToken = registerAndLogin("owntracks-native-encrypted");
-        String ownTracksUsername = TestIds.uniqueValue("owntracks-native-user");
+    void decryptsEncryptedOwnTracksHttpPayloads() {
+        String accessToken = registerAndLogin("owntracks-encrypted");
+        String ownTracksUsername = TestIds.uniqueValue("owntracks-user");
         createOwnTracksSource(accessToken, ownTracksUsername, PAYLOAD_SECRET);
 
         String encryptedData = encryptSecretBox(
@@ -59,9 +60,9 @@ class OwnTracksPayloadEncryptionNativeIT {
     }
 
     @Test
-    void nativeExecutableStillAcceptsPlaintextOwnTracksHttpPayloads() {
-        String accessToken = registerAndLogin("owntracks-native-plaintext");
-        String ownTracksUsername = TestIds.uniqueValue("owntracks-native-plain-user");
+    void acceptsPlaintextOwnTracksHttpPayloads() {
+        String accessToken = registerAndLogin("owntracks-plaintext");
+        String ownTracksUsername = TestIds.uniqueValue("owntracks-plain-user");
         createOwnTracksSource(accessToken, ownTracksUsername, null);
 
         postOwnTracksPayload(
@@ -80,9 +81,9 @@ class OwnTracksPayloadEncryptionNativeIT {
     }
 
     @Test
-    void nativeExecutableSkipsEncryptedOwnTracksPayloadsWhenSecretDoesNotMatch() {
-        String accessToken = registerAndLogin("owntracks-native-bad-secret");
-        String ownTracksUsername = TestIds.uniqueValue("owntracks-native-bad-user");
+    void skipsEncryptedOwnTracksPayloadsWhenSecretDoesNotMatch() {
+        String accessToken = registerAndLogin("owntracks-bad-secret");
+        String ownTracksUsername = TestIds.uniqueValue("owntracks-bad-user");
         createOwnTracksSource(accessToken, ownTracksUsername, PAYLOAD_SECRET);
 
         String encryptedData = encryptSecretBox(
