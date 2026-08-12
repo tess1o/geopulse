@@ -433,6 +433,7 @@
     <!-- GPS Points Table -->
     <BaseCard class="table-section">
       <DataTable
+        v-if="!isMobile"
         :value="gpsPointsWithDelta"
         :loading="tableLoading"
         paginator
@@ -565,7 +566,7 @@
           </template>
         </Column>
 
-        <Column header="Telemetry" class="telemetry-col">
+        <Column header="Telemetry" class="telemetry-col" v-if="!isMobile">
           <template #body="slotProps">
             <div
               v-if="slotProps.data.telemetryGpsData && slotProps.data.telemetryGpsData.length > 0"
@@ -619,6 +620,167 @@
           </template>
         </Column>
       </DataTable>
+
+      <div v-else class="mobile-gps-list-panel">
+        <div class="table-header mobile-gps-header">
+          <div class="table-header-left">
+            <span class="table-title">GPS Points</span>
+            <span class="table-subtitle">
+              <template v-if="totalRecords > 0">
+                Showing {{ currentPage * pageSize + 1 }}-{{ Math.min((currentPage + 1) * pageSize, totalRecords) }} of {{ totalRecords.toLocaleString() }} points
+                <span v-if="hasActiveFilters && summaryStats.filteredPoints" class="filtered-info">
+                  (filtered from {{ summaryStats.totalPoints.toLocaleString() }})
+                </span>
+              </template>
+              <template v-else>
+                No points found
+              </template>
+            </span>
+          </div>
+          <div class="table-header-right">
+            <label class="page-size-label">Rows:</label>
+            <Dropdown
+              v-model="pageSize"
+              :options="pageSizeOptions"
+              class="page-size-dropdown mobile-page-size-dropdown"
+            />
+          </div>
+        </div>
+
+        <div class="mobile-gps-toolbar">
+          <label class="mobile-select-page-control">
+            <Checkbox
+              :model-value="allVisibleGpsRowsSelected"
+              :disabled="gpsPointsWithDelta.length === 0"
+              binary
+              @change="toggleVisibleGpsRowsSelection"
+              aria-label="Select all GPS points on this page"
+            />
+            <span>{{ allVisibleGpsRowsSelected ? 'Clear page' : 'Select page' }}</span>
+          </label>
+
+          <div class="mobile-sort-control">
+            <label class="mobile-sort-label" for="mobile-gps-sort">Sort</label>
+            <Dropdown
+              input-id="mobile-gps-sort"
+              v-model="sortField"
+              :options="mobileSortOptions"
+              option-label="label"
+              option-value="value"
+              class="mobile-sort-dropdown"
+              @change="onMobileSortFieldChange"
+            />
+            <Button
+              :icon="sortOrder === 1 ? 'pi pi-sort-amount-up-alt' : 'pi pi-sort-amount-down'"
+              severity="secondary"
+              outlined
+              size="small"
+              class="mobile-sort-direction-button"
+              @click="toggleMobileSortDirection"
+              v-tooltip.top="sortOrder === 1 ? 'Ascending' : 'Descending'"
+              :aria-label="sortOrder === 1 ? 'Sort ascending' : 'Sort descending'"
+            />
+          </div>
+        </div>
+
+        <div v-if="tableLoading" class="mobile-gps-loading">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading GPS points...</span>
+        </div>
+
+        <template v-else-if="gpsPointsWithDelta.length > 0">
+          <div class="mobile-gps-list" role="list">
+            <div
+              v-for="point in gpsPointsWithDelta"
+              :key="point.id"
+              class="mobile-gps-row"
+              role="listitem"
+            >
+              <Checkbox
+                :model-value="isRowSelected(point)"
+                @change="handleCheckboxChange($event, point)"
+                binary
+                class="mobile-gps-checkbox"
+                :aria-label="`Select GPS point from ${formatTimestamp(point.timestamp).date} ${formatTimestamp(point.timestamp).time}`"
+              />
+              <div class="mobile-gps-main">
+                <div class="mobile-gps-primary">
+                  <span class="mobile-gps-date">{{ formatTimestamp(point.timestamp).date }}</span>
+                  <span class="mobile-gps-time">{{ formatTimestamp(point.timestamp).time }}</span>
+                </div>
+                <div class="mobile-gps-coordinates">
+                  {{ point.coordinates.lat.toFixed(6) }}, {{ point.coordinates.lng.toFixed(6) }}
+                </div>
+                <div class="mobile-gps-meta">
+                  <span class="mobile-gps-metric">
+                    <i class="pi pi-gauge"></i>
+                    <template v-if="point.velocity !== null && point.velocity >= 0">
+                      {{ formatSpeed(point.velocity.toFixed(1)) }}
+                    </template>
+                    <template v-else>-</template>
+                  </span>
+                  <span class="mobile-gps-metric">
+                    <i class="pi pi-bullseye"></i>
+                    <template v-if="point.accuracy">
+                      {{ formatDistance(point.accuracy.toFixed(1)) }}
+                    </template>
+                    <template v-else>-</template>
+                  </span>
+                  <span class="mobile-gps-metric">
+                    <i class="pi pi-bolt"></i>
+                    <template v-if="point.battery !== null && point.battery >= 0">
+                      {{ Math.round(point.battery) }}%
+                    </template>
+                    <template v-else>-</template>
+                  </span>
+                </div>
+              </div>
+              <Button
+                icon="pi pi-ellipsis-v"
+                severity="secondary"
+                text
+                rounded
+                size="small"
+                class="mobile-gps-actions-button"
+                @click="openMobileActionMenu($event, point)"
+                v-tooltip.left="'GPS point actions'"
+                aria-haspopup="true"
+                aria-controls="mobile-gps-action-menu"
+                :aria-label="`Actions for GPS point from ${formatTimestamp(point.timestamp).date} ${formatTimestamp(point.timestamp).time}`"
+              />
+            </div>
+          </div>
+
+          <Paginator
+            v-if="totalRecords > pageSize"
+            :first="currentPage * pageSize"
+            :rows="pageSize"
+            :total-records="totalRecords"
+            class="mobile-gps-paginator"
+            @page="onMobilePageChange"
+          >
+            <template #start>
+              <span class="paginator-info">Page {{ currentPage + 1 }} of {{ totalPages.toLocaleString() }}</span>
+            </template>
+            <template #end>
+              <span class="paginator-info">{{ totalRecords.toLocaleString() }} total</span>
+            </template>
+          </Paginator>
+        </template>
+
+        <div v-else class="empty-state mobile-empty-state">
+          <i class="pi pi-map-marker empty-icon"></i>
+          <h3>No GPS Points Found</h3>
+          <p>No GPS tracking data available for the selected criteria.</p>
+        </div>
+
+        <Menu
+          ref="mobileActionMenu"
+          id="mobile-gps-action-menu"
+          :model="mobileActionMenuItems"
+          popup
+        />
+      </div>
     </BaseCard>
     
     <!-- Delete Confirmation Dialog -->
@@ -758,6 +920,8 @@ import Chip from 'primevue/chip'
 import Badge from 'primevue/badge'
 import Dropdown from 'primevue/dropdown'
 import Checkbox from 'primevue/checkbox'
+import Menu from 'primevue/menu'
+import Paginator from 'primevue/paginator'
 import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
@@ -806,6 +970,10 @@ const sourceTypeOptions = ref([
 
 // Page size options
 const pageSizeOptions = ref([25, 50, 100, 200, 500])
+const mobileSortOptions = [
+  { label: 'Date', value: 'timestamp' },
+  { label: 'Speed', value: 'velocity' }
+]
 
 // Loading states
 const isLoading = ref(false)
@@ -822,6 +990,8 @@ const selectedRows = ref([])
 const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
 const deleteLoading = ref(false)
+const mobileActionMenu = ref()
+const mobileActionPoint = ref(null)
 
 // Delete all states
 const showDeleteAllDialog = ref(false)
@@ -936,9 +1106,35 @@ const totalPages = computed(() => {
   return Math.ceil(totalRecords.value / pageSize.value)
 })
 
+const allVisibleGpsRowsSelected = computed(() => {
+  if (gpsPointsWithDelta.value.length === 0) return false
+  return gpsPointsWithDelta.value.every(row => isRowSelected(row))
+})
+
 const telemetryBooleanRows = computed(() =>
   telemetryMappingRows.value.filter(entry => entry.type === 'boolean')
 )
+
+const mobileActionMenuItems = computed(() => [
+  {
+    label: 'Edit GPS Point',
+    icon: 'pi pi-pencil',
+    command: () => {
+      if (mobileActionPoint.value) {
+        editGpsPoint(mobileActionPoint.value)
+      }
+    }
+  },
+  {
+    label: 'Delete GPS Point',
+    icon: 'pi pi-trash',
+    command: () => {
+      if (mobileActionPoint.value) {
+        deleteGpsPoint(mobileActionPoint.value)
+      }
+    }
+  }
+])
 
 const refreshGpsData = async () => {
   const selectedIds = new Set(selectedRows.value.map(row => row.id))
@@ -1184,6 +1380,10 @@ const resetTelemetryMapping = async () => {
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
   isTablet.value = window.innerWidth >= 768 && window.innerWidth < 1024
+  if (isMobile.value && !mobileSortOptions.some(option => option.value === sortField.value)) {
+    sortField.value = 'timestamp'
+    sortOrder.value = -1
+  }
   pageSize.value = isMobile.value ? 25 : 50
 }
 
@@ -1278,6 +1478,44 @@ const onSort = async (event) => {
   sortOrder.value = event.sortOrder
   currentPage.value = 0 // Reset to first page on sort
   await loadGPSPoints()
+}
+
+const onMobileSortFieldChange = async () => {
+  currentPage.value = 0
+  await loadGPSPoints()
+}
+
+const toggleMobileSortDirection = async () => {
+  sortOrder.value = sortOrder.value === 1 ? -1 : 1
+  currentPage.value = 0
+  await loadGPSPoints()
+}
+
+const onMobilePageChange = async (event) => {
+  await onPageChange(event)
+}
+
+const toggleVisibleGpsRowsSelection = () => {
+  const visibleRows = gpsPointsWithDelta.value
+  if (visibleRows.length === 0) return
+
+  if (allVisibleGpsRowsSelected.value) {
+    const visibleIds = new Set(visibleRows.map(row => row.id))
+    selectedRows.value = selectedRows.value.filter(row => !visibleIds.has(row.id))
+  } else {
+    const selectedIds = new Set(selectedRows.value.map(row => row.id))
+    selectedRows.value = [
+      ...selectedRows.value,
+      ...visibleRows.filter(row => !selectedIds.has(row.id))
+    ]
+  }
+
+  lastSelectedIndex.value = null
+}
+
+const openMobileActionMenu = (event, gpsPoint) => {
+  mobileActionPoint.value = gpsPoint
+  mobileActionMenu.value?.toggle(event)
 }
 
 const loadSummaryStats = async () => {
@@ -2219,6 +2457,171 @@ watch(filters, async () => {
   margin: 0;
 }
 
+/* Mobile GPS List */
+.mobile-gps-list-panel {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--gp-surface-white);
+}
+
+.mobile-gps-header {
+  padding: var(--gp-spacing-lg);
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.mobile-gps-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.mobile-select-page-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  min-width: max-content;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.mobile-sort-control {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-sort-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gp-text-secondary);
+}
+
+.mobile-sort-dropdown {
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-sort-direction-button,
+.mobile-gps-actions-button {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  min-width: 2.25rem !important;
+  padding: 0 !important;
+}
+
+.mobile-gps-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gp-spacing-sm);
+  min-height: 10rem;
+  padding: var(--gp-spacing-xl) var(--gp-spacing-lg);
+  color: var(--gp-text-secondary);
+}
+
+.mobile-gps-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.mobile-gps-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 2.25rem;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  width: 100%;
+  min-width: 0;
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  border-bottom: 1px solid var(--gp-border-light);
+  box-sizing: border-box;
+}
+
+.mobile-gps-row:last-child {
+  border-bottom: none;
+}
+
+.mobile-gps-checkbox {
+  justify-self: center;
+}
+
+.mobile-gps-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.mobile-gps-primary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gp-spacing-sm);
+  min-width: 0;
+}
+
+.mobile-gps-date {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.mobile-gps-time {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--gp-text-muted);
+}
+
+.mobile-gps-coordinates {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: var(--gp-text-secondary);
+}
+
+.mobile-gps-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.mobile-gps-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--gp-radius-small);
+  background: var(--gp-surface-light);
+  color: var(--gp-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.mobile-gps-metric i {
+  font-size: 0.75rem;
+}
+
+.mobile-gps-paginator {
+  border-top: 1px solid var(--gp-border-light);
+}
+
+.mobile-empty-state {
+  padding: var(--gp-spacing-xl) var(--gp-spacing-lg);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   /* Override PageContainer padding for mobile with balanced margins */
@@ -2392,6 +2795,49 @@ watch(filters, async () => {
   .empty-state {
     padding: var(--gp-spacing-xl) var(--gp-spacing-md);
   }
+
+  .mobile-gps-header {
+    gap: var(--gp-spacing-md);
+  }
+
+  .mobile-gps-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-page-size-dropdown {
+    min-width: 72px;
+  }
+
+  .mobile-gps-paginator {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .mobile-gps-paginator :deep(.p-paginator) {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: var(--gp-spacing-sm) !important;
+  }
+
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-page),
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-next),
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-prev),
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-first),
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-last) {
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    margin: 0 1px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-first),
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-last),
+  .mobile-gps-paginator :deep(.p-paginator-current) {
+    display: none !important;
+  }
 }
 
 /* Very small screens - keep 2x2 grid but adjust spacing */
@@ -2434,6 +2880,48 @@ watch(filters, async () => {
     font-size: 0.7rem;
   }
 
+  .mobile-gps-header,
+  .mobile-gps-toolbar,
+  .mobile-gps-row {
+    padding-left: var(--gp-spacing-md);
+    padding-right: var(--gp-spacing-md);
+  }
+
+  .mobile-gps-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2rem;
+    gap: var(--gp-spacing-xs);
+  }
+
+  .mobile-gps-primary {
+    flex-wrap: wrap;
+    row-gap: 0.1rem;
+  }
+
+  .mobile-gps-date {
+    font-size: 0.92rem;
+  }
+
+  .mobile-gps-time,
+  .mobile-gps-coordinates {
+    font-size: 0.78rem;
+  }
+
+  .mobile-gps-meta {
+    gap: 0.25rem;
+  }
+
+  .mobile-gps-metric {
+    font-size: 0.72rem;
+    padding: 0.12rem 0.35rem;
+  }
+
+  .mobile-sort-direction-button,
+  .mobile-gps-actions-button {
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+  }
+
   /* Extra mobile paginator optimizations for very small screens */
   .gps-data-table :deep(.p-paginator) {
     gap: 2px !important;
@@ -2451,6 +2939,10 @@ watch(filters, async () => {
 
   /* Show even fewer elements on very small screens */
   .gps-data-table :deep(.p-paginator .p-paginator-page:nth-child(n+6)) {
+    display: none !important;
+  }
+
+  .mobile-gps-paginator :deep(.p-paginator .p-paginator-page:nth-child(n+6)) {
     display: none !important;
   }
 }
@@ -2498,6 +2990,36 @@ watch(filters, async () => {
 
 .p-dark .empty-state p {
   color: var(--gp-text-muted);
+}
+
+.p-dark .mobile-gps-list-panel {
+  background: var(--gp-surface-dark);
+}
+
+.p-dark .mobile-gps-header,
+.p-dark .mobile-gps-toolbar,
+.p-dark .mobile-gps-row,
+.p-dark .mobile-gps-paginator {
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .mobile-gps-date {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .mobile-gps-time {
+  color: var(--gp-text-muted);
+}
+
+.p-dark .mobile-gps-coordinates,
+.p-dark .mobile-sort-label,
+.p-dark .mobile-select-page-control {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .mobile-gps-metric {
+  background: var(--gp-surface-light);
+  color: var(--gp-text-secondary);
 }
 
 /* PrimeVue DataTable Dark Mode Overrides */
