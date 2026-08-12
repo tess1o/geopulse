@@ -5,6 +5,7 @@ import {TestDates} from '../fixtures/test-dates.js';
 import * as TimelineTestData from '../utils/timeline-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createTimelineUser} from '../utils/isolated-user-helper.js';
+import {UserSettingsApi} from '../utils/user-settings-api.js';
 
 test.describe('Timeline Page', () => {
 
@@ -532,7 +533,7 @@ test.describe('Timeline Page', () => {
         expect(cardText).not.toMatch(/17:00|05:00/);
       }
       
-      // Verify localStorage still contains the correct user timezone
+      // Verify the frontend cached profile still contains the backend user timezone.
       const userInfo = await page.evaluate(() => {
         const userInfoStr = localStorage.getItem('userInfo');
         return userInfoStr ? JSON.parse(userInfoStr) : null;
@@ -736,7 +737,7 @@ test.describe('Timeline Page', () => {
       // Verify date format is displayed (should be formatted in user's timezone)
       expect(dateText).toMatch(/\w+,\s+\w+\s+\d{1,2}/); // Format like "Monday, September 19"
       
-      // Verify localStorage contains the correct timezone
+      // Verify the frontend cached profile contains the backend user timezone.
       const userInfo = await page.evaluate(() => {
         const userInfoStr = localStorage.getItem('userInfo');
         return userInfoStr ? JSON.parse(userInfoStr) : null;
@@ -808,13 +809,9 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Timezone Switching Tests', () => {
-    // Helper function to switch user timezone in localStorage and reload page
+    // Helper function to switch user timezone through the backend profile API and reload page.
     async function switchUserTimezone(page, timelinePage, newTimezone) {
-      await page.evaluate((timezone) => {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        userInfo.timezone = timezone;
-        localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      }, newTimezone);
+      await UserSettingsApi.updateCurrentUserProfile(page, {timezone: newTimezone});
       
       await page.reload();
       await timelinePage.waitForTimelineContent();

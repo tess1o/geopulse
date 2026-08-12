@@ -380,7 +380,7 @@ test.describe('Timeline Map Interactions', () => {
       expect(vectorRequests).toEqual([]);
     });
 
-    test('should keep raster mode from auth snapshot when display settings fail', async ({page, isolatedUsers, dbManager}) => {
+    test('should keep raster mode from cached profile when display settings fail', async ({page, isolatedUsers, dbManager}) => {
       const vectorRequests = [];
       page.on('request', (request) => {
         const url = request.url();

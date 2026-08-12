@@ -1,12 +1,12 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import {useTimezone} from '@/composables/useTimezone'
-import {clearUserSnapshot, readUserSnapshot, writeUserSnapshot} from '@/utils/authSnapshotStorage'
+import {clearCachedUserProfile, readCachedUserProfile, writeCachedUserProfile} from '@/utils/userProfileCache'
 import {isBackendDown} from '@/utils/errorHandler'
 
 let authReconcilePromise = null
 
-function shouldPreserveAuthSnapshot(error) {
+function shouldPreserveCachedProfile(error) {
     if (!error) {
         return false
     }
@@ -108,13 +108,13 @@ export const useAuthStore = defineStore('auth', {
             const timezone = useTimezone()
             if (user) {
                 if (persist) {
-                    writeUserSnapshot(user)
+                    writeCachedUserProfile(user)
                 }
                 timezone.setTimezone(user.timezone || 'UTC')
                 timezone.setDateFormat(user.dateFormat || 'MDY')
                 timezone.setTimeFormat(user.timeFormat || '24h')
             } else if (persist) {
-                clearUserSnapshot()
+                clearCachedUserProfile()
                 timezone.setDateFormat('MDY')
                 timezone.setTimeFormat('24h')
             }
@@ -126,8 +126,8 @@ export const useAuthStore = defineStore('auth', {
             return this._applyUserState(user, {persist: true})
         },
 
-        hydrateUserFromSnapshot(snapshot) {
-            return this._applyUserState(snapshot, {persist: false})
+        hydrateUserFromCachedProfile(cachedProfile) {
+            return this._applyUserState(cachedProfile, {persist: false})
         },
 
         patchCurrentUser(patch) {
@@ -149,7 +149,7 @@ export const useAuthStore = defineStore('auth', {
         clearUser() {
             this.user = null
             this.isAuthenticated = false
-            clearUserSnapshot()
+            clearCachedUserProfile()
             const timezone = useTimezone()
             timezone.setTimezone('UTC')
             timezone.setDateFormat('MDY')
@@ -162,7 +162,7 @@ export const useAuthStore = defineStore('auth', {
                 const response = await apiService.login(email, password)
                 return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
-                if (!shouldPreserveAuthSnapshot(error)) {
+                if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
                 throw error
@@ -174,7 +174,7 @@ export const useAuthStore = defineStore('auth', {
                 const response = await apiService.post('/auth/demo-login', {personaId})
                 return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
-                if (!shouldPreserveAuthSnapshot(error)) {
+                if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
                 throw error
@@ -306,7 +306,7 @@ export const useAuthStore = defineStore('auth', {
                     if (error && !error.userMessage && !error.userTitle) {
                         apiService.handleError(error)
                     }
-                    if (!shouldPreserveAuthSnapshot(error)) {
+                    if (!shouldPreserveCachedProfile(error)) {
                         this.clearUser()
                     }
                     return null
@@ -320,14 +320,11 @@ export const useAuthStore = defineStore('auth', {
 
         async checkAuth() {
             try {
-                const snapshot = readUserSnapshot()
-                if (snapshot.id) {
+                const cachedProfile = readCachedUserProfile()
+                if (cachedProfile.id) {
                     if (!this.user) {
-                        this.hydrateUserFromSnapshot(snapshot)
+                        this.hydrateUserFromCachedProfile(cachedProfile)
                     }
-                    // Keep optimistic snapshot semantics on reloads.
-                    // Many flows (including tests) intentionally mutate the cached snapshot
-                    // and expect the app to render from it after reload.
                     if (apiService.isTokenExpired()) {
                         const refreshed = await apiService.refreshToken()
                         if (!refreshed) {
@@ -335,7 +332,8 @@ export const useAuthStore = defineStore('auth', {
                             return null
                         }
                     }
-                    return this.user
+
+                    return await this.fetchCurrentUserProfile()
                 }
 
                 return await this._reconcileAuthState()
@@ -343,7 +341,7 @@ export const useAuthStore = defineStore('auth', {
                 if (error && !error.userMessage && !error.userTitle) {
                     apiService.handleError(error)
                 }
-                if (shouldPreserveAuthSnapshot(error)) {
+                if (shouldPreserveCachedProfile(error)) {
                     return this.user
                 }
                 this.clearUser()
@@ -378,7 +376,7 @@ export const useAuthStore = defineStore('auth', {
                 const response = await apiService.post('/auth/oidc/callback', {code, state})
                 return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
-                if (!shouldPreserveAuthSnapshot(error)) {
+                if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
                 throw error

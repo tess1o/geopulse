@@ -600,6 +600,7 @@ import Menu from 'primevue/menu'
 import Message from 'primevue/message'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 
 const timezone = useTimezone()
 
@@ -667,12 +668,12 @@ watch(() => linkForm.use_custom_tiles, (enabled) => {
   if (enabled && !linkForm.custom_map_tile_url) {
     // Pre-fill with user's profile custom tile URL if available
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const userInfo = readCachedUserProfile()
       if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
         linkForm.custom_map_tile_url = userInfo.customMapTileUrl.trim()
       }
     } catch (error) {
-      console.error('Error reading user custom tile URL:', error)
+      console.error('Error reading cached user custom tile URL:', error)
     }
   }
 })
@@ -680,12 +681,12 @@ watch(() => linkForm.use_custom_tiles, (enabled) => {
 watch(() => linkForm.use_custom_style, (enabled) => {
   if (enabled && !linkForm.custom_map_style_url) {
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const userInfo = readCachedUserProfile()
       if (userInfo.customMapStyleUrl && userInfo.customMapStyleUrl.trim()) {
         linkForm.custom_map_style_url = userInfo.customMapStyleUrl.trim()
       }
     } catch (error) {
-      console.error('Error reading user custom style URL:', error)
+      console.error('Error reading cached user custom style URL:', error)
     }
   }
 })

@@ -1,15 +1,16 @@
 const USER_INFO_KEY = 'userInfo'
 
-export function readUserSnapshot() {
+// Cache-only profile bootstrap. Cookies and /users/me remain the auth/profile authority.
+export function readCachedUserProfile() {
     try {
         return JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}')
     } catch (error) {
-        console.warn('[authSnapshotStorage] Failed to read user snapshot:', error)
+        console.warn('[userProfileCache] Failed to read cached user profile:', error)
         return {}
     }
 }
 
-export function writeUserSnapshot(user) {
+export function writeCachedUserProfile(user) {
     localStorage.setItem(USER_INFO_KEY, JSON.stringify({
         id: user.id,
         userId: user.id,
@@ -35,6 +36,6 @@ export function writeUserSnapshot(user) {
     }))
 }
 
-export function clearUserSnapshot() {
+export function clearCachedUserProfile() {
     localStorage.removeItem(USER_INFO_KEY)
 }

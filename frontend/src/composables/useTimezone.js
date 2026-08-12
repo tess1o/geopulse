@@ -8,6 +8,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
 import {formatDurationCompact} from '@/utils/calculationsHelpers'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -49,30 +50,27 @@ const normalizeTimeFormat = (value) => {
 
 const getUserTimezoneFromStorage = () => {
     try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-        return userInfo.timezone || 'UTC'
+        return readCachedUserProfile().timezone || 'UTC'
     } catch (error) {
-        console.warn('Failed to get user timezone from localStorage:', error)
+        console.warn('Failed to get user timezone from cached profile:', error)
         return 'UTC'
     }
 }
 
 const getUserDateFormatFromStorage = () => {
     try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-        return normalizeDateFormat(userInfo.dateFormat)
+        return normalizeDateFormat(readCachedUserProfile().dateFormat)
     } catch (error) {
-        console.warn('Failed to get user date format from localStorage:', error)
+        console.warn('Failed to get user date format from cached profile:', error)
         return DEFAULT_DATE_FORMAT
     }
 }
 
 const getUserTimeFormatFromStorage = () => {
     try {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-        return normalizeTimeFormat(userInfo.timeFormat)
+        return normalizeTimeFormat(readCachedUserProfile().timeFormat)
     } catch (error) {
-        console.warn('Failed to get user time format from localStorage:', error)
+        console.warn('Failed to get user time format from cached profile:', error)
         return DEFAULT_TIME_FORMAT
     }
 }

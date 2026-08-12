@@ -6,7 +6,7 @@ export const DEFAULT_VECTOR_STYLE_URL = 'https://tiles.openfreemap.org/styles/br
 
 const GENERIC_VECTOR_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
 
-function readAuthSnapshot() {
+function readProfileCacheState() {
   try {
     const authStore = useAuthStore()
     return {
@@ -88,7 +88,7 @@ export function resolveEffectiveMapMode(options = {}) {
     overrideStyleUrl = null
   } = options
 
-  const authSnapshot = readAuthSnapshot()
+  const cachedProfileState = readProfileCacheState()
   const modeOverride = overrideRenderMode || null
 
   if (modeOverride) {
@@ -96,7 +96,7 @@ export function resolveEffectiveMapMode(options = {}) {
   }
 
   if (!isSharedView) {
-    return normalizeMapRenderMode(authSnapshot.mapRenderMode)
+    return normalizeMapRenderMode(cachedProfileState.mapRenderMode)
   }
 
   const hasLegacyRasterOnlySource = Boolean(normalizeOptionalUrl(overrideTileUrl)) && !normalizeOptionalUrl(overrideStyleUrl)
@@ -113,9 +113,9 @@ export function resolveRasterTileSource(options = {}) {
     overrideTileUrl = null
   } = options
 
-  const authSnapshot = readAuthSnapshot()
+  const cachedProfileState = readProfileCacheState()
   const preferredTileUrl = normalizeOptionalUrl(overrideTileUrl)
-    || (!isSharedView ? normalizeOptionalUrl(authSnapshot.customMapTileUrl) : null)
+    || (!isSharedView ? normalizeOptionalUrl(cachedProfileState.customMapTileUrl) : null)
     || DEFAULT_RASTER_TILE_URL
 
   return {
@@ -132,9 +132,9 @@ export function resolveVectorStyleSource(options = {}) {
     overrideStyleUrl = null
   } = options
 
-  const authSnapshot = readAuthSnapshot()
+  const cachedProfileState = readProfileCacheState()
   const preferredStyleUrl = normalizeOptionalUrl(overrideStyleUrl)
-    || (!isSharedView ? normalizeOptionalUrl(authSnapshot.customMapStyleUrl) : null)
+    || (!isSharedView ? normalizeOptionalUrl(cachedProfileState.customMapStyleUrl) : null)
     || DEFAULT_VECTOR_STYLE_URL
 
   return {

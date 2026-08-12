@@ -71,7 +71,7 @@ export function useViewerLocation() {
   }
 
   const canUseAuthenticatedFallback = () => {
-    return authStore.isAuthenticated || apiService.hasCachedUser()
+    return authStore.isAuthenticated || apiService.hasCachedUserProfile()
   }
 
   const tryAuthenticatedFallback = async () => {

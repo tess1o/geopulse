@@ -186,6 +186,7 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { copyToClipboard } from '@/utils/clipboardUtils'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 
 const props = defineProps({
   visible: {
@@ -332,12 +333,12 @@ watch(() => formData.value.use_custom_tiles, (enabled) => {
   if (enabled && !formData.value.custom_map_tile_url) {
     // Pre-fill with user's profile custom tile URL if available
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const userInfo = readCachedUserProfile()
       if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
         formData.value.custom_map_tile_url = userInfo.customMapTileUrl.trim()
       }
     } catch (error) {
-      console.error('Error reading user custom tile URL:', error)
+      console.error('Error reading cached user custom tile URL:', error)
     }
   }
 })
@@ -345,12 +346,12 @@ watch(() => formData.value.use_custom_tiles, (enabled) => {
 watch(() => formData.value.use_custom_style, (enabled) => {
   if (enabled && !formData.value.custom_map_style_url) {
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      const userInfo = readCachedUserProfile()
       if (userInfo.customMapStyleUrl && userInfo.customMapStyleUrl.trim()) {
         formData.value.custom_map_style_url = userInfo.customMapStyleUrl.trim()
       }
     } catch (error) {
-      console.error('Error reading user custom style URL:', error)
+      console.error('Error reading cached user custom style URL:', error)
     }
   }
 })

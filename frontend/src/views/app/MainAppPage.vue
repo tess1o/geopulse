@@ -63,7 +63,7 @@ import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 // Stores
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useAuthStore } from '@/stores/auth'
-import { readUserSnapshot } from '@/utils/authSnapshotStorage'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 
 // Composables
 const route = useRoute()
@@ -141,7 +141,7 @@ const requestTimelineReconstruction = () => {
 }
 
 const getRangeForDefaultPreset = () => {
-  const preset = defaultDateRangePreset.value || readUserSnapshot().defaultDateRangePreset || ''
+  const preset = defaultDateRangePreset.value || readCachedUserProfile().defaultDateRangePreset || ''
 
   switch (preset) {
     case 'yesterday':

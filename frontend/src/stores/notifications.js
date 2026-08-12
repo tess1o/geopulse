@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import router from '@/router'
-import { readUserSnapshot } from '@/utils/authSnapshotStorage'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { resolveNotificationDisplay, resolveNotificationRoute } from '@/utils/notificationDisplay'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
@@ -81,7 +81,7 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     resolveCurrentUserId() {
-      return readUserSnapshot()?.id || null
+      return readCachedUserProfile()?.id || null
     },
 
     getBacklogWatermarkKey(userId) {

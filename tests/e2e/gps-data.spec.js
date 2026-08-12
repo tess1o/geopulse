@@ -4,6 +4,7 @@ import {GpsDataPage} from '../pages/GpsDataPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {GpsDataFactory} from '../utils/gps-data-factory.js';
 import {DateFormatTestHelper, DateFormatValues} from '../utils/date-format-test-helper.js';
+import {UserSettingsApi} from '../utils/user-settings-api.js';
 import { randomUUID } from 'crypto';
 import { readFile } from 'node:fs/promises';
 
@@ -1257,12 +1258,8 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.waitForTableReload();
             const utcRequestRaw = await utcRequestPromise;
 
-            // Switch to America/New_York timezone
-            await page.evaluate(() => {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-                userInfo.timezone = 'America/New_York';
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-            });
+            // Switch to America/New_York timezone through the backend profile API.
+            await UserSettingsApi.updateCurrentUserProfile(page, {timezone: 'America/New_York'});
 
             // Reload page to apply timezone change
             await page.reload();

@@ -2,7 +2,7 @@ import axios from 'axios';
 import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
-import { clearUserSnapshot, readUserSnapshot } from '@/utils/authSnapshotStorage';
+import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 /**
@@ -18,8 +18,8 @@ const apiService = {
     // Prevent duplicate redirects when multiple requests fail at once
     _redirectingToErrorPage: false,
 
-    hasCachedUser() {
-        return !!readUserSnapshot().id;
+    hasCachedUserProfile() {
+        return !!readCachedUserProfile().id;
     },
 
 
@@ -68,8 +68,8 @@ const apiService = {
             const expiresAt = this.getTokenExpirationFromCookie();
             // If expiration cookie is missing, assume token is expired (needs refresh)
             if (expiresAt === null) {
-                // Only consider expired if we have user info (logged in)
-                return this.hasCachedUser();
+                // Only consider expired if we have a cached user profile.
+                return this.hasCachedUserProfile();
             }
             const timezone = useTimezone()
             return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
@@ -152,7 +152,7 @@ const apiService = {
             } catch (error) {
                 // Retry on 401 with token refresh
                 if (error.response?.status === 401 && attempt < maxRetries) {
-                    if (this.hasCachedUser()) {
+                    if (this.hasCachedUserProfile()) {
                         try {
                             const refreshSuccessful = await this.refreshToken();
                             if (refreshSuccessful) {
@@ -442,11 +442,11 @@ const apiService = {
     handleError(error) {
         // If unauthorized, clear auth data and redirect to login if logged in
         if (error.response && error.response.status === 401) {
-            const hadUserInfo = this.hasCachedUser();
+            const hadCachedUserProfile = this.hasCachedUserProfile();
             this.clearAuthData();
 
-            // 401 means cookies expired - redirect to login if we had user info
-            if (hadUserInfo) {
+            // 401 means cookies expired - redirect to login if we had a cached profile
+            if (hadCachedUserProfile) {
                 window.location.href = '/login';
             }
         }
@@ -573,7 +573,7 @@ const apiService = {
         }
     },
     clearAuthData() {
-        clearUserSnapshot();
+        clearCachedUserProfile();
         // Note: httpOnly cookies are cleared by the logout endpoint on the server
     },
 };

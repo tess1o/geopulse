@@ -142,7 +142,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
-import { readUserSnapshot } from '@/utils/authSnapshotStorage'
+import { readCachedUserProfile } from '@/utils/userProfileCache'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
@@ -230,24 +230,24 @@ const hasOwnPreference = (source, key) => (
 )
 
 const readTimelineDisplayFallback = () => {
-  const snapshot = readUserSnapshot()
+  const cachedProfile = readCachedUserProfile()
   const user = authStore.user || {}
   const customMapTileUrlSource = hasOwnPreference(user, 'customMapTileUrl')
     ? user.customMapTileUrl
-    : snapshot.customMapTileUrl
+    : cachedProfile.customMapTileUrl
   const customMapStyleUrlSource = hasOwnPreference(user, 'customMapStyleUrl')
     ? user.customMapStyleUrl
-    : snapshot.customMapStyleUrl
+    : cachedProfile.customMapStyleUrl
 
   return {
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
-      ?? snapshot.showCurrentLocationTelemetry
+      ?? cachedProfile.showCurrentLocationTelemetry
       ?? true,
     customMapTileUrl: customMapTileUrlSource || null,
     customMapStyleUrl: customMapStyleUrlSource || null,
-    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || snapshot.mapRenderMode),
+    mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || cachedProfile.mapRenderMode),
     autoShowTripReplayControls: user.autoShowTripReplayControls
-      ?? snapshot.autoShowTripReplayControls
+      ?? cachedProfile.autoShowTripReplayControls
       ?? true
   }
 }
