@@ -88,6 +88,7 @@ import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMa
 import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
 import { useTimelineGpsDrilldown } from '@/composables/useTimelineGpsDrilldown'
 import { useNotesStore } from '@/stores/notes'
+import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
@@ -155,15 +156,17 @@ const hasCity = computed(() => props.stayItem.city && props.stayItem.city.trim()
 const hasCountry = computed(() => props.stayItem.country && props.stayItem.country.trim().length > 0)
 
 const contextMenuItems = computed(() => {
-  const items = [
-    {
+  const items = []
+
+  if (canViewPlaceDetails.value) {
+    items.push({
       label: 'View all visits to this place',
       icon: 'pi pi-map-marker',
       command: () => {
         navigateToPlaceDetails()
       }
-    }
-  ]
+    })
+  }
 
   if (canRenameStay.value) {
     items.push({
@@ -263,8 +266,12 @@ const { matchingNotes } = useTimelineCardNoteMatching({
   clampToCurrentDay: true
 })
 
+const stayPlaceDetailsRoute = computed(() => getStayPlaceDetailsRoute(props.stayItem))
+
+const canViewPlaceDetails = computed(() => Boolean(stayPlaceDetailsRoute.value))
+
 const canRenameStay = computed(() => {
-  return Boolean(props.stayItem.favoriteId || props.stayItem.geocodingId)
+  return canViewPlaceDetails.value
 })
 
 const canResetDataGapOverride = computed(() => {
@@ -321,15 +328,8 @@ const handleResetDataGapOverride = () => {
 }
 
 const navigateToPlaceDetails = () => {
-  // Determine type (favorite or geocoding) and id
-  const type = props.stayItem.favoriteId ? 'favorite' : 'geocoding'
-  const id = props.stayItem.favoriteId || props.stayItem.geocodingId
-
-  if (id) {
-    router.push({
-      name: 'Place Details',
-      params: { type, id }
-    })
+  if (stayPlaceDetailsRoute.value) {
+    router.push(stayPlaceDetailsRoute.value)
   }
 }
 

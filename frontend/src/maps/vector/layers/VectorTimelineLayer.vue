@@ -49,7 +49,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['marker-click', 'marker-hover'])
+const emit = defineEmits(['marker-click', 'marker-hover', 'marker-contextmenu'])
 
 const state = {
   timelineMarkers: [],
@@ -69,6 +69,11 @@ const getTimelineKey = (item) => {
 
   return `${item?.timestamp || item?.startTime || 'unknown'}|${item?.latitude}|${item?.longitude}`
 }
+
+const isStayWithPlaceDetails = (item) => Boolean(
+  item?.type === 'stay' &&
+  (item.favoriteId || item.geocodingId)
+)
 
 const isSameTimelineItem = (left, right) => {
   if (!left || !right) {
@@ -148,7 +153,7 @@ const closeHighlightedStayPopup = () => {
   state.highlightedStayPopupMount = null
 }
 
-const createStackPopupElement = (items, onSelect) => {
+const createStackPopupElement = (items, onSelect, onStayContextMenu) => {
   const popupRoot = document.createElement('div')
   popupRoot.className = 'timeline-stack-popup'
 
@@ -186,6 +191,18 @@ const createStackPopupElement = (items, onSelect) => {
       onSelect(row.item, domEvent)
     })
 
+    button.addEventListener('contextmenu', (domEvent) => {
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+      domEvent.stopImmediatePropagation?.()
+
+      if (!isStayWithPlaceDetails(row.item)) {
+        return
+      }
+
+      onStayContextMenu(row.item, domEvent)
+    })
+
     list.appendChild(button)
   })
 
@@ -194,6 +211,10 @@ const createStackPopupElement = (items, onSelect) => {
   })
 
   popupRoot.addEventListener('mousedown', (domEvent) => {
+    domEvent.stopPropagation()
+  })
+
+  popupRoot.addEventListener('contextmenu', (domEvent) => {
     domEvent.stopPropagation()
   })
 
@@ -211,27 +232,49 @@ const openStackPopupAtCoordinates = (candidateLng, candidateLat, items) => {
 
   closeStackPopup()
 
-  const popupElement = createStackPopupElement(items, (selectedItem, domEvent) => {
-    const parsedIndex = Number.parseInt(selectedItem?.__timelineIndex, 10)
-    const index = Number.isFinite(parsedIndex) ? parsedIndex : -1
+  const popupElement = createStackPopupElement(
+    items,
+    (selectedItem, domEvent) => {
+      const parsedIndex = Number.parseInt(selectedItem?.__timelineIndex, 10)
+      const index = Number.isFinite(parsedIndex) ? parsedIndex : -1
 
-    closeStackPopup()
+      closeStackPopup()
 
-    emit('marker-click', {
-      timelineItem: selectedItem,
-      stackItems: items,
-      index,
-      marker: null,
-      event: {
-        originalEvent: domEvent,
-        target: props.map,
-        lngLat: {
-          lng: candidateLng,
-          lat: candidateLat
+      emit('marker-click', {
+        timelineItem: selectedItem,
+        stackItems: items,
+        index,
+        marker: null,
+        event: {
+          originalEvent: domEvent,
+          target: props.map,
+          lngLat: {
+            lng: candidateLng,
+            lat: candidateLat
+          }
         }
-      }
-    })
-  })
+      })
+    },
+    (selectedItem, domEvent) => {
+      const parsedIndex = Number.parseInt(selectedItem?.__timelineIndex, 10)
+      const index = Number.isFinite(parsedIndex) ? parsedIndex : -1
+
+      closeStackPopup()
+
+      emit('marker-contextmenu', {
+        timelineItem: selectedItem,
+        stackItems: items,
+        index,
+        marker: null,
+        event: domEvent,
+        latlng: {
+          lat: candidateLat,
+          lng: candidateLng
+        },
+        type: 'stay'
+      })
+    }
+  )
 
   state.stackPopup = new maplibregl.Popup({
     closeButton: true,
@@ -482,9 +525,33 @@ const renderLayer = () => {
       props.map.getCanvas().style.cursor = ''
     }
 
+    const handleContextMenu = (domEvent) => {
+      if (isStack || !isStayWithPlaceDetails(primaryItem)) {
+        return
+      }
+
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+      domEvent.stopImmediatePropagation?.()
+
+      emit('marker-contextmenu', {
+        timelineItem: primaryItem,
+        stackItems: group.items,
+        index: primaryIndex,
+        marker: null,
+        event: domEvent,
+        latlng: {
+          lat: group.latitude,
+          lng: group.longitude
+        },
+        type: 'stay'
+      })
+    }
+
     markerSpec.element.addEventListener('click', handleClick)
     markerSpec.element.addEventListener('mouseenter', handleMouseEnter)
     markerSpec.element.addEventListener('mouseleave', handleMouseLeave)
+    markerSpec.element.addEventListener('contextmenu', handleContextMenu)
 
     state.timelineMarkers.push({
       marker,
@@ -492,6 +559,7 @@ const renderLayer = () => {
         markerSpec.element.removeEventListener('click', handleClick)
         markerSpec.element.removeEventListener('mouseenter', handleMouseEnter)
         markerSpec.element.removeEventListener('mouseleave', handleMouseLeave)
+        markerSpec.element.removeEventListener('contextmenu', handleContextMenu)
         closeMarkerPopup()
         markerPopupMount?.unmount?.()
         marker.remove()

@@ -126,6 +126,7 @@
           :highlighted-item="activeTimelineHighlight"
           :visible="timelineLayerVisible"
           @marker-click="handleTimelineMarkerClick"
+          @marker-contextmenu="handleTimelineMarkerContextMenu"
         />
 
         <!-- Favorites Layer -->
@@ -207,6 +208,12 @@
         <ContextMenu
           ref="favoriteContextMenuRef"
           :model="favoriteMenuItems"
+          :popup="true"
+        />
+
+        <ContextMenu
+          ref="stayContextMenuRef"
+          :model="stayMenuItems"
           :popup="true"
         />
 
@@ -326,6 +333,7 @@ import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contr
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
+import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 import { showDemoModeToast } from '@/utils/demoMode'
@@ -573,6 +581,7 @@ const immichLayerRef = ref(null)
 const notesLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
+const stayContextMenuRef = ref(null)
 const plannedItemContextMenuRef = ref(null)
 const isMobileTripSelectionViewport = ref(false)
 
@@ -581,7 +590,7 @@ const toast = useToast()
 
 // Local state
 const map = shallowRef(null)
-const favoriteContextMenuActive = ref(false)
+const featureContextMenuActive = ref(false)
 const heatmapEnabled = ref(false)
 const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
@@ -600,6 +609,7 @@ const dialogState = ref({
   addToFavoritesVisible: false,
   addAreaVisible: false,
   selectedFavorite: null,
+  selectedStay: null,
   selectedPlannedItem: null,
   addToFavoritesLatLng: null
 })
@@ -1006,6 +1016,18 @@ const favoriteMenuItems = computed(() => [
   }
 ])
 
+const stayMenuItems = computed(() => [
+  {
+    label: 'View all visits',
+    icon: 'pi pi-chart-line',
+    command: () => {
+      if (dialogState.value.selectedStay) {
+        navigateToStayDetails(dialogState.value.selectedStay)
+      }
+    }
+  }
+])
+
 const plannedItemMenuItems = ref([
   {
     label: 'Edit planned item',
@@ -1089,12 +1111,12 @@ const handleMapContextMenu = (event) => {
   }
 
   // Defer map-context menu opening by one tick to allow feature-level
-  // contextmenu handlers (favorites/planned items) to set suppression flags.
+  // contextmenu handlers (favorites/planned items/stays) to set suppression flags.
   mapContextMenuShowTimeoutId = setTimeout(() => {
     mapContextMenuShowTimeoutId = null
 
-    if (favoriteContextMenuActive.value) {
-      favoriteContextMenuActive.value = false
+    if (featureContextMenuActive.value) {
+      featureContextMenuActive.value = false
       return
     }
 
@@ -1110,6 +1132,43 @@ const handleMapContextMenu = (event) => {
 // Layer event handlers
 const handleTimelineMarkerClick = (event) => {
   baseHandleTimelineMarkerClick(event)
+}
+
+const handleTimelineMarkerContextMenu = (event) => {
+  if (props.isPublicView) {
+    return
+  }
+
+  const stay = event?.timelineItem
+  if (!getStayPlaceDetailsRoute(stay)) {
+    return
+  }
+
+  if (mapContextMenuShowTimeoutId !== null) {
+    clearTimeout(mapContextMenuShowTimeoutId)
+    mapContextMenuShowTimeoutId = null
+  }
+
+  featureContextMenuActive.value = true
+
+  if (event.event) {
+    event.event.preventDefault?.()
+    event.event.stopPropagation?.()
+    event.event.stopImmediatePropagation?.()
+  }
+
+  dialogState.value.selectedStay = event
+
+  mapContextMenuRef.value?.hide?.()
+  favoriteContextMenuRef.value?.hide?.()
+  plannedItemContextMenuRef.value?.hide?.()
+
+  if (stayContextMenuRef.value && event.event) {
+    stayContextMenuRef.value.show(event.event)
+    setTimeout(() => {
+      featureContextMenuActive.value = false
+    }, 120)
+  }
 }
 
 
@@ -1244,7 +1303,7 @@ const handleFavoriteContextMenu = (event) => {
   }
 
   // Set flag to prevent map context menu
-  favoriteContextMenuActive.value = true
+  featureContextMenuActive.value = true
 
   // Prevent default browser context menu and map context menu
   if (event.event) {
@@ -1257,12 +1316,14 @@ const handleFavoriteContextMenu = (event) => {
   dialogState.value.selectedFavorite = event
 
   mapContextMenuRef.value?.hide?.()
+  stayContextMenuRef.value?.hide?.()
+  plannedItemContextMenuRef.value?.hide?.()
 
   // Show favorite context menu
   if (favoriteContextMenuRef.value && event.event) {
     favoriteContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      favoriteContextMenuActive.value = false
+      featureContextMenuActive.value = false
     }, 120)
   }
 }
@@ -1274,7 +1335,7 @@ const handlePlannedItemContextMenu = (event) => {
   }
 
   // Set flag to prevent map context menu
-  favoriteContextMenuActive.value = true
+  featureContextMenuActive.value = true
 
   if (event.event) {
     event.event.preventDefault()
@@ -1285,11 +1346,13 @@ const handlePlannedItemContextMenu = (event) => {
   dialogState.value.selectedPlannedItem = event
 
   mapContextMenuRef.value?.hide?.()
+  favoriteContextMenuRef.value?.hide?.()
+  stayContextMenuRef.value?.hide?.()
 
   if (plannedItemContextMenuRef.value && event.event) {
     plannedItemContextMenuRef.value.show(event.event)
     setTimeout(() => {
-      favoriteContextMenuActive.value = false
+      featureContextMenuActive.value = false
     }, 120)
   }
 }
@@ -1303,6 +1366,13 @@ const navigateToFavoriteDetails = (favorite) => {
         id: favorite.favorite.id
       }
     })
+  }
+}
+
+const navigateToStayDetails = (event) => {
+  const route = getStayPlaceDetailsRoute(event?.timelineItem || event)
+  if (route) {
+    router.push(route)
   }
 }
 

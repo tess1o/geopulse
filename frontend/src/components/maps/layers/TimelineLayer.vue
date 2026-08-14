@@ -9,6 +9,7 @@
     :marker-options="markerOptions"
     @marker-click="(payload) => emit('marker-click', payload)"
     @marker-hover="(payload) => emit('marker-hover', payload)"
+    @marker-contextmenu="(payload) => emit('marker-contextmenu', payload)"
   />
 </template>
 
@@ -41,7 +42,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['marker-click', 'marker-hover'])
+const emit = defineEmits(['marker-click', 'marker-hover', 'marker-contextmenu'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))

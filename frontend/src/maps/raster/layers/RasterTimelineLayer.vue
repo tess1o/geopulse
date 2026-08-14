@@ -56,7 +56,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['marker-click', 'marker-hover'])
+const emit = defineEmits(['marker-click', 'marker-hover', 'marker-contextmenu'])
 
 // State
 const baseLayerRef = ref(null)
@@ -75,6 +75,11 @@ const hasValidCoordinates = (item) => (
 )
 
 const getCoordinateKey = (latitude, longitude) => `${latitude}|${longitude}`
+
+const isStayWithPlaceDetails = (item) => Boolean(
+  item?.type === 'stay' &&
+  (item.favoriteId || item.geocodingId)
+)
 
 const isSameTimelineItem = (left, right) => {
   if (!left || !right) return false
@@ -158,6 +163,27 @@ const createStackPopupElement = (marker, markerItems) => {
           target: marker,
           originalEvent: domEvent
         }
+      })
+    })
+
+    button.addEventListener('contextmenu', (domEvent) => {
+      L.DomEvent.stop(domEvent)
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+      domEvent.stopImmediatePropagation?.()
+
+      if (!isStayWithPlaceDetails(row.item)) {
+        return
+      }
+
+      marker.closePopup()
+      emit('marker-contextmenu', {
+        timelineItem: row.item,
+        index: markerItem?.index ?? -1,
+        marker,
+        event: domEvent,
+        latlng: marker.getLatLng?.() || null,
+        type: 'stay'
       })
     })
 
@@ -329,6 +355,29 @@ const renderTimelineMarkers = () => {
           index: primaryIndex,
           marker,
           event: e
+        })
+      })
+
+      marker.on('contextmenu', (e) => {
+        if (!isStayWithPlaceDetails(primaryItem)) {
+          return
+        }
+
+        if (e.originalEvent) {
+          e.originalEvent.preventDefault()
+          e.originalEvent.stopPropagation()
+          e.originalEvent.stopImmediatePropagation?.()
+        }
+
+        L.DomEvent.stop(e)
+
+        emit('marker-contextmenu', {
+          timelineItem: primaryItem,
+          index: primaryIndex,
+          marker,
+          event: e.originalEvent,
+          latlng: e.latlng,
+          type: 'stay'
         })
       })
 
