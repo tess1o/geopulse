@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,7 +38,28 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
     }
 
+    public List<FavoritesEntity> findByIdsAndUserId(Collection<Long> ids, UUID userId) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return find("user.id = ?1 and id in ?2", userId, ids).list();
+    }
+
     public Optional<FavoritesEntity> findByPoint(UUID userId, Point point, int maxDistanceFromPoint, int maxDistanceFromArea) {
+        List<FavoritesEntity> matches = findAllByPoint(userId, point, maxDistanceFromPoint, maxDistanceFromArea);
+        if (!matches.isEmpty()) {
+            return Optional.of(matches.getFirst());
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Find all favorites that apply to a point. Point favorites are matched by
+     * distance; area favorites are matched by containment or a small boundary
+     * tolerance. Unlike findByPoint, this preserves overlapping favorites for
+     * callers that need to present the ambiguity to the user.
+     */
+    public List<FavoritesEntity> findAllByPoint(UUID userId, Point point, int maxDistanceFromPoint, int maxDistanceFromArea) {
         String query = """
                 SELECT *
                 FROM favorite_locations
@@ -59,10 +81,14 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                             :maxDistanceFromArea
                         )
                     )
-                ));
+                ))
+                ORDER BY
+                    CASE WHEN type = 'AREA' AND ST_Covers(geometry, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)) THEN 0 ELSE 1 END,
+                    ST_Distance(geometry::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography)
                 """;
 
-        var resultList = em.createNativeQuery(query, FavoritesEntity.class)
+        @SuppressWarnings("unchecked")
+        List<FavoritesEntity> resultList = em.createNativeQuery(query, FavoritesEntity.class)
                 .setParameter("lon", point.getX())
                 .setParameter("lat", point.getY())
                 .setParameter("userId", userId)
@@ -70,10 +96,7 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                 .setParameter("maxDistanceFromArea", maxDistanceFromArea)
                 .getResultList();
 
-        if (!resultList.isEmpty()) {
-            return Optional.of((FavoritesEntity) resultList.getFirst());
-        }
-        return Optional.empty();
+        return resultList;
     }
 
     /**
@@ -161,13 +184,17 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                       )
                       OR
                       (f.type = 'AREA'
-                       AND (ST_Contains(f.geometry, ic.input_point)
+                       AND (ST_Covers(f.geometry, ic.input_point)
                             OR ST_DWithin(ST_Boundary(f.geometry)::geography, ic.input_point::geography, :maxDistanceFromArea)
                            )
                       )
                   )
                 ORDER BY ic.input_lon, ic.input_lat,
-                         CASE WHEN f.type = 'AREA' AND ST_Contains(f.geometry, ic.input_point) THEN 1 ELSE 2 END,
+                         CASE
+                             WHEN f.type = 'AREA' AND ST_Covers(f.geometry, ic.input_point) THEN 1
+                             WHEN f.type = 'AREA' THEN 2
+                             ELSE 3
+                         END,
                          ST_Distance(f.geometry::geography, ic.input_point::geography)
                 """.formatted(valuesClause.toString());
 

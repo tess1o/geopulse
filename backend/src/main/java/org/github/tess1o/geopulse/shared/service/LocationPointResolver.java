@@ -54,8 +54,12 @@ public class LocationPointResolver {
         FavoriteLocationsDto favorite = favoriteLocationService.findByPoint(userId, point);
 
         if (favorite != null && (!favorite.getPoints().isEmpty() || !favorite.getAreas().isEmpty())) {
-            // Found a favorite location
-            if (!favorite.getPoints().isEmpty()) {
+            // Found a favorite location. Prefer an area when both kinds are
+            // returned: the area expresses the user's broader place intent.
+            if (!favorite.getAreas().isEmpty()) {
+                var favoriteArea = favorite.getAreas().getFirst();
+                return LocationResolutionResult.fromFavorite(favoriteArea.getName(), favoriteArea.getId());
+            } else if (!favorite.getPoints().isEmpty()) {
                 var favoritePoint = favorite.getPoints().getFirst();
                 return LocationResolutionResult.fromFavorite(
                         favoritePoint.getName(),
@@ -63,9 +67,6 @@ public class LocationPointResolver {
                         favoritePoint.getLatitude(),
                         favoritePoint.getLongitude()
                 );
-            } else {
-                var favoriteArea = favorite.getAreas().getFirst();
-                return LocationResolutionResult.fromFavorite(favoriteArea.getName(), favoriteArea.getId());
             }
         }
 
@@ -153,18 +154,20 @@ public class LocationPointResolver {
             FavoriteLocationsDto favorite = favoriteResults.get(coordKey);
 
             if (favorite != null && (!favorite.getPoints().isEmpty() || !favorite.getAreas().isEmpty())) {
-                // Found a favorite location
-                if (!favorite.getPoints().isEmpty()) {
+                // Found a favorite location. Areas take precedence over point
+                // favorites because a stay can be near a saved point while
+                // still belonging to a larger saved area.
+                if (!favorite.getAreas().isEmpty()) {
+                    var favoriteArea = favorite.getAreas().getFirst();
+                    results.put(coordKey, LocationResolutionResult.fromFavorite(
+                            favoriteArea.getName(), favoriteArea.getId()));
+                } else if (!favorite.getPoints().isEmpty()) {
                     var favoritePoint = favorite.getPoints().getFirst();
                     results.put(coordKey, LocationResolutionResult.fromFavorite(
                             favoritePoint.getName(),
                             favoritePoint.getId(),
                             favoritePoint.getLatitude(),
                             favoritePoint.getLongitude()));
-                } else if (!favorite.getAreas().isEmpty()) {
-                    var favoriteArea = favorite.getAreas().getFirst();
-                    results.put(coordKey, LocationResolutionResult.fromFavorite(
-                            favoriteArea.getName(), favoriteArea.getId()));
                 } else {
                     needGeocoding.add(point);
                 }

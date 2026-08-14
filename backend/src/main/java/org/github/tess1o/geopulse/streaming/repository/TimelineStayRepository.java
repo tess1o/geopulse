@@ -709,6 +709,109 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     }
 
     /**
+     * Find stays near a point, also including stays inside favorite areas that
+     * contain the point. The final column contains the matching area id, when
+     * applicable. A stay may occur more than once when favorite areas overlap.
+     *
+     * Row shape:
+     * [id, timestamp, duration, locationName, latitude, longitude,
+     *  favoriteId, geocodingId, distanceMeters, matchedAreaId]
+     */
+    public List<Object[]> findLocationLookupStays(UUID userId,
+                                                    Geometry targetPoint,
+                                                    double radiusMeters,
+                                                    double areaBoundaryToleranceMeters) {
+        String sql = """
+                SELECT s.id,
+                       s.timestamp,
+                       s.stay_duration,
+                       s.location_name,
+                       ST_Y(s.location) AS latitude,
+                       ST_X(s.location) AS longitude,
+                       s.favorite_id,
+                       s.geocoding_id,
+                       ST_Distance(s.location::geography, (:targetPoint)::geography) AS distance_meters,
+                       area.id AS matched_area_id
+                FROM timeline_stays s
+                LEFT JOIN favorite_locations area
+                  ON area.user_id = :userId
+                 AND area.type = 'AREA'
+                 AND (
+                       ST_Covers(area.geometry, s.location)
+                       OR ST_DWithin(
+                           ST_Boundary(area.geometry)::geography,
+                           s.location::geography,
+                           :areaBoundaryToleranceMeters
+                       )
+                     )
+                WHERE s.user_id = :userId
+                  AND (
+                       ST_DWithin(
+                           s.location::geography,
+                           (:targetPoint)::geography,
+                           :radiusMeters
+                       )
+                       OR (
+                           area.id IS NOT NULL
+                           AND (
+                               ST_Covers(area.geometry, (:targetPoint)::geometry)
+                               OR ST_DWithin(
+                                   ST_Boundary(area.geometry)::geography,
+                                   (:targetPoint)::geography,
+                                   :areaBoundaryToleranceMeters
+                               )
+                           )
+                       )
+                  )
+                ORDER BY distance_meters ASC, s.timestamp DESC
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createNativeQuery(sql)
+                .setParameter("userId", userId)
+                .setParameter("targetPoint", targetPoint)
+                .setParameter("radiusMeters", radiusMeters)
+                .setParameter("areaBoundaryToleranceMeters", areaBoundaryToleranceMeters)
+                .getResultList();
+        return results;
+    }
+
+    /**
+     * Find the nearest recorded stays for the fallback state of a location
+     * lookup. The spatial KNN operator uses the existing location index; the
+     * returned distance is still calculated in meters for display.
+     *
+     * Row shape:
+     * [id, timestamp, duration, locationName, latitude, longitude,
+     *  favoriteId, geocodingId, distanceMeters]
+     */
+    public List<Object[]> findNearestLocationLookupStays(UUID userId, Geometry targetPoint, int limit) {
+        String sql = """
+                SELECT s.id,
+                       s.timestamp,
+                       s.stay_duration,
+                       s.location_name,
+                       ST_Y(s.location) AS latitude,
+                       ST_X(s.location) AS longitude,
+                       s.favorite_id,
+                       s.geocoding_id,
+                       ST_Distance(s.location::geography, (:targetPoint)::geography) AS distance_meters
+                FROM timeline_stays s
+                WHERE s.user_id = :userId
+                ORDER BY s.location <-> (:targetPoint)::geometry
+                LIMIT :limit
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createNativeQuery(sql)
+                .setParameter("userId", userId)
+                .setParameter("targetPoint", targetPoint)
+                .setParameter("limit", limit)
+                .getResultList();
+        return results;
+    }
+
+    /**
      * Get aggregate statistics for stays at a specific favorite location.
      *
      * @param favoriteId ID of the favorite location

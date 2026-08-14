@@ -249,6 +249,16 @@
           @close="closePhotoViewer"
         />
 
+        <LocationLookupDialog
+          :visible="dialogState.locationLookupVisible"
+          :point="dialogState.locationLookupPoint"
+          :result="dialogState.locationLookupResult"
+          :loading="dialogState.locationLookupLoading"
+          :error="dialogState.locationLookupError"
+          @close="closeLocationLookup"
+          @retry="retryLocationLookup"
+        />
+
         <!-- Timeline Regeneration Modal -->
         <TimelineRegenerationModal
           v-model:visible="timelineRegenerationVisible"
@@ -344,8 +354,10 @@ import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import apiService from '@/utils/apiService'
+import timelineService from '@/services/timelineService'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
+import LocationLookupDialog from '@/components/dialogs/LocationLookupDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
 import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
@@ -611,8 +623,14 @@ const dialogState = ref({
   selectedFavorite: null,
   selectedStay: null,
   selectedPlannedItem: null,
-  addToFavoritesLatLng: null
+  addToFavoritesLatLng: null,
+  locationLookupVisible: false,
+  locationLookupPoint: null,
+  locationLookupResult: null,
+  locationLookupLoading: false,
+  locationLookupError: ''
 })
+let locationLookupRequestId = 0
 
 // Rectangle drawing composable
 const {
@@ -920,7 +938,13 @@ const showReadOnlyToast = () => {
 
 // Context menu items
 const mapMenuItems = computed(() => {
-  const items = []
+  const items = [
+    {
+      label: 'Was I here?',
+      icon: 'pi pi-clock',
+      command: () => openLocationLookup(dialogState.value.addToFavoritesLatLng)
+    }
+  ]
 
   if (props.showPlanToVisitAction) {
     items.push({
@@ -1072,6 +1096,46 @@ const syncMobileTripSelectionViewport = () => {
   }
 
   isMobileTripSelectionViewport.value = window.matchMedia(MOBILE_TRIP_SELECTION_MEDIA).matches
+}
+
+const openLocationLookup = async (point) => {
+  const latitude = Number(point?.lat)
+  const longitude = Number(point?.lng)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return
+  }
+
+  const requestId = ++locationLookupRequestId
+  dialogState.value.locationLookupPoint = { lat: latitude, lng: longitude }
+  dialogState.value.locationLookupResult = null
+  dialogState.value.locationLookupError = ''
+  dialogState.value.locationLookupLoading = true
+  dialogState.value.locationLookupVisible = true
+
+  try {
+    const response = await timelineService.lookupLocation(latitude, longitude)
+    if (requestId !== locationLookupRequestId) return
+    dialogState.value.locationLookupResult = response?.data || null
+  } catch (error) {
+    if (requestId !== locationLookupRequestId) return
+    dialogState.value.locationLookupError = error?.response?.data?.message
+      || error?.message
+      || 'Could not check visits at this location.'
+  } finally {
+    if (requestId === locationLookupRequestId) {
+      dialogState.value.locationLookupLoading = false
+    }
+  }
+}
+
+const retryLocationLookup = () => {
+  openLocationLookup(dialogState.value.locationLookupPoint)
+}
+
+const closeLocationLookup = () => {
+  locationLookupRequestId += 1
+  dialogState.value.locationLookupVisible = false
+  dialogState.value.locationLookupLoading = false
 }
 
 const handleMapClick = (event) => {

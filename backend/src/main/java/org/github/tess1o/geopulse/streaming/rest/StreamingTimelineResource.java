@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
@@ -82,6 +83,9 @@ public class StreamingTimelineResource {
     @Inject
     MultiUserTimelineService multiUserTimelineService;
 
+    @Inject
+    TimelineLocationLookupService timelineLocationLookupService;
+
     @GET
     @RolesAllowed({"USER", "ADMIN"})
     public Response getTimeline(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
@@ -117,6 +121,40 @@ public class StreamingTimelineResource {
             log.error("Failed to generate streaming timeline for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to generate timeline: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Check whether the current user has recorded stays at a map-selected
+     * coordinate. The matching radius is intentionally fixed by the backend
+     * so all clients get the same recall behavior.
+     */
+    @GET
+    @Path("/location-lookup")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response lookupLocation(@QueryParam("latitude") Double latitude,
+                                   @QueryParam("longitude") Double longitude) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        if (latitude == null || longitude == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("latitude and longitude are required"))
+                    .build();
+        }
+
+        try {
+            return Response.ok(ApiResponse.success(
+                    timelineLocationLookupService.lookup(userId, latitude, longitude)
+            )).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to lookup timeline stays near {},{} for user {}", latitude, longitude, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to lookup visits near this location"))
                     .build();
         }
     }
