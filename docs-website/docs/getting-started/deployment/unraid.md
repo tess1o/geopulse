@@ -1,12 +1,12 @@
 ---
 title: Unraid Installation
 sidebar_label: Unraid
-description: Install GeoPulse on Unraid with Compose Manager Plus and Unraid-specific Docker Compose files.
+description: Install GeoPulse on Unraid from Community Apps or with Unraid-specific Docker Compose files.
 ---
 
 # Unraid Installation
 
-Unraid is a NAS and homelab operating system with a web interface for storage, VMs, and Docker containers. GeoPulse uses several containers, so the recommended Unraid setup is Docker Compose through a plugin such as [Compose Manager Plus](https://github.com/mstrhakr/compose_plugin).
+Unraid is a NAS and homelab operating system with a web interface for storage, VMs, and Docker containers. GeoPulse uses several containers, so the recommended Unraid setup is the [GeoPulse Community Apps installer](https://ca.unraid.net/apps/geopulse-compose-installer-0d2mvh518yrydp).
 
 GeoPulse provides separate Unraid compose files so existing Docker Compose, Kubernetes, Proxmox, and manual installations are not affected.
 
@@ -14,8 +14,24 @@ GeoPulse provides separate Unraid compose files so existing Docker Compose, Kube
 
 - An Unraid server with Docker enabled.
 - The [Community Applications](https://docs.unraid.net/community-applications/) plugin.
-- Compose Manager Plus installed from Community Applications.
 - Enough appdata storage for GeoPulse data, database files, keys, and imports.
+
+## Install From Community Apps
+
+Use this option for the simplest Unraid installation.
+
+1. Open **Apps** in the Unraid web UI.
+2. Search for `GeoPulse`.
+3. Open the [GeoPulse Community Apps installer](https://ca.unraid.net/apps/geopulse-compose-installer-0d2mvh518yrydp).
+4. Review the appdata path, ports, and environment variables.
+5. Install and start GeoPulse.
+6. Open GeoPulse:
+
+   ```text
+   http://<unraid-ip>:5555
+   ```
+
+The first registered user becomes admin unless `GEOPULSE_ADMIN_EMAIL` is set before registration. Continue with the [Initial Setup Guide](../../system-administration/initial-setup).
 
 ## Image Defaults
 
@@ -35,9 +51,9 @@ image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 
 Do not use the ARM64 Postgres image shown in the regular Docker guide for a normal Unraid installation.
 
-## Install Without MQTT
+## Manual Install Without MQTT
 
-Use this option if you do not need OwnTracks over MQTT.
+Use this option if you do not need OwnTracks over MQTT and prefer to manage the compose stack yourself. Manual installation requires Compose Manager Plus from Community Applications.
 
 1. Open the Unraid terminal or use a file manager on the appdata share.
 
@@ -75,11 +91,9 @@ Use this option if you do not need OwnTracks over MQTT.
    http://<unraid-ip>:5555
    ```
 
-The first registered user becomes admin unless `GEOPULSE_ADMIN_EMAIL` is set before registration. Continue with the [Initial Setup Guide](../../system-administration/initial-setup).
+## Manual Install With MQTT
 
-## Install With MQTT
-
-Use this option for OwnTracks MQTT support.
+Use this option for OwnTracks MQTT support when managing the compose stack yourself.
 
 1. Follow the same steps as the non-MQTT install, but download the MQTT-enabled Unraid compose file:
 
@@ -145,9 +159,10 @@ For advanced authentication and cookie behavior, see [Authentication Configurati
 ## Updating
 
 1. Back up `/mnt/user/appdata/geopulse`.
-2. Edit `.env` and update `GEOPULSE_VERSION`.
-3. In Compose Manager Plus, pull the latest images for the stack.
-4. Recreate or restart the stack.
+2. For Community Apps installs, update GeoPulse from the Unraid web UI when an update is available.
+3. For manual installs, edit `.env` and update `GEOPULSE_VERSION`.
+4. In Compose Manager Plus, pull the latest images for the stack.
+5. Recreate or restart the stack.
 
 For general upgrade guidance, see [Upgrading GeoPulse](../../system-administration/maintenance/updating).
 
