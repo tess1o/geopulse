@@ -130,8 +130,9 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async deleteGpsPoint(pointId) {
             try {
-                await apiService.delete(`/gps/${pointId}`)
-                return true
+                const response = await apiService.delete(`/gps/${pointId}`)
+                const responseData = response.data || response
+                return responseData
             } catch (error) {
                 console.error('Error deleting GPS point:', error)
                 throw error

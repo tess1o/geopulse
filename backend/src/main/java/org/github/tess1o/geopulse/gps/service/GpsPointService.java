@@ -567,7 +567,7 @@ public class GpsPointService {
      * @param userId  The ID of the user (for security check)
      */
     @Transactional
-    public void deleteGpsPoint(Long pointId, UUID userId) {
+    public GpsPointDeleteResult deleteGpsPoint(Long pointId, UUID userId) {
         log.info("Deleting GPS point {} for user {}", pointId, userId);
 
         // Find the GPS point and verify ownership
@@ -587,8 +587,7 @@ public class GpsPointService {
         // Delete the GPS point
         gpsPointRepository.delete(gpsPoint);
 
-        // Trigger synchronous timeline regeneration if needed
-        triggerSynchronousTimelineRegenerationIfNeeded(userId, pointTimestamp);
+        return new GpsPointDeleteResult(1, pointTimestamp);
     }
 
     /**
@@ -599,11 +598,11 @@ public class GpsPointService {
      * @return Number of points deleted
      */
     @Transactional
-    public int deleteGpsPoints(List<Long> pointIds, UUID userId) {
+    public GpsPointDeleteResult deleteGpsPoints(List<Long> pointIds, UUID userId) {
         log.info("Deleting {} GPS points for user {}", pointIds.size(), userId);
 
         if (pointIds.isEmpty()) {
-            return 0;
+            return new GpsPointDeleteResult(0, null);
         }
 
         // Find all GPS points and verify ownership
@@ -629,13 +628,8 @@ public class GpsPointService {
             deletedCount++;
         }
 
-        // Trigger synchronous timeline regeneration if needed
-        if (earliestTimestamp != null) {
-            triggerSynchronousTimelineRegenerationIfNeeded(userId, earliestTimestamp);
-        }
-
         log.info("Successfully deleted {} GPS points for user {}", deletedCount, userId);
-        return deletedCount;
+        return new GpsPointDeleteResult(deletedCount, earliestTimestamp);
     }
 
     /**

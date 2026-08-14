@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service;
 
 import io.smallrye.common.annotation.Identifier;
+import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -9,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -29,6 +31,15 @@ public class AsyncTimelineGenerationService {
 
     @Inject
     TimelineJobProgressService jobProgressService;
+
+    private final ConcurrentHashMap<UUID, Instant> pendingRegenerationStartTimes = new ConcurrentHashMap<>();
+
+    public record TimelineSchedulingResult(
+            UUID jobId,
+            boolean scheduled,
+            boolean queued
+    ) {
+    }
 
     /**
      * Start timeline regeneration asynchronously.
@@ -64,6 +75,25 @@ public class AsyncTimelineGenerationService {
         });
     }
 
+    public TimelineSchedulingResult scheduleTimelineRegenerationFromTimestamp(UUID userId, Instant earliestAffectedTimestamp) {
+        if (earliestAffectedTimestamp == null) {
+            return new TimelineSchedulingResult(null, false, false);
+        }
+
+        if (jobProgressService.getUserActiveJob(userId).isPresent()) {
+            queuePendingRegeneration(userId, earliestAffectedTimestamp);
+            return new TimelineSchedulingResult(null, true, true);
+        }
+
+        try {
+            UUID jobId = regenerateTimelineFromTimestampAsync(userId, earliestAffectedTimestamp);
+            return new TimelineSchedulingResult(jobId, true, false);
+        } catch (IllegalStateException e) {
+            queuePendingRegeneration(userId, earliestAffectedTimestamp);
+            return new TimelineSchedulingResult(null, true, true);
+        }
+    }
+
     private UUID createAndRunAsyncJob(UUID userId, TimelineJobRunner runner) {
         var existingJob = jobProgressService.getUserActiveJob(userId);
         if (existingJob.isPresent()) {
@@ -85,10 +115,43 @@ public class AsyncTimelineGenerationService {
                 } catch (Exception failError) {
                     log.error("Failed to mark job {} as failed: {}", jobId, failError.getMessage());
                 }
+            } finally {
+                drainPendingRegeneration(userId);
             }
         }, executorService);
 
         return jobId;
+    }
+
+    @Scheduled(every = "2s")
+    void drainPendingRegenerations() {
+        for (UUID userId : pendingRegenerationStartTimes.keySet()) {
+            drainPendingRegeneration(userId);
+        }
+    }
+
+    private void queuePendingRegeneration(UUID userId, Instant earliestAffectedTimestamp) {
+        pendingRegenerationStartTimes.merge(userId, earliestAffectedTimestamp,
+                (existing, requested) -> requested.isBefore(existing) ? requested : existing);
+        log.info("Queued pending timeline regeneration for user {} from timestamp {}", userId, earliestAffectedTimestamp);
+    }
+
+    private void drainPendingRegeneration(UUID userId) {
+        Instant pendingStart = pendingRegenerationStartTimes.get(userId);
+        if (pendingStart == null || jobProgressService.getUserActiveJob(userId).isPresent()) {
+            return;
+        }
+
+        if (!pendingRegenerationStartTimes.remove(userId, pendingStart)) {
+            return;
+        }
+
+        try {
+            UUID jobId = regenerateTimelineFromTimestampAsync(userId, pendingStart);
+            log.info("Started queued timeline regeneration job {} for user {} from timestamp {}", jobId, userId, pendingStart);
+        } catch (IllegalStateException e) {
+            queuePendingRegeneration(userId, pendingStart);
+        }
     }
 
     private void finalizeJobAfterTimelineGeneration(UUID jobId) {

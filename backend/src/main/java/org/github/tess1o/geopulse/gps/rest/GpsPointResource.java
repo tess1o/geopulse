@@ -17,9 +17,13 @@ import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationS
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
+import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
+import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
@@ -59,18 +63,27 @@ public class GpsPointResource {
     private final PathSimplificationService pathSimplificationService;
     private final TimelineConfigurationProvider configurationProvider;
     private final GpsSourceService gpsSourceService;
+    private final AsyncTimelineGenerationService asyncTimelineGenerationService;
+    private final CoverageService coverageService;
+    private final CoverageProcessingService coverageProcessingService;
 
     @Inject
     public GpsPointResource(GpsPointService gpsPointService,
                             CurrentUserService currentUserService,
                             PathSimplificationService pathSimplificationService,
                             TimelineConfigurationProvider configurationProvider,
-                            GpsSourceService gpsSourceService) {
+                            GpsSourceService gpsSourceService,
+                            AsyncTimelineGenerationService asyncTimelineGenerationService,
+                            CoverageService coverageService,
+                            CoverageProcessingService coverageProcessingService) {
         this.gpsPointService = gpsPointService;
         this.currentUserService = currentUserService;
         this.pathSimplificationService = pathSimplificationService;
         this.configurationProvider = configurationProvider;
         this.gpsSourceService = gpsSourceService;
+        this.asyncTimelineGenerationService = asyncTimelineGenerationService;
+        this.coverageService = coverageService;
+        this.coverageProcessingService = coverageProcessingService;
     }
 
     /**
@@ -717,7 +730,7 @@ public class GpsPointResource {
      * This endpoint requires authentication.
      *
      * @param pointId The ID of the GPS point to delete
-     * @return 204 No Content if successful
+     * @return Delete result and background refresh scheduling status
      */
     @DELETE
     @Path("/{pointId}")
@@ -727,8 +740,8 @@ public class GpsPointResource {
         log.info("Received request to delete GPS point {} for user {}", pointId, userId);
 
         try {
-            gpsPointService.deleteGpsPoint(pointId, userId);
-            return Response.noContent().build();
+            GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoint(pointId, userId);
+            return Response.ok(ApiResponse.success(buildDeleteResponse(userId, deleteResult))).build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error("GPS point not found"))
@@ -763,8 +776,8 @@ public class GpsPointResource {
                 bulkDeleteDto.getGpsPointIds().size(), userId);
 
         try {
-            int deletedCount = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
-            return Response.ok(ApiResponse.success(Map.of("deletedCount", deletedCount))).build();
+            GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
+            return Response.ok(ApiResponse.success(buildDeleteResponse(userId, deleteResult))).build();
         } catch (ForbiddenException e) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error("Access denied"))
@@ -774,6 +787,47 @@ public class GpsPointResource {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to delete GPS points: " + e.getMessage()))
                     .build();
+        }
+    }
+
+    private Map<String, Object> buildDeleteResponse(UUID userId, GpsPointDeleteResult deleteResult) {
+        if (deleteResult.deletedCount() == 0) {
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("deletedCount", 0);
+            response.put("timelineJobId", null);
+            response.put("timelineRegenerationScheduled", false);
+            response.put("coverageRebuildScheduled", false);
+            return response;
+        }
+
+        AsyncTimelineGenerationService.TimelineSchedulingResult timelineResult =
+                asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(
+                        userId,
+                        deleteResult.earliestAffectedTimestamp());
+
+        boolean coverageRebuildScheduled = scheduleCoverageRebuildIfEnabled(userId);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("deletedCount", deleteResult.deletedCount());
+        response.put("timelineJobId", timelineResult.jobId());
+        response.put("timelineRegenerationScheduled", timelineResult.scheduled());
+        response.put("coverageRebuildScheduled", coverageRebuildScheduled);
+        return response;
+    }
+
+    private boolean scheduleCoverageRebuildIfEnabled(UUID userId) {
+        try {
+            CoverageStatus status = coverageService.getCoverageStatus(userId);
+            if (!status.userEnabled()) {
+                return false;
+            }
+
+            CoverageProcessingService.CoverageSchedulingResult result =
+                    coverageProcessingService.requestFullRecalculationAsync(userId);
+            return result.scheduled();
+        } catch (Exception e) {
+            log.warn("Failed to schedule coverage rebuild after GPS deletion for user {}: {}", userId, e.getMessage(), e);
+            return false;
         }
     }
 

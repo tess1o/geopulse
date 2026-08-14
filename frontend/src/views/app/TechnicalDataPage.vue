@@ -891,7 +891,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useGpsSourcesStore } from '@/stores/gpsSources'
@@ -930,6 +930,7 @@ const technicalDataStore = useTechnicalDataStore()
 const gpsSourcesStore = useGpsSourcesStore()
 const toast = useToast()
 const route = useRoute()
+const router = useRouter()
 
 // Reactive state
 const isMobile = ref(false)
@@ -1689,19 +1690,48 @@ const deleteGpsPoint = (gpsPoint) => {
   showDeleteDialog.value = true
 }
 
+const getDeleteResultData = (result) => result?.data || result || {}
+
+const buildDeleteSuccessDetail = (baseMessage, result) => {
+  const data = getDeleteResultData(result)
+  const details = [baseMessage]
+  let timelineJobUrl = null
+
+  if (data.timelineJobId) {
+    timelineJobUrl = router.resolve(`/app/timeline/jobs/${data.timelineJobId}`).href
+    details.push('Timeline regeneration started.')
+  } else if (data.timelineRegenerationScheduled) {
+    details.push('Timeline regeneration will run after the current timeline job finishes.')
+  }
+
+  if (data.coverageRebuildScheduled) {
+    details.push('Coverage rebuild scheduled.')
+  }
+
+  return {
+    detail: details.join(' '),
+    timelineJobUrl
+  }
+}
+
 const confirmDeleteGpsPoint = async () => {
   if (!selectedGpsPoint.value || deleteLoading.value) return
   
   deleteLoading.value = true
   
   try {
-    await technicalDataStore.deleteGpsPoint(selectedGpsPoint.value.id)
+    const result = await technicalDataStore.deleteGpsPoint(selectedGpsPoint.value.id)
+    const successDetail = buildDeleteSuccessDetail('GPS point has been successfully deleted', result)
     
     toast.add({
+      group: 'gps-delete',
       severity: 'success',
       summary: 'GPS Point Deleted',
-      detail: 'GPS point has been successfully deleted',
-      life: 3000
+      detail: successDetail.detail,
+      data: {
+        timelineJobUrl: successDetail.timelineJobUrl
+      },
+      life: 10000
     })
     
     // Refresh the data
@@ -1768,15 +1798,21 @@ const confirmBulkDelete = async () => {
   try {
     const pointIds = selectedRows.value.map(row => row.id)
     const result = await technicalDataStore.deleteGpsPoints(pointIds)
+    const deleteData = getDeleteResultData(result)
 
     // Extract the correct count from the response
-    const deletedCount = result?.data?.deletedCount || result?.deletedCount || pointIds.length
+    const deletedCount = deleteData.deletedCount ?? pointIds.length
+    const successDetail = buildDeleteSuccessDetail(`Successfully deleted ${deletedCount} GPS point${deletedCount !== 1 ? 's' : ''}`, result)
 
     toast.add({
+      group: 'gps-delete',
       severity: 'success',
       summary: 'GPS Points Deleted',
-      detail: `Successfully deleted ${deletedCount} GPS point${deletedCount !== 1 ? 's' : ''}`,
-      life: 3000
+      detail: successDetail.detail,
+      data: {
+        timelineJobUrl: successDetail.timelineJobUrl
+      },
+      life: 5000
     })
 
     // Clear selection and refresh data

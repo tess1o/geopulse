@@ -2,12 +2,17 @@ package org.github.tess1o.geopulse.gps.rest;
 
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
+import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
+import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEvaluationService;
 import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointDeleteResult;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointsRetentionRequest;
+import org.github.tess1o.geopulse.gps.model.BulkDeleteGpsPointsDto;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.GpsPointDuplicateDetectionService;
@@ -17,7 +22,9 @@ import org.github.tess1o.geopulse.gps.service.filter.GpsFilterResult;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
+import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
@@ -32,9 +39,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -66,6 +75,15 @@ class GpsPointResourceMobilePointTest {
     @Mock
     GpsSourceService gpsSourceService;
 
+    @Mock
+    AsyncTimelineGenerationService asyncTimelineGenerationService;
+
+    @Mock
+    CoverageService coverageService;
+
+    @Mock
+    CoverageProcessingService coverageProcessingService;
+
     GpsPointResource resource;
 
     @BeforeEach
@@ -75,8 +93,111 @@ class GpsPointResourceMobilePointTest {
                 currentUserService,
                 pathSimplificationService,
                 configurationProvider,
-                gpsSourceService
+                gpsSourceService,
+                asyncTimelineGenerationService,
+                coverageService,
+                coverageProcessingService
         );
+    }
+
+    @Test
+    void deleteGpsPoints_returnsFastResponseAndSchedulesDerivedDataRefresh() {
+        UUID userId = UUID.randomUUID();
+        UUID timelineJobId = UUID.randomUUID();
+        Instant earliestTimestamp = Instant.parse("2026-08-13T10:18:57Z");
+        BulkDeleteGpsPointsDto request = new BulkDeleteGpsPointsDto(List.of(10L, 11L));
+
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(gpsPointService.deleteGpsPoints(List.of(10L, 11L), userId))
+                .thenReturn(new GpsPointDeleteResult(2, earliestTimestamp));
+        when(asyncTimelineGenerationService.scheduleTimelineRegenerationFromTimestamp(userId, earliestTimestamp))
+                .thenReturn(new AsyncTimelineGenerationService.TimelineSchedulingResult(timelineJobId, true, false));
+        when(coverageService.getCoverageStatus(userId))
+                .thenReturn(new CoverageStatus(true, true, true, null, null));
+        when(coverageProcessingService.requestFullRecalculationAsync(userId))
+                .thenReturn(new CoverageProcessingService.CoverageSchedulingResult(true, true));
+
+        Response response = resource.deleteGpsPoints(request);
+
+        assertEquals(200, response.getStatus());
+        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) apiResponse.getData();
+        assertEquals(2, data.get("deletedCount"));
+        assertEquals(timelineJobId, data.get("timelineJobId"));
+        assertEquals(true, data.get("timelineRegenerationScheduled"));
+        assertEquals(true, data.get("coverageRebuildScheduled"));
+        verify(asyncTimelineGenerationService).scheduleTimelineRegenerationFromTimestamp(userId, earliestTimestamp);
+        verify(coverageProcessingService).requestFullRecalculationAsync(userId);
+    }
+
+    @Test
+    void deleteGpsPoints_emptyDeleteDoesNotScheduleDerivedDataRefresh() {
+        UUID userId = UUID.randomUUID();
+        BulkDeleteGpsPointsDto request = new BulkDeleteGpsPointsDto(List.of(10L));
+
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(gpsPointService.deleteGpsPoints(List.of(10L), userId))
+                .thenReturn(new GpsPointDeleteResult(0, null));
+
+        Response response = resource.deleteGpsPoints(request);
+
+        assertEquals(200, response.getStatus());
+        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) apiResponse.getData();
+        assertEquals(0, data.get("deletedCount"));
+        assertNull(data.get("timelineJobId"));
+        assertEquals(false, data.get("timelineRegenerationScheduled"));
+        assertEquals(false, data.get("coverageRebuildScheduled"));
+        verifyNoInteractions(asyncTimelineGenerationService, coverageService, coverageProcessingService);
+    }
+
+    @Test
+    void deleteGpsPoints_deletesRowsWithoutSynchronousTimelineGeneration() {
+        GpsPointMapper mapper = mock(GpsPointMapper.class);
+        GpsPointRepository repository = mock(GpsPointRepository.class);
+        GpsPointDuplicateDetectionService duplicateDetectionService = mock(GpsPointDuplicateDetectionService.class);
+        EntityManager entityManager = mock(EntityManager.class);
+        StreamingTimelineGenerationService timelineService = mock(StreamingTimelineGenerationService.class);
+        GpsDataFilteringService filteringService = mock(GpsDataFilteringService.class);
+        GpsTelemetryRenderingService telemetryService = mock(GpsTelemetryRenderingService.class);
+        GeofenceEvaluationService geofenceService = mock(GeofenceEvaluationService.class);
+        TimelineConfigurationProvider timelineConfigurationProvider = mock(TimelineConfigurationProvider.class);
+        GpsPointEnvironmentService gpsPointEnvironmentService = mock(GpsPointEnvironmentService.class);
+        GpsPointService service = new GpsPointService(
+                mapper,
+                repository,
+                duplicateDetectionService,
+                entityManager,
+                timelineService,
+                filteringService,
+                telemetryService,
+                geofenceService,
+                timelineConfigurationProvider,
+                gpsPointEnvironmentService
+        );
+
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        GpsPointEntity firstPoint = new GpsPointEntity();
+        firstPoint.setUser(user);
+        firstPoint.setTimestamp(Instant.parse("2026-08-13T10:18:57Z"));
+        GpsPointEntity secondPoint = new GpsPointEntity();
+        secondPoint.setUser(user);
+        secondPoint.setTimestamp(Instant.parse("2026-08-13T10:20:00Z"));
+        List<Long> pointIds = List.of(10L, 11L);
+
+        when(repository.list("id in ?1", pointIds)).thenReturn(List.of(firstPoint, secondPoint));
+
+        GpsPointDeleteResult result = service.deleteGpsPoints(pointIds, userId);
+
+        assertEquals(2, result.deletedCount());
+        assertEquals(Instant.parse("2026-08-13T10:18:57Z"), result.earliestAffectedTimestamp());
+        verify(repository).delete(firstPoint);
+        verify(repository).delete(secondPoint);
+        verifyNoInteractions(timelineService);
     }
 
     @Test

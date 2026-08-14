@@ -1,6 +1,22 @@
 <template>
   <div class="gp-app-layout" :class="layoutClasses">
     <Toast />
+    <Toast group="gps-delete" position="top-right">
+      <template #message="slotProps">
+        <div class="gp-action-toast">
+          <div class="gp-action-toast-summary">{{ slotProps.message.summary }}</div>
+          <div v-if="slotProps.message.detail" class="gp-action-toast-detail">{{ slotProps.message.detail }}</div>
+          <a
+            v-if="slotProps.message.data?.timelineJobUrl"
+            class="gp-action-toast-link"
+            :href="slotProps.message.data.timelineJobUrl"
+            @click.stop
+          >
+            View timeline job
+          </a>
+        </div>
+      </template>
+    </Toast>
     <Toast group="gp-notifications" position="top-right">
       <template #message="slotProps">
         <button
@@ -254,6 +270,30 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.gp-action-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.gp-action-toast-summary {
+  font-weight: 700;
+  color: var(--gp-text-primary);
+}
+
+.gp-action-toast-detail {
+  color: var(--gp-text-secondary);
+  line-height: 1.35;
+}
+
+.gp-action-toast-link {
+  color: var(--gp-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .gp-notification-toast-summary {

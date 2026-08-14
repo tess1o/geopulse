@@ -8,8 +8,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 @ApplicationScoped
@@ -19,6 +21,13 @@ public class CoverageProcessingService {
     private final CoverageRepository coverageRepository;
     private final CoverageService coverageService;
     private final ExecutorService executorService;
+    private final Set<UUID> pendingFullRecalculationUsers = ConcurrentHashMap.newKeySet();
+
+    public record CoverageSchedulingResult(
+            boolean scheduled,
+            boolean queued
+    ) {
+    }
 
     @ConfigProperty(name = "geopulse.coverage.processing.stale-timeout-seconds",
             defaultValue = "" + CoverageDefaults.PROCESSING_STALE_TIMEOUT_SECONDS)
@@ -73,6 +82,16 @@ public class CoverageProcessingService {
         return true;
     }
 
+    public CoverageSchedulingResult requestFullRecalculationAsync(UUID userId) {
+        if (startFullRecalculationAsync(userId)) {
+            return new CoverageSchedulingResult(true, false);
+        }
+
+        pendingFullRecalculationUsers.add(userId);
+        log.info("Queued full coverage recalculation for user {}", userId);
+        return new CoverageSchedulingResult(true, true);
+    }
+
     public void processUserCoverage(UUID userId) {
         if (!coverageRepository.tryStartProcessing(userId, processingStaleTimeoutSeconds)) {
             return;
@@ -87,6 +106,7 @@ public class CoverageProcessingService {
             log.error("Failed to process coverage for user {}: {}", userId, e.getMessage(), e);
         } finally {
             coverageRepository.finishProcessing(userId);
+            drainPendingFullRecalculation(userId);
         }
     }
 
@@ -97,6 +117,20 @@ public class CoverageProcessingService {
             log.error("Failed to fully recalculate coverage for user {}: {}", userId, e.getMessage(), e);
         } finally {
             coverageRepository.finishProcessing(userId);
+            drainPendingFullRecalculation(userId);
         }
+    }
+
+    void drainPendingFullRecalculation(UUID userId) {
+        if (!pendingFullRecalculationUsers.remove(userId)) {
+            return;
+        }
+
+        if (startFullRecalculationAsync(userId)) {
+            log.info("Started queued full coverage recalculation for user {}", userId);
+            return;
+        }
+
+        pendingFullRecalculationUsers.add(userId);
     }
 }
