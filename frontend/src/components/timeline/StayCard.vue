@@ -94,6 +94,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
 import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
+import { useTimelineGpsDrilldown } from '@/composables/useTimelineGpsDrilldown'
 import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
@@ -147,6 +148,8 @@ const {
 } = useLongPressContextMenu({
   open: openContextMenu
 })
+
+const { appendGpsPointsMenuItem } = useTimelineGpsDrilldown(computed(() => props.stayItem))
 
 // Check if stay has city/country info
 const hasCity = computed(() => props.stayItem.city && props.stayItem.city.trim().length > 0)
@@ -226,6 +229,8 @@ const contextMenuItems = computed(() => {
       }
     })
   }
+
+  appendGpsPointsMenuItem(items)
 
   items.push(
     {

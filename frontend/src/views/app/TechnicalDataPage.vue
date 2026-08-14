@@ -891,6 +891,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useGpsSourcesStore } from '@/stores/gpsSources'
@@ -928,6 +929,7 @@ import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 const technicalDataStore = useTechnicalDataStore()
 const gpsSourcesStore = useGpsSourcesStore()
 const toast = useToast()
+const route = useRoute()
 
 // Reactive state
 const isMobile = ref(false)
@@ -1221,6 +1223,43 @@ const formatDateForAPI = (date) => {
   // Preserve selected hour/minute from DatePicker while still interpreting in user timezone.
   const { start } = timezone.createDateTimeRangeFromPicker(date, date)
   return start
+}
+
+const getFirstQueryValue = (value) => {
+  if (Array.isArray(value)) return value[0]
+  return typeof value === 'string' ? value : null
+}
+
+const utcInstantToPickerDate = (value) => {
+  const utcValue = getFirstQueryValue(value)
+  if (!utcValue) return null
+
+  const dateTime = timezone.fromUtc(utcValue)
+  if (!dateTime.isValid()) return null
+
+  return new Date(
+    dateTime.year(),
+    dateTime.month(),
+    dateTime.date(),
+    dateTime.hour(),
+    dateTime.minute(),
+    dateTime.second(),
+    dateTime.millisecond()
+  )
+}
+
+const hydrateDateFilterFromRouteQuery = () => {
+  const queryStart = utcInstantToPickerDate(route.query.startTime)
+  const queryEnd = utcInstantToPickerDate(route.query.endTime)
+
+  if (!isValidDateValue(queryStart) || !isValidDateValue(queryEnd) || queryStart.getTime() > queryEnd.getTime()) {
+    return
+  }
+
+  startDateTime.value = queryStart
+  endDateTime.value = queryEnd
+  appliedStartDateTime.value = new Date(queryStart.getTime())
+  appliedEndDateTime.value = new Date(queryEnd.getTime())
 }
 
 const formatPickerDateTime = (date) => {
@@ -1867,6 +1906,7 @@ const handleRowClick = (event) => {
 onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  hydrateDateFilterFromRouteQuery()
   
   await Promise.all([
     loadSummaryStats(),

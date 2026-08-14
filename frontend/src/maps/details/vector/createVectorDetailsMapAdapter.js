@@ -1,8 +1,12 @@
 import maplibregl from 'maplibre-gl'
 import { toFiniteCoordinate } from '@/maps/shared/coordinateUtils'
 import {
+  ensureGeoJsonSource,
+  ensureLayer,
   isMapLibreMap,
-  normalizeLeafletBoundsToMapLibre
+  normalizeLeafletBoundsToMapLibre,
+  removeLayers,
+  removeSources
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
@@ -68,12 +72,8 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
       return
     }
 
-    if (map.getLayer(ids.tripLayerId)) {
-      map.removeLayer(ids.tripLayerId)
-    }
-    if (map.getSource(ids.tripSourceId)) {
-      map.removeSource(ids.tripSourceId)
-    }
+    removeLayers(map, [ids.tripLayerId])
+    removeSources(map, [ids.tripSourceId])
   }
 
   const clear = () => {
@@ -158,24 +158,21 @@ export const createVectorDetailsMapAdapter = (callbacks = {}) => {
       return false
     }
 
-    map.addSource(ids.tripSourceId, {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: pathCoordinates.map(([lat, lng]) => [lng, lat])
-            },
-            properties: {}
-          }
-        ]
-      }
+    ensureGeoJsonSource(map, ids.tripSourceId, {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: pathCoordinates.map(([lat, lng]) => [lng, lat])
+          },
+          properties: {}
+        }
+      ]
     })
 
-    map.addLayer({
+    ensureLayer(map, {
       id: ids.tripLayerId,
       type: 'line',
       source: ids.tripSourceId,

@@ -1,4 +1,11 @@
-import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
+import {
+  ensureGeoJsonSource,
+  ensureLayer,
+  getMapLibreSource,
+  isMapLibreMap,
+  removeLayers,
+  removeSources
+} from '@/maps/vector/utils/maplibreLayerUtils'
 import { getAreaPolygonLngLat } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
 
 const createAreaFeatureCollection = (coordinates) => ({
@@ -31,15 +38,8 @@ export const createVectorFavoriteAreaOverlayAdapter = () => {
       return
     }
 
-    if (map.getLayer(overlayIds.lineLayerId)) {
-      map.removeLayer(overlayIds.lineLayerId)
-    }
-    if (map.getLayer(overlayIds.fillLayerId)) {
-      map.removeLayer(overlayIds.fillLayerId)
-    }
-    if (map.getSource(overlayIds.sourceId)) {
-      map.removeSource(overlayIds.sourceId)
-    }
+    removeLayers(map, [overlayIds.fillLayerId, overlayIds.lineLayerId])
+    removeSources(map, [overlayIds.sourceId])
   }
 
   const draw = (areaLike) => {
@@ -55,41 +55,34 @@ export const createVectorFavoriteAreaOverlayAdapter = () => {
 
     lastArea = areaLike
     const data = createAreaFeatureCollection(coordinates)
-    const source = map.getSource(overlayIds.sourceId)
+    const source = getMapLibreSource(map, overlayIds.sourceId)
 
     if (source && typeof source.setData === 'function') {
       source.setData(data)
     } else {
-      map.addSource(overlayIds.sourceId, {
-        type: 'geojson',
-        data
-      })
+      ensureGeoJsonSource(map, overlayIds.sourceId, data)
     }
 
-    if (!map.getLayer(overlayIds.fillLayerId)) {
-      map.addLayer({
-        id: overlayIds.fillLayerId,
-        type: 'fill',
-        source: overlayIds.sourceId,
-        paint: {
-          'fill-color': '#ef4444',
-          'fill-opacity': 0.2
-        }
-      })
-    }
+    ensureLayer(map, {
+      id: overlayIds.fillLayerId,
+      type: 'fill',
+      source: overlayIds.sourceId,
+      paint: {
+        'fill-color': '#ef4444',
+        'fill-opacity': 0.2
+      }
+    })
 
-    if (!map.getLayer(overlayIds.lineLayerId)) {
-      map.addLayer({
-        id: overlayIds.lineLayerId,
-        type: 'line',
-        source: overlayIds.sourceId,
-        paint: {
-          'line-color': '#ef4444',
-          'line-width': 2,
-          'line-opacity': 0.95
-        }
-      })
-    }
+    ensureLayer(map, {
+      id: overlayIds.lineLayerId,
+      type: 'line',
+      source: overlayIds.sourceId,
+      paint: {
+        'line-color': '#ef4444',
+        'line-width': 2,
+        'line-opacity': 0.95
+      }
+    })
   }
 
   const clear = () => {
@@ -127,4 +120,3 @@ export const createVectorFavoriteAreaOverlayAdapter = () => {
     destroy
   }
 }
-

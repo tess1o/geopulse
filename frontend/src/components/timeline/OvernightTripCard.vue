@@ -96,6 +96,7 @@ import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
 import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
+import { useTimelineGpsDrilldown } from '@/composables/useTimelineGpsDrilldown'
 import { useNotesStore } from '@/stores/notes'
 import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
 import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
@@ -153,6 +154,8 @@ const {
   open: openContextMenu
 })
 
+const { appendGpsPointsMenuItem } = useTimelineGpsDrilldown(computed(() => props.tripItem))
+
 const contextMenuItems = computed(() => {
   const items = [
     {
@@ -192,6 +195,8 @@ const contextMenuItems = computed(() => {
       }
     })
   }
+
+  appendGpsPointsMenuItem(items)
 
   items.push({
     label: 'Export as GPX',

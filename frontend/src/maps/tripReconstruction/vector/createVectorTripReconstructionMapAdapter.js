@@ -1,4 +1,10 @@
 import maplibregl from 'maplibre-gl'
+import {
+  ensureGeoJsonSource,
+  ensureLayer,
+  removeLayers,
+  removeSources
+} from '@/maps/vector/utils/maplibreLayerUtils'
 
 const createVectorWaypointElement = (index, total) => {
   const markerVariant = index === 0 ? 'start' : (index === total - 1 ? 'end' : 'mid')
@@ -55,22 +61,8 @@ export const createVectorTripReconstructionMapAdapter = (callbacks = {}) => {
       return
     }
 
-    try {
-      if (map.getLayer(contextLayerId)) {
-        map.removeLayer(contextLayerId)
-      }
-      if (map.getSource(contextSourceId)) {
-        map.removeSource(contextSourceId)
-      }
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId)
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId)
-      }
-    } catch {
-      // Safe to ignore teardown race conditions.
-    }
+    removeLayers(map, [contextLayerId, layerId])
+    removeSources(map, [contextSourceId, sourceId])
   }
 
   const clear = () => {
@@ -132,19 +124,16 @@ export const createVectorTripReconstructionMapAdapter = (callbacks = {}) => {
       return
     }
 
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates
-        },
-        properties: {}
-      }
+    ensureGeoJsonSource(map, sourceId, {
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates
+      },
+      properties: {}
     })
 
-    map.addLayer({
+    ensureLayer(map, {
       id: layerId,
       type: 'line',
       source: sourceId,
@@ -176,15 +165,12 @@ export const createVectorTripReconstructionMapAdapter = (callbacks = {}) => {
       return
     }
 
-    map.addSource(contextSourceId, {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features
-      }
+    ensureGeoJsonSource(map, contextSourceId, {
+      type: 'FeatureCollection',
+      features
     })
 
-    map.addLayer({
+    ensureLayer(map, {
       id: contextLayerId,
       type: 'line',
       source: contextSourceId,

@@ -15,6 +15,7 @@ import {
   createFeatureCollection,
   ensureGeoJsonSource,
   ensureLayer,
+  hasMapLibreLayer,
   isMapLibreMap,
   normalizeLeafletBoundsToMapLibre,
   removeLayers,
@@ -119,7 +120,7 @@ export const createVectorFavoritesManagementMapAdapter = (callbacks = {}) => {
       layerIds.savedAreasLineId,
       layerIds.pendingAreasFillId,
       layerIds.pendingAreasLineId
-    ].filter((layerId) => map.getLayer(layerId))
+    ].filter((layerId) => hasMapLibreLayer(map, layerId))
   }
 
   const getFeatureAtEventPoint = (eventPayload) => {

@@ -11,8 +11,12 @@ import {
   toFiniteCoordinate
 } from '@/maps/shared/coordinateUtils'
 import {
+  ensureGeoJsonSource,
+  ensureLayer,
   isMapLibreMap,
-  normalizeLeafletBoundsToMapLibre
+  normalizeLeafletBoundsToMapLibre,
+  removeLayers,
+  removeSources
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
@@ -105,14 +109,8 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
       return
     }
 
-    lineArtifacts.forEach(({ sourceId, layerId }) => {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId)
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId)
-      }
-    })
+    removeLayers(map, lineArtifacts.map(({ layerId }) => layerId))
+    removeSources(map, lineArtifacts.map(({ sourceId }) => sourceId))
 
     lineArtifacts = []
   }
@@ -128,12 +126,8 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
 
   const clearHighlightedTrip = () => {
     if (isMapLibreMap(map) && highlightedLine) {
-      if (map.getLayer(highlightedLine.layerId)) {
-        map.removeLayer(highlightedLine.layerId)
-      }
-      if (map.getSource(highlightedLine.sourceId)) {
-        map.removeSource(highlightedLine.sourceId)
-      }
+      removeLayers(map, [highlightedLine.layerId])
+      removeSources(map, [highlightedLine.sourceId])
     }
 
     highlightedLine = null
@@ -220,15 +214,12 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
         const sourceId = `${token}-user-path-${index}-source`
         const layerId = `${token}-user-path-${index}-layer`
 
-        map.addSource(sourceId, {
-          type: 'geojson',
-          data: {
-            type: 'FeatureCollection',
-            features: lineFeatures
-          }
+        ensureGeoJsonSource(map, sourceId, {
+          type: 'FeatureCollection',
+          features: lineFeatures
         })
 
-        map.addLayer({
+        ensureLayer(map, {
           id: layerId,
           type: 'line',
           source: sourceId,
@@ -385,24 +376,21 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     const sourceId = `${token}-highlighted-trip-source`
     const layerId = `${token}-highlighted-trip-layer`
 
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: tripCoords.map(([lat, lng]) => [lng, lat])
-            },
-            properties: {}
-          }
-        ]
-      }
+    ensureGeoJsonSource(map, sourceId, {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: tripCoords.map(([lat, lng]) => [lng, lat])
+          },
+          properties: {}
+        }
+      ]
     })
 
-    map.addLayer({
+    ensureLayer(map, {
       id: layerId,
       type: 'line',
       source: sourceId,

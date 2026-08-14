@@ -5,6 +5,14 @@ import {
   isVectorMapInstance,
   MAP_RENDER_MODES
 } from '@/maps/contracts/mapContracts'
+import {
+  ensureGeoJsonSource,
+  ensureLayer,
+  getMapLibreSource,
+  hasMapLibreLayer,
+  removeLayers,
+  removeSources
+} from '@/maps/vector/utils/maplibreLayerUtils'
 
 const MIN_RECTANGLE_SIZE = 0.00001
 
@@ -158,7 +166,7 @@ export function useRectangleDrawingRuntime(options = {}) {
   }
 
   const ensureVectorSource = (sourceId, coordinates) => {
-    const source = map.getSource(sourceId)
+    const source = getMapLibreSource(map, sourceId)
     const data = createPolygonFeatureCollection(coordinates)
 
     if (source && typeof source.setData === 'function') {
@@ -166,18 +174,15 @@ export function useRectangleDrawingRuntime(options = {}) {
       return
     }
 
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data
-    })
+    ensureGeoJsonSource(map, sourceId, data)
   }
 
   const ensureVectorLineLayer = (layerId, sourceId, options = {}) => {
-    if (map.getLayer(layerId)) {
+    if (hasMapLibreLayer(map, layerId)) {
       return
     }
 
-    map.addLayer({
+    ensureLayer(map, {
       id: layerId,
       type: 'line',
       source: sourceId,
@@ -195,15 +200,11 @@ export function useRectangleDrawingRuntime(options = {}) {
   }
 
   const removeVectorLayer = (layerId) => {
-    if (map?.getLayer?.(layerId)) {
-      map.removeLayer(layerId)
-    }
+    removeLayers(map, [layerId])
   }
 
   const removeVectorSource = (sourceId) => {
-    if (map?.getSource?.(sourceId)) {
-      map.removeSource(sourceId)
-    }
+    removeSources(map, [sourceId])
   }
 
   const removeVectorPreview = () => {
