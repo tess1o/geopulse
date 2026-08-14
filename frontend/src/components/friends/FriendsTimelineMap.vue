@@ -15,7 +15,9 @@
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import { MapContainer } from '@/components/maps'
+import { useAuthStore } from '@/stores/auth'
 import { createFriendsTimelineMapAdapter } from '@/maps/friendsTimeline/runtime/createFriendsTimelineMapAdapter'
 import { toLeafletLatLngTuple } from '@/maps/shared/coordinateUtils'
 
@@ -42,6 +44,8 @@ const mapId = ref(`friends-timeline-map-${Date.now()}`)
 const mapContainerRef = ref(null)
 const map = ref(null)
 const mapAdapter = ref(null)
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
 
 const visibleTimelines = computed(() => {
   if (!props.multiUserTimeline || !props.multiUserTimeline.timelines) {
@@ -71,7 +75,8 @@ function renderVisibleTimelines() {
   }
 
   mapAdapter.value.render({
-    visibleTimelines: visibleTimelines.value
+    visibleTimelines: visibleTimelines.value,
+    unit: measureUnit.value
   })
 
   if (props.selectedItem) {
@@ -91,7 +96,7 @@ function handleMapReady(mapInstance) {
   renderVisibleTimelines()
 }
 
-watch([() => props.selectedUserIds, () => props.multiUserTimeline], () => {
+watch([() => props.selectedUserIds, () => props.multiUserTimeline, () => measureUnit.value], () => {
   if (!map.value) {
     return
   }

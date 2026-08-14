@@ -9,12 +9,14 @@
 
 <script setup>
 import { ref, watch, computed, readonly, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { createTimelineIcon, createHighlightedTimelineIcon } from '@/utils/mapHelpers'
+import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
@@ -27,6 +29,8 @@ import {
   MAP_POPUP_COMPACT_MAX_WIDTH_PX
 } from '@/maps/shared/popups/mapPopupOptions'
 
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -123,7 +127,8 @@ const createStackPopupElement = (marker, markerItems) => {
     markerItems.map(({ item }) => item),
     {
       formatDateDisplay: (value) => timezone.formatDateDisplay(value),
-      formatTime: (value) => timezone.formatTime(value, { withSeconds: true })
+      formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
+      unit: measureUnit.value
     }
   )
 
@@ -357,7 +362,10 @@ const renderTimelineMarkers = () => {
   })
 }
 
-const buildPopupModel = (item) => buildTimelineItemPopupModel(item, { formatDateTimeDisplay })
+const buildPopupModel = (item) => buildTimelineItemPopupModel(item, {
+  formatDateTimeDisplay,
+  unit: measureUnit.value
+})
 
 const clearTimelineMarkers = () => {
   timelineMarkers.value.forEach(({ popupMount }) => {
@@ -522,6 +530,12 @@ watch(() => props.timelineData, (newData, oldData) => {
 watch(() => props.highlightedItem, (newItem, oldItem) => {
   updateHighlightedMarker()
 }, { deep: true })
+
+watch(() => measureUnit.value, () => {
+  if (baseLayerRef.value?.isReady) {
+    renderTimelineMarkers()
+  }
+})
 
 // Watch for visibility changes
 watch(() => props.visible, (isVisible) => {

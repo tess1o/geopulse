@@ -76,6 +76,7 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
   let highlightedTripPopupMount = null
   let highlightedStartPopupMount = null
   let highlightedEndPopupMount = null
+  let currentUnit = 'METRIC'
   const popupMounts = new Set()
 
   const clearPopupMount = (popupMount) => {
@@ -134,11 +135,12 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
     userPathPointsByUser.clear()
   }
 
-  const render = ({ visibleTimelines = [] } = {}) => {
+  const render = ({ visibleTimelines = [], unit = 'METRIC' } = {}) => {
     if (!map) {
       return
     }
 
+    currentUnit = unit || 'METRIC'
     clear()
 
     const allBounds = []
@@ -268,7 +270,7 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
     } else {
       highlightedTripPopupMount = mountMapPopup(
         MapInfoPopup,
-        buildFriendTimelineTripPopupModel(item)
+        buildFriendTimelineTripPopupModel(item, { unit: currentUnit })
       )
       popupMounts.add(highlightedTripPopupMount)
       tripPath.bindPopup(highlightedTripPopupMount.element, {

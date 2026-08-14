@@ -2,7 +2,9 @@
 
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import maplibregl from 'maplibre-gl'
+import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import { isMapLibreMap, toFiniteNumber } from '@/maps/vector/utils/maplibreLayerUtils'
@@ -20,6 +22,8 @@ import {
   MAP_POPUP_COMPACT_MAX_WIDTH
 } from '@/maps/shared/popups/mapPopupOptions'
 
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -118,7 +122,10 @@ const groupTimelineByCoordinate = () => {
 const formatDateTimeDisplay = (dateValue) =>
   `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue, { withSeconds: true })}`
 
-const createPopupModel = (item) => buildTimelineItemPopupModel(item, { formatDateTimeDisplay })
+const createPopupModel = (item) => buildTimelineItemPopupModel(item, {
+  formatDateTimeDisplay,
+  unit: measureUnit.value
+})
 
 const closeStackPopup = () => {
   if (state.stackPopup) {
@@ -156,7 +163,8 @@ const createStackPopupElement = (items, onSelect) => {
 
   const rows = buildTimelineStackItems(items, {
     formatDateDisplay: (value) => timezone.formatDateDisplay(value),
-    formatTime: (value) => timezone.formatTime(value, { withSeconds: true })
+    formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
+    unit: measureUnit.value
   })
 
   rows.forEach((row, stackIndex) => {
@@ -267,7 +275,11 @@ const findHighlightedGroupContext = () => {
     ))
 
     if (focusedItem) {
-      return { group, focusedItem, highlightedKey: targetKey }
+      return {
+        group,
+        focusedItem,
+        highlightedKey: `${targetKey}|${measureUnit.value || 'METRIC'}`
+      }
     }
   }
 
@@ -505,7 +517,7 @@ const clearLayer = () => {
 }
 
 watch(
-  () => [props.map, props.timelineData, props.highlightedItem, props.visible],
+  () => [props.map, props.timelineData, props.highlightedItem, props.visible, measureUnit.value],
   () => {
     if (!isMapLibreMap(props.map)) {
       clearLayer()

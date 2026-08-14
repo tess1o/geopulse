@@ -6,10 +6,12 @@ import { buildLocationAnalyticsPlacePopupModel, buildSharedLocationPopupModel } 
 import { buildWeatherPopupModel } from './weatherPopupModel'
 import { buildFavoriteManagementPopupModel } from './favoritePopupModel'
 import { buildFriendLocationPopupModel } from './friendPopupModel'
+import { buildTimelineStackItems } from '../timelineStackContent'
 import {
   buildFriendTimelineTripPopupModel,
   buildHighlightedTripPopupModel,
-  buildTimelineItemPopupModel
+  buildTimelineItemPopupModel,
+  buildTripEndpointPopupModel
 } from './timelinePopupModels'
 
 const timezone = {
@@ -210,7 +212,8 @@ describe('map popup models', () => {
       tripDuration: 3600,
       distanceMeters: 12000
     }, {
-      timezone
+      timezone,
+      unit: 'METRIC'
     })
 
     expect(tripModel.title).toBe('CAR Trip')
@@ -221,12 +224,79 @@ describe('map popup models', () => {
       movementType: 'Walk',
       tripDuration: 300,
       distanceMeters: 450
-    })
+    }, { unit: 'METRIC' })
 
     expect(friendTripModel.title).toBe('Ada')
     expect(friendTripModel.rows).toEqual([
       { label: 'Duration', value: '5 minutes' },
       { label: 'Distance', value: '450 m' }
     ])
+  })
+
+  it('formats timeline trip popup distances and speeds with imperial units', () => {
+    const timelineTripModel = buildTimelineItemPopupModel({
+      type: 'trip',
+      movementType: 'CAR',
+      timestamp: '2026-07-24T10:00:00Z',
+      tripDuration: 3600,
+      totalDistanceMeters: 12000
+    }, {
+      timezone,
+      unit: 'IMPERIAL'
+    })
+
+    expect(timelineTripModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
+
+    const highlightedTripModel = buildHighlightedTripPopupModel({
+      movementType: 'CAR',
+      timestamp: '2026-07-24T10:00:00Z',
+      tripDuration: 3600,
+      distanceMeters: 12000
+    }, {
+      timezone,
+      unit: 'IMPERIAL'
+    })
+
+    expect(highlightedTripModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
+    expect(highlightedTripModel.rows).toContainEqual({ label: 'Average speed', value: '7.46 mph' })
+
+    const endpointModel = buildTripEndpointPopupModel({
+      movementType: 'CAR',
+      timestamp: '2026-07-24T10:00:00Z',
+      tripDuration: 3600,
+      distanceMeters: 12000
+    }, 'end', {
+      timezone,
+      unit: 'IMPERIAL'
+    })
+
+    expect(endpointModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
+
+    const friendTripModel = buildFriendTimelineTripPopupModel({
+      userFullName: 'Ada',
+      movementType: 'Walk',
+      tripDuration: 300,
+      distanceMeters: 450
+    }, { unit: 'IMPERIAL' })
+
+    expect(friendTripModel.rows).toContainEqual({ label: 'Distance', value: '1476 ft' })
+  })
+
+  it('formats stacked timeline trip summaries with imperial units', () => {
+    const rows = buildTimelineStackItems([
+      {
+        type: 'trip',
+        movementType: 'CAR',
+        timestamp: '2026-07-24T10:00:00Z',
+        tripDuration: 3600,
+        distanceMeters: 12000
+      }
+    ], {
+      formatDateDisplay: timezone.formatDateDisplay,
+      formatTime: timezone.formatTime,
+      unit: 'IMPERIAL'
+    })
+
+    expect(rows[0].meta).toBe('Duration: 1 hour | Distance: 7.46 mi')
   })
 })

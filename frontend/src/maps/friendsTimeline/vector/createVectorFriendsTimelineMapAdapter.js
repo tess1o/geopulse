@@ -94,6 +94,7 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
   let highlightedTripId = null
   let lastRenderPayload = null
   let lastFocusedItem = null
+  let currentUnit = 'METRIC'
 
   const stayMarkers = new Map()
   const userPathPointsByUser = new Map()
@@ -193,12 +194,13 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     })
   }
 
-  const render = ({ visibleTimelines = [] } = {}) => {
+  const render = ({ visibleTimelines = [], unit = 'METRIC' } = {}) => {
     if (!isMapLibreMap(map)) {
       return
     }
 
-    lastRenderPayload = { visibleTimelines }
+    currentUnit = unit || 'METRIC'
+    lastRenderPayload = { visibleTimelines, unit: currentUnit }
 
     clear()
 
@@ -433,7 +435,7 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     } else {
       highlightedPopupMount = mountMapPopup(
         MapInfoPopup,
-        buildFriendTimelineTripPopupModel(item)
+        buildFriendTimelineTripPopupModel(item, { unit: currentUnit })
       )
       highlightedPopup = new maplibregl.Popup({
         closeButton: true,

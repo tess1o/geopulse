@@ -69,7 +69,9 @@ export const buildTimelineTripPopupModel = (item, deps = {}) => {
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
   const dateText = timestamp ? formatDateTimeDisplay(timestamp) : 'Unknown time'
   const durationText = item?.tripDuration ? formatDuration(item.tripDuration) : ''
-  const distanceText = item?.totalDistanceMeters ? formatDistanceForUnit(item.totalDistanceMeters) : ''
+  const distanceText = item?.totalDistanceMeters
+    ? formatDistanceForUnit(item.totalDistanceMeters, { unit: deps.unit })
+    : ''
   const movementType = item?.movementType || 'Unknown'
 
   return {
@@ -149,7 +151,7 @@ export const buildHighlightedTripPopupModel = (trip, deps = {}) => {
     ? formatDateTimeDisplay(new Date(endMs).toISOString())
     : 'Unknown'
   const averageSpeedKmh = resolveAverageTripSpeedKmh(trip)
-  const averageSpeedText = formatSpeedForUnit(averageSpeedKmh, { fallback: '' })
+  const averageSpeedText = formatSpeedForUnit(averageSpeedKmh, { unit: deps.unit, fallback: '' })
 
   return {
     title: `${movementType} Trip`,
@@ -170,7 +172,7 @@ export const buildHighlightedTripPopupModel = (trip, deps = {}) => {
       },
       {
         label: 'Distance',
-        value: formatDistanceForUnit(trip?.distanceMeters)
+        value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
       },
       averageSpeedText
         ? {
@@ -208,7 +210,7 @@ export const buildTripEndpointPopupModel = (trip, markerType, deps = {}) => {
       },
       {
         label: 'Distance',
-        value: formatDistanceForUnit(trip?.distanceMeters)
+        value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
       },
       {
         label: 'Mode',
@@ -232,7 +234,7 @@ export const buildFriendTimelineStayPopupModel = (userTimeline, stay) => ({
   variant: 'compact'
 })
 
-export const buildFriendTimelineTripPopupModel = (trip) => ({
+export const buildFriendTimelineTripPopupModel = (trip, deps = {}) => ({
   title: trip?.userFullName || 'Trip',
   subtitle: trip?.movementType || 'Trip',
   iconClass: 'pi pi-arrow-right',
@@ -243,7 +245,7 @@ export const buildFriendTimelineTripPopupModel = (trip) => ({
     },
     {
       label: 'Distance',
-      value: formatDistanceForUnit(trip?.distanceMeters)
+      value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
     }
   ],
   variant: 'compact'

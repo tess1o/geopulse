@@ -50,7 +50,7 @@ export const getStackItemSubtitle = (item) => {
   return ''
 }
 
-export const getStackItemMeta = (item) => {
+export const getStackItemMeta = (item, deps = {}) => {
   if (item?.type === 'stay' && item.stayDuration) {
     return `For ${formatDuration(item.stayDuration)}`
   }
@@ -58,7 +58,9 @@ export const getStackItemMeta = (item) => {
   if (item?.type === 'trip') {
     const duration = item.tripDuration ? `Duration: ${formatDuration(item.tripDuration)}` : null
     const distanceValue = item.distanceMeters ?? item.totalDistanceMeters
-    const distance = distanceValue ? `Distance: ${formatDistanceForUnit(distanceValue)}` : null
+    const distance = distanceValue
+      ? `Distance: ${formatDistanceForUnit(distanceValue, { unit: deps.unit })}`
+      : null
     return [duration, distance].filter(Boolean).join(' | ')
   }
 
@@ -82,7 +84,7 @@ export const buildTimelineStackItems = (items, deps = {}) => {
       dateStr,
       title: getStackItemTitle(item),
       subtitle: getStackItemSubtitle(item),
-      meta: getStackItemMeta(item)
+      meta: getStackItemMeta(item, deps)
     }
   })
 }

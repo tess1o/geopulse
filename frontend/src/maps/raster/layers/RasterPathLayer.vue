@@ -9,9 +9,11 @@
 
 <script setup>
 import { ref, watch, computed, readonly, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import L from 'leaflet'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
+import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import { buildTripHoverTooltipHtml } from '@/maps/shared/popupContentBuilders'
@@ -41,6 +43,8 @@ import {
 } from '@/maps/shared/highlightedTripData'
 import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
 
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
@@ -653,16 +657,25 @@ const renderHighlightedTrip = (newTrip) => {
     if (props.showHighlightedTripPopup) {
       tripPopupMount = mountMapPopup(
         MapInfoPopup,
-        buildHighlightedTripPopupModel(newTrip, { formatDateTimeDisplay })
+        buildHighlightedTripPopupModel(newTrip, {
+          formatDateTimeDisplay,
+          unit: measureUnit.value
+        })
       )
     }
     tripStartPopupMount = mountMapPopup(
       MapInfoPopup,
-      buildTripEndpointPopupModel(newTrip, 'start', { formatDateTimeDisplay })
+      buildTripEndpointPopupModel(newTrip, 'start', {
+        formatDateTimeDisplay,
+        unit: measureUnit.value
+      })
     )
     tripEndPopupMount = mountMapPopup(
       MapInfoPopup,
-      buildTripEndpointPopupModel(newTrip, 'end', { formatDateTimeDisplay })
+      buildTripEndpointPopupModel(newTrip, 'end', {
+        formatDateTimeDisplay,
+        unit: measureUnit.value
+      })
     )
 
     tripStartMarker.value?.on('click', (e) => {
@@ -829,7 +842,8 @@ watch(
     props.pathOptions,
     props.focusHighlightedTrip,
     props.allowPathDataTripFallback,
-    props.showHighlightedTripPopup
+    props.showHighlightedTripPopup,
+    measureUnit.value
   ],
   renderAll,
   { deep: true }

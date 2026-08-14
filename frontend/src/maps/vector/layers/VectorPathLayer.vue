@@ -2,7 +2,9 @@
 
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import maplibregl from 'maplibre-gl'
+import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import '@/maps/shared/styles/mapPopupContent.css'
 import {
@@ -41,6 +43,8 @@ import {
   getHighlightedTripKey
 } from '@/maps/shared/highlightedTripData'
 
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -252,7 +256,10 @@ const createHighlightedEndpointMarker = ({
 
   const popupMount = mountMapPopup(
     MapInfoPopup,
-    buildTripEndpointPopupModel(props.highlightedTrip, markerType, { formatDateTimeDisplay })
+    buildTripEndpointPopupModel(props.highlightedTrip, markerType, {
+      formatDateTimeDisplay,
+      unit: measureUnit.value
+    })
   )
   const popup = new maplibregl.Popup({
     closeButton: false,
@@ -370,7 +377,10 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
   if (state.highlightedTripPopup && state.highlightedTripPopupKey === tripKey) {
     state.highlightedTripPopup.setLngLat(popupCoordinate)
     state.highlightedTripPopupMount?.updateProps?.(
-      buildHighlightedTripPopupModel(props.highlightedTrip, { formatDateTimeDisplay })
+      buildHighlightedTripPopupModel(props.highlightedTrip, {
+        formatDateTimeDisplay,
+        unit: measureUnit.value
+      })
     )
     scheduleHighlightedTripPopupAutoHide(tripKey)
     return
@@ -389,7 +399,10 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
 
     state.highlightedTripPopupMount = mountMapPopup(
       MapInfoPopup,
-      buildHighlightedTripPopupModel(props.highlightedTrip, { formatDateTimeDisplay })
+      buildHighlightedTripPopupModel(props.highlightedTrip, {
+        formatDateTimeDisplay,
+        unit: measureUnit.value
+      })
     )
     state.highlightedTripPopup = new maplibregl.Popup({
       closeButton: false,
@@ -760,7 +773,8 @@ watch(
     props.focusHighlightedTrip,
     props.inspectionEnabled,
     props.allowPathDataTripFallback,
-    props.showHighlightedTripPopup
+    props.showHighlightedTripPopup,
+    measureUnit.value
   ],
   () => {
     if (!isMapLibreMap(props.map)) {
