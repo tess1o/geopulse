@@ -7,7 +7,7 @@ description: Admin guide for enabling, tuning, monitoring, and troubleshooting t
 
 GeoPulse can attach weather samples to timeline stays and trips, then show those conditions on the Timeline map, timeline cards, Journey Insights, and weather-related badges. Weather is a system-wide integration managed by administrators.
 
-Weather is enabled by default for ongoing timeline activity. Historical weather backfill is disabled by default, so existing timeline history is not sent for weather enrichment unless an administrator opts in. GeoPulse uses Open-Meteo-compatible forecast and archive endpoints.
+Weather is enabled by default for ongoing timeline activity. Historical weather backfill is disabled by default, so existing timeline history is not sent for weather enrichment unless an administrator opts in. Open-Meteo is the default provider. Pirate Weather can be enabled with an API key and selected as the primary provider or as a secondary fallback provider.
 
 ## Admin Setup
 
@@ -18,11 +18,18 @@ Configure the provider first:
 | Admin Setting | Default | Description |
 |---|---|---|
 | **Enable Weather** | On | Master switch for weather collection and display data. |
-| **Forecast URL** | `https://api.open-meteo.com` | Forecast and current-weather API base URL. |
-| **Archive URL** | `https://archive-api.open-meteo.com` | Historical archive API base URL. |
+| **Primary Provider** | Open-Meteo | Provider used first for new weather targets. |
+| **Secondary Provider** | None | Optional fallback provider used when the primary provider cannot return a sample. |
+| **Enable Open-Meteo** | On | Keep Open-Meteo available as a weather provider. |
+| **Forecast URL** | `https://api.open-meteo.com` | Open-Meteo forecast and current-weather API base URL. |
+| **Archive URL** | `https://archive-api.open-meteo.com` | Open-Meteo historical archive API base URL. |
 | **Open-Meteo API Key** | Empty | Optional API key. Values saved in Admin Settings are encrypted. |
+| **Enable Pirate Weather** | Off | Enables Pirate Weather as a selectable provider. Requires an API key. |
+| **Pirate Weather Forecast URL** | `https://api.pirateweather.net` | Pirate Weather forecast API base URL. |
+| **Pirate Weather Time Machine URL** | `https://timemachine.pirateweather.net` | Pirate Weather historical time machine API base URL. |
+| **Pirate Weather API Key** | Empty | Encrypted Pirate Weather API key. |
 
-Use **Test Connection** to verify the configured forecast endpoint before starting production collection.
+Use **Test Connection** to verify the configured forecast and historical endpoints before starting production collection.
 
 :::note
 Open-Meteo public endpoints do not require an API key for normal free usage. Add one only when your Open-Meteo account or deployment requires it.
@@ -117,9 +124,16 @@ Environment variables provide first-boot defaults and support immutable deployme
 | Variable | Default | Admin Setting |
 |---|---|---|
 | `GEOPULSE_WEATHER_ENABLED` | `true` | **Enable Weather** |
+| `GEOPULSE_WEATHER_PRIMARY_PROVIDER` | `OPEN_METEO` | **Primary Provider** |
+| `GEOPULSE_WEATHER_SECONDARY_PROVIDER` | Empty | **Secondary Provider** |
+| `GEOPULSE_WEATHER_OPEN_METEO_ENABLED` | `true` | **Enable Open-Meteo** |
 | `GEOPULSE_WEATHER_OPEN_METEO_FORECAST_URL` | `https://api.open-meteo.com` | **Forecast URL** |
 | `GEOPULSE_WEATHER_OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | **Archive URL** |
 | `GEOPULSE_WEATHER_OPEN_METEO_API_KEY` | Empty | **Open-Meteo API Key** |
+| `GEOPULSE_WEATHER_PIRATE_ENABLED` | `false` | **Enable Pirate Weather** |
+| `GEOPULSE_WEATHER_PIRATE_BASE_URL` | `https://api.pirateweather.net` | **Pirate Weather Forecast URL** |
+| `GEOPULSE_WEATHER_PIRATE_TIME_MACHINE_URL` | `https://timemachine.pirateweather.net` | **Pirate Weather Time Machine URL** |
+| `GEOPULSE_WEATHER_PIRATE_API_KEY` | Empty | **Pirate Weather API Key** |
 | `GEOPULSE_WEATHER_ONGOING_ENABLED` | `true` | **Ongoing Weather** |
 | `GEOPULSE_WEATHER_ONGOING_INTERVAL_MINUTES` | `60` | **Ongoing Interval** |
 | `GEOPULSE_WEATHER_BACKFILL_ENABLED` | `false` | **Historical Weather Backfill** |

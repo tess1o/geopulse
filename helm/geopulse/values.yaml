@@ -508,6 +508,8 @@ config:
       enabled: true
     memory:
       enabled: true
+    workload:
+      enabled: true
 
   # Geocoding Configuration
   # Note: Most geocoding settings can also be configured via Admin Panel UI

@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.admin.service.WeatherValidationService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
@@ -56,6 +57,9 @@ public class AdminSettingsResource {
 
     @Inject
     GeocodingValidationService geocodingValidationService;
+
+    @Inject
+    WeatherValidationService weatherValidationService;
 
     @Inject
     AppriseNotificationService appriseNotificationService;
@@ -156,13 +160,26 @@ public class AdminSettingsResource {
         UUID adminId = currentUserService.getCurrentUserId();
         String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
 
-        // 1. Validate ALL geocoding settings together with full context
+        // 1. Validate ALL provider settings together with full context
         List<UpdateSettingRequest> geocodingSettings = request.getSettings().stream()
                 .filter(s -> s.getKey().startsWith("geocoding."))
                 .collect(Collectors.toList());
 
         if (!geocodingSettings.isEmpty()) {
             String validationError = geocodingValidationService.validateGeocodingChanges(geocodingSettings);
+            if (validationError != null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("message", validationError))
+                        .build();
+            }
+        }
+
+        List<UpdateSettingRequest> weatherSettings = request.getSettings().stream()
+                .filter(s -> s.getKey().startsWith("weather."))
+                .collect(Collectors.toList());
+
+        if (!weatherSettings.isEmpty()) {
+            String validationError = weatherValidationService.validateWeatherChanges(weatherSettings);
             if (validationError != null) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(Map.of("message", validationError))
@@ -181,7 +198,9 @@ public class AdminSettingsResource {
 
         List<UpdateSettingRequest> providerSettings = request.getSettings().stream()
             .filter(s -> s.getKey().equals("geocoding.primary-provider") ||
-                         s.getKey().equals("geocoding.fallback-provider"))
+                         s.getKey().equals("geocoding.fallback-provider") ||
+                         s.getKey().equals("weather.primary-provider") ||
+                         s.getKey().equals("weather.secondary-provider"))
             .collect(Collectors.toList());
 
         List<UpdateSettingRequest> otherSettings = request.getSettings().stream()
@@ -189,7 +208,9 @@ public class AdminSettingsResource {
                          !s.getKey().contains(".access-token") &&
                          !s.getKey().contains(".enabled") &&
                          !s.getKey().equals("geocoding.primary-provider") &&
-                         !s.getKey().equals("geocoding.fallback-provider"))
+                         !s.getKey().equals("geocoding.fallback-provider") &&
+                         !s.getKey().equals("weather.primary-provider") &&
+                         !s.getKey().equals("weather.secondary-provider"))
             .collect(Collectors.toList());
 
         // 3. Save in correct order (within transaction)

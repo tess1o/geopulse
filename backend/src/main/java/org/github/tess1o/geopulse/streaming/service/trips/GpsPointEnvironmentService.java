@@ -7,6 +7,7 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.hibernate.query.NativeQuery;
 
 import java.time.Instant;
@@ -30,8 +31,12 @@ public class GpsPointEnvironmentService {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     @Transactional
     public String getCurrentEnvironmentDatasetVersion() {
+        long startedAtNanos = metricsStart();
         try {
             Object result = entityManager.createNativeQuery("""
                             SELECT string_agg(
@@ -48,9 +53,14 @@ public class GpsPointEnvironmentService {
                             """)
                     .setParameter("waterDatasetPrefix", WATER_DATASET_PREFIX)
                     .getSingleResult();
+            recordBoatDuration(startedAtNanos, "dataset_version_lookup", result != null ? "success" : "empty");
             return result != null ? result.toString() : null;
         } catch (NoResultException e) {
+            recordBoatDuration(startedAtNanos, "dataset_version_lookup", "empty");
             return null;
+        } catch (Exception e) {
+            recordBoatDuration(startedAtNanos, "dataset_version_lookup", "error");
+            throw e;
         }
     }
 
@@ -60,6 +70,7 @@ public class GpsPointEnvironmentService {
             return 0;
         }
 
+        long startedAtNanos = metricsStart();
         Number result = (Number) entityManager.createNativeQuery("""
                         SELECT COUNT(*)
                         FROM gps_points gp
@@ -76,7 +87,10 @@ public class GpsPointEnvironmentService {
                 .setParameter("fromTimestamp", fromTimestamp)
                 .setParameter("environmentDatasetVersion", environmentDatasetVersion)
                 .getSingleResult();
-        return result != null ? result.longValue() : 0;
+        long missing = result != null ? result.longValue() : 0;
+        recordBoatDuration(startedAtNanos, "count_missing", "success");
+        countBoatPoints("missing", missing);
+        return missing;
     }
 
     @Transactional
@@ -125,6 +139,7 @@ public class GpsPointEnvironmentService {
             return 0;
         }
 
+        long startedAtNanos = metricsStart();
         Query query = entityManager.createNativeQuery("""
                         WITH candidate AS (
                             SELECT gp.id, gp.coordinates
@@ -175,6 +190,8 @@ public class GpsPointEnvironmentService {
 
         List<?> updatedRows = query.getResultList();
         int updatedCount = updatedRows.size();
+        recordBoatDuration(startedAtNanos, "single_point_enrich", "success");
+        countBoatPoints("classified", updatedCount);
         if (updatedCount > 0) {
             log.debug("Enriched {} newly saved GPS point environment rows for user {}", updatedCount, userId);
         }
@@ -190,6 +207,7 @@ public class GpsPointEnvironmentService {
             return 0;
         }
 
+        long startedAtNanos = metricsStart();
         Query query = entityManager.createNativeQuery("""
                         WITH candidate AS (
                             SELECT gp.id, gp.coordinates
@@ -248,9 +266,35 @@ public class GpsPointEnvironmentService {
 
         List<?> updatedRows = query.getResultList();
         int updatedCount = updatedRows.size();
+        recordBoatDuration(startedAtNanos, "batch_enrich", "success");
+        countBoatPoints("classified", updatedCount);
         if (updatedCount > 0) {
             log.debug("Enriched {} GPS point environment rows for user {}", updatedCount, userId);
         }
         return updatedCount;
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordBoatDuration(long startedAtNanos, String operation, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.boat.evidence.duration", startedAtNanos,
+                "component", "boat",
+                "operation", operation,
+                "result", result);
+    }
+
+    private void countBoatPoints(String result, long count) {
+        if (workloadMetrics == null || count <= 0) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.boat.evidence.points", count,
+                "component", "boat",
+                "operation", "environment",
+                "result", result);
     }
 }

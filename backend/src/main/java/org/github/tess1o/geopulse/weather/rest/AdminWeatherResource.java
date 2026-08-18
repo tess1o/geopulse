@@ -11,6 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherBackfillRequest;
+import org.github.tess1o.geopulse.weather.service.WeatherProcessingCoordinator;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 @Path("/api/admin/weather")
@@ -23,6 +24,9 @@ public class AdminWeatherResource {
 
     @Inject
     WeatherService weatherService;
+
+    @Inject
+    WeatherProcessingCoordinator weatherProcessingCoordinator;
 
     @POST
     @Path("/backfill")
@@ -50,6 +54,13 @@ public class AdminWeatherResource {
     @Path("/status")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response status() {
-        return Response.ok(ApiResponse.success(weatherService.status())).build();
+        return Response.ok(ApiResponse.success(weatherProcessingCoordinator.status())).build();
+    }
+
+    @POST
+    @Path("/process-now")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response processNow() {
+        return Response.ok(ApiResponse.success(weatherProcessingCoordinator.processNow())).build();
     }
 }

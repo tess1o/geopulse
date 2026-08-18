@@ -43,6 +43,7 @@ You can selectively enable or disable specific metric categories:
 | `GEOPULSE_PROMETHEUS_FAVORITES_ENABLED`      | `true`  | Enable/disable favorite locations metrics.    |
 | `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED`      | `true`  | Enable/disable reverse geocoding metrics.     |
 | `GEOPULSE_PROMETHEUS_MEMORY_ENABLED`         | `true`  | Enable/disable process memory metrics.        |
+| `GEOPULSE_PROMETHEUS_WORKLOAD_ENABLED`       | `true`  | Enable/disable workload timers and counters for ingestion, timeline regeneration, coverage, boat/water evidence, and weather jobs. |
 
 ### Docker / Docker Compose Configuration
 
@@ -80,6 +81,7 @@ GEOPULSE_PROMETHEUS_FAVORITES_ENABLED=false
 GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED=true
 GEOPULSE_PROMETHEUS_GEOCODING_ENABLED=true
 GEOPULSE_PROMETHEUS_MEMORY_ENABLED=true
+GEOPULSE_PROMETHEUS_WORKLOAD_ENABLED=true
 ```
 
 ### Kubernetes / Helm Configuration
@@ -122,6 +124,8 @@ config:
     geocoding:
       enabled: true
     memory:
+      enabled: true
+    workload:
       enabled: true
 ```
 
@@ -222,11 +226,43 @@ The following custom metrics provide insights into specific features and compone
 | `process_resident_memory_bytes`  | Resident memory of the application process.    | -    |
 | `process_virtual_memory_bytes`   | Virtual memory of the application process.     | -    |
 
+#### Workload Metrics
+
+These metrics are recorded as work happens. They are intended to help correlate backend CPU usage with application activity.
+
+| Metric Name                                      | Description                                                      | Tags |
+| ------------------------------------------------ | ---------------------------------------------------------------- | ---- |
+| `geopulse_gps_ingest_duration_seconds`           | End-to-end GPS ingest/status request duration.                   | `component`, `source`, `transport`, `result` |
+| `geopulse_gps_ingest_stage_duration_seconds`     | GPS ingest stage duration, such as filtering, duplicate lookup, persistence, geofence checks, and boat enrichment. | `component`, `source`, `stage`, `result` |
+| `geopulse_gps_ingest_points_total`               | GPS points accepted, duplicated, or filtered.                    | `component`, `source`, `transport`, `result` |
+| `geopulse_timeline_regeneration_duration_seconds` | Timeline regeneration duration.                                  | `component`, `trigger`, `result` |
+| `geopulse_timeline_regeneration_stage_duration_seconds` | Timeline regeneration stage duration.                      | `component`, `trigger`, `stage`, `result` |
+| `geopulse_timeline_regeneration_runs_total`      | Timeline regeneration runs.                                      | `component`, `trigger`, `result` |
+| `geopulse_timeline_regeneration_gps_points_total` | GPS points processed by timeline regeneration.                  | `component`, `trigger`, `result` |
+| `geopulse_timeline_regeneration_events_total`    | Timeline events produced by timeline regeneration.               | `component`, `trigger`, `event_type` |
+| `geopulse_timeline_realtime_scheduler_duration_seconds` | Realtime timeline scheduler duration.                      | `component`, `trigger`, `result` |
+| `geopulse_timeline_realtime_users_total`         | Realtime scheduler user discovery/submission counts.             | `component`, `trigger`, `result` |
+| `geopulse_coverage_job_duration_seconds`         | Coverage job duration.                                           | `component`, `trigger`, `mode`, `result` |
+| `geopulse_coverage_batch_duration_seconds`       | Coverage batch duration.                                         | `component`, `mode`, `result` |
+| `geopulse_coverage_batch_stage_duration_seconds` | Coverage batch stage duration.                                   | `component`, `stage`, `mode`, `grid_m`, `result` |
+| `geopulse_coverage_batches_total`                | Coverage batches processed.                                      | `component`, `mode`, `result` |
+| `geopulse_coverage_cells_upserted_total`         | Coverage cells upserted.                                         | `component`, `grid_m`, `result` |
+| `geopulse_boat_evidence_duration_seconds`        | Boat/water evidence lookup, enrichment, trip statistics, and maintenance duration. | `component`, `operation`, `result` |
+| `geopulse_boat_evidence_points_total`            | Boat/water evidence points processed.                            | `component`, `operation`, `result` |
+| `geopulse_boat_evidence_maintenance_users_total` | Boat/water evidence maintenance users processed.                 | `component`, `operation`, `result` |
+| `geopulse_weather_job_duration_seconds`          | Weather scheduled/event job duration.                            | `component`, `job`, `trigger`, `result` |
+| `geopulse_weather_stage_duration_seconds`        | Weather service stage duration.                                  | `component`, `stage`, `source`, `result` |
+| `geopulse_weather_reconciliation_chunk_duration_seconds` | Weather historical reconciliation chunk duration.          | `component`, `source`, `result` |
+| `geopulse_weather_targets_total`                 | Weather target counts by lifecycle result.                       | `component`, `source`, `result` |
+| `geopulse_weather_reconciliation_chunks_total`   | Weather reconciliation chunks processed.                         | `component`, `trigger`, `result` |
+| `geopulse_weather_provider_requests_total`       | Weather provider requests.                                       | `component`, `source`, `result` |
+
 **Note on Metric Naming:**
 
 - Metrics without tags represent overall/aggregate values across all users.
 - Metrics with `_per_user_` in the name are tagged with `user` and provide per-user breakdowns.
-- All metrics are refreshed at regular intervals (default: 10 minutes, configurable via `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`).
+- Snapshot-style custom metrics are refreshed at regular intervals (default: 10 minutes, configurable via `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`).
+- Workload timers and counters are recorded as requests and jobs execute, so they are not controlled by `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`.
 
 ## Performance Considerations
 
@@ -237,6 +273,7 @@ Custom metrics collection involves periodic database queries. Consider the follo
 - **Per-user metrics** (`gps_points_per_user_total`, `timeline_stays_per_user_total`, etc.) iterate over all users and can be resource-intensive with many users.
 - **Aggregate metrics** (`gps_points_total`, `users_total`, etc.) are lightweight single queries.
 - **Memory metrics** (`process_resident_memory_bytes`, `process_virtual_memory_bytes`) are very lightweight and don't query the database.
+- **Workload metrics** (`geopulse_timeline_regeneration_stage_duration_seconds`, `geopulse_weather_targets_total`, etc.) are recorded inline while work executes. They do not run periodic database scans, but they add small per-operation Micrometer overhead.
 
 ### Optimization Strategies
 

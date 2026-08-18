@@ -159,6 +159,18 @@ export const SETTING_METADATA = {
     label: 'Enable Weather',
     description: 'Enable weather samples for timeline stays and trips'
   },
+  'weather.primary-provider': {
+    label: 'Primary Provider',
+    description: 'Weather provider used first for new weather samples'
+  },
+  'weather.secondary-provider': {
+    label: 'Secondary Provider',
+    description: 'Optional fallback provider used when the primary provider cannot return a sample'
+  },
+  'weather.open-meteo.enabled': {
+    label: 'Enable Open-Meteo',
+    description: 'Enable Open-Meteo as a selectable weather provider'
+  },
   'weather.open-meteo.forecast-url': {
     label: 'Forecast URL',
     description: 'Open-Meteo forecast API base URL'
@@ -170,6 +182,22 @@ export const SETTING_METADATA = {
   'weather.open-meteo.api-key': {
     label: 'Open-Meteo API Key',
     description: 'Optional Open-Meteo API key (encrypted)'
+  },
+  'weather.pirate.enabled': {
+    label: 'Enable Pirate Weather',
+    description: 'Enable Pirate Weather as a selectable weather provider'
+  },
+  'weather.pirate.base-url': {
+    label: 'Pirate Weather Forecast URL',
+    description: 'Pirate Weather forecast API base URL'
+  },
+  'weather.pirate.time-machine-url': {
+    label: 'Pirate Weather Time Machine URL',
+    description: 'Pirate Weather historical time machine API base URL'
+  },
+  'weather.pirate.api-key': {
+    label: 'Pirate Weather API Key',
+    description: 'Pirate Weather API key (encrypted)'
   },
   'weather.ongoing.enabled': {
     label: 'Ongoing Weather',

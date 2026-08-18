@@ -55,6 +55,7 @@ data:
   GEOPULSE_PROMETHEUS_FAVORITES_ENABLED: {{ .Values.config.prometheus.favorites.enabled | quote }}
   GEOPULSE_PROMETHEUS_GEOCODING_ENABLED: {{ .Values.config.prometheus.geocoding.enabled | quote }}
   GEOPULSE_PROMETHEUS_MEMORY_ENABLED: {{ .Values.config.prometheus.memory.enabled | quote }}
+  GEOPULSE_PROMETHEUS_WORKLOAD_ENABLED: {{ .Values.config.prometheus.workload.enabled | quote }}
 
   # Geocoding Configuration
   GEOPULSE_GEOCODING_PRIMARY_PROVIDER: {{ .Values.config.geocoding.primaryProvider | quote }}

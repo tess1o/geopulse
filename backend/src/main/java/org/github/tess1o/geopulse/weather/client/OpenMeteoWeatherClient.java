@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 @Slf4j
-public class OpenMeteoWeatherClient {
+public class OpenMeteoWeatherClient implements WeatherProviderClient {
 
     private static final String WEATHER_VARIABLES = String.join(",",
             "temperature_2m",
@@ -53,6 +53,11 @@ public class OpenMeteoWeatherClient {
 
     @ConfigProperty(name = "geopulse.weather.open-meteo.read-timeout-seconds", defaultValue = "15")
     long readTimeoutSeconds;
+
+    @Override
+    public String providerKey() {
+        return WeatherConfigurationService.PROVIDER_OPEN_METEO;
+    }
 
     public WeatherProviderSample fetchCurrent(double latitude, double longitude) {
         String forecastUrl = configurationService.forecastUrl();

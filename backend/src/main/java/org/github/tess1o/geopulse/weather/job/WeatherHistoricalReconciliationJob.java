@@ -10,9 +10,12 @@ import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.github.tess1o.geopulse.weather.service.WeatherBackfillRunResult;
 import org.github.tess1o.geopulse.weather.service.WeatherConfigurationService;
+import org.github.tess1o.geopulse.weather.dto.WeatherRunSummary;
+import org.github.tess1o.geopulse.weather.service.WeatherProcessingCoordinator;
 import org.github.tess1o.geopulse.weather.service.WeatherReconciliationQueueStatus;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
@@ -45,8 +48,14 @@ public class WeatherHistoricalReconciliationJob {
     WeatherConfigurationService configurationService;
 
     @Inject
+    WeatherProcessingCoordinator weatherProcessingCoordinator;
+
+    @Inject
     @Identifier("weather-processing")
     ExecutorService executorService;
+
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
 
     private final AtomicBoolean processingRunning = new AtomicBoolean(false);
     private final AtomicBoolean processingPending = new AtomicBoolean(false);
@@ -126,9 +135,12 @@ public class WeatherHistoricalReconciliationJob {
         if (!shouldRunBackfillDiscovery(reason)) {
             return;
         }
+        long jobStart = metricsStart();
+        String resultTag = "success";
         if (!processingRunning.compareAndSet(false, true)) {
             processingPending.set(true);
             log.info("Weather historical reconciliation is already running; queued another drain after {}", reason);
+            recordWeatherJob(jobStart, "historical_reconciliation", triggerTag(reason), "queued");
             return;
         }
 
@@ -136,27 +148,27 @@ public class WeatherHistoricalReconciliationJob {
         long startedAtNanos = System.nanoTime();
         try {
             log.info("Weather historical reconciliation starting on {}", reason);
-            long resetFailedTargets = weatherService.resetStaleFailedTargetsForRetry();
-            WeatherBackfillRunResult result = weatherService.processPendingHistoricalBackfillChunks(
-                    configurationService.backfillDiscoveryChunksPerRun());
+            WeatherRunSummary result = processHistorical(reason, fetchAfterDiscovery);
             log.info("Weather historical reconciliation completed on {}: durationMs={}, chunks={}, created={}, known={}, "
                             + "skipped={}, pendingUserRanges={}",
                     reason,
                     elapsedMillis(startedAtNanos),
-                    result.chunksProcessed(),
-                    result.targetsCreated(),
-                    result.targetsAlreadyKnown(),
-                    result.targetsSkipped(),
-                    result.pendingUserRanges());
+                    result.getChunksProcessed(),
+                    result.getTargetsCreated(),
+                    result.getTargetsAlreadyKnown(),
+                    result.getTargetsSkipped(),
+                    result.getPendingUserRanges());
 
-            if (fetchAfterDiscovery && (result.targetsCreated() > 0 || resetFailedTargets > 0)) {
-                int fetched = weatherService.fetchQueuedSamples();
-                log.info("Weather historical reconciliation fetched {} queued samples after {}", fetched, reason);
+            if (result.getFetchedTargets() > 0) {
+                log.info("Weather historical reconciliation fetched {} queued samples after {}",
+                        result.getFetchedTargets(), reason);
             }
         } catch (Exception e) {
+            resultTag = "error";
             log.error("Weather historical reconciliation failed on {} after durationMs={}: {}",
                     reason, elapsedMillis(startedAtNanos), e.getMessage(), e);
         } finally {
+            recordWeatherJob(jobStart, "historical_reconciliation", triggerTag(reason), resultTag);
             processingRunning.set(false);
             if (processingPending.compareAndSet(true, false)) {
                 submitProcessing("queued reconciliation after " + reason, true);
@@ -200,5 +212,64 @@ public class WeatherHistoricalReconciliationJob {
 
     boolean hasSubmittedProcessingTasks() {
         return submittedProcessingTasks.get() > 0;
+    }
+
+    private WeatherRunSummary processHistorical(String reason, boolean fetchAfterDiscovery) {
+        if (weatherProcessingCoordinator != null) {
+            return weatherProcessingCoordinator.processHistorical(
+                    reason,
+                    fetchAfterDiscovery,
+                    configurationService.backfillDiscoveryChunksPerRun());
+        }
+
+        long resetFailedTargets = weatherService.resetStaleFailedTargetsForRetry();
+        WeatherBackfillRunResult result = weatherService.processPendingHistoricalBackfillChunks(
+                configurationService.backfillDiscoveryChunksPerRun());
+        int fetchedTargets = 0;
+        if (fetchAfterDiscovery && (result.targetsCreated() > 0 || resetFailedTargets > 0)) {
+            fetchedTargets = weatherService.fetchQueuedSamples();
+        }
+        return WeatherRunSummary.builder()
+                .chunksProcessed(result.chunksProcessed())
+                .targetsCreated(result.targetsCreated())
+                .targetsAlreadyKnown(result.targetsAlreadyKnown())
+                .targetsSkipped(result.targetsSkipped())
+                .pendingUserRanges(result.pendingUserRanges())
+                .fetchedTargets(fetchedTargets)
+                .build();
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordWeatherJob(long startedAtNanos, String job, String trigger, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.weather.job.duration", startedAtNanos,
+                "component", "weather",
+                "job", job,
+                "trigger", trigger,
+                "result", result);
+    }
+
+    private String triggerTag(String reason) {
+        if (reason == null) {
+            return "unknown";
+        }
+        if (reason.startsWith("timeline data changed")) {
+            return "timeline_event";
+        }
+        if (reason.startsWith("weather setting changed")) {
+            return "settings";
+        }
+        if (reason.startsWith("startup")) {
+            return "startup";
+        }
+        if (reason.startsWith("scheduled")) {
+            return "scheduled";
+        }
+        return "internal";
     }
 }

@@ -198,6 +198,7 @@ config:
 | Favorites Metrics  | `config.prometheus.favorites.enabled`   | `GEOPULSE_PROMETHEUS_FAVORITES_ENABLED`    | `true`  |
 | Geocoding Metrics  | `config.prometheus.geocoding.enabled`   | `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED`    | `true`  |
 | Memory Metrics     | `config.prometheus.memory.enabled`      | `GEOPULSE_PROMETHEUS_MEMORY_ENABLED`       | `true`  |
+| Workload Metrics   | `config.prometheus.workload.enabled`    | `GEOPULSE_PROMETHEUS_WORKLOAD_ENABLED`     | `true`  |
 
 **Example:**
 
@@ -209,6 +210,8 @@ config:
     # Optionally disable specific metric classes
     memory:
       enabled: false
+    workload:
+      enabled: true
 ```
 
 #### Geocoding Configuration

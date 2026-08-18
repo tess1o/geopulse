@@ -5,17 +5,31 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 @ApplicationScoped
 @Transactional
 public class WeatherConfigurationService {
 
     public static final String PROVIDER_OPEN_METEO = "OPEN_METEO";
-    public static final String ATTRIBUTION_URL = "https://open-meteo.com/";
+    public static final String PROVIDER_PIRATE_WEATHER = "PIRATE_WEATHER";
+    public static final String OPEN_METEO_ATTRIBUTION_URL = "https://open-meteo.com/";
+    public static final String PIRATE_WEATHER_ATTRIBUTION_URL = "https://pirateweather.net/";
 
     public static final String WEATHER_ENABLED = "weather.enabled";
+    public static final String PRIMARY_PROVIDER = "weather.primary-provider";
+    public static final String SECONDARY_PROVIDER = "weather.secondary-provider";
+    public static final String OPEN_METEO_ENABLED = "weather.open-meteo.enabled";
     public static final String FORECAST_URL = "weather.open-meteo.forecast-url";
     public static final String ARCHIVE_URL = "weather.open-meteo.archive-url";
     public static final String API_KEY = "weather.open-meteo.api-key";
+    public static final String PIRATE_ENABLED = "weather.pirate.enabled";
+    public static final String PIRATE_BASE_URL = "weather.pirate.base-url";
+    public static final String PIRATE_TIME_MACHINE_URL = "weather.pirate.time-machine-url";
+    public static final String PIRATE_API_KEY = "weather.pirate.api-key";
     public static final String ONGOING_ENABLED = "weather.ongoing.enabled";
     public static final String ONGOING_INTERVAL_MINUTES = "weather.ongoing.interval-minutes";
     public static final String BACKFILL_ENABLED = "weather.backfill.enabled";
@@ -34,7 +48,72 @@ public class WeatherConfigurationService {
     }
 
     public boolean isConfigured() {
-        return !forecastUrl().isBlank() && !archiveUrl().isBlank();
+        return isProviderEnabledAndConfigured(primaryProvider());
+    }
+
+    public String primaryProvider() {
+        String configured = normalizeProviderKey(settingsService.getString(PRIMARY_PROVIDER));
+        return isKnownProvider(configured) ? configured : PROVIDER_OPEN_METEO;
+    }
+
+    public String secondaryProvider() {
+        String configured = normalizeProviderKey(settingsService.getString(SECONDARY_PROVIDER));
+        if (!isKnownProvider(configured) || configured.equals(primaryProvider())) {
+            return "";
+        }
+        return configured;
+    }
+
+    public List<String> enabledConfiguredProviders() {
+        return providerOrder(null);
+    }
+
+    public List<String> providerOrder(String requestedProvider) {
+        Set<String> providers = new LinkedHashSet<>();
+        addIfEnabledConfigured(providers, normalizeProviderKey(requestedProvider));
+        addIfEnabledConfigured(providers, primaryProvider());
+        addIfEnabledConfigured(providers, secondaryProvider());
+        return List.copyOf(providers);
+    }
+
+    public boolean isProviderEnabled(String provider) {
+        return switch (normalizeProviderKey(provider)) {
+            case PROVIDER_OPEN_METEO -> settingsService.getBoolean(OPEN_METEO_ENABLED);
+            case PROVIDER_PIRATE_WEATHER -> settingsService.getBoolean(PIRATE_ENABLED);
+            default -> false;
+        };
+    }
+
+    public boolean isProviderConfigured(String provider) {
+        return switch (normalizeProviderKey(provider)) {
+            case PROVIDER_OPEN_METEO -> !forecastUrl().isBlank() && !archiveUrl().isBlank();
+            case PROVIDER_PIRATE_WEATHER -> !pirateBaseUrl().isBlank()
+                    && !pirateTimeMachineUrl().isBlank()
+                    && !pirateApiKey().isBlank();
+            default -> false;
+        };
+    }
+
+    public boolean isProviderEnabledAndConfigured(String provider) {
+        return isProviderEnabled(provider) && isProviderConfigured(provider);
+    }
+
+    public String attributionUrl(String provider) {
+        return PROVIDER_PIRATE_WEATHER.equals(normalizeProviderKey(provider))
+                ? PIRATE_WEATHER_ATTRIBUTION_URL
+                : OPEN_METEO_ATTRIBUTION_URL;
+    }
+
+    public String normalizeProviderKey(String provider) {
+        if (provider == null || provider.isBlank()) {
+            return "";
+        }
+        return provider.trim().replace('-', '_').toUpperCase(Locale.ROOT);
+    }
+
+    public boolean isKnownProvider(String provider) {
+        String normalized = normalizeProviderKey(provider);
+        return PROVIDER_OPEN_METEO.equals(normalized) || PROVIDER_PIRATE_WEATHER.equals(normalized);
     }
 
     public String forecastUrl() {
@@ -47,6 +126,18 @@ public class WeatherConfigurationService {
 
     public String apiKey() {
         return settingsService.getString(API_KEY).trim();
+    }
+
+    public String pirateBaseUrl() {
+        return normalizeBaseUrl(settingsService.getString(PIRATE_BASE_URL));
+    }
+
+    public String pirateTimeMachineUrl() {
+        return normalizeBaseUrl(settingsService.getString(PIRATE_TIME_MACHINE_URL));
+    }
+
+    public String pirateApiKey() {
+        return settingsService.getString(PIRATE_API_KEY).trim();
     }
 
     public boolean ongoingEnabled() {
@@ -100,5 +191,11 @@ public class WeatherConfigurationService {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
         return trimmed;
+    }
+
+    private void addIfEnabledConfigured(Set<String> providers, String provider) {
+        if (isProviderEnabledAndConfigured(provider)) {
+            providers.add(provider);
+        }
     }
 }

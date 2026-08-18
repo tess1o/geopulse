@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 
@@ -26,14 +27,20 @@ public class BoatWaterEvidenceMaintenanceJob {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     @ConfigProperty(name = "geopulse.boat.water-evidence.maintenance.max-users-per-run", defaultValue = "25")
     int maxUsersPerRun;
 
     @Scheduled(every = "${geopulse.boat.water-evidence.maintenance.interval:15m}")
     @RunOnVirtualThread
     public void repairMissingBoatWaterEvidence() {
+        long startedAtNanos = metricsStart();
+        String result = "success";
         String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
         if (datasetVersion == null) {
+            recordMaintenance(startedAtNanos, "skipped");
             return;
         }
 
@@ -58,13 +65,41 @@ public class BoatWaterEvidenceMaintenanceJob {
                 .stream()
                 .map(UUID.class::cast)
                 .toList();
+        countUsers("discovered", userIds.size());
 
         for (UUID userId : userIds) {
             try {
                 boatSetupService.ensureReadyForEnabledUserInBackground(userId);
+                countUsers("processed", 1);
             } catch (Exception e) {
+                result = "error";
+                countUsers("error", 1);
                 log.warn("Failed to repair Boat water evidence for user {}: {}", userId, e.getMessage());
             }
         }
+        recordMaintenance(startedAtNanos, result);
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordMaintenance(long startedAtNanos, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.boat.evidence.duration", startedAtNanos,
+                "component", "boat",
+                "operation", "maintenance",
+                "result", result);
+    }
+
+    private void countUsers(String result, long count) {
+        if (workloadMetrics == null || count <= 0) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.boat.evidence.maintenance.users", count,
+                "component", "boat",
+                "result", result);
     }
 }

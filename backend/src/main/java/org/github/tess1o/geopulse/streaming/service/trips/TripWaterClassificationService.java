@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
@@ -27,23 +28,32 @@ public class TripWaterClassificationService {
     @Inject
     GpsPointEnvironmentService gpsPointEnvironmentService;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     public TripWaterStatistics calculateStatistics(UUID userId, Instant startTime, Instant endTime, TimelineConfig config) {
+        long startedAtNanos = metricsStart();
         if (gpsPointRepository == null || userId == null || startTime == null || endTime == null) {
+            recordTripStats(startedAtNanos, "skipped");
             return TripWaterStatistics.unavailable();
         }
         if (!isBoatEnabled(config) || gpsPointEnvironmentService == null) {
+            recordTripStats(startedAtNanos, "skipped");
             return TripWaterStatistics.unavailable();
         }
 
         String environmentDatasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
         if (environmentDatasetVersion == null) {
+            recordTripStats(startedAtNanos, "skipped");
             return TripWaterStatistics.unavailable();
         }
 
-        return calculateStatistics(
+        TripWaterStatistics statistics = calculateStatistics(
                 gpsPointRepository.findEssentialPointsInInterval(userId, startTime, endTime, environmentDatasetVersion),
                 config
         );
+        recordTripStats(startedAtNanos, statistics.hasEvidence() ? "success" : "unavailable");
+        return statistics;
     }
 
     public TripWaterStatistics calculateStatistics(List<GPSPoint> gpsPoints, TimelineConfig config) {
@@ -103,6 +113,20 @@ public class TripWaterClassificationService {
 
     private boolean isBoatEnabled(TimelineConfig config) {
         return config != null && Boolean.TRUE.equals(config.getBoatEnabled());
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordTripStats(long startedAtNanos, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.boat.evidence.duration", startedAtNanos,
+                "component", "boat",
+                "operation", "trip_stats",
+                "result", result);
     }
 
 }

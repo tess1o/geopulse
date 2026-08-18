@@ -46,7 +46,7 @@ The tables have different responsibilities:
 | --- | --- | --- | --- |
 | `WeatherHistoricalReconciliationJob` | Timeline/settings events, startup, every 30 minutes | `weather.enabled` and `weather.backfill.enabled` | Drains persisted historical dirty ranges into exact sample targets. |
 | `WeatherOngoingDiscoveryJob` | Every 15 minutes | `weather.enabled` and `weather.ongoing.enabled` | Finds the latest active stay/trip and creates a current target for each active user. |
-| `WeatherSampleFetchJob` | Every 10 minutes | `weather.enabled` | Claims pending targets, calls Open-Meteo, and stores samples. |
+| `WeatherSampleFetchJob` | Every 10 minutes | `weather.enabled` | Claims pending targets, calls the configured weather provider, and stores samples. |
 | `WeatherProviderHealthProbeJob` | Every 10 minutes | `weather.enabled` | Probes only when provider health says a retry is due. |
 | `WeatherTargetCleanupJob` | Daily at 03:30 | `weather.enabled` | Deletes old completed, skipped, and failed target queue records. It does not delete samples. |
 

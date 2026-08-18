@@ -325,22 +325,31 @@ Notes:
 | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-accuracy\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### Weather (27)
+### Weather (35)
 
 Weather feature/provider/sampling/quota settings can also be managed from **Admin Dashboard > System Settings > Weather**. Saved Admin Settings values are stored in the database and take precedence over these environment defaults. By default, Weather is enabled for ongoing/current timeline activity, while historical backfill is opt-in. Scheduler cadence, target cleanup, and HTTP timeout variables are backend runtime properties and require a backend restart when changed.
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_WEATHER_ENABLED` | `true` | Master switch for weather samples on timeline stays, trips, maps, and insights. Property: \`geopulse.weather.enabled\`. Default enables ongoing/current weather collection. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_PRIMARY_PROVIDER` | `OPEN_METEO` | Primary weather provider. Property: \`geopulse.weather.primary-provider\`. | `OPEN_METEO` or `PIRATE_WEATHER`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_SECONDARY_PROVIDER` | `(empty)` | Optional fallback weather provider. Property: \`geopulse.weather.secondary-provider\`. | Empty, `OPEN_METEO`, or `PIRATE_WEATHER`; must differ from primary. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_OPEN_METEO_ENABLED` | `true` | Enable Open-Meteo as a selectable weather provider. Property: \`geopulse.weather.open-meteo.enabled\`. | `true` or `false`. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_OPEN_METEO_FORECAST_URL` | `https://api.open-meteo.com` | Open-Meteo forecast/current API base URL. Property: \`geopulse.weather.open-meteo.forecast-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | Open-Meteo historical archive API base URL. Property: \`geopulse.weather.open-meteo.archive-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_OPEN_METEO_API_KEY` | `(empty)` | Optional Open-Meteo API key. Property: \`geopulse.weather.open-meteo.api-key\`. | Sensitive secret. Store in secret manager or Admin Settings; do not commit to VCS. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_OPEN_METEO_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for Open-Meteo requests. Property: \`geopulse.weather.open-meteo.connect-timeout-seconds\`. | Positive integer seconds. | Backend restart |
 | `GEOPULSE_WEATHER_OPEN_METEO_READ_TIMEOUT_SECONDS` | `15` | HTTP read timeout for Open-Meteo requests. Property: \`geopulse.weather.open-meteo.read-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WEATHER_PIRATE_ENABLED` | `false` | Enable Pirate Weather as a selectable weather provider. Property: \`geopulse.weather.pirate.enabled\`. | `true` or `false`; requires API key when enabled. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_PIRATE_BASE_URL` | `https://api.pirateweather.net` | Pirate Weather forecast API base URL. Property: \`geopulse.weather.pirate.base-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_PIRATE_TIME_MACHINE_URL` | `https://timemachine.pirateweather.net` | Pirate Weather historical time machine API base URL. Property: \`geopulse.weather.pirate.time-machine-url\`. | Valid URL reachable from the backend. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_PIRATE_API_KEY` | `(empty)` | Pirate Weather API key. Property: \`geopulse.weather.pirate.api-key\`. | Sensitive secret. Store in secret manager or Admin Settings; do not commit to VCS. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_PIRATE_CONNECT_TIMEOUT_SECONDS` | `5` | HTTP connect timeout for Pirate Weather requests. Property: \`geopulse.weather.pirate.connect-timeout-seconds\`. | Positive integer seconds. | Backend restart |
+| `GEOPULSE_WEATHER_PIRATE_READ_TIMEOUT_SECONDS` | `15` | HTTP read timeout for Pirate Weather requests. Property: \`geopulse.weather.pirate.read-timeout-seconds\`. | Positive integer seconds. | Backend restart |
 | `GEOPULSE_WEATHER_ONGOING_ENABLED` | `true` | Create weather targets for each active user's latest stay/trip. Property: \`geopulse.weather.ongoing.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_ONGOING_INTERVAL_MINUTES` | `60` | Minimum interval between ongoing weather samples. Property: \`geopulse.weather.ongoing.interval-minutes\`. | Integer >= 30. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_BACKFILL_ENABLED` | `false` | Discover historical weather targets from existing timeline stays/trips. Disabled by default so past timeline locations are not sent for weather enrichment unless an admin opts in. Property: \`geopulse.weather.backfill.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
-| `GEOPULSE_WEATHER_QUOTA_DAILY_REQUEST_LIMIT` | `10000` | GeoPulse-side maximum Open-Meteo requests per UTC day. Property: \`geopulse.weather.quota.daily-request-limit\`. | Integer >= 0. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_WEATHER_QUOTA_DAILY_REQUEST_LIMIT` | `10000` | GeoPulse-side maximum weather target attempts per UTC day. Property: \`geopulse.weather.quota.daily-request-limit\`. | Integer >= 0. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_QUOTA_ONGOING_RESERVE` | `500` | Daily request reserve kept available for ongoing samples before backfill work can consume quota. Property: \`geopulse.weather.quota.ongoing-reserve\`. | Integer >= 0. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_COORDINATE_PRECISION` | `2` | Decimal precision for weather coordinate buckets; lower values reuse more samples, higher values fetch more precise locations. Property: \`geopulse.weather.coordinate-precision\`. | Integer from 0 to 5. | Backend restart for env changes; Admin UI changes apply through system settings |
 | `GEOPULSE_WEATHER_FAILED_TARGET_RETRY_ENABLED` | `true` | Retry stale failed weather targets after cooldown. Property: \`geopulse.weather.failed-target-retry.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
@@ -391,7 +400,7 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_CLEANUP_SCHEDULER_CADENCE` | `12h` | Scheduler cadence for cleanup job ticks. Property: \`geopulse.notifications.geofence-events.cleanup.scheduler-cadence\`. | Quarkus duration expression (for example \`30m\`, \`12h\`, \`1d\`). | Backend restart |
 | `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_RETENTION_DAYS` | `90` | Deletes geofence events older than this many days. Property: \`geopulse.notifications.geofence-events.retention-days\`. | Integer >= 1. | Backend restart |
 
-### Prometheus (8)
+### Prometheus (9)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -403,6 +412,7 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL` | `10m` | Custom Prometheus Metrics Configuration Note: The Prometheus endpoint is always available at build time. Use GEOPULSE_PROMETHEUS_ENABLED to control custom metrics collection at... Property: \`geopulse.prometheus.refresh-interval\`. | Duration format (for example \`1s\`, \`5m\`, \`1h\`). | Backend restart |
 | `GEOPULSE_PROMETHEUS_TIMELINE_ENABLED` | `true` | Per-metric-class control (optional - all enabled by default) Property: \`geopulse.prometheus.timeline.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED` | `true` | Per-metric-class control (optional - all enabled by default) Property: \`geopulse.prometheus.user-metrics.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_PROMETHEUS_WORKLOAD_ENABLED` | `true` | Enables/disables workload timers and counters for GPS ingestion, timeline regeneration, coverage, boat/water evidence, and weather jobs. Property: \`geopulse.prometheus.workload.enabled\`. | \`true\` or \`false\`. | Backend restart |
 
 ### Sharing and OwnTracks (2)
 

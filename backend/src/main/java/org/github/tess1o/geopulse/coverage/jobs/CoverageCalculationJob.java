@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +34,9 @@ public class CoverageCalculationJob {
     @Inject
     @Identifier("coverage-processing")
     ExecutorService executorService;
+
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
 
     @ConfigProperty(name = "geopulse.coverage.processing.max-concurrent-tasks", defaultValue = "2")
     @StaticInitSafe
@@ -71,12 +75,16 @@ public class CoverageCalculationJob {
     @Scheduled(every = "${geopulse.coverage.job.interval:2h}", delayed = "${geopulse.coverage.job.delay:0m}")
     @Blocking
     public void processCoverage() {
+        long startedAtNanos = metricsStart();
+        String result = "success";
         List<UUID> usersToProcess = coverageRepository.findUsersWithNewCoverage(
                 CoverageDefaults.MAX_ACCURACY_METERS,
                 processingStaleTimeoutSeconds
         );
+        countUsers("discovered", usersToProcess.size());
 
         if (usersToProcess.isEmpty()) {
+            recordScheduler(startedAtNanos, "empty");
             return;
         }
 
@@ -85,12 +93,15 @@ public class CoverageCalculationJob {
                     boolean hasActiveImport = importJobService.hasActiveImportJob(userId);
                     if (hasActiveImport) {
                         log.info("Skipping scheduled coverage update for user {} because an import is active", userId);
+                        countUsers("skipped_import", 1);
                     }
                     return !hasActiveImport;
                 })
                 .toList();
+        countUsers("eligible", eligibleUsers.size());
 
         if (eligibleUsers.isEmpty()) {
+            recordScheduler(startedAtNanos, "skipped");
             return;
         }
 
@@ -101,11 +112,13 @@ public class CoverageCalculationJob {
                 semaphore.acquire();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                result = "interrupted";
                 log.warn("Interrupted while waiting to schedule coverage processing for user {}", userId);
                 break;
             }
 
             try {
+                countUsers("submitted", 1);
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("Updating coverage for user {}", userId);
@@ -123,8 +136,36 @@ public class CoverageCalculationJob {
                         });
             } catch (RejectedExecutionException e) {
                 semaphore.release();
+                result = "rejected";
+                countUsers("rejected", 1);
                 log.error("Failed to submit coverage task for user {}: {}", userId, e.getMessage(), e);
             }
         }
+        recordScheduler(startedAtNanos, result);
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordScheduler(long startedAtNanos, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.coverage.job.duration", startedAtNanos,
+                "component", "coverage",
+                "trigger", "scheduled",
+                "mode", "incremental",
+                "result", result);
+    }
+
+    private void countUsers(String result, long count) {
+        if (workloadMetrics == null || count <= 0) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.coverage.users_scheduled", count,
+                "component", "coverage",
+                "trigger", "scheduled",
+                "result", result);
     }
 }

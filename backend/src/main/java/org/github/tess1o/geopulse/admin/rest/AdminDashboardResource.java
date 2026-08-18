@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.prometheus.UserMetrics;
 import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
-import org.github.tess1o.geopulse.weather.service.WeatherService;
+import org.github.tess1o.geopulse.weather.service.WeatherProcessingCoordinator;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class AdminDashboardResource {
     GpsPointsMetrics gpsPointsMetrics;
 
     @Inject
-    WeatherService weatherService;
+    WeatherProcessingCoordinator weatherProcessingCoordinator;
 
     /**
      * Get dashboard statistics
@@ -59,7 +59,7 @@ public class AdminDashboardResource {
             // GPS metrics (queries DB directly if metrics disabled)
             stats.put("totalGpsPoints", gpsPointsMetrics.getTotalGpsPoints());
             stats.put("gpsActivity24h", gpsPointsMetrics.getGpsPointsLast24h());
-            stats.put("weatherStatus", weatherService.status());
+            stats.put("weatherStatus", weatherProcessingCoordinator.status());
 
             // Add metadata about metrics status
             stats.put("metricsEnabled", Map.of(

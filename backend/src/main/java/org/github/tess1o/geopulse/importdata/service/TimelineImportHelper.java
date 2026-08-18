@@ -8,6 +8,8 @@ import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.weather.dto.WeatherRunSummary;
+import org.github.tess1o.geopulse.weather.service.WeatherProcessingCoordinator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -29,6 +31,9 @@ public class TimelineImportHelper {
 
     @Inject
     BadgeRecalculationService badgeRecalculationService;
+
+    @Inject
+    WeatherProcessingCoordinator weatherProcessingCoordinator;
 
     /**
      * Trigger timeline generation for imported GPS data with job tracking.
@@ -58,7 +63,7 @@ public class TimelineImportHelper {
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                timelineGenerationService.generateTimelineFromTimestamp(job.getUserId(), firstGpsPointDate, timelineJobId);
+                timelineGenerationService.generateTimelineFromTimestamp(job.getUserId(), firstGpsPointDate, timelineJobId, "import");
                 log.info("Successfully regenerated timeline for user {} after bulk import starting from date {} (attempt {})",
                         job.getUserId(), firstGpsPointDate, attempt);
                 return timelineJobId; // Success - return job ID
@@ -100,7 +105,10 @@ public class TimelineImportHelper {
      * Complete timeline job with badge recalculation and progress updates.
      * Must be called OUTSIDE @Transactional method to avoid transaction issues.
      */
-    public void finishTimelineJob(UUID timelineJobId, UUID userId) {
+    public void finishTimelineJob(UUID timelineJobId, ImportJob job) {
+        UUID userId = job.getUserId();
+        runWeatherEnrichment(timelineJobId, job);
+
         try {
             // Badge recalculation (99%)
             jobProgressService.updateProgress(timelineJobId, "Recalculating achievement badges", 9, 99, null);
@@ -121,5 +129,61 @@ public class TimelineImportHelper {
 
     public void failTimelineJob(UUID timelineJobId, String message) {
         jobProgressService.failJob(timelineJobId, message);
+    }
+
+    private void runWeatherEnrichment(UUID timelineJobId, ImportJob job) {
+        if (!job.isGpsDataImported()) {
+            return;
+        }
+        Instant startTime = job.getDataFirstTimestamp();
+        Instant endTime = job.getDataLastTimestamp();
+        if (startTime == null || endTime == null || !endTime.isAfter(startTime)) {
+            log.info("Skipping weather enrichment for import {} because imported GPS range is unavailable", job.getJobId());
+            return;
+        }
+
+        try {
+            job.updateProgress(Math.max(job.getProgress(), 95), "Enriching imported timeline with weather...");
+            jobProgressService.updateProgress(timelineJobId, "Enriching imported timeline with weather", 9, 96, null);
+            WeatherRunSummary summary = weatherProcessingCoordinator.processImportRange(
+                    job.getUserId(),
+                    startTime,
+                    endTime,
+                    "import " + job.getJobId()
+            );
+            String message = weatherProgressMessage(summary);
+            job.updateProgress(Math.max(job.getProgress(), 96), message);
+            log.info("Weather enrichment for import {} completed: result={}, created={}, known={}, skipped={}, fetched={}, message={}",
+                    job.getJobId(),
+                    summary.getResult(),
+                    summary.getTargetsCreated(),
+                    summary.getTargetsAlreadyKnown(),
+                    summary.getTargetsSkipped(),
+                    summary.getFetchedTargets(),
+                    summary.getMessage());
+        } catch (Exception e) {
+            String message = "Weather deferred: " + e.getMessage();
+            job.updateProgress(Math.max(job.getProgress(), 96), message);
+            jobProgressService.updateProgress(timelineJobId, message, 9, 96, null);
+            log.error("Weather enrichment for import {} was deferred after an unexpected error: {}",
+                    job.getJobId(), e.getMessage(), e);
+        }
+    }
+
+    private String weatherProgressMessage(WeatherRunSummary summary) {
+        if (summary == null) {
+            return "Weather enrichment completed";
+        }
+        if ("deferred".equals(summary.getResult())) {
+            return "Weather deferred: " + summary.getMessage();
+        }
+        if ("skipped".equals(summary.getResult())) {
+            return "Weather skipped: " + summary.getMessage();
+        }
+        if ("error".equals(summary.getResult())) {
+            return "Weather deferred: " + summary.getMessage();
+        }
+        return "Weather enrichment completed: fetched " + summary.getFetchedTargets() + " sample"
+                + (summary.getFetchedTargets() == 1 ? "" : "s");
     }
 }

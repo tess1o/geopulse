@@ -24,5 +24,11 @@ public class WeatherStatusResponse {
     private String fetchBlockedReason;
     private Instant oldestPendingTargetAt;
     private Instant newestPendingTargetAt;
+    private WeatherReconciliationStatus reconciliation;
+    private WeatherProcessingStatus processing;
+    private WeatherRunSummary lastDiscoveryRun;
+    private WeatherRunSummary lastFetchRun;
+    private String historicalDiscoveryInterval;
+    private String sampleFetchInterval;
     private ExternalIntegrationHealthDto providerHealth;
 }

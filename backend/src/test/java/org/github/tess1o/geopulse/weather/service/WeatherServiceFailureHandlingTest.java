@@ -1,14 +1,19 @@
 package org.github.tess1o.geopulse.weather.service;
 
+import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.weather.client.OpenMeteoWeatherClient;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderException;
+import org.github.tess1o.geopulse.weather.client.WeatherProviderRegistry;
 import org.github.tess1o.geopulse.weather.dto.WeatherEndpointTestResponse;
+import org.github.tess1o.geopulse.weather.dto.WeatherProviderSample;
 import org.github.tess1o.geopulse.weather.dto.WeatherStatusResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
+import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
+import org.github.tess1o.geopulse.weather.model.WeatherSampleTargetEntity;
 import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetClaim;
@@ -25,7 +30,9 @@ import javax.net.ssl.SSLHandshakeException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +58,9 @@ class WeatherServiceFailureHandlingTest {
     WeatherConfigurationService configurationService;
 
     @Mock
+    WeatherSamplingPolicy samplingPolicy;
+
+    @Mock
     WeatherQuotaService quotaService;
 
     @Mock
@@ -65,17 +75,28 @@ class WeatherServiceFailureHandlingTest {
     @Mock
     OpenMeteoWeatherClient weatherClient;
 
+    @Mock
+    OpenMeteoWeatherClient fallbackWeatherClient;
+
+    @Mock
+    WeatherProviderRegistry providerRegistry;
+
+    @Mock
+    EntityManager entityManager;
+
     private WeatherService service;
 
     @BeforeEach
     void setUp() {
-        service = new WeatherService();
+        service = new TestWeatherService();
         service.configurationService = configurationService;
+        service.samplingPolicy = samplingPolicy;
         service.quotaService = quotaService;
         service.integrationHealthService = integrationHealthService;
         service.sampleRepository = sampleRepository;
         service.targetRepository = targetRepository;
-        service.weatherClient = weatherClient;
+        service.providerRegistry = providerRegistry;
+        service.entityManager = entityManager;
         service.inProgressTimeoutMinutes = 60;
         service.sslHandshakeRetryAttempts = 2;
 
@@ -83,8 +104,13 @@ class WeatherServiceFailureHandlingTest {
         lenient().when(configurationService.isConfigured()).thenReturn(true);
         lenient().when(configurationService.dailyRequestLimit()).thenReturn(5);
         lenient().when(configurationService.ongoingReserve()).thenReturn(0);
+        lenient().when(configurationService.primaryProvider()).thenReturn(PROVIDER);
+        lenient().when(configurationService.normalizeProviderKey(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(configurationService.providerOrder(anyString())).thenReturn(List.of(PROVIDER));
+        lenient().when(providerRegistry.client(PROVIDER)).thenReturn(Optional.of(weatherClient));
         lenient().when(quotaService.requestsUsedToday()).thenReturn(0L);
         lenient().when(targetRepository.resetStaleInProgressTargets(any(Instant.class))).thenReturn(0L);
+        lenient().when(samplingPolicy.truncateToHour(any(Instant.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -186,6 +212,55 @@ class WeatherServiceFailureHandlingTest {
         verify(targetRepository, never()).releaseUntil(anyLong(), any(Instant.class), anyString());
         verify(integrationHealthService, never()).recordFailure(any(), anyString(), any(), anyString(), anyString(), any(), any());
         verify(integrationHealthService, never()).recordQuotaExceeded(any(), anyString(), any(), anyString(), anyString(), any(), any());
+    }
+
+    @Test
+    void providerFailureUsesConfiguredFallbackBeforeFailingTarget() {
+        allowFetches();
+        WeatherSampleTargetClaim first = target(1L);
+        WeatherProviderException unavailable = new WeatherProviderException(
+                WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
+                "primary timeout");
+        WeatherProviderSample fallbackSample = WeatherProviderSample.builder()
+                .requestedLatitude(first.latitude())
+                .requestedLongitude(first.longitude())
+                .observedAt(first.targetAt())
+                .temperature(18.0)
+                .build();
+        WeatherSampleTargetEntity targetEntity = WeatherSampleTargetEntity.builder()
+                .id(first.id())
+                .provider(PROVIDER)
+                .source(first.source())
+                .build();
+
+        when(configurationService.providerOrder(PROVIDER)).thenReturn(List.of(PROVIDER, "PIRATE_WEATHER"));
+        when(providerRegistry.client("PIRATE_WEATHER")).thenReturn(Optional.of(fallbackWeatherClient));
+        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first));
+        when(weatherClient.fetchCurrent(first.latitude(), first.longitude())).thenThrow(unavailable);
+        when(fallbackWeatherClient.fetchCurrent(first.latitude(), first.longitude())).thenReturn(fallbackSample);
+        when(integrationHealthService.currentHealth(any(), eq(PROVIDER)))
+                .thenReturn(ExternalIntegrationHealthDto.builder().failureCount(0).build());
+        when(integrationHealthService.recordFailure(
+                any(),
+                eq(PROVIDER),
+                eq(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE),
+                eq("PROVIDER_UNAVAILABLE"),
+                eq("primary timeout"),
+                any(Instant.class),
+                any(Instant.class)))
+                .thenAnswer(invocation -> invocation.getArgument(5));
+        when(targetRepository.findById(first.id())).thenReturn(targetEntity);
+        when(sampleRepository.existsAtBucketHour(first.userId(), "PIRATE_WEATHER", first.latitudeBucket(), first.longitudeBucket(), first.targetAt()))
+                .thenReturn(false);
+
+        int processed = service.fetchQueuedSamples();
+
+        assertThat(processed).isEqualTo(1);
+        verify(weatherClient).fetchCurrent(first.latitude(), first.longitude());
+        verify(fallbackWeatherClient).fetchCurrent(first.latitude(), first.longitude());
+        verify(sampleRepository).persist(any(WeatherSampleEntity.class));
+        verify(targetRepository).markCompleted(targetEntity);
+        verify(targetRepository, never()).markFailedOrRetry(anyLong(), anyString());
     }
 
     @Test
@@ -304,6 +379,7 @@ class WeatherServiceFailureHandlingTest {
         when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(4525L);
         when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(4525L);
         when(integrationHealthService.currentHealth(any(), eq(PROVIDER))).thenReturn(providerHealth);
+        when(integrationHealthService.isFetchBlocked(any(), eq(PROVIDER), any(Instant.class))).thenReturn(true);
 
         WeatherStatusResponse status = service.status();
 
@@ -332,5 +408,12 @@ class WeatherServiceFailureHandlingTest {
         when(integrationHealthService.isFetchBlocked(any(), eq(PROVIDER), any(Instant.class))).thenReturn(false);
         when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(5L);
         when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(0L);
+    }
+
+    private static class TestWeatherService extends WeatherService {
+        @Override
+        protected <T> T requiringNew(Supplier<T> supplier) {
+            return supplier.get();
+        }
     }
 }

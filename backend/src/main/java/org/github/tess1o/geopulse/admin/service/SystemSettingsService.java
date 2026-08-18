@@ -130,12 +130,26 @@ public class SystemSettingsService {
         // Weather settings
         SETTING_DEFINITIONS.put("weather.enabled",
                 new SettingDefinition("geopulse.weather.enabled", "true", ValueType.BOOLEAN, "weather", "Enable weather samples for timeline stays and trips"));
+        SETTING_DEFINITIONS.put("weather.primary-provider",
+                new SettingDefinition("geopulse.weather.primary-provider", "OPEN_METEO", ValueType.STRING, "weather", "Primary weather provider"));
+        SETTING_DEFINITIONS.put("weather.secondary-provider",
+                new SettingDefinition("geopulse.weather.secondary-provider", "", ValueType.STRING, "weather", "Secondary weather provider used as fallback"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.enabled",
+                new SettingDefinition("geopulse.weather.open-meteo.enabled", "true", ValueType.BOOLEAN, "weather", "Enable Open-Meteo weather provider"));
         SETTING_DEFINITIONS.put("weather.open-meteo.forecast-url",
                 new SettingDefinition("geopulse.weather.open-meteo.forecast-url", "https://api.open-meteo.com", ValueType.STRING, "weather", "Open-Meteo forecast API base URL"));
         SETTING_DEFINITIONS.put("weather.open-meteo.archive-url",
                 new SettingDefinition("geopulse.weather.open-meteo.archive-url", "https://archive-api.open-meteo.com", ValueType.STRING, "weather", "Open-Meteo archive API base URL"));
         SETTING_DEFINITIONS.put("weather.open-meteo.api-key",
                 new SettingDefinition("geopulse.weather.open-meteo.api-key", "", ValueType.ENCRYPTED, "weather", "Optional Open-Meteo API key (encrypted)"));
+        SETTING_DEFINITIONS.put("weather.pirate.enabled",
+                new SettingDefinition("geopulse.weather.pirate.enabled", "false", ValueType.BOOLEAN, "weather", "Enable Pirate Weather provider"));
+        SETTING_DEFINITIONS.put("weather.pirate.base-url",
+                new SettingDefinition("geopulse.weather.pirate.base-url", "https://api.pirateweather.net", ValueType.STRING, "weather", "Pirate Weather forecast API base URL"));
+        SETTING_DEFINITIONS.put("weather.pirate.time-machine-url",
+                new SettingDefinition("geopulse.weather.pirate.time-machine-url", "https://timemachine.pirateweather.net", ValueType.STRING, "weather", "Pirate Weather time machine API base URL"));
+        SETTING_DEFINITIONS.put("weather.pirate.api-key",
+                new SettingDefinition("geopulse.weather.pirate.api-key", "", ValueType.ENCRYPTED, "weather", "Pirate Weather API key (encrypted)"));
         SETTING_DEFINITIONS.put("weather.ongoing.enabled",
                 new SettingDefinition("geopulse.weather.ongoing.enabled", "true", ValueType.BOOLEAN, "weather", "Fetch weather for active latest stays/trips"));
         SETTING_DEFINITIONS.put("weather.ongoing.interval-minutes",
@@ -553,6 +567,14 @@ public class SystemSettingsService {
             int parsed = Integer.parseInt(value);
             if (parsed < 0 || parsed > 5) {
                 throw new IllegalArgumentException("Setting " + key + " must be between 0 and 5");
+            }
+        }
+        if ("weather.primary-provider".equals(key) || "weather.secondary-provider".equals(key)) {
+            String normalized = value == null ? "" : value.trim().replace('-', '_').toUpperCase(Locale.ROOT);
+            if (!normalized.isBlank()
+                    && !normalized.equals("OPEN_METEO")
+                    && !normalized.equals("PIRATE_WEATHER")) {
+                throw new IllegalArgumentException("Setting " + key + " must be OPEN_METEO, PIRATE_WEATHER, or empty");
             }
         }
     }
