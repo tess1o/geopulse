@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.gps.integrations.owntracks;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -13,6 +14,7 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPa
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.jboss.resteasy.reactive.RestHeader;
 
@@ -41,6 +43,9 @@ public class OwnTracksResource {
     private final OwnTracksTagService ownTracksTagService;
     private final OwnTracksPayloadDecryptionService payloadDecryptionService;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     public OwnTracksResource(GpsPointService gpsPointService,
                            GpsIntegrationAuthenticatorRegistry authRegistry,
                            OwnTracksPoiService ownTracksPoiService,
@@ -59,58 +64,85 @@ public class OwnTracksResource {
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {
+        long requestStart = metricsStart();
+        String result = "success";
         log.info("Received OwnTracks HTTP payload type: {}, device: {}", payload.get("_type"), deviceId);
 
-        if (!"location".equals(payload.get("_type")) && !payloadDecryptionService.isEncryptedPayload(payload)) {
-            return Response.ok(EMPTY_JSON_ARRAY).build();
-        }
-
-        var authResult = authRegistry.authenticate(GpsSourceType.OWNTRACKS, ownTrackAuth);
-        if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
-        }
-
-        UUID userId = authResult.get().getUserId();
-        var config = authResult.get().getConfig();
-        Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(payload, config);
-        if (resolvedPayload.isEmpty()) {
-            return Response.ok(EMPTY_JSON_ARRAY).build();
-        }
-
-        Map<String, Object> locationPayload = resolvedPayload.get();
-        if (!"location".equals(locationPayload.get("_type"))) {
-            return Response.ok(EMPTY_JSON_ARRAY).build();
-        }
-
-        OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(locationPayload, OwnTracksLocationMessage.class);
-        String resolvedDeviceId = resolveDeviceId(deviceId, ownTracksLocationMessage.getTopic());
-
-        if (timestampOverride) {
-            if ("p".equals(ownTracksLocationMessage.getT())) {
-                ownTracksLocationMessage.setTst(Instant.now().getEpochSecond());
-            }
-        }
-
-        // Handle POI if present
-        if (ownTracksLocationMessage.getPoi() != null && !ownTracksLocationMessage.getPoi().trim().isEmpty()) {
-            try {
-                ownTracksPoiService.handlePoi(ownTracksLocationMessage, userId);
-            } catch (Exception e) {
-                log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
-                // Continue processing GPS point even if POI handling fails
-            }
-        }
-
-        // Handle tag (including null/empty to end active tags)
         try {
-            ownTracksTagService.handleTag(ownTracksLocationMessage, userId);
-        } catch (Exception e) {
-            log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
-            // Continue processing GPS point even if tag handling fails
-        }
+            if (!"location".equals(payload.get("_type")) && !payloadDecryptionService.isEncryptedPayload(payload)) {
+                result = "skipped";
+                return Response.ok(EMPTY_JSON_ARRAY).build();
+            }
 
-        gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
-        return Response.ok(EMPTY_JSON_ARRAY).build();
+            long stageStart = metricsStart();
+            var authResult = authRegistry.authenticate(GpsSourceType.OWNTRACKS, ownTrackAuth);
+            recordStage(stageStart, "auth", authResult.isEmpty() ? "unauthorized" : "success");
+            if (authResult.isEmpty()) {
+                result = "unauthorized";
+                return Response.status(Response.Status.UNAUTHORIZED).build();
+            }
+
+            UUID userId = authResult.get().getUserId();
+            var config = authResult.get().getConfig();
+            stageStart = metricsStart();
+            Optional<Map<String, Object>> resolvedPayload = payloadDecryptionService.decryptIfNeeded(payload, config);
+            recordStage(stageStart, "decrypt", resolvedPayload.isEmpty() ? "skipped" : "success");
+            if (resolvedPayload.isEmpty()) {
+                result = "decrypt_failed";
+                return Response.ok(EMPTY_JSON_ARRAY).build();
+            }
+
+            Map<String, Object> locationPayload = resolvedPayload.get();
+            if (!"location".equals(locationPayload.get("_type"))) {
+                result = "skipped";
+                return Response.ok(EMPTY_JSON_ARRAY).build();
+            }
+
+            OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(locationPayload, OwnTracksLocationMessage.class);
+            String resolvedDeviceId = resolveDeviceId(deviceId, ownTracksLocationMessage.getTopic());
+
+            if (timestampOverride) {
+                if ("p".equals(ownTracksLocationMessage.getT())) {
+                    ownTracksLocationMessage.setTst(Instant.now().getEpochSecond());
+                }
+            }
+
+            // Handle POI if present
+            if (ownTracksLocationMessage.getPoi() != null && !ownTracksLocationMessage.getPoi().trim().isEmpty()) {
+                stageStart = metricsStart();
+                String poiResult = "success";
+                try {
+                    ownTracksPoiService.handlePoi(ownTracksLocationMessage, userId);
+                } catch (Exception e) {
+                    poiResult = "error";
+                    log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
+                    // Continue processing GPS point even if POI handling fails
+                } finally {
+                    recordStage(stageStart, "poi", poiResult);
+                }
+            }
+
+            // Handle tag (including null/empty to end active tags)
+            stageStart = metricsStart();
+            String tagResult = "success";
+            try {
+                ownTracksTagService.handleTag(ownTracksLocationMessage, userId);
+            } catch (Exception e) {
+                tagResult = "error";
+                log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
+                // Continue processing GPS point even if tag handling fails
+            } finally {
+                recordStage(stageStart, "tag", tagResult);
+            }
+
+            gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
+            return Response.ok(EMPTY_JSON_ARRAY).build();
+        } catch (Exception e) {
+            result = "error";
+            throw e;
+        } finally {
+            recordRequest(requestStart, result);
+        }
     }
 
     private String resolveDeviceId(String headerDeviceId, String payloadTopic) {
@@ -126,6 +158,32 @@ public class OwnTracksResource {
             return topicParts[2];
         }
         return headerDeviceId;
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordRequest(long startedAtNanos, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.gps.ingest.duration", startedAtNanos,
+                "component", "gps",
+                "source", GpsSourceType.OWNTRACKS.name(),
+                "transport", "http",
+                "result", result);
+    }
+
+    private void recordStage(long startedAtNanos, String stage, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.gps.ingest.stage.duration", startedAtNanos,
+                "component", "gps",
+                "source", GpsSourceType.OWNTRACKS.name(),
+                "stage", stage,
+                "result", result);
     }
 
 }

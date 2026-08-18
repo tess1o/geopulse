@@ -67,6 +67,6 @@ class AsyncTimelineGenerationServiceTest {
         service.drainPendingRegenerations();
 
         verify(timelineGenerationService, timeout(1000))
-                .generateTimelineFromTimestamp(eq(userId), eq(earlierTimestamp), any(UUID.class));
+                .generateTimelineFromTimestamp(eq(userId), eq(earlierTimestamp), any(UUID.class), eq("manual"));
     }
 }

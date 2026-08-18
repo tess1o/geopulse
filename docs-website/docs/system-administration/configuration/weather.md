@@ -7,7 +7,7 @@ description: Admin guide for enabling, tuning, monitoring, and troubleshooting t
 
 GeoPulse can attach weather samples to timeline stays and trips, then show those conditions on the Timeline map, timeline cards, Journey Insights, and weather-related badges. Weather is a system-wide integration managed by administrators.
 
-Weather is enabled by default for ongoing timeline activity. Historical weather backfill is disabled by default, so existing timeline history is not sent for weather enrichment unless an administrator opts in. GeoPulse uses Open-Meteo-compatible forecast and archive endpoints.
+Weather is enabled by default for ongoing timeline activity. Historical weather backfill is disabled by default, so existing timeline history is not sent for weather enrichment unless an administrator opts in. Open-Meteo is the default provider. Pirate Weather can be enabled with an API key and selected as the primary provider or as a secondary fallback provider.
 
 ## Admin Setup
 
@@ -18,11 +18,18 @@ Configure the provider first:
 | Admin Setting | Default | Description |
 |---|---|---|
 | **Enable Weather** | On | Master switch for weather collection and display data. |
-| **Forecast URL** | `https://api.open-meteo.com` | Forecast and current-weather API base URL. |
-| **Archive URL** | `https://archive-api.open-meteo.com` | Historical archive API base URL. |
+| **Primary Provider** | Open-Meteo | Provider used first for new weather targets. |
+| **Secondary Provider** | None | Optional fallback provider used when the primary provider cannot return a sample. |
+| **Enable Open-Meteo** | On | Keep Open-Meteo available as a weather provider. |
+| **Forecast URL** | `https://api.open-meteo.com` | Open-Meteo forecast and current-weather API base URL. |
+| **Archive URL** | `https://archive-api.open-meteo.com` | Open-Meteo historical archive API base URL. |
 | **Open-Meteo API Key** | Empty | Optional API key. Values saved in Admin Settings are encrypted. |
+| **Enable Pirate Weather** | Off | Enables Pirate Weather as a selectable provider. Requires an API key. |
+| **Pirate Weather Forecast URL** | `https://api.pirateweather.net` | Pirate Weather forecast API base URL. |
+| **Pirate Weather Time Machine URL** | `https://timemachine.pirateweather.net` | Pirate Weather historical time machine API base URL. |
+| **Pirate Weather API Key** | Empty | Encrypted Pirate Weather API key. |
 
-Use **Test Connection** to verify the configured forecast endpoint before starting production collection.
+Use **Test Connection** to verify the configured forecast and historical endpoints before starting production collection.
 
 :::note
 Open-Meteo public endpoints do not require an API key for normal free usage. Add one only when your Open-Meteo account or deployment requires it.
@@ -117,13 +124,19 @@ Environment variables provide first-boot defaults and support immutable deployme
 | Variable | Default | Admin Setting |
 |---|---|---|
 | `GEOPULSE_WEATHER_ENABLED` | `true` | **Enable Weather** |
+| `GEOPULSE_WEATHER_PRIMARY_PROVIDER` | `OPEN_METEO` | **Primary Provider** |
+| `GEOPULSE_WEATHER_SECONDARY_PROVIDER` | Empty | **Secondary Provider** |
+| `GEOPULSE_WEATHER_OPEN_METEO_ENABLED` | `true` | **Enable Open-Meteo** |
 | `GEOPULSE_WEATHER_OPEN_METEO_FORECAST_URL` | `https://api.open-meteo.com` | **Forecast URL** |
 | `GEOPULSE_WEATHER_OPEN_METEO_ARCHIVE_URL` | `https://archive-api.open-meteo.com` | **Archive URL** |
 | `GEOPULSE_WEATHER_OPEN_METEO_API_KEY` | Empty | **Open-Meteo API Key** |
+| `GEOPULSE_WEATHER_PIRATE_ENABLED` | `false` | **Enable Pirate Weather** |
+| `GEOPULSE_WEATHER_PIRATE_BASE_URL` | `https://api.pirateweather.net` | **Pirate Weather Forecast URL** |
+| `GEOPULSE_WEATHER_PIRATE_TIME_MACHINE_URL` | `https://timemachine.pirateweather.net` | **Pirate Weather Time Machine URL** |
+| `GEOPULSE_WEATHER_PIRATE_API_KEY` | Empty | **Pirate Weather API Key** |
 | `GEOPULSE_WEATHER_ONGOING_ENABLED` | `true` | **Ongoing Weather** |
 | `GEOPULSE_WEATHER_ONGOING_INTERVAL_MINUTES` | `60` | **Ongoing Interval** |
 | `GEOPULSE_WEATHER_BACKFILL_ENABLED` | `false` | **Historical Weather Backfill** |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_CHUNKS_PER_RUN` | `4` | **Historical Backfill Chunks per Run** |
 | `GEOPULSE_WEATHER_QUOTA_DAILY_REQUEST_LIMIT` | `10000` | **Daily Request Limit** |
 | `GEOPULSE_WEATHER_QUOTA_ONGOING_RESERVE` | `500` | **Ongoing Reserve** |
 | `GEOPULSE_WEATHER_COORDINATE_PRECISION` | `2` | **Coordinate Precision** |
@@ -138,14 +151,6 @@ These controls are available only as environment variables and apply after a bac
 |---|---|---|
 | `GEOPULSE_WEATHER_OPEN_METEO_CONNECT_TIMEOUT_SECONDS` | `5` | Provider connection timeout. |
 | `GEOPULSE_WEATHER_OPEN_METEO_READ_TIMEOUT_SECONDS` | `15` | Provider response timeout. |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_INTERVAL` | `30m` | Interval between historical reconciliation runs. |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_DELAY` | `5m` | Initial delay for the scheduled reconciliation job. Startup reconciliation can run sooner. |
-| `GEOPULSE_WEATHER_ONGOING_JOB_INTERVAL` | `15m` | Ongoing discovery job interval. |
-| `GEOPULSE_WEATHER_ONGOING_JOB_DELAY` | `2m` | Initial ongoing discovery delay. |
-| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_INTERVAL` | `10m` | Pending sample fetch interval. |
-| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_DELAY` | `3m` | Initial sample fetch delay. |
-| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_INTERVAL` | `10m` | Provider health probe interval. |
-| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_DELAY` | `4m` | Initial provider health probe delay. |
 | `GEOPULSE_WEATHER_TARGET_CLEANUP_JOB_CRON` | `0 30 3 * * ?` | Queue cleanup schedule. |
 | `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped target records. |
 | `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed target records. |

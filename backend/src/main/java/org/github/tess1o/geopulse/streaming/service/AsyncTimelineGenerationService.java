@@ -170,12 +170,12 @@ public class AsyncTimelineGenerationService {
      */
     @Transactional
     protected void executeRegenerationWithTransaction(UUID userId, UUID jobId) {
-        timelineGenerationService.generateTimelineFromTimestamp(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE, jobId);
+        timelineGenerationService.generateTimelineFromTimestamp(userId, StreamingTimelineGenerationService.DEFAULT_START_DATE, jobId, "manual");
     }
 
     @Transactional
     protected void executeRegenerationFromTimestampWithTransaction(UUID userId, Instant earliestAffectedTimestamp, UUID jobId) {
-        timelineGenerationService.generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, jobId);
+        timelineGenerationService.generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, jobId, "manual");
     }
 
     @FunctionalInterface

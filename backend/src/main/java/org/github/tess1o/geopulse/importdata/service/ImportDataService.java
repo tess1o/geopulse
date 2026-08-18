@@ -75,7 +75,7 @@ public class ImportDataService {
         }
 
         if (timelineJobId != null) {
-            timelineImportHelper.finishTimelineJob(timelineJobId, job.getUserId());
+            timelineImportHelper.finishTimelineJob(timelineJobId, job);
         }
         
         log.info("Import processing completed for user: {}", job.getUserId());

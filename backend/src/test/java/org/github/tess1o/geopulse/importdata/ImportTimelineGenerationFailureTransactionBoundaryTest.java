@@ -88,7 +88,7 @@ class ImportTimelineGenerationFailureTransactionBoundaryTest {
                 Mockito.mock(StreamingTimelineGenerationService.class);
         doThrow(new RuntimeException("simulated timeline failure"))
                 .when(failingTimelineService)
-                .generateTimelineFromTimestamp(eq(testUserId), any(Instant.class), any(UUID.class));
+                .generateTimelineFromTimestamp(eq(testUserId), any(Instant.class), any(UUID.class), eq("import"));
         QuarkusMock.installMockForType(failingTimelineService, StreamingTimelineGenerationService.class);
 
         ImportJob job = new ImportJob(

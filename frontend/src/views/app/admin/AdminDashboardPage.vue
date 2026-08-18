@@ -120,6 +120,10 @@
               <strong>{{ formatNumber(weatherPendingTargets) }}</strong>
             </div>
             <div class="weather-health-row">
+              <span>Historical ranges</span>
+              <strong>{{ weatherBacklogText }}</strong>
+            </div>
+            <div class="weather-health-row">
               <span>Claimable pending</span>
               <strong>{{ formatNumber(weatherClaimablePendingTargets) }}</strong>
             </div>
@@ -231,16 +235,26 @@ const formatNumber = (num) => {
 }
 
 const weatherProviderHealth = computed(() => stats.value.weatherStatus?.providerHealth || null)
+const weatherProcessing = computed(() => stats.value.weatherStatus?.processing || null)
+const weatherReconciliation = computed(() => stats.value.weatherStatus?.reconciliation || null)
 const weatherPendingTargets = computed(() => stats.value.weatherStatus?.targetsByStatus?.PENDING || 0)
 const weatherClaimablePendingTargets = computed(() => stats.value.weatherStatus?.claimablePendingTargets || 0)
 const weatherFetchStatus = computed(() => stats.value.weatherStatus?.fetchBlockedReason || 'Ready')
+const weatherBacklogText = computed(() => {
+  const backlog = weatherReconciliation.value
+  if (!backlog || !backlog.pendingUserRanges) return 'Clear'
+  return `${formatNumber(backlog.pendingUserRanges)} waiting`
+})
 
 const hasWeatherStatus = computed(() => !!stats.value.weatherStatus)
 
-const weatherHealthBadge = computed(() => weatherProviderHealth.value?.status || 'UNKNOWN')
+const weatherHealthBadge = computed(() => weatherProcessing.value?.running ? 'PROCESSING' : weatherProviderHealth.value?.status || 'UNKNOWN')
 
 const weatherHealthLabel = computed(() => {
   const status = weatherProviderHealth.value?.status
+  if (weatherProcessing.value?.running) {
+    return 'Processing weather'
+  }
   switch (status) {
     case 'HEALTHY':
       return 'Operational'
@@ -259,6 +273,7 @@ const weatherHealthLabel = computed(() => {
 })
 
 const weatherHealthSeverity = computed(() => {
+  if (weatherProcessing.value?.running) return 'info'
   const status = weatherProviderHealth.value?.status
   if (status === 'HEALTHY') return 'success'
   if (status === 'PROVIDER_QUOTA_EXCEEDED' || status === 'INTERNAL_QUOTA_EXCEEDED') return 'warn'

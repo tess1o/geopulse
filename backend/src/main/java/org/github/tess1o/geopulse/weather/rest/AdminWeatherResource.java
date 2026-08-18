@@ -11,6 +11,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherBackfillRequest;
+import org.github.tess1o.geopulse.weather.dto.WeatherWorkAcceptedResponse;
+import org.github.tess1o.geopulse.weather.service.WeatherPipelineWorker;
+import org.github.tess1o.geopulse.weather.service.WeatherStatusService;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 @Path("/api/admin/weather")
@@ -24,12 +27,21 @@ public class AdminWeatherResource {
     @Inject
     WeatherService weatherService;
 
+    @Inject
+    WeatherPipelineWorker weatherPipelineWorker;
+
+    @Inject
+    WeatherStatusService weatherStatusService;
+
     @POST
     @Path("/backfill")
     @RolesAllowed(SecurityRoles.ADMIN)
     public Response backfill(WeatherBackfillRequest request) {
         try {
-            return Response.ok(ApiResponse.success(weatherService.discoverAdminBackfillTargets(request))).build();
+            int queued = weatherService.queueAdminBackfill(request);
+            WeatherWorkAcceptedResponse accepted = weatherPipelineWorker.wake("admin backfill");
+            accepted.setQueuedUserRanges(queued);
+            return Response.status(Response.Status.ACCEPTED).entity(ApiResponse.success(accepted)).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error(e.getMessage()))
@@ -39,9 +51,9 @@ public class AdminWeatherResource {
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to discover admin weather backfill targets", e);
+            log.error("Failed to queue admin weather backfill range", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to discover weather backfill targets"))
+                    .entity(ApiResponse.error("Failed to queue weather backfill range"))
                     .build();
         }
     }
@@ -50,6 +62,15 @@ public class AdminWeatherResource {
     @Path("/status")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response status() {
-        return Response.ok(ApiResponse.success(weatherService.status())).build();
+        return Response.ok(ApiResponse.success(weatherStatusService.status())).build();
+    }
+
+    @POST
+    @Path("/process-now")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response processNow() {
+        return Response.status(Response.Status.ACCEPTED)
+                .entity(ApiResponse.success(weatherPipelineWorker.wake("admin resume processing")))
+                .build();
     }
 }

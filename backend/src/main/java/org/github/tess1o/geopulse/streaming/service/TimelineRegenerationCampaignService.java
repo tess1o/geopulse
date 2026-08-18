@@ -183,7 +183,7 @@ public class TimelineRegenerationCampaignService {
             log.info("Processing forced timeline regeneration campaign {} for user {} from {}",
                     work.campaignKey(), work.userId(), work.affectedFrom());
 
-            timelineGenerationService.generateTimelineFromTimestamp(work.userId(), work.affectedFrom(), jobId);
+            timelineGenerationService.generateTimelineFromTimestamp(work.userId(), work.affectedFrom(), jobId, "campaign");
             finishTimelineJob(jobId, work.userId());
             campaignUserRepository.markCompleted(work.campaignUserId());
             refreshCampaignCounters(work.campaignId());

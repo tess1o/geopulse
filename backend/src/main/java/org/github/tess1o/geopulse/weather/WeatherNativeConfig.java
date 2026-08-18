@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.weather;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.weather.client.OpenMeteoRestClient;
+import org.github.tess1o.geopulse.weather.client.PirateWeatherRestClient;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderException;
 import org.github.tess1o.geopulse.weather.dto.*;
@@ -20,6 +21,11 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetStatus;
         WeatherSampleDTO.class,
         WeatherSamplesResponse.class,
         WeatherStatusResponse.class,
+        WeatherIntegrationStatusResponse.class,
+        WeatherWorkAcceptedResponse.class,
+        WeatherProcessingStatus.class,
+        WeatherReconciliationStatus.class,
+        WeatherRunSummary.class,
         WeatherTargetQueueResponse.class,
         WeatherBackfillRequest.class,
         WeatherTestResponse.class,
@@ -28,7 +34,11 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetStatus;
         OpenMeteoResponse.class,
         OpenMeteoResponse.OpenMeteoCurrent.class,
         OpenMeteoResponse.OpenMeteoHourly.class,
-        OpenMeteoRestClient.class
+        PirateWeatherResponse.class,
+        PirateWeatherResponse.PirateWeatherDataBlock.class,
+        PirateWeatherResponse.PirateWeatherDataPoint.class,
+        OpenMeteoRestClient.class,
+        PirateWeatherRestClient.class
 })
 public class WeatherNativeConfig {
 }

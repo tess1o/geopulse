@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
@@ -96,6 +97,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     Event<TimelineDataChangedEvent> timelineDataChangedEvent;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     @ConfigProperty(name = "geopulse.trip.visit-matching.auto-apply-on-timeline-regeneration", defaultValue = "true")
     boolean autoApplyVisitMatchingOnRegeneration;
 
@@ -109,7 +113,7 @@ public class StreamingTimelineGenerationService {
      */
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp) {
-        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null);
+        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null, "unknown");
     }
 
     /**
@@ -123,45 +127,72 @@ public class StreamingTimelineGenerationService {
      */
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp, UUID jobId) {
+        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, jobId, "unknown");
+    }
+
+    @Transactional
+    public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp, String trigger) {
+        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null, trigger);
+    }
+
+    @Transactional
+    public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp, UUID jobId, String trigger) {
         log.info("Starting timeline regeneration for user {} from timestamp {}", userId, earliestAffectedTimestamp);
         long startTime = System.currentTimeMillis();
+        long metricsStart = metricsStart();
+        String result = "success";
 
         // Step 1: Acquiring lock (5%)
         updateProgress(jobId, "Acquiring timeline lock", 1, 5, null);
 
+        long stageStart = metricsStart();
         if (!acquireLock(userId)) {
+            result = "locked";
+            recordTimelineStage(stageStart, trigger, "lock", result);
             log.warn("Could not acquire lock for user {}. Timeline regeneration already in progress.", userId);
             failJob(jobId, "Timeline regeneration already in progress");
+            countTimelineRun(trigger, result);
+            recordTimelineDuration(metricsStart, trigger, result);
             throw new TimelineGenerationLockException(userId);
         }
+        recordTimelineStage(stageStart, trigger, "lock", "success");
 
         try {
             // Step 2: Cleaning up old data (10%)
             updateProgress(jobId, "Cleaning up old timeline data", 2, 10, null);
 
             // Find latest stay before the affected timestamp and clean up from that point
+            stageStart = metricsStart();
             Instant regenerationStartTime = deleteFromStayBeforeTimestampAndCleanup(userId, earliestAffectedTimestamp);
+            recordTimelineStage(stageStart, trigger, "cleanup", "success");
 
+            stageStart = metricsStart();
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+            recordTimelineStage(stageStart, trigger, "config", "success");
 
             // Step 3: Prepare GPS data processing (check count and create streaming iterator)
             updateProgress(jobId, "Preparing GPS data processing", 3, 25, null);
 
+            stageStart = metricsStart();
             Long estimatedCount = gpsPointRepository.estimatePointCount(userId, regenerationStartTime);
+            recordTimelineStage(stageStart, trigger, "count_points", "success");
 
             if (estimatedCount == null || estimatedCount == 0) {
+                result = "no_points";
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "No GPS data to process", 9, 100, null);
                 completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
-                fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
                 return;
             }
 
             log.info("Estimated {} GPS points to process for user {} using streaming iterator", estimatedCount, userId);
+            countTimelineGpsPoints(trigger, estimatedCount);
 
+            stageStart = metricsStart();
             String environmentDatasetVersion = prepareBoatEvidence(userId, config, jobId);
+            recordTimelineStage(stageStart, trigger, "boat_prepare", "success");
 
             // Create streaming iterable (memory-efficient - no loading all points!)
             StreamingGpsIterable gpsStream = new StreamingGpsIterable(
@@ -181,6 +212,8 @@ public class StreamingTimelineGenerationService {
             // Process points using streaming iterator - loads data lazily in 10K chunks
             long stateMachineStartNanos = System.nanoTime();
             List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId);
+            recordTimelineStage(stateMachineStartNanos, trigger, "state_machine", "success");
+            countTimelineEvents(trigger, "raw", rawEvents.size());
             log.info("Timeline state-machine processing completed for user {} in {} ms (rawEvents={})",
                     userId, elapsedMillis(stateMachineStartNanos), rawEvents.size());
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
@@ -196,6 +229,8 @@ public class StreamingTimelineGenerationService {
                     config,
                     environmentDatasetVersion
             );
+            recordTimelineStage(tripPostProcessingStartNanos, trigger, "trip_postprocess", "success");
+            countTimelineEvents(trigger, "postprocessed", events.size());
             log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
                     userId, elapsedMillis(tripPostProcessingStartNanos), events.size());
 
@@ -208,7 +243,9 @@ public class StreamingTimelineGenerationService {
                 // when merge is enabled by configuration.
                 if (config.getIsMergeEnabled()) {
                     updateProgress(jobId, "Merging timeline", 6, 75, null);
+                    stageStart = metricsStart();
                     rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
+                    recordTimelineStage(stageStart, trigger, "merge", "success");
                 }
 
                 // Step 7: Persisting timeline to database (80%)
@@ -217,6 +254,7 @@ public class StreamingTimelineGenerationService {
                 // Persist raw timeline with GPS statistics calculation
                 long persistenceStartNanos = System.nanoTime();
                 persistenceManager.persistRawTimeline(userId, rawTimeline);
+                recordTimelineStage(persistenceStartNanos, trigger, "persist", "success");
                 log.info("Timeline persistence completed for user {} in {} ms (stays={}, trips={}, gaps={}, events={})",
                         userId,
                         elapsedMillis(persistenceStartNanos),
@@ -226,11 +264,17 @@ public class StreamingTimelineGenerationService {
                         rawTimeline.getTotalEventCount());
 
                 // Re-attach manual movement-type overrides to regenerated trips.
+                stageStart = metricsStart();
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);
+                recordTimelineStage(stageStart, trigger, "movement_overrides", "success");
                 // Re-attach manual Data Gap -> Stay conversions to regenerated gaps.
+                stageStart = metricsStart();
                 dataGapStayOverrideService.reapplyManualOverrides(userId);
+                recordTimelineStage(stageStart, trigger, "data_gap_overrides", "success");
                 // Re-attach durable GeoPulse notes to regenerated stays/trips where possible.
+                stageStart = metricsStart();
                 timelineNoteService.reattachAnchoredNotes(userId);
+                recordTimelineStage(stageStart, trigger, "notes", "success");
             } else {
                 log.info("Timeline persistence skipped for user {} because post-processing returned no events", userId);
             }
@@ -238,16 +282,21 @@ public class StreamingTimelineGenerationService {
             // Step 8: Data gap detection (90%)
             updateProgress(jobId, "Detecting data gaps", 8, 90, null);
 
+            stageStart = metricsStart();
             dataGapService.checkAndCreateOngoingDataGap(userId, config);
+            recordTimelineStage(stageStart, trigger, "data_gap", "success");
 
             // Step 9: Finalizing (95%)
             updateProgress(jobId, "Finalizing timeline generation", 9, 95, null);
 
             if (autoApplyVisitMatchingOnRegeneration) {
+                stageStart = metricsStart();
                 try {
                     updateProgress(jobId, "Auto-matching planned visits", 9, 97, null);
                     tripVisitAutoMatchService.evaluateAllTrips(userId, true);
+                    recordTimelineStage(stageStart, trigger, "visit_matching", "success");
                 } catch (Exception ex) {
+                    recordTimelineStage(stageStart, trigger, "visit_matching", "error");
                     log.error("Failed to auto-match trip plan items for user {} after timeline regeneration: {}",
                             userId, ex.getMessage(), ex);
                 }
@@ -255,12 +304,17 @@ public class StreamingTimelineGenerationService {
 
             log.info("Successfully completed timeline regeneration for user {} " + "from timestamp {} in {} seconds",
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
+            stageStart = metricsStart();
             fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
+            recordTimelineStage(stageStart, trigger, "weather_event", "success");
 
         } catch (Exception e) {
+            result = "error";
             failJob(jobId, "Timeline generation failed: " + e.getMessage());
             throw new RuntimeException("Timeline generation failed", e);
         } finally {
+            countTimelineRun(trigger, result);
+            recordTimelineDuration(metricsStart, trigger, result);
             releaseLock(userId);
         }
     }
@@ -445,5 +499,65 @@ public class StreamingTimelineGenerationService {
 
     private long elapsedMillis(long startNanos) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNanos);
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordTimelineDuration(long startedAtNanos, String trigger, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.timeline.regeneration.duration", startedAtNanos,
+                "component", "timeline",
+                "trigger", normalizeTrigger(trigger),
+                "result", result);
+    }
+
+    private void recordTimelineStage(long startedAtNanos, String trigger, String stage, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.timeline.regeneration.stage.duration", startedAtNanos,
+                "component", "timeline",
+                "trigger", normalizeTrigger(trigger),
+                "stage", stage,
+                "result", result);
+    }
+
+    private void countTimelineRun(String trigger, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.timeline.regeneration.runs",
+                "component", "timeline",
+                "trigger", normalizeTrigger(trigger),
+                "result", result);
+    }
+
+    private void countTimelineGpsPoints(String trigger, long count) {
+        if (workloadMetrics == null || count <= 0) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.timeline.regeneration.gps_points", count,
+                "component", "timeline",
+                "trigger", normalizeTrigger(trigger),
+                "result", "processed");
+    }
+
+    private void countTimelineEvents(String trigger, String eventStage, long count) {
+        if (workloadMetrics == null || count <= 0) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.timeline.regeneration.events", count,
+                "component", "timeline",
+                "trigger", normalizeTrigger(trigger),
+                "stage", eventStage,
+                "result", "processed");
+    }
+
+    private String normalizeTrigger(String trigger) {
+        return trigger == null || trigger.isBlank() ? "unknown" : trigger;
     }
 }

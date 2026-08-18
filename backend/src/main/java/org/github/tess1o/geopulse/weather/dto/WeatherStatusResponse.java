@@ -18,11 +18,13 @@ public class WeatherStatusResponse {
     private int ongoingReserve;
     private long requestsUsedToday;
     private long requestsRemainingToday;
-    private long samples;
     private Map<String, Long> targetsByStatus;
     private long claimablePendingTargets;
     private String fetchBlockedReason;
     private Instant oldestPendingTargetAt;
     private Instant newestPendingTargetAt;
+    private WeatherReconciliationStatus reconciliation;
+    private WeatherProcessingStatus processing;
+    private Instant lastCompletedAt;
     private ExternalIntegrationHealthDto providerHealth;
 }

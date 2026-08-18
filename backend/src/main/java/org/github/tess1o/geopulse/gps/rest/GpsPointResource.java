@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -66,6 +67,9 @@ public class GpsPointResource {
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final CoverageService coverageService;
     private final CoverageProcessingService coverageProcessingService;
+
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
 
     @Inject
     public GpsPointResource(GpsPointService gpsPointService,
@@ -659,8 +663,23 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getGpsStatus() {
         UUID userId = currentUserService.getCurrentUserId();
+        long startedAtNanos = workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+        String result = "success";
         log.info("Received request to get GPS status for user {}", userId);
-        return Response.ok(ApiResponse.success(gpsPointService.getGpsStatus(userId))).build();
+        try {
+            return Response.ok(ApiResponse.success(gpsPointService.getGpsStatus(userId))).build();
+        } catch (Exception e) {
+            result = "error";
+            throw e;
+        } finally {
+            if (workloadMetrics != null) {
+                workloadMetrics.recordTimer("geopulse.gps.ingest.duration", startedAtNanos,
+                        "component", "gps",
+                        "source", "STATUS",
+                        "transport", "http",
+                        "result", result);
+            }
+        }
     }
 
     /**

@@ -276,6 +276,71 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
                 .toList();
     }
 
+    /**
+     * Claims one provider request worth of work: an anchor selected by priority followed by
+     * targets for the same user, provider, coordinate bucket, and UTC day.
+     */
+    @Transactional
+    public List<WeatherSampleTargetClaim> claimNextTargetGroup(int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+
+        Instant now = Instant.now();
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery("""
+                WITH anchor AS (
+                    SELECT id, user_id, provider, latitude_bucket, longitude_bucket, target_at
+                    FROM weather_sample_targets
+                    WHERE status = ?1
+                      AND next_attempt_at <= ?2
+                    ORDER BY priority DESC, target_at DESC, created_at ASC
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                ), grouped AS (
+                    SELECT target.id
+                    FROM weather_sample_targets target
+                    JOIN anchor ON target.user_id = anchor.user_id
+                               AND target.provider = anchor.provider
+                               AND target.latitude_bucket = anchor.latitude_bucket
+                               AND target.longitude_bucket = anchor.longitude_bucket
+                               AND target.target_at >= (date_trunc('day', anchor.target_at AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
+                               AND target.target_at < ((date_trunc('day', anchor.target_at AT TIME ZONE 'UTC') + INTERVAL '1 day') AT TIME ZONE 'UTC')
+                    WHERE target.status = ?1
+                      AND target.next_attempt_at <= ?2
+                    ORDER BY target.priority DESC, target.target_at ASC, target.created_at ASC
+                    FOR UPDATE OF target SKIP LOCKED
+                    LIMIT ?3
+                )
+                UPDATE weather_sample_targets target
+                SET status = ?4,
+                    locked_at = ?2,
+                    last_error = NULL,
+                    updated_at = ?2
+                FROM grouped
+                WHERE target.id = grouped.id
+                RETURNING target.id,
+                          target.user_id,
+                          target.provider,
+                          target.latitude,
+                          target.longitude,
+                          target.latitude_bucket,
+                          target.longitude_bucket,
+                          target.target_at,
+                          target.source
+                """)
+                .setParameter(1, WeatherTargetStatus.PENDING.name())
+                .setParameter(2, now)
+                .setParameter(3, limit)
+                .setParameter(4, WeatherTargetStatus.IN_PROGRESS.name())
+                .getResultList();
+
+        return rows.stream()
+                .map(this::toClaim)
+                .sorted(java.util.Comparator.comparing(WeatherSampleTargetClaim::targetAt))
+                .toList();
+    }
+
     @Transactional
     public void markAttemptStarted(WeatherSampleTargetEntity target) {
         target.setLastAttemptAt(Instant.now());
@@ -308,6 +373,11 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
             target.setNextAttemptAt(nextAttemptAt == null ? Instant.now().plusSeconds(10 * 60L) : nextAttemptAt);
             target.setLastError(limitError(reason));
         });
+    }
+
+    @Transactional
+    public void releaseImmediately(long targetId, String reason) {
+        releaseUntil(targetId, Instant.now(), reason);
     }
 
     @Transactional
@@ -428,10 +498,20 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
         return count("lastAttemptAt >= ?1", startOfDay);
     }
 
+    @Transactional
     public Map<String, Long> countByStatus() {
         Map<String, Long> result = new LinkedHashMap<>();
         for (WeatherTargetStatus status : WeatherTargetStatus.values()) {
-            result.put(status.name(), count("status = ?1", status));
+            result.put(status.name(), 0L);
+        }
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery("""
+                SELECT status, COUNT(*)
+                FROM weather_sample_targets
+                GROUP BY status
+                """).getResultList();
+        for (Object[] row : rows) {
+            result.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
         }
         return result;
     }
@@ -441,6 +521,32 @@ public class WeatherSampleTargetRepository implements PanacheRepository<WeatherS
             return 0;
         }
         return count("status = ?1 and nextAttemptAt <= ?2", WeatherTargetStatus.PENDING, now);
+    }
+
+    public boolean hasPendingTargets() {
+        return Boolean.TRUE.equals(entityManager.createNativeQuery("""
+                SELECT EXISTS (
+                    SELECT 1 FROM weather_sample_targets WHERE status = 'PENDING'
+                )
+                """).getSingleResult());
+    }
+
+    @Transactional
+    public boolean hasStaleInProgressTargets(Instant lockedBefore) {
+        if (lockedBefore == null) {
+            return false;
+        }
+        return Boolean.TRUE.equals(entityManager.createNativeQuery("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM weather_sample_targets
+                    WHERE status = 'IN_PROGRESS'
+                      AND locked_at IS NOT NULL
+                      AND locked_at < ?1
+                )
+                """)
+                .setParameter(1, lockedBefore)
+                .getSingleResult());
     }
 
     public long countClaimablePendingBackfillTargets(Instant now) {

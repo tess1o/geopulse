@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -60,6 +61,9 @@ public class GpsPointService {
     @Inject
     LocationPointResolver locationPointResolver;
 
+    @Inject
+    GeoPulseWorkloadMetrics workloadMetrics;
+
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
 
@@ -93,28 +97,40 @@ public class GpsPointService {
      * @return saved point if persisted, otherwise empty when rejected by filters or duplicate detection
      */
     private Optional<GpsPointEntity> filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
+        GpsSourceType sourceType = entity.getSourceType();
+        long stageStart = metricsStart();
         var filterResult = filteringService.filter(entity, config);
+        recordGpsStage(stageStart, sourceType, "filter", filterResult.isRejected() ? "filtered" : "success");
         if (filterResult.isRejected()) {
             // Already logged in filtering service
+            countGpsPoint(sourceType, "filtered");
             return Optional.empty();
         }
 
         // Check for existing point with the same unique key
+        stageStart = metricsStart();
         Optional<GpsPointEntity> existingPoint = gpsPointRepository.findByUniqueKey(
                 entity.getUser().getId(),
                 entity.getTimestamp(),
                 entity.getCoordinates()
         );
+        recordGpsStage(stageStart, sourceType, "exact_duplicate_lookup", existingPoint.isPresent() ? "duplicate" : "success");
 
         if (existingPoint.isPresent()) {
             // It's a duplicate, reject it
             log.info("Skipping duplicate GPS point for user {} at timestamp {} with same coordinates", entity.getUser().getId(), entity.getTimestamp());
+            countGpsPoint(sourceType, "duplicate");
             return Optional.empty();
         } else {
             // Persist the new entity
+            stageStart = metricsStart();
             gpsPointRepository.persist(entity);
+            recordGpsStage(stageStart, sourceType, "persist", "success");
+            stageStart = metricsStart();
             geofenceEvaluationService.handlePersistedPoint(entity);
+            recordGpsStage(stageStart, sourceType, "geofence", "success");
             log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
+            countGpsPoint(sourceType, "saved");
             return Optional.of(entity);
         }
     }
@@ -125,24 +141,34 @@ public class GpsPointService {
         }
 
         try {
+            long stageStart = metricsStart();
             String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
+            recordGpsStage(stageStart, null, "boat_dataset_version_lookup", datasetVersion == null ? "skipped" : "success");
             if (datasetVersion == null) {
+                countBoatEnrichment("skipped");
                 return;
             }
 
             if (!timelineConfigurationProvider.isBoatEnabledForUser(userId)) {
+                countBoatEnrichment("skipped");
                 return;
             }
 
+            stageStart = metricsStart();
             em.flush();
+            recordGpsStage(stageStart, null, "flush_before_boat_enrichment", "success");
             List<Long> savedPointIds = savedPoints.stream()
                     .map(GpsPointEntity::getId)
                     .filter(id -> id != null)
                     .toList();
             if (!savedPointIds.isEmpty()) {
+                stageStart = metricsStart();
                 gpsPointEnvironmentService.enrichPoints(userId, savedPointIds, datasetVersion);
+                recordGpsStage(stageStart, null, "boat_enrichment", "success");
+                countBoatEnrichment("success");
             }
         } catch (Exception e) {
+            countBoatEnrichment("error");
             log.warn("Failed to enrich Boat water evidence for newly saved GPS points for user {}: {}",
                     userId, e.getMessage());
         }
@@ -159,11 +185,15 @@ public class GpsPointService {
                 ? config.getDuplicateDetectionThresholdMinutes()
                 : globalDuplicateDetectionThresholdMinutes;
 
+            long stageStart = metricsStart();
             if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType, threshold)) {
+                recordGpsStage(stageStart, sourceType, "duplicate_detection", "duplicate");
+                countGpsPoint(sourceType, "duplicate");
                 log.info("Skipping OwnTracks GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
                         userId, message.getLat(), message.getLon(), threshold);
                 return;
             }
+            recordGpsStage(stageStart, sourceType, "duplicate_detection", "success");
         }
 
         // Map message to entity (mapper handles unit conversions)
@@ -651,10 +681,14 @@ public class GpsPointService {
 
     public GpsStatusDTO getGpsStatus(UUID userId) {
         Instant generatedAt = Instant.now();
+        long stageStart = metricsStart();
         long totalGpsPoints = gpsPointRepository.countByUser(userId);
+        recordGpsStatusStage(stageStart, "count", "success");
 
+        long latestStageStart = metricsStart();
         return gpsPointRepository.findLatest(userId)
                 .map(latestPoint -> {
+                    recordGpsStatusStage(latestStageStart, "latest", "success");
                     Instant latestTimestamp = latestPoint.getTimestamp();
                     Long ageSeconds = latestTimestamp == null
                             ? null
@@ -676,18 +710,21 @@ public class GpsPointService {
                             totalGpsPoints
                     );
                 })
-                .orElseGet(() -> new GpsStatusDTO(
-                        generatedAt,
-                        false,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        totalGpsPoints
-                ));
+                .orElseGet(() -> {
+                    recordGpsStatusStage(latestStageStart, "latest", "empty");
+                    return new GpsStatusDTO(
+                            generatedAt,
+                            false,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            totalGpsPoints
+                    );
+                });
     }
 
     /**
@@ -837,5 +874,52 @@ public class GpsPointService {
             dto.setTelemetryGpsData(rendered.gpsData());
             dto.setTelemetryCurrentPopup(rendered.currentPopup());
         }
+    }
+
+    private long metricsStart() {
+        return workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
+    }
+
+    private void recordGpsStage(long startedAtNanos, GpsSourceType sourceType, String stage, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.gps.ingest.stage.duration", startedAtNanos,
+                "component", "gps",
+                "source", sourceType == null ? "UNKNOWN" : sourceType.name(),
+                "stage", stage,
+                "result", result);
+    }
+
+    private void recordGpsStatusStage(long startedAtNanos, String stage, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.recordTimer("geopulse.gps.ingest.stage.duration", startedAtNanos,
+                "component", "gps",
+                "source", "STATUS",
+                "stage", "status_" + stage,
+                "result", result);
+    }
+
+    private void countGpsPoint(GpsSourceType sourceType, String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.gps.ingest.points",
+                "component", "gps",
+                "source", sourceType == null ? "UNKNOWN" : sourceType.name(),
+                "transport", "service",
+                "result", result);
+    }
+
+    private void countBoatEnrichment(String result) {
+        if (workloadMetrics == null) {
+            return;
+        }
+        workloadMetrics.increment("geopulse.gps.ingest.boat_enriched",
+                "component", "gps",
+                "source", "UNKNOWN",
+                "result", result);
     }
 }

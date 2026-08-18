@@ -58,7 +58,7 @@ public class TimelineImportHelper {
 
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                timelineGenerationService.generateTimelineFromTimestamp(job.getUserId(), firstGpsPointDate, timelineJobId);
+                timelineGenerationService.generateTimelineFromTimestamp(job.getUserId(), firstGpsPointDate, timelineJobId, "import");
                 log.info("Successfully regenerated timeline for user {} after bulk import starting from date {} (attempt {})",
                         job.getUserId(), firstGpsPointDate, attempt);
                 return timelineJobId; // Success - return job ID
@@ -100,7 +100,8 @@ public class TimelineImportHelper {
      * Complete timeline job with badge recalculation and progress updates.
      * Must be called OUTSIDE @Transactional method to avoid transaction issues.
      */
-    public void finishTimelineJob(UUID timelineJobId, UUID userId) {
+    public void finishTimelineJob(UUID timelineJobId, ImportJob job) {
+        UUID userId = job.getUserId();
         try {
             // Badge recalculation (99%)
             jobProgressService.updateProgress(timelineJobId, "Recalculating achievement badges", 9, 99, null);
@@ -122,4 +123,5 @@ public class TimelineImportHelper {
     public void failTimelineJob(UUID timelineJobId, String message) {
         jobProgressService.failJob(timelineJobId, message);
     }
+
 }
