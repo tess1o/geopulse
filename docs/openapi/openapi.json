@@ -4793,6 +4793,32 @@
         } ]
       }
     },
+    "/api/admin/weather/process-now" : {
+      "post" : {
+        "operationId" : "AdminWeatherResource_processNow",
+        "tags" : [ "Admin: Weather" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Process Now",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
     "/api/admin/weather/status" : {
       "get" : {
         "operationId" : "AdminWeatherResource_status",
@@ -12557,6 +12583,47 @@
         } ]
       }
     },
+    "/api/streaming-timeline/location-lookup" : {
+      "get" : {
+        "operationId" : "StreamingTimelineResource_lookupLocation",
+        "tags" : [ "User: Timeline" ],
+        "parameters" : [ {
+          "name" : "latitude",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "longitude",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Lookup Location",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
     "/api/streaming-timeline/multi-user" : {
       "get" : {
         "operationId" : "StreamingTimelineResource_getMultiUserTimeline",
@@ -14176,6 +14243,38 @@
         } ]
       }
     },
+    "/api/users/me/immich/photos/{photoId}/preview" : {
+      "get" : {
+        "operationId" : "ImmichResource_getCurrentUserPhotoPreview",
+        "tags" : [ "User: Immich" ],
+        "parameters" : [ {
+          "name" : "photoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/octet-stream" : { }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Current User Photo Preview",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
     "/api/users/me/immich/photos/{photoId}/thumbnail" : {
       "get" : {
         "operationId" : "ImmichResource_getCurrentUserPhotoThumbnail",
@@ -14979,6 +15078,45 @@
         } ]
       }
     },
+    "/api/users/{userId}/immich/photos/{photoId}/preview" : {
+      "get" : {
+        "operationId" : "ImmichResource_getPhotoPreview",
+        "tags" : [ "User: Immich" ],
+        "parameters" : [ {
+          "name" : "photoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "userId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "image/jpeg" : { }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Photo Preview",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
     "/api/users/{userId}/immich/photos/{photoId}/thumbnail" : {
       "get" : {
         "operationId" : "ImmichResource_getPhotoThumbnail",
@@ -15148,7 +15286,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.36.3",
+    "version" : "1.37.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
