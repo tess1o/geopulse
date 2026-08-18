@@ -184,7 +184,6 @@ public class StreamingTimelineGenerationService {
                 completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
-                fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
                 return;
             }
 

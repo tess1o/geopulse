@@ -137,7 +137,6 @@ Environment variables provide first-boot defaults and support immutable deployme
 | `GEOPULSE_WEATHER_ONGOING_ENABLED` | `true` | **Ongoing Weather** |
 | `GEOPULSE_WEATHER_ONGOING_INTERVAL_MINUTES` | `60` | **Ongoing Interval** |
 | `GEOPULSE_WEATHER_BACKFILL_ENABLED` | `false` | **Historical Weather Backfill** |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_CHUNKS_PER_RUN` | `4` | **Historical Backfill Chunks per Run** |
 | `GEOPULSE_WEATHER_QUOTA_DAILY_REQUEST_LIMIT` | `10000` | **Daily Request Limit** |
 | `GEOPULSE_WEATHER_QUOTA_ONGOING_RESERVE` | `500` | **Ongoing Reserve** |
 | `GEOPULSE_WEATHER_COORDINATE_PRECISION` | `2` | **Coordinate Precision** |
@@ -152,14 +151,6 @@ These controls are available only as environment variables and apply after a bac
 |---|---|---|
 | `GEOPULSE_WEATHER_OPEN_METEO_CONNECT_TIMEOUT_SECONDS` | `5` | Provider connection timeout. |
 | `GEOPULSE_WEATHER_OPEN_METEO_READ_TIMEOUT_SECONDS` | `15` | Provider response timeout. |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_INTERVAL` | `30m` | Interval between historical reconciliation runs. |
-| `GEOPULSE_WEATHER_BACKFILL_DISCOVERY_JOB_DELAY` | `5m` | Initial delay for the scheduled reconciliation job. Startup reconciliation can run sooner. |
-| `GEOPULSE_WEATHER_ONGOING_JOB_INTERVAL` | `15m` | Ongoing discovery job interval. |
-| `GEOPULSE_WEATHER_ONGOING_JOB_DELAY` | `2m` | Initial ongoing discovery delay. |
-| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_INTERVAL` | `10m` | Pending sample fetch interval. |
-| `GEOPULSE_WEATHER_SAMPLE_FETCH_JOB_DELAY` | `3m` | Initial sample fetch delay. |
-| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_INTERVAL` | `10m` | Provider health probe interval. |
-| `GEOPULSE_WEATHER_HEALTH_PROBE_JOB_DELAY` | `4m` | Initial provider health probe delay. |
 | `GEOPULSE_WEATHER_TARGET_CLEANUP_JOB_CRON` | `0 30 3 * * ?` | Queue cleanup schedule. |
 | `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped target records. |
 | `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed target records. |

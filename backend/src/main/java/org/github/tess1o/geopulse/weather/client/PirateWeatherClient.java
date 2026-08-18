@@ -1,8 +1,7 @@
 package org.github.tess1o.geopulse.weather.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +23,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 @ApplicationScoped
 @Slf4j
@@ -39,14 +41,13 @@ public class PirateWeatherClient implements WeatherProviderClient {
     @Inject
     WeatherConfigurationService configurationService;
 
-    @Inject
-    ObjectMapper objectMapper;
-
     @ConfigProperty(name = "geopulse.weather.pirate.connect-timeout-seconds", defaultValue = "5")
     long connectTimeoutSeconds;
 
     @ConfigProperty(name = "geopulse.weather.pirate.read-timeout-seconds", defaultValue = "15")
     long readTimeoutSeconds;
+
+    private final Map<String, PirateWeatherRestClient> clients = new ConcurrentHashMap<>();
 
     @Override
     public String providerKey() {
@@ -77,15 +78,37 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                     failureMessage("current weather", baseUrl, e),
                     e);
-        } finally {
-            closeClient(client);
         }
     }
 
     @Override
     public WeatherProviderSample fetchHourly(double latitude, double longitude, Instant targetAt) {
-        requireApiKey();
         Instant hour = targetAt.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        WeatherProviderSample sample = fetchHourlyBatch(latitude, longitude, List.of(hour)).get(hour);
+        if (sample == null) {
+            throw new WeatherProviderException(
+                    WeatherProviderErrorKind.NO_DATA,
+                    "Pirate Weather response did not include target hour " + hour);
+        }
+        return sample;
+    }
+
+    @Override
+    public Map<Instant, WeatherProviderSample> fetchHourlyBatch(
+            double latitude,
+            double longitude,
+            List<Instant> targetHours) {
+        requireApiKey();
+        List<Instant> hours = targetHours == null ? List.of() : targetHours.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(value -> value.truncatedTo(java.time.temporal.ChronoUnit.HOURS))
+                .distinct()
+                .sorted()
+                .toList();
+        if (hours.isEmpty()) {
+            return Map.of();
+        }
+        Instant anchorHour = hours.getFirst();
         String baseUrl = configurationService.pirateTimeMachineUrl();
         PirateWeatherRestClient client = null;
         try {
@@ -94,15 +117,28 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     configurationService.pirateApiKey(),
                     latitude,
                     longitude,
-                    hour.getEpochSecond(),
+                    anchorHour.getEpochSecond(),
                     UNITS,
                     HOURLY_EXCLUDE);
             PirateWeatherResponse payload = readPayload(response);
-            PirateWeatherResponse.PirateWeatherDataPoint hourly = matchingHour(payload, hour)
-                    .orElseThrow(() -> new WeatherProviderException(
-                            WeatherProviderErrorKind.NO_DATA,
-                            "Pirate Weather response did not include target hour " + hour));
-            return fromDataPoint(payload, hourly, latitude, longitude);
+            java.util.Set<Instant> requested = new java.util.HashSet<>(hours);
+            Map<Instant, WeatherProviderSample> result = new LinkedHashMap<>();
+            List<PirateWeatherResponse.PirateWeatherDataPoint> points = payload.getHourly() == null
+                    ? List.of()
+                    : payload.getHourly().getData();
+            if (points != null) {
+                for (PirateWeatherResponse.PirateWeatherDataPoint point : points) {
+                    if (point.getTime() == null) {
+                        continue;
+                    }
+                    Instant observedAt = Instant.ofEpochSecond(point.getTime())
+                            .truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+                    if (requested.contains(observedAt)) {
+                        result.put(observedAt, fromDataPoint(payload, point, latitude, longitude));
+                    }
+                }
+            }
+            return result;
         } catch (WeatherProviderException e) {
             throw e;
         } catch (IllegalArgumentException e) {
@@ -112,17 +148,15 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                     failureMessage("hourly weather", baseUrl, e),
                     e);
-        } finally {
-            closeClient(client);
         }
     }
 
     @Override
-    public WeatherTestResponse testConnection() {
+    public WeatherTestResponse testConnection(BooleanSupplier beforeExternalCall) {
         String forecastUrl = configurationService.pirateBaseUrl();
         String timeMachineUrl = configurationService.pirateTimeMachineUrl();
-        WeatherEndpointTestResponse forecast = testForecastEndpoint(forecastUrl);
-        WeatherEndpointTestResponse archive = testArchiveEndpoint(timeMachineUrl);
+        WeatherEndpointTestResponse forecast = testForecastEndpoint(forecastUrl, beforeExternalCall);
+        WeatherEndpointTestResponse archive = testArchiveEndpoint(timeMachineUrl, beforeExternalCall);
         boolean success = forecast.isSuccess() && archive.isSuccess();
         WeatherEndpointTestResponse failedEndpoint = !forecast.isSuccess() ? forecast : archive;
         String message = success
@@ -143,7 +177,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
                 .build();
     }
 
-    private WeatherEndpointTestResponse testForecastEndpoint(String baseUrl) {
+    private WeatherEndpointTestResponse testForecastEndpoint(String baseUrl, BooleanSupplier beforeExternalCall) {
         String configError = providerConfigurationError(baseUrl);
         if (configError != null) {
             return WeatherEndpointTestResponse.builder()
@@ -157,6 +191,9 @@ public class PirateWeatherClient implements WeatherProviderClient {
         PirateWeatherRestClient client = null;
         try {
             client = buildClient(baseUrl);
+            if (!beforeExternalCall.getAsBoolean()) {
+                return quotaExceededTestResponse(baseUrl);
+            }
             Response response = client.forecast(configurationService.pirateApiKey(), 51.5074, -0.1278, UNITS, CURRENT_EXCLUDE);
             return endpointTestResponse("forecast", baseUrl, response);
         } catch (Exception e) {
@@ -167,12 +204,10 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     .url(baseUrl)
                     .message(rootCauseMessage(e))
                     .build();
-        } finally {
-            closeClient(client);
         }
     }
 
-    private WeatherEndpointTestResponse testArchiveEndpoint(String baseUrl) {
+    private WeatherEndpointTestResponse testArchiveEndpoint(String baseUrl, BooleanSupplier beforeExternalCall) {
         String configError = providerConfigurationError(baseUrl);
         if (configError != null) {
             return WeatherEndpointTestResponse.builder()
@@ -186,6 +221,9 @@ public class PirateWeatherClient implements WeatherProviderClient {
         PirateWeatherRestClient client = null;
         try {
             client = buildClient(baseUrl);
+            if (!beforeExternalCall.getAsBoolean()) {
+                return quotaExceededTestResponse(baseUrl);
+            }
             Instant testHour = Instant.now().minus(java.time.Duration.ofDays(5))
                     .truncatedTo(java.time.temporal.ChronoUnit.HOURS);
             Response response = client.timeMachine(
@@ -204,9 +242,16 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     .url(baseUrl)
                     .message(rootCauseMessage(e))
                     .build();
-        } finally {
-            closeClient(client);
         }
+    }
+
+    private WeatherEndpointTestResponse quotaExceededTestResponse(String url) {
+        return WeatherEndpointTestResponse.builder()
+                .success(false)
+                .statusCode(429)
+                .url(url)
+                .message("Daily weather request limit exhausted")
+                .build();
     }
 
     private String providerConfigurationError(String baseUrl) {
@@ -225,15 +270,24 @@ public class PirateWeatherClient implements WeatherProviderClient {
         }
     }
 
-    private PirateWeatherRestClient buildClient(String url) {
+    private synchronized PirateWeatherRestClient buildClient(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Pirate Weather URL is not configured");
         }
-        return RestClientBuilder.newBuilder()
-                .baseUri(URI.create(url))
+        java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
+                configurationService.pirateBaseUrl(), configurationService.pirateTimeMachineUrl()));
+        clients.entrySet().removeIf(entry -> {
+            if (activeUrls.contains(entry.getKey())) {
+                return false;
+            }
+            closeClient(entry.getValue());
+            return true;
+        });
+        return clients.computeIfAbsent(url, key -> RestClientBuilder.newBuilder()
+                .baseUri(URI.create(key))
                 .connectTimeout(Math.max(1, connectTimeoutSeconds), TimeUnit.SECONDS)
                 .readTimeout(Math.max(1, readTimeoutSeconds), TimeUnit.SECONDS)
-                .build(PirateWeatherRestClient.class);
+                .build(PirateWeatherRestClient.class));
     }
 
     private PirateWeatherResponse readPayload(Response response) {
@@ -313,7 +367,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
                 .windGust(point.getWindGust())
                 .windDirection(point.getWindBearing())
                 .pressure(point.getPressure())
-                .rawData(rawData(payload))
+                .rawData(null)
                 .build();
     }
 
@@ -362,11 +416,6 @@ public class PirateWeatherClient implements WeatherProviderClient {
 
     private Double firstNonNull(Double first, Double second) {
         return first != null ? first : second;
-    }
-
-    private Map<String, Object> rawData(PirateWeatherResponse payload) {
-        return objectMapper.convertValue(payload, new TypeReference<>() {
-        });
     }
 
     private String failureMessage(String operation, String baseUrl, RuntimeException e) {
@@ -449,5 +498,11 @@ public class PirateWeatherClient implements WeatherProviderClient {
                 log.debug("Failed to close Pirate Weather REST client", e);
             }
         }
+    }
+
+    @PreDestroy
+    void closeClients() {
+        clients.values().forEach(this::closeClient);
+        clients.clear();
     }
 }

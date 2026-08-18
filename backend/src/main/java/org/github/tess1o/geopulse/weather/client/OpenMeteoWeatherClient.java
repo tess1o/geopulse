@@ -1,8 +1,7 @@
 package org.github.tess1o.geopulse.weather.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +19,12 @@ import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 @ApplicationScoped
 @Slf4j
@@ -45,14 +48,13 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
     @Inject
     WeatherConfigurationService configurationService;
 
-    @Inject
-    ObjectMapper objectMapper;
-
     @ConfigProperty(name = "geopulse.weather.open-meteo.connect-timeout-seconds", defaultValue = "5")
     long connectTimeoutSeconds;
 
     @ConfigProperty(name = "geopulse.weather.open-meteo.read-timeout-seconds", defaultValue = "15")
     long readTimeoutSeconds;
+
+    private final Map<String, OpenMeteoRestClient> clients = new ConcurrentHashMap<>();
 
     @Override
     public String providerKey() {
@@ -76,14 +78,40 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                     failureMessage("forecast current weather", forecastUrl, e),
                     e);
-        } finally {
-            closeClient(client);
         }
     }
 
     public WeatherProviderSample fetchHourly(double latitude, double longitude, Instant targetAt) {
         Instant hour = targetAt.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-        boolean archive = hour.isBefore(Instant.now().minus(java.time.Duration.ofDays(2)));
+        WeatherProviderSample sample = fetchHourlyBatch(latitude, longitude, List.of(hour)).get(hour);
+        if (sample == null) {
+            throw new WeatherProviderException(
+                    WeatherProviderErrorKind.NO_DATA,
+                    "Open-Meteo response did not include target hour " + hour);
+        }
+        return sample;
+    }
+
+    @Override
+    public Map<Instant, WeatherProviderSample> fetchHourlyBatch(
+            double latitude,
+            double longitude,
+            List<Instant> targetHours) {
+        if (targetHours == null || targetHours.isEmpty()) {
+            return Map.of();
+        }
+        List<Instant> hours = targetHours.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(value -> value.truncatedTo(java.time.temporal.ChronoUnit.HOURS))
+                .distinct()
+                .sorted()
+                .toList();
+        if (hours.isEmpty()) {
+            return Map.of();
+        }
+        Instant firstHour = hours.getFirst();
+        Instant lastHour = hours.getLast();
+        boolean archive = lastHour.isBefore(Instant.now().minus(java.time.Duration.ofDays(2)));
         String baseUrl = archive ? configurationService.archiveUrl() : configurationService.forecastUrl();
         String endpoint = archive ? "archive hourly weather" : "forecast hourly weather";
         OpenMeteoRestClient client = null;
@@ -91,20 +119,17 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
             client = buildClient(baseUrl);
             OpenMeteoResponse payload;
             if (archive) {
-                LocalDate date = LocalDateTime.ofInstant(hour, ZoneOffset.UTC).toLocalDate();
-                Response response = client.archive(latitude, longitude, WEATHER_VARIABLES, date.toString(), date.toString(), "UTC", apiKeyOrNull());
+                LocalDate startDate = LocalDateTime.ofInstant(firstHour, ZoneOffset.UTC).toLocalDate();
+                LocalDate endDate = LocalDateTime.ofInstant(lastHour, ZoneOffset.UTC).toLocalDate();
+                Response response = client.archive(latitude, longitude, WEATHER_VARIABLES, startDate.toString(), endDate.toString(), "UTC", apiKeyOrNull());
                 payload = readPayload(response);
             } else {
-                String openMeteoHour = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
-                        .withZone(ZoneOffset.UTC)
-                        .format(hour);
-                Response response = client.forecast(latitude, longitude, null, WEATHER_VARIABLES, openMeteoHour, openMeteoHour, "UTC", apiKeyOrNull());
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").withZone(ZoneOffset.UTC);
+                Response response = client.forecast(latitude, longitude, null, WEATHER_VARIABLES,
+                        formatter.format(firstHour), formatter.format(lastHour), "UTC", apiKeyOrNull());
                 payload = readPayload(response);
             }
-            return fromHourly(payload, latitude, longitude, hour)
-                    .orElseThrow(() -> new WeatherProviderException(
-                            WeatherProviderErrorKind.NO_DATA,
-                            "Open-Meteo response did not include target hour " + hour));
+            return fromHourlyBatch(payload, latitude, longitude, new java.util.HashSet<>(hours));
         } catch (WeatherProviderException e) {
             throw e;
         } catch (IllegalArgumentException e) {
@@ -114,15 +139,14 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                     failureMessage(endpoint, baseUrl, e),
                     e);
-        } finally {
-            closeClient(client);
         }
     }
 
-    public WeatherTestResponse testConnection() {
+    @Override
+    public WeatherTestResponse testConnection(BooleanSupplier beforeExternalCall) {
         String forecastUrl = configurationService.forecastUrl();
-        WeatherEndpointTestResponse forecast = testForecastEndpoint(forecastUrl);
-        WeatherEndpointTestResponse archive = testArchiveEndpoint(configurationService.archiveUrl());
+        WeatherEndpointTestResponse forecast = testForecastEndpoint(forecastUrl, beforeExternalCall);
+        WeatherEndpointTestResponse archive = testArchiveEndpoint(configurationService.archiveUrl(), beforeExternalCall);
         boolean success = forecast.isSuccess() && archive.isSuccess();
         WeatherEndpointTestResponse failedEndpoint = !forecast.isSuccess() ? forecast : archive;
         String message = success
@@ -143,7 +167,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                 .build();
     }
 
-    private WeatherEndpointTestResponse testForecastEndpoint(String forecastUrl) {
+    private WeatherEndpointTestResponse testForecastEndpoint(String forecastUrl, BooleanSupplier beforeExternalCall) {
         if (forecastUrl == null || forecastUrl.isBlank()) {
             return WeatherEndpointTestResponse.builder()
                     .success(false)
@@ -156,6 +180,9 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         OpenMeteoRestClient client = null;
         try {
             client = buildClient(forecastUrl);
+            if (!beforeExternalCall.getAsBoolean()) {
+                return quotaExceededTestResponse(forecastUrl);
+            }
             Response response = client.forecast(51.5074, -0.1278, WEATHER_VARIABLES, null, null, null, "UTC", apiKeyOrNull());
             return endpointTestResponse("forecast", forecastUrl, response);
         } catch (Exception e) {
@@ -166,12 +193,10 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     .url(forecastUrl)
                     .message(rootCauseMessage(e))
                     .build();
-        } finally {
-            closeClient(client);
         }
     }
 
-    private WeatherEndpointTestResponse testArchiveEndpoint(String archiveUrl) {
+    private WeatherEndpointTestResponse testArchiveEndpoint(String archiveUrl, BooleanSupplier beforeExternalCall) {
         if (archiveUrl == null || archiveUrl.isBlank()) {
             return WeatherEndpointTestResponse.builder()
                     .success(false)
@@ -184,6 +209,9 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         OpenMeteoRestClient client = null;
         try {
             client = buildClient(archiveUrl);
+            if (!beforeExternalCall.getAsBoolean()) {
+                return quotaExceededTestResponse(archiveUrl);
+            }
             LocalDate date = LocalDate.now(ZoneOffset.UTC).minusDays(5);
             Response response = client.archive(51.5074, -0.1278, WEATHER_VARIABLES, date.toString(), date.toString(), "UTC", apiKeyOrNull());
             return endpointTestResponse("archive", archiveUrl, response);
@@ -195,9 +223,16 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     .url(archiveUrl)
                     .message(rootCauseMessage(e))
                     .build();
-        } finally {
-            closeClient(client);
         }
+    }
+
+    private WeatherEndpointTestResponse quotaExceededTestResponse(String url) {
+        return WeatherEndpointTestResponse.builder()
+                .success(false)
+                .statusCode(429)
+                .url(url)
+                .message("Daily weather request limit exhausted")
+                .build();
     }
 
     private WeatherEndpointTestResponse endpointTestResponse(String endpoint, String url, Response response) {
@@ -221,15 +256,24 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                 .build();
     }
 
-    private OpenMeteoRestClient buildClient(String url) {
+    private synchronized OpenMeteoRestClient buildClient(String url) {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Open-Meteo URL is not configured");
         }
-        return RestClientBuilder.newBuilder()
-                .baseUri(URI.create(url))
+        java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
+                configurationService.forecastUrl(), configurationService.archiveUrl()));
+        clients.entrySet().removeIf(entry -> {
+            if (activeUrls.contains(entry.getKey())) {
+                return false;
+            }
+            closeClient(entry.getValue());
+            return true;
+        });
+        return clients.computeIfAbsent(url, key -> RestClientBuilder.newBuilder()
+                .baseUri(URI.create(key))
                 .connectTimeout(Math.max(1, connectTimeoutSeconds), TimeUnit.SECONDS)
                 .readTimeout(Math.max(1, readTimeoutSeconds), TimeUnit.SECONDS)
-                .build(OpenMeteoRestClient.class);
+                .build(OpenMeteoRestClient.class));
     }
 
     private OpenMeteoResponse readPayload(Response response) {
@@ -271,23 +315,32 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                 .windGust(current.getWindGusts10m())
                 .windDirection(current.getWindDirection10m())
                 .pressure(current.getPressureMsl())
-                .rawData(rawData(payload))
+                .rawData(null)
                 .build();
     }
 
     private Optional<WeatherProviderSample> fromHourly(OpenMeteoResponse payload, double requestedLatitude, double requestedLongitude, Instant targetAt) {
+        return Optional.ofNullable(fromHourlyBatch(payload, requestedLatitude, requestedLongitude, java.util.Set.of(targetAt)).get(targetAt));
+    }
+
+    private Map<Instant, WeatherProviderSample> fromHourlyBatch(
+            OpenMeteoResponse payload,
+            double requestedLatitude,
+            double requestedLongitude,
+            java.util.Set<Instant> targetHours) {
         OpenMeteoResponse.OpenMeteoHourly hourly = payload.getHourly();
         if (hourly == null || hourly.getTime() == null) {
-            return Optional.empty();
+            return Map.of();
         }
 
+        Map<Instant, WeatherProviderSample> result = new LinkedHashMap<>();
         for (int i = 0; i < hourly.getTime().size(); i++) {
             Instant observedAt = parseOpenMeteoTime(hourly.getTime().get(i));
-            if (!observedAt.equals(targetAt)) {
+            if (!targetHours.contains(observedAt)) {
                 continue;
             }
 
-            return Optional.of(WeatherProviderSample.builder()
+            result.put(observedAt, WeatherProviderSample.builder()
                     .requestedLatitude(requestedLatitude)
                     .requestedLongitude(requestedLongitude)
                     .providerLatitude(payload.getLatitude())
@@ -306,11 +359,11 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                     .windGust(valueAt(hourly.getWindGusts10m(), i))
                     .windDirection(valueAt(hourly.getWindDirection10m(), i))
                     .pressure(valueAt(hourly.getPressureMsl(), i))
-                    .rawData(rawData(payload))
+                    .rawData(null)
                     .build());
         }
 
-        return Optional.empty();
+        return result;
     }
 
     private <T> T valueAt(java.util.List<T> values, int index) {
@@ -329,11 +382,6 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         } catch (DateTimeParseException e) {
             throw new WeatherProviderException(WeatherProviderErrorKind.INVALID_RESPONSE, "Open-Meteo response included invalid time: " + value, e);
         }
-    }
-
-    private Map<String, Object> rawData(OpenMeteoResponse payload) {
-        return objectMapper.convertValue(payload, new TypeReference<>() {
-        });
     }
 
     private String apiKeyOrNull() {
@@ -421,5 +469,11 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                 log.debug("Failed to close Open-Meteo REST client", e);
             }
         }
+    }
+
+    @PreDestroy
+    void closeClients() {
+        clients.values().forEach(this::closeClient);
+        clients.clear();
     }
 }

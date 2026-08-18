@@ -33,7 +33,6 @@ public class WeatherConfigurationService {
     public static final String ONGOING_ENABLED = "weather.ongoing.enabled";
     public static final String ONGOING_INTERVAL_MINUTES = "weather.ongoing.interval-minutes";
     public static final String BACKFILL_ENABLED = "weather.backfill.enabled";
-    public static final String BACKFILL_DISCOVERY_CHUNKS_PER_RUN = "weather.backfill.discovery.chunks-per-run";
     public static final String DAILY_REQUEST_LIMIT = "weather.quota.daily-request-limit";
     public static final String ONGOING_RESERVE = "weather.quota.ongoing-reserve";
     public static final String COORDINATE_PRECISION = "weather.coordinate-precision";
@@ -150,10 +149,6 @@ public class WeatherConfigurationService {
 
     public boolean backfillEnabled() {
         return settingsService.getBoolean(BACKFILL_ENABLED);
-    }
-
-    public int backfillDiscoveryChunksPerRun() {
-        return Math.max(1, settingsService.getInteger(BACKFILL_DISCOVERY_CHUNKS_PER_RUN));
     }
 
     public int dailyRequestLimit() {

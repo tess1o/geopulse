@@ -119,76 +119,6 @@ public class WeatherBackfillReconciliationRepository {
         return Optional.of(new TimelineWeatherBounds(start, end));
     }
 
-    @Transactional
-    public int normalizePendingRangesToTimelineBounds() {
-        int deleted = entityManager.createNativeQuery("""
-                WITH bounds AS (
-                    SELECT user_id,
-                           MIN(started_at) AS timeline_start,
-                           MAX(ended_at) AS timeline_end
-                    FROM (
-                        SELECT user_id,
-                               timestamp AS started_at,
-                               timestamp + (stay_duration * INTERVAL '1 second') AS ended_at
-                        FROM timeline_stays
-                        UNION ALL
-                        SELECT user_id,
-                               timestamp AS started_at,
-                               timestamp + (trip_duration * INTERVAL '1 second') AS ended_at
-                        FROM timeline_trips
-                    ) timeline
-                    GROUP BY user_id
-                )
-                DELETE FROM weather_backfill_reconciliations r
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM bounds b
-                    WHERE b.user_id = r.user_id
-                      AND b.timeline_end > b.timeline_start
-                      AND LEAST(r.range_end, b.timeline_end) > GREATEST(r.range_start, b.timeline_start)
-                      AND LEAST(r.range_end, b.timeline_end) > GREATEST(r.cursor_at, b.timeline_start)
-                )
-                """)
-                .executeUpdate();
-
-        int updated = entityManager.createNativeQuery("""
-                WITH bounds AS (
-                    SELECT user_id,
-                           MIN(started_at) AS timeline_start,
-                           MAX(ended_at) AS timeline_end
-                    FROM (
-                        SELECT user_id,
-                               timestamp AS started_at,
-                               timestamp + (stay_duration * INTERVAL '1 second') AS ended_at
-                        FROM timeline_stays
-                        UNION ALL
-                        SELECT user_id,
-                               timestamp AS started_at,
-                               timestamp + (trip_duration * INTERVAL '1 second') AS ended_at
-                        FROM timeline_trips
-                    ) timeline
-                    GROUP BY user_id
-                )
-                UPDATE weather_backfill_reconciliations r
-                SET range_start = GREATEST(r.range_start, b.timeline_start),
-                    cursor_at = GREATEST(r.cursor_at, b.timeline_start),
-                    range_end = LEAST(r.range_end, b.timeline_end),
-                    updated_at = NOW()
-                FROM bounds b
-                WHERE r.user_id = b.user_id
-                  AND b.timeline_end > b.timeline_start
-                  AND LEAST(r.range_end, b.timeline_end) > GREATEST(r.range_start, b.timeline_start)
-                  AND LEAST(r.range_end, b.timeline_end) > GREATEST(r.cursor_at, b.timeline_start)
-                  AND (
-                    r.range_start < b.timeline_start
-                    OR r.cursor_at < b.timeline_start
-                    OR r.range_end > b.timeline_end
-                  )
-                """)
-                .executeUpdate();
-        return deleted + updated;
-    }
-
     @SuppressWarnings("unchecked")
     public WeatherBackfillReconciliation claimNext(Instant eligibleThrough, Duration chunkSize) {
         if (eligibleThrough == null || chunkSize == null || chunkSize.isZero() || chunkSize.isNegative()) {
@@ -249,43 +179,67 @@ public class WeatherBackfillReconciliationRepository {
                 .executeUpdate();
     }
 
+    public WeatherBackfillReconciliation clampClaimedRange(
+            WeatherBackfillReconciliation claimed,
+            TimelineWeatherBounds bounds,
+            Duration chunkSize) {
+        if (claimed == null || bounds == null) {
+            return null;
+        }
+        Instant cursor = claimed.chunkStart().isAfter(bounds.start()) ? claimed.chunkStart() : bounds.start();
+        Instant rangeEnd = claimed.rangeEnd().isBefore(bounds.end()) ? claimed.rangeEnd() : bounds.end();
+        if (!rangeEnd.isAfter(cursor)) {
+            delete(claimed.userId());
+            return null;
+        }
+
+        entityManager.createNativeQuery("""
+                UPDATE weather_backfill_reconciliations
+                SET range_start = GREATEST(range_start, ?1),
+                    cursor_at = ?2,
+                    range_end = ?3,
+                    updated_at = NOW()
+                WHERE user_id = ?4
+                """)
+                .setParameter(1, bounds.start())
+                .setParameter(2, cursor)
+                .setParameter(3, rangeEnd)
+                .setParameter(4, claimed.userId())
+                .executeUpdate();
+        Instant candidateEnd = cursor.plus(chunkSize);
+        Instant chunkEnd = candidateEnd.isBefore(rangeEnd) ? candidateEnd : rangeEnd;
+        return new WeatherBackfillReconciliation(claimed.userId(), cursor, chunkEnd, rangeEnd);
+    }
+
+    public void delete(UUID userId) {
+        entityManager.createNativeQuery("DELETE FROM weather_backfill_reconciliations WHERE user_id = ?1")
+                .setParameter(1, userId)
+                .executeUpdate();
+    }
+
+    public boolean hasPendingRanges() {
+        return Boolean.TRUE.equals(entityManager.createNativeQuery(
+                "SELECT EXISTS (SELECT 1 FROM weather_backfill_reconciliations)")
+                .getSingleResult());
+    }
+
+    @Transactional
     public long countPendingUserRanges() {
         return ((Number) entityManager.createNativeQuery("SELECT COUNT(*) FROM weather_backfill_reconciliations")
                 .getSingleResult()).longValue();
     }
 
-    public long countEligibleUserRanges(Instant eligibleThrough) {
-        if (eligibleThrough == null) {
-            return 0;
-        }
-        return ((Number) entityManager.createNativeQuery("""
-                SELECT COUNT(*)
+    public ReconciliationSummary summary() {
+        Object[] row = (Object[]) entityManager.createNativeQuery("""
+                SELECT COUNT(*), MIN(range_start), MIN(cursor_at), MAX(range_end)
                 FROM weather_backfill_reconciliations
-                WHERE cursor_at < LEAST(range_end, ?1)
-                """)
-                .setParameter(1, eligibleThrough)
-                .getSingleResult()).longValue();
-    }
-
-    public Instant oldestRangeStart() {
-        return singleInstant("""
-                SELECT MIN(range_start)
-                FROM weather_backfill_reconciliations
-                """);
-    }
-
-    public Instant oldestCursorAt() {
-        return singleInstant("""
-                SELECT MIN(cursor_at)
-                FROM weather_backfill_reconciliations
-                """);
-    }
-
-    public Instant newestRangeEnd() {
-        return singleInstant("""
-                SELECT MAX(range_end)
-                FROM weather_backfill_reconciliations
-                """);
+                """).getSingleResult();
+        return new ReconciliationSummary(
+                ((Number) row[0]).longValue(),
+                TimestampUtils.getInstantSafe(row[1]),
+                TimestampUtils.getInstantSafe(row[2]),
+                TimestampUtils.getInstantSafe(row[3])
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -350,10 +304,14 @@ public class WeatherBackfillReconciliationRepository {
         return value instanceof UUID uuid ? uuid : UUID.fromString(String.valueOf(value));
     }
 
-    private Instant singleInstant(String sql) {
-        return TimestampUtils.getInstantSafe(entityManager.createNativeQuery(sql).getSingleResult());
+    public record TimelineWeatherBounds(Instant start, Instant end) {
     }
 
-    public record TimelineWeatherBounds(Instant start, Instant end) {
+    public record ReconciliationSummary(
+            long pendingUserRanges,
+            Instant oldestRangeStart,
+            Instant oldestCursorAt,
+            Instant newestRangeEnd
+    ) {
     }
 }

@@ -66,6 +66,6 @@ public class WeatherResource {
     @GET
     @Path("/status")
     public Response getStatus() {
-        return Response.ok(ApiResponse.success(weatherService.status())).build();
+        return Response.ok(ApiResponse.success(weatherService.integrationStatus())).build();
     }
 }

@@ -211,10 +211,6 @@ export const SETTING_METADATA = {
     label: 'Historical Weather Backfill',
     description: 'Discover historical weather targets automatically'
   },
-  'weather.backfill.discovery.chunks-per-run': {
-    label: 'Historical Backfill Chunks per Run',
-    description: 'Maximum 90-day user-range chunks checked by each reconciliation run'
-  },
   'weather.quota.daily-request-limit': {
     label: 'Daily Request Limit',
     description: 'Maximum provider requests per UTC day'

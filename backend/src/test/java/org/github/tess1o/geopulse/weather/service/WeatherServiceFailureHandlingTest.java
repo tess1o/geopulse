@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
+import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.weather.client.OpenMeteoWeatherClient;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderErrorKind;
 import org.github.tess1o.geopulse.weather.client.WeatherProviderException;
@@ -16,6 +17,7 @@ import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
 import org.github.tess1o.geopulse.weather.model.WeatherSampleTargetEntity;
 import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
+import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliationRepository;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetClaim;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -73,6 +77,9 @@ class WeatherServiceFailureHandlingTest {
     WeatherSampleRepository sampleRepository;
 
     @Mock
+    WeatherBackfillReconciliationRepository backfillReconciliationRepository;
+
+    @Mock
     OpenMeteoWeatherClient weatherClient;
 
     @Mock
@@ -83,6 +90,9 @@ class WeatherServiceFailureHandlingTest {
 
     @Mock
     EntityManager entityManager;
+
+    @Mock
+    GeoPulseWorkloadMetrics workloadMetrics;
 
     private WeatherService service;
 
@@ -95,8 +105,10 @@ class WeatherServiceFailureHandlingTest {
         service.integrationHealthService = integrationHealthService;
         service.sampleRepository = sampleRepository;
         service.targetRepository = targetRepository;
+        service.backfillReconciliationRepository = backfillReconciliationRepository;
         service.providerRegistry = providerRegistry;
         service.entityManager = entityManager;
+        service.workloadMetrics = workloadMetrics;
         service.inProgressTimeoutMinutes = 60;
         service.sslHandshakeRetryAttempts = 2;
 
@@ -109,7 +121,12 @@ class WeatherServiceFailureHandlingTest {
         lenient().when(configurationService.providerOrder(anyString())).thenReturn(List.of(PROVIDER));
         lenient().when(providerRegistry.client(PROVIDER)).thenReturn(Optional.of(weatherClient));
         lenient().when(quotaService.requestsUsedToday()).thenReturn(0L);
+        lenient().when(quotaService.tryReserve(any(), anyInt(), anyInt())).thenReturn(true);
+        lenient().when(quotaService.tryReserveConnectionTest(anyInt(), anyInt())).thenReturn(true);
         lenient().when(targetRepository.resetStaleInProgressTargets(any(Instant.class))).thenReturn(0L);
+        lenient().when(targetRepository.hasPendingTargets()).thenReturn(true);
+        lenient().when(backfillReconciliationRepository.summary()).thenReturn(
+                new WeatherBackfillReconciliationRepository.ReconciliationSummary(0, null, null, null));
         lenient().when(samplingPolicy.truncateToHour(any(Instant.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -125,8 +142,8 @@ class WeatherServiceFailureHandlingTest {
                 retryAfter,
                 "quota exhausted");
 
-        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first, second));
-        when(weatherClient.fetchCurrent(first.latitude(), first.longitude())).thenThrow(quotaError);
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(quotaError);
         when(integrationHealthService.recordQuotaExceeded(
                 any(),
                 eq(PROVIDER),
@@ -141,11 +158,13 @@ class WeatherServiceFailureHandlingTest {
 
         assertThat(processed).isZero();
         verify(targetRepository).markAttemptStarted(1L);
-        verify(targetRepository, never()).markAttemptStarted(2L);
-        verify(weatherClient).fetchCurrent(first.latitude(), first.longitude());
+        verify(targetRepository).markAttemptStarted(2L);
+        verify(weatherClient).fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList());
         verify(targetRepository).releaseUntil(1L, retryAfter, "quota exhausted");
         verify(targetRepository).releaseUntil(2L, retryAfter, "quota exhausted");
         verify(targetRepository, never()).markFailedOrRetry(anyLong(), anyString());
+        verify(workloadMetrics).increment("geopulse.weather.quota.blocks",
+                "component", "weather", "type", "provider", "provider", PROVIDER);
     }
 
     @Test
@@ -155,7 +174,7 @@ class WeatherServiceFailureHandlingTest {
         int processed = service.fetchQueuedSamples();
 
         assertThat(processed).isZero();
-        verify(targetRepository, never()).claimPendingTargetClaims(anyInt());
+        verify(targetRepository, never()).claimNextTargetGroup(anyInt());
         verifyNoInteractions(weatherClient);
     }
 
@@ -168,8 +187,8 @@ class WeatherServiceFailureHandlingTest {
                 WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                 "timeout");
 
-        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first, second));
-        when(weatherClient.fetchCurrent(first.latitude(), first.longitude())).thenThrow(unavailable);
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(unavailable);
         when(integrationHealthService.currentHealth(any(), eq(PROVIDER)))
                 .thenReturn(ExternalIntegrationHealthDto.builder().failureCount(0).build());
         when(integrationHealthService.recordFailure(
@@ -188,8 +207,8 @@ class WeatherServiceFailureHandlingTest {
         ArgumentCaptor<Instant> retryAt = ArgumentCaptor.forClass(Instant.class);
         verify(targetRepository).releaseUntil(eq(1L), retryAt.capture(), eq("timeout"));
         verify(targetRepository).releaseUntil(2L, retryAt.getValue(), "timeout");
-        verify(targetRepository, never()).markAttemptStarted(2L);
-        verify(weatherClient).fetchCurrent(first.latitude(), first.longitude());
+        verify(targetRepository).markAttemptStarted(2L);
+        verify(weatherClient).fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList());
     }
 
     @Test
@@ -197,18 +216,17 @@ class WeatherServiceFailureHandlingTest {
         allowFetches();
         WeatherSampleTargetClaim first = target(1L);
         WeatherSampleTargetClaim second = target(2L);
-        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first, second));
-        when(weatherClient.fetchCurrent(anyDouble(), anyDouble()))
-                .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "first no data"))
-                .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "second no data"));
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first, second), List.of());
+        when(weatherClient.fetchHourlyBatch(anyDouble(), anyDouble(), anyList()))
+                .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "batch has no data"));
 
         int processed = service.fetchQueuedSamples();
 
         assertThat(processed).isZero();
         verify(targetRepository).markAttemptStarted(1L);
         verify(targetRepository).markAttemptStarted(2L);
-        verify(targetRepository).markSkipped(1L, "Weather provider has no data: first no data");
-        verify(targetRepository).markSkipped(2L, "Weather provider has no data: second no data");
+        verify(targetRepository).markSkipped(1L, "Weather provider has no data: batch has no data");
+        verify(targetRepository).markSkipped(2L, "Weather provider has no data: batch has no data");
         verify(targetRepository, never()).releaseUntil(anyLong(), any(Instant.class), anyString());
         verify(integrationHealthService, never()).recordFailure(any(), anyString(), any(), anyString(), anyString(), any(), any());
         verify(integrationHealthService, never()).recordQuotaExceeded(any(), anyString(), any(), anyString(), anyString(), any(), any());
@@ -235,9 +253,10 @@ class WeatherServiceFailureHandlingTest {
 
         when(configurationService.providerOrder(PROVIDER)).thenReturn(List.of(PROVIDER, "PIRATE_WEATHER"));
         when(providerRegistry.client("PIRATE_WEATHER")).thenReturn(Optional.of(fallbackWeatherClient));
-        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first));
-        when(weatherClient.fetchCurrent(first.latitude(), first.longitude())).thenThrow(unavailable);
-        when(fallbackWeatherClient.fetchCurrent(first.latitude(), first.longitude())).thenReturn(fallbackSample);
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first), List.of());
+        when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList())).thenThrow(unavailable);
+        when(fallbackWeatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList()))
+                .thenReturn(Map.of(first.targetAt(), fallbackSample));
         when(integrationHealthService.currentHealth(any(), eq(PROVIDER)))
                 .thenReturn(ExternalIntegrationHealthDto.builder().failureCount(0).build());
         when(integrationHealthService.recordFailure(
@@ -256,11 +275,19 @@ class WeatherServiceFailureHandlingTest {
         int processed = service.fetchQueuedSamples();
 
         assertThat(processed).isEqualTo(1);
-        verify(weatherClient).fetchCurrent(first.latitude(), first.longitude());
-        verify(fallbackWeatherClient).fetchCurrent(first.latitude(), first.longitude());
+        verify(weatherClient).fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList());
+        verify(fallbackWeatherClient).fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList());
         verify(sampleRepository).persist(any(WeatherSampleEntity.class));
         verify(targetRepository).markCompleted(targetEntity);
         verify(targetRepository, never()).markFailedOrRetry(anyLong(), anyString());
+        verify(workloadMetrics).increment("geopulse.weather.provider.requests",
+                "component", "weather", "provider", PROVIDER,
+                "source", WeatherTargetSource.ONGOING.name(),
+                "result", WeatherProviderErrorKind.PROVIDER_UNAVAILABLE.name());
+        verify(workloadMetrics).increment("geopulse.weather.provider.requests",
+                "component", "weather", "provider", "PIRATE_WEATHER",
+                "source", WeatherTargetSource.ONGOING.name(),
+                "result", "success");
     }
 
     @Test
@@ -271,15 +298,15 @@ class WeatherServiceFailureHandlingTest {
                 WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
                 "Open-Meteo archive hourly weather request failed",
                 new SSLHandshakeException("Failed to create SSL connection"));
-        when(targetRepository.claimPendingTargetClaims(5)).thenReturn(List.of(first));
-        when(weatherClient.fetchCurrent(first.latitude(), first.longitude()))
+        when(targetRepository.claimNextTargetGroup(24)).thenReturn(List.of(first), List.of());
+        when(weatherClient.fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList()))
                 .thenThrow(sslFailure)
                 .thenThrow(new WeatherProviderException(WeatherProviderErrorKind.NO_DATA, "no archive data"));
 
         int processed = service.fetchQueuedSamples();
 
         assertThat(processed).isZero();
-        verify(weatherClient, times(2)).fetchCurrent(first.latitude(), first.longitude());
+        verify(weatherClient, times(2)).fetchHourlyBatch(eq(first.latitude()), eq(first.longitude()), anyList());
         verify(targetRepository).markAttemptStarted(1L);
         verify(targetRepository).markSkipped(1L, "Weather provider has no data: no archive data");
         verify(integrationHealthService, never()).recordFailure(any(), anyString(), any(), anyString(), anyString(), any(), any());
@@ -295,7 +322,7 @@ class WeatherServiceFailureHandlingTest {
                 .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
                 .archive(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://archive-api.open-meteo.com").build())
                 .build();
-        when(weatherClient.testConnection()).thenReturn(response);
+        when(weatherClient.testConnection(any(BooleanSupplier.class))).thenReturn(response);
 
         WeatherTestResponse result = service.testProviderConnection();
 
@@ -326,12 +353,12 @@ class WeatherServiceFailureHandlingTest {
                 .forecast(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://api.open-meteo.com").build())
                 .archive(WeatherEndpointTestResponse.builder().success(true).statusCode(200).url("https://archive-api.open-meteo.com").build())
                 .build();
-        when(weatherClient.testConnection()).thenReturn(sslFailure, success);
+        when(weatherClient.testConnection(any(BooleanSupplier.class))).thenReturn(sslFailure, success);
 
         WeatherTestResponse result = service.testProviderConnection();
 
         assertThat(result).isSameAs(success);
-        verify(weatherClient, times(2)).testConnection();
+        verify(weatherClient, times(2)).testConnection(any(BooleanSupplier.class));
         verify(integrationHealthService).recordSuccess(any(), eq(PROVIDER));
     }
 
@@ -350,7 +377,7 @@ class WeatherServiceFailureHandlingTest {
                         .message("javax.net.ssl.SSLHandshakeException")
                         .build())
                 .build();
-        when(weatherClient.testConnection()).thenReturn(response);
+        when(weatherClient.testConnection(any(BooleanSupplier.class))).thenReturn(response);
 
         WeatherTestResponse result = service.testProviderConnection();
 
@@ -361,7 +388,7 @@ class WeatherServiceFailureHandlingTest {
     }
 
     @Test
-    void statusReportsClaimablePendingTargetsAndProviderBlockReason() {
+    void statusReportsClaimablePendingTargetsAndProviderHealthWithoutMutatingQueues() {
         Instant circuitOpenUntil = Instant.now().plusSeconds(300);
         ExternalIntegrationHealthDto providerHealth = ExternalIntegrationHealthDto.builder()
                 .status(ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE)
@@ -374,20 +401,15 @@ class WeatherServiceFailureHandlingTest {
         when(configurationService.dailyRequestLimit()).thenReturn(10_000);
         when(configurationService.ongoingReserve()).thenReturn(100);
         when(quotaService.requestsUsedToday()).thenReturn(203L);
-        when(sampleRepository.countSamples()).thenReturn(202L);
         when(targetRepository.countByStatus()).thenReturn(Map.of("PENDING", 4525L));
         when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(4525L);
-        when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(4525L);
         when(integrationHealthService.currentHealth(any(), eq(PROVIDER))).thenReturn(providerHealth);
-        when(integrationHealthService.isFetchBlocked(any(), eq(PROVIDER), any(Instant.class))).thenReturn(true);
 
         WeatherStatusResponse status = service.status();
 
         assertThat(status.getClaimablePendingTargets()).isEqualTo(4525);
-        assertThat(status.getFetchBlockedReason())
-                .contains("Provider health blocks fetch")
-                .contains("PROVIDER_UNAVAILABLE")
-                .contains("SSLHandshakeException");
+        assertThat(status.getProviderHealth()).isSameAs(providerHealth);
+        verify(backfillReconciliationRepository).summary();
     }
 
     private WeatherSampleTargetClaim target(long id) {
@@ -406,8 +428,6 @@ class WeatherServiceFailureHandlingTest {
 
     private void allowFetches() {
         when(integrationHealthService.isFetchBlocked(any(), eq(PROVIDER), any(Instant.class))).thenReturn(false);
-        when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(5L);
-        when(targetRepository.countClaimablePendingBackfillTargets(any(Instant.class))).thenReturn(0L);
     }
 
     private static class TestWeatherService extends WeatherService {

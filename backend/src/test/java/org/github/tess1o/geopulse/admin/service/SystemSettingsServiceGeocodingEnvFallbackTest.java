@@ -131,15 +131,6 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         assertTrue(service.getBoolean("weather.enabled"));
         assertTrue(service.getBoolean("weather.ongoing.enabled"));
         assertFalse(service.getBoolean("weather.backfill.enabled"));
-        assertEquals(4, service.getInteger("weather.backfill.discovery.chunks-per-run"));
-    }
-
-    @Test
-    void shouldRejectBackfillChunkLimitBelowOne() {
-        SystemSettingsService service = createService();
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.setValue("weather.backfill.discovery.chunks-per-run", "0", null));
     }
 
     @Test

@@ -49,10 +49,7 @@ import java.util.function.Supplier;
 public class WeatherService {
 
     private static final int ONGOING_PRIORITY = 100;
-    private static final int IMPORT_BACKFILL_PRIORITY = 90;
-    private static final int ADMIN_PRIORITY = 80;
     private static final int HISTORICAL_BACKFILL_PRIORITY = 70;
-    private static final Duration HISTORICAL_BACKFILL_DELAY = Duration.ofHours(2);
     private static final Duration HISTORICAL_RECONCILIATION_CHUNK = Duration.ofDays(90);
     private static final ExternalIntegrationType WEATHER_INTEGRATION = ExternalIntegrationType.WEATHER;
     private static final Duration INTERNAL_QUOTA_RESET_GRACE = Duration.ofMinutes(10);
@@ -104,12 +101,6 @@ public class WeatherService {
     @ConfigProperty(name = "geopulse.weather.provider.ssl-handshake-retry-attempts", defaultValue = "2")
     int sslHandshakeRetryAttempts;
 
-    @ConfigProperty(name = "geopulse.weather.backfill.discovery.job.interval", defaultValue = "30m")
-    String historicalDiscoveryInterval;
-
-    @ConfigProperty(name = "geopulse.weather.sample-fetch.job.interval", defaultValue = "10m")
-    String sampleFetchInterval;
-
     public WeatherSamplesResponse findSamples(UUID userId, Instant startTime, Instant endTime,
                                               Double minLat, Double minLon, Double maxLat, Double maxLon) {
         List<WeatherSampleDTO> samples = List.of();
@@ -125,6 +116,16 @@ public class WeatherService {
                 .attributionUrl(configurationService.attributionUrl(configurationService.primaryProvider()))
                 .units(metricUnits())
                 .samples(samples)
+                .build();
+    }
+
+    public WeatherIntegrationStatusResponse integrationStatus() {
+        String provider = configurationService.primaryProvider();
+        return WeatherIntegrationStatusResponse.builder()
+                .enabled(configurationService.isEnabled())
+                .configured(configurationService.isConfigured())
+                .provider(provider)
+                .attributionUrl(configurationService.attributionUrl(provider))
                 .build();
     }
 
@@ -171,34 +172,21 @@ public class WeatherService {
             return WeatherReconciliationQueueStatus.INVALID_RANGE;
         }
 
-        Optional<WeatherBackfillReconciliationRepository.TimelineWeatherBounds> bounds =
-                backfillReconciliationRepository.findTimelineBounds(userId);
-        if (bounds.isEmpty()) {
-            return WeatherReconciliationQueueStatus.INVALID_RANGE;
-        }
-        Instant boundedStart = maxInstant(startTime, bounds.get().start());
-        Instant boundedEnd = minInstant(endTime, bounds.get().end());
-        if (!boundedEnd.isAfter(boundedStart)) {
-            return WeatherReconciliationQueueStatus.INVALID_RANGE;
-        }
-
-        backfillReconciliationRepository.enqueue(userId, boundedStart, boundedEnd);
+        backfillReconciliationRepository.enqueue(userId, startTime, endTime);
         return WeatherReconciliationQueueStatus.QUEUED;
     }
 
     /**
      * Reconciles at most {@code maxChunks} persisted ranges. Each chunk covers at most 90
      * days and runs in its own transaction, so memory and transaction lifetime are bounded.
-     * Data newer than the historical eligibility delay remains queued for a later run.
+     * Eligible chunks are processed immediately; pacing is controlled only by provider
+     * availability and quota in the fetch phase.
      */
     @ActivateRequestContext
     public WeatherBackfillRunResult processPendingHistoricalBackfillChunks(int maxChunks) {
         if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
             return new WeatherBackfillRunResult(0, 0, 0, 1, 0);
         }
-
-        QuarkusTransaction.requiringNew()
-                .run(backfillReconciliationRepository::normalizePendingRangesToTimelineBounds);
 
         int chunksProcessed = 0;
         int created = 0;
@@ -238,15 +226,26 @@ public class WeatherService {
     }
 
     private WeatherTargetQueueResponse processNextHistoricalBackfillChunk() {
-        Instant eligibleThrough = Instant.now().minus(HISTORICAL_BACKFILL_DELAY);
         long stageStart = metricsStart();
         WeatherBackfillReconciliation reconciliation = backfillReconciliationRepository.claimNext(
-                eligibleThrough,
+                Instant.now(),
                 HISTORICAL_RECONCILIATION_CHUNK
         );
         recordWeatherStage(stageStart, "claim_chunk", "historical_backfill", reconciliation == null ? "empty" : "success");
         if (reconciliation == null) {
             return null;
+        }
+
+        Optional<WeatherBackfillReconciliationRepository.TimelineWeatherBounds> bounds =
+                backfillReconciliationRepository.findTimelineBounds(reconciliation.userId());
+        if (bounds.isEmpty()) {
+            backfillReconciliationRepository.delete(reconciliation.userId());
+            return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
+        }
+        reconciliation = backfillReconciliationRepository.clampClaimedRange(
+                reconciliation, bounds.get(), HISTORICAL_RECONCILIATION_CHUNK);
+        if (reconciliation == null) {
+            return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
         }
 
         WeatherTargetQueueResponse response = enqueueForChunk(
@@ -262,44 +261,31 @@ public class WeatherService {
     }
 
     @Transactional
-    public WeatherTargetQueueResponse discoverAdminBackfillTargets(WeatherBackfillRequest request) {
-        if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
-            return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
-        }
-        if (request == null || request.getStartTime() == null || request.getEndTime() == null || !request.getEndTime().isAfter(request.getStartTime())) {
+    public int queueAdminBackfill(WeatherBackfillRequest request) {
+        if (request == null || request.getStartTime() == null || request.getEndTime() == null
+                || !request.getEndTime().isAfter(request.getStartTime())) {
             throw new IllegalArgumentException("startTime and endTime are required");
+        }
+        if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
+            return 0;
         }
 
         if (request.getUserId() != null) {
-            return enqueueForRange(request.getUserId(), request.getStartTime(), request.getEndTime(), WeatherTargetSource.ADMIN_BACKFILL, ADMIN_PRIORITY);
+            if (entityManager.find(UserEntity.class, request.getUserId()) == null) {
+                throw new NotFoundException("User not found: " + request.getUserId());
+            }
+            return queueHistoricalBackfill(request.getUserId(), request.getStartTime(), request.getEndTime())
+                    == WeatherReconciliationQueueStatus.QUEUED ? 1 : 0;
         }
 
-        int created = 0;
-        int known = 0;
-        int skipped = 0;
+        int queued = 0;
         for (UserEntity user : activeUsers()) {
-            WeatherTargetQueueResponse response = enqueueForRange(user.getId(), request.getStartTime(), request.getEndTime(), WeatherTargetSource.ADMIN_BACKFILL, ADMIN_PRIORITY);
-            created += response.getTargetsCreated();
-            known += response.getTargetsAlreadyKnown();
-            skipped += response.getTargetsSkipped();
+            if (queueHistoricalBackfill(user.getId(), request.getStartTime(), request.getEndTime())
+                    == WeatherReconciliationQueueStatus.QUEUED) {
+                queued++;
+            }
         }
-        return WeatherTargetQueueResponse.builder()
-                .targetsCreated(created)
-                .targetsAlreadyKnown(known)
-                .targetsSkipped(skipped)
-                .build();
-    }
-
-    @Transactional
-    public WeatherTargetQueueResponse discoverImportBackfillTargets(UUID userId, Instant startTime, Instant endTime) {
-        if (!configurationService.isEnabled() || !configurationService.backfillEnabled()) {
-            return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
-        }
-        if (userId == null || startTime == null || endTime == null || !endTime.isAfter(startTime)) {
-            return WeatherTargetQueueResponse.builder().targetsSkipped(1).build();
-        }
-
-        return enqueueForRange(userId, startTime, endTime, WeatherTargetSource.IMPORT_BACKFILL, IMPORT_BACKFILL_PRIORITY);
+        return queued;
     }
 
     @Transactional
@@ -343,126 +329,104 @@ public class WeatherService {
 
     @ActivateRequestContext
     public int fetchQueuedSamples() {
+        int processed = 0;
+        while (true) {
+            WeatherFetchBatchResult result = fetchNextQueuedSampleGroup();
+            processed += result.processedTargets();
+            if (!result.workClaimed() || result.blockedReason() != null) {
+                return processed;
+            }
+        }
+    }
+
+    @ActivateRequestContext
+    public WeatherFetchBatchResult fetchNextQueuedSampleGroup() {
         if (!configurationService.isEnabled()) {
-            log.info("Weather sample fetch skipped: weather integration is disabled");
-            return 0;
+            return WeatherFetchBatchResult.blocked("Weather integration is disabled");
         }
-
+        if (!targetRepository.hasPendingTargets()) {
+            return WeatherFetchBatchResult.empty();
+        }
         if (!configurationService.isConfigured()) {
-            Instant retryAt = recordConfigurationError(primaryProviderKey(), "Primary weather provider is not configured");
-            log.info("Weather sample fetch skipped: weather provider is not configured; retryAt={}", retryAt);
-            return 0;
+            recordConfigurationError(primaryProviderKey(), "Primary weather provider is not configured");
+            return WeatherFetchBatchResult.blocked("Primary weather provider is not configured");
         }
 
-        long stageStart = metricsStart();
-        long resetTargets = resetRecoverableTargetsForRetry();
-        recordWeatherStage(stageStart, "retry_reset", "sample_fetch", "success");
-        if (resetTargets > 0) {
-            log.info("Weather sample fetch recovered {} stale/retryable targets", resetTargets);
-        }
-
-        long usedBefore = quotaService.requestsUsedToday();
-        int dailyLimit = configurationService.dailyRequestLimit();
-        int backfillAllowed = (int) Math.max(0, dailyLimit - configurationService.ongoingReserve() - usedBefore);
-        int limit = (int) Math.max(0, dailyLimit - usedBefore);
-        if (limit <= 0) {
-            Instant retryAt = recordInternalQuotaExceeded("GeoPulse weather daily request limit reached");
-            log.info("Weather sample fetch skipped: daily quota exhausted; requestsUsedToday={}, dailyLimit={}, retryAt={}",
-                    usedBefore, dailyLimit, retryAt);
-            return 0;
-        }
         List<String> providerOrder = configurationService.providerOrder(primaryProviderKey());
-        providerOrder.forEach(provider -> integrationHealthService.clearInternalQuotaIfRecovered(WEATHER_INTEGRATION, provider));
-
-        Instant now = Instant.now();
         if (providerOrder.isEmpty()) {
-            Instant retryAt = recordConfigurationError(primaryProviderKey(), "No enabled and configured weather providers are available");
-            log.info("Weather sample fetch skipped: no enabled configured weather providers; retryAt={}", retryAt);
-            return 0;
+            recordConfigurationError(primaryProviderKey(), "No enabled and configured weather providers are available");
+            return WeatherFetchBatchResult.blocked("No enabled and configured weather providers are available");
         }
+        Instant now = Instant.now();
+        providerOrder.forEach(provider -> integrationHealthService.clearInternalQuotaIfRecovered(WEATHER_INTEGRATION, provider));
         if (allProvidersBlocked(providerOrder, now)) {
-            log.info("Weather sample fetch skipped: {}", allProvidersBlockedReason(providerOrder, now));
-            return 0;
+            return WeatherFetchBatchResult.blocked(allProvidersBlockedReason(providerOrder, now));
         }
 
-        stageStart = metricsStart();
-        long claimablePendingTargets = targetRepository.countClaimablePendingTargets(now);
-        if (claimablePendingTargets <= 0) {
-            recordWeatherStage(stageStart, "count_claimable", "sample_fetch", "empty");
-            log.info("Weather sample fetch skipped: zero claimable pending targets at {}", now);
-            return 0;
-        }
-        recordWeatherStage(stageStart, "count_claimable", "sample_fetch", "success");
-
-        long claimableBackfillTargets = targetRepository.countClaimablePendingBackfillTargets(now);
-        if (backfillAllowed <= 0 && claimableBackfillTargets > 0 && claimableBackfillTargets >= claimablePendingTargets) {
-            log.info("Weather sample fetch skipped: daily backfill reserve exhausted; requestsUsedToday={}, "
-                            + "dailyLimit={}, ongoingReserve={}, claimablePendingTargets={}, claimableBackfillTargets={}",
-                    usedBefore, dailyLimit, configurationService.ongoingReserve(), claimablePendingTargets, claimableBackfillTargets);
-            return 0;
-        }
-
-        stageStart = metricsStart();
-        List<WeatherSampleTargetClaim> targets = targetRepository.claimPendingTargetClaims(limit);
-        recordWeatherStage(stageStart, "claim_targets", "sample_fetch", targets.isEmpty() ? "empty" : "success");
+        List<WeatherSampleTargetClaim> targets = targetRepository.claimNextTargetGroup(24);
         if (targets.isEmpty()) {
-            log.info("Weather sample fetch skipped: claimed zero targets from {} claimable pending targets; "
-                    + "another worker may have claimed them", claimablePendingTargets);
-            return 0;
+            return WeatherFetchBatchResult.empty();
         }
         countWeatherTargets(null, "claimed", targets.size());
+        WeatherTargetSource requestSource = targets.stream().anyMatch(target -> target.source() == WeatherTargetSource.ONGOING)
+                ? WeatherTargetSource.ONGOING
+                : targets.getFirst().source();
+        targets.forEach(target -> targetRepository.markAttemptStarted(target.id()));
 
-        log.info("Weather sample fetch starting: claimedTargets={}, claimablePendingTargets={}, "
-                        + "claimableBackfillTargets={}, requestsUsedToday={}, dailyLimit={}, backfillAllowed={}",
-                targets.size(), claimablePendingTargets, claimableBackfillTargets, usedBefore, dailyLimit, backfillAllowed);
-
-        int processed = 0;
-        int backfillProcessed = 0;
-        int backfillDeferredForReserve = 0;
-        for (int i = 0; i < targets.size(); i++) {
-            WeatherSampleTargetClaim target = targets.get(i);
-            if (target.source() != WeatherTargetSource.ONGOING && backfillProcessed >= backfillAllowed) {
-                targetRepository.releaseForQuota(target.id());
-                backfillDeferredForReserve++;
-                continue;
-            }
-
-            try {
-                targetRepository.markAttemptStarted(target.id());
-                if (target.source() != WeatherTargetSource.ONGOING) {
-                    backfillProcessed++;
+        long startedAt = metricsStart();
+        try {
+            ProviderFetchBatchResult fetchResult = fetchProviderSamples(targets, requestSource);
+            int processed = 0;
+            for (WeatherSampleTargetClaim target : targets) {
+                Instant targetHour = samplingPolicy.truncateToHour(target.targetAt());
+                WeatherProviderSample sample = fetchResult.samples().get(targetHour);
+                if (sample == null) {
+                    targetRepository.releaseImmediately(target.id(),
+                            "Provider response did not include this hour; retrying as the next batch anchor");
+                    continue;
                 }
-                stageStart = metricsStart();
-                if (fetchAndStoreTargetWithSslRetry(target)) {
-                    recordWeatherStage(stageStart, "provider_fetch", target.source().name(), "success");
+                if (requiringNew(() -> storeProviderSample(target,
+                        new ProviderFetchResult(fetchResult.providerKey(), sample)))) {
                     processed++;
                     countWeatherTargets(target.source(), "processed", 1);
                 }
-            } catch (WeatherProviderException e) {
-                recordWeatherStage(stageStart, "provider_fetch", target.source().name(), e.getKind().name());
-                countWeatherTargets(target.source(), "failed", 1);
-                ProviderFailureDecision decision = handleProviderFailure(target, e);
-                if (decision.stopBatch()) {
-                    releaseRemainingClaimedTargets(targets, i + 1, decision.retryAt(), decision.reason());
-                    break;
-                }
-            } catch (Exception e) {
-                recordWeatherStage(stageStart, "provider_fetch", target.source().name(), "error");
-                countWeatherTargets(target.source(), "failed", 1);
-                log.error("Weather target {} failed for user {} at {}: {}",
-                        target.id(), target.userId(), target.targetAt(), e.getMessage(), e);
-                targetRepository.markFailedOrRetry(target.id(), e.getMessage());
             }
+            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "success");
+            return new WeatherFetchBatchResult(true, processed, null);
+        } catch (InternalQuotaExceededException e) {
+            Instant retryAt = recordInternalQuotaExceeded(e.getMessage());
+            releaseRemainingClaimedTargets(targets, 0, retryAt, e.getMessage());
+            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "quota");
+            return new WeatherFetchBatchResult(true, 0, e.getMessage());
+        } catch (WeatherProviderException e) {
+            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), e.getKind().name());
+            if (e.getKind() == WeatherProviderErrorKind.NO_DATA) {
+                targets.forEach(target -> targetRepository.markSkipped(target.id(),
+                        "Weather provider has no data: " + e.getMessage()));
+                return new WeatherFetchBatchResult(true, 0, null);
+            }
+            if (e.getKind() == WeatherProviderErrorKind.INVALID_RESPONSE) {
+                targets.forEach(target -> targetRepository.markFailedOrRetry(target.id(), e.getMessage()));
+                return new WeatherFetchBatchResult(true, 0, null);
+            }
+            String providerKey = providerKey(e, targets.getFirst().provider());
+            Instant retryAt = recordProviderFailure(providerKey, e);
+            releaseRemainingClaimedTargets(targets, 0, retryAt, e.getMessage());
+            return new WeatherFetchBatchResult(true, 0, e.getMessage());
+        } catch (Exception e) {
+            recordWeatherStage(startedAt, "provider_fetch_group", requestSource.name(), "error");
+            targets.forEach(target -> targetRepository.markFailedOrRetry(target.id(), e.getMessage()));
+            log.error("Weather provider batch failed for {} targets: {}", targets.size(), e.getMessage(), e);
+            return new WeatherFetchBatchResult(true, 0, null);
         }
-        if (backfillDeferredForReserve > 0) {
-            log.info("Weather sample fetch deferred {} backfill targets because the daily backfill reserve is exhausted; "
-                            + "requestsUsedToday={}, dailyLimit={}, ongoingReserve={}, backfillAllowed={}",
-                    backfillDeferredForReserve, usedBefore, dailyLimit, configurationService.ongoingReserve(), backfillAllowed);
-            countWeatherTargets(WeatherTargetSource.HISTORICAL_BACKFILL, "deferred", backfillDeferredForReserve);
+    }
+
+    public boolean providersAvailableForFetch(Instant now) {
+        if (!configurationService.isEnabled() || !configurationService.isConfigured()) {
+            return false;
         }
-        log.info("Weather sample fetch completed: processed={}, claimedTargets={}, deferredBackfillTargets={}",
-                processed, targets.size(), backfillDeferredForReserve);
-        return processed;
+        List<String> providers = configurationService.providerOrder(primaryProviderKey());
+        return !providers.isEmpty() && !allProvidersBlocked(providers, now == null ? Instant.now() : now);
     }
 
     @Transactional
@@ -493,7 +457,9 @@ public class WeatherService {
     public long cleanupTargets(int completedRetentionDays, int failedRetentionDays) {
         Instant completedBefore = Instant.now().minus(Duration.ofDays(Math.max(1, completedRetentionDays)));
         Instant failedBefore = Instant.now().minus(Duration.ofDays(Math.max(1, failedRetentionDays)));
-        return targetRepository.cleanupCompletedTargets(completedBefore, failedBefore);
+        long deletedTargets = targetRepository.cleanupCompletedTargets(completedBefore, failedBefore);
+        long deletedUsageRows = quotaService.cleanupOldUsage(14);
+        return deletedTargets + deletedUsageRows;
     }
 
     @Transactional
@@ -506,9 +472,7 @@ public class WeatherService {
         long remainingToday = Math.max(0, dailyLimit - usedToday);
         Instant now = Instant.now();
         long claimablePendingTargets = targetRepository.countClaimablePendingTargets(now);
-        long claimableBackfillTargets = targetRepository.countClaimablePendingBackfillTargets(now);
         String primaryProvider = primaryProviderKey();
-        List<String> providerOrder = configurationService.providerOrder(primaryProvider);
         ExternalIntegrationHealthDto providerHealth = integrationHealthService.currentHealth(WEATHER_INTEGRATION, primaryProvider);
         return WeatherStatusResponse.builder()
                 .enabled(enabled)
@@ -518,44 +482,31 @@ public class WeatherService {
                 .ongoingReserve(ongoingReserve)
                 .requestsUsedToday(usedToday)
                 .requestsRemainingToday(remainingToday)
-                .samples(sampleRepository.countSamples())
                 .targetsByStatus(targetRepository.countByStatus())
                 .claimablePendingTargets(claimablePendingTargets)
-                .fetchBlockedReason(fetchBlockedReason(
-                        enabled,
-                        configured,
-                        usedToday,
-                        dailyLimit,
-                        ongoingReserve,
-                        claimablePendingTargets,
-                        claimableBackfillTargets,
-                        providerHealth,
-                        providerOrder,
-                        now))
                 .oldestPendingTargetAt(targetRepository.oldestPendingTargetAt())
                 .newestPendingTargetAt(targetRepository.newestPendingTargetAt())
                 .reconciliation(reconciliationStatus(now))
-                .historicalDiscoveryInterval(historicalDiscoveryInterval)
-                .sampleFetchInterval(sampleFetchInterval)
                 .providerHealth(providerHealth)
                 .build();
     }
 
     @Transactional
     public WeatherReconciliationStatus reconciliationStatus(Instant now) {
-        backfillReconciliationRepository.normalizePendingRangesToTimelineBounds();
-        Instant eligibleThrough = (now == null ? Instant.now() : now).minus(HISTORICAL_BACKFILL_DELAY);
+        Instant eligibleThrough = now == null ? Instant.now() : now;
+        WeatherBackfillReconciliationRepository.ReconciliationSummary summary =
+                backfillReconciliationRepository.summary();
         return WeatherReconciliationStatus.builder()
-                .pendingUserRanges(backfillReconciliationRepository.countPendingUserRanges())
-                .eligibleUserRanges(backfillReconciliationRepository.countEligibleUserRanges(eligibleThrough))
-                .oldestRangeStart(backfillReconciliationRepository.oldestRangeStart())
-                .oldestCursorAt(backfillReconciliationRepository.oldestCursorAt())
-                .newestRangeEnd(backfillReconciliationRepository.newestRangeEnd())
+                .pendingUserRanges(summary.pendingUserRanges())
+                .eligibleUserRanges(summary.pendingUserRanges())
+                .oldestRangeStart(summary.oldestRangeStart())
+                .oldestCursorAt(summary.oldestCursorAt())
+                .newestRangeEnd(summary.newestRangeEnd())
                 .eligibleThrough(eligibleThrough)
                 .build();
     }
 
-    public WeatherTestResponse testProviderConnection() {
+    public synchronized WeatherTestResponse testProviderConnection() {
         String providerKey = primaryProviderKey();
         WeatherTestResponse result = testProviderConnectionWithSslRetry();
         if (result.isSuccess()) {
@@ -565,6 +516,11 @@ public class WeatherService {
                     result.getForecast() == null ? null : result.getForecast().getUrl(),
                     result.getArchive() == null ? null : result.getArchive().getUrl());
         } else {
+            if (result.getStatusCode() == 429
+                    && result.getMessage() != null
+                    && result.getMessage().contains("Daily weather request limit exhausted")) {
+                recordInternalQuotaExceeded(result.getMessage());
+            }
             log.error("Weather provider connection test failed for {}: message={}, forecast={}, archive={}",
                     providerKey,
                     result.getMessage(),
@@ -572,86 +528,6 @@ public class WeatherService {
                     endpointTestSummary(result.getArchive()));
         }
         return result;
-    }
-
-    public boolean probeProviderHealth() {
-        if (!configurationService.isEnabled()) {
-            return false;
-        }
-        if (!configurationService.isConfigured()) {
-            recordConfigurationError(primaryProviderKey(), "Primary weather provider is not configured");
-            return false;
-        }
-
-        long usedBefore = quotaService.requestsUsedToday();
-        int dailyLimit = configurationService.dailyRequestLimit();
-        if (dailyLimit <= 0 || usedBefore >= dailyLimit) {
-            recordInternalQuotaExceeded("GeoPulse weather daily request limit reached");
-            return false;
-        }
-        String providerKey = primaryProviderKey();
-        integrationHealthService.clearInternalQuotaIfRecovered(WEATHER_INTEGRATION, providerKey);
-
-        Instant now = Instant.now();
-        if (!integrationHealthService.isProbeDue(WEATHER_INTEGRATION, providerKey, now)) {
-            return false;
-        }
-
-        try {
-            WeatherTestResponse result = testProviderConnectionWithSslRetry();
-            if (!result.isSuccess()) {
-                WeatherProviderException failure = providerExceptionFromTestFailure(result);
-                recordProviderFailure(providerKey, failure);
-                log.error("Weather provider health probe failed for {}: message={}, forecast={}, archive={}",
-                        providerKey,
-                        result.getMessage(),
-                        endpointTestSummary(result.getForecast()),
-                        endpointTestSummary(result.getArchive()));
-                return false;
-            }
-            integrationHealthService.recordSuccess(WEATHER_INTEGRATION, providerKey);
-            log.info("Weather provider health probe succeeded for {} using forecast and archive endpoints", providerKey);
-            return true;
-        } catch (WeatherProviderException e) {
-            recordProviderFailure(providerKey, e);
-            log.error("Weather provider health probe failed for {}: {}", providerKey, e.getMessage(), e);
-            return false;
-        } catch (Exception e) {
-            recordProviderFailure(providerKey, new WeatherProviderException(
-                    WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
-                    providerKey + " health probe failed: " + e.getMessage(),
-                    e
-            ));
-            log.error("Weather provider health probe failed for {}: {}", providerKey, e.getMessage(), e);
-            return false;
-        }
-    }
-
-    private WeatherTargetQueueResponse enqueueForRange(UUID userId, Instant startTime, Instant endTime,
-                                                      WeatherTargetSource source, int priority) {
-        if (entityManager.find(UserEntity.class, userId) == null) {
-            throw new NotFoundException("User not found: " + userId);
-        }
-
-        int created = 0;
-        int known = 0;
-        int skipped = 0;
-
-        Instant chunkStart = startTime;
-        while (endTime.isAfter(chunkStart)) {
-            Instant chunkEnd = minInstant(chunkStart.plus(HISTORICAL_RECONCILIATION_CHUNK), endTime);
-            WeatherTargetQueueResponse response = enqueueForChunk(userId, chunkStart, chunkEnd, source, priority);
-            created += response.getTargetsCreated();
-            known += response.getTargetsAlreadyKnown();
-            skipped += response.getTargetsSkipped();
-            chunkStart = chunkEnd;
-        }
-
-        return WeatherTargetQueueResponse.builder()
-                .targetsCreated(created)
-                .targetsAlreadyKnown(known)
-                .targetsSkipped(skipped)
-                .build();
     }
 
     @SuppressWarnings("unchecked")
@@ -751,14 +627,6 @@ public class WeatherService {
                 .targetsAlreadyKnown(Math.max(0, validCandidates - created))
                 .targetsSkipped(skipped)
                 .build();
-    }
-
-    private Instant minInstant(Instant first, Instant second) {
-        return first.isBefore(second) ? first : second;
-    }
-
-    private Instant maxInstant(Instant first, Instant second) {
-        return first.isAfter(second) ? first : second;
     }
 
     private List<WeatherSampleCandidate> tripCandidates(UUID userId, TimelineTripSlice trip,
@@ -874,36 +742,6 @@ public class WeatherService {
         return new double[]{latitude, longitude};
     }
 
-    private ProviderFailureDecision handleProviderFailure(WeatherSampleTargetClaim target, WeatherProviderException e) {
-        long targetId = target.id();
-        if (e.getKind() == WeatherProviderErrorKind.NO_DATA) {
-            targetRepository.markSkipped(targetId, "Weather provider has no data: " + e.getMessage());
-            return ProviderFailureDecision.continueBatch();
-        }
-
-        if (e.getKind() == WeatherProviderErrorKind.INVALID_RESPONSE) {
-            targetRepository.markFailedOrRetry(targetId, e.getMessage());
-            return ProviderFailureDecision.continueBatch();
-        }
-
-        String providerKey = providerKey(e, target.provider());
-        Instant retryAt = recordProviderFailure(providerKey, e);
-        targetRepository.releaseUntil(targetId, retryAt, e.getMessage());
-        log.error("Weather sample fetch stopping after provider failure: targetId={}, userId={}, source={}, "
-                        + "targetAt={}, provider={}, kind={}, statusCode={}, retryAt={}, message={}",
-                target.id(),
-                target.userId(),
-                target.source(),
-                target.targetAt(),
-                providerKey,
-                e.getKind(),
-                e.getStatusCode(),
-                retryAt,
-                e.getMessage(),
-                e);
-        return ProviderFailureDecision.stopBatch(retryAt, e.getMessage());
-    }
-
     private void releaseRemainingClaimedTargets(List<WeatherSampleTargetClaim> targets, int startIndex, Instant retryAt, String reason) {
         for (int i = startIndex; i < targets.size(); i++) {
             targetRepository.releaseUntil(targets.get(i).id(), retryAt, reason);
@@ -926,6 +764,7 @@ public class WeatherService {
     }
 
     private Instant recordProviderQuotaExceeded(String providerKey, WeatherProviderException e) {
+        countQuotaBlock("provider", providerKey);
         Instant retryAt = e.getRetryAfter() != null && e.getRetryAfter().isAfter(Instant.now())
                 ? e.getRetryAfter()
                 : nextUtcDayStart().plus(INTERNAL_QUOTA_RESET_GRACE);
@@ -941,6 +780,7 @@ public class WeatherService {
     }
 
     private Instant recordInternalQuotaExceeded(String message) {
+        countQuotaBlock("internal", primaryProviderKey());
         Instant retryAt = nextUtcDayStart().plus(INTERNAL_QUOTA_RESET_GRACE);
         return integrationHealthService.recordQuotaExceeded(
                 WEATHER_INTEGRATION,
@@ -994,24 +834,13 @@ public class WeatherService {
         return e.getKind().name();
     }
 
-    private WeatherProviderException providerExceptionFromTestFailure(WeatherTestResponse result) {
-        int statusCode = result == null ? 0 : result.getStatusCode();
-        WeatherProviderErrorKind kind = statusCode == 400 || statusCode == 401 || statusCode == 403 || statusCode == 404
-                ? WeatherProviderErrorKind.CONFIG_ERROR
-                : WeatherProviderErrorKind.PROVIDER_UNAVAILABLE;
-        String message = result == null || result.getMessage() == null || result.getMessage().isBlank()
-                ? "Weather provider health probe failed"
-                : result.getMessage();
-        return new WeatherProviderException(kind, statusCode, null, message);
-    }
-
     private WeatherTestResponse testProviderConnectionWithSslRetry() {
         int maxAttempts = Math.max(1, 1 + Math.max(0, sslHandshakeRetryAttempts));
         WeatherTestResponse lastResult = null;
         WeatherProviderClient client = providerClient(primaryProviderKey());
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            WeatherTestResponse result = client.testConnection();
+            WeatherTestResponse result = client.testConnection(this::reserveConnectionTestCall);
             lastResult = result;
             if (!hasSslHandshakeFailure(result) || attempt >= maxAttempts) {
                 return result;
@@ -1045,50 +874,6 @@ public class WeatherService {
 
     private boolean containsSslHandshakeFailure(String value) {
         return value != null && value.contains(SSLHandshakeException.class.getSimpleName());
-    }
-
-    private String fetchBlockedReason(boolean enabled,
-                                      boolean configured,
-                                      long requestsUsedToday,
-                                      int dailyLimit,
-                                      int ongoingReserve,
-                                      long claimablePendingTargets,
-                                      long claimableBackfillTargets,
-                                      ExternalIntegrationHealthDto providerHealth,
-                                      List<String> providerOrder,
-                                      Instant now) {
-        if (!enabled) {
-            return "Weather integration is disabled";
-        }
-        if (!configured) {
-            return "Primary weather provider is not configured";
-        }
-        if (dailyLimit <= 0 || requestsUsedToday >= dailyLimit) {
-            return "Daily weather request limit exhausted";
-        }
-        if (!providerOrder.isEmpty() && allProvidersBlocked(providerOrder, now)) {
-            return allProvidersBlockedReason(providerOrder, now);
-        }
-        if (providerOrder.isEmpty() && providerHealthBlocksFetch(providerHealth, now)) {
-            return providerFetchBlockedReason(providerHealth, now);
-        }
-        if (claimablePendingTargets <= 0) {
-            return "No claimable pending weather targets";
-        }
-
-        long backfillAllowed = Math.max(0, dailyLimit - ongoingReserve - requestsUsedToday);
-        if (backfillAllowed <= 0 && claimableBackfillTargets > 0 && claimableBackfillTargets >= claimablePendingTargets) {
-            return "Daily backfill reserve exhausted";
-        }
-        return null;
-    }
-
-    private boolean providerHealthBlocksFetch(ExternalIntegrationHealthDto providerHealth, Instant now) {
-        return providerHealth != null
-                && providerHealth.getStatus() != null
-                && providerHealth.getStatus() != ExternalIntegrationHealthStatus.HEALTHY
-                && providerHealth.getCircuitOpenUntil() != null
-                && providerHealth.getCircuitOpenUntil().isAfter(now);
     }
 
     private String providerFetchBlockedReason(ExternalIntegrationHealthDto providerHealth, Instant now) {
@@ -1171,36 +956,6 @@ public class WeatherService {
                 .orElse("All weather providers are blocked by health state");
     }
 
-    private boolean fetchAndStoreTargetWithSslRetry(WeatherSampleTargetClaim target) {
-        int maxAttempts = Math.max(1, 1 + Math.max(0, sslHandshakeRetryAttempts));
-        WeatherProviderException lastSslFailure = null;
-
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-                return fetchAndStoreTarget(target);
-            } catch (WeatherProviderException e) {
-                if (!shouldRetrySslHandshakeFailure(e, attempt, maxAttempts)) {
-                    throw e;
-                }
-
-                lastSslFailure = e;
-                log.info("Weather provider SSL handshake failure while fetching target; retrying before circuit flow: "
-                                + "targetId={}, userId={}, source={}, targetAt={}, provider={}, nextAttempt={}/{}, rootCause={}",
-                        target.id(),
-                        target.userId(),
-                        target.source(),
-                        target.targetAt(),
-                        target.provider(),
-                        attempt + 1,
-                        maxAttempts,
-                        rootCauseMessage(e),
-                        e);
-            }
-        }
-
-        throw lastSslFailure;
-    }
-
     private boolean shouldRetrySslHandshakeFailure(WeatherProviderException e, int attempt, int maxAttempts) {
         return e.getKind() == WeatherProviderErrorKind.PROVIDER_UNAVAILABLE
                 && attempt < maxAttempts
@@ -1218,47 +973,27 @@ public class WeatherService {
         return false;
     }
 
-    private String rootCauseMessage(Throwable throwable) {
-        Throwable root = throwable;
-        while (root.getCause() != null) {
-            root = root.getCause();
-        }
-        String message = root.getMessage();
-        if (message == null || message.isBlank()) {
-            message = throwable.getMessage();
-        }
-        return root.getClass().getName() + (message == null || message.isBlank() ? "" : ": " + message);
-    }
-
-    private boolean fetchAndStoreTarget(WeatherSampleTargetClaim target) {
-        ProviderFetchResult fetchResult = fetchProviderSample(target);
-
-        long storeStart = metricsStart();
-        try {
-            return requiringNew(() -> storeProviderSample(target, fetchResult));
-        } catch (Exception e) {
-            Instant observedAt = samplingPolicy.truncateToHour(fetchResult.sample().getObservedAt());
-            if (markSkippedIfSampleExists(target, fetchResult.providerKey(), observedAt)) {
-                return true;
-            }
-            throw e;
-        } finally {
-            recordWeatherStage(storeStart, "store_sample", target.source().name(), "complete");
-        }
-    }
-
-    private ProviderFetchResult fetchProviderSample(WeatherSampleTargetClaim target) {
-        List<String> providerOrder = configurationService.providerOrder(target.provider());
+    private synchronized ProviderFetchBatchResult fetchProviderSamples(
+            List<WeatherSampleTargetClaim> targets,
+            WeatherTargetSource requestSource) {
+        WeatherSampleTargetClaim anchor = targets.getFirst();
+        List<String> providerOrder = configurationService.providerOrder(anchor.provider());
         if (providerOrder.isEmpty()) {
             throw providerExceptionWithProvider(
                     new WeatherProviderException(WeatherProviderErrorKind.CONFIG_ERROR,
                             "No enabled and configured weather providers are available"),
-                    target.provider());
+                    anchor.provider());
         }
 
+        List<Instant> targetHours = targets.stream()
+                .map(WeatherSampleTargetClaim::targetAt)
+                .map(samplingPolicy::truncateToHour)
+                .distinct()
+                .sorted()
+                .toList();
         WeatherProviderException lastFailure = null;
-        for (int i = 0; i < providerOrder.size(); i++) {
-            String providerKey = providerOrder.get(i);
+        for (int providerIndex = 0; providerIndex < providerOrder.size(); providerIndex++) {
+            String providerKey = providerOrder.get(providerIndex);
             if (integrationHealthService.isFetchBlocked(WEATHER_INTEGRATION, providerKey, Instant.now())) {
                 lastFailure = providerExceptionWithProvider(
                         new WeatherProviderException(WeatherProviderErrorKind.PROVIDER_UNAVAILABLE,
@@ -1267,36 +1002,52 @@ public class WeatherService {
                 continue;
             }
 
-            long providerStart = metricsStart();
-            try {
-                WeatherProviderClient client = providerClient(providerKey);
-                WeatherProviderSample sample = target.source() == WeatherTargetSource.ONGOING
-                        ? client.fetchCurrent(target.latitude(), target.longitude())
-                        : client.fetchHourly(target.latitude(), target.longitude(), target.targetAt());
-                recordProviderRequest(providerKey, target.source(), "success");
-                recordWeatherStage(providerStart, "provider_request", target.source().name(), "success");
-                integrationHealthService.recordSuccess(WEATHER_INTEGRATION, providerKey);
-                if (!providerKey.equals(target.provider())) {
-                    log.info("Weather provider fallback succeeded: targetId={}, requestedProvider={}, actualProvider={}",
-                            target.id(), target.provider(), providerKey);
+            int maxAttempts = Math.max(1, 1 + Math.max(0, sslHandshakeRetryAttempts));
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                if (!quotaService.tryReserve(
+                        requestSource,
+                        configurationService.dailyRequestLimit(),
+                        configurationService.ongoingReserve())) {
+                    throw new InternalQuotaExceededException(requestSource == WeatherTargetSource.ONGOING
+                            ? "Daily weather request limit exhausted"
+                            : "Daily weather backfill reserve exhausted");
                 }
-                return new ProviderFetchResult(providerKey, sample);
-            } catch (WeatherProviderException e) {
-                WeatherProviderException failure = providerExceptionWithProvider(e, providerKey);
-                lastFailure = failure;
-                recordProviderRequest(providerKey, target.source(), e.getKind().name());
-                recordWeatherStage(providerStart, "provider_request", target.source().name(), e.getKind().name());
-                if (i + 1 < providerOrder.size()) {
-                    recordFallbackProviderFailure(providerKey, failure);
-                    log.warn("Weather provider {} failed for target {}; trying fallback provider: kind={}, message={}",
-                            providerKey, target.id(), failure.getKind(), failure.getMessage());
-                    continue;
+
+                long providerStart = metricsStart();
+                try {
+                    WeatherProviderClient client = providerClient(providerKey);
+                    Map<Instant, WeatherProviderSample> samples = client.fetchHourlyBatch(
+                            anchor.latitude(), anchor.longitude(), targetHours);
+                    if (samples == null || samples.isEmpty()) {
+                        throw new WeatherProviderException(WeatherProviderErrorKind.NO_DATA,
+                                "Provider response did not include any requested hour");
+                    }
+                    recordProviderRequest(providerKey, requestSource, "success");
+                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), "success");
+                    integrationHealthService.recordSuccess(WEATHER_INTEGRATION, providerKey);
+                    return new ProviderFetchBatchResult(providerKey, samples);
+                } catch (WeatherProviderException e) {
+                    WeatherProviderException failure = providerExceptionWithProvider(e, providerKey);
+                    lastFailure = failure;
+                    recordProviderRequest(providerKey, requestSource, e.getKind().name());
+                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), e.getKind().name());
+                    if (shouldRetrySslHandshakeFailure(e, attempt, maxAttempts)) {
+                        log.info("Weather provider SSL handshake failed for a target group; retrying {}/{}",
+                                attempt + 1, maxAttempts);
+                        continue;
+                    }
+                    if (providerIndex + 1 < providerOrder.size()) {
+                        recordFallbackProviderFailure(providerKey, failure);
+                        log.warn("Weather provider {} failed for a {}-target group; trying fallback: kind={}, message={}",
+                                providerKey, targets.size(), failure.getKind(), failure.getMessage());
+                        break;
+                    }
+                    throw failure;
+                } catch (Exception e) {
+                    recordProviderRequest(providerKey, requestSource, "error");
+                    recordWeatherStage(providerStart, "provider_request", requestSource.name(), "error");
+                    throw e;
                 }
-                throw failure;
-            } catch (Exception e) {
-                recordProviderRequest(providerKey, target.source(), "error");
-                recordWeatherStage(providerStart, "provider_request", target.source().name(), "error");
-                throw e;
             }
         }
 
@@ -1305,8 +1056,7 @@ public class WeatherService {
         }
         throw providerExceptionWithProvider(
                 new WeatherProviderException(WeatherProviderErrorKind.CONFIG_ERROR,
-                        "No weather provider client is available"),
-                target.provider());
+                        "No weather provider client is available"), anchor.provider());
     }
 
     private void recordFallbackProviderFailure(String providerKey, WeatherProviderException failure) {
@@ -1360,7 +1110,7 @@ public class WeatherService {
                 .windGust(providerSample.getWindGust())
                 .windDirection(providerSample.getWindDirection())
                 .pressure(providerSample.getPressure())
-                .rawData(providerSample.getRawData())
+                .rawData(null)
                 .build();
 
         sampleRepository.persist(sample);
@@ -1369,27 +1119,20 @@ public class WeatherService {
         return true;
     }
 
-    private boolean markSkippedIfSampleExists(WeatherSampleTargetClaim target, String providerKey, Instant observedAt) {
-        return requiringNew(() -> {
-            if (!sampleRepository.existsAtBucketHour(
-                    target.userId(),
-                    providerKey,
-                    target.latitudeBucket(),
-                    target.longitudeBucket(),
-                    observedAt)) {
-                return false;
-            }
-
-            targetRepository.markSkipped(target.id(), "Weather sample already exists");
-            return true;
-        });
-    }
-
     protected <T> T requiringNew(Supplier<T> supplier) {
         return QuarkusTransaction.requiringNew().call(supplier::get);
     }
 
     private record ProviderFetchResult(String providerKey, WeatherProviderSample sample) {
+    }
+
+    private record ProviderFetchBatchResult(String providerKey, Map<Instant, WeatherProviderSample> samples) {
+    }
+
+    private static class InternalQuotaExceededException extends RuntimeException {
+        private InternalQuotaExceededException(String message) {
+            super(message);
+        }
     }
 
     private List<UserEntity> activeUsers() {
@@ -1468,8 +1211,29 @@ public class WeatherService {
         workloadMetrics.increment("geopulse.weather.provider.requests",
                 "component", "weather",
                 "provider", providerKey,
-                "endpoint", source == WeatherTargetSource.ONGOING ? "forecast" : "archive",
+                "source", source.name(),
                 "result", result);
+    }
+
+    private boolean reserveConnectionTestCall() {
+        boolean reserved = quotaService.tryReserveConnectionTest(1, configurationService.dailyRequestLimit());
+        if (reserved && workloadMetrics != null) {
+            workloadMetrics.increment("geopulse.weather.provider.requests",
+                    "component", "weather",
+                    "provider", primaryProviderKey(),
+                    "source", "CONNECTION_TEST",
+                    "result", "attempted");
+        }
+        return reserved;
+    }
+
+    private void countQuotaBlock(String type, String providerKey) {
+        if (workloadMetrics != null) {
+            workloadMetrics.increment("geopulse.weather.quota.blocks",
+                    "component", "weather",
+                    "type", type,
+                    "provider", providerKey);
+        }
     }
 
     private String normalizeWeatherSource(String source) {
@@ -1503,13 +1267,4 @@ public class WeatherService {
     ) {
     }
 
-    private record ProviderFailureDecision(boolean stopBatch, Instant retryAt, String reason) {
-        static ProviderFailureDecision continueBatch() {
-            return new ProviderFailureDecision(false, null, null);
-        }
-
-        static ProviderFailureDecision stopBatch(Instant retryAt, String reason) {
-            return new ProviderFailureDecision(true, retryAt, reason);
-        }
-    }
 }

@@ -156,8 +156,6 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.weather.ongoing.interval-minutes", "60", ValueType.INTEGER, "weather", "Minimum minutes between ongoing weather samples"));
         SETTING_DEFINITIONS.put("weather.backfill.enabled",
                 new SettingDefinition("geopulse.weather.backfill.enabled", "false", ValueType.BOOLEAN, "weather", "Enable historical weather backfill target discovery"));
-        SETTING_DEFINITIONS.put("weather.backfill.discovery.chunks-per-run",
-                new SettingDefinition("geopulse.weather.backfill.discovery.chunks-per-run", "4", ValueType.INTEGER, "weather", "Maximum 90-day user-range chunks processed by each historical reconciliation run"));
         SETTING_DEFINITIONS.put("weather.quota.daily-request-limit",
                 new SettingDefinition("geopulse.weather.quota.daily-request-limit", "10000", ValueType.INTEGER, "weather", "Daily provider request limit"));
         SETTING_DEFINITIONS.put("weather.quota.ongoing-reserve",
@@ -549,12 +547,6 @@ public class SystemSettingsService {
             int parsed = Integer.parseInt(value);
             if (parsed < 0) {
                 throw new IllegalArgumentException("Setting " + key + " must be zero or greater");
-            }
-        }
-        if ("weather.backfill.discovery.chunks-per-run".equals(key)) {
-            int parsed = Integer.parseInt(value);
-            if (parsed < 1) {
-                throw new IllegalArgumentException("Setting " + key + " must be at least 1");
             }
         }
         if ("weather.quota.ongoing-reserve".equals(key)) {

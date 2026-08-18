@@ -21,6 +21,8 @@ import org.github.tess1o.geopulse.weather.model.WeatherTargetStatus;
         WeatherSampleDTO.class,
         WeatherSamplesResponse.class,
         WeatherStatusResponse.class,
+        WeatherIntegrationStatusResponse.class,
+        WeatherWorkAcceptedResponse.class,
         WeatherProcessingStatus.class,
         WeatherReconciliationStatus.class,
         WeatherRunSummary.class,
