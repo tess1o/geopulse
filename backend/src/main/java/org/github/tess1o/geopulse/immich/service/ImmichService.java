@@ -136,11 +136,15 @@ public class ImmichService {
     }
 
     public CompletableFuture<byte[]> getPhotoThumbnail(UUID userId, String photoId) {
-        return getPhotoBytes(userId, photoId, true);
+        return getPhotoBytes(userId, photoId, PhotoAssetSize.THUMBNAIL);
+    }
+
+    public CompletableFuture<byte[]> getPhotoPreview(UUID userId, String photoId) {
+        return getPhotoBytes(userId, photoId, PhotoAssetSize.PREVIEW);
     }
 
     public CompletableFuture<byte[]> getPhotoOriginal(UUID userId, String photoId) {
-        return getPhotoBytes(userId, photoId, false);
+        return getPhotoBytes(userId, photoId, PhotoAssetSize.ORIGINAL);
     }
 
     public Optional<ImmichConfigResponse> getUserImmichConfig(UUID userId) {
@@ -262,7 +266,7 @@ public class ImmichService {
                 });
     }
 
-    private CompletableFuture<byte[]> getPhotoBytes(UUID userId, String photoId, boolean thumbnail) {
+    private CompletableFuture<byte[]> getPhotoBytes(UUID userId, String photoId, PhotoAssetSize size) {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
@@ -273,11 +277,11 @@ public class ImmichService {
             throw new IllegalStateException("Immich not configured or disabled for user: " + userId);
         }
 
-        if (thumbnail) {
-            return immichClient.getThumbnail(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), photoId);
-        } else {
-            return immichClient.getOriginal(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), photoId);
-        }
+        return switch (size) {
+            case THUMBNAIL -> immichClient.getThumbnail(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), photoId);
+            case PREVIEW -> immichClient.getPreview(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), photoId);
+            case ORIGINAL -> immichClient.getOriginal(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), photoId);
+        };
     }
 
     private CompletableFuture<List<ImmichPhotoDto>> loadAllFilteredPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
@@ -407,6 +411,7 @@ public class ImmichService {
                 .originalFileName(asset.getOriginalFileName())
                 .takenAt(asset.getTakenAt())
                 .thumbnailUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/thumbnail")
+                .previewUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/preview")
                 .downloadUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/download");
 
         if (asset.getExifInfo() != null) {
@@ -590,6 +595,12 @@ public class ImmichService {
             String city,
             String country
     ) {
+    }
+
+    private enum PhotoAssetSize {
+        THUMBNAIL,
+        PREVIEW,
+        ORIGINAL
     }
 
     private record MapMarkerAccumulator(

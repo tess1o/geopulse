@@ -16,5 +16,6 @@ public class ImmichPhotoDto {
     private Double latitude;
     private Double longitude;
     private String thumbnailUrl;
+    private String previewUrl;
     private String downloadUrl;
 }

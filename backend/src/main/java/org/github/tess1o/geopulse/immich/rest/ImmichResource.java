@@ -238,6 +238,30 @@ public class ImmichResource {
     }
 
     @GET
+    @Path("/{userId}/immich/photos/{photoId}/preview")
+    @Produces("image/jpeg")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getPhotoPreview(
+            @PathParam("userId") String userIdStr,
+            @PathParam("photoId") String photoId) {
+
+        UUID userId = parseUserId(userIdStr);
+        validateUserAccess(userId);
+
+        return immichService.getPhotoPreview(userId, photoId)
+                .thenApply(imageBytes ->
+                        Response.ok(imageBytes)
+                                .header("Cache-Control", "max-age=3600")
+                                .build())
+                .exceptionally(throwable -> {
+                    log.error("Failed to get preview for photo {} and user {}: {}",
+                            photoId, userId, throwable.getMessage(), throwable);
+                    return Response.status(Response.Status.NOT_FOUND).build();
+                });
+    }
+
+    @GET
     @Path("/{userId}/immich/photos/{photoId}/download")
     @Produces("image/jpeg")
     @RolesAllowed({"USER", "ADMIN"})
@@ -387,6 +411,16 @@ public class ImmichResource {
     public CompletableFuture<Response> getCurrentUserPhotoThumbnail(@PathParam("photoId") String photoId) {
         UUID userId = currentUserService.getCurrentUserId();
         return getPhotoThumbnail(userId.toString(), photoId);
+    }
+
+    @GET
+    @Path("/me/immich/photos/{photoId}/preview")
+    @Produces(MediaType.APPLICATION_OCTET_STREAM)
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getCurrentUserPhotoPreview(@PathParam("photoId") String photoId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        return getPhotoPreview(userId.toString(), photoId);
     }
 
     @GET

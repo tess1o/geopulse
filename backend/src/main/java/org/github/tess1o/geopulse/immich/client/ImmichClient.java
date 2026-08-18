@@ -196,7 +196,11 @@ public class ImmichClient {
     }
 
     public CompletableFuture<byte[]> getThumbnail(String baseUrl, String apiKey, String assetId) {
-        return getAssetBytes(baseUrl, apiKey, assetId, "/api/assets/" + assetId + "/thumbnail");
+        return getAssetBytes(baseUrl, apiKey, assetId, "/api/assets/" + assetId + "/thumbnail?size=thumbnail");
+    }
+
+    public CompletableFuture<byte[]> getPreview(String baseUrl, String apiKey, String assetId) {
+        return getAssetBytes(baseUrl, apiKey, assetId, "/api/assets/" + assetId + "/thumbnail?size=preview");
     }
 
     public CompletableFuture<byte[]> getOriginal(String baseUrl, String apiKey, String assetId) {

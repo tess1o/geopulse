@@ -603,24 +603,14 @@ export class TimelineMapPage {
    * Wait for Photo Viewer dialog
    */
   async waitForPhotoViewer() {
-    await this.page.waitForSelector('.p-dialog', { timeout: 5000 });
-    // Photo viewer has title like "Photos (1/2)"
-    await this.page.waitForSelector('.p-dialog-title:text-matches("Photos \\\\(\\\\d+/\\\\d+\\\\)")', { timeout: 2000 });
+    await this.page.waitForSelector('[data-testid="photo-viewer"]', { timeout: 5000 });
   }
 
   /**
    * Close Photo Viewer dialog
    */
   async closePhotoViewer() {
-    // Try the Close button in photo actions first
-    const closeButton = this.page.locator('.photo-actions .p-button:has(.p-button-label:text("Close"))');
-    if (await closeButton.count() > 0) {
-      await closeButton.click();
-    } else {
-      // Fallback to X button in header
-      const headerCloseButton = this.page.locator('.p-dialog .p-dialog-close-button');
-      await headerCloseButton.click();
-    }
+    await this.page.locator('[data-testid="photo-viewer-close"]').click();
   }
 
   // ===========================================
