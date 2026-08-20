@@ -63,7 +63,7 @@
     </template>
   </Card>
 
-  <ContextMenu ref="contextMenu" :model="contextMenuItems" />
+  <ContextMenu ref="contextMenu" :model="contextMenuItems" :base-z-index="1200" />
   <NoteEditorDialog
     v-model:visible="noteEditorVisible"
     anchor-type="STAY"
@@ -86,6 +86,7 @@ import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
 import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
 import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
+import { useExclusiveContextMenu } from '@/composables/useExclusiveContextMenu'
 import { useTimelineGpsDrilldown } from '@/composables/useTimelineGpsDrilldown'
 import { useNotesStore } from '@/stores/notes'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
@@ -136,9 +137,10 @@ const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-st
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
 const noteEditorVisible = ref(false)
+const { show: showExclusiveContextMenu } = useExclusiveContextMenu(contextMenu, 'timeline-card')
 
 const openContextMenu = (event) => {
-  contextMenu.value?.show(event)
+  showExclusiveContextMenu(event)
 }
 
 const {
