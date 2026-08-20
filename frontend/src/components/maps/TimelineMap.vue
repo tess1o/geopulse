@@ -2169,6 +2169,35 @@ defineExpose({
     min-height: 300px;
   }
 
+  .map-view-container :global(.leaflet-bottom),
+  .map-view-container :global(.maplibregl-ctrl-bottom-left),
+  .map-view-container :global(.maplibregl-ctrl-bottom-right) {
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 0.15rem + env(safe-area-inset-bottom)) !important;
+    z-index: 880 !important;
+    pointer-events: none !important;
+  }
+
+  .map-view-container :global(.leaflet-bottom.leaflet-left),
+  .map-view-container :global(.maplibregl-ctrl-bottom-left) {
+    left: calc(0.5rem + env(safe-area-inset-left)) !important;
+  }
+
+  .map-view-container :global(.leaflet-bottom.leaflet-right),
+  .map-view-container :global(.maplibregl-ctrl-bottom-right) {
+    right: calc(0.5rem + env(safe-area-inset-right)) !important;
+  }
+
+  .map-view-container :global(.leaflet-control-attribution),
+  .map-view-container :global(.maplibregl-ctrl-attrib) {
+    max-width: calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+    box-sizing: border-box;
+    pointer-events: auto !important;
+  }
+
+  .map-view-container :global(.maplibregl-ctrl-attrib) {
+    margin-bottom: 0 !important;
+  }
+
   .mobile-trip-summary {
     width: calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     max-width: 22rem;
