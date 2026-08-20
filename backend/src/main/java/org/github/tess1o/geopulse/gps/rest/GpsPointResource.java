@@ -27,7 +27,7 @@ import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.jboss.resteasy.reactive.RestHeader;
@@ -460,7 +460,7 @@ public class GpsPointResource {
             StreamingOutput stream = output -> {
                 try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
                     // Write CSV header
-                    if (user.getMeasureUnit() == MeasureUnit.METRIC) {
+                    if (user.getDistanceUnit() == DistanceUnit.KILOMETERS) {
                         writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType,telemetry\n");
                     } else {
                         writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType,telemetry\n");
@@ -470,7 +470,7 @@ public class GpsPointResource {
                     gpsPointService.streamGpsPointsForExport(user.getId(), filters, 1000, batch -> {
                         try {
                             for (GpsPointEntity point : batch) {
-                                writer.write(formatCsvRow(point, user.getMeasureUnit()));
+                                writer.write(formatCsvRow(point, user.getDistanceUnit()));
                             }
                             writer.flush(); // Flush after each batch
                         } catch (Exception e) {
@@ -538,14 +538,14 @@ public class GpsPointResource {
      * Format a single GPS point as a CSV row.
      *
      * @param point       GPS point entity
-     * @param measureUnit User's measurement unit preference
+     * @param distanceUnit User's distance unit preference
      * @return CSV row string
      */
-    private String formatCsvRow(GpsPointEntity point, MeasureUnit measureUnit) {
+    private String formatCsvRow(GpsPointEntity point, DistanceUnit distanceUnit) {
         StringBuilder row = new StringBuilder();
 
         double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
-        if (measureUnit == MeasureUnit.IMPERIAL) {
+        if (distanceUnit == DistanceUnit.MILES) {
             velocity = velocity * 0.621371; // Convert km/h to mph
         }
 

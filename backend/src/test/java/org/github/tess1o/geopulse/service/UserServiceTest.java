@@ -9,7 +9,8 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -53,25 +54,29 @@ public class UserServiceTest {
     }
 
     @Test
-    public void testUserRegistrationUsesConfiguredDefaultMeasureUnit() {
+    public void testUserRegistrationUsesConfiguredDefaultUnits() {
         UserEntity updater = userService.registerUser(
                 TestIds.uniqueEmail("default-unit-updater"), "test", "Default Unit Updater", "Europe/Kyiv");
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        systemSettingsService.setValue("system.user.default-distance-unit", "MILES", updater.getId());
+        systemSettingsService.setValue("system.user.default-temperature-unit", "FAHRENHEIT", updater.getId());
         try {
             String email = TestIds.uniqueEmail("user-service-default-unit");
             UserEntity user = userService.registerUser(email, "test", "test", "Europe/Kyiv");
 
-            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
         } finally {
-            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+            systemSettingsService.resetToDefault("system.user.default-distance-unit");
+            systemSettingsService.resetToDefault("system.user.default-temperature-unit");
         }
     }
 
     @Test
-    public void testInvitationRegistrationUsesConfiguredDefaultMeasureUnit() {
+    public void testInvitationRegistrationUsesConfiguredDefaultUnits() {
         UserEntity updater = userService.registerUser(
                 TestIds.uniqueEmail("invitation-default-unit-updater"), "test", "Invitation Default Unit Updater", "Europe/Kyiv");
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        systemSettingsService.setValue("system.user.default-distance-unit", "MILES", updater.getId());
+        systemSettingsService.setValue("system.user.default-temperature-unit", "FAHRENHEIT", updater.getId());
         try {
             String email = TestIds.uniqueEmail("user-service-invitation-default-unit");
             UserEntity user = userService.registerUserViaInvitation(
@@ -82,9 +87,11 @@ public class UserServiceTest {
                     "Europe/Kyiv"
             );
 
-            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
         } finally {
-            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+            systemSettingsService.resetToDefault("system.user.default-distance-unit");
+            systemSettingsService.resetToDefault("system.user.default-temperature-unit");
         }
     }
 

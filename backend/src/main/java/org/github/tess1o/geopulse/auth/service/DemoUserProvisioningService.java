@@ -82,7 +82,8 @@ public class DemoUserProvisioningService {
         user.setEmail(persona.email());
         user.setFullName(persona.fullName());
         user.setTimezone(persona.timezone());
-        user.setMeasureUnit(persona.measureUnit());
+        user.setDistanceUnit(persona.distanceUnit());
+        user.setTemperatureUnit(persona.temperatureUnit());
         user.setDateFormat(persona.dateFormat());
         user.setTimeFormat(persona.timeFormat());
         user.setActive(true);

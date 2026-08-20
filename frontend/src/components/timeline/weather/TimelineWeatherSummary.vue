@@ -93,7 +93,7 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit, temperatureUnit } = storeToRefs(authStore)
 const detailsPopover = ref(null)
 const mobileDetailsVisible = ref(false)
 const isMobileViewport = ref(false)
@@ -102,22 +102,23 @@ const popoverBreakpoints = {
 }
 
 const summary = computed(() => summarizeWeatherSamples(props.samples))
-const unit = computed(() => measureUnit.value || 'METRIC')
+const distance = computed(() => distanceUnit.value || 'KILOMETERS')
+const temperature = computed(() => temperatureUnit.value || 'CELSIUS')
 
-const temperatureText = computed(() => formatTemperature(summary.value?.avgTemperature, unit.value) || 'n/a')
+const temperatureText = computed(() => formatTemperature(summary.value?.avgTemperature, temperature.value) || 'n/a')
 const temperatureRangeText = computed(() => {
   if (!summary.value || summary.value.sampleCount <= 1) {
     return ''
   }
-  const min = formatTemperature(summary.value.minTemperature, unit.value)
-  const max = formatTemperature(summary.value.maxTemperature, unit.value)
+  const min = formatTemperature(summary.value.minTemperature, temperature.value)
+  const max = formatTemperature(summary.value.maxTemperature, temperature.value)
   if (!min || !max || min === max) {
     return ''
   }
   return `${min}-${max}`
 })
-const precipitationText = computed(() => formatPrecipitation(summary.value?.precipitationTotal, unit.value))
-const windText = computed(() => formatWindSpeed(summary.value?.maxWindSpeed, unit.value))
+const precipitationText = computed(() => formatPrecipitation(summary.value?.precipitationTotal, distance.value))
+const windText = computed(() => formatWindSpeed(summary.value?.maxWindSpeed, distance.value))
 const summaryTitle = computed(() => [
   summary.value?.condition,
   temperatureText.value,

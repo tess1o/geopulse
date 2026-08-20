@@ -18,7 +18,9 @@ public class UpdateProfileRequest {
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
     private String timezone;
 
-    private MeasureUnit measureUnit;
+    private DistanceUnit distanceUnit;
+
+    private TemperatureUnit temperatureUnit;
 
     @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
     private String defaultRedirectUrl;

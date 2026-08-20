@@ -30,7 +30,7 @@ import {
 } from '@/maps/shared/popups/mapPopupOptions'
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -133,7 +133,7 @@ const createStackPopupElement = (marker, markerItems) => {
     {
       formatDateDisplay: (value) => timezone.formatDateDisplay(value),
       formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
-      unit: measureUnit.value
+      unit: distanceUnit.value
     }
   )
 
@@ -413,7 +413,7 @@ const renderTimelineMarkers = () => {
 
 const buildPopupModel = (item) => buildTimelineItemPopupModel(item, {
   formatDateTimeDisplay,
-  unit: measureUnit.value
+  unit: distanceUnit.value
 })
 
 const clearTimelineMarkers = () => {
@@ -580,7 +580,7 @@ watch(() => props.highlightedItem, (newItem, oldItem) => {
   updateHighlightedMarker()
 }, { deep: true })
 
-watch(() => measureUnit.value, () => {
+watch(() => distanceUnit.value, () => {
   if (baseLayerRef.value?.isReady) {
     renderTimelineMarkers()
   }

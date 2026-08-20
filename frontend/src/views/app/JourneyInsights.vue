@@ -213,7 +213,8 @@
 
           <JourneyWeatherInsights
               :weather="weather"
-              :measure-unit="measureUnit"
+              :distance-unit="distanceUnit"
+              :temperature-unit="temperatureUnit"
           />
 
           <!-- Milestones Section -->
@@ -293,7 +294,7 @@ const { handleErrorWithRetry } = useErrorHandler()
 
 // Store refs
 const { insights: journeyInsights, loading: isLoading } = storeToRefs(journeyInsightsStore)
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit, temperatureUnit } = storeToRefs(authStore)
 
 // Computed properties
 const hasAnyData = computed(() => {

@@ -74,16 +74,27 @@ Select your local timezone to ensure all dates and times are displayed correctly
 - `Asia/Tokyo` - Japan Standard Time (GMT+9)
 - `Australia/Sydney` - Australian Eastern Time (GMT+10)
 
-### Measurement Unit
+### Distance Unit
 
 Choose how distances and speeds are displayed throughout GeoPulse.
 
 **Options:**
 
-| Unit | Distance | Speed | Best For |
-|------|----------|-------|----------|
-| **Metric** | Kilometers, meters | km/h | Most of the world |
-| **Imperial** | Miles, feet | mph | United States, UK |
+| Unit | Distance | Speed |
+|------|----------|-------|
+| **Kilometers** | Kilometers, meters | km/h |
+| **Miles** | Miles, feet | mph |
+
+### Temperature Unit
+
+Choose how temperatures are displayed in weather views.
+
+**Options:**
+
+| Unit | Temperature |
+|------|-------------|
+| **Celsius** | °C |
+| **Fahrenheit** | °F |
 
 **What it affects:**
 - Trip distances in Timeline and Dashboard
@@ -93,7 +104,7 @@ Choose how distances and speeds are displayed throughout GeoPulse.
 - All distance-related filters and calculations
 
 :::tip Consistency Across App
-Your measurement unit preference applies to all pages and reports, ensuring consistent data presentation.
+Your distance and temperature preferences apply across the app. You can use miles for distance and Celsius for weather.
 :::
 
 ### Time Format
@@ -277,7 +288,7 @@ For more customization options, see:
 
 - [AI Assistant Settings](/docs/user-guide/personalization/ai-assistant-settings) - Configure AI-powered features
 - [Custom Map Tiles](/docs/user-guide/personalization/custom-map-tiles) - Detailed map customization guide
-- [Measurement Units](/docs/user-guide/personalization/measurement-units) - Distance and speed preferences
+- [Measurement Units](/docs/user-guide/personalization/measurement-units) - Distance, speed, and temperature preferences
 - [Immich Integration](/docs/user-guide/personalization/immich-integration) - Photo management integration
 
 ## Frequently Asked Questions

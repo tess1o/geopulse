@@ -44,7 +44,7 @@ import {
 } from '@/maps/shared/highlightedTripData'
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -258,7 +258,7 @@ const createHighlightedEndpointMarker = ({
     MapInfoPopup,
     buildTripEndpointPopupModel(props.highlightedTrip, markerType, {
       formatDateTimeDisplay,
-      unit: measureUnit.value
+      unit: distanceUnit.value
     })
   )
   const popup = new maplibregl.Popup({
@@ -379,7 +379,7 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
     state.highlightedTripPopupMount?.updateProps?.(
       buildHighlightedTripPopupModel(props.highlightedTrip, {
         formatDateTimeDisplay,
-        unit: measureUnit.value
+        unit: distanceUnit.value
       })
     )
     scheduleHighlightedTripPopupAutoHide(tripKey)
@@ -401,7 +401,7 @@ const syncHighlightedTripPopup = (lineCoordinates) => {
       MapInfoPopup,
       buildHighlightedTripPopupModel(props.highlightedTrip, {
         formatDateTimeDisplay,
-        unit: measureUnit.value
+        unit: distanceUnit.value
       })
     )
     state.highlightedTripPopup = new maplibregl.Popup({
@@ -774,7 +774,7 @@ watch(
     props.inspectionEnabled,
     props.allowPathDataTripFallback,
     props.showHighlightedTripPopup,
-    measureUnit.value
+    distanceUnit.value
   ],
   () => {
     if (!isMapLibreMap(props.map)) {

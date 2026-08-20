@@ -434,8 +434,10 @@ config:
 
   # User defaults
   user:
-    # Default measurement unit for newly created users (METRIC or IMPERIAL)
-    defaultMeasureUnit: "METRIC"
+    # Default distance unit for newly created users (KILOMETERS or MILES)
+    defaultDistanceUnit: "KILOMETERS"
+    # Default temperature unit for newly created users (CELSIUS or FAHRENHEIT)
+    defaultTemperatureUnit: "CELSIUS"
 
   # Authentication & Registration Configuration
   auth:

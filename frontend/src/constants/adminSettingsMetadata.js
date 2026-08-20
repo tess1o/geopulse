@@ -334,9 +334,13 @@ export const SETTING_METADATA = {
   },
 
   // System / Notifications Settings
-  'system.user.default-measure-unit': {
-    label: 'Default Measurement Unit',
-    description: 'Measurement unit assigned to newly created users'
+  'system.user.default-distance-unit': {
+    label: 'Default Distance Unit',
+    description: 'Distance unit assigned to newly created users'
+  },
+  'system.user.default-temperature-unit': {
+    label: 'Default Temperature Unit',
+    description: 'Temperature unit assigned to newly created users'
   },
   'system.notifications.apprise.enabled': {
     label: 'Enable Apprise Notifications',
@@ -380,9 +384,14 @@ export const GEOCODING_PROVIDER_OPTIONS = [
   { label: 'ChibiGeo', value: 'chibigeo' }
 ]
 
-export const MEASURE_UNIT_OPTIONS = [
-  { label: 'Metric (kilometers, meters)', value: 'METRIC' },
-  { label: 'Imperial (miles, feet)', value: 'IMPERIAL' }
+export const DISTANCE_UNIT_OPTIONS = [
+  { label: 'Kilometers (km, m)', value: 'KILOMETERS' },
+  { label: 'Miles (mi, ft)', value: 'MILES' }
+]
+
+export const TEMPERATURE_UNIT_OPTIONS = [
+  { label: 'Celsius (°C)', value: 'CELSIUS' },
+  { label: 'Fahrenheit (°F)', value: 'FAHRENHEIT' }
 ]
 
 /**

@@ -9,9 +9,19 @@
       >
         <template #control="{ setting }">
           <Select
-            v-if="setting.key === 'system.user.default-measure-unit'"
+            v-if="setting.key === 'system.user.default-distance-unit'"
             v-model="setting.currentValue"
-            :options="measureUnitOptions"
+            :options="distanceUnitOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select default unit"
+            @change="handleUpdate(setting)"
+            style="width: 260px"
+          />
+          <Select
+            v-else-if="setting.key === 'system.user.default-temperature-unit'"
+            v-model="setting.currentValue"
+            :options="temperatureUnitOptions"
             optionLabel="label"
             optionValue="value"
             placeholder="Select default unit"
@@ -59,11 +69,12 @@ import Select from 'primevue/select'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
-import { MEASURE_UNIT_OPTIONS } from '@/constants/adminSettingsMetadata'
+import { DISTANCE_UNIT_OPTIONS, TEMPERATURE_UNIT_OPTIONS } from '@/constants/adminSettingsMetadata'
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 
 const systemSettings = ref([])
-const measureUnitOptions = MEASURE_UNIT_OPTIONS
+const distanceUnitOptions = DISTANCE_UNIT_OPTIONS
+const temperatureUnitOptions = TEMPERATURE_UNIT_OPTIONS
 
 const reloadSettings = async () => {
   const loaded = await loadSettings('system')

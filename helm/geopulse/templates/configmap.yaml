@@ -20,7 +20,8 @@ data:
   GEOPULSE_FIRST_USER_ADMIN: {{ .Values.config.admin.firstUserAdmin | quote }}
 
   # User defaults
-  GEOPULSE_USER_DEFAULT_MEASURE_UNIT: {{ .Values.config.user.defaultMeasureUnit | quote }}
+  GEOPULSE_USER_DEFAULT_DISTANCE_UNIT: {{ .Values.config.user.defaultDistanceUnit | quote }}
+  GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT: {{ .Values.config.user.defaultTemperatureUnit | quote }}
 
   # Authentication & Registration
   GEOPULSE_AUTH_REGISTRATION_ENABLED: {{ .Values.config.auth.registrationEnabled | quote }}

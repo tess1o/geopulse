@@ -158,7 +158,7 @@ public class OidcAuthenticationService {
      */
     private void persistConnectionWithRaceHandling(UserOidcConnectionEntity connection, String providerName, String externalUserId) {
         try {
-            connectionRepository.persist(connection);
+            connectionRepository.persistAndFlush(connection);
         } catch (jakarta.persistence.PersistenceException e) {
             if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
                 log.warn("Duplicate OIDC connection detected. Provider: {}, ExternalUserId: {}. Verifying ownership.",
@@ -182,6 +182,51 @@ public class OidcAuthenticationService {
                 throw e;
             }
         }
+    }
+
+    private void linkOrUpdateConnectionForUser(UserEntity user, String providerName, OidcUserInfo userInfo) {
+        Optional<UserOidcConnectionEntity> existingProviderConnection =
+                connectionRepository.findByProviderNameAndExternalUserId(providerName, userInfo.getSubject());
+
+        if (existingProviderConnection.isPresent()) {
+            UserOidcConnectionEntity connection = existingProviderConnection.get();
+            if (!connection.getUserId().equals(user.getId())) {
+                throw new IllegalArgumentException("This OIDC account is already linked to a different user");
+            }
+            updateConnectionFromUserInfo(connection, userInfo, false);
+            return;
+        }
+
+        Optional<UserOidcConnectionEntity> existingUserProviderConnection =
+                connectionRepository.findByUserIdAndProviderName(user.getId(), providerName);
+
+        if (existingUserProviderConnection.isPresent()) {
+            UserOidcConnectionEntity connection = existingUserProviderConnection.get();
+            log.warn("Updating OIDC connection subject for user {} and provider {}. Previous subject: {}, New subject: {}",
+                    user.getId(), providerName, connection.getExternalUserId(), userInfo.getSubject());
+            updateConnectionFromUserInfo(connection, userInfo, true);
+            return;
+        }
+
+        UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
+                .userId(user.getId())
+                .providerName(providerName)
+                .externalUserId(userInfo.getSubject())
+                .displayName(userInfo.getName())
+                .avatarUrl(userInfo.getPicture())
+                .lastLoginAt(Instant.now())
+                .build();
+
+        persistConnectionWithRaceHandling(connection, providerName, userInfo.getSubject());
+    }
+
+    private void updateConnectionFromUserInfo(UserOidcConnectionEntity connection, OidcUserInfo userInfo, boolean updateExternalUserId) {
+        if (updateExternalUserId) {
+            connection.setExternalUserId(userInfo.getSubject());
+        }
+        connection.setDisplayName(userInfo.getName());
+        connection.setAvatarUrl(userInfo.getPicture());
+        connection.setLastLoginAt(Instant.now());
     }
 
     @Transactional
@@ -333,32 +378,7 @@ public class OidcAuthenticationService {
                         "This bypasses verification. Ensure you trust your OIDC provider.",
                         sessionState.getProviderName(), userInfo.getEmail(), user.getId());
 
-                // Check if this OIDC account is already linked to a different user
-                Optional<UserOidcConnectionEntity> existingProviderConnection =
-                        connectionRepository.findByProviderNameAndExternalUserId(
-                                sessionState.getProviderName(), userInfo.getSubject());
-
-                if (existingProviderConnection.isPresent()) {
-                    if (!existingProviderConnection.get().getUserId().equals(user.getId())) {
-                        throw new IllegalArgumentException(
-                                "This OIDC account is already linked to a different user");
-                    }
-                    // Already linked to this user - just update last login
-                    existingProviderConnection.get().setLastLoginAt(Instant.now());
-                    return user;
-                }
-
-                // Create new OIDC connection for existing user
-                UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
-                        .userId(user.getId())
-                        .providerName(sessionState.getProviderName())
-                        .externalUserId(userInfo.getSubject())
-                        .displayName(userInfo.getName())
-                        .avatarUrl(userInfo.getPicture())
-                        .lastLoginAt(Instant.now())
-                        .build();
-
-                persistConnectionWithRaceHandling(connection, sessionState.getProviderName(), userInfo.getSubject());
+                linkOrUpdateConnectionForUser(user, sessionState.getProviderName(), userInfo);
                 log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getEmail());
                 return user;
             }
@@ -406,7 +426,8 @@ public class OidcAuthenticationService {
                 .isActive(true)
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
-                .measureUnit(userService.getDefaultMeasureUnit())
+                .distanceUnit(userService.getDefaultDistanceUnit())
+                .temperatureUnit(userService.getDefaultTemperatureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -463,17 +484,7 @@ public class OidcAuthenticationService {
             return user;
         }
 
-        // Create new OIDC connection for existing user
-        UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
-                .userId(user.getId())
-                .providerName(sessionState.getProviderName())
-                .externalUserId(userInfo.getSubject())
-                .displayName(userInfo.getName())
-                .avatarUrl(userInfo.getPicture())
-                .lastLoginAt(Instant.now())
-                .build();
-
-        persistConnectionWithRaceHandling(connection, sessionState.getProviderName(), userInfo.getSubject());
+        linkOrUpdateConnectionForUser(user, sessionState.getProviderName(), userInfo);
         return user;
     }
 
@@ -484,17 +495,8 @@ public class OidcAuthenticationService {
             throw new IllegalArgumentException("Invalid linking token during verification");
         }
 
-        // Create OIDC connection for the ORIGINAL provider (not the verification provider)
-        UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
-                .userId(user.getId())
-                .providerName(tokenData.newProvider()) // Use the original provider being linked
-                .externalUserId(tokenData.originalUserInfo().getSubject())
-                .displayName(tokenData.originalUserInfo().getName())
-                .avatarUrl(tokenData.originalUserInfo().getPicture())
-                .lastLoginAt(Instant.now())
-                .build();
-
-        persistConnectionWithRaceHandling(connection, tokenData.newProvider(), tokenData.originalUserInfo().getSubject());
+        // Link the ORIGINAL provider, not the verification provider.
+        linkOrUpdateConnectionForUser(user, tokenData.newProvider(), tokenData.originalUserInfo());
         log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getEmail());
         return user;
     }

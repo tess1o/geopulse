@@ -14,7 +14,8 @@ import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionReposit
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -128,14 +129,15 @@ public class OidcAutoLinkAccountsTest {
 
     @Test
     @Transactional
-    public void testOidcNewUserUsesConfiguredDefaultMeasureUnit() throws Exception {
+    public void testOidcNewUserUsesConfiguredDefaultUnits() throws Exception {
         UserEntity updater = userService.registerUser(
                 TestIds.uniqueEmail("oidc-default-unit-updater"),
                 "password",
                 "OIDC Default Unit Updater",
                 "UTC"
         );
-        systemSettingsService.setValue("system.user.default-measure-unit", "IMPERIAL", updater.getId());
+        systemSettingsService.setValue("system.user.default-distance-unit", "MILES", updater.getId());
+        systemSettingsService.setValue("system.user.default-temperature-unit", "FAHRENHEIT", updater.getId());
         try {
             String email = TestIds.uniqueEmail("oidc-default-unit");
             String externalUserId = TestIds.uniqueValue("oidc-subject");
@@ -156,10 +158,12 @@ public class OidcAutoLinkAccountsTest {
             OidcAuthenticationService oidcService = ClientProxy.unwrap(oidcAuthenticationService);
             UserEntity user = (UserEntity) method.invoke(oidcService, userInfo, "google");
 
-            assertEquals(MeasureUnit.IMPERIAL, user.getMeasureUnit());
+            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
             assertEquals(1, connectionRepository.findByUserId(user.getId()).size());
         } finally {
-            systemSettingsService.resetToDefault("system.user.default-measure-unit");
+            systemSettingsService.resetToDefault("system.user.default-distance-unit");
+            systemSettingsService.resetToDefault("system.user.default-temperature-unit");
         }
     }
 
@@ -201,6 +205,71 @@ public class OidcAutoLinkAccountsTest {
         assertTrue(updatedConnection.isPresent());
         assertTrue(updatedConnection.get().getLastLoginAt().isAfter(oldTimestamp));
     }
+
+    @Test
+    @Transactional
+    public void testAutoLinkUpdatesExistingUserProviderConnectionWhenSubjectChanges() throws Exception {
+        UserEntity updater = userService.registerUser(
+                TestIds.uniqueEmail("oidc-autolink-updater"),
+                "password",
+                "OIDC Auto Link Updater",
+                "UTC"
+        );
+        systemSettingsService.setValue("auth.oidc.auto-link-accounts", "true", updater.getId());
+
+        try {
+            String email = TestIds.uniqueEmail("oidc-subject-change");
+            UserEntity user = userService.registerUser(
+                    email,
+                    "password",
+                    "OIDC Subject Change",
+                    "UTC"
+            );
+            String oldSubject = TestIds.uniqueValue("old-subject");
+            String newSubject = TestIds.uniqueValue("new-subject");
+            UserOidcConnectionEntity existingConnection = UserOidcConnectionEntity.builder()
+                    .userId(user.getId())
+                    .providerName("generic")
+                    .externalUserId(oldSubject)
+                    .displayName("Old Name")
+                    .lastLoginAt(Instant.now().minus(1, ChronoUnit.DAYS))
+                    .build();
+            connectionRepository.persist(existingConnection);
+
+            OidcUserInfo userInfo = OidcUserInfo.builder()
+                    .subject(newSubject)
+                    .email(email)
+                    .emailVerified(true)
+                    .name("New Name")
+                    .picture("https://example.com/new-avatar.jpg")
+                    .build();
+            OidcSessionStateEntity sessionState = OidcSessionStateEntity.builder()
+                    .stateToken(TestIds.uniqueValue("state"))
+                    .providerName("generic")
+                    .redirectUri("/app/timeline")
+                    .expiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
+                    .build();
+
+            Method method = OidcAuthenticationService.class.getDeclaredMethod(
+                    "findOrCreateUser",
+                    OidcUserInfo.class,
+                    OidcSessionStateEntity.class
+            );
+            method.setAccessible(true);
+            OidcAuthenticationService oidcService = ClientProxy.unwrap(oidcAuthenticationService);
+            UserEntity authenticatedUser = (UserEntity) method.invoke(oidcService, userInfo, sessionState);
+
+            assertEquals(user.getId(), authenticatedUser.getId());
+            var connections = connectionRepository.findByUserId(user.getId());
+            assertEquals(1, connections.size());
+            assertEquals(newSubject, connections.get(0).getExternalUserId());
+            assertEquals("New Name", connections.get(0).getDisplayName());
+            assertTrue(connectionRepository.findByProviderNameAndExternalUserId("generic", newSubject).isPresent());
+        } finally {
+            systemSettingsService.resetToDefault("auth.oidc.auto-link-accounts");
+        }
+    }
+
     /**
      * Test: Verify session state creation and retrieval
      */

@@ -1,10 +1,10 @@
 import {useTimezone} from '@/composables/useTimezone'
 import {formatDistance, formatDurationSmart} from "@/utils/calculationsHelpers"
 import { findOriginStay, findDestinationStay } from '@/utils/tripHelpers'
-import { useMeasureUnit } from '@/composables/useMeasureUnit'
+import { useUnits } from '@/composables/useUnits'
 
 const timezone = useTimezone()
-const { getMeasureUnit } = useMeasureUnit()
+const { getDistanceUnit } = useUnits()
 
 /**
  * Data Exporter utility for GeoPulse Data Tables
@@ -56,15 +56,15 @@ export class DataExporter {
      * @returns {Promise<void>}
      */
     static async exportTrips(stays, trips, dateRange) {
-        const measureUnit = getMeasureUnit()
-        const isImperial = measureUnit === 'IMPERIAL'
+        const distanceUnit = getDistanceUnit()
+        const isMiles = distanceUnit === 'MILES'
 
         const headers = [
             'Start Date',
             'End Date',
             'Duration',
             'Duration (minutes)',
-            isImperial ? 'Distance, miles' : 'Distance, meters',
+            isMiles ? 'Distance, miles' : 'Distance, meters',
             'Origin',
             'Origin Latitude',
             'Origin Longitude',
@@ -81,7 +81,7 @@ export class DataExporter {
             const destination = findDestinationStay(stays, endTime.toISOString())?.locationName
             
             let distance;
-            if (isImperial) {
+            if (isMiles) {
                 distance = (trip.distanceMeters * 0.000621371).toFixed(2);
             } else {
                 distance = Math.round(trip.distanceMeters);

@@ -93,7 +93,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, measureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -198,7 +198,8 @@ const currentTabProps = computed(() => {
       userEmail: userEmail.value,
       userAvatar: userAvatar.value,
       userTimezone: userTimezone.value,
-      userMeasureUnit: measureUnit.value || 'METRIC',
+      userDistanceUnit: distanceUnit.value || 'KILOMETERS',
+      userTemperatureUnit: temperatureUnit.value || 'CELSIUS',
       userDefaultRedirectUrl: defaultRedirectUrl.value || '',
       userDateFormat: dateFormat.value || 'MDY',
       userTimeFormat: timeFormat.value || '24h',
@@ -326,7 +327,8 @@ const handleProfileSave = async (data) => {
       fullName: data.fullName,
       avatar: avatarToSave,
       timezone: data.timezone,
-      measureUnit: data.measureUnit,
+      distanceUnit: data.distanceUnit,
+      temperatureUnit: data.temperatureUnit,
       defaultRedirectUrl: data.defaultRedirectUrl,
       dateFormat: data.dateFormat,
       timeFormat: data.timeFormat

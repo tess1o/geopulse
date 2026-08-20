@@ -17,7 +17,8 @@ import org.github.tess1o.geopulse.user.model.*;
         UpdateTimelineDisplayPreferencesRequest.class,
         TimelineDisplayPreferences.class,
         RefreshTokenResponse.class,
-        MeasureUnit.class,
+        DistanceUnit.class,
+        TemperatureUnit.class,
         MapRenderMode.class,
         UserAvatarEntity.class
 })

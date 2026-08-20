@@ -98,7 +98,7 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
   let highlightedTripId = null
   let lastRenderPayload = null
   let lastFocusedItem = null
-  let currentUnit = 'METRIC'
+  let currentUnit = 'KILOMETERS'
 
   const stayMarkers = new Map()
   const userPathPointsByUser = new Map()
@@ -188,12 +188,12 @@ export const createVectorFriendsTimelineMapAdapter = (callbacks = {}) => {
     })
   }
 
-  const render = ({ visibleTimelines = [], unit = 'METRIC' } = {}) => {
+  const render = ({ visibleTimelines = [], unit = 'KILOMETERS' } = {}) => {
     if (!isMapLibreMap(map)) {
       return
     }
 
-    currentUnit = unit || 'METRIC'
+    currentUnit = unit || 'KILOMETERS'
     lastRenderPayload = { visibleTimelines, unit: currentUnit }
 
     clear()

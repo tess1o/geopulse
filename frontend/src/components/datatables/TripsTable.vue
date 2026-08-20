@@ -409,7 +409,7 @@ const props = defineProps({
 const emit = defineEmits(['export', 'show-on-map', 'row-select'])
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 
 // Use shared table filters composable with trips-specific options
 const {
@@ -421,8 +421,8 @@ const {
   useTripsFilter
 } = useTableFilters()
 
-watch(measureUnit, (unit) => {
-  if (unit === 'IMPERIAL') {
+watch(distanceUnit, (unit) => {
+  if (unit === 'MILES') {
     distanceFilterOptions.value = [
       { label: 'Less than 1 mile', value: 'short', maxDistance: 1609.34 },
       { label: '1-10 miles', value: 'medium', minDistance: 1609.34, maxDistance: 16093.4 },

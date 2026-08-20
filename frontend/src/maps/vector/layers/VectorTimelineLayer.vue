@@ -23,7 +23,7 @@ import {
 } from '@/maps/shared/popups/mapPopupOptions'
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -129,7 +129,7 @@ const formatDateTimeDisplay = (dateValue) =>
 
 const createPopupModel = (item) => buildTimelineItemPopupModel(item, {
   formatDateTimeDisplay,
-  unit: measureUnit.value
+  unit: distanceUnit.value
 })
 
 const closeStackPopup = () => {
@@ -169,7 +169,7 @@ const createStackPopupElement = (items, onSelect, onStayContextMenu) => {
   const rows = buildTimelineStackItems(items, {
     formatDateDisplay: (value) => timezone.formatDateDisplay(value),
     formatTime: (value) => timezone.formatTime(value, { withSeconds: true }),
-    unit: measureUnit.value
+    unit: distanceUnit.value
   })
 
   rows.forEach((row, stackIndex) => {
@@ -321,7 +321,7 @@ const findHighlightedGroupContext = () => {
       return {
         group,
         focusedItem,
-        highlightedKey: `${targetKey}|${measureUnit.value || 'METRIC'}`
+        highlightedKey: `${targetKey}|${distanceUnit.value || 'KILOMETERS'}`
       }
     }
   }
@@ -585,7 +585,7 @@ const clearLayer = () => {
 }
 
 watch(
-  () => [props.map, props.timelineData, props.highlightedItem, props.visible, measureUnit.value],
+  () => [props.map, props.timelineData, props.highlightedItem, props.visible, distanceUnit.value],
   () => {
     if (!isMapLibreMap(props.map)) {
       clearLayer()

@@ -89,38 +89,43 @@ const props = defineProps({
     type: Object,
     default: null
   },
-  measureUnit: {
+  distanceUnit: {
     type: String,
-    default: 'METRIC'
+    default: 'KILOMETERS'
+  },
+  temperatureUnit: {
+    type: String,
+    default: 'CELSIUS'
   }
 })
 
 const timezone = useTimezone()
 
 const hasWeatherInsights = computed(() => Number(props.weather?.samplesCount || 0) > 0)
-const normalizedMeasureUnit = computed(() => props.measureUnit === 'IMPERIAL' ? 'IMPERIAL' : 'METRIC')
+const normalizedDistanceUnit = computed(() => props.distanceUnit === 'MILES' ? 'MILES' : 'KILOMETERS')
+const normalizedTemperatureUnit = computed(() => props.temperatureUnit === 'FAHRENHEIT' ? 'FAHRENHEIT' : 'CELSIUS')
 const dominantWeatherIcon = computed(() => getWeatherCodeInfo(props.weather?.dominantCondition?.weatherCode).icon)
 
 const weatherIcon = (sample) => getWeatherCodeInfo(sample?.weatherCode).icon
 
 const formatSampleTemperature = (sample) => {
-  return formatTemperature(sample?.temperature, normalizedMeasureUnit.value) || 'N/A'
+  return formatTemperature(sample?.temperature, normalizedTemperatureUnit.value) || 'N/A'
 }
 
 const formatAverageTemperature = (temperature) => {
-  return formatTemperature(temperature, normalizedMeasureUnit.value) || 'N/A'
+  return formatTemperature(temperature, normalizedTemperatureUnit.value) || 'N/A'
 }
 
 const formatWeatherWind = (windSpeed) => {
-  return formatWindSpeed(windSpeed, normalizedMeasureUnit.value) || 'N/A'
+  return formatWindSpeed(windSpeed, normalizedDistanceUnit.value) || 'N/A'
 }
 
 const formatWettestDayPrecipitation = (wettestDay) => {
   if (!wettestDay || !Number.isFinite(Number(wettestDay.precipitation))) {
     return 'N/A'
   }
-  return formatPrecipitation(wettestDay.precipitation, normalizedMeasureUnit.value)
-      || (normalizedMeasureUnit.value === 'IMPERIAL' ? '0 in' : '0 mm')
+  return formatPrecipitation(wettestDay.precipitation, normalizedDistanceUnit.value)
+      || (normalizedDistanceUnit.value === 'MILES' ? '0 in' : '0 mm')
 }
 
 const formatSampleDate = (sample) => {

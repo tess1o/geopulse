@@ -109,8 +109,14 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     private MapRenderMode mapRenderMode = MapRenderMode.VECTOR;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "measure_unit", length = 1000)
-    private MeasureUnit measureUnit;
+    @Column(name = "distance_unit", length = 32)
+    @Builder.Default
+    private DistanceUnit distanceUnit = DistanceUnit.KILOMETERS;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "temperature_unit", length = 32)
+    @Builder.Default
+    private TemperatureUnit temperatureUnit = TemperatureUnit.CELSIUS;
 
     @Size(max = 1000, message = "Default redirect URL after login or when we navigate to / page")
     @Column(name = "default_redirect_url", length = 1000)

@@ -123,29 +123,29 @@ function isWeatherSampleNearTimelineItem(sample, item) {
   return item.type === 'trip'
 }
 
-export function formatTemperature(value, measureUnit = 'METRIC') {
+export function formatTemperature(value, temperatureUnit = 'CELSIUS') {
   if (!Number.isFinite(Number(value))) {
     return null
   }
   const numeric = Number(value)
-  if (measureUnit === 'IMPERIAL') {
+  if (temperatureUnit === 'FAHRENHEIT') {
     return `${Math.round((numeric * 9 / 5) + 32)}°F`
   }
   return `${Math.round(numeric)}°C`
 }
 
-export function formatWindSpeed(value, measureUnit = 'METRIC') {
+export function formatWindSpeed(value, distanceUnit = 'KILOMETERS') {
   if (!Number.isFinite(Number(value))) {
     return null
   }
   const numeric = Number(value)
-  if (measureUnit === 'IMPERIAL') {
+  if (distanceUnit === 'MILES') {
     return `${Math.round(numeric * 0.621371)} mph`
   }
   return `${Math.round(numeric)} km/h`
 }
 
-export function formatPrecipitation(value, measureUnit = 'METRIC') {
+export function formatPrecipitation(value, distanceUnit = 'KILOMETERS') {
   if (!Number.isFinite(Number(value))) {
     return null
   }
@@ -153,7 +153,7 @@ export function formatPrecipitation(value, measureUnit = 'METRIC') {
   if (numeric <= 0) {
     return null
   }
-  if (measureUnit === 'IMPERIAL') {
+  if (distanceUnit === 'MILES') {
     const inches = numeric / 25.4
     if (inches < 0.01) {
       return '<0.01 in'
@@ -176,15 +176,15 @@ export function formatObservedTime(sample, timezone) {
   return new Date(sample.observedAt).toLocaleString()
 }
 
-export function buildWeatherSampleTitle(sample, measureUnit = 'METRIC', timezone = null) {
+export function buildWeatherSampleTitle(sample, { distanceUnit = 'KILOMETERS', temperatureUnit = 'CELSIUS', timezone = null } = {}) {
   const info = getWeatherCodeInfo(sample?.weatherCode)
-  const precipitation = formatPrecipitation(sample?.precipitation, measureUnit)
+  const precipitation = formatPrecipitation(sample?.precipitation, distanceUnit)
   const parts = [
     formatObservedTime(sample, timezone),
     info.label,
-    formatTemperature(sample?.temperature, measureUnit),
+    formatTemperature(sample?.temperature, temperatureUnit),
     precipitation ? `precip ${precipitation}` : null,
-    sample?.windSpeed != null ? `wind ${formatWindSpeed(sample.windSpeed, measureUnit)}` : null
+    sample?.windSpeed != null ? `wind ${formatWindSpeed(sample.windSpeed, distanceUnit)}` : null
   ].filter(Boolean)
   return parts.join(' · ')
 }

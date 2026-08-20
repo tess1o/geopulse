@@ -1,15 +1,15 @@
-export const MEASURE_UNITS = {
-  METRIC: 'METRIC',
-  IMPERIAL: 'IMPERIAL'
+export const DISTANCE_UNITS = {
+  KILOMETERS: 'KILOMETERS',
+  MILES: 'MILES'
 }
 
-const normalizeMeasureUnit = (unit) => (
-  unit === MEASURE_UNITS.IMPERIAL ? MEASURE_UNITS.IMPERIAL : MEASURE_UNITS.METRIC
+const normalizeDistanceUnit = (unit) => (
+  unit === DISTANCE_UNITS.MILES ? DISTANCE_UNITS.MILES : DISTANCE_UNITS.KILOMETERS
 )
 
 export function formatDistanceForUnit(meters, options = {}) {
   const {
-    unit = MEASURE_UNITS.METRIC,
+    unit = DISTANCE_UNITS.KILOMETERS,
     rounded = false,
     fallback = 'Unknown'
   } = options
@@ -19,7 +19,7 @@ export function formatDistanceForUnit(meters, options = {}) {
     return fallback
   }
 
-  if (normalizeMeasureUnit(unit) === MEASURE_UNITS.IMPERIAL) {
+  if (normalizeDistanceUnit(unit) === DISTANCE_UNITS.MILES) {
     const feet = numericValue * 3.28084
     if (feet < 5280) {
       return `${Math.round(feet)} ft`
@@ -45,7 +45,7 @@ export function formatDistanceForUnit(meters, options = {}) {
 
 export function formatSpeedForUnit(speedKmH, options = {}) {
   const {
-    unit = MEASURE_UNITS.METRIC,
+    unit = DISTANCE_UNITS.KILOMETERS,
     fallback = 'N/A'
   } = options
   const numericValue = Number(speedKmH)
@@ -54,7 +54,7 @@ export function formatSpeedForUnit(speedKmH, options = {}) {
     return fallback
   }
 
-  if (normalizeMeasureUnit(unit) === MEASURE_UNITS.IMPERIAL) {
+  if (normalizeDistanceUnit(unit) === DISTANCE_UNITS.MILES) {
     return `${(numericValue * 0.621371).toFixed(2)} mph`
   }
 

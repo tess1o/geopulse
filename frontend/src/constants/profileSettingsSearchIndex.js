@@ -28,11 +28,18 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['time', 'format', '12h', '24h']
   },
   {
-    id: 'measureUnit',
-    title: 'Measurement Unit',
+    id: 'distanceUnit',
+    title: 'Distance Unit',
     tab: 'profile',
     subtitle: 'Profile',
     keywords: ['distance', 'speed', 'metric', 'imperial', 'units']
+  },
+  {
+    id: 'temperatureUnit',
+    title: 'Temperature Unit',
+    tab: 'profile',
+    subtitle: 'Profile',
+    keywords: ['temperature', 'weather', 'celsius', 'fahrenheit', 'units']
   },
   {
     id: 'defaultRedirectUrl',

@@ -124,11 +124,12 @@ When `config.admin.email` is empty and `config.admin.firstUserAdmin` is `true`, 
 
 #### User Defaults
 
-| Feature                  | values.yaml Path                    | Environment Variable                  | Default  |
-|--------------------------|-------------------------------------|---------------------------------------|----------|
-| Default Measurement Unit | `config.user.defaultMeasureUnit`    | `GEOPULSE_USER_DEFAULT_MEASURE_UNIT`  | `METRIC` |
+| Feature                  | values.yaml Path                       | Environment Variable                       | Default      |
+|--------------------------|----------------------------------------|--------------------------------------------|--------------|
+| Default Distance Unit    | `config.user.defaultDistanceUnit`      | `GEOPULSE_USER_DEFAULT_DISTANCE_UNIT`      | `KILOMETERS` |
+| Default Temperature Unit | `config.user.defaultTemperatureUnit`   | `GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT`   | `CELSIUS`    |
 
-Allowed values are `METRIC` and `IMPERIAL`. This applies only to newly created users.
+Allowed distance values are `KILOMETERS` and `MILES`; allowed temperature values are `CELSIUS` and `FAHRENHEIT`. This applies only to newly created users.
 
 #### Authentication & Registration
 

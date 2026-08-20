@@ -10,7 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.dto.DemoPersonaResponse;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.IOException;
@@ -170,7 +171,8 @@ public class DemoModeService {
                 .orElse(email);
         String timezone = Optional.ofNullable(textValue(userNode, "timezone"))
                 .orElse("UTC");
-        MeasureUnit measureUnit = parseMeasureUnit(textValue(userNode, "measureUnit"));
+        DistanceUnit distanceUnit = parseDistanceUnit(textValue(userNode, "distanceUnit"));
+        TemperatureUnit temperatureUnit = parseTemperatureUnit(textValue(userNode, "temperatureUnit"));
         String dateFormat = textValue(userNode, "dateFormat");
         String timeFormat = Optional.ofNullable(textValue(userNode, "timeFormat"))
                 .orElse("24h");
@@ -182,7 +184,8 @@ public class DemoModeService {
                 email,
                 fullName,
                 timezone,
-                measureUnit,
+                distanceUnit,
+                temperatureUnit,
                 dateFormat,
                 timeFormat
         ));
@@ -210,16 +213,29 @@ public class DemoModeService {
         return value.trim().toLowerCase(Locale.ROOT);
     }
 
-    private MeasureUnit parseMeasureUnit(String value) {
+    private DistanceUnit parseDistanceUnit(String value) {
         if (value == null) {
-            return MeasureUnit.METRIC;
+            return DistanceUnit.KILOMETERS;
         }
 
         try {
-            return MeasureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            return DistanceUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
-            log.warn("Invalid measureUnit '{}' in bundled demo users file; using METRIC", value);
-            return MeasureUnit.METRIC;
+            log.warn("Invalid distanceUnit '{}' in bundled demo users file; using KILOMETERS", value);
+            return DistanceUnit.KILOMETERS;
+        }
+    }
+
+    private TemperatureUnit parseTemperatureUnit(String value) {
+        if (value == null) {
+            return TemperatureUnit.CELSIUS;
+        }
+
+        try {
+            return TemperatureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            log.warn("Invalid temperatureUnit '{}' in bundled demo users file; using CELSIUS", value);
+            return TemperatureUnit.CELSIUS;
         }
     }
 
@@ -230,7 +246,8 @@ public class DemoModeService {
             String email,
             String fullName,
             String timezone,
-            MeasureUnit measureUnit,
+            DistanceUnit distanceUnit,
+            TemperatureUnit temperatureUnit,
             String dateFormat,
             String timeFormat
     ) {

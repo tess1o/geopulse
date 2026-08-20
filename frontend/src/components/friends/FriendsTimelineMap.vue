@@ -45,7 +45,7 @@ const mapContainerRef = ref(null)
 const map = ref(null)
 const mapAdapter = ref(null)
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 
 const visibleTimelines = computed(() => {
   if (!props.multiUserTimeline || !props.multiUserTimeline.timelines) {
@@ -76,7 +76,7 @@ function renderVisibleTimelines() {
 
   mapAdapter.value.render({
     visibleTimelines: visibleTimelines.value,
-    unit: measureUnit.value
+    unit: distanceUnit.value
   })
 
   if (props.selectedItem) {
@@ -96,7 +96,7 @@ function handleMapReady(mapInstance) {
   renderVisibleTimelines()
 }
 
-watch([() => props.selectedUserIds, () => props.multiUserTimeline, () => measureUnit.value], () => {
+watch([() => props.selectedUserIds, () => props.multiUserTimeline, () => distanceUnit.value], () => {
   if (!map.value) {
     return
   }

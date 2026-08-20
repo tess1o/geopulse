@@ -4,7 +4,8 @@ import jakarta.enterprise.event.Event;
 import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
@@ -37,8 +38,10 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
     private static final String PROVIDER_GOOGLE_MAPS_LANGUAGE = "geocoding.provider.googlemaps.language";
     private static final String PROVIDER_GEOAPIFY_API_KEY = "geocoding.provider.geoapify.api-key";
     private static final String PROVIDER_CHIBIGEO_API_KEY = "geocoding.provider.chibigeo.api-key";
-    private static final String GEOPULSE_USER_DEFAULT_MEASURE_UNIT = "GEOPULSE_USER_DEFAULT_MEASURE_UNIT";
-    private static final String USER_DEFAULT_MEASURE_UNIT = "geopulse.user.default-measure-unit";
+    private static final String GEOPULSE_USER_DEFAULT_DISTANCE_UNIT = "GEOPULSE_USER_DEFAULT_DISTANCE_UNIT";
+    private static final String USER_DEFAULT_DISTANCE_UNIT = "geopulse.user.default-distance-unit";
+    private static final String GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT = "GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT";
+    private static final String USER_DEFAULT_TEMPERATURE_UNIT = "geopulse.user.default-temperature-unit";
 
     @AfterEach
     void cleanUpSystemProperties() {
@@ -52,8 +55,10 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         System.clearProperty(PROVIDER_GOOGLE_MAPS_LANGUAGE);
         System.clearProperty(PROVIDER_GEOAPIFY_API_KEY);
         System.clearProperty(PROVIDER_CHIBIGEO_API_KEY);
-        System.clearProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT);
-        System.clearProperty(USER_DEFAULT_MEASURE_UNIT);
+        System.clearProperty(GEOPULSE_USER_DEFAULT_DISTANCE_UNIT);
+        System.clearProperty(USER_DEFAULT_DISTANCE_UNIT);
+        System.clearProperty(GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT);
+        System.clearProperty(USER_DEFAULT_TEMPERATURE_UNIT);
     }
 
     @Test
@@ -163,47 +168,58 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
     }
 
     @Test
-    void shouldUseMetricAsDefaultMeasureUnit() {
+    void shouldUseDefaultUnits() {
         SystemSettingsService service = createService();
 
-        assertEquals(MeasureUnit.METRIC, service.getDefaultMeasureUnit());
-        assertEquals("METRIC", service.getString("system.user.default-measure-unit"));
+        assertEquals(DistanceUnit.KILOMETERS, service.getDefaultDistanceUnit());
+        assertEquals(TemperatureUnit.CELSIUS, service.getDefaultTemperatureUnit());
+        assertEquals("KILOMETERS", service.getString("system.user.default-distance-unit"));
+        assertEquals("CELSIUS", service.getString("system.user.default-temperature-unit"));
     }
 
     @Test
-    void shouldResolveDefaultMeasureUnitFromGeopulseEnvVariableStyle() {
-        System.setProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT, "IMPERIAL");
+    void shouldResolveDefaultUnitsFromGeopulseEnvVariableStyle() {
+        System.setProperty(GEOPULSE_USER_DEFAULT_DISTANCE_UNIT, "MILES");
+        System.setProperty(GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT, "FAHRENHEIT");
 
         SystemSettingsService service = createService();
 
-        assertEquals(MeasureUnit.IMPERIAL, service.getDefaultMeasureUnit());
+        assertEquals(DistanceUnit.MILES, service.getDefaultDistanceUnit());
+        assertEquals(TemperatureUnit.FAHRENHEIT, service.getDefaultTemperatureUnit());
     }
 
     @Test
-    void shouldResolveDefaultMeasureUnitFromPropertyStyle() {
-        System.setProperty(USER_DEFAULT_MEASURE_UNIT, "IMPERIAL");
+    void shouldResolveDefaultUnitsFromPropertyStyle() {
+        System.setProperty(USER_DEFAULT_DISTANCE_UNIT, "MILES");
+        System.setProperty(USER_DEFAULT_TEMPERATURE_UNIT, "FAHRENHEIT");
 
         SystemSettingsService service = createService();
 
-        assertEquals(MeasureUnit.IMPERIAL, service.getDefaultMeasureUnit());
+        assertEquals(DistanceUnit.MILES, service.getDefaultDistanceUnit());
+        assertEquals(TemperatureUnit.FAHRENHEIT, service.getDefaultTemperatureUnit());
     }
 
     @Test
-    void shouldFallbackToMetricWhenDefaultMeasureUnitEnvValueIsInvalid() {
-        System.setProperty(GEOPULSE_USER_DEFAULT_MEASURE_UNIT, "yards");
+    void shouldFallbackToDefaultsWhenUnitEnvValuesAreInvalid() {
+        System.setProperty(GEOPULSE_USER_DEFAULT_DISTANCE_UNIT, "yards");
+        System.setProperty(GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT, "kelvin");
 
         SystemSettingsService service = createService();
 
-        assertEquals(MeasureUnit.METRIC, service.getDefaultMeasureUnit());
-        assertEquals("METRIC", service.getString("system.user.default-measure-unit"));
+        assertEquals(DistanceUnit.KILOMETERS, service.getDefaultDistanceUnit());
+        assertEquals(TemperatureUnit.CELSIUS, service.getDefaultTemperatureUnit());
+        assertEquals("KILOMETERS", service.getString("system.user.default-distance-unit"));
+        assertEquals("CELSIUS", service.getString("system.user.default-temperature-unit"));
     }
 
     @Test
-    void shouldRejectInvalidDefaultMeasureUnitAdminValue() {
+    void shouldRejectInvalidDefaultUnitAdminValues() {
         SystemSettingsService service = createService();
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.setValue("system.user.default-measure-unit", "yards", null));
+                () -> service.setValue("system.user.default-distance-unit", "yards", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setValue("system.user.default-temperature-unit", "kelvin", null));
     }
 
     @Test

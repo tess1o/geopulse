@@ -12,7 +12,8 @@ import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,8 @@ class DemoAuthenticationEnabledIntegrationTest {
                 "new-york@demo.geopulse.cc",
                 "New York Demo",
                 "America/New_York",
-                MeasureUnit.IMPERIAL,
+                DistanceUnit.MILES,
+                TemperatureUnit.FAHRENHEIT,
                 "MDY",
                 "12h"
         );
@@ -53,7 +55,8 @@ class DemoAuthenticationEnabledIntegrationTest {
                 "paris@demo.geopulse.cc",
                 "Paris Demo",
                 "Europe/Paris",
-                MeasureUnit.METRIC,
+                DistanceUnit.KILOMETERS,
+                TemperatureUnit.CELSIUS,
                 "DMY",
                 "24h"
         );
@@ -61,7 +64,8 @@ class DemoAuthenticationEnabledIntegrationTest {
                 "london@demo.geopulse.cc",
                 "London Demo",
                 "Europe/London",
-                MeasureUnit.IMPERIAL,
+                DistanceUnit.MILES,
+                TemperatureUnit.CELSIUS,
                 "DMY",
                 "24h"
         );
@@ -104,7 +108,8 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .body("status", equalTo("success"))
                 .body("data.user.email", equalTo("new-york@demo.geopulse.cc"))
                 .body("data.user.demoMode", equalTo(true))
-                .body("data.user.measureUnit", equalTo("IMPERIAL"))
+                .body("data.user.distanceUnit", equalTo("MILES"))
+                .body("data.user.temperatureUnit", equalTo("FAHRENHEIT"))
                 .body("data.user.dateFormat", equalTo("MDY"))
                 .body("data.user.timeFormat", equalTo("12h"))
                 .cookie("access_token", notNullValue())
@@ -128,7 +133,8 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .body("status", equalTo("success"))
                 .body("data.user.email", equalTo("kyiv@demo.geopulse.cc"))
                 .body("data.user.demoMode", equalTo(true))
-                .body("data.user.measureUnit", equalTo("METRIC"))
+                .body("data.user.distanceUnit", equalTo("KILOMETERS"))
+                .body("data.user.temperatureUnit", equalTo("CELSIUS"))
                 .body("data.user.dateFormat", equalTo("DMY"))
                 .body("data.user.timeFormat", equalTo("24h"))
                 .cookie("access_token", notNullValue())
@@ -260,7 +266,8 @@ class DemoAuthenticationEnabledIntegrationTest {
     private void ensureDemoUser(String email,
                                 String fullName,
                                 String timezone,
-                                MeasureUnit measureUnit,
+                                DistanceUnit distanceUnit,
+                                TemperatureUnit temperatureUnit,
                                 String dateFormat,
                                 String timeFormat) {
         UserEntity user = userService.findByEmail(email)
@@ -268,7 +275,8 @@ class DemoAuthenticationEnabledIntegrationTest {
 
         user.setFullName(fullName);
         user.setTimezone(timezone);
-        user.setMeasureUnit(measureUnit);
+        user.setDistanceUnit(distanceUnit);
+        user.setTemperatureUnit(temperatureUnit);
         user.setDateFormat(dateFormat);
         user.setTimeFormat(timeFormat);
         user.setActive(true);

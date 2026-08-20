@@ -7,7 +7,8 @@
       "email": "kyiv@demo.geopulse.cc",
       "fullName": "Kyiv Demo",
       "timezone": "Europe/Kyiv",
-      "measureUnit": "METRIC",
+      "distanceUnit": "KILOMETERS",
+      "temperatureUnit": "CELSIUS",
       "dateFormat": "DMY",
       "timeFormat": "24h"
     },
@@ -18,7 +19,8 @@
       "email": "new-york@demo.geopulse.cc",
       "fullName": "New York Demo",
       "timezone": "America/New_York",
-      "measureUnit": "IMPERIAL",
+      "distanceUnit": "MILES",
+      "temperatureUnit": "FAHRENHEIT",
       "dateFormat": "MDY",
       "timeFormat": "12h"
     },
@@ -29,7 +31,8 @@
       "email": "london@demo.geopulse.cc",
       "fullName": "London Demo",
       "timezone": "Europe/London",
-      "measureUnit": "IMPERIAL",
+      "distanceUnit": "MILES",
+      "temperatureUnit": "CELSIUS",
       "dateFormat": "DMY",
       "timeFormat": "24h"
     }

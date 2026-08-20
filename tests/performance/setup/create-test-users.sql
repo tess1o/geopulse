@@ -67,7 +67,7 @@ BEGIN
         INSERT INTO users (
             id, email, emailVerified, password_hash, full_name,
             created_at, updated_at, is_active, role, timezone,
-            avatar, measure_unit, share_location_with_friends
+            avatar, distance_unit, temperature_unit, share_location_with_friends
         )
         SELECT
             test_user_id,
@@ -81,7 +81,8 @@ BEGIN
             'USER',
             'UTC',
             NULL,  -- No avatar
-            'METRIC',  -- Default measure unit
+            'KILOMETERS',  -- Default distance unit
+            'CELSIUS',  -- Default temperature unit
             false  -- Don't share location
         FROM users WHERE id = source_user_id;
 

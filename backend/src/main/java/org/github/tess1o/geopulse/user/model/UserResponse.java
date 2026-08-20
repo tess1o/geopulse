@@ -29,7 +29,8 @@ public class UserResponse {
     private String customMapTileUrl;
     private String customMapStyleUrl;
     private MapRenderMode mapRenderMode;
-    private MeasureUnit measureUnit;
+    private DistanceUnit distanceUnit;
+    private TemperatureUnit temperatureUnit;
     private String defaultRedirectUrl;
     private String dateFormat;
     private String timeFormat;

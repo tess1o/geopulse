@@ -76,7 +76,7 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
   let highlightedTripPopupMount = null
   let highlightedStartPopupMount = null
   let highlightedEndPopupMount = null
-  let currentUnit = 'METRIC'
+  let currentUnit = 'KILOMETERS'
   const popupMounts = new Set()
 
   const clearPopupMount = (popupMount) => {
@@ -135,12 +135,12 @@ export const createRasterFriendsTimelineMapAdapter = (callbacks = {}) => {
     userPathPointsByUser.clear()
   }
 
-  const render = ({ visibleTimelines = [], unit = 'METRIC' } = {}) => {
+  const render = ({ visibleTimelines = [], unit = 'KILOMETERS' } = {}) => {
     if (!map) {
       return
     }
 
-    currentUnit = unit || 'METRIC'
+    currentUnit = unit || 'KILOMETERS'
     clear()
 
     const allBounds = []

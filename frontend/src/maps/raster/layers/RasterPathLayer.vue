@@ -44,7 +44,7 @@ import {
 import { createRasterPathReplayController } from '@/maps/raster/layers/rasterPathLayer/replayController'
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
@@ -659,7 +659,7 @@ const renderHighlightedTrip = (newTrip) => {
         MapInfoPopup,
         buildHighlightedTripPopupModel(newTrip, {
           formatDateTimeDisplay,
-          unit: measureUnit.value
+          unit: distanceUnit.value
         })
       )
     }
@@ -667,14 +667,14 @@ const renderHighlightedTrip = (newTrip) => {
       MapInfoPopup,
       buildTripEndpointPopupModel(newTrip, 'start', {
         formatDateTimeDisplay,
-        unit: measureUnit.value
+        unit: distanceUnit.value
       })
     )
     tripEndPopupMount = mountMapPopup(
       MapInfoPopup,
       buildTripEndpointPopupModel(newTrip, 'end', {
         formatDateTimeDisplay,
-        unit: measureUnit.value
+        unit: distanceUnit.value
       })
     )
 
@@ -843,7 +843,7 @@ watch(
     props.focusHighlightedTrip,
     props.allowPathDataTripFallback,
     props.showHighlightedTripPopup,
-    measureUnit.value
+    distanceUnit.value
   ],
   renderAll,
   { deep: true }

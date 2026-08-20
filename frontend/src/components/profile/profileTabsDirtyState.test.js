@@ -206,7 +206,8 @@ describe('profile tab dirty state', () => {
         userEmail: 'ada@example.com',
         userAvatar: '/avatars/avatar1.png',
         userTimezone: 'UTC',
-        userMeasureUnit: 'METRIC',
+        userDistanceUnit: 'KILOMETERS',
+        userTemperatureUnit: 'CELSIUS',
         userDefaultRedirectUrl: '',
         userDateFormat: 'MDY',
         userTimeFormat: '24h'

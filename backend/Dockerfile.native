@@ -34,7 +34,9 @@ COPY --chown=quarkus:quarkus backend/src backend/src
 #   AMD64 compatible (x86-64-v2): QUARKUS_NATIVE_BUILD_ARGS=",-march=x86-64-v2"
 #   ARM64 compatible (Raspberry Pi): QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a+nolse"
 RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
-    ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
+    ./mvnw package -DskipTests -Pnative -f backend/pom.xml \
+    -Dquarkus.profile=prod \
+    -Dquarkus.native.monitoring=jfr
 
 # ==========================
 # Stage 2: Runtime image
@@ -60,5 +62,10 @@ USER 1001
 ENV GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT="-XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15"
 
 # Start native binary with optimized GC settings
-# Use NATIVE_IMAGE_OPTS if provided, otherwise use defaults
+# JFR support is included at build time, but recording remains disabled unless
+# started with NATIVE_IMAGE_OPTS.
+# NATIVE_IMAGE_OPTS replaces the defaults below, so include them when profiling.
+# Example:
+# NATIVE_IMAGE_OPTS='-XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15 -XX:StartFlightRecording=name=geopulse,duration=300s,filename=/work/geopulse.jfr,dumponexit=true,maxsize=250M'
+# Use NATIVE_IMAGE_OPTS if provided, otherwise use defaults.
 ENTRYPOINT ["geopulse"]

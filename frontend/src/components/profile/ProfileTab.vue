@@ -143,23 +143,43 @@
             </small>
           </div>
 
-          <div class="form-field" data-setting-id="measureUnit">
-            <label for="measureUnit" class="form-label">
-              Measurement Unit
+          <div class="form-field" data-setting-id="distanceUnit">
+            <label for="distanceUnit" class="form-label">
+              Distance Unit
               <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
             </label>
             <Dropdown
-                id="measureUnit"
-                v-model="form.measureUnit"
-                :options="measureUnitOptions"
+                id="distanceUnit"
+                v-model="form.distanceUnit"
+                :options="distanceUnitOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Select your measurement unit"
+                placeholder="Select your distance unit"
                 :disabled="readOnly"
                 class="w-full"
             />
             <small class="help-text">
               Affects how distances and speeds are displayed across the app.
+            </small>
+          </div>
+
+          <div class="form-field" data-setting-id="temperatureUnit">
+            <label for="temperatureUnit" class="form-label">
+              Temperature Unit
+              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for temperatures.'"></i>
+            </label>
+            <Dropdown
+                id="temperatureUnit"
+                v-model="form.temperatureUnit"
+                :options="temperatureUnitOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select your temperature unit"
+                :disabled="readOnly"
+                class="w-full"
+            />
+            <small class="help-text">
+              Affects how temperatures are displayed across weather views.
             </small>
           </div>
 
@@ -255,9 +275,13 @@ const props = defineProps({
     type: String,
     required: true
   },
-  userMeasureUnit: {
+  userDistanceUnit: {
     type: String,
-    default: 'METRIC'
+    default: 'KILOMETERS'
+  },
+  userTemperatureUnit: {
+    type: String,
+    default: 'CELSIUS'
   },
   userDefaultRedirectUrl: {
     type: String,
@@ -287,7 +311,8 @@ const form = ref({
   timezone: '',
   dateFormat: 'MDY',
   timeFormat: '24h',
-  measureUnit: 'METRIC', // Default value
+  distanceUnit: 'KILOMETERS', // Default value
+  temperatureUnit: 'CELSIUS',
   defaultRedirectUrl: '',
   customRedirectUrl: ''
 })
@@ -388,9 +413,14 @@ const timezoneOptions = [
   { label: 'Africa/Nairobi GMT+3', value: 'Africa/Nairobi' }
 ]
 
-const measureUnitOptions = [
-  { label: 'Metric (kilometers, meters)', value: 'METRIC' },
-  { label: 'Imperial (miles, feet)', value: 'IMPERIAL' }
+const distanceUnitOptions = [
+  { label: 'Kilometers (km, m)', value: 'KILOMETERS' },
+  { label: 'Miles (mi, ft)', value: 'MILES' }
+]
+
+const temperatureUnitOptions = [
+  { label: 'Celsius (°C)', value: 'CELSIUS' },
+  { label: 'Fahrenheit (°F)', value: 'FAHRENHEIT' }
 ]
 
 const dateFormatOptions = [
@@ -428,7 +458,8 @@ const hasChanges = computed(() => {
          form.value.timezone !== props.userTimezone ||
          form.value.dateFormat !== props.userDateFormat ||
          form.value.timeFormat !== props.userTimeFormat ||
-         form.value.measureUnit !== props.userMeasureUnit ||
+         form.value.distanceUnit !== props.userDistanceUnit ||
+         form.value.temperatureUnit !== props.userTemperatureUnit ||
          effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
 const currentAvatarImage = computed(() => avatarPreviewUrl.value || localAvatar.value || '/avatars/avatar1.png')
@@ -610,7 +641,8 @@ const handleSubmit = async () => {
       timezone: form.value.timezone,
       dateFormat: form.value.dateFormat,
       timeFormat: form.value.timeFormat,
-      measureUnit: form.value.measureUnit,
+      distanceUnit: form.value.distanceUnit,
+      temperatureUnit: form.value.temperatureUnit,
       defaultRedirectUrl: effectiveRedirectUrl
     })
   } finally {
@@ -624,7 +656,8 @@ const handleReset = () => {
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.dateFormat = props.userDateFormat || 'MDY'
   form.value.timeFormat = props.userTimeFormat || '24h'
-  form.value.measureUnit = props.userMeasureUnit || 'METRIC'
+  form.value.distanceUnit = props.userDistanceUnit || 'KILOMETERS'
+  form.value.temperatureUnit = props.userTemperatureUnit || 'CELSIUS'
 
   // Check if the stored URL matches any predefined option
   const userRedirectUrl = props.userDefaultRedirectUrl || ''
@@ -661,7 +694,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userDateFormat, props.userTimeFormat, props.userDistanceUnit, props.userTemperatureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 

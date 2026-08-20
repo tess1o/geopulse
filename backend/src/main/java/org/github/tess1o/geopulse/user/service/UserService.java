@@ -131,7 +131,8 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .measureUnit(getDefaultMeasureUnit())
+                .distanceUnit(getDefaultDistanceUnit())
+                .temperatureUnit(getDefaultTemperatureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -176,7 +177,8 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .measureUnit(getDefaultMeasureUnit())
+                .distanceUnit(getDefaultDistanceUnit())
+                .temperatureUnit(getDefaultTemperatureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
@@ -205,8 +207,12 @@ public class UserService {
         }
     }
 
-    public MeasureUnit getDefaultMeasureUnit() {
-        return systemSettingsService.getDefaultMeasureUnit();
+    public DistanceUnit getDefaultDistanceUnit() {
+        return systemSettingsService.getDefaultDistanceUnit();
+    }
+
+    public TemperatureUnit getDefaultTemperatureUnit() {
+        return systemSettingsService.getDefaultTemperatureUnit();
     }
 
     /**
@@ -616,9 +622,14 @@ public class UserService {
             log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
         }
 
-        if (request.getMeasureUnit() != null) {
-            user.setMeasureUnit(request.getMeasureUnit());
-            log.debug("Updated measure unit for user {}", user.getId());
+        if (request.getDistanceUnit() != null) {
+            user.setDistanceUnit(request.getDistanceUnit());
+            log.debug("Updated distance unit for user {}", user.getId());
+        }
+
+        if (request.getTemperatureUnit() != null) {
+            user.setTemperatureUnit(request.getTemperatureUnit());
+            log.debug("Updated temperature unit for user {}", user.getId());
         }
 
         if (request.getDefaultRedirectUrl() != null) {

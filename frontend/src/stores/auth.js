@@ -42,7 +42,8 @@ function normalizeUser(source) {
         customMapTileUrl: raw.customMapTileUrl || '',
         customMapStyleUrl: raw.customMapStyleUrl || '',
         mapRenderMode: raw.mapRenderMode || 'VECTOR',
-        measureUnit: raw.measureUnit || 'METRIC',
+        distanceUnit: raw.distanceUnit || 'KILOMETERS',
+        temperatureUnit: raw.temperatureUnit || 'CELSIUS',
         defaultRedirectUrl: raw.defaultRedirectUrl || '',
         dateFormat: raw.dateFormat || 'MDY',
         timeFormat: raw.timeFormat || '24h',
@@ -81,7 +82,8 @@ export const useAuthStore = defineStore('auth', {
         customMapTileUrl: (state) => state.user?.customMapTileUrl || '',
         customMapStyleUrl: (state) => state.user?.customMapStyleUrl || '',
         mapRenderMode: (state) => state.user?.mapRenderMode || 'VECTOR',
-        measureUnit: (state) => state.user?.measureUnit || 'METRIC',
+        distanceUnit: (state) => state.user?.distanceUnit || 'KILOMETERS',
+        temperatureUnit: (state) => state.user?.temperatureUnit || 'CELSIUS',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
         timeFormat: (state) => state.user?.timeFormat || '24h',
@@ -196,12 +198,13 @@ export const useAuthStore = defineStore('auth', {
             this.clearUser()
         },
 
-        async updateProfile({fullName, avatar, timezone, measureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
+        async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
             const response = await apiService.post('/users/update', {
                 fullName,
                 avatar,
                 timezone,
-                measureUnit,
+                distanceUnit,
+                temperatureUnit,
                 defaultRedirectUrl,
                 dateFormat,
                 timeFormat

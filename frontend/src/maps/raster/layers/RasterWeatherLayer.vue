@@ -48,7 +48,7 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit, temperatureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 const baseLayerRef = ref(null)
 const markerEntries = []
@@ -91,12 +91,17 @@ const renderMarkers = () => {
     const marker = L.marker([latitude, longitude], {
       icon: createIcon(sample),
       keyboard: false,
-      title: buildWeatherSampleTitle(sample, measureUnit.value || 'METRIC', timezone)
+      title: buildWeatherSampleTitle(sample, {
+        distanceUnit: distanceUnit.value || 'KILOMETERS',
+        temperatureUnit: temperatureUnit.value || 'CELSIUS',
+        timezone
+      })
     })
     const popupMount = mountMapPopup(
       MapInfoPopup,
       buildWeatherPopupModel(sample, {
-        unit: measureUnit.value || 'METRIC',
+        distanceUnit: distanceUnit.value || 'KILOMETERS',
+        temperatureUnit: temperatureUnit.value || 'CELSIUS',
         timezone
       })
     )
@@ -111,7 +116,7 @@ const renderMarkers = () => {
 }
 
 watch(
-  () => [props.samples, props.highlightedItem, measureUnit.value],
+  () => [props.samples, props.highlightedItem, distanceUnit.value, temperatureUnit.value],
   () => renderMarkers(),
   { deep: true }
 )

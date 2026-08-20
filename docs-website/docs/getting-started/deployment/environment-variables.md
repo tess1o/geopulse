@@ -78,7 +78,8 @@ Notes:
 | `GEOPULSE_JWT_PRIVATE_KEY_LOCATION` | `file:/app/keys/jwt-private-key.pem` | Property: \`smallrye.jwt.sign.key.location\`. | Readable path/URI to private key file. | Backend restart |
 | `GEOPULSE_JWT_PUBLIC_KEY_LOCATION` | `file:/app/keys/jwt-public-key.pem` | Property: \`mp.jwt.verify.publickey.location\`. | Readable path/URI in container filesystem. | Backend restart |
 | `GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN` | `604800` | JWT Property: \`jwt.refresh-token.lifespan\`. | Integer value. | Backend restart |
-| `GEOPULSE_USER_DEFAULT_MEASURE_UNIT` | `METRIC` | Default measurement unit for newly created users. Property: \`geopulse.user.default-measure-unit\`. Existing users keep their profile preference. | `METRIC` or `IMPERIAL`. | Backend restart |
+| `GEOPULSE_USER_DEFAULT_DISTANCE_UNIT` | `KILOMETERS` | Default distance unit for newly created users. Property: \`geopulse.user.default-distance-unit\`. Existing users keep their profile preference. | `KILOMETERS` or `MILES`. | Backend restart |
+| `GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT` | `CELSIUS` | Default temperature unit for newly created users. Property: \`geopulse.user.default-temperature-unit\`. Existing users keep their profile preference. | `CELSIUS` or `FAHRENHEIT`. | Backend restart |
 
 ### OIDC Core (5)
 

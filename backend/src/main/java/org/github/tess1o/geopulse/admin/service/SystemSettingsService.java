@@ -14,7 +14,8 @@ import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
-import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
+import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 
 import java.time.Instant;
@@ -36,7 +37,8 @@ public class SystemSettingsService {
     private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
-    private static final String DEFAULT_MEASURE_UNIT_KEY = "system.user.default-measure-unit";
+    private static final String DEFAULT_DISTANCE_UNIT_KEY = "system.user.default-distance-unit";
+    private static final String DEFAULT_TEMPERATURE_UNIT_KEY = "system.user.default-temperature-unit";
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -222,8 +224,10 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.export.temp-file-retention-hours", "24", ValueType.INTEGER, "export", "Temp file retention (hours)"));
 
         // System performance
-        SETTING_DEFINITIONS.put(DEFAULT_MEASURE_UNIT_KEY,
-                new SettingDefinition("geopulse.user.default-measure-unit", "METRIC", ValueType.STRING, "system", "Default measurement unit for newly created users"));
+        SETTING_DEFINITIONS.put(DEFAULT_DISTANCE_UNIT_KEY,
+                new SettingDefinition("geopulse.user.default-distance-unit", "KILOMETERS", ValueType.STRING, "system", "Default distance unit for newly created users"));
+        SETTING_DEFINITIONS.put(DEFAULT_TEMPERATURE_UNIT_KEY,
+                new SettingDefinition("geopulse.user.default-temperature-unit", "CELSIUS", ValueType.STRING, "system", "Default temperature unit for newly created users"));
         SETTING_DEFINITIONS.put("system.timeline.processing.thread-pool-size",
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
         SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
@@ -292,8 +296,12 @@ public class SystemSettingsService {
         }
     }
 
-    public MeasureUnit getDefaultMeasureUnit() {
-        return parseMeasureUnitOrDefault(getValue(DEFAULT_MEASURE_UNIT_KEY));
+    public DistanceUnit getDefaultDistanceUnit() {
+        return parseDistanceUnitOrDefault(getValue(DEFAULT_DISTANCE_UNIT_KEY));
+    }
+
+    public TemperatureUnit getDefaultTemperatureUnit() {
+        return parseTemperatureUnitOrDefault(getValue(DEFAULT_TEMPERATURE_UNIT_KEY));
     }
 
     /**
@@ -330,8 +338,11 @@ public class SystemSettingsService {
             String envValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
             envValue = normalizeConfigFallbackValue(envValue);
-            if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
-                envValue = parseMeasureUnitOrDefault(envValue).name();
+            if (DEFAULT_DISTANCE_UNIT_KEY.equals(key)) {
+                envValue = parseDistanceUnitOrDefault(envValue).name();
+            }
+            if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
+                envValue = parseTemperatureUnitOrDefault(envValue).name();
             }
             log.trace("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
@@ -350,8 +361,11 @@ public class SystemSettingsService {
             String defaultValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
             defaultValue = normalizeConfigFallbackValue(defaultValue);
-            if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
-                return parseMeasureUnitOrDefault(defaultValue).name();
+            if (DEFAULT_DISTANCE_UNIT_KEY.equals(key)) {
+                return parseDistanceUnitOrDefault(defaultValue).name();
+            }
+            if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
+                return parseTemperatureUnitOrDefault(defaultValue).name();
             }
             return defaultValue;
         }
@@ -382,8 +396,11 @@ public class SystemSettingsService {
         // Validate value type
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
-        if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
-            value = parseMeasureUnit(value).name();
+        if (DEFAULT_DISTANCE_UNIT_KEY.equals(key)) {
+            value = parseDistanceUnit(value).name();
+        }
+        if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
+            value = parseTemperatureUnit(value).name();
         }
 
         // Encrypt if type is ENCRYPTED
@@ -534,8 +551,11 @@ public class SystemSettingsService {
                 throw new IllegalArgumentException("Setting " + key + " must be at least 1 day");
             }
         }
-        if (DEFAULT_MEASURE_UNIT_KEY.equals(key)) {
-            parseMeasureUnit(value);
+        if (DEFAULT_DISTANCE_UNIT_KEY.equals(key)) {
+            parseDistanceUnit(value);
+        }
+        if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
+            parseTemperatureUnit(value);
         }
         if ("weather.ongoing.interval-minutes".equals(key)) {
             int parsed = Integer.parseInt(value);
@@ -571,24 +591,45 @@ public class SystemSettingsService {
         }
     }
 
-    private MeasureUnit parseMeasureUnitOrDefault(String value) {
+    private DistanceUnit parseDistanceUnitOrDefault(String value) {
         try {
-            return parseMeasureUnit(value);
+            return parseDistanceUnit(value);
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid default measure unit '{}'. Falling back to METRIC", value);
-            return MeasureUnit.METRIC;
+            log.warn("Invalid default distance unit '{}'. Falling back to KILOMETERS", value);
+            return DistanceUnit.KILOMETERS;
         }
     }
 
-    private MeasureUnit parseMeasureUnit(String value) {
+    private DistanceUnit parseDistanceUnit(String value) {
         if (value == null) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_MEASURE_UNIT_KEY + " must be METRIC or IMPERIAL");
+            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES");
         }
 
         try {
-            return MeasureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+            return DistanceUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_MEASURE_UNIT_KEY + " must be METRIC or IMPERIAL");
+            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES");
+        }
+    }
+
+    private TemperatureUnit parseTemperatureUnitOrDefault(String value) {
+        try {
+            return parseTemperatureUnit(value);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid default temperature unit '{}'. Falling back to CELSIUS", value);
+            return TemperatureUnit.CELSIUS;
+        }
+    }
+
+    private TemperatureUnit parseTemperatureUnit(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT");
+        }
+
+        try {
+            return TemperatureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT");
         }
     }
 }

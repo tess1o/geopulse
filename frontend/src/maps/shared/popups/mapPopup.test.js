@@ -72,7 +72,8 @@ describe('map popup models', () => {
       precipitation: 3.2,
       windSpeed: 17.9
     }, {
-      unit: 'METRIC',
+      distanceUnit: 'KILOMETERS',
+      temperatureUnit: 'CELSIUS',
       timezone
     })
 
@@ -92,7 +93,8 @@ describe('map popup models', () => {
       precipitation: 0,
       windSpeed: 4
     }, {
-      unit: 'METRIC',
+      distanceUnit: 'KILOMETERS',
+      temperatureUnit: 'CELSIUS',
       timezone
     })
 
@@ -213,7 +215,7 @@ describe('map popup models', () => {
       distanceMeters: 12000
     }, {
       timezone,
-      unit: 'METRIC'
+      unit: 'KILOMETERS'
     })
 
     expect(tripModel.title).toBe('CAR Trip')
@@ -224,7 +226,7 @@ describe('map popup models', () => {
       movementType: 'Walk',
       tripDuration: 300,
       distanceMeters: 450
-    }, { unit: 'METRIC' })
+    }, { unit: 'KILOMETERS' })
 
     expect(friendTripModel.title).toBe('Ada')
     expect(friendTripModel.rows).toEqual([
@@ -242,7 +244,7 @@ describe('map popup models', () => {
       totalDistanceMeters: 12000
     }, {
       timezone,
-      unit: 'IMPERIAL'
+      unit: 'MILES'
     })
 
     expect(timelineTripModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
@@ -254,7 +256,7 @@ describe('map popup models', () => {
       distanceMeters: 12000
     }, {
       timezone,
-      unit: 'IMPERIAL'
+      unit: 'MILES'
     })
 
     expect(highlightedTripModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
@@ -267,7 +269,7 @@ describe('map popup models', () => {
       distanceMeters: 12000
     }, 'end', {
       timezone,
-      unit: 'IMPERIAL'
+      unit: 'MILES'
     })
 
     expect(endpointModel.rows).toContainEqual({ label: 'Distance', value: '7.46 mi' })
@@ -277,7 +279,7 @@ describe('map popup models', () => {
       movementType: 'Walk',
       tripDuration: 300,
       distanceMeters: 450
-    }, { unit: 'IMPERIAL' })
+    }, { unit: 'MILES' })
 
     expect(friendTripModel.rows).toContainEqual({ label: 'Distance', value: '1476 ft' })
   })
@@ -294,7 +296,7 @@ describe('map popup models', () => {
     ], {
       formatDateDisplay: timezone.formatDateDisplay,
       formatTime: timezone.formatTime,
-      unit: 'IMPERIAL'
+      unit: 'MILES'
     })
 
     expect(rows[0].meta).toBe('Duration: 1 hour | Distance: 7.46 mi')

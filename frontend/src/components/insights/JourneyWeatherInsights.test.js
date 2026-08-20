@@ -90,7 +90,8 @@ describe('JourneyWeatherInsights', () => {
     const wrapper = mount(JourneyWeatherInsights, {
       props: {
         weather,
-        measureUnit: 'METRIC'
+        distanceUnit: 'KILOMETERS',
+        temperatureUnit: 'CELSIUS'
       }
     })
 
@@ -106,7 +107,8 @@ describe('JourneyWeatherInsights', () => {
     const wrapper = mount(JourneyWeatherInsights, {
       props: {
         weather,
-        measureUnit: 'IMPERIAL'
+        distanceUnit: 'MILES',
+        temperatureUnit: 'FAHRENHEIT'
       }
     })
 

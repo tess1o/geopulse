@@ -42,7 +42,7 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
-const { measureUnit } = storeToRefs(authStore)
+const { distanceUnit, temperatureUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 const markerEntries = []
 
@@ -70,7 +70,11 @@ const createMarkerElement = (sample) => {
     `weather-map-marker--${info.severity}`,
     isHighlighted(sample) ? 'weather-map-marker--highlighted' : ''
   ].filter(Boolean).join(' ')
-  element.title = buildWeatherSampleTitle(sample, measureUnit.value || 'METRIC', timezone)
+  element.title = buildWeatherSampleTitle(sample, {
+    distanceUnit: distanceUnit.value || 'KILOMETERS',
+    temperatureUnit: temperatureUnit.value || 'CELSIUS',
+    timezone
+  })
   element.innerHTML = `<i class="${info.icon}"></i>`
   return element
 }
@@ -91,7 +95,8 @@ const renderMarkers = () => {
     const popupMount = mountMapPopup(
       MapInfoPopup,
       buildWeatherPopupModel(sample, {
-        unit: measureUnit.value || 'METRIC',
+        distanceUnit: distanceUnit.value || 'KILOMETERS',
+        temperatureUnit: temperatureUnit.value || 'CELSIUS',
         timezone
       })
     )
@@ -114,7 +119,7 @@ const renderMarkers = () => {
 }
 
 watch(
-  () => [props.samples, props.visible, props.highlightedItem, measureUnit.value],
+  () => [props.samples, props.visible, props.highlightedItem, distanceUnit.value, temperatureUnit.value],
   () => renderMarkers(),
   { deep: true, immediate: true }
 )

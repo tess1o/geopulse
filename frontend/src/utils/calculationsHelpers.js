@@ -1,4 +1,4 @@
-import { useMeasureUnit } from '@/composables/useMeasureUnit';
+import { useUnits } from '@/composables/useUnits';
 import { formatDistanceForUnit, formatSpeedForUnit } from '@/utils/measurementFormatters'
 export { formatDuration } from '@/utils/durationFormatter'
 
@@ -9,8 +9,8 @@ export { formatDuration } from '@/utils/durationFormatter'
  * @returns {number} - Distance in km (metric) or miles (imperial)
  */
 export function convertKilometersToDisplayUnit(kilometers) {
-    const unit = useMeasureUnit().getMeasureUnit();
-    if (unit === 'IMPERIAL') {
+    const unit = useUnits().getDistanceUnit();
+    if (unit === 'MILES') {
         // Convert kilometers to miles
         return kilometers * 0.621371;
     }
@@ -24,8 +24,8 @@ export function convertKilometersToDisplayUnit(kilometers) {
  * @returns {string} - Formatted string with unit suffix
  */
 export function formatDistanceValue(value) {
-    const unit = useMeasureUnit().getMeasureUnit();
-    if (unit === 'IMPERIAL') {
+    const unit = useUnits().getDistanceUnit();
+    if (unit === 'MILES') {
         return `${value.toFixed(2)} mi`;
     }
     return `${value.toFixed(2)} km`;
@@ -36,22 +36,22 @@ export function formatDistanceValue(value) {
  * @returns {string} - 'km' or 'mi'
  */
 export function getDistanceUnitLabel() {
-    const unit = useMeasureUnit().getMeasureUnit();
-    return unit === 'IMPERIAL' ? 'mi' : 'km';
+    const unit = useUnits().getDistanceUnit();
+    return unit === 'MILES' ? 'mi' : 'km';
 }
 
 export function formatDistance(meters) {
-    const unit = useMeasureUnit().getMeasureUnit();
+    const unit = useUnits().getDistanceUnit();
     return formatDistanceForUnit(meters, { unit });
 }
 
 export function formatDistanceRounded(meters) {
-    const unit = useMeasureUnit().getMeasureUnit();
+    const unit = useUnits().getDistanceUnit();
     return formatDistanceForUnit(meters, { unit, rounded: true });
 }
 
 export function formatSpeed(speedKmH) {
-    const unit = useMeasureUnit().getMeasureUnit();
+    const unit = useUnits().getDistanceUnit();
     return formatSpeedForUnit(speedKmH, { unit, fallback: 'N/A' });
 }
 
