@@ -11,6 +11,9 @@ global:
 
 # Backend configuration
 backend:
+  strategy:
+    type: RollingUpdate  # or Recreate
+
   image:
     repository: tess1o/geopulse-backend
     tag: 1.37.0-native

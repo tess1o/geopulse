@@ -5,6 +5,10 @@ metadata:
   labels:
     {{- include "geopulse.backend.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.backend.strategy }}
+  strategy:
+    {{- toYaml .Values.backend.strategy | nindent 4 }}
+  {{- end }}
   replicas: {{ .Values.backend.replicaCount }}
   selector:
     matchLabels:
