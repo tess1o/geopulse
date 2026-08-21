@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.37.1",
+    "title": "GeoPulse 1.37.1",
+    "highlights": [
+      "Added separate distance and temperature unit preferences",
+      "Added GeoJSON MultiPoint import support",
+      "Improved Timeline context menus on mobile",
+      "Added Helm configuration for backend deployment strategy",
+      "Fixed TinyAuth/OIDC login and account-linking behavior"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.37.1"
+  },
+  {
     "version": "1.37.0",
     "title": "GeoPulse 1.37.0",
     "highlights": [
