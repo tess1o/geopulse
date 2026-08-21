@@ -139,6 +139,14 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
                     addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
                         totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
                 }
+            } else if (geometry instanceof GeoJsonMultiPoint multiPoint) {
+                for (GeoJsonPoint point : multiPoint.getPoints()) {
+                    GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
+                    if (gpsPoint != null) {
+                        addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
+                            totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                    }
+                }
             } else if (geometry instanceof GeoJsonLineString lineString) {
                 for (GeoJsonPoint point : lineString.getPoints()) {
                     GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);

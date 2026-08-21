@@ -1,4 +1,5 @@
 package org.github.tess1o.geopulse.importdata;
+
 import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -23,8 +24,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
+
 /**
  * Integration test for GeoJSON streaming import functionality.
  * Tests memory-efficient parsing and import of large GeoJSON files.
@@ -34,17 +37,24 @@ import static org.junit.jupiter.api.Assertions.*;
 @Slf4j
 @SerializedDatabaseTest
 class GeoJsonImportStrategyTest {
+
     @Inject
     GeoJsonImportStrategy geoJsonImportStrategy;
+
     @Inject
     ImportJobService importJobService;
+
     @Inject
     UserRepository userRepository;
+
     @Inject
     GpsPointRepository gpsPointRepository;
+
     @Inject
     EntityManager entityManager;
+
     private UserEntity testUser;
+
     @BeforeEach
     @Transactional
     void setUp() {
@@ -55,13 +65,16 @@ class GeoJsonImportStrategyTest {
         testUser.setCreatedAt(Instant.now());
         userRepository.persist(testUser);
     }
+
     @AfterEach
     @Transactional
     void tearDown() {
     }
+
     @Transactional
     void cleanupTestData() {
     }
+
     @Test
     @Transactional
     void testGeoJsonImportWithPoints() throws Exception {
@@ -98,6 +111,7 @@ class GeoJsonImportStrategyTest {
             assertNotNull(point.getCoordinates());
         }
     }
+
     @Test
     @Transactional
     void testGeoJsonImportWithLineString() throws Exception {
@@ -124,6 +138,47 @@ class GeoJsonImportStrategyTest {
         }
         log.info("LineString import verified: {} points", importedPoints.size());
     }
+
+    @Test
+    @Transactional
+    void testGeoJsonImportWithMultiPoint() throws Exception {
+        log.info("=== Testing GeoJSON Streaming Import with MultiPoint ===");
+        String geoJsonContent = createTestGeoJsonWithMultiPoint();
+        byte[] geoJsonData = geoJsonContent.getBytes();
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setImportFormat("geojson");
+        ImportJob importJob = importJobService.createImportJob(
+                testUser.getId(), importOptions, "test-multipoint.geojson", geoJsonData);
+        List<String> detectedDataTypes = geoJsonImportStrategy.validateAndDetectDataTypes(importJob);
+        assertEquals(1, detectedDataTypes.size());
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS));
+        geoJsonImportStrategy.processImportData(importJob);
+        entityManager.clear();
+        List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
+                testUser.getId(),
+                Instant.now().minus(1, ChronoUnit.DAYS),
+                Instant.now().plus(1, ChronoUnit.DAYS)
+        ).stream()
+                .sorted(Comparator.comparingDouble(GpsPointEntity::getLongitude))
+                .toList();
+        assertEquals(3, importedPoints.size(), "Should import 3 GPS points from MultiPoint");
+        assertEquals(25.5965, importedPoints.get(0).getLongitude(), 0.0001);
+        assertEquals(49.5473, importedPoints.get(0).getLatitude(), 0.0001);
+        assertEquals(300.0, importedPoints.get(0).getAltitude(), 0.0001);
+        assertEquals(25.5968, importedPoints.get(1).getLongitude(), 0.0001);
+        assertEquals(49.5476, importedPoints.get(1).getLatitude(), 0.0001);
+        assertEquals(350.0, importedPoints.get(1).getAltitude(), 0.0001);
+        assertEquals(25.5970, importedPoints.get(2).getLongitude(), 0.0001);
+        assertEquals(49.5480, importedPoints.get(2).getLatitude(), 0.0001);
+        assertEquals(300.0, importedPoints.get(2).getAltitude(), 0.0001);
+        for (GpsPointEntity point : importedPoints) {
+            assertEquals(GpsSourceType.GEOJSON, point.getSourceType());
+            assertNotNull(point.getTimestamp());
+            assertNotNull(point.getCoordinates());
+        }
+        log.info("MultiPoint import verified: {} points", importedPoints.size());
+    }
+
     @Test
     @Transactional
     void testGeoJsonImportWithMixedGeometries() throws Exception {
@@ -141,10 +196,11 @@ class GeoJsonImportStrategyTest {
                 Instant.now().minus(1, ChronoUnit.DAYS),
                 Instant.now().plus(1, ChronoUnit.DAYS)
         );
-        // 2 Points + 3 from LineString = 5 total
-        assertEquals(5, importedPoints.size(), "Should import 5 GPS points from mixed geometries");
+        // 2 Points + 3 from MultiPoint + 3 from LineString = 8 total
+        assertEquals(8, importedPoints.size(), "Should import 8 GPS points from mixed geometries");
         log.info("Mixed geometries import verified: {} points", importedPoints.size());
     }
+
     @Test
     @Transactional
     void testLargeGeoJsonFileStreaming() throws Exception {
@@ -195,6 +251,7 @@ class GeoJsonImportStrategyTest {
         log.info("Large file streaming test passed: {} features imported, memory efficient",
                 importedCount);
     }
+
     @Test
     @Transactional
     void testInvalidGeoJsonHandling() throws Exception {
@@ -239,6 +296,7 @@ class GeoJsonImportStrategyTest {
         }, "Non-FeatureCollection should throw validation exception");
         log.info("Invalid GeoJSON handling verified");
     }
+
     @Test
     @Transactional
     void testSourceTypeAssignment() throws Exception {
@@ -263,6 +321,7 @@ class GeoJsonImportStrategyTest {
         log.info("Source type assignment verified: {} points with GEOJSON source type",
                 importedPoints.size());
     }
+
     private String createTestGeoJsonWithPoints() {
         Instant now = Instant.now();
         return String.format("""
@@ -308,6 +367,7 @@ class GeoJsonImportStrategyTest {
             }
             """, now.toString(), now.plusSeconds(300).toString(), now.plusSeconds(600).toString());
     }
+
     private String createTestGeoJsonWithLineString() {
         Instant now = Instant.now();
         return String.format("""
@@ -332,6 +392,33 @@ class GeoJsonImportStrategyTest {
             }
             """, now.toString());
     }
+
+    private String createTestGeoJsonWithMultiPoint() {
+        Instant now = Instant.now();
+        return String.format("""
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [25.5965, 49.5473],
+                      [25.5968, 49.5476, 350],
+                      [25.5970, 49.5480]
+                    ]
+                  },
+                  "properties": {
+                    "timestamp": "%s",
+                    "altitude": 300
+                  }
+                }
+              ]
+            }
+            """, now.toString());
+    }
+
     private String createTestGeoJsonWithMixedGeometries() {
         Instant now = Instant.now();
         return String.format("""
@@ -343,6 +430,20 @@ class GeoJsonImportStrategyTest {
                   "geometry": {
                     "type": "Point",
                     "coordinates": [25.5965, 49.5473]
+                  },
+                  "properties": {
+                    "timestamp": "%s"
+                  }
+                },
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [25.5969, 49.5479],
+                      [25.5971, 49.5481],
+                      [25.5973, 49.5483]
+                    ]
                   },
                   "properties": {
                     "timestamp": "%s"
@@ -374,8 +475,10 @@ class GeoJsonImportStrategyTest {
                 }
               ]
             }
-            """, now.toString(), now.plusSeconds(300).toString(), now.plusSeconds(600).toString());
+            """, now.toString(), now.plusSeconds(300).toString(),
+                now.plusSeconds(600).toString(), now.plusSeconds(900).toString());
     }
+
     private String createLargeTestGeoJson(int featureCount) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\"type\":\"FeatureCollection\",\"features\":[");

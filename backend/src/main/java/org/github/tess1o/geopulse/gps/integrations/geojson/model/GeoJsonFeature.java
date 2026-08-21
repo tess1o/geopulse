@@ -25,7 +25,7 @@ public class GeoJsonFeature {
     private String type = "Feature";
 
     /**
-     * Feature geometry (Point or LineString)
+     * Feature geometry (Point, MultiPoint, or LineString)
      */
     private GeoJsonGeometry geometry;
 
@@ -47,10 +47,12 @@ public class GeoJsonFeature {
             return false;
         }
 
-        if (geometry instanceof GeoJsonPoint) {
-            return ((GeoJsonPoint) geometry).hasValidCoordinates();
-        } else if (geometry instanceof GeoJsonLineString) {
-            return ((GeoJsonLineString) geometry).hasValidCoordinates();
+        if (geometry instanceof GeoJsonPoint point) {
+            return point.hasValidCoordinates();
+        } else if (geometry instanceof GeoJsonMultiPoint multiPoint) {
+            return multiPoint.hasValidCoordinates();
+        } else if (geometry instanceof GeoJsonLineString lineString) {
+            return lineString.hasValidCoordinates();
         }
 
         return false;

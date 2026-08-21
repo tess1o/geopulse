@@ -598,6 +598,7 @@ timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source
 
 GeoPulse imports GeoJSON files with:
 - **Point features** - Individual location points
+- **MultiPoint features** - Multiple independent location points in one feature
 - **LineString features** - Tracks/routes (converted to points)
 
 Example:

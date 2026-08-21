@@ -6,6 +6,9 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature;
+import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonLineString;
+import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonMultiPoint;
+import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -141,12 +144,15 @@ public class StreamingGeoJsonParser {
         stats.validFeatures++;
 
         var geometry = feature.getGeometry();
-        if (geometry instanceof org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint point) {
+        if (geometry instanceof GeoJsonPoint point) {
             stats.totalPoints++;
             if (point.hasValidCoordinates()) {
                 stats.validPoints++;
             }
-        } else if (geometry instanceof org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonLineString lineString) {
+        } else if (geometry instanceof GeoJsonMultiPoint multiPoint) {
+            stats.totalPoints += multiPoint.getCoordinates().size();
+            stats.validPoints += multiPoint.getPoints().size();
+        } else if (geometry instanceof GeoJsonLineString lineString) {
             stats.totalPoints += lineString.getCoordinates().size();
             stats.validPoints += lineString.getPoints().size();
         }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature;
+import org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonMultiPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -101,6 +102,76 @@ class StreamingGeoJsonParserTest {
         assertEquals(3, stats.totalPoints);
         assertEquals(3, stats.validPoints);
         assertEquals(1, parsedFeatures.size());
+    }
+    @Test
+    void testParseGeoJsonWithMultiPoint() throws IOException {
+        String geoJson = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [-122.4194, 37.7749],
+                      [-122.4195, 37.7750, 15.5],
+                      [-122.4196, 37.7751]
+                    ]
+                  },
+                  "properties": {
+                    "timestamp": "2024-01-01T12:00:00Z"
+                  }
+                }
+              ]
+            }
+            """;
+        StreamingGeoJsonParser parser = new StreamingGeoJsonParser(
+                geoJson.getBytes(StandardCharsets.UTF_8), objectMapper);
+        List<GeoJsonFeature> parsedFeatures = new ArrayList<>();
+        StreamingGeoJsonParser.ParsingStats stats = parser.parseFeatures((feature, currentStats) -> {
+            parsedFeatures.add(feature);
+        });
+        assertEquals(1, stats.totalFeatures);
+        assertEquals(1, stats.validFeatures);
+        assertEquals(3, stats.totalPoints);
+        assertEquals(3, stats.validPoints);
+        assertEquals(1, parsedFeatures.size());
+        assertInstanceOf(GeoJsonMultiPoint.class, parsedFeatures.getFirst().getGeometry());
+    }
+    @Test
+    void testParseGeoJsonWithPartiallyInvalidMultiPointCoordinates() throws IOException {
+        String geoJson = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [-122.4194, 37.7749],
+                      [-181.0, 37.7750],
+                      [],
+                      [-122.4196, 37.7751, 15.5]
+                    ]
+                  },
+                  "properties": {
+                    "timestamp": "2024-01-01T12:00:00Z"
+                  }
+                }
+              ]
+            }
+            """;
+        StreamingGeoJsonParser parser = new StreamingGeoJsonParser(
+                geoJson.getBytes(StandardCharsets.UTF_8), objectMapper);
+        StreamingGeoJsonParser.ParsingStats stats = parser.parseFeatures((feature, currentStats) -> {
+            // No-op
+        });
+        assertEquals(1, stats.totalFeatures);
+        assertEquals(1, stats.validFeatures);
+        assertEquals(4, stats.totalPoints);
+        assertEquals(2, stats.validPoints);
     }
     @Test
     void testParseMixedGeometryTypes() throws IOException {
