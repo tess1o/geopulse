@@ -881,6 +881,11 @@ components:
         total:
           format: int32
           type: integer
+    DistanceUnit:
+      enum:
+      - KILOMETERS
+      - MILES
+      type: string
     EditFavoriteDto:
       required:
       - name
@@ -1281,11 +1286,6 @@ components:
       - RASTER
       - VECTOR
       type: string
-    MeasureUnit:
-      enum:
-      - METRIC
-      - IMPERIAL
-      type: string
     MemosVisibility:
       enum:
       - PRIVATE
@@ -1451,6 +1451,11 @@ components:
         receiverEmail:
           pattern: \S
           type: string
+    TemperatureUnit:
+      enum:
+      - CELSIUS
+      - FAHRENHEIT
+      type: string
     TestConnectionRequest:
       type: object
       properties:
@@ -2002,8 +2007,10 @@ components:
         timezone:
           maxLength: 255
           type: string
-        measureUnit:
-          $ref: "#/components/schemas/MeasureUnit"
+        distanceUnit:
+          $ref: "#/components/schemas/DistanceUnit"
+        temperatureUnit:
+          $ref: "#/components/schemas/TemperatureUnit"
         defaultRedirectUrl:
           maxLength: 1000
           type: string
@@ -11855,7 +11862,7 @@ paths:
         - ADMIN
 info:
   title: GeoPulse API
-  version: 1.37.0
+  version: 1.37.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o

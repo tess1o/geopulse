@@ -16,7 +16,7 @@ backend:
 
   image:
     repository: tess1o/geopulse-backend
-    tag: 1.37.0-native
+    tag: 1.37.1-native
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -123,7 +123,7 @@ backend:
 frontend:
   image:
     repository: tess1o/geopulse-ui
-    tag: 1.37.0
+    tag: 1.37.1
     pullPolicy: IfNotPresent
 
   replicaCount: 1

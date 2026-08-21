@@ -1189,6 +1189,10 @@
           }
         }
       },
+      "DistanceUnit" : {
+        "enum" : [ "KILOMETERS", "MILES" ],
+        "type" : "string"
+      },
       "EditFavoriteDto" : {
         "required" : [ "name" ],
         "type" : "object",
@@ -1696,10 +1700,6 @@
         "enum" : [ "RASTER", "VECTOR" ],
         "type" : "string"
       },
-      "MeasureUnit" : {
-        "enum" : [ "METRIC", "IMPERIAL" ],
-        "type" : "string"
-      },
       "MemosVisibility" : {
         "enum" : [ "PRIVATE", "PROTECTED", "PUBLIC" ],
         "type" : "string"
@@ -1881,6 +1881,10 @@
             "type" : "string"
           }
         }
+      },
+      "TemperatureUnit" : {
+        "enum" : [ "CELSIUS", "FAHRENHEIT" ],
+        "type" : "string"
       },
       "TestConnectionRequest" : {
         "type" : "object",
@@ -2616,8 +2620,11 @@
             "maxLength" : 255,
             "type" : "string"
           },
-          "measureUnit" : {
-            "$ref" : "#/components/schemas/MeasureUnit"
+          "distanceUnit" : {
+            "$ref" : "#/components/schemas/DistanceUnit"
+          },
+          "temperatureUnit" : {
+            "$ref" : "#/components/schemas/TemperatureUnit"
           },
           "defaultRedirectUrl" : {
             "maxLength" : 1000,
@@ -15286,7 +15293,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.37.0",
+    "version" : "1.37.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
