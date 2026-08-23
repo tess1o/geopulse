@@ -128,7 +128,8 @@ const timelineDisplayPrefs = ref({
   pathAdaptiveSimplification: true,
   defaultDateRangePreset: defaultDateRangePreset.value || '',
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true
+  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true,
+  mapMatchingEnabled: false
 })
 
 // Tab configuration
@@ -234,7 +235,10 @@ const currentTabHandlers = computed(() => {
   const handlers = {
     profile: { save: handleProfileSave, 'dirty-change': (isDirty) => handleTabDirtyChange('profile', isDirty) },
     security: { save: handlePasswordSave, 'dirty-change': (isDirty) => handleTabDirtyChange('security', isDirty) },
-    timelineDisplay: { save: handleTimelineDisplaySave, 'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty) },
+    timelineDisplay: {
+      save: handleTimelineDisplaySave,
+      'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty)
+    },
     ai: { save: handleAISave, 'dirty-change': (isDirty) => handleTabDirtyChange('ai', isDirty) },
     immich: { save: handleImmichSave, 'dirty-change': (isDirty) => handleTabDirtyChange('immich', isDirty) },
     memos: { save: handleMemosSave, 'dirty-change': (isDirty) => handleTabDirtyChange('memos', isDirty) },
@@ -550,7 +554,8 @@ const loadTimelineDisplayPreferences = async () => {
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
         defaultDateRangePreset: data.defaultDateRangePreset || '',
         showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
-        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true
+        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true,
+        mapMatchingEnabled: data.mapMatchingEnabled ?? false
       }
     }
   } catch (error) {

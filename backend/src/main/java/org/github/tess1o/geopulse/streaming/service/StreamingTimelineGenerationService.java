@@ -306,7 +306,7 @@ public class StreamingTimelineGenerationService {
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
             stageStart = metricsStart();
             fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
-            recordTimelineStage(stageStart, trigger, "weather_event", "success");
+            recordTimelineStage(stageStart, trigger, "timeline_changed_event", "success");
 
         } catch (Exception e) {
             result = "error";

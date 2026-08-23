@@ -126,6 +126,7 @@
               />
             </template>
           </SettingCard>
+
         </div>
 
         <div class="section">
@@ -144,6 +145,28 @@
               <div class="control-value">{{ form.autoShowTripReplayControls ? 'Enabled' : 'Collapsed' }}</div>
               <ToggleSwitch
                 v-model="form.autoShowTripReplayControls"
+                class="toggle-control"
+              />
+            </template>
+          </SettingCard>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">Map Matching</h3>
+          <p class="section-description">
+            Use a configured Valhalla service to fit displayed trip paths to roads and paths
+          </p>
+
+          <SettingCard
+            title="Enable Map Matching"
+            description="Display cached matched trip geometry when available"
+            details="Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged."
+            setting-id="mapMatchingEnabled"
+          >
+            <template #control>
+              <div class="control-value">{{ form.mapMatchingEnabled ? 'Enabled' : 'Disabled' }}</div>
+              <ToggleSwitch
+                v-model="form.mapMatchingEnabled"
                 class="toggle-control"
               />
             </template>
@@ -299,7 +322,8 @@ const form = ref({
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: true
+  autoShowTripReplayControls: true,
+  mapMatchingEnabled: false
 })
 
 const errors = ref({
@@ -329,7 +353,8 @@ const normalizePreferences = (preferences = {}) => ({
   pathMaxPoints: Number(preferences.pathMaxPoints ?? 0),
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
-  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true
+  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
+  mapMatchingEnabled: preferences.mapMatchingEnabled ?? false
 })
 
 const hasChanges = computed(() => {
@@ -449,7 +474,8 @@ const handleSubmit = async () => {
       pathMaxPoints: form.value.pathMaxPoints,
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
-      autoShowTripReplayControls: form.value.autoShowTripReplayControls
+      autoShowTripReplayControls: form.value.autoShowTripReplayControls,
+      mapMatchingEnabled: form.value.mapMatchingEnabled
     })
   } finally {
     loading.value = false
@@ -468,13 +494,15 @@ const handleReset = () => {
     pathMaxPoints: 0,
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
-    autoShowTripReplayControls: true
+    autoShowTripReplayControls: true,
+    mapMatchingEnabled: false
   }
   errors.value = {
     customMapTileUrl: null,
     customMapStyleUrl: null
   }
 }
+
 </script>
 
 <style scoped>
@@ -595,6 +623,7 @@ const handleReset = () => {
   margin-left: auto;
 }
 
+
 /* Form Actions */
 .form-actions {
   display: flex;
@@ -619,5 +648,6 @@ const handleReset = () => {
   .form-actions button {
     width: 100%;
   }
+
 }
 </style>

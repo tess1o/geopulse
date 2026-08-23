@@ -53,6 +53,7 @@ import { jumpToSetting } from '@/utils/settingJump'
 import AuthenticationSettingsTab from '@/components/admin/settings/tabs/AuthenticationSettingsTab.vue'
 import GeocodingSettingsTab from '@/components/admin/settings/tabs/GeocodingSettingsTab.vue'
 import WeatherSettingsTab from '@/components/admin/settings/tabs/WeatherSettingsTab.vue'
+import MapMatchingSettingsTab from '@/components/admin/settings/tabs/MapMatchingSettingsTab.vue'
 import AISettingsTab from '@/components/admin/settings/tabs/AISettingsTab.vue'
 import GPSProcessingSettingsTab from '@/components/admin/settings/tabs/GPSProcessingSettingsTab.vue'
 import ImportSettingsTab from '@/components/admin/settings/tabs/ImportSettingsTab.vue'
@@ -97,6 +98,11 @@ const tabItems = ref([
     key: 'weather'
   },
   {
+    label: 'Map Matching',
+    icon: 'pi pi-map',
+    key: 'map-matching'
+  },
+  {
     label: 'AI Assistant',
     icon: 'pi pi-sparkles',
     key: 'ai'
@@ -128,7 +134,7 @@ const tabItems = ref([
   }
 ])
 
-const validTabs = ['authentication', 'geocoding', 'weather', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
+const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -139,6 +145,7 @@ const currentTabComponent = computed(() => {
     authentication: AuthenticationSettingsTab,
     geocoding: GeocodingSettingsTab,
     weather: WeatherSettingsTab,
+    'map-matching': MapMatchingSettingsTab,
     ai: AISettingsTab,
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,

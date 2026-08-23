@@ -54,7 +54,7 @@ public class TimelineConfigurationProvider {
      * @return effective timeline configuration
      */
     public TimelineConfig getConfigurationForUser(UUID userId) {
-        log.debug("Getting timeline configuration for user {}", userId);
+        log.trace("Getting timeline configuration for user {}", userId);
 
         UserEntity user = userRepository.findById(userId);
 
@@ -92,8 +92,6 @@ public class TimelineConfigurationProvider {
      * This keeps GPS point save flows from initializing lazy user associations.
      */
     public boolean isBoatEnabledForUser(UUID userId) {
-        log.debug("Getting boat-enabled configuration for user {}", userId);
-
         try {
             Object result = entityManager.createNativeQuery("""
                             SELECT (timeline_preferences ->> 'boatEnabled')::boolean

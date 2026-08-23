@@ -49,6 +49,8 @@ public class UserMapper {
                 .defaultDateRangePreset(entity.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .mapMatchingEnabled(entity.getTimelineDisplayMapMatchingEnabled() != null
+                        ? entity.getTimelineDisplayMapMatchingEnabled() : false)
                 .build();
     }
 }

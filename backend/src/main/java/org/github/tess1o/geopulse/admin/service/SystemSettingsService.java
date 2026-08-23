@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
+import org.github.tess1o.geopulse.mapmatching.event.MapMatchingSettingsChangedEvent;
 import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
@@ -35,6 +36,7 @@ public class SystemSettingsService {
     private final Config config;
     private final AIEncryptionService encryptionService;
     private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
+    private final Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
     private static final String DEFAULT_DISTANCE_UNIT_KEY = "system.user.default-distance-unit";
@@ -169,6 +171,32 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("weather.failed-target-retry.cooldown-hours",
                 new SettingDefinition("geopulse.weather.failed-target-retry.cooldown-hours", "24", ValueType.INTEGER, "weather", "Hours before a failed weather target can be retried"));
 
+        // Map matching settings
+        SETTING_DEFINITIONS.put("map-matching.enabled",
+                new SettingDefinition("geopulse.timeline.map-matching.enabled", "false", ValueType.BOOLEAN, "map-matching", "Enable map matching globally"));
+        SETTING_DEFINITIONS.put("map-matching.automatic.enabled",
+                new SettingDefinition("geopulse.timeline.map-matching.automatic.enabled", "false", ValueType.BOOLEAN, "map-matching", "Automatically map-match stable new trips for all users"));
+        SETTING_DEFINITIONS.put("map-matching.backfill.enabled",
+                new SettingDefinition("geopulse.timeline.map-matching.backfill.enabled", "false", ValueType.BOOLEAN, "map-matching", "Discover and map-match historical trips for all users"));
+        SETTING_DEFINITIONS.put("map-matching.automatic.quiet-period-minutes",
+                new SettingDefinition("geopulse.timeline.map-matching.automatic.quiet-period-minutes", "15", ValueType.INTEGER, "map-matching", "Minutes a changed timeline must remain quiet before automatic matching"));
+        SETTING_DEFINITIONS.put("map-matching.provider",
+                new SettingDefinition("geopulse.timeline.map-matching.provider", "valhalla", ValueType.STRING, "map-matching", "Map matching provider"));
+        SETTING_DEFINITIONS.put("map-matching.valhalla.base-url",
+                new SettingDefinition("geopulse.timeline.map-matching.valhalla.base-url", "", ValueType.STRING, "map-matching", "Valhalla API base URL"));
+        SETTING_DEFINITIONS.put("map-matching.valhalla.connect-timeout-seconds",
+                new SettingDefinition("geopulse.timeline.map-matching.connect-timeout-seconds", "3", ValueType.INTEGER, "map-matching", "Valhalla connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("map-matching.valhalla.read-timeout-seconds",
+                new SettingDefinition("geopulse.timeline.map-matching.read-timeout-seconds", "20", ValueType.INTEGER, "map-matching", "Valhalla read timeout in seconds"));
+        SETTING_DEFINITIONS.put("map-matching.max-input-points",
+                new SettingDefinition("geopulse.timeline.map-matching.max-input-points", "100", ValueType.INTEGER, "map-matching", "Maximum GPS points sent in each contiguous Valhalla trace chunk"));
+        SETTING_DEFINITIONS.put("map-matching.max-trip-duration-hours",
+                new SettingDefinition("geopulse.timeline.map-matching.max-trip-duration-hours", "24", ValueType.INTEGER, "map-matching", "Maximum trip duration eligible for map matching"));
+        SETTING_DEFINITIONS.put("map-matching.worker.batch-size",
+                new SettingDefinition("geopulse.timeline.map-matching.worker.batch-size", "5", ValueType.INTEGER, "map-matching", "Map matching targets processed per worker run"));
+        SETTING_DEFINITIONS.put("map-matching.max-attempts",
+                new SettingDefinition("geopulse.timeline.map-matching.max-attempts", "3", ValueType.INTEGER, "map-matching", "Maximum attempts per map matching target"));
+
         // Import settings
         SETTING_DEFINITIONS.put("import.bulk-insert-batch-size",
                 new SettingDefinition("geopulse.import.bulk-insert-batch-size", "500", ValueType.INTEGER, "import", "Bulk insert batch size"));
@@ -266,11 +294,22 @@ public class SystemSettingsService {
     public SystemSettingsService(
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
-            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
+            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
+            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
         this.repository = repository;
         this.encryptionService = encryptionService;
         this.weatherSettingsChangedEvent = weatherSettingsChangedEvent;
+        this.mapMatchingSettingsChangedEvent = mapMatchingSettingsChangedEvent;
         this.config = ConfigProvider.getConfig();
+    }
+
+    // Retained for focused unit tests and non-CDI callers that predate the
+    // map-matching settings event. CDI always uses the @Inject constructor.
+    public SystemSettingsService(
+            SystemSettingsRepository repository,
+            AIEncryptionService encryptionService,
+            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
+        this(repository, encryptionService, weatherSettingsChangedEvent, null);
     }
 
     /**
@@ -434,6 +473,7 @@ public class SystemSettingsService {
 
         log.info("Setting {} updated by user {}", key, updatedBy);
         fireWeatherSettingsChanged(key);
+        fireMapMatchingSettingsChanged(key);
     }
 
     /**
@@ -444,11 +484,20 @@ public class SystemSettingsService {
         repository.deleteByKey(key);
         log.info("Setting {} reset to default", key);
         fireWeatherSettingsChanged(key);
+        fireMapMatchingSettingsChanged(key);
     }
 
     private void fireWeatherSettingsChanged(String key) {
         if (key != null && key.startsWith("weather.")) {
             weatherSettingsChangedEvent.fire(new WeatherSettingsChangedEvent(key));
+        }
+    }
+
+    private void fireMapMatchingSettingsChanged(String key) {
+        if (key != null && key.startsWith("map-matching.")) {
+            if (mapMatchingSettingsChangedEvent != null) {
+                mapMatchingSettingsChangedEvent.fire(new MapMatchingSettingsChangedEvent(key));
+            }
         }
     }
 
@@ -510,7 +559,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "weather", "gps", "import", "export", "system")) {
+        for (String category : List.of("auth", "geocoding", "weather", "map-matching", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 
@@ -587,6 +636,26 @@ public class SystemSettingsService {
                     && !normalized.equals("OPEN_METEO")
                     && !normalized.equals("PIRATE_WEATHER")) {
                 throw new IllegalArgumentException("Setting " + key + " must be OPEN_METEO, PIRATE_WEATHER, or empty");
+            }
+        }
+        if ("map-matching.provider".equals(key)) {
+            String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+            if (!"valhalla".equals(normalized)) {
+                throw new IllegalArgumentException("Setting " + key + " must be valhalla");
+            }
+        }
+        if ("map-matching.valhalla.base-url".equals(key)) {
+            String normalized = value == null ? "" : value.trim();
+            if (!normalized.isBlank()
+                    && !normalized.startsWith("http://")
+                    && !normalized.startsWith("https://")) {
+                throw new IllegalArgumentException("Setting " + key + " must start with http:// or https://");
+            }
+        }
+        if (key.startsWith("map-matching.") && SETTING_DEFINITIONS.get(key).valueType() == ValueType.INTEGER) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 1) {
+                throw new IllegalArgumentException("Setting " + key + " must be at least 1");
             }
         }
     }

@@ -42,6 +42,16 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return find("user.id = ?1 order by timestamp", userId).list();
     }
 
+    public List<TimelineTripEntity> findMapMatchingChunk(UUID userId, Instant cursorAt,
+                                                         long cursorTripId, Instant endTime, int limit) {
+        if (limit <= 0) {
+            return List.of();
+        }
+        return find("user.id = ?1 and (timestamp > ?2 or (timestamp = ?2 and id > ?3)) "
+                        + "and timestamp <= ?4 order by timestamp, id",
+                userId, cursorAt, cursorTripId, endTime).page(0, limit).list();
+    }
+
 
     /**
      * Find timeline trips for a user within a time range, including boundary expansion.

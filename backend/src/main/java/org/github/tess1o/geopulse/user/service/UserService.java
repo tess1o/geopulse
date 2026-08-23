@@ -881,6 +881,9 @@ public class UserService {
         if (request.getAutoShowTripReplayControls() != null) {
             user.setTimelineDisplayAutoShowTripReplayControls(request.getAutoShowTripReplayControls());
         }
+        if (request.getMapMatchingEnabled() != null) {
+            user.setTimelineDisplayMapMatchingEnabled(request.getMapMatchingEnabled());
+        }
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
@@ -914,6 +917,8 @@ public class UserService {
                         ? user.getTimelineDisplayShowCurrentLocationTelemetry() : true)
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .mapMatchingEnabled(user.getTimelineDisplayMapMatchingEnabled() != null
+                        ? user.getTimelineDisplayMapMatchingEnabled() : false)
                 .build();
     }
 }

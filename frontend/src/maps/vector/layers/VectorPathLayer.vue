@@ -153,6 +153,20 @@ const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
 
 const isCarMovementType = (movementType) => String(movementType || '').trim().toUpperCase() === 'CAR'
 const isTripItem = (item) => item?.type === 'trip'
+const resolvePathLineDashArray = (dashArray) => {
+  if (Array.isArray(dashArray)) {
+    const parsed = dashArray.map(Number).filter(value => Number.isFinite(value) && value >= 0)
+    return parsed.length > 0 ? parsed : null
+  }
+  if (typeof dashArray === 'string' && dashArray.trim()) {
+    const parsed = dashArray
+      .split(/[,\s]+/)
+      .map(Number)
+      .filter(value => Number.isFinite(value) && value >= 0)
+    return parsed.length > 0 ? parsed : null
+  }
+  return null
+}
 const hasFocusedHighlightedTrip = () => (
   props.focusHighlightedTrip
   && isTripItem(props.highlightedTrip)
@@ -465,7 +479,7 @@ const clearHighlightedTouchInspection = () => {
 }
 
 const registerEvents = () => {
-  if (!isMapLibreMap(props.map)) {
+  if (!isMapLibreMap(props.map) || !props.inspectionEnabled) {
     return
   }
 
@@ -576,7 +590,7 @@ const registerEvents = () => {
     }
   }
 
-  if (!hasFocusedHighlightedTrip()) {
+  if (!hasFocusedHighlightedTrip() && props.inspectionEnabled) {
     props.map.on('click', state.lineLayerId, handlePathClick)
     props.map.on('mousemove', state.lineLayerId, handlePathHover)
     props.map.on('mouseleave', state.lineLayerId, handlePathLeave)
@@ -588,7 +602,7 @@ const registerEvents = () => {
   props.map.on('touchstart', state.highlightedHitLayerId, handleHighlightedLineTouchStart)
 
   state.listeners = [
-    ...(!hasFocusedHighlightedTrip()
+    ...(!hasFocusedHighlightedTrip() && props.inspectionEnabled
       ? [
           { event: 'click', layerId: state.lineLayerId, handler: handlePathClick },
           { event: 'mousemove', layerId: state.lineLayerId, handler: handlePathHover },
@@ -648,6 +662,7 @@ const renderLayer = () => {
   const highlightedLineDashArray = highlightedTripUsesSpeedBands
     ? HIGHLIGHTED_TRIP_CAR_SOLID_DASH
     : HIGHLIGHTED_TRIP_NON_CAR_DASH
+  const pathLineDashArray = resolvePathLineDashArray(props.pathOptions.dashArray)
 
   const pathCollection = buildPathCollection(props.pathData)
   const highlighted = buildHighlightedData({
@@ -664,12 +679,17 @@ const renderLayer = () => {
     id: state.lineLayerId,
     type: 'line',
     source: state.sourceId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round'
+    },
     paint: {
       'line-color': props.pathOptions.color || '#007bff',
       'line-width': props.pathOptions.weight || 4,
       'line-opacity': hasFocusedHighlightedTrip()
         ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8)
+        : (props.pathOptions.opacity ?? 0.8),
+      ...(pathLineDashArray ? { 'line-dasharray': pathLineDashArray } : {})
     }
   })
 
@@ -716,11 +736,22 @@ const renderLayer = () => {
   if (hasMapLibreLayer(props.map, state.lineLayerId)) {
     props.map.setPaintProperty(
       state.lineLayerId,
+      'line-color',
+      props.pathOptions.color || '#007bff'
+    )
+    props.map.setPaintProperty(
+      state.lineLayerId,
+      'line-width',
+      props.pathOptions.weight || 4
+    )
+    props.map.setPaintProperty(
+      state.lineLayerId,
       'line-opacity',
       hasFocusedHighlightedTrip()
         ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
         : (props.pathOptions.opacity ?? 0.8)
     )
+    props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
   }
 
   syncReplayFocusLayerVisibility()

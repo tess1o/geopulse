@@ -151,27 +151,55 @@ export const createEmptyHighlightedTripData = () => ({
   hoverPathPoints: [],
   lineCoordinates: [],
   replayPathPoints: [],
+  renderedTripSegments: [],
   renderedTripPoints: [],
   highlightedSegments: { segments: [] },
   sameEndpoint: false
 })
+
+const resolveHighlightedTripPointSegments = ({
+  highlightedTrip,
+  pathData,
+  allowPathDataFallback
+}) => {
+  const reconstructedSegments = (Array.isArray(pathData) ? pathData : [])
+    .map((pathSegment) => {
+      const normalizedSegment = normalizePathPoints([pathSegment])
+      return reconstructTripPathPoints(highlightedTrip, normalizedSegment).points
+    })
+    .filter((segment) => Array.isArray(segment) && segment.length >= 2)
+
+  if (reconstructedSegments.length > 0) {
+    return reconstructedSegments
+  }
+
+  const fallbackPoints = resolveHighlightedTripPoints({
+    highlightedTrip,
+    pathData,
+    allowPathDataFallback
+  })
+  return fallbackPoints.length >= 2 ? [fallbackPoints] : []
+}
 
 export const buildHighlightedTripData = ({
   highlightedTrip,
   pathData,
   allowPathDataFallback = false
 }) => {
-  const tripPoints = resolveHighlightedTripPoints({
+  const tripPointSegments = resolveHighlightedTripPointSegments({
     highlightedTrip,
     pathData,
     allowPathDataFallback
   })
 
-  if (!tripPoints || tripPoints.length < 2) {
+  if (tripPointSegments.length === 0) {
     return createEmptyHighlightedTripData()
   }
 
-  const renderedTripPoints = tripPoints.map((point) => ({ ...point }))
+  const renderedTripSegments = tripPointSegments.map(segment => (
+    segment.map(point => ({ ...point }))
+  ))
+  const renderedTripPoints = renderedTripSegments.flat()
   const hoverPathPoints = renderedTripPoints.map((point) => ({
     latitude: point.latitude,
     longitude: point.longitude,
@@ -240,8 +268,13 @@ export const buildHighlightedTripData = ({
     hoverPathPoints,
     lineCoordinates,
     replayPathPoints: renderedTripPoints,
+    renderedTripSegments,
     renderedTripPoints,
-    highlightedSegments: buildHighlightedTripSegments(renderedTripPoints),
+    highlightedSegments: {
+      segments: renderedTripSegments.flatMap(segment => (
+        buildHighlightedTripSegments(segment).segments
+      ))
+    },
     sameEndpoint
   }
 }

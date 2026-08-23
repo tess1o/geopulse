@@ -36,4 +36,13 @@ public class ExecutorServiceProducer {
                 Thread.ofVirtual().name("weather-", 0).factory()
         );
     }
+
+    @Produces
+    @ApplicationScoped
+    @Identifier("map-matching-processing")
+    public ExecutorService mapMatchingProcessingExecutor() {
+        return Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("map-matching-", 0).factory()
+        );
+    }
 }
