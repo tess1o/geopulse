@@ -63,6 +63,8 @@ public class StreamingGeoJsonParser {
         ParsingStats stats = new ParsingStats();
 
         try (JsonParser parser = jsonFactory.createParser(inputStream)) {
+            parser.setCodec(objectMapper);
+
             // Expect root object to start
             if (parser.nextToken() != JsonToken.START_OBJECT) {
                 throw new IllegalArgumentException("GeoJSON must start with an object");

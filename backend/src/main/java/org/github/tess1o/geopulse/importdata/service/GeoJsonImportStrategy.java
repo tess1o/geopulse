@@ -55,22 +55,11 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
 
             // Parse through entire file to validate structure, count points, and track timestamps
             StreamingGeoJsonParser.ParsingStats stats = parser.parseFeatures((feature, currentStats) -> {
-            if (!feature.hasValidGeometry()) {
-                return;
-            }
-
-            // Extract timestamp from properties
-            GeoJsonProperties properties = feature.getProperties();
-            Instant timestamp = parseTimestamp(properties);
-
-            if (timestamp != null) {
-                if (firstTimestamp.get() == null || timestamp.isBefore(firstTimestamp.get())) {
-                    firstTimestamp.set(timestamp);
+                if (!feature.hasValidGeometry()) {
+                    return;
                 }
-                if (lastTimestamp.get() == null || timestamp.isAfter(lastTimestamp.get())) {
-                    lastTimestamp.set(timestamp);
-                }
-            }
+
+                trackFeatureTimestampRange(feature, firstTimestamp, lastTimestamp);
             });
 
             if (stats.totalFeatures == 0) {
@@ -123,40 +112,46 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
         try (InputStream dataStream = job.getDataStream()) {
             StreamingGeoJsonParser parser = new StreamingGeoJsonParser(dataStream, objectMapper);
 
-        parser.parseFeatures((feature, stats) -> {
-            totalFeatures.incrementAndGet();
+            parser.parseFeatures((feature, stats) -> {
+                totalFeatures.incrementAndGet();
 
-            if (!feature.hasValidGeometry()) {
-                return;
-            }
-
-            GeoJsonGeometry geometry = feature.getGeometry();
-            GeoJsonProperties properties = feature.getProperties();
-
-            if (geometry instanceof GeoJsonPoint point) {
-                GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
-                if (gpsPoint != null) {
-                    addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                        totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                if (!feature.hasValidGeometry()) {
+                    return;
                 }
-            } else if (geometry instanceof GeoJsonMultiPoint multiPoint) {
-                for (GeoJsonPoint point : multiPoint.getPoints()) {
+
+                GeoJsonGeometry geometry = feature.getGeometry();
+                GeoJsonProperties properties = feature.getProperties();
+
+                if (geometry instanceof GeoJsonPoint point) {
                     GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
                     if (gpsPoint != null) {
                         addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                            totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                                totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                    }
+                } else if (geometry instanceof GeoJsonMultiPoint multiPoint) {
+                    List<List<Double>> coordinates = multiPoint.getCoordinates();
+                    for (int index = 0; coordinates != null && index < coordinates.size(); index++) {
+                        GeoJsonPoint point = createPoint(coordinates.get(index));
+                        GeoJsonProperties pointProperties = properties == null ? null : properties.forPointIndex(index);
+                        GpsPointEntity gpsPoint = convertPointToGpsPoint(point, pointProperties, user, job);
+                        if (gpsPoint != null) {
+                            addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
+                                    totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                        }
+                    }
+                } else if (geometry instanceof GeoJsonLineString lineString) {
+                    List<List<Double>> coordinates = lineString.getCoordinates();
+                    for (int index = 0; coordinates != null && index < coordinates.size(); index++) {
+                        GeoJsonPoint point = createPoint(coordinates.get(index));
+                        GeoJsonProperties pointProperties = properties == null ? null : properties.forPointIndex(index);
+                        GpsPointEntity gpsPoint = convertPointToGpsPoint(point, pointProperties, user, job);
+                        if (gpsPoint != null) {
+                            addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
+                                    totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                        }
                     }
                 }
-            } else if (geometry instanceof GeoJsonLineString lineString) {
-                for (GeoJsonPoint point : lineString.getPoints()) {
-                    GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
-                    if (gpsPoint != null) {
-                        addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                            totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
-                    }
-                }
-            }
-        });
+            });
 
             // Flush any remaining batch
             if (!currentBatch.isEmpty()) {
@@ -238,6 +233,57 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
             throw new ImportBatchPersistenceException("Failed to flush GeoJSON import batch to database", e);
         }
+    }
+
+    private void trackFeatureTimestampRange(GeoJsonFeature feature,
+                                            AtomicReference<Instant> firstTimestamp,
+                                            AtomicReference<Instant> lastTimestamp) {
+        GeoJsonGeometry geometry = feature.getGeometry();
+        GeoJsonProperties properties = feature.getProperties();
+
+        if (geometry instanceof GeoJsonMultiPoint multiPoint) {
+            trackCoordinateListTimestampRange(multiPoint.getCoordinates(), properties, firstTimestamp, lastTimestamp);
+        } else if (geometry instanceof GeoJsonLineString lineString) {
+            trackCoordinateListTimestampRange(lineString.getCoordinates(), properties, firstTimestamp, lastTimestamp);
+        } else {
+            updateTimestampRange(parseTimestamp(properties), firstTimestamp, lastTimestamp);
+        }
+    }
+
+    private void trackCoordinateListTimestampRange(List<List<Double>> coordinates,
+                                                   GeoJsonProperties properties,
+                                                   AtomicReference<Instant> firstTimestamp,
+                                                   AtomicReference<Instant> lastTimestamp) {
+        for (int index = 0; coordinates != null && index < coordinates.size(); index++) {
+            GeoJsonPoint point = createPoint(coordinates.get(index));
+            if (!point.hasValidCoordinates()) {
+                continue;
+            }
+
+            GeoJsonProperties pointProperties = properties == null ? null : properties.forPointIndex(index);
+            updateTimestampRange(parseTimestamp(pointProperties), firstTimestamp, lastTimestamp);
+        }
+    }
+
+    private void updateTimestampRange(Instant timestamp,
+                                      AtomicReference<Instant> firstTimestamp,
+                                      AtomicReference<Instant> lastTimestamp) {
+        if (timestamp == null) {
+            return;
+        }
+
+        if (firstTimestamp.get() == null || timestamp.isBefore(firstTimestamp.get())) {
+            firstTimestamp.set(timestamp);
+        }
+        if (lastTimestamp.get() == null || timestamp.isAfter(lastTimestamp.get())) {
+            lastTimestamp.set(timestamp);
+        }
+    }
+
+    private GeoJsonPoint createPoint(List<Double> coordinates) {
+        GeoJsonPoint point = new GeoJsonPoint();
+        point.setCoordinates(coordinates);
+        return point;
     }
 
 
