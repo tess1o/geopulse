@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, computed, inject, onBeforeUnmount } from 'vue'
+import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -152,16 +152,9 @@ import TripReconstructionDialog from '@/components/trips/TripReconstructionDialo
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
 import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
+import { useTimelineMapMatching } from '@/composables/useTimelineMapMatching'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { showDemoModeToast } from '@/utils/demoMode'
-import {
-  areVisibleMapMatchingTripsSettled,
-  buildActiveMapMatchingPathData,
-  chunkMapMatchingIds,
-  getMapMatchingPollDelay,
-  getPendingMapMatchingTargets,
-  mergeMapMatchingTripResolutions
-} from '@/utils/mapMatchingTimeline'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
@@ -284,11 +277,6 @@ const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
-const mapMatchingResolving = ref(false)
-const mapMatchingResolution = ref(null)
-let mapMatchingPollTimer = null
-let mapMatchingRequestToken = 0
-let mapMatchingPollAttempt = 0
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -343,54 +331,17 @@ const visibleTrips = computed(() => {
   return items.filter(item => item?.type === 'trip' && item?.id)
 })
 
-const matchedSegmentsByTripId = computed(() => {
-  const result = new Map()
-  const trips = Array.isArray(mapMatchingResolution.value?.trips) ? mapMatchingResolution.value.trips : []
-  trips.forEach((trip) => {
-    if (trip?.status === 'COMPLETED' && Array.isArray(trip.segments) && trip.segments.length > 0) {
-      result.set(Number(trip.tripId), trip.segments)
-    }
-  })
-  return result
+const {
+  activePathData,
+  matchedTripIds,
+  statusText: mapMatchingStatusText,
+  resolve: resolveMapMatching,
+  reset: resetMapMatching
+} = useTimelineMapMatching({
+  enabled: mapMatchingEnabled,
+  visibleTrips,
+  rawPathData: pathData
 })
-
-const mapMatchingPageSettled = computed(() => {
-  if (!mapMatchingEnabled.value || mapMatchingResolving.value || !mapMatchingResolution.value) {
-    return false
-  }
-
-  return areVisibleMapMatchingTripsSettled(
-    visibleTrips.value.map(trip => trip.id),
-    mapMatchingResolution.value.trips
-  )
-})
-
-const displayedMatchedSegmentsByTripId = computed(() => (
-  mapMatchingPageSettled.value ? matchedSegmentsByTripId.value : new Map()
-))
-
-const matchedTripIds = computed(() => Array.from(displayedMatchedSegmentsByTripId.value.keys()))
-
-const pendingMapMatchingCount = computed(() => {
-  const trips = Array.isArray(mapMatchingResolution.value?.trips) ? mapMatchingResolution.value.trips : []
-  return trips.filter(trip => trip?.status === 'QUEUED' || trip?.status === 'PROCESSING').length
-})
-
-const mapMatchingStatusText = computed(() => {
-  if (!mapMatchingEnabled.value || pendingMapMatchingCount.value === 0) {
-    return ''
-  }
-  return pendingMapMatchingCount.value === 1
-    ? 'Refining route...'
-    : `Refining ${pendingMapMatchingCount.value} routes...`
-})
-
-const activePathData = computed(() => buildActiveMapMatchingPathData({
-  rawPathData: pathData.value,
-  visibleTrips: visibleTrips.value,
-  matchedSegmentsByTripId: displayedMatchedSegmentsByTripId.value,
-  settled: mapMatchingPageSettled.value
-}))
 
 const selectedSingleDayDate = computed(() => {
   if (!dateRange.value || dateRange.value.length !== 2) {
@@ -800,105 +751,6 @@ const loadTimelineDisplaySettings = async () => {
   }
 }
 
-const clearMapMatchingPoll = () => {
-  if (mapMatchingPollTimer) {
-    clearTimeout(mapMatchingPollTimer)
-    mapMatchingPollTimer = null
-  }
-}
-
-const mergeMapMatchingTrips = (incomingTrips) => {
-  const existing = Array.isArray(mapMatchingResolution.value?.trips)
-    ? mapMatchingResolution.value.trips
-    : []
-  mapMatchingResolution.value = {
-    ...(mapMatchingResolution.value || {}),
-    enabled: true,
-    trips: mergeMapMatchingTripResolutions(existing, incomingTrips)
-  }
-}
-
-const scheduleMapMatchingPoll = (requestToken) => {
-  const pending = getPendingMapMatchingTargets(mapMatchingResolution.value?.trips)
-  if (pending.length === 0 || requestToken !== mapMatchingRequestToken) return
-
-  const delay = getMapMatchingPollDelay(pending, mapMatchingPollAttempt)
-  mapMatchingPollAttempt += 1
-  mapMatchingPollTimer = setTimeout(() => pollMapMatchingStatus(requestToken), delay)
-}
-
-const pollMapMatchingStatus = async (requestToken) => {
-  clearMapMatchingPoll()
-  if (requestToken !== mapMatchingRequestToken || !mapMatchingEnabled.value) return
-  const pendingTargets = getPendingMapMatchingTargets(mapMatchingResolution.value?.trips)
-  if (pendingTargets.length === 0) return
-
-  try {
-    const batches = chunkMapMatchingIds(pendingTargets.map(trip => trip.targetId))
-    const responses = await Promise.all(batches.map(targetIds => (
-      apiService.post('/map-matching/status', { targetIds })
-    )))
-    if (requestToken !== mapMatchingRequestToken) return
-    responses.forEach((response) => mergeMapMatchingTrips(response?.data || response || []))
-  } catch (error) {
-    if (requestToken === mapMatchingRequestToken) {
-      console.warn('Failed to poll map matching status:', error)
-    }
-  }
-  scheduleMapMatchingPoll(requestToken)
-}
-
-const resolveMapMatching = async () => {
-  clearMapMatchingPoll()
-  const requestToken = mapMatchingRequestToken
-  if (!mapMatchingEnabled.value) {
-    mapMatchingResolution.value = null
-    mapMatchingResolving.value = false
-    return
-  }
-
-  const tripIds = visibleTrips.value.map(trip => trip.id).filter(Boolean)
-  if (tripIds.length === 0) {
-    mapMatchingResolution.value = null
-    mapMatchingResolving.value = false
-    return
-  }
-
-  mapMatchingResolving.value = true
-  mapMatchingPollAttempt = 0
-
-  try {
-    const responses = await Promise.all(chunkMapMatchingIds(tripIds).map(batch => (
-      apiService.post('/map-matching/resolve', { tripIds: batch })
-    )))
-    if (requestToken !== mapMatchingRequestToken) {
-      return
-    }
-    const trips = []
-    let enabled = false
-    let provider = null
-    responses.forEach((response) => {
-      const result = response?.data || response || {}
-      enabled = enabled || result.enabled === true
-      provider = provider || result.provider
-      trips.push(...(Array.isArray(result.trips) ? result.trips : []))
-    })
-    mapMatchingResolution.value = { enabled, provider, trips }
-  } catch (error) {
-    if (requestToken !== mapMatchingRequestToken) {
-      return
-    }
-    console.warn('Failed to resolve map matching:', error)
-    mapMatchingResolution.value = null
-  } finally {
-    if (requestToken === mapMatchingRequestToken) {
-      mapMatchingResolving.value = false
-    }
-  }
-
-  scheduleMapMatchingPoll(requestToken)
-}
-
 const queueLatestFetchRange = (startDate, endDate, rangeKey) => {
   queuedFetchRange.value = { startDate, endDate, rangeKey }
   console.info('Fetch in progress, queued latest range:', rangeKey)
@@ -931,11 +783,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
     forceLoadLargeDataset.value = false
 
-    clearMapMatchingPoll()
-    mapMatchingRequestToken += 1
-    mapMatchingResolution.value = null
-    mapMatchingResolving.value = false
-    mapMatchingPollAttempt = 0
+    resetMapMatching()
 
     const locationPromise = fetchLocationData(startDate, endDate)
     const timelinePromise = fetchTimelineData(startDate, endDate)
@@ -968,11 +816,6 @@ onMounted(async () => {
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
   })
-})
-
-onBeforeUnmount(() => {
-  clearMapMatchingPoll()
-  mapMatchingRequestToken += 1
 })
 
 // Watchers

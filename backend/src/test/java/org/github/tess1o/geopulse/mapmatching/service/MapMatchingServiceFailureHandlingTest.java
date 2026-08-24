@@ -112,7 +112,7 @@ class MapMatchingServiceFailureHandlingTest {
         when(configuration.provider()).thenReturn("valhalla");
         when(configuration.valhallaConfigured()).thenReturn(true);
         when(configuration.getMaxTripDurationHours()).thenReturn(24);
-        when(configuration.configHashSource()).thenReturn("algorithm=v3|valhalla");
+        when(configuration.configHashSource()).thenReturn("algorithm=v4|valhalla");
         when(userRepository.findById(userId)).thenReturn(user);
         when(user.getTimelineDisplayMapMatchingEnabled()).thenReturn(true);
         when(user.getId()).thenReturn(userId);
@@ -127,7 +127,7 @@ class MapMatchingServiceFailureHandlingTest {
         when(gpsPointRepository.findEligibleByUserIdAndTimePeriod(userId, start, start.plusSeconds(120), null))
                 .thenReturn(List.of(point(start), point(start.plusSeconds(60))));
         when(profileResolver.resolveProfile("CAR")).thenReturn("auto");
-        when(hashService.configHash("algorithm=v3|valhalla|auto")).thenReturn("config-hash");
+        when(hashService.configHash("algorithm=v4|valhalla|auto")).thenReturn("config-hash");
         when(hashService.inputHash(anyList(), isNull())).thenReturn("input-hash");
         when(matchRepository.findCurrent(userId, "valhalla", "auto", "config-hash", "input-hash"))
                 .thenReturn(Optional.of(existing));

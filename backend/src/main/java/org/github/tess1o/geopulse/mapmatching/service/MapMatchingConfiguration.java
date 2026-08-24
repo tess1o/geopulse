@@ -17,6 +17,10 @@ public class MapMatchingConfiguration {
     private static final String MAX_TRIP_DURATION_HOURS = "map-matching.max-trip-duration-hours";
     private static final String WORKER_BATCH_SIZE = "map-matching.worker.batch-size";
     private static final String MAX_ATTEMPTS = "map-matching.max-attempts";
+    private static final String QUALITY_MIN_RAW_DISTANCE_METERS = "map-matching.quality.min-raw-distance-meters";
+    private static final String QUALITY_MIN_DISTANCE_COVERAGE_PERCENT = "map-matching.quality.min-distance-coverage-percent";
+    private static final String QUALITY_MAX_DISCONTINUITY_PERCENT = "map-matching.quality.max-discontinuity-percent";
+    private static final String QUALITY_MAX_SHORT_DISCONTINUITY_METERS = "map-matching.quality.max-short-discontinuity-meters";
 
     private final SystemSettingsService settingsService;
 
@@ -81,8 +85,28 @@ public class MapMatchingConfiguration {
         return settingsService.getInteger(MAX_ATTEMPTS);
     }
 
+    public int getQualityMinRawDistanceMeters() {
+        return settingsService.getInteger(QUALITY_MIN_RAW_DISTANCE_METERS);
+    }
+
+    public int getQualityMinDistanceCoveragePercent() {
+        return settingsService.getInteger(QUALITY_MIN_DISTANCE_COVERAGE_PERCENT);
+    }
+
+    public int getQualityMaxDiscontinuityPercent() {
+        return settingsService.getInteger(QUALITY_MAX_DISCONTINUITY_PERCENT);
+    }
+
+    public int getQualityMaxShortDiscontinuityMeters() {
+        return settingsService.getInteger(QUALITY_MAX_SHORT_DISCONTINUITY_METERS);
+    }
+
     public String configHashSource() {
-        return "algorithm=v3|" + provider() + "|" + valhallaBaseUrl() + "|"
-                + Math.max(1, getMaxInputPoints()) + "|" + Math.max(1, getMaxTripDurationHours());
+        return "algorithm=v4|" + provider() + "|" + valhallaBaseUrl() + "|"
+                + Math.max(1, getMaxInputPoints()) + "|" + Math.max(1, getMaxTripDurationHours()) + "|"
+                + Math.max(1, getQualityMinRawDistanceMeters()) + "|"
+                + Math.max(1, getQualityMinDistanceCoveragePercent()) + "|"
+                + Math.max(1, getQualityMaxDiscontinuityPercent()) + "|"
+                + Math.max(1, getQualityMaxShortDiscontinuityMeters());
     }
 }

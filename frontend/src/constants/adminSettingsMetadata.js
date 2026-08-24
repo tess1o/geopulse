@@ -281,6 +281,22 @@ export const SETTING_METADATA = {
     label: 'Max Attempts',
     description: 'Maximum retry attempts for each map matching target'
   },
+  'map-matching.quality.min-raw-distance-meters': {
+    label: 'Quality Check Distance',
+    description: 'Minimum raw chunk distance before partial-match quality checks apply'
+  },
+  'map-matching.quality.min-distance-coverage-percent': {
+    label: 'Minimum Coverage',
+    description: 'Minimum matched distance as a percent of raw chunk distance'
+  },
+  'map-matching.quality.max-discontinuity-percent': {
+    label: 'Maximum Gap Percent',
+    description: 'Maximum unmatched gap distance between matched fragments as a percent of raw chunk distance'
+  },
+  'map-matching.quality.max-short-discontinuity-meters': {
+    label: 'Short Gap Allowance',
+    description: 'Minimum absolute gap allowance between matched fragments'
+  },
 
   // Import Settings
   'import.bulk-insert-batch-size': {

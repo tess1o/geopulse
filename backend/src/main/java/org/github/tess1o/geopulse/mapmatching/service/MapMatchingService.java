@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -31,7 +32,6 @@ public class MapMatchingService {
 
     private static final TypeReference<List<List<MapMatchedPointDTO>>> SEGMENTS_TYPE = new TypeReference<>() {
     };
-
     private final MapMatchingConfiguration configuration;
     private final TimelineTripPathMatchRepository matchRepository;
     private final TimelineTripRepository tripRepository;
@@ -181,6 +181,12 @@ public class MapMatchingService {
                     recordOutcome(target, "skipped");
                     return;
                 }
+                if (!hasAcceptableMatchedCoverage(chunk, chunkSegments)) {
+                    matchRepository.markSkipped(targetId,
+                            "Valhalla matched only a disconnected or partial route; retaining raw GPS path");
+                    recordOutcome(target, "skipped");
+                    return;
+                }
                 matchedSegments.addAll(chunkSegments);
             }
             String json = objectMapper.writeValueAsString(matchedSegments);
@@ -301,6 +307,129 @@ public class MapMatchingService {
         }
         if (current.size() >= 2) chunks.add(List.copyOf(current));
         return chunks;
+    }
+
+    boolean hasAcceptableMatchedCoverage(List<GpsPointEntity> inputPoints,
+                                         List<List<MapMatchedPointDTO>> matchedSegments) {
+        double rawDistanceMeters = inputDistanceMeters(inputPoints);
+        if (rawDistanceMeters < Math.max(1, configuration.getQualityMinRawDistanceMeters())) {
+            return true;
+        }
+
+        double matchedDistanceMeters = matchedDistanceMeters(matchedSegments);
+        if (matchedDistanceMeters <= 0) {
+            return false;
+        }
+
+        double coveragePercent = matchedDistanceMeters * 100.0 / rawDistanceMeters;
+        if (coveragePercent < Math.max(1, configuration.getQualityMinDistanceCoveragePercent())) {
+            return false;
+        }
+
+        double discontinuityMeters = matchedDiscontinuityMeters(matchedSegments);
+        double maxAllowedDiscontinuity = Math.max(
+                Math.max(1, configuration.getQualityMaxShortDiscontinuityMeters()),
+                rawDistanceMeters * Math.max(1, configuration.getQualityMaxDiscontinuityPercent()) / 100.0);
+        return discontinuityMeters <= maxAllowedDiscontinuity;
+    }
+
+    private double inputDistanceMeters(List<GpsPointEntity> points) {
+        if (points == null || points.size() < 2) {
+            return 0.0;
+        }
+
+        double distance = 0.0;
+        GpsPointEntity previous = null;
+        for (GpsPointEntity point : points) {
+            if (point == null || point.getCoordinates() == null) {
+                continue;
+            }
+            if (previous != null && previous.getCoordinates() != null) {
+                distance += GeoUtils.haversine(
+                        previous.getCoordinates().getY(), previous.getCoordinates().getX(),
+                        point.getCoordinates().getY(), point.getCoordinates().getX());
+            }
+            previous = point;
+        }
+        return distance;
+    }
+
+    private double matchedDistanceMeters(List<List<MapMatchedPointDTO>> segments) {
+        if (segments == null) {
+            return 0.0;
+        }
+
+        double distance = 0.0;
+        for (List<MapMatchedPointDTO> segment : segments) {
+            if (segment == null || segment.size() < 2) {
+                continue;
+            }
+            MapMatchedPointDTO previous = null;
+            for (MapMatchedPointDTO point : segment) {
+                if (!valid(point)) {
+                    continue;
+                }
+                if (previous != null) {
+                    distance += GeoUtils.haversine(
+                            previous.getLatitude(), previous.getLongitude(),
+                            point.getLatitude(), point.getLongitude());
+                }
+                previous = point;
+            }
+        }
+        return distance;
+    }
+
+    private double matchedDiscontinuityMeters(List<List<MapMatchedPointDTO>> segments) {
+        if (segments == null || segments.size() < 2) {
+            return 0.0;
+        }
+
+        double distance = 0.0;
+        MapMatchedPointDTO previousEnd = null;
+        for (List<MapMatchedPointDTO> segment : segments) {
+            MapMatchedPointDTO first = firstValid(segment);
+            MapMatchedPointDTO last = lastValid(segment);
+            if (first == null || last == null) {
+                continue;
+            }
+            if (previousEnd != null) {
+                distance += GeoUtils.haversine(
+                        previousEnd.getLatitude(), previousEnd.getLongitude(),
+                        first.getLatitude(), first.getLongitude());
+            }
+            previousEnd = last;
+        }
+        return distance;
+    }
+
+    private MapMatchedPointDTO firstValid(List<MapMatchedPointDTO> segment) {
+        if (segment == null) {
+            return null;
+        }
+        return segment.stream()
+                .filter(this::valid)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private MapMatchedPointDTO lastValid(List<MapMatchedPointDTO> segment) {
+        if (segment == null) {
+            return null;
+        }
+        for (int i = segment.size() - 1; i >= 0; i--) {
+            MapMatchedPointDTO point = segment.get(i);
+            if (valid(point)) {
+                return point;
+            }
+        }
+        return null;
+    }
+
+    private boolean valid(MapMatchedPointDTO point) {
+        return point != null
+                && Double.isFinite(point.getLatitude())
+                && Double.isFinite(point.getLongitude());
     }
 
     private MapMatchingProvider providerFor(String provider) {

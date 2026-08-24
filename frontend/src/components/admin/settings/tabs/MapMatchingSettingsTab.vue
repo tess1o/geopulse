@@ -71,6 +71,24 @@
       </SettingItem>
     </SettingSection>
 
+    <details class="advanced-settings">
+      <summary>Advanced configuration</summary>
+      <SettingSection title="Match Quality">
+        <SettingItem v-for="setting in advancedSettings" :key="setting.key" :setting="setting" @reset="handleReset(setting)">
+          <template #control="{ setting }">
+            <InputNumber
+              v-model="setting.currentValue"
+              :min="1"
+              :max="percentSettingKeys.has(setting.key) ? 100 : undefined"
+              :step="1"
+              class="number-input"
+              @update:modelValue="markDirty"
+            />
+          </template>
+        </SettingItem>
+      </SettingSection>
+    </details>
+
     <SettingSection title="Processing Status">
       <div class="status-card">
         <div class="status-header">
@@ -208,6 +226,16 @@ const limitKeys = [
   'map-matching.worker.batch-size',
   'map-matching.max-attempts'
 ]
+const advancedKeys = [
+  'map-matching.quality.min-raw-distance-meters',
+  'map-matching.quality.min-distance-coverage-percent',
+  'map-matching.quality.max-discontinuity-percent',
+  'map-matching.quality.max-short-discontinuity-meters'
+]
+const percentSettingKeys = new Set([
+  'map-matching.quality.min-distance-coverage-percent',
+  'map-matching.quality.max-discontinuity-percent'
+])
 
 const getSetting = key => settings.value.find(setting => setting.key === key)
 const getOriginalSetting = key => originalSettings.value.find(setting => setting.key === key)
@@ -215,6 +243,7 @@ const mapSettings = keys => keys.map(getSetting).filter(Boolean)
 const coreSettings = computed(() => mapSettings(coreKeys))
 const valhallaSettings = computed(() => mapSettings(valhallaKeys))
 const limitSettings = computed(() => mapSettings(limitKeys))
+const advancedSettings = computed(() => mapSettings(advancedKeys))
 const worker = computed(() => status.value.worker || {})
 const backfill = computed(() => status.value.backfill || {})
 const queue = computed(() => status.value.queue || {})
@@ -303,9 +332,12 @@ const validateChanges = () => {
     return 'Valhalla base URL must start with http:// or https://'
   }
 
-  for (const setting of [...valhallaSettings.value, ...limitSettings.value]) {
+  for (const setting of [...valhallaSettings.value, ...limitSettings.value, ...advancedSettings.value]) {
     if (setting.valueType === 'INTEGER' && Number(setting.currentValue) < 1) {
       return `${setting.label} must be at least 1`
+    }
+    if (percentSettingKeys.has(setting.key) && Number(setting.currentValue) > 100) {
+      return `${setting.label} must be at most 100`
     }
   }
   return null
@@ -389,6 +421,8 @@ onBeforeUnmount(clearStatusRefresh)
 .save-actions, .buttons, .section-actions { display: flex; align-items: center; gap: 0.75rem; }
 .save-actions { justify-content: space-between; }
 .section-actions { margin: 1rem; }
+.advanced-settings { margin: 1rem 0; border: 1px solid var(--gp-border-light); border-radius: 6px; }
+.advanced-settings summary { padding: 1rem; cursor: pointer; font-weight: 800; }
 .provider-select { width: 220px; }
 .number-input { width: 180px; }
 .url-input { width: min(56vw, 720px); min-width: 420px; }

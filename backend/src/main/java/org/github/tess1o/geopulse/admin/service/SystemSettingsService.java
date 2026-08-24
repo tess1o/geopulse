@@ -196,6 +196,14 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.timeline.map-matching.worker.batch-size", "5", ValueType.INTEGER, "map-matching", "Map matching targets processed per worker run"));
         SETTING_DEFINITIONS.put("map-matching.max-attempts",
                 new SettingDefinition("geopulse.timeline.map-matching.max-attempts", "3", ValueType.INTEGER, "map-matching", "Maximum attempts per map matching target"));
+        SETTING_DEFINITIONS.put("map-matching.quality.min-raw-distance-meters",
+                new SettingDefinition("geopulse.timeline.map-matching.quality.min-raw-distance-meters", "500", ValueType.INTEGER, "map-matching", "Minimum raw chunk distance before matched-route quality checks apply"));
+        SETTING_DEFINITIONS.put("map-matching.quality.min-distance-coverage-percent",
+                new SettingDefinition("geopulse.timeline.map-matching.quality.min-distance-coverage-percent", "35", ValueType.INTEGER, "map-matching", "Minimum matched distance as a percent of raw chunk distance"));
+        SETTING_DEFINITIONS.put("map-matching.quality.max-discontinuity-percent",
+                new SettingDefinition("geopulse.timeline.map-matching.quality.max-discontinuity-percent", "10", ValueType.INTEGER, "map-matching", "Maximum unmatched gap distance between matched fragments as a percent of raw chunk distance"));
+        SETTING_DEFINITIONS.put("map-matching.quality.max-short-discontinuity-meters",
+                new SettingDefinition("geopulse.timeline.map-matching.quality.max-short-discontinuity-meters", "100", ValueType.INTEGER, "map-matching", "Minimum absolute unmatched gap allowance between matched fragments"));
 
         // Import settings
         SETTING_DEFINITIONS.put("import.bulk-insert-batch-size",
@@ -656,6 +664,13 @@ public class SystemSettingsService {
             int parsed = Integer.parseInt(value);
             if (parsed < 1) {
                 throw new IllegalArgumentException("Setting " + key + " must be at least 1");
+            }
+        }
+        if ("map-matching.quality.min-distance-coverage-percent".equals(key)
+                || "map-matching.quality.max-discontinuity-percent".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed > 100) {
+                throw new IllegalArgumentException("Setting " + key + " must be at most 100");
             }
         }
     }

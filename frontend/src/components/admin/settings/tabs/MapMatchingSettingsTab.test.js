@@ -115,10 +115,11 @@ describe('MapMatchingSettingsTab processing status', () => {
     expect(wrapper.text()).toContain('5,491 trips remaining')
     expect(wrapper.text()).toContain('13 / 49 users complete')
     expect(wrapper.find('.progress').attributes('data-value')).toBe('70.0616')
-    expect(wrapper.find('details').attributes('open')).toBeUndefined()
+    expect(wrapper.find('.advanced-settings').attributes('open')).toBeUndefined()
+    expect(wrapper.find('.status-diagnostics').attributes('open')).toBeUndefined()
     expect(wrapper.text()).not.toContain('Process Now')
 
-    await wrapper.find('summary').trigger('click')
+    await wrapper.find('.status-diagnostics summary').trigger('click')
     expect(wrapper.text()).toContain('Stored cache records')
     expect(wrapper.text()).toContain('All cache versions')
     expect(wrapper.text()).toContain('By status')

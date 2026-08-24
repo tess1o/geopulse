@@ -93,10 +93,11 @@ describe('timeline map matching helpers', () => {
     const raw = {
       userId: 'user',
       segments: [[
-        { id: 'before', timestamp: '2026-01-01T09:59:00Z' },
-        { id: 'matched-raw-1', timestamp: '2026-01-01T10:00:00Z' },
-        { id: 'matched-raw-2', timestamp: '2026-01-01T10:01:00Z' },
-        { id: 'fallback-raw', timestamp: '2026-01-01T10:02:00Z' }
+        point('before', '2026-01-01T09:59:00Z'),
+        point('matched-raw-1', '2026-01-01T10:00:00Z'),
+        point('matched-raw-2', '2026-01-01T10:01:00Z'),
+        point('fallback-raw-1', '2026-01-01T10:02:00Z'),
+        point('fallback-raw-2', '2026-01-01T10:02:30Z')
       ]]
     }
     const result = buildActiveMapMatchingPathData({
@@ -113,12 +114,47 @@ describe('timeline map matching helpers', () => {
     })
 
     expect(result.points.map(point => point.id)).toEqual([
-      'before',
       'matched-1',
       'matched-2',
-      'fallback-raw'
+      'fallback-raw-1',
+      'fallback-raw-2'
     ])
     expect(result.pointCount).toBe(4)
+  })
+
+  it('keeps raw stay points as a connector between two matched trips', () => {
+    const raw = {
+      segments: [[
+        { id: 'trip-1-raw-a', timestamp: '2026-07-04T10:09:57Z', latitude: 49.547779, longitude: 25.595296 },
+        { id: 'trip-1-raw-b', timestamp: '2026-07-04T10:27:57Z', latitude: 49.552710, longitude: 25.591405 },
+        { id: 'favorite-stay-raw', timestamp: '2026-07-04T10:38:27Z', latitude: 49.552573, longitude: 25.589626 },
+        { id: 'trip-2-raw-a', timestamp: '2026-07-04T10:54:57Z', latitude: 49.551963, longitude: 25.589147 },
+        { id: 'trip-2-raw-b', timestamp: '2026-07-04T11:20:27Z', latitude: 49.547009, longitude: 25.583864 }
+      ]]
+    }
+    const result = buildActiveMapMatchingPathData({
+      rawPathData: raw,
+      visibleTrips: [
+        { id: 7856901, timestamp: '2026-07-04T10:09:57Z', tripDuration: 1080 },
+        { id: 7856902, timestamp: '2026-07-04T10:54:57Z', tripDuration: 1530 }
+      ],
+      matchedSegmentsByTripId: new Map([
+        [7856901, [[{ id: 'matched-trip-1-a', latitude: 49.547790, longitude: 25.595317 }, { id: 'matched-trip-1-b', latitude: 49.552702, longitude: 25.591405 }]]],
+        [7856902, [[{ id: 'matched-trip-2-a', latitude: 49.551968, longitude: 25.589143 }, { id: 'matched-trip-2-b', latitude: 49.547001, longitude: 25.583854 }]]]
+      ]),
+      settled: true
+    })
+
+    expect(result.points.map(point => point.id)).toEqual([
+      'matched-trip-1-a',
+      'matched-trip-1-b',
+      'matched-trip-1-b',
+      'favorite-stay-raw',
+      'matched-trip-2-a',
+      'matched-trip-2-a',
+      'matched-trip-2-b'
+    ])
+    expect(result.points.some(point => point.id === 'favorite-stay-raw')).toBe(true)
   })
 
   it('settles mixed completed and failed trips as matched geometry plus normal raw fallback', () => {
@@ -133,8 +169,9 @@ describe('timeline map matching helpers', () => {
 
     const raw = {
       segments: [[
-        { id: 'raw-completed', timestamp: '2026-01-01T10:00:00Z' },
-        { id: 'raw-failed', timestamp: '2026-01-01T10:03:00Z' }
+        point('raw-completed', '2026-01-01T10:00:00Z'),
+        point('raw-failed-1', '2026-01-01T10:03:00Z'),
+        point('raw-failed-2', '2026-01-01T10:03:30Z')
       ]]
     }
     const result = buildActiveMapMatchingPathData({
@@ -150,8 +187,8 @@ describe('timeline map matching helpers', () => {
       settled: true
     })
 
-    expect(result.points.map(point => point.id)).toEqual(['matched-completed', 'raw-failed'])
-    expect(result.points.find(point => point.id === 'raw-failed')).toEqual(raw.segments[0][1])
+    expect(result.points.map(point => point.id)).toEqual(['matched-completed', 'raw-failed-1', 'raw-failed-2'])
+    expect(result.points.find(point => point.id === 'raw-failed-1')).toMatchObject(raw.segments[0][1])
   })
 
   it('keeps raw data when all terminal trips use fallback', () => {

@@ -39,6 +39,10 @@ GEOPULSE_TIMELINE_MAP_MATCHING_MAX_ATTEMPTS=3
 GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_ENABLED=false
 GEOPULSE_TIMELINE_MAP_MATCHING_BACKFILL_ENABLED=false
 GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_QUIET_PERIOD_MINUTES=15
+GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_RAW_DISTANCE_METERS=500
+GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_DISTANCE_COVERAGE_PERCENT=35
+GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT=10
+GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS=100
 ```
 
 The global setting enables the integration. The automatic and backfill settings control precomputation for all users. Users must separately enable **Profile -> Display Settings -> Map Matching** to display matched geometry and queue missing visible trips on demand.
@@ -48,7 +52,7 @@ The global setting enables the integration. The automatic and backfill settings 
 - Automatic matching consumes committed timeline-change events and waits for the configured quiet period (15 minutes by default). Repeated changes extend the quiet period so provisional trips are not repeatedly sent to Valhalla.
 - Historical backfill scans all trip owners oldest-first. Per-user cursors and inspected/total trip counters are stored in PostgreSQL, so disabling the option or restarting GeoPulse pauses rather than loses progress.
 - Visible on-demand work has priority over automatic recent work, which has priority over historical work.
-- Long traces are split into contiguous chunks with a one-point overlap at size boundaries. Recording gaps and disconnected fragments returned in Valhalla's `alternates` response remain separate rendered segments, and a trip is published only after every eligible chunk succeeds.
+- Long traces are split into contiguous chunks with a one-point overlap at size boundaries. Recording gaps remain separate rendered segments, and a trip is published only after every eligible chunk succeeds. If Valhalla only matches a disconnected or very small portion of a continuous chunk, GeoPulse skips that match and keeps the raw GPS path visible. The partial-match quality thresholds are available in **Admin -> System Settings -> Map Matching -> Advanced configuration**.
 - HTTP 408/429 responses, provider 5xx responses, and transport failures retry with increasing delays up to the configured attempt limit. Deterministic provider 4xx responses fail immediately and retain raw GPS as the display fallback. Processing claims older than 15 minutes are recovered after a restart or interrupted worker run.
 - **Admin -> System Settings -> Map Matching -> Processing Status** shows durable historical scan progress, active queue depth, recent activity, and expandable diagnostics. Queue changes wake the worker immediately and a watchdog checks for due work every 15 seconds.
 - External trip states are `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`, `SKIPPED`, and `UNAVAILABLE`.

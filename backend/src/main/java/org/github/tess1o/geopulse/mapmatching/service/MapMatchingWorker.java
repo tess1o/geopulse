@@ -254,7 +254,11 @@ public class MapMatchingWorker {
         return key != null && (key.equals("map-matching.provider")
                 || key.equals("map-matching.valhalla.base-url")
                 || key.equals("map-matching.max-input-points")
-                || key.equals("map-matching.max-trip-duration-hours"));
+                || key.equals("map-matching.max-trip-duration-hours")
+                || key.equals("map-matching.quality.min-raw-distance-meters")
+                || key.equals("map-matching.quality.min-distance-coverage-percent")
+                || key.equals("map-matching.quality.max-discontinuity-percent")
+                || key.equals("map-matching.quality.max-short-discontinuity-meters"));
     }
 
     private void recordMetrics(long started, String result) {

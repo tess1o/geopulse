@@ -363,13 +363,13 @@ import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRunt
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
+import { useMapMatchingComparison } from '@/composables/useMapMatchingComparison'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 import { showDemoModeToast } from '@/utils/demoMode'
-import { buildRawMapMatchingComparisonPathData } from '@/utils/mapMatchingTimeline'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
@@ -576,8 +576,6 @@ const {
   toggleNotes,
   toggleWeather
 } = useMapLayers()
-
-const showPathComparison = ref(false)
 
 const {
   timelineRegenerationVisible,
@@ -1886,34 +1884,21 @@ const processedPathData = computed(() => {
   return []
 })
 
-const processedRawComparisonPathData = computed(() => {
-  const rawPathData = props.rawPathData
-  if (!rawPathData) return []
-  if (Array.isArray(rawPathData.segments) && rawPathData.segments.length > 0) {
-    return rawPathData.segments
-  }
-  if (Array.isArray(rawPathData.points)) {
-    return [rawPathData.points]
-  }
-  return Array.isArray(rawPathData) ? rawPathData : []
-})
-
-const rawComparisonPathData = computed(() => buildRawMapMatchingComparisonPathData({
-  rawPathData: props.rawPathData,
-  visibleTrips: processedTimelineData.value.filter(item => item?.type === 'trip'),
-  highlightedTrip: activeHighlightedTrip.value,
-  highlightedTripHasMatchedPath: highlightedTripHasMatchedPath.value,
-  matchedTripIds: props.matchedTripIds
-}))
-
-const pathComparisonAvailable = computed(() => (
-  rawComparisonPathData.value.length > 0
-))
-
 const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
 
+const {
+  showPathComparison,
+  rawComparisonPathData,
+  pathComparisonAvailable
+} = useMapMatchingComparison({
+  rawPathData: computed(() => props.rawPathData),
+  timelineData: processedTimelineData,
+  highlightedTrip: activeHighlightedTrip,
+  highlightedTripHasMatchedPath,
+  matchedTripIds: computed(() => props.matchedTripIds)
+})
 
 const processedFavoritesData = computed(() => {
   const storeFavorites = favoritesStore.favoritePlaces
