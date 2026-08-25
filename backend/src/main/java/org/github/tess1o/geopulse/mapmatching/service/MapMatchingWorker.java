@@ -76,22 +76,67 @@ public class MapMatchingWorker {
     }
 
     void onTimelineChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) TimelineDataChangedEvent event) {
+        submitTimelineChanged(event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
+    }
+
+    private void submitTimelineChanged(UUID userId, Instant affectedFrom, Instant affectedTo) {
+        try {
+            executor.submit(() -> workerExecution.run(() -> {
+                try {
+                    handleTimelineChanged(userId, affectedFrom, affectedTo);
+                } catch (RuntimeException e) {
+                    phase = "BLOCKED";
+                    lastError = "Map-matching timeline change handler failed: " + e.getMessage();
+                    log.error(lastError, e);
+                }
+            }));
+        } catch (RuntimeException e) {
+            phase = "BLOCKED";
+            lastError = "Unable to submit map-matching timeline change handler: " + e.getMessage();
+            log.error(lastError, e);
+        }
+    }
+
+    private void handleTimelineChanged(UUID userId, Instant affectedFrom, Instant affectedTo) {
         if (!configuration.isEnabled() || !configuration.automaticEnabled()) return;
         Instant eligibleAt = Instant.now().plus(configuration.quietPeriodMinutes(), ChronoUnit.MINUTES);
-        reconciliationRepository.enqueue(event.getUserId(), event.getAffectedFrom(), event.getAffectedTo(),
-                MapMatchingSource.AUTOMATIC, eligibleAt);
+        reconciliationRepository.enqueue(userId, affectedFrom, affectedTo, MapMatchingSource.AUTOMATIC, eligibleAt);
+        log.info("Queued automatic map matching reconciliation for user {} from {} to {}, eligibleAt={}",
+                userId, affectedFrom, affectedTo, eligibleAt);
         wake("timeline changed");
     }
 
     void onSettingsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) MapMatchingSettingsChangedEvent event) {
+        submitSettingsChanged(event.key());
+    }
+
+    private void submitSettingsChanged(String key) {
+        try {
+            executor.submit(() -> workerExecution.run(() -> {
+                try {
+                    handleSettingsChanged(key);
+                } catch (RuntimeException e) {
+                    phase = "BLOCKED";
+                    lastError = "Map-matching settings change handler failed: " + e.getMessage();
+                    log.error(lastError, e);
+                }
+            }));
+        } catch (RuntimeException e) {
+            phase = "BLOCKED";
+            lastError = "Unable to submit map-matching settings change handler: " + e.getMessage();
+            log.error(lastError, e);
+        }
+    }
+
+    private void handleSettingsChanged(String key) {
         if (configuration.isEnabled() && configuration.backfillEnabled()) {
-            if (affectsCache(event.key())) {
+            if (affectsCache(key)) {
                 reconciliationRepository.restartAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
-            } else if ("map-matching.backfill.enabled".equals(event.key())) {
+            } else if ("map-matching.backfill.enabled".equals(key)) {
                 reconciliationRepository.enqueueAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
             }
         }
-        wake("setting changed: " + event.key());
+        wake("setting changed: " + key);
     }
 
     @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:15s}", delayed = "20s",

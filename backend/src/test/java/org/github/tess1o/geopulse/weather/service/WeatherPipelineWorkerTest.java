@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.weather.service;
 import org.github.tess1o.geopulse.weather.dto.WeatherWorkAcceptedResponse;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
+import org.github.tess1o.geopulse.weather.event.WeatherSettingsChangedEvent;
 import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliationRepository;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +85,7 @@ class WeatherPipelineWorkerTest {
     }
 
     @Test
-    void timelineChangeQueuesRangeAndWakesWorkerAfterCommitObserverRuns() {
+    void timelineChangeDefersRangeQueueingUntilSubmittedWorkRuns() {
         UUID userId = UUID.randomUUID();
         Instant from = Instant.parse("2026-08-18T08:00:00Z");
         Instant to = Instant.parse("2026-08-18T09:00:00Z");
@@ -93,7 +94,25 @@ class WeatherPipelineWorkerTest {
 
         worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null));
 
+        assertThat(executor.queuedTasks()).isOne();
+        verify(weatherService, never()).queueHistoricalBackfill(any(), any(), any());
+
+        executor.runNext();
+
         verify(weatherService).queueHistoricalBackfill(userId, from, to);
+        assertThat(executor.queuedTasks()).isOne();
+    }
+
+    @Test
+    void settingsChangeDefersFullBackfillQueueingUntilSubmittedWorkRuns() {
+        worker.onSettingsChanged(new WeatherSettingsChangedEvent(WeatherConfigurationService.WEATHER_ENABLED));
+
+        assertThat(executor.queuedTasks()).isOne();
+        verify(weatherService, never()).queueFullHistoricalBackfill();
+
+        executor.runNext();
+
+        verify(weatherService).queueFullHistoricalBackfill();
         assertThat(executor.queuedTasks()).isOne();
     }
 

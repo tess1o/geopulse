@@ -74,6 +74,10 @@ public class WeatherPipelineWorker {
     }
 
     void onTimelineChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) TimelineDataChangedEvent event) {
+        submitEventHandling("timeline changed", () -> handleTimelineChanged(event));
+    }
+
+    private void handleTimelineChanged(TimelineDataChangedEvent event) {
         WeatherReconciliationQueueStatus queued = weatherService.queueHistoricalBackfill(
                 event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
         if (queued == WeatherReconciliationQueueStatus.QUEUED) {
@@ -82,10 +86,32 @@ public class WeatherPipelineWorker {
     }
 
     void onSettingsChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) WeatherSettingsChangedEvent event) {
-        if (COVERAGE_SETTINGS.contains(event.key())) {
+        submitEventHandling("weather setting changed: " + event.key(), () -> handleSettingsChanged(event.key()));
+    }
+
+    private void handleSettingsChanged(String key) {
+        if (COVERAGE_SETTINGS.contains(key)) {
             weatherService.queueFullHistoricalBackfill();
         }
-        wake("weather setting changed: " + event.key());
+        wake("weather setting changed: " + key);
+    }
+
+    private void submitEventHandling(String reason, Runnable handler) {
+        try {
+            executor.submit(() -> {
+                try {
+                    handler.run();
+                } catch (RuntimeException e) {
+                    phase = "BLOCKED";
+                    lastBlockReason = reason + " handler failed: " + e.getMessage();
+                    log.error(lastBlockReason, e);
+                }
+            });
+        } catch (RuntimeException e) {
+            phase = "BLOCKED";
+            lastBlockReason = "Unable to submit " + reason + " handler: " + e.getMessage();
+            log.error(lastBlockReason, e);
+        }
     }
 
     @Scheduled(every = "1m", delayed = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
