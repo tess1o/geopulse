@@ -56,6 +56,8 @@ public class ReverseGeocodingManagementService {
     private final ManagedExecutor managedExecutor;
     private final UserLocationNormalizationService userLocationNormalizationService;
     private final FavoriteLocationService favoriteLocationService;
+    @Inject
+    CustomGeocodingProviderService customGeocodingProviderService;
 
     @ConfigProperty(name = "geocoding.reconcile.item.max-attempts", defaultValue = "3")
     int reconcileItemMaxAttempts;
@@ -738,9 +740,13 @@ public class ReverseGeocodingManagementService {
         List<String> enabledProviders = providerFactory.getEnabledProviders();
 
         for (String providerName : enabledProviders) {
+            var customProvider = customGeocodingProviderService == null
+                    ? java.util.Optional.<org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity>empty()
+                    : customGeocodingProviderService.findByName(providerName);
             providers.add(GeocodingProviderDTO.builder()
                     .name(providerName)
-                    .displayName(providerName)
+                    .displayName(customProvider.map(p -> p.getDisplayName()).orElse(providerName))
+                    .type(customProvider.map(p -> p.getType()).orElse(providerName.toLowerCase()))
                     .enabled(true)
                     .isPrimary(providerName.equalsIgnoreCase(primaryProvider))
                     .isFallback(providerName.equalsIgnoreCase(fallbackProvider))

@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.admin.service;
 
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
+import org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity;
+import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -95,6 +97,40 @@ class GeocodingValidationServiceTest {
         assertThat(error).contains("Invalid Photon language 'en-US'");
     }
 
+    @Test
+    void validateGeocodingChanges_shouldAllowEnabledCustomProviderAsPrimaryProvider() {
+        GeocodingValidationService service = createServiceWithCustomProviders(List.of(customProvider("local-photon")));
+
+        String error = service.validateGeocodingChanges(List.of(
+                buildRequest("geocoding.primary-provider", "local-photon")
+        ));
+
+        assertThat(error).isNull();
+    }
+
+    @Test
+    void validateGeocodingChanges_shouldAllowEnabledCustomProviderAsFallbackProvider() {
+        GeocodingValidationService service = createServiceWithCustomProviders(List.of(customProvider("backup-photon")));
+
+        String error = service.validateGeocodingChanges(List.of(
+                buildRequest("geocoding.fallback-provider", "backup-photon")
+        ));
+
+        assertThat(error).isNull();
+    }
+
+    @Test
+    void validateGeocodingChanges_shouldRejectUnknownCustomProviderAsPrimaryProvider() {
+        GeocodingValidationService service = createServiceWithCustomProviders(List.of(customProvider("local-photon")));
+
+        String error = service.validateGeocodingChanges(List.of(
+                buildRequest("geocoding.primary-provider", "missing-photon")
+        ));
+
+        assertThat(error).contains("Cannot set primary provider to 'missing-photon'");
+        assertThat(error).contains("local-photon");
+    }
+
     private UpdateSettingRequest buildRequest(String value) {
         return buildRequest("geocoding.photon.language", value);
     }
@@ -110,6 +146,19 @@ class GeocodingValidationServiceTest {
         GeocodingValidationService validationService = new GeocodingValidationService();
         validationService.settingsService = new StubSettingsService();
         return validationService;
+    }
+
+    private GeocodingValidationService createServiceWithCustomProviders(List<CustomGeocodingProviderEntity> providers) {
+        GeocodingValidationService validationService = createService();
+        validationService.customGeocodingProviderService = new StubCustomGeocodingProviderService(providers);
+        return validationService;
+    }
+
+    private CustomGeocodingProviderEntity customProvider(String name) {
+        CustomGeocodingProviderEntity provider = new CustomGeocodingProviderEntity();
+        provider.setName(name);
+        provider.setEnabled(true);
+        return provider;
     }
 
     private static final class StubSettingsService extends SystemSettingsService {
@@ -129,6 +178,20 @@ class GeocodingValidationServiceTest {
         @Override
         public boolean getBoolean(String key) {
             return Boolean.parseBoolean(getString(key));
+        }
+    }
+
+    private static final class StubCustomGeocodingProviderService extends CustomGeocodingProviderService {
+        private final List<CustomGeocodingProviderEntity> providers;
+
+        private StubCustomGeocodingProviderService(List<CustomGeocodingProviderEntity> providers) {
+            super(null, null, null, null);
+            this.providers = providers;
+        }
+
+        @Override
+        public List<CustomGeocodingProviderEntity> listEnabledEntities() {
+            return providers;
         }
     }
 }

@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonLanguageValidator;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
+import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,9 @@ public class GeocodingValidationService {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    CustomGeocodingProviderService customGeocodingProviderService;
 
     /**
      * Validate a batch of geocoding configuration changes with full context awareness.
@@ -302,6 +306,12 @@ public class GeocodingValidationService {
             if (apiKey != null && !apiKey.isBlank() && !apiKey.equals("********")) {
                 enabled.add("ChibiGeo");
             }
+        }
+
+        if (customGeocodingProviderService != null) {
+            customGeocodingProviderService.listEnabledEntities().stream()
+                    .map(provider -> provider.getName())
+                    .forEach(enabled::add);
         }
 
         return enabled;

@@ -69,6 +69,24 @@ const adminService = {
         return apiService.post(`/admin/oidc/providers/${name}/test`, {});
     },
 
+    // ==================== Custom Geocoding Provider Management ====================
+
+    async getCustomGeocodingProviders() {
+        return unwrapApiResponse(await apiService.get('/admin/geocoding/providers'));
+    },
+
+    async createCustomGeocodingProvider(provider) {
+        return unwrapApiResponse(await apiService.post('/admin/geocoding/providers', provider));
+    },
+
+    async updateCustomGeocodingProvider(name, provider) {
+        return unwrapApiResponse(await apiService.put(`/admin/geocoding/providers/${name}`, provider));
+    },
+
+    async deleteCustomGeocodingProvider(name) {
+        return unwrapApiResponse(await apiService.delete(`/admin/geocoding/providers/${name}`));
+    },
+
     // ==================== Settings Management ====================
 
     /**
@@ -297,6 +315,13 @@ const adminService = {
             weatherStatus: null
         };
     }
+};
+
+const unwrapApiResponse = (response) => {
+    if (response && typeof response === 'object' && 'status' in response && 'data' in response) {
+        return response.data;
+    }
+    return response;
 };
 
 export default adminService;

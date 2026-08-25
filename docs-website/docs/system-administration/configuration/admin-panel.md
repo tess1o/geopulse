@@ -353,7 +353,7 @@ Configure user registration behavior:
 Configure reverse geocoding providers:
 
 **General Settings:**
-- **Primary Provider:** Main geocoding service (Nominatim, Photon, Google Maps, Mapbox)
+- **Primary Provider:** Main geocoding service, including enabled custom providers
 - **Fallback Provider:** Backup provider if primary fails
 - **Request Delay:** Milliseconds between geocoding requests
 
@@ -361,8 +361,11 @@ Configure reverse geocoding providers:
 - Enable/disable individual geocoding providers
 
 **Provider Configuration:**
-- Custom URLs for self-hosted providers (Nominatim, Photon)
-- API keys for commercial providers (Google Maps, Mapbox)
+- Custom URLs for self-hosted built-in providers (Nominatim, Photon)
+- API keys for commercial built-in providers (Google Maps, Mapbox, Geoapify, ChibiGeo)
+- Custom Photon-compatible or Nominatim-compatible providers, including optional encrypted request headers and per-provider delays
+
+Custom geocoding providers cannot be disabled or deleted while they are selected as the primary or fallback provider.
 
 ### Notifications Tab
 

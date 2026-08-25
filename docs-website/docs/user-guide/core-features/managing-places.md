@@ -91,6 +91,11 @@ When your timeline identifies a **stay** at a location, the system follows a cle
 
 5.  **Fallback: Unknown Location:** If all other methods fail, the stay is labeled **“Unknown location”**.
 
+Administrators can choose built-in providers or custom Photon-compatible/Nominatim-compatible providers in
+**Admin Dashboard > System Settings > Geocoding**. See
+[Reverse Geocoding Configuration](/docs/system-administration/configuration/reverse-geocoding) for provider setup,
+custom headers, and fallback behavior.
+
 ### Managing Cached Geocoding Data
 
 Advanced users can view and maintain the cached reverse geocoding results from the **Reverse Geocoding Management page** (`/app/geocoding-management`). This page allows you to search, refresh (reconcile), and manually edit stored geocoding results.
@@ -120,6 +125,7 @@ Changing primary/fallback provider settings affects only **new external lookups*
 
 -   Existing cached geocoding entries remain as they are until you reconcile them.
 -   Cached rows from a disabled provider can still be reused if they match by coordinates/spatial cache logic.
+-   Custom providers cannot be deleted or disabled while they are selected as the primary or fallback provider.
 
 Key features of this page include:
 -   **Search Records:** Find entries by provider, location name, city, or country.

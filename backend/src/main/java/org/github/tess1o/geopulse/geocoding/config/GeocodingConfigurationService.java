@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
 
 import java.util.Optional;
 
@@ -20,10 +21,18 @@ import java.util.Optional;
 public class GeocodingConfigurationService {
 
     private final SystemSettingsService settingsService;
+    private final CustomGeocodingProviderService customProviderService;
 
     @Inject
+    public GeocodingConfigurationService(SystemSettingsService settingsService,
+                                         CustomGeocodingProviderService customProviderService) {
+        this.settingsService = settingsService;
+        this.customProviderService = customProviderService;
+    }
+
     public GeocodingConfigurationService(SystemSettingsService settingsService) {
         this.settingsService = settingsService;
+        this.customProviderService = null;
     }
 
     /**
@@ -61,7 +70,9 @@ public class GeocodingConfigurationService {
         return switch (providerName.toLowerCase()) {
             case "geoapify" -> settingsService.getInteger("geocoding.geoapify.delay-ms");
             case "chibigeo" -> settingsService.getInteger("geocoding.chibigeo.delay-ms");
-            default -> getDelayMs();
+            default -> customProviderService == null ? getDelayMs() : customProviderService.findByName(providerName)
+                    .map(provider -> provider.getDelayMs() == null ? getDelayMs() : provider.getDelayMs())
+                    .orElseGet(this::getDelayMs);
         };
     }
 

@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class GeocodingProviderDTO {
     private String name;
     private String displayName;
+    private String type;
     private Boolean enabled;
     private Boolean isPrimary;
     private Boolean isFallback;

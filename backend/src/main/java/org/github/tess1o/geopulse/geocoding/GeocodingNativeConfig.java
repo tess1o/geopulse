@@ -73,6 +73,8 @@ import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationSer
         ReverseGeocodingReconcileRequest.class,
         ReverseGeocodingSummaryDTO.class,
         GeocodingProviderDTO.class,
+        CustomGeocodingProviderRequest.class,
+        CustomGeocodingProviderResponse.class,
         ReverseGeocodingReconcileResult.class,
         ReverseGeocodingReconcileResult.ReconcileError.class,
 

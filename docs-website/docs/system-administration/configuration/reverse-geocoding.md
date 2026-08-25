@@ -65,6 +65,34 @@ These settings tune retry and circuit breaker behavior for geocoding provider ca
 | `GEOPULSE_GEOCODING_CHIBIGEO_LANGUAGE`   | _(empty)_                             | ChibiGeo Photon-compatible language preference                            |
 | `GEOPULSE_GEOCODING_CHIBIGEO_DELAY_MS`   | `0`                                   | Delay between ChibiGeo requests. Free tier is daily-quota based.          |
 
+## Custom Providers
+
+Administrators can add additional reverse geocoding providers from **Admin Dashboard > System Settings > Geocoding**.
+Custom providers are stored in GeoPulse's database and can be selected as the primary or fallback provider after they
+are enabled.
+
+Use custom providers when you need more than one endpoint with the same response format, for example:
+
+- A self-hosted Photon instance as the primary provider and public Photon as fallback
+- Multiple Nominatim-compatible endpoints with different URLs or rate limits
+- A Photon-compatible paid service that requires custom request headers
+
+Custom provider fields:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Stable routing key. Use lowercase letters, numbers, and hyphens only, for example `local-photon`. This cannot match a built-in provider name. |
+| **Display Name** | Human-readable name shown in provider lists and cached geocoding records. |
+| **Type** | Response format parser to use. Supported values are **Photon compatible** and **Nominatim compatible**. |
+| **URL** | Base URL of the provider endpoint, for example `https://photon.komoot.io`. |
+| **Enabled** | Only enabled providers can be selected as primary or fallback. |
+| **Language** | Optional provider language preference. Photon-compatible providers support: `de`, `pl`, `el`, `en`, `es`, `fa`, `fr`, `it`, `ja`, `ko`. |
+| **Delay** | Optional per-provider delay in milliseconds. If empty, GeoPulse uses the global geocoding delay. |
+| **Headers JSON** | Optional request headers as a JSON object, for example `{"X-Api-Key":"secret"}`. Header values are encrypted at rest. |
+
+Custom providers cannot be disabled or deleted while they are selected as the primary or fallback provider. Change the
+primary/fallback setting first, then edit or remove the provider.
+
 > **Provider switch behavior:** changing primary/fallback provider affects only new lookups.
 > Existing cached geocoding records are reused until you run reconciliation from the Reverse Geocoding Management page.
 >
