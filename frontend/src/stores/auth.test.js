@@ -58,6 +58,8 @@ const user = (overrides = {}) => ({
   timeFormat: '24h',
   defaultDateRangePreset: '',
   autoShowTripReplayControls: true,
+  mapMatchingEnabled: false,
+  mapMatchingAvailable: false,
   demoMode: false,
   canViewAdmin: false,
   adminReadOnly: false,
@@ -104,12 +106,14 @@ describe('auth store cached profile reconciliation', () => {
   it('replaces stale cached preferences with the current server user', async () => {
     storeCachedProfile(user({
       timezone: 'America/New_York',
-      mapRenderMode: 'RASTER'
+      mapRenderMode: 'RASTER',
+      mapMatchingAvailable: false
     }))
     apiService.get.mockResolvedValue({
       data: user({
         timezone: 'Europe/London',
-        mapRenderMode: 'VECTOR'
+        mapRenderMode: 'VECTOR',
+        mapMatchingAvailable: true
       })
     })
 
@@ -118,9 +122,11 @@ describe('auth store cached profile reconciliation', () => {
 
     expect(authStore.userTimezone).toBe('Europe/London')
     expect(authStore.mapRenderMode).toBe('VECTOR')
+    expect(authStore.mapMatchingAvailable).toBe(true)
     expect(readCachedProfile()).toMatchObject({
       timezone: 'Europe/London',
-      mapRenderMode: 'VECTOR'
+      mapRenderMode: 'VECTOR',
+      mapMatchingAvailable: true
     })
   })
 

@@ -255,7 +255,13 @@ public class UserResource {
         log.info("Updating timeline display preferences for user {}", userId);
         log.debug("Timeline display preferences: {}", request);
 
-        userService.updateTimelineDisplayPreferences(userId, request);
+        try {
+            userService.updateTimelineDisplayPreferences(userId, request);
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        }
 
         TimelineDisplayPreferences updatedPreferences = userService.getTimelineDisplayPreferences(userId);
         return Response.ok(ApiResponse.success(updatedPreferences)).build();

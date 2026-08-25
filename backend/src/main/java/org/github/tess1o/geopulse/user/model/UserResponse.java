@@ -37,5 +37,6 @@ public class UserResponse {
     private String defaultDateRangePreset;
     private Boolean autoShowTripReplayControls;
     private Boolean mapMatchingEnabled;
+    private Boolean mapMatchingAvailable;
     // Don't include passwordHash in responses
 }

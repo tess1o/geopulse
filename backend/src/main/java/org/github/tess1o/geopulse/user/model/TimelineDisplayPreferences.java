@@ -88,4 +88,9 @@ public class TimelineDisplayPreferences {
      * Default: false
      */
     private Boolean mapMatchingEnabled;
+
+    /**
+     * Whether map matching is enabled globally and configured by an administrator.
+     */
+    private Boolean mapMatchingAvailable;
 }

@@ -31,6 +31,7 @@ export function writeCachedUserProfile(user) {
         defaultDateRangePreset: user.defaultDateRangePreset,
         autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
         mapMatchingEnabled: user.mapMatchingEnabled ?? false,
+        mapMatchingAvailable: user.mapMatchingAvailable ?? false,
         demoMode: !!user.demoMode,
         canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',
         adminReadOnly: !!user.adminReadOnly,

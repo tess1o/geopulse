@@ -45,7 +45,7 @@ GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT=10
 GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS=100
 ```
 
-The global setting enables the integration. The automatic and backfill settings control precomputation for all users. Users must separately enable **Profile -> Display Settings -> Map Matching** to display matched geometry and queue missing visible trips on demand.
+The global setting enables the integration. The automatic and backfill settings control precomputation for all users. Users can separately enable **Profile -> Display Settings -> Map Matching** only after the integration is globally enabled and Valhalla is configured; this opt-in displays matched geometry and queues missing visible trips on demand.
 
 ## Background processing
 

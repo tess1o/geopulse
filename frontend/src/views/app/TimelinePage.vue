@@ -242,6 +242,7 @@ const readTimelineDisplayFallback = () => {
   const customMapStyleUrlSource = hasOwnPreference(user, 'customMapStyleUrl')
     ? user.customMapStyleUrl
     : cachedProfile.customMapStyleUrl
+  const mapMatchingAvailable = user.mapMatchingAvailable ?? cachedProfile.mapMatchingAvailable
 
   return {
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
@@ -253,9 +254,9 @@ const readTimelineDisplayFallback = () => {
     autoShowTripReplayControls: user.autoShowTripReplayControls
       ?? cachedProfile.autoShowTripReplayControls
       ?? true,
-    mapMatchingEnabled: user.mapMatchingEnabled
-      ?? cachedProfile.mapMatchingEnabled
-      ?? false
+    mapMatchingEnabled: mapMatchingAvailable === false
+      ? false
+      : (user.mapMatchingEnabled ?? cachedProfile.mapMatchingEnabled ?? false)
   }
 }
 

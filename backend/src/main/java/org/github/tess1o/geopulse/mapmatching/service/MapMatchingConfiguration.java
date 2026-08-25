@@ -32,6 +32,10 @@ public class MapMatchingConfiguration {
         return settingsService.getBoolean(ENABLED);
     }
 
+    public boolean isAvailable() {
+        return isEnabled() && "valhalla".equals(provider()) && valhallaConfigured();
+    }
+
     public String provider() {
         String provider = settingsService.getString(PROVIDER);
         return provider == null || provider.isBlank() ? "valhalla" : provider.trim().toLowerCase();

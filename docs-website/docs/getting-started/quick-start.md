@@ -8,7 +8,7 @@ description: Get started with GeoPulse in minutes - import your data, configure 
 Welcome to GeoPulse! This guide will walk you through everything you need to get started tracking and exploring your location history. By the end of this guide, you'll have data in GeoPulse and know how to use the main features.
 
 :::tip Already Deployed?
-This guide assumes you've already deployed GeoPulse and completed the [Initial Setup](/docs/system-administration/initial-setup). If you haven't deployed yet, see the [Deployment guides](/docs/getting-started/deployment/docker-compose) first.
+This guide assumes you've already deployed GeoPulse and completed the [Initial Setup](/docs/system-administration/initial-setup). If you haven't deployed yet, see the [Deployment guides](/docs/getting-started/deployment/) first.
 :::
 
 ## Overview: Your First Steps

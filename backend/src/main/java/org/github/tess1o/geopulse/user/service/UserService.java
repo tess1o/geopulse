@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.geofencing.service.DefaultNotificationTemplateService;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
@@ -49,6 +50,7 @@ public class UserService {
     private final DefaultNotificationTemplateService defaultNotificationTemplateService;
     private final SystemSettingsService systemSettingsService;
     private final AdminBootstrapService adminBootstrapService;
+    private final MapMatchingConfiguration mapMatchingConfiguration;
 
     @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
     boolean coverageEnabledByDefault;
@@ -82,7 +84,8 @@ public class UserService {
                        AsyncTimelineGenerationService asyncTimelineGenerationService,
                        DefaultNotificationTemplateService defaultNotificationTemplateService,
                        SystemSettingsService systemSettingsService,
-                       AdminBootstrapService adminBootstrapService) {
+                       AdminBootstrapService adminBootstrapService,
+                       MapMatchingConfiguration mapMatchingConfiguration) {
         this.userRepository = userRepository;
         this.userAvatarRepository = userAvatarRepository;
         this.securePasswordUtils = securePasswordUtils;
@@ -95,6 +98,7 @@ public class UserService {
         this.defaultNotificationTemplateService = defaultNotificationTemplateService;
         this.systemSettingsService = systemSettingsService;
         this.adminBootstrapService = adminBootstrapService;
+        this.mapMatchingConfiguration = mapMatchingConfiguration;
     }
 
     /**
@@ -882,6 +886,9 @@ public class UserService {
             user.setTimelineDisplayAutoShowTripReplayControls(request.getAutoShowTripReplayControls());
         }
         if (request.getMapMatchingEnabled() != null) {
+            if (Boolean.TRUE.equals(request.getMapMatchingEnabled()) && !isMapMatchingAvailable()) {
+                throw new IllegalArgumentException("Map matching is disabled or not configured by an administrator");
+            }
             user.setTimelineDisplayMapMatchingEnabled(request.getMapMatchingEnabled());
         }
 
@@ -900,6 +907,8 @@ public class UserService {
             throw new UserNotFoundException("User not found");
         }
 
+        boolean mapMatchingAvailable = isMapMatchingAvailable();
+
         return TimelineDisplayPreferences.builder()
                 .customMapTileUrl(user.getCustomMapTileUrl())
                 .customMapStyleUrl(user.getCustomMapStyleUrl())
@@ -917,8 +926,22 @@ public class UserService {
                         ? user.getTimelineDisplayShowCurrentLocationTelemetry() : true)
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
-                .mapMatchingEnabled(user.getTimelineDisplayMapMatchingEnabled() != null
-                        ? user.getTimelineDisplayMapMatchingEnabled() : false)
+                .mapMatchingEnabled(isTimelineDisplayMapMatchingEnabled(user, mapMatchingAvailable))
+                .mapMatchingAvailable(mapMatchingAvailable)
                 .build();
+    }
+
+    public boolean isMapMatchingAvailable() {
+        return mapMatchingConfiguration != null && mapMatchingConfiguration.isAvailable();
+    }
+
+    public boolean isTimelineDisplayMapMatchingEnabled(UserEntity user) {
+        return isTimelineDisplayMapMatchingEnabled(user, isMapMatchingAvailable());
+    }
+
+    private boolean isTimelineDisplayMapMatchingEnabled(UserEntity user, boolean mapMatchingAvailable) {
+        return mapMatchingAvailable
+                && user != null
+                && Boolean.TRUE.equals(user.getTimelineDisplayMapMatchingEnabled());
     }
 }

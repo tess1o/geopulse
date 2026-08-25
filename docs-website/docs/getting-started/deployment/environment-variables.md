@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **292** distinct env vars.
+Backend runtime currently includes **310** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -359,6 +359,31 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped weather target queue records. Stored weather samples are not removed by this cleanup. Property: \`geopulse.weather.targets.completed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed weather target queue records. Property: \`geopulse.weather.targets.failed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_IN_PROGRESS_TIMEOUT_MINUTES` | `60` | Age after which locked in-progress weather targets are recovered for retry. Property: \`geopulse.weather.targets.in-progress-timeout-minutes\`. | Positive integer minutes. | Backend restart |
+
+### Map Matching (18)
+
+Map matching can use a self-hosted Valhalla instance to display road/path-snapped trip geometry. Saved values from **Admin Dashboard > System Settings > Map Matching** override these environment defaults for the managed settings. User profile opt-in is available only when map matching is globally enabled and Valhalla is configured.
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_TIMELINE_MAP_MATCHING_ENABLED` | `false` | Global master switch for map matching. Property: \`geopulse.timeline.map-matching.enabled\`. | `true` or `false`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_PROVIDER` | `valhalla` | Map matching provider. Property: \`geopulse.timeline.map-matching.provider\`. | `valhalla`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_VALHALLA_BASE_URL` | `(empty)` | Valhalla API base URL. Property: \`geopulse.timeline.map-matching.valhalla.base-url\`. Required before users can enable map matching. | Valid URL reachable from the backend, or empty. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_ENABLED` | `false` | Automatically map-match stable new trips for all users. Property: \`geopulse.timeline.map-matching.automatic.enabled\`. | `true` or `false`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_BACKFILL_ENABLED` | `false` | Discover and map-match historical trips for all users in the background. Property: \`geopulse.timeline.map-matching.backfill.enabled\`. | `true` or `false`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_QUIET_PERIOD_MINUTES` | `15` | Minutes a changed timeline must remain quiet before automatic matching starts. Property: \`geopulse.timeline.map-matching.automatic.quiet-period-minutes\`. | Positive integer minutes. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_CONNECT_TIMEOUT_SECONDS` | `3` | HTTP connect timeout for Valhalla requests. Property: \`geopulse.timeline.map-matching.connect-timeout-seconds\`. | Positive integer seconds. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_READ_TIMEOUT_SECONDS` | `20` | HTTP read timeout for Valhalla responses. Property: \`geopulse.timeline.map-matching.read-timeout-seconds\`. | Positive integer seconds. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_MAX_INPUT_POINTS` | `100` | Maximum GPS points sent in each contiguous Valhalla trace chunk. Property: \`geopulse.timeline.map-matching.max-input-points\`. | Positive integer. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_MAX_TRIP_DURATION_HOURS` | `24` | Maximum trip duration eligible for map matching. Property: \`geopulse.timeline.map-matching.max-trip-duration-hours\`. | Positive integer hours. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_WORKER_BATCH_SIZE` | `5` | Map matching targets processed per worker run. Property: \`geopulse.timeline.map-matching.worker.batch-size\`. | Positive integer. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_WORKER_INTERVAL` | `15s` | Scheduler cadence for map matching worker ticks. Property: \`geopulse.timeline.map-matching.worker.interval\`. | Quarkus duration expression (for example `15s`, `5m`, `1h`). | Backend restart |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_MAX_ATTEMPTS` | `3` | Maximum attempts per map matching target. Property: \`geopulse.timeline.map-matching.max-attempts\`. | Positive integer. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_RAW_DISTANCE_METERS` | `500` | Minimum raw chunk distance before matched-route quality checks apply. Property: \`geopulse.timeline.map-matching.quality.min-raw-distance-meters\`. | Positive integer meters. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_DISTANCE_COVERAGE_PERCENT` | `35` | Minimum matched distance as a percent of raw chunk distance. Property: \`geopulse.timeline.map-matching.quality.min-distance-coverage-percent\`. | Integer from 1 to 100. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT` | `10` | Maximum unmatched gap distance between matched fragments as a percent of raw chunk distance. Property: \`geopulse.timeline.map-matching.quality.max-discontinuity-percent\`. | Integer from 1 to 100. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS` | `100` | Minimum absolute unmatched gap allowance between matched fragments. Property: \`geopulse.timeline.map-matching.quality.max-short-discontinuity-meters\`. | Positive integer meters. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_TIMELINE_MAP_MATCHING_CACHE_CLEANUP_CRON` | `0 45 3 * * ?` | Cron schedule for cleaning detached map matching cache rows. Property: \`geopulse.timeline.map-matching.cache.cleanup.cron\`. | Valid Quarkus cron expression. | Backend restart |
 
 ### MQTT (14)
 

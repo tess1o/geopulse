@@ -40,4 +40,6 @@ public class AuthResponse {
     private String timeFormat;
     private String defaultDateRangePreset;
     private Boolean autoShowTripReplayControls;
+    private Boolean mapMatchingEnabled;
+    private Boolean mapMatchingAvailable;
 }
