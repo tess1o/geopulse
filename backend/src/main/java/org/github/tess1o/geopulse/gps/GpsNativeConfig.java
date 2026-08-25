@@ -100,6 +100,7 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonMultiPoint.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonLineString.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPropertiesDeserializer.class,
         TimelineSegmentBoundary.class,
         TimelineSegmentBoundary.SegmentType.class
 })

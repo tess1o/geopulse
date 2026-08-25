@@ -181,6 +181,52 @@ class GeoJsonImportStrategyTest {
 
     @Test
     @Transactional
+    void testGeoJsonImportWithColotaMultiPointArrayProperties() throws Exception {
+        log.info("=== Testing GeoJSON Streaming Import with Colota MultiPoint array properties ===");
+        String geoJsonContent = createTestGeoJsonWithColotaMultiPointArrayProperties();
+        byte[] geoJsonData = geoJsonContent.getBytes();
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setImportFormat("geojson");
+        ImportJob importJob = importJobService.createImportJob(
+                testUser.getId(), importOptions, "colota.geojson", geoJsonData);
+
+        List<String> detectedDataTypes = geoJsonImportStrategy.validateAndDetectDataTypes(importJob);
+        assertEquals(1, detectedDataTypes.size());
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS));
+        assertEquals(8, importJob.getTotalRecordsFromValidation());
+        assertEquals(Instant.parse("2026-07-05T11:30:31.000Z"), importJob.getDataFirstTimestamp());
+        assertEquals(Instant.parse("2026-07-05T12:08:00.000Z"), importJob.getDataLastTimestamp());
+
+        geoJsonImportStrategy.processImportData(importJob);
+        entityManager.clear();
+        List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
+                testUser.getId(),
+                Instant.parse("2026-07-05T11:00:00Z"),
+                Instant.parse("2026-07-05T13:00:00Z")
+        ).stream()
+                .sorted(Comparator.comparing(GpsPointEntity::getTimestamp))
+                .toList();
+
+        assertEquals(8, importedPoints.size(), "Should import each coordinate from Colota MultiPoint");
+        assertEquals(13.781120419502258, importedPoints.getFirst().getLongitude(), 0.0000001);
+        assertEquals(46.48409390449524, importedPoints.getFirst().getLatitude(), 0.0000001);
+        assertEquals(Instant.parse("2026-07-05T11:30:31.000Z"), importedPoints.getFirst().getTimestamp());
+        assertEquals(48.0, importedPoints.getFirst().getAccuracy(), 0.0001);
+        assertEquals(763.0, importedPoints.getFirst().getAltitude(), 0.0001);
+        assertEquals(0.0, importedPoints.getFirst().getVelocity(), 0.0001);
+        assertEquals(50.0, importedPoints.getFirst().getBattery(), 0.0001);
+
+        assertEquals(Instant.parse("2026-07-05T11:36:07.000Z"), importedPoints.get(1).getTimestamp());
+        assertEquals(62.51920700073242, importedPoints.get(1).getAccuracy(), 0.0001);
+        assertNull(importedPoints.get(1).getAltitude());
+        assertNull(importedPoints.get(1).getVelocity());
+
+        assertEquals(Instant.parse("2026-07-05T12:08:00.000Z"), importedPoints.get(7).getTimestamp());
+        assertEquals(49.0, importedPoints.get(7).getBattery(), 0.0001);
+    }
+
+    @Test
+    @Transactional
     void testGeoJsonImportWithMixedGeometries() throws Exception {
         log.info("=== Testing GeoJSON Streaming Import with Mixed Geometries ===");
         String geoJsonContent = createTestGeoJsonWithMixedGeometries();
@@ -417,6 +463,43 @@ class GeoJsonImportStrategyTest {
               ]
             }
             """, now.toString());
+    }
+
+    private String createTestGeoJsonWithColotaMultiPointArrayProperties() {
+        return """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [13.781120419502258, 46.48409390449524],
+                      [13.78147379443997, 46.4848262722412],
+                      [13.78142625790963, 46.484828782115414],
+                      [13.780906583886887, 46.48478652994054],
+                      [13.780506737654873, 46.484691555010116],
+                      [13.780433016474241, 46.484565571071904],
+                      [13.779867165, 46.48433303],
+                      [13.780078452540957, 46.484158941657164]
+                    ]
+                  },
+                  "properties": {
+                    "trip": 6,
+                    "accuracy": [48, 62.51920700073242, 65.00856018066406, 83.41114807128906, 21.405813217163086, 18.6772403717041, 48.140411376953125, 30.518278121948242],
+                    "altitude": [763, null, null, 812, 812, 812, 812, 813],
+                    "speed": [0, null, null, null, null, null, null, null],
+                    "bearing": [0, 0, 0, 0, 0, 0, 0, 0],
+                    "battery": [50, 50, 50, 50, 50, 50, 49, 49],
+                    "battery_status": ["Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging", "Unplugged/Discharging"],
+                    "note": [null, null, null, null, null, null, null, null],
+                    "time": ["2026-07-05T11:30:31.000Z", "2026-07-05T11:36:07.000Z", "2026-07-05T11:42:59.000Z", "2026-07-05T11:48:27.000Z", "2026-07-05T11:53:07.000Z", "2026-07-05T12:00:01.000Z", "2026-07-05T12:06:11.000Z", "2026-07-05T12:08:00.000Z"]
+                  }
+                }
+              ]
+            }
+            """;
     }
 
     private String createTestGeoJsonWithMixedGeometries() {

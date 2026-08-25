@@ -139,6 +139,61 @@ class StreamingGeoJsonParserTest {
         assertEquals(1, parsedFeatures.size());
         assertInstanceOf(GeoJsonMultiPoint.class, parsedFeatures.getFirst().getGeometry());
     }
+
+    @Test
+    void testParseGeoJsonWithMultiPointArrayProperties() throws IOException {
+        String geoJson = """
+            {
+              "type": "FeatureCollection",
+              "features": [
+                {
+                  "type": "Feature",
+                  "geometry": {
+                    "type": "MultiPoint",
+                    "coordinates": [
+                      [13.781120419502258, 46.48409390449524],
+                      [13.78147379443997, 46.4848262722412],
+                      [13.78142625790963, 46.484828782115414]
+                    ]
+                  },
+                  "properties": {
+                    "accuracy": [48, 62.51920700073242, 65.00856018066406],
+                    "altitude": [763, null, 812],
+                    "speed": [0, null, 12.5],
+                    "bearing": [0, 180, 270],
+                    "battery": [50, 50, 49],
+                    "time": [
+                      "2026-07-05T11:30:31.000Z",
+                      "2026-07-05T11:36:07.000Z",
+                      "2026-07-05T11:42:59.000Z"
+                    ]
+                  }
+                }
+              ]
+            }
+            """;
+        StreamingGeoJsonParser parser = new StreamingGeoJsonParser(
+                geoJson.getBytes(StandardCharsets.UTF_8), objectMapper);
+        List<GeoJsonFeature> parsedFeatures = new ArrayList<>();
+        StreamingGeoJsonParser.ParsingStats stats = parser.parseFeatures((feature, currentStats) -> {
+            parsedFeatures.add(feature);
+        });
+        GeoJsonFeature feature = parsedFeatures.getFirst();
+
+        assertEquals(1, stats.totalFeatures);
+        assertEquals(3, stats.validPoints);
+        assertEquals("2026-07-05T11:30:31.000Z", feature.getProperties().getTimestamp());
+        assertEquals(48.0, feature.getProperties().getAccuracy());
+        assertEquals(763.0, feature.getProperties().getAltitude());
+        assertEquals(0.0, feature.getProperties().getVelocity());
+        assertEquals(0.0, feature.getProperties().getCourse());
+        assertEquals(50, feature.getProperties().getBattery());
+        assertEquals("2026-07-05T11:36:07.000Z", feature.getProperties().forPointIndex(1).getTimestamp());
+        assertEquals(62.51920700073242, feature.getProperties().forPointIndex(1).getAccuracy());
+        assertNull(feature.getProperties().forPointIndex(1).getAltitude());
+        assertNull(feature.getProperties().forPointIndex(1).getVelocity());
+        assertEquals(180.0, feature.getProperties().forPointIndex(1).getCourse());
+    }
     @Test
     void testParseGeoJsonWithPartiallyInvalidMultiPointCoordinates() throws IOException {
         String geoJson = """
