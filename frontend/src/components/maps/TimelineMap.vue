@@ -31,6 +31,8 @@
           :show-favorites="showFavorites"
           :show-timeline="showTimeline"
           :show-path="showPath"
+          :show-path-comparison-control="pathComparisonAvailable"
+          :path-comparison-enabled="showPathComparison"
           :show-raw-gps-points-control="!props.isPublicView"
           :raw-gps-points-enabled="showRawGpsPoints"
           :raw-gps-points-loading="rawGpsPointsLoading"
@@ -52,6 +54,7 @@
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
+          @toggle-path-comparison="showPathComparison = $event"
           @toggle-raw-gps-points="handleToggleRawGpsPoints"
           @toggle-immich="toggleImmich"
           @toggle-notes="toggleNotes"
@@ -92,7 +95,7 @@
           :enabled="heatmapEnabled"
         />
 
-        <!-- Path Layer -->
+        <!-- Single interactive path: raw until the page-wide matched source is ready. -->
         <PathLayer
           v-if="map && isReady"
           ref="pathLayerRef"
@@ -100,12 +103,26 @@
           :path-data="processedPathData"
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
+          :path-options="normalPathOptions"
           :replay-state="pathReplayState"
           :show-highlighted-trip-popup="showHighlightedTripPopup"
           @path-click="handlePathClick"
           @trip-marker-click="handleTripMarkerClick"
           @highlighted-trip-click="handleHighlightedTripClick"
           @highlighted-trip-replay-data="handleHighlightedTripReplayData"
+        />
+
+        <!-- Diagnostic overlay: raw GPS above the matched route. -->
+        <PathLayer
+          v-if="map && isReady && pathComparisonAvailable"
+          :map="map"
+          :path-data="rawComparisonPathData"
+          :highlighted-trip="null"
+          :visible="showPath && showPathComparison"
+          :path-options="rawComparisonPathOptions"
+          :inspection-enabled="false"
+          :focus-highlighted-trip="false"
+          :show-highlighted-trip-popup="false"
         />
 
         <RawGpsPointsLayer
@@ -270,6 +287,11 @@
       </template>
     </MapContainer>
 
+    <div v-if="mapMatchingStatusText" class="map-matching-status" aria-live="polite">
+      <i class="pi pi-sync map-matching-status-icon" aria-hidden="true" />
+      <span>{{ mapMatchingStatusText }}</span>
+    </div>
+
     <div
       v-if="showMobileTripSummary"
       class="mobile-trip-summary"
@@ -341,6 +363,7 @@ import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRunt
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
+import { useMapMatchingComparison } from '@/composables/useMapMatchingComparison'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
@@ -377,6 +400,18 @@ const props = defineProps({
   pathData: {
     type: Object,
     default: () => null
+  },
+  rawPathData: {
+    type: Object,
+    default: () => null
+  },
+  matchedTripIds: {
+    type: Array,
+    default: () => []
+  },
+  mapMatchingStatusText: {
+    type: String,
+    default: ''
   },
   timelineData: {
     type: Array,
@@ -615,6 +650,21 @@ const rawGpsPointsCache = new Map()
 const rawGpsLocationCache = new Map()
 const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
+
+const normalPathOptions = {
+  color: '#007bff',
+  weight: 4,
+  opacity: 0.8,
+  smoothFactor: 1
+}
+
+const rawComparisonPathOptions = {
+  color: '#a855f7',
+  weight: 2,
+  opacity: 0.95,
+  dashArray: '5 7',
+  smoothFactor: 1
+}
 
 // Dialog state
 const dialogState = ref({
@@ -866,6 +916,11 @@ const activeHighlightedTrip = computed(() => {
 
   return activeTimelineHighlight.value
 })
+
+const highlightedTripHasMatchedPath = computed(() => (
+  activeTimelineHighlight.value?.type === 'trip'
+  && props.matchedTripIds.map(Number).includes(Number(activeTimelineHighlight.value.id))
+))
 
 const formatTripMovementTitle = (movementType) => {
   const normalized = String(movementType || 'Movement')
@@ -1804,8 +1859,9 @@ const resolveRawGpsPointLocation = async (point) => {
 
 // Computed data from stores and props
 const processedPathData = computed(() => {
-  // Handle both object format {userId, segments, points, pointCount} and direct array format
-  const pathData = props.pathData || locationStore.pathData
+  // A deliberate null means this layer has no remaining raw fallback segments.
+  // Falling back to the store would redraw raw geometry after the atomic swap.
+  const pathData = props.pathData
 
   if (!pathData) return []
 
@@ -1832,6 +1888,17 @@ const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
 
+const {
+  showPathComparison,
+  rawComparisonPathData,
+  pathComparisonAvailable
+} = useMapMatchingComparison({
+  rawPathData: computed(() => props.rawPathData),
+  timelineData: processedTimelineData,
+  highlightedTrip: activeHighlightedTrip,
+  highlightedTripHasMatchedPath,
+  matchedTripIds: computed(() => props.matchedTripIds)
+})
 
 const processedFavoritesData = computed(() => {
   const storeFavorites = favoritesStore.favoritePlaces
@@ -2034,6 +2101,36 @@ defineExpose({
   top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
   right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
   z-index: 900;
+}
+
+.map-matching-status {
+  position: absolute;
+  top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
+  left: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-left));
+  z-index: 905;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: min(18rem, calc(100% - 7rem));
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  font-size: 0.82rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.map-matching-status-icon {
+  animation: mapMatchingPulse 1.4s ease-in-out infinite;
+  color: #2563eb;
+}
+
+@keyframes mapMatchingPulse {
+  0%, 100% { opacity: 0.45; transform: rotate(0deg); }
+  50% { opacity: 1; transform: rotate(12deg); }
 }
 
 .mobile-trip-summary {

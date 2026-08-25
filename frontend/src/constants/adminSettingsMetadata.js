@@ -232,6 +232,72 @@ export const SETTING_METADATA = {
     description: 'Hours before a failed weather target can be retried'
   },
 
+  // Map Matching Settings
+  'map-matching.enabled': {
+    label: 'Enable Map Matching',
+    description: 'Global prerequisite for user opt-in map matching'
+  },
+  'map-matching.automatic.enabled': {
+    label: 'Automatic Future Matching',
+    description: 'Map-match stable new trips for all users after the quiet period'
+  },
+  'map-matching.backfill.enabled': {
+    label: 'Historical Backfill',
+    description: 'Discover historical trips for all users in the background; progress is resumable'
+  },
+  'map-matching.automatic.quiet-period-minutes': {
+    label: 'Quiet Period',
+    description: 'Minutes after a timeline change before automatic matching starts'
+  },
+  'map-matching.provider': {
+    label: 'Provider',
+    description: 'Map matching engine used for trip route refinement'
+  },
+  'map-matching.valhalla.base-url': {
+    label: 'Valhalla Base URL',
+    description: 'Base URL for the self-hosted Valhalla service'
+  },
+  'map-matching.valhalla.connect-timeout-seconds': {
+    label: 'Connect Timeout',
+    description: 'Seconds to wait while opening a Valhalla connection'
+  },
+  'map-matching.valhalla.read-timeout-seconds': {
+    label: 'Read Timeout',
+    description: 'Seconds to wait for Valhalla map matching responses'
+  },
+  'map-matching.max-input-points': {
+    label: 'Max Input Points',
+    description: 'Maximum GPS points sent to Valhalla per trip'
+  },
+  'map-matching.max-trip-duration-hours': {
+    label: 'Max Trip Duration',
+    description: 'Trips longer than this many hours are skipped'
+  },
+  'map-matching.worker.batch-size': {
+    label: 'Worker Batch Size',
+    description: 'Map matching targets processed per scheduled worker run'
+  },
+  'map-matching.max-attempts': {
+    label: 'Max Attempts',
+    description: 'Maximum retry attempts for each map matching target'
+  },
+  'map-matching.quality.min-raw-distance-meters': {
+    label: 'Quality Check Distance',
+    description: 'Minimum raw chunk distance before partial-match quality checks apply'
+  },
+  'map-matching.quality.min-distance-coverage-percent': {
+    label: 'Minimum Coverage',
+    description: 'Minimum matched distance as a percent of raw chunk distance'
+  },
+  'map-matching.quality.max-discontinuity-percent': {
+    label: 'Maximum Gap Percent',
+    description: 'Maximum unmatched gap distance between matched fragments as a percent of raw chunk distance'
+  },
+  'map-matching.quality.max-short-discontinuity-meters': {
+    label: 'Short Gap Allowance',
+    description: 'Minimum absolute gap allowance between matched fragments'
+  },
+
   // Import Settings
   'import.bulk-insert-batch-size': {
     label: 'Bulk Insert Batch Size',

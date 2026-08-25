@@ -158,6 +158,8 @@ public class AuthenticationService {
                 .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .mapMatchingEnabled(userService.isTimelineDisplayMapMatchingEnabled(user))
+                .mapMatchingAvailable(userService.isMapMatchingAvailable())
                 .build();
     }
 

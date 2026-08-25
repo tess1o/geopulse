@@ -95,12 +95,14 @@ const DropdownStub = {
 }
 
 const ToggleSwitchStub = {
-  props: ['modelValue'],
+  props: ['modelValue', 'disabled'],
   emits: ['update:modelValue'],
   template: `
     <input
       type="checkbox"
       :checked="modelValue"
+      :disabled="disabled"
+      v-bind="$attrs"
       @change="$emit('update:modelValue', $event.target.checked)"
     />
   `
@@ -144,7 +146,7 @@ const AutoCompleteStub = {
 }
 
 const SettingCardStub = {
-  template: '<section><slot name="control" /></section>'
+  template: '<section v-bind="$attrs"><slot name="control" /></section>'
 }
 
 const globalOptions = {
@@ -195,7 +197,9 @@ const timelineDisplayPrefs = {
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: true
+  autoShowTripReplayControls: true,
+  mapMatchingEnabled: false,
+  mapMatchingAvailable: true
 }
 
 describe('profile tab dirty state', () => {
@@ -261,6 +265,43 @@ describe('profile tab dirty state', () => {
     })
     await flushPromises()
     expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('disables the map matching toggle when the feature is unavailable', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: {
+        initialPreferences: {
+          ...timelineDisplayPrefs,
+          mapMatchingAvailable: false
+        }
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    const toggle = wrapper.find('input[aria-label="Enable map matching"]')
+
+    expect(toggle.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Unavailable')
+  })
+
+  it('allows the map matching toggle when the feature is available', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: {
+        initialPreferences: {
+          ...timelineDisplayPrefs,
+          mapMatchingAvailable: true
+        }
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    const toggle = wrapper.find('input[aria-label="Enable map matching"]')
+
+    expect(toggle.attributes('disabled')).toBeUndefined()
+    await toggle.setValue(true)
+    expect(lastDirtyValue(wrapper)).toBe(true)
   })
 
   it('emits dirty changes from the AI tab and clears when saved settings become canonical', async () => {

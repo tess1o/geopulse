@@ -126,6 +126,7 @@
               />
             </template>
           </SettingCard>
+
         </div>
 
         <div class="section">
@@ -145,6 +146,30 @@
               <ToggleSwitch
                 v-model="form.autoShowTripReplayControls"
                 class="toggle-control"
+              />
+            </template>
+          </SettingCard>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">Map Matching</h3>
+          <p class="section-description">
+            Use a configured Valhalla service to fit displayed trip paths to roads and paths
+          </p>
+
+          <SettingCard
+            title="Enable Map Matching"
+            description="Display cached matched trip geometry when available"
+            :details="mapMatchingDetails"
+            setting-id="mapMatchingEnabled"
+          >
+            <template #control>
+              <div class="control-value">{{ mapMatchingStatusLabel }}</div>
+              <ToggleSwitch
+                v-model="form.mapMatchingEnabled"
+                class="toggle-control"
+                aria-label="Enable map matching"
+                :disabled="readOnly || !mapMatchingAvailable"
               />
             </template>
           </SettingCard>
@@ -299,7 +324,9 @@ const form = ref({
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: true
+  autoShowTripReplayControls: true,
+  mapMatchingEnabled: false,
+  mapMatchingAvailable: false
 })
 
 const errors = ref({
@@ -318,6 +345,19 @@ const mapRenderModeOptions = [
   { label: 'Vector (MapLibre)', value: 'VECTOR' },
   { label: 'Raster (Leaflet)', value: 'RASTER' }
 ]
+const editablePreferenceKeys = [
+  'customMapTileUrl',
+  'customMapStyleUrl',
+  'mapRenderMode',
+  'defaultDateRangePreset',
+  'pathSimplificationEnabled',
+  'pathSimplificationTolerance',
+  'pathMaxPoints',
+  'pathAdaptiveSimplification',
+  'showCurrentLocationTelemetry',
+  'autoShowTripReplayControls',
+  'mapMatchingEnabled'
+]
 
 const normalizePreferences = (preferences = {}) => ({
   customMapTileUrl: preferences.customMapTileUrl || '',
@@ -329,14 +369,29 @@ const normalizePreferences = (preferences = {}) => ({
   pathMaxPoints: Number(preferences.pathMaxPoints ?? 0),
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
-  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true
+  autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
+  mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
+  mapMatchingAvailable: preferences.mapMatchingAvailable ?? false
 })
+
+const mapMatchingAvailable = computed(() => form.value.mapMatchingAvailable === true)
+const mapMatchingStatusLabel = computed(() => {
+  if (!mapMatchingAvailable.value) {
+    return 'Unavailable'
+  }
+  return form.value.mapMatchingEnabled ? 'Enabled' : 'Disabled'
+})
+const mapMatchingDetails = computed(() => (
+  mapMatchingAvailable.value
+    ? 'Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged.'
+    : 'An administrator must enable Map Matching and configure Valhalla before you can turn this on.'
+))
 
 const hasChanges = computed(() => {
   const current = normalizePreferences(form.value)
   const initial = normalizePreferences(props.initialPreferences)
 
-  return Object.keys(current).some((key) => current[key] !== initial[key])
+  return editablePreferenceKeys.some((key) => current[key] !== initial[key])
 })
 
 // Initialize form from props
@@ -449,7 +504,8 @@ const handleSubmit = async () => {
       pathMaxPoints: form.value.pathMaxPoints,
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
-      autoShowTripReplayControls: form.value.autoShowTripReplayControls
+      autoShowTripReplayControls: form.value.autoShowTripReplayControls,
+      mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false
     })
   } finally {
     loading.value = false
@@ -468,13 +524,16 @@ const handleReset = () => {
     pathMaxPoints: 0,
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
-    autoShowTripReplayControls: true
+    autoShowTripReplayControls: true,
+    mapMatchingEnabled: false,
+    mapMatchingAvailable: mapMatchingAvailable.value
   }
   errors.value = {
     customMapTileUrl: null,
     customMapStyleUrl: null
   }
 }
+
 </script>
 
 <style scoped>
@@ -595,6 +654,7 @@ const handleReset = () => {
   margin-left: auto;
 }
 
+
 /* Form Actions */
 .form-actions {
   display: flex;
@@ -619,5 +679,6 @@ const handleReset = () => {
   .form-actions button {
     width: 100%;
   }
+
 }
 </style>

@@ -161,6 +161,10 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private Boolean timelineDisplayAutoShowTripReplayControls = true;
 
+    @Column(name = "timeline_display_map_matching_enabled", nullable = false)
+    @Builder.Default
+    private Boolean timelineDisplayMapMatchingEnabled = false;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

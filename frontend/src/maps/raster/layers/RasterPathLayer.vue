@@ -158,14 +158,17 @@ const renderPaths = () => {
           opacity: HIGHLIGHTED_TRIP_BACKGROUND_OPACITY,
           interactive: false
         }
-      : props.pathOptions
+      : {
+          ...props.pathOptions,
+          interactive: props.inspectionEnabled
+        }
 
     const polyline = L.polyline(latlngs, {
       ...basePathOptions,
       pathId: pathGroup.id || groupIndex
     })
 
-    if (!hasFocusedHighlightedTrip.value) {
+    if (!hasFocusedHighlightedTrip.value && props.inspectionEnabled) {
       polyline.on('click', (e) => {
         emit('path-click', {
           pathData: pathGroup,
@@ -600,6 +603,9 @@ const renderHighlightedTrip = (newTrip) => {
     }
 
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
+    const tripCoordinateSegments = highlightedData.renderedTripSegments.map(segment => (
+      segment.map(point => [point.latitude, point.longitude])
+    ))
     const startEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'start')
     const endEndpoint = highlightedData.endpointMarkers.find((marker) => marker.markerType === 'end')
 
@@ -613,7 +619,7 @@ const renderHighlightedTrip = (newTrip) => {
         interactive: false
       }))
     } else {
-      tripVisualPathLayers.value = [L.polyline(tripCoords, {
+      tripVisualPathLayers.value = tripCoordinateSegments.map(segment => L.polyline(segment, {
         color: HIGHLIGHTED_TRIP_NON_CAR_COLOR,
         dashArray: HIGHLIGHTED_TRIP_NON_CAR_DASH,
         weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
@@ -621,10 +627,10 @@ const renderHighlightedTrip = (newTrip) => {
         lineCap: 'round',
         lineJoin: 'round',
         interactive: false
-      })]
+      }))
     }
 
-    tripPathLayer.value = L.polyline(tripCoords, {
+    tripPathLayer.value = L.polyline(tripCoordinateSegments, {
       color: '#000000',
       weight: HIGHLIGHTED_TRIP_RASTER_HIT_WEIGHT,
       opacity: 0,

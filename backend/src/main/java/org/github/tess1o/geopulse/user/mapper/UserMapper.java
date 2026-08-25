@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.user.mapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
@@ -16,6 +17,9 @@ public class UserMapper {
     @Inject
     DemoModeService demoModeService;
 
+    @Inject
+    MapMatchingConfiguration mapMatchingConfiguration;
+
     /**
      * Convert a UserEntity to a UserResponse DTO.
      *
@@ -26,6 +30,8 @@ public class UserMapper {
         if (entity == null) {
             return null;
         }
+
+        boolean mapMatchingAvailable = mapMatchingConfiguration != null && mapMatchingConfiguration.isAvailable();
 
         return UserResponse.builder()
                 .userId(entity.getId())
@@ -49,6 +55,9 @@ public class UserMapper {
                 .defaultDateRangePreset(entity.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .mapMatchingEnabled(mapMatchingAvailable
+                        && Boolean.TRUE.equals(entity.getTimelineDisplayMapMatchingEnabled()))
+                .mapMatchingAvailable(mapMatchingAvailable)
                 .build();
     }
 }

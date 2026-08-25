@@ -93,7 +93,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -128,7 +128,9 @@ const timelineDisplayPrefs = ref({
   pathAdaptiveSimplification: true,
   defaultDateRangePreset: defaultDateRangePreset.value || '',
   showCurrentLocationTelemetry: true,
-  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true
+  autoShowTripReplayControls: autoShowTripReplayControls.value ?? true,
+  mapMatchingEnabled: false,
+  mapMatchingAvailable: mapMatchingAvailable.value ?? false
 })
 
 // Tab configuration
@@ -234,7 +236,10 @@ const currentTabHandlers = computed(() => {
   const handlers = {
     profile: { save: handleProfileSave, 'dirty-change': (isDirty) => handleTabDirtyChange('profile', isDirty) },
     security: { save: handlePasswordSave, 'dirty-change': (isDirty) => handleTabDirtyChange('security', isDirty) },
-    timelineDisplay: { save: handleTimelineDisplaySave, 'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty) },
+    timelineDisplay: {
+      save: handleTimelineDisplaySave,
+      'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty)
+    },
     ai: { save: handleAISave, 'dirty-change': (isDirty) => handleTabDirtyChange('ai', isDirty) },
     immich: { save: handleImmichSave, 'dirty-change': (isDirty) => handleTabDirtyChange('immich', isDirty) },
     memos: { save: handleMemosSave, 'dirty-change': (isDirty) => handleTabDirtyChange('memos', isDirty) },
@@ -550,7 +555,9 @@ const loadTimelineDisplayPreferences = async () => {
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
         defaultDateRangePreset: data.defaultDateRangePreset || '',
         showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
-        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true
+        autoShowTripReplayControls: data.autoShowTripReplayControls ?? true,
+        mapMatchingEnabled: data.mapMatchingEnabled ?? false,
+        mapMatchingAvailable: data.mapMatchingAvailable ?? false
       }
     }
   } catch (error) {

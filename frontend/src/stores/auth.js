@@ -49,6 +49,8 @@ function normalizeUser(source) {
         timeFormat: raw.timeFormat || '24h',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
         autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
+        mapMatchingEnabled: raw.mapMatchingEnabled ?? false,
+        mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
         demoMode: !!raw.demoMode,
         canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
         adminReadOnly: !!raw.adminReadOnly,
@@ -89,6 +91,8 @@ export const useAuthStore = defineStore('auth', {
         timeFormat: (state) => state.user?.timeFormat || '24h',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
+        mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
+        mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
         demoMode: (state) => !!state.user?.demoMode,
@@ -259,6 +263,12 @@ export const useAuthStore = defineStore('auth', {
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'autoShowTripReplayControls')) {
                     userPatch.autoShowTripReplayControls = updatedPreferences.autoShowTripReplayControls ?? true
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingEnabled')) {
+                    userPatch.mapMatchingEnabled = updatedPreferences.mapMatchingEnabled ?? false
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingAvailable')) {
+                    userPatch.mapMatchingAvailable = updatedPreferences.mapMatchingAvailable ?? false
                 }
 
                 if (Object.keys(userPatch).length > 0) {

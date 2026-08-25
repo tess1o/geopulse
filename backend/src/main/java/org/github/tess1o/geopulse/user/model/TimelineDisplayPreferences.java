@@ -82,4 +82,15 @@ public class TimelineDisplayPreferences {
      * Default: true
      */
     private Boolean autoShowTripReplayControls;
+
+    /**
+     * Use cached Valhalla map matching for timeline trip path display.
+     * Default: false
+     */
+    private Boolean mapMatchingEnabled;
+
+    /**
+     * Whether map matching is enabled globally and configured by an administrator.
+     */
+    private Boolean mapMatchingAvailable;
 }

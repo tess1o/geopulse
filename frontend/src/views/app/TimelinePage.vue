@@ -46,7 +46,10 @@
               v-if="mapPreferencesLoaded"
               v-show="!mapNoData && !mapDataLoading"
               ref="mapViewRef"
-              :pathData="pathData"
+              :pathData="activePathData"
+              :raw-path-data="pathData"
+              :matched-trip-ids="matchedTripIds"
+              :map-matching-status-text="mapMatchingStatusText"
               :timelineData="timelineDataWithStayTelemetry"
               :weather-samples="weatherSamples"
               :favoritePlaces="favoritePlaces"
@@ -149,6 +152,7 @@ import TripReconstructionDialog from '@/components/trips/TripReconstructionDialo
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 import { useTimelineItemSelection } from '@/composables/useTimelineItemSelection'
 import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEditing'
+import { useTimelineMapMatching } from '@/composables/useTimelineMapMatching'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { showDemoModeToast } from '@/utils/demoMode'
 
@@ -238,6 +242,7 @@ const readTimelineDisplayFallback = () => {
   const customMapStyleUrlSource = hasOwnPreference(user, 'customMapStyleUrl')
     ? user.customMapStyleUrl
     : cachedProfile.customMapStyleUrl
+  const mapMatchingAvailable = user.mapMatchingAvailable ?? cachedProfile.mapMatchingAvailable
 
   return {
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
@@ -248,7 +253,10 @@ const readTimelineDisplayFallback = () => {
     mapRenderMode: normalizeTimelineMapRenderMode(user.mapRenderMode || cachedProfile.mapRenderMode),
     autoShowTripReplayControls: user.autoShowTripReplayControls
       ?? cachedProfile.autoShowTripReplayControls
-      ?? true
+      ?? true,
+    mapMatchingEnabled: mapMatchingAvailable === false
+      ? false
+      : (user.mapMatchingEnabled ?? cachedProfile.mapMatchingEnabled ?? false)
   }
 }
 
@@ -269,6 +277,7 @@ const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
+const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -316,6 +325,23 @@ const timelineReconstructionFallbackCenter = computed(() => {
   }
 
   return [37.7749, -122.4194]
+})
+
+const visibleTrips = computed(() => {
+  const items = Array.isArray(timelineData.value) ? timelineData.value : []
+  return items.filter(item => item?.type === 'trip' && item?.id)
+})
+
+const {
+  activePathData,
+  matchedTripIds,
+  statusText: mapMatchingStatusText,
+  resolve: resolveMapMatching,
+  reset: resetMapMatching
+} = useTimelineMapMatching({
+  enabled: mapMatchingEnabled,
+  visibleTrips,
+  rawPathData: pathData
 })
 
 const selectedSingleDayDate = computed(() => {
@@ -713,12 +739,14 @@ const loadTimelineDisplaySettings = async () => {
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
     autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
+    mapMatchingEnabled.value = data?.mapMatchingEnabled ?? fallback.mapMatchingEnabled
   } catch (error) {
     showCurrentLocationTelemetry.value = fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = fallback.customMapTileUrl
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
     autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
+    mapMatchingEnabled.value = fallback.mapMatchingEnabled
   } finally {
     mapPreferencesLoaded.value = true
   }
@@ -756,10 +784,15 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
     forceLoadLargeDataset.value = false
 
-    await Promise.all([
-      fetchLocationData(startDate, endDate),
-      fetchTimelineData(startDate, endDate),
-    ])
+    resetMapMatching()
+
+    const locationPromise = fetchLocationData(startDate, endDate)
+    const timelinePromise = fetchTimelineData(startDate, endDate)
+    await timelinePromise
+    resolveMapMatching()
+    await locationPromise
+    await nextTick()
+    triggerMapResize()
     await fetchWeatherData(startDate, endDate)
     await refreshCurrentLocation()
   } finally {

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +44,24 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
     private static final String USER_DEFAULT_DISTANCE_UNIT = "geopulse.user.default-distance-unit";
     private static final String GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT = "GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT";
     private static final String USER_DEFAULT_TEMPERATURE_UNIT = "geopulse.user.default-temperature-unit";
+    private static final List<String> GEOPULSE_MAP_MATCHING_ENV_VARS = List.of(
+            "GEOPULSE_TIMELINE_MAP_MATCHING_ENABLED",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_ENABLED",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_BACKFILL_ENABLED",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_QUIET_PERIOD_MINUTES",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_PROVIDER",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_VALHALLA_BASE_URL",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_CONNECT_TIMEOUT_SECONDS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_READ_TIMEOUT_SECONDS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_MAX_INPUT_POINTS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_MAX_TRIP_DURATION_HOURS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_WORKER_BATCH_SIZE",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_MAX_ATTEMPTS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_RAW_DISTANCE_METERS",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_DISTANCE_COVERAGE_PERCENT",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT",
+            "GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS"
+    );
 
     @AfterEach
     void cleanUpSystemProperties() {
@@ -59,6 +79,7 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         System.clearProperty(USER_DEFAULT_DISTANCE_UNIT);
         System.clearProperty(GEOPULSE_USER_DEFAULT_TEMPERATURE_UNIT);
         System.clearProperty(USER_DEFAULT_TEMPERATURE_UNIT);
+        GEOPULSE_MAP_MATCHING_ENV_VARS.forEach(System::clearProperty);
     }
 
     @Test
@@ -136,6 +157,47 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
         assertTrue(service.getBoolean("weather.enabled"));
         assertTrue(service.getBoolean("weather.ongoing.enabled"));
         assertFalse(service.getBoolean("weather.backfill.enabled"));
+    }
+
+    @Test
+    void shouldResolveMapMatchingSettingsFromGeopulseEnvVariableStyle() {
+        Map<String, String> overrides = new LinkedHashMap<>();
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_ENABLED", "true");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_ENABLED", "true");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_BACKFILL_ENABLED", "true");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_AUTOMATIC_QUIET_PERIOD_MINUTES", "20");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_PROVIDER", "valhalla");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_VALHALLA_BASE_URL", "http://valhalla:8002");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_CONNECT_TIMEOUT_SECONDS", "4");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_READ_TIMEOUT_SECONDS", "25");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_MAX_INPUT_POINTS", "120");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_MAX_TRIP_DURATION_HOURS", "36");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_WORKER_BATCH_SIZE", "8");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_MAX_ATTEMPTS", "5");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_RAW_DISTANCE_METERS", "600");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MIN_DISTANCE_COVERAGE_PERCENT", "45");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT", "12");
+        overrides.put("GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS", "150");
+        overrides.forEach(System::setProperty);
+
+        SystemSettingsService service = createService();
+
+        assertTrue(service.getBoolean("map-matching.enabled"));
+        assertTrue(service.getBoolean("map-matching.automatic.enabled"));
+        assertTrue(service.getBoolean("map-matching.backfill.enabled"));
+        assertEquals(20, service.getInteger("map-matching.automatic.quiet-period-minutes"));
+        assertEquals("valhalla", service.getString("map-matching.provider"));
+        assertEquals("http://valhalla:8002", service.getString("map-matching.valhalla.base-url"));
+        assertEquals(4, service.getInteger("map-matching.valhalla.connect-timeout-seconds"));
+        assertEquals(25, service.getInteger("map-matching.valhalla.read-timeout-seconds"));
+        assertEquals(120, service.getInteger("map-matching.max-input-points"));
+        assertEquals(36, service.getInteger("map-matching.max-trip-duration-hours"));
+        assertEquals(8, service.getInteger("map-matching.worker.batch-size"));
+        assertEquals(5, service.getInteger("map-matching.max-attempts"));
+        assertEquals(600, service.getInteger("map-matching.quality.min-raw-distance-meters"));
+        assertEquals(45, service.getInteger("map-matching.quality.min-distance-coverage-percent"));
+        assertEquals(12, service.getInteger("map-matching.quality.max-discontinuity-percent"));
+        assertEquals(150, service.getInteger("map-matching.quality.max-short-discontinuity-meters"));
     }
 
     @Test

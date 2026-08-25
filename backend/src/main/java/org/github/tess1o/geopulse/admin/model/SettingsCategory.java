@@ -6,6 +6,7 @@ package org.github.tess1o.geopulse.admin.model;
 public enum SettingsCategory {
     AUTH("auth"),
     GEOCODING("geocoding"),
+    MAP_MATCHING("map-matching"),
     GPS("gps"),
     IMPORT("import"),
     SYSTEM("system");

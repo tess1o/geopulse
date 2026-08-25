@@ -33,6 +33,18 @@
       </button>
 
       <button
+        v-if="showPathComparisonControl"
+        @click="handleTogglePathComparison"
+        :class="{ active: pathComparisonEnabled }"
+        :title="pathComparisonEnabled ? 'Hide raw GPS comparison' : 'Compare raw GPS and matched routes'"
+        :aria-pressed="pathComparisonEnabled"
+        class="control-button"
+        :disabled="!map || !showPath"
+      >
+        <i class="pi pi-clone"></i>
+      </button>
+
+      <button
         v-if="showRawGpsPointsControl"
         @click="handleToggleRawGpsPoints"
         :class="{ active: rawGpsPointsEnabled, 'raw-gps-loading': rawGpsPointsLoading }"
@@ -166,6 +178,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showPathComparisonControl: {
+    type: Boolean,
+    default: false
+  },
+  pathComparisonEnabled: {
+    type: Boolean,
+    default: false
+  },
   showRawGpsPointsControl: {
     type: Boolean,
     default: false
@@ -248,6 +268,7 @@ const emit = defineEmits([
   'toggle-favorites',
   'toggle-timeline',
   'toggle-path',
+  'toggle-path-comparison',
   'toggle-raw-gps-points',
   'toggle-immich',
   'toggle-notes',
@@ -267,6 +288,10 @@ const handleToggleTimeline = () => {
 
 const handleTogglePath = () => {
   emit('toggle-path', !props.showPath)
+}
+
+const handleTogglePathComparison = () => {
+  emit('toggle-path-comparison', !props.pathComparisonEnabled)
 }
 
 const handleToggleRawGpsPoints = () => {

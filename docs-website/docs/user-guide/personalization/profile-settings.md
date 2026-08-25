@@ -122,6 +122,28 @@ Choose how times are shown in user-facing timestamps.
 
 **Default:** `24-hour`
 
+### Map Matching
+
+Choose whether timeline trip paths are displayed as road/path-matched routes when Map Matching is available on your
+GeoPulse instance.
+
+**What it affects:**
+- Timeline map trip paths
+- Matched route display for supported movement types
+- The raw-vs-matched comparison control for selected matched trips
+
+Map Matching does not change your original GPS data, timeline detection, movement classification, exports, or journey
+statistics. If matching is still processing, unavailable, unsupported for a trip type, or not confident enough, GeoPulse
+keeps showing the raw GPS path.
+
+:::info Availability
+The Map Matching switch is only available after an administrator enables Valhalla-backed Map Matching for the instance.
+If the switch is disabled, ask your administrator to review the
+[Valhalla Map Matching setup guide](/docs/system-administration/configuration/valhalla-map-matching).
+:::
+
+For more details, see [Map Matching](/docs/user-guide/timeline/map-matching).
+
 ### Default Home Page
 
 Choose which page you see after logging in or when you click the GeoPulse logo.
@@ -272,6 +294,15 @@ Click **Reset** to discard all unsaved changes and restore your current settings
 3. Check you selected the correct timezone from the list
 4. Log out and log back in
 
+### Map Matching Toggle Disabled
+
+**Problem:** The Map Matching switch is unavailable in Display Settings
+
+**Solutions:**
+1. Ask your administrator whether Map Matching is enabled globally
+2. Confirm the GeoPulse instance is connected to Valhalla
+3. Check the [Map Matching guide](/docs/user-guide/timeline/map-matching) for feature behavior and fallbacks
+
 ### Avatar Not Updating
 
 **Problem:** New avatar doesn't appear
@@ -289,6 +320,7 @@ For more customization options, see:
 - [AI Assistant Settings](/docs/user-guide/personalization/ai-assistant-settings) - Configure AI-powered features
 - [Custom Map Tiles](/docs/user-guide/personalization/custom-map-tiles) - Detailed map customization guide
 - [Measurement Units](/docs/user-guide/personalization/measurement-units) - Distance, speed, and temperature preferences
+- [Map Matching](/docs/user-guide/timeline/map-matching) - Cleaner timeline trip paths when Valhalla is available
 - [Immich Integration](/docs/user-guide/personalization/immich-integration) - Photo management integration
 
 ## Frequently Asked Questions

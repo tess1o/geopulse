@@ -212,6 +212,11 @@ const sidebars = {
                         'user-guide/timeline/stay_detection',
                         'user-guide/timeline/trip_detection',
                         'user-guide/timeline/travel_classification',
+                        {
+                            type: 'doc',
+                            id: 'user-guide/timeline/map-matching',
+                            label: 'Map Matching',
+                        },
                         'user-guide/timeline/boat-setup',
                         {
                             type: 'doc',
@@ -311,6 +316,11 @@ const sidebars = {
                     items: [
                         'system-administration/configuration/admin-panel',
                         'system-administration/configuration/timeline-global-config',
+                        {
+                            type: 'doc',
+                            id: 'system-administration/configuration/valhalla-map-matching',
+                            label: 'Valhalla Map Matching',
+                        },
                         'system-administration/configuration/reverse-geocoding',
                         'system-administration/configuration/weather',
                         'system-administration/configuration/import',

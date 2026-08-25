@@ -9,6 +9,7 @@ const ADMIN_TAB_BY_PREFIX = [
   { prefix: 'auth.', tab: 'authentication', tabLabel: 'Authentication' },
   { prefix: 'geocoding.', tab: 'geocoding', tabLabel: 'Geocoding' },
   { prefix: 'weather.', tab: 'weather', tabLabel: 'Weather' },
+  { prefix: 'map-matching.', tab: 'map-matching', tabLabel: 'Map Matching' },
   { prefix: 'ai.', tab: 'ai', tabLabel: 'AI Assistant' },
   { prefix: 'import.', tab: 'import', tabLabel: 'Import' },
   { prefix: 'export.', tab: 'export', tabLabel: 'Export' },

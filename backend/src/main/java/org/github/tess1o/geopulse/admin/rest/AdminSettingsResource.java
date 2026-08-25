@@ -21,10 +21,18 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
 import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
+import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -66,6 +74,12 @@ public class AdminSettingsResource {
 
     @Inject
     WeatherService weatherService;
+
+    @Inject
+    MapMatchingConfiguration mapMatchingConfiguration;
+
+    @Inject
+    MapMatchingWorker mapMatchingWorker;
 
     /**
      * Get all settings grouped by category.
@@ -295,5 +309,64 @@ public class AdminSettingsResource {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(responsePayload)
                 .build();
+    }
+
+    @POST
+    @Path("/map-matching/valhalla/test")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response testValhallaConnection() {
+        Map<String, Object> responsePayload = new LinkedHashMap<>();
+        responsePayload.put("provider", "valhalla");
+
+        if (!mapMatchingConfiguration.valhallaConfigured()) {
+            responsePayload.put("success", false);
+            responsePayload.put("statusCode", 0);
+            responsePayload.put("message", "Valhalla base URL is not configured");
+            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+        }
+
+        String baseUrl = mapMatchingConfiguration.valhallaBaseUrl();
+        URI statusUri = URI.create(baseUrl.endsWith("/") ? baseUrl + "status" : baseUrl + "/status");
+        responsePayload.put("url", statusUri.toString());
+
+        try (HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(Math.max(1, mapMatchingConfiguration.getConnectTimeoutSeconds())))
+                .build()) {
+            HttpRequest request = HttpRequest.newBuilder(statusUri)
+                    .timeout(Duration.ofSeconds(Math.max(1, mapMatchingConfiguration.getReadTimeoutSeconds())))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            responsePayload.put("statusCode", response.statusCode());
+            responsePayload.put("message", response.statusCode() >= 200 && response.statusCode() < 300
+                    ? "Valhalla endpoint is reachable"
+                    : limitErrorBody(response.body()));
+            responsePayload.put("success", response.statusCode() >= 200 && response.statusCode() < 300);
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return Response.ok(responsePayload).build();
+            }
+            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+        } catch (Exception e) {
+            responsePayload.put("success", false);
+            responsePayload.put("statusCode", 0);
+            responsePayload.put("message", e.getMessage() == null ? "Valhalla connection failed" : e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+        }
+    }
+
+    @GET
+    @Path("/map-matching/status")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    public Response mapMatchingStatus() {
+        return Response.ok(ApiResponse.success(mapMatchingWorker.status())).build();
+    }
+
+    private String limitErrorBody(String body) {
+        if (body == null || body.isBlank()) {
+            return "Valhalla endpoint returned an error";
+        }
+        String trimmed = body.trim();
+        return trimmed.length() <= 500 ? trimmed : trimmed.substring(0, 500);
     }
 }

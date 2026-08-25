@@ -84,4 +84,9 @@ public class UpdateTimelineDisplayPreferencesRequest {
      * Automatically show trip replay controls when a trip is selected.
      */
     private Boolean autoShowTripReplayControls;
+
+    /**
+     * Use cached Valhalla map matching for timeline trip path display.
+     */
+    private Boolean mapMatchingEnabled;
 }
