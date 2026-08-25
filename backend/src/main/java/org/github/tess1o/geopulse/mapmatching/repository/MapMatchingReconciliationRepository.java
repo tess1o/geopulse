@@ -164,6 +164,45 @@ public class MapMatchingReconciliationRepository {
     }
 
     @Transactional
+    public long refreshEligiblePendingTripTotals() {
+        return ((Number) entityManager.createNativeQuery("""
+                WITH counted AS (
+                    SELECT r.id, count(t.id) AS total_trips
+                    FROM map_matching_reconciliations r
+                    LEFT JOIN timeline_trips t
+                      ON t.user_id = r.user_id
+                     AND t.timestamp >= r.range_start
+                     AND t.timestamp <= r.range_end
+                    WHERE r.completed_at IS NULL
+                      AND r.eligible_at <= now()
+                    GROUP BY r.id
+                ),
+                refreshed AS (
+                    UPDATE map_matching_reconciliations r
+                    SET total_trips = counted.total_trips,
+                        scanned_trips = CASE
+                            WHEN counted.total_trips = 0 THEN 0
+                            ELSE LEAST(r.scanned_trips, counted.total_trips)
+                        END,
+                        completed_at = CASE
+                            WHEN counted.total_trips = 0 THEN now()
+                            ELSE r.completed_at
+                        END,
+                        locked_at = CASE
+                            WHEN counted.total_trips = 0 THEN NULL
+                            ELSE r.locked_at
+                        END,
+                        updated_at = now()
+                    FROM counted
+                    WHERE r.id = counted.id
+                    RETURNING r.id
+                )
+                SELECT count(*) FROM refreshed
+                """)
+                .getSingleResult()).longValue();
+    }
+
+    @Transactional
     public void advance(MapMatchingReconciliation reconciliation, Instant nextCursor,
                         long nextCursorTripId, int scannedCount, boolean complete) {
         entityManager.createNativeQuery("""

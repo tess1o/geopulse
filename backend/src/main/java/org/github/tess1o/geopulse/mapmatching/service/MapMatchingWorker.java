@@ -190,6 +190,10 @@ public class MapMatchingWorker {
                 return;
             }
             mapMatchingService.resetStaleProcessing();
+            long refreshedReconciliations = reconciliationRepository.refreshEligiblePendingTripTotals();
+            if (refreshedReconciliations > 0) {
+                log.info("Refreshed {} eligible map-matching reconciliation ranges", refreshedReconciliations);
+            }
             while (true) {
                 rerunRequested.set(false);
                 phase = "DISCOVERING";

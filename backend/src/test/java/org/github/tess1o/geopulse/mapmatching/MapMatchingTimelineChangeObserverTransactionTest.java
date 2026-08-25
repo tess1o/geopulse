@@ -8,7 +8,9 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -66,8 +68,20 @@ class MapMatchingTimelineChangeObserverTransactionTest {
         Instant affectedTo = Instant.parse("2026-08-31T23:59:59Z");
         UUID jobId = UUID.randomUUID();
 
-        QuarkusTransaction.requiringNew().run(() ->
-                timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId)));
+        QuarkusTransaction.requiringNew().run(() -> {
+            UserEntity user = entityManager.find(UserEntity.class, userId);
+            entityManager.persist(TimelineTripEntity.builder()
+                    .user(user)
+                    .timestamp(Instant.parse("2026-08-15T12:00:00Z"))
+                    .tripDuration(600)
+                    .distanceMeters(2_000)
+                    .startPoint(GeoUtils.createPoint(30.5234, 50.4501))
+                    .endPoint(GeoUtils.createPoint(30.5334, 50.4601))
+                    .movementType("WALK")
+                    .build());
+            entityManager.flush();
+            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
+        });
 
         assertThat(awaitAutomaticReconciliationCount(userId)).isOne();
     }
