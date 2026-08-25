@@ -66,6 +66,9 @@ const statusResponse = {
       oldestQueuedAt: '2026-08-22T20:42:00Z'
     },
     diagnostics: {
+      pendingReconciliations: 0,
+      pendingReconciliationsBySource: {},
+      nextReconciliationEligibleAt: null,
       lastWorkerCycleCompletedAt: null,
       targetsByStatus: { MATCHED: 12709, FAILED: 348 },
       targetsBySource: { HISTORICAL: 13331 }
@@ -125,6 +128,52 @@ describe('MapMatchingSettingsTab processing status', () => {
     expect(wrapper.text()).toContain('By status')
     expect(wrapper.text()).toContain('By source')
     expect(wrapper.findAll('.outcome-item')).toHaveLength(3)
+
+    wrapper.unmount()
+  })
+
+  it('shows scheduled reconciliation work while waiting for quiet period', async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        ...statusResponse.data,
+        worker: {
+          ...statusResponse.data.worker,
+          running: false,
+          phase: 'IDLE'
+        },
+        backfill: {
+          ...statusResponse.data.backfill,
+          scannedTrips: 18341,
+          remainingTrips: 0,
+          percent: 100,
+          completedUsers: 49,
+          remainingUsers: 0
+        },
+        queue: {
+          queued: 0,
+          processing: 0,
+          oldestQueuedAt: null
+        },
+        diagnostics: {
+          ...statusResponse.data.diagnostics,
+          pendingReconciliations: 2,
+          pendingReconciliationsBySource: { AUTOMATIC: 2 },
+          nextReconciliationEligibleAt: '2999-08-22T21:20:00Z'
+        }
+      }
+    })
+
+    const wrapper = mountTab()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('SCHEDULED')
+    expect(wrapper.text()).toContain('Work is scheduled')
+    expect(wrapper.text()).toContain('Scheduled ranges')
+    expect(wrapper.text()).toContain('2')
+
+    await wrapper.find('.status-diagnostics summary').trigger('click')
+    expect(wrapper.text()).toContain('Pending ranges')
+    expect(wrapper.text()).toContain('Automatic')
 
     wrapper.unmount()
   })

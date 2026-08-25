@@ -254,6 +254,7 @@ public class MapMatchingWorker {
     public MapMatchingAdminStatusDTO status() {
         Map<String, Long> targetsByStatus = targetRepository.countByStatus();
         Map<String, Long> targetsBySource = targetRepository.countBySource();
+        Map<String, Long> pendingReconciliationsBySource = reconciliationRepository.countPendingBySource();
         var backfillProgress = reconciliationRepository.historicalProgress();
         Instant lastActivityAt = latest(
                 targetRepository.lastUpdatedAt(),
@@ -282,7 +283,9 @@ public class MapMatchingWorker {
                 .diagnostics(MapMatchingAdminStatusDTO.Diagnostics.builder()
                         .lastWorkerCycleCompletedAt(lastCompletedAt)
                         .oldestReconciliationCursorAt(reconciliationRepository.oldestCursor())
+                        .nextReconciliationEligibleAt(reconciliationRepository.nextEligibleAt())
                         .pendingReconciliations(reconciliationRepository.countPending())
+                        .pendingReconciliationsBySource(pendingReconciliationsBySource)
                         .targetsByStatus(targetsByStatus)
                         .targetsBySource(targetsBySource)
                         .build())

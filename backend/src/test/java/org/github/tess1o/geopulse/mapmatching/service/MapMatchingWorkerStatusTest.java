@@ -127,6 +127,7 @@ class MapMatchingWorkerStatusTest {
         Instant targetActivity = Instant.parse("2026-08-22T21:10:00Z");
         Instant reconciliationActivity = Instant.parse("2026-08-22T21:11:00Z");
         Instant oldestQueued = Instant.parse("2026-08-22T20:00:00Z");
+        Instant nextEligible = Instant.parse("2026-08-22T21:20:00Z");
 
         when(configuration.isEnabled()).thenReturn(true);
         when(configuration.valhallaConfigured()).thenReturn(true);
@@ -143,6 +144,10 @@ class MapMatchingWorkerStatusTest {
         when(reconciliationRepository.historicalProgress()).thenReturn(
                 new MapMatchingBackfillProgress(18_341, 12_850, 49, 13, reconciliationActivity));
         when(reconciliationRepository.countPending()).thenReturn(36L);
+        when(reconciliationRepository.countPendingBySource()).thenReturn(Map.of(
+                "AUTOMATIC", 2L,
+                "HISTORICAL", 34L));
+        when(reconciliationRepository.nextEligibleAt()).thenReturn(nextEligible);
 
         MapMatchingAdminStatusDTO status = worker.status();
 
@@ -153,6 +158,8 @@ class MapMatchingWorkerStatusTest {
         assertThat(status.getQueue().getProcessing()).isEqualTo(9);
         assertThat(status.getQueue().getOldestQueuedAt()).isEqualTo(oldestQueued);
         assertThat(status.getWorker().getLastActivityAt()).isEqualTo(reconciliationActivity);
+        assertThat(status.getDiagnostics().getPendingReconciliationsBySource().get("AUTOMATIC")).isEqualTo(2L);
+        assertThat(status.getDiagnostics().getNextReconciliationEligibleAt()).isEqualTo(nextEligible);
         assertThat(status.getDiagnostics().getTargetsByStatus().get("MATCHED")).isEqualTo(12_709);
     }
 }

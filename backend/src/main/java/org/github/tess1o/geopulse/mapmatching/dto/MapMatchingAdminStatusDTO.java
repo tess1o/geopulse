@@ -53,7 +53,9 @@ public class MapMatchingAdminStatusDTO {
     public static class Diagnostics {
         private Instant lastWorkerCycleCompletedAt;
         private Instant oldestReconciliationCursorAt;
+        private Instant nextReconciliationEligibleAt;
         private long pendingReconciliations;
+        private Map<String, Long> pendingReconciliationsBySource;
         private Map<String, Long> targetsByStatus;
         private Map<String, Long> targetsBySource;
     }

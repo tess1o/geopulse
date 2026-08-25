@@ -170,7 +170,7 @@ public class MapMatchingReconciliationRepository {
                 UPDATE map_matching_reconciliations
                 SET cursor_at = ?2,
                     cursor_trip_id = ?3,
-                    scanned_trips = LEAST(total_trips, scanned_trips + ?4),
+                    scanned_trips = CASE WHEN ?5 THEN total_trips ELSE LEAST(total_trips, scanned_trips + ?4) END,
                     completed_at = CASE WHEN ?5 THEN now() ELSE NULL END,
                     locked_at = NULL,
                     updated_at = now()
@@ -194,6 +194,29 @@ public class MapMatchingReconciliationRepository {
         return ((Number) entityManager.createNativeQuery(
                         "SELECT count(*) FROM map_matching_reconciliations WHERE completed_at IS NULL")
                 .getSingleResult()).longValue();
+    }
+
+    public java.util.Map<String, Long> countPendingBySource() {
+        @SuppressWarnings("unchecked")
+        List<Object[]> rows = entityManager.createNativeQuery("""
+                SELECT source, count(*)
+                FROM map_matching_reconciliations
+                WHERE completed_at IS NULL
+                GROUP BY source
+                """).getResultList();
+        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+        rows.forEach(row -> result.put(String.valueOf(row[0]), ((Number) row[1]).longValue()));
+        return result;
+    }
+
+    public Instant nextEligibleAt() {
+        Object value = entityManager.createNativeQuery("""
+                        SELECT min(eligible_at)
+                        FROM map_matching_reconciliations
+                        WHERE completed_at IS NULL
+                        """)
+                .getSingleResult();
+        return toInstant(value);
     }
 
     public Instant oldestCursor() {

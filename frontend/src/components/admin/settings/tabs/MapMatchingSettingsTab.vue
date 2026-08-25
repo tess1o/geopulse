@@ -120,6 +120,8 @@
         <dl class="status-grid status-grid-primary">
           <div><dt>Queued</dt><dd>{{ formatNumber(queue.queued) }}</dd></div>
           <div><dt>Processing</dt><dd>{{ formatNumber(queue.processing) }}</dd></div>
+          <div><dt>Scheduled ranges</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
+          <div><dt>Next scan</dt><dd>{{ formatDateTime(diagnostics.nextReconciliationEligibleAt) }}</dd></div>
           <div><dt>Last activity</dt><dd>{{ formatDateTime(worker.lastActivityAt) }}</dd></div>
         </dl>
 
@@ -133,6 +135,7 @@
             <div><dt>Worker started</dt><dd>{{ formatDateTime(worker.startedAt) }}</dd></div>
             <div><dt>Last worker cycle</dt><dd>{{ formatDateTime(diagnostics.lastWorkerCycleCompletedAt) }}</dd></div>
             <div><dt>User histories remaining</dt><dd>{{ formatNumber(backfill.remainingUsers) }} / {{ formatNumber(backfill.totalUsers) }}</dd></div>
+            <div><dt>Pending reconciliations</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
             <div><dt>Oldest queued target</dt><dd>{{ formatDateTime(queue.oldestQueuedAt) }}</dd></div>
           </dl>
 
@@ -157,6 +160,16 @@
                 <h5>By source</h5>
                 <dl class="outcome-list">
                   <div v-for="(count, name) in diagnostics.targetsBySource" :key="name" class="outcome-item">
+                    <dt>{{ formatStatusName(name) }}</dt>
+                    <dd>{{ formatNumber(count) }}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section class="outcome-group">
+                <h5>Pending ranges</h5>
+                <dl class="outcome-list">
+                  <div v-for="(count, name) in diagnostics.pendingReconciliationsBySource" :key="name" class="outcome-item">
                     <dt>{{ formatStatusName(name) }}</dt>
                     <dd>{{ formatNumber(count) }}</dd>
                   </div>
@@ -248,8 +261,23 @@ const worker = computed(() => status.value.worker || {})
 const backfill = computed(() => status.value.backfill || {})
 const queue = computed(() => status.value.queue || {})
 const diagnostics = computed(() => status.value.diagnostics || {})
-const workerState = computed(() => worker.value.running ? 'RUNNING' : worker.value.lastError ? 'BLOCKED' : 'IDLE')
-const workerSeverity = computed(() => workerState.value === 'RUNNING' ? 'info' : workerState.value === 'BLOCKED' ? 'warn' : 'success')
+const pendingReconciliationCount = computed(() => Number(diagnostics.value.pendingReconciliations) || 0)
+const hasPendingReconciliations = computed(() => pendingReconciliationCount.value > 0)
+const waitingForQuietPeriod = computed(() => {
+  if (!hasPendingReconciliations.value || !diagnostics.value.nextReconciliationEligibleAt) return false
+  return new Date(diagnostics.value.nextReconciliationEligibleAt).getTime() > Date.now()
+})
+const workerState = computed(() => {
+  if (worker.value.running) return 'RUNNING'
+  if (worker.value.lastError) return 'BLOCKED'
+  if (hasPendingReconciliations.value) return waitingForQuietPeriod.value ? 'SCHEDULED' : 'QUEUED'
+  return 'IDLE'
+})
+const workerSeverity = computed(() => {
+  if (workerState.value === 'RUNNING' || workerState.value === 'SCHEDULED' || workerState.value === 'QUEUED') return 'info'
+  if (workerState.value === 'BLOCKED') return 'warn'
+  return 'success'
+})
 const backfillProgressValue = computed(() => Math.min(100, Math.max(0, Number(backfill.value.percent) || 0)))
 const showBackfillProgress = computed(() => backfill.value.enabled || Number(backfill.value.totalTrips) > 0)
 const statusSummary = computed(() => {
@@ -258,6 +286,8 @@ const statusSummary = computed(() => {
   if (worker.value.running) return worker.value.phase === 'DISCOVERING' ? 'Discovering eligible trips' : 'Matching queued trips'
   if (worker.value.lastError) return 'Processing is blocked'
   if (!backfill.value.enabled && Number(backfill.value.remainingTrips) > 0) return 'Historical backfill is paused'
+  if (waitingForQuietPeriod.value) return 'Work is scheduled'
+  if (hasPendingReconciliations.value) return 'Discovering eligible trips'
   if (Number(backfill.value.remainingTrips) > 0 || Number(queue.value.queued) > 0 || Number(queue.value.processing) > 0) return 'Work is queued'
   return 'Map matching is caught up'
 })
