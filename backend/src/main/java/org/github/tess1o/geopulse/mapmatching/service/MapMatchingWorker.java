@@ -139,7 +139,7 @@ public class MapMatchingWorker {
         wake("setting changed: " + key);
     }
 
-    @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:15s}", delayed = "20s",
+    @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:60s}", delayed = "20s",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {
         wake("watchdog");
@@ -182,7 +182,7 @@ public class MapMatchingWorker {
         lastError = null;
         int processed = 0;
         Map<UUID, Double> maxAccuracyByUser = new HashMap<>();
-        log.info("Map-matching pipeline started: trigger={}", reason);
+        log.debug("Map-matching pipeline started: trigger={}", reason);
         try {
             if (!configuration.isEnabled() || !"valhalla".equals(configuration.provider())
                     || !configuration.valhallaConfigured()) {
@@ -213,7 +213,7 @@ public class MapMatchingWorker {
             lastCompletedAt = Instant.now();
             try {
                 recordMetrics(metricStarted, phase);
-                log.info("Map-matching pipeline completed: trigger={}, phase={}, processedTargets={}, pendingReconciliations={}, error={}",
+                log.debug("Map-matching pipeline completed: trigger={}, phase={}, processedTargets={}, pendingReconciliations={}, error={}",
                         reason, phase, processed, reconciliationRepository.countPending(), lastError);
             } catch (RuntimeException e) {
                 log.warn("Unable to record final map-matching worker status: {}", e.getMessage());
