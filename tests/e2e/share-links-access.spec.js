@@ -12,6 +12,15 @@ import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import * as TimelineTestData from "../utils/timeline-test-data.js";
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
+const boxesOverlap = (first, second) => {
+  if (!first || !second) return false;
+
+  return first.x < second.x + second.width &&
+    first.x + first.width > second.x &&
+    first.y < second.y + second.height &&
+    first.y + first.height > second.y;
+};
+
 test.describe('Shared Links Public Access', () => {
 
   test.describe('Live Location Share - Public Access', () => {
@@ -53,6 +62,35 @@ test.describe('Shared Links Public Access', () => {
       await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
       const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
+    });
+
+    test('should render live location map embed without page chrome', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedLocationPage = new SharedLocationPage(page);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL, createManagedUser(isolatedUsers)
+      );
+
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000001',
+        name: 'Live Location Embed'
+      });
+
+      await sharedLocationPage.navigateToSharedLinkEmbed(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForLocationToLoad();
+      await sharedLocationPage.waitForMapReady();
+
+      expect(await sharedLocationPage.isHeaderVisible()).toBe(false);
+      expect(await sharedLocationPage.isLocationInfoVisible()).toBe(false);
+      expect(await sharedLocationPage.isFooterVisible()).toBe(false);
+      expect(await sharedLocationPage.isRefreshButtonVisible()).toBe(false);
+      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+
+      const viewport = page.viewportSize();
+      const mapBox = await sharedLocationPage.getMapContainerBox();
+      expect(mapBox.width).toBeGreaterThanOrEqual(viewport.width - 2);
+      expect(mapBox.height).toBeGreaterThanOrEqual(viewport.height - 2);
     });
 
     test('should access public live location share with history', async ({page, isolatedUsers, dbManager, context}) => {
@@ -224,6 +262,85 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedTimelinePage.getTimelineName()).toBe('Public Timeline');
       expect(await sharedTimelinePage.getHeader()).toContain(testUser.fullName);
       expect(await sharedTimelinePage.getStatusSeverity()).toBe('success');
+    });
+
+    test('should render timeline share embed variants', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const testUser = createManagedUser(isolatedUsers);
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, testUser
+      );
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000002',
+        name: 'Timeline Embed Variants'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      expect(await sharedTimelinePage.isHeaderVisible()).toBe(true);
+      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
+
+      await sharedTimelinePage.navigateToSharedTimelineEmbed(link.id, 'map');
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+      expect(await sharedTimelinePage.isHeaderVisible()).toBe(false);
+      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(false);
+
+      await sharedTimelinePage.navigateToSharedTimelineEmbed(link.id, 'timeline');
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+      expect(await sharedTimelinePage.isHeaderVisible()).toBe(false);
+      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+      expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
+    });
+
+    test('should keep timeline map controls and viewer location control distinct', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+
+      await page.setViewportSize({ width: 1280, height: 800 });
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
+      );
+
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000003',
+        name: 'Timeline Control Layout'
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      let boxes = await sharedTimelinePage.getControlsBoundingBoxes();
+      expect(boxes.mapControls).not.toBeNull();
+      expect(boxes.viewerControl).not.toBeNull();
+      expect(boxesOverlap(boxes.mapControls, boxes.viewerControl)).toBe(false);
+
+      const zoomIconClasses = await sharedTimelinePage.getZoomToDataIconClasses();
+      const viewerIconClasses = await sharedTimelinePage.getViewerLocationIconClasses();
+      expect(zoomIconClasses).toContain('pi-crosshairs');
+      expect(zoomIconClasses).not.toContain('pi-map-marker');
+      expect(viewerIconClasses).toContain('pi-map-marker');
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.reload();
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      boxes = await sharedTimelinePage.getControlsBoundingBoxes();
+      expect(boxes.mapControls).not.toBeNull();
+      expect(boxes.viewerControl).not.toBeNull();
+      expect(boxesOverlap(boxes.mapControls, boxes.viewerControl)).toBe(false);
     });
 
     test('should show upcoming timeline message', async ({page, isolatedUsers, dbManager, context}) => {

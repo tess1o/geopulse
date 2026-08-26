@@ -51,8 +51,12 @@ export class SharedLocationPage {
       expiresInfo: '.info-item:has(.info-label:has-text("Expires"))',
 
       // Map
+      sharedHeader: '.shared-header',
       refreshButton: 'button:has(.pi-refresh)',
       leafletMap: '.leaflet-container',
+      mapCanvas: '.leaflet-container, .maplibregl-map',
+      mapCard: '.map-card',
+      mapContainer: '.map-container',
 
 
       // No data state
@@ -70,6 +74,10 @@ export class SharedLocationPage {
    */
   async navigateToSharedLink(linkId) {
     await this.page.goto(`/shared/${linkId}`);
+  }
+
+  async navigateToSharedLinkEmbed(linkId) {
+    await this.page.goto(`/shared/${linkId}?embed=map`);
   }
 
   async waitForPageLoad() {
@@ -153,11 +161,31 @@ export class SharedLocationPage {
    * Map Methods
    */
   async isMapDisplayed() {
-    return await this.page.locator(this.selectors.leafletMap).isVisible();
+    return await this.page.locator(this.selectors.mapCanvas).isVisible();
+  }
+
+  async isHeaderVisible() {
+    return await this.page.locator(this.selectors.sharedHeader).isVisible();
+  }
+
+  async isFooterVisible() {
+    return await this.page.locator(this.selectors.footer).isVisible();
+  }
+
+  async isLocationInfoVisible() {
+    return await this.page.locator(this.selectors.locationInfoCard).isVisible();
+  }
+
+  async isRefreshButtonVisible() {
+    return await this.page.locator(this.selectors.refreshButton).isVisible();
+  }
+
+  async getMapContainerBox() {
+    return await this.page.locator(this.selectors.mapContainer).boundingBox();
   }
 
   async waitForMapReady() {
-    await this.page.waitForSelector(this.selectors.leafletMap, { state: 'visible', timeout: 10000 });
+    await this.page.waitForSelector(this.selectors.mapCanvas, { state: 'visible', timeout: 10000 });
     // Wait for map tiles to load
     await this.page.waitForTimeout(1000);
   }

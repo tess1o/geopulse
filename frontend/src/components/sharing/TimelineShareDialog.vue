@@ -4,24 +4,13 @@
           @hide="onHide">
 
     <!-- Success State - Show Created Link -->
-    <div v-if="showSuccessState" class="success-state">
-      <div class="success-icon">
-        <i class="pi pi-check-circle"></i>
-      </div>
-      <h3>Timeline Share Created!</h3>
-      <p>Your timeline share link is ready. Copy and share it with others:</p>
-
-      <div class="link-display">
-        <InputText :value="createdShareUrl" readonly class="share-url-input" />
-        <Button icon="pi pi-copy" @click="copyLinkToClipboard"
-                v-tooltip="'Copy to clipboard'" class="copy-btn" />
-      </div>
-
-      <div class="success-actions">
-        <Button label="Create Another" icon="pi pi-plus" @click="resetToForm" outlined />
-        <Button label="Done" icon="pi pi-check" @click="dialogVisible = false" />
-      </div>
-    </div>
+    <ShareLinkSuccessState
+      v-if="showSuccessState && createdShare"
+      :share="createdShare"
+      :base-url="shareLinksStore.baseUrl"
+      @create-another="resetToForm"
+      @done="dialogVisible = false"
+    />
 
     <!-- Form State -->
     <div v-else class="timeline-share-form">
@@ -185,8 +174,8 @@ import Dropdown from 'primevue/dropdown'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import { copyToClipboard } from '@/utils/clipboardUtils'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
+import ShareLinkSuccessState from '@/components/sharing/ShareLinkSuccessState.vue'
 
 const props = defineProps({
   visible: {
@@ -217,7 +206,7 @@ const dialogVisible = computed({
 const isEditMode = computed(() => !!props.editingShare)
 const loading = ref(false)
 const showSuccessState = ref(false)
-const createdShareUrl = ref('')
+const createdShare = ref(null)
 
 const dialogHeader = computed(() => {
   if (showSuccessState.value) return 'Share Link Created'
@@ -474,13 +463,7 @@ async function handleSubmit() {
     } else {
       const newShare = await shareLinksStore.createShareLink(payload)
       emit('created', newShare)
-
-      // Generate share URL
-      const baseUrl = shareLinksStore.baseUrl || window.location.origin
-      const sanitizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
-      createdShareUrl.value = `${sanitizedBaseUrl}/shared-timeline/${newShare.id}`
-
-      // Show success state instead of closing
+      createdShare.value = newShare
       showSuccessState.value = true
     }
   } catch (error) {
@@ -496,36 +479,16 @@ async function handleSubmit() {
   }
 }
 
-async function copyLinkToClipboard() {
-  const success = await copyToClipboard(createdShareUrl.value)
-
-  if (success) {
-    toast.add({
-      severity: 'success',
-      summary: 'Copied!',
-      detail: 'Share link copied to clipboard',
-      life: 2000
-    })
-  } else {
-    toast.add({
-      severity: 'error',
-      summary: 'Copy Failed',
-      detail: 'Could not copy to clipboard',
-      life: 3000
-    })
-  }
-}
-
 function resetToForm() {
   showSuccessState.value = false
-  createdShareUrl.value = ''
+  createdShare.value = null
   resetForm()
   errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
 }
 
 function onHide() {
   showSuccessState.value = false
-  createdShareUrl.value = ''
+  createdShare.value = null
   resetForm()
   errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null, custom_map_style_url: null }
 }
@@ -577,64 +540,6 @@ function onHide() {
   width: 100%;
 }
 
-/* Success State Styles */
-.success-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem 1rem;
-  text-align: center;
-}
-
-.success-icon {
-  font-size: 4rem;
-  color: var(--green-500);
-}
-
-.success-state h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-color);
-}
-
-.success-state p {
-  color: var(--text-color-secondary);
-  margin: 0;
-  max-width: 400px;
-}
-
-.link-display {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.5rem;
-}
-
-.share-url-input {
-  flex: 1;
-  font-family: monospace;
-  font-size: 0.9rem;
-}
-
-.copy-btn {
-  flex-shrink: 0;
-}
-
-.success-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: center;
-  margin-top: 1rem;
-  width: 100%;
-}
-
-.success-actions button {
-  flex: 1;
-  max-width: 200px;
-}
-
 /* Custom Tiles Section Styles */
 .custom-tiles-section {
   margin-left: 1.75rem;
@@ -681,5 +586,6 @@ function onHide() {
   .custom-tiles-section {
     margin-left: 1rem;
   }
+
 }
 </style>

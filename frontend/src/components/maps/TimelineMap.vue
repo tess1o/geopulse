@@ -25,55 +25,54 @@
     >
       <!-- Map Controls -->
       <template #controls="{ map, isReady }">
-        <MapControls
-          v-if="map && isReady"
-          :map="map"
-          :show-favorites="showFavorites"
-          :show-timeline="showTimeline"
-          :show-path="showPath"
-          :show-path-comparison-control="pathComparisonAvailable"
-          :path-comparison-enabled="showPathComparison"
-          :show-raw-gps-points-control="!props.isPublicView"
-          :raw-gps-points-enabled="showRawGpsPoints"
-          :raw-gps-points-loading="rawGpsPointsLoading"
-          :show-immich="showImmich"
-          :show-heatmap="props.showHeatmapControl && !props.isPublicView"
-          :heatmap-enabled="heatmapEnabled"
-          :heatmap-layer="heatmapLayer"
-          :heatmap-available="heatmapAvailable"
-          :immich-configured="immichConfigured"
-          :immich-loading="immichLoading"
-          :show-notes="showNotesLayer"
-          :show-notes-button="shouldShowNotesLayer"
-          :notes-loading="notesLoading"
-          :show-weather="showWeather"
-          :show-weather-button="!props.isPublicView && weatherSamples.length > 0"
-          :weather-loading="timelineStore.weatherLoading"
-          :zoom-control-title="zoomControlTitle"
-          :zoom-control-icon="zoomControlIcon"
-          @toggle-favorites="toggleFavorites"
-          @toggle-timeline="toggleTimeline"
-          @toggle-path="togglePath"
-          @toggle-path-comparison="showPathComparison = $event"
-          @toggle-raw-gps-points="handleToggleRawGpsPoints"
-          @toggle-immich="toggleImmich"
-          @toggle-notes="toggleNotes"
-          @toggle-weather="toggleWeather"
-          @toggle-heatmap="handleToggleHeatmap"
-          @heatmap-layer-change="handleHeatmapLayerChange"
-          @zoom-to-data="handleZoomToData"
-          class="map-controls"
-        />
-        <ViewerLocationControl
-          v-if="map && isReady && showViewerLocationControl"
-          class="timeline-viewer-location-control"
-          style="top: 4.75rem;"
-          :status="viewerLocationStatus"
-          :active="viewerLocationActive"
-          :message="viewerLocationMessage"
-          @locate="handleViewerLocationRequest"
-          @stop="handleViewerLocationStop"
-        />
+        <div v-if="map && isReady" class="timeline-map-control-stack">
+          <MapControls
+            :map="map"
+            :show-favorites="showFavorites"
+            :show-timeline="showTimeline"
+            :show-path="showPath"
+            :show-path-comparison-control="pathComparisonAvailable"
+            :path-comparison-enabled="showPathComparison"
+            :show-raw-gps-points-control="!props.isPublicView"
+            :raw-gps-points-enabled="showRawGpsPoints"
+            :raw-gps-points-loading="rawGpsPointsLoading"
+            :show-immich="showImmich"
+            :show-heatmap="props.showHeatmapControl && !props.isPublicView"
+            :heatmap-enabled="heatmapEnabled"
+            :heatmap-layer="heatmapLayer"
+            :heatmap-available="heatmapAvailable"
+            :immich-configured="immichConfigured"
+            :immich-loading="immichLoading"
+            :show-notes="showNotesLayer"
+            :show-notes-button="shouldShowNotesLayer"
+            :notes-loading="notesLoading"
+            :show-weather="showWeather"
+            :show-weather-button="!props.isPublicView && weatherSamples.length > 0"
+            :weather-loading="timelineStore.weatherLoading"
+            :zoom-control-title="zoomControlTitle"
+            :zoom-control-icon="zoomControlIcon"
+            @toggle-favorites="toggleFavorites"
+            @toggle-timeline="toggleTimeline"
+            @toggle-path="togglePath"
+            @toggle-path-comparison="showPathComparison = $event"
+            @toggle-raw-gps-points="handleToggleRawGpsPoints"
+            @toggle-immich="toggleImmich"
+            @toggle-notes="toggleNotes"
+            @toggle-weather="toggleWeather"
+            @toggle-heatmap="handleToggleHeatmap"
+            @heatmap-layer-change="handleHeatmapLayerChange"
+            @zoom-to-data="handleZoomToData"
+          />
+          <ViewerLocationControl
+            v-if="showViewerLocationControl"
+            class="timeline-viewer-location-control"
+            :status="viewerLocationStatus"
+            :active="viewerLocationActive"
+            :message="viewerLocationMessage"
+            @locate="handleViewerLocationRequest"
+            @stop="handleViewerLocationStop"
+          />
+        </div>
       </template>
 
       <!-- Map Layers -->
@@ -848,7 +847,7 @@ const zoomControlTitle = computed(() => (
 ))
 
 const zoomControlIcon = computed(() => (
-  canZoomToCurrentLocation.value ? 'pi pi-map-marker' : 'pi pi-arrows-alt'
+  canZoomToCurrentLocation.value ? 'pi pi-crosshairs' : 'pi pi-arrows-alt'
 ))
 
 // Controls configuration
@@ -2096,11 +2095,27 @@ defineExpose({
   flex-direction: column;
 }
 
-.map-controls {
+.timeline-map-control-stack {
   position: absolute;
   top: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-top));
   right: calc(var(--gp-spacing-lg, 1rem) + env(safe-area-inset-right));
   z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--gp-spacing-sm, 0.5rem);
+  pointer-events: none;
+}
+
+.timeline-map-control-stack > * {
+  pointer-events: auto;
+}
+
+.timeline-viewer-location-control {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: auto;
 }
 
 .map-matching-status {
@@ -2255,9 +2270,10 @@ defineExpose({
 
 /* Responsive adjustments */
 @media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
-  .map-controls {
+  .timeline-map-control-stack {
     top: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-top));
     right: calc(var(--gp-spacing-md, 0.75rem) + env(safe-area-inset-right));
+    align-items: flex-end;
   }
 
   .map-view-container {

@@ -109,18 +109,31 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 const response = await apiService.post('/share-links', linkData)
                 console.log(response);
 
+                const createdLink = {
+                    ...response,
+                    share_type: response.share_type || linkData.share_type || 'LIVE_LOCATION',
+                    start_date: response.start_date ?? linkData.start_date ?? null,
+                    end_date: response.end_date ?? linkData.end_date ?? null,
+                    show_current_location: response.show_current_location ?? linkData.show_current_location ?? true,
+                    show_photos: response.show_photos ?? linkData.show_photos ?? false,
+                    show_notes: response.show_notes ?? linkData.show_notes ?? false,
+                    custom_map_tile_url: response.custom_map_tile_url ?? linkData.custom_map_tile_url ?? null,
+                    custom_map_style_url: response.custom_map_style_url ?? linkData.custom_map_style_url ?? null,
+                    map_render_mode: response.map_render_mode ?? linkData.map_render_mode ?? 'RASTER'
+                }
+
                 // Ensure is_active is set if missing from backend response
-                if (response.is_active === undefined) {
-                    response.is_active = !this.isLinkExpired(response)
+                if (createdLink.is_active === undefined) {
+                    createdLink.is_active = !this.isLinkExpired(createdLink)
                 }
 
                 // Add new link to the beginning of the array
-                this.links.unshift(response)
+                this.links.unshift(createdLink)
                 // Only increment activeCount if the link is actually active
-                if (response.is_active && !this.isLinkExpired(response)) {
+                if (createdLink.is_active && !this.isLinkExpired(createdLink)) {
                     this.activeCount++
                 }
-                return response
+                return createdLink
             } catch (error) {
                 this.setError(error.userMessage || error.message || 'Failed to create share link')
                 throw error
@@ -236,7 +249,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
         },
 
         // Helper method to check if link is expired
-        async isLinkExpired(link) {
+        isLinkExpired(link) {
             // Handle null/undefined expires_at (should never expire)
             if (!link.expires_at) {
                 return false

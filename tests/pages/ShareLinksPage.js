@@ -16,6 +16,7 @@ export class ShareLinksPage {
       createLinkButton: 'button:has-text("Create New")',
       createFirstLinkButton: 'button:has-text("Create Your First Link")',
       createMenu: '#create_menu',
+      copyMenu: '#link_copy_menu',
       liveLocationMenuItem: '.p-menu-item[aria-label="Live Location Share"]',
       timelineMenuItem: '.p-menu-item[aria-label="Timeline Share"]',
       menuItemLink: '.p-menu-item-link',
@@ -65,6 +66,15 @@ export class ShareLinksPage {
       linkUrlSection: '.link-url-section',
       shareUrlInput: '.share-url-input',
       copyButton: 'button:has(.pi-copy)',
+      copyMenuItem: '#link_copy_menu .p-menu-item',
+      shareLinkSuccessDialog: '.p-dialog:has(.success-state)',
+      shareLinkSuccessState: '.success-state',
+      createdLinkRow: '.created-link-row',
+      createdLinkLabel: '.created-link-label',
+      createdLinkInput: '.share-url-input',
+      createdLinkCopyButton: 'button:has(.pi-copy)',
+      successDoneButton: '.success-actions button:has-text("Done")',
+      successCreateAnotherButton: '.success-actions button:has-text("Create Another")',
 
       // Link settings
       linkSettings: '.link-settings',
@@ -445,8 +455,40 @@ export class ShareLinksPage {
    * Copy to Clipboard Methods
    */
   async clickCopyButton(linkName) {
+    await this.openCopyMenu(linkName);
+    await this.clickCopyMenuItem('Copy Share Link');
+  }
+
+  async openCopyMenu(linkName) {
     const card = await this.getLinkCardByName(linkName);
     await card.locator(this.selectors.copyButton).click();
+    await this.waitForCopyMenuToOpen();
+  }
+
+  async waitForCopyMenuToOpen() {
+    await this.page.waitForSelector(this.selectors.copyMenu, { state: 'visible', timeout: 2000 });
+  }
+
+  async getCopyMenuOptions() {
+    const items = this.page.locator(this.selectors.copyMenuItem);
+    const count = await items.count();
+    const labels = [];
+
+    for (let i = 0; i < count; i++) {
+      const text = await items.nth(i).innerText();
+      labels.push(text.replace(/\s+/g, ' ').trim());
+    }
+
+    return labels;
+  }
+
+  async clickCopyMenuItem(label) {
+    await this.page.locator(`${this.selectors.copyMenu} .p-menu-item:has-text("${label}") .p-menu-item-link`).click();
+  }
+
+  async copyLinkVariant(linkName, label) {
+    await this.openCopyMenu(linkName);
+    await this.clickCopyMenuItem(label);
   }
 
   /**
@@ -494,6 +536,45 @@ export class ShareLinksPage {
 
   async waitForTimelineDialogToClose() {
     await this.page.waitForSelector(this.selectors.timelineDialog, { state: 'hidden', timeout: 5000 });
+  }
+
+  async waitForShareLinkSuccessState() {
+    await this.page.waitForSelector(this.selectors.shareLinkSuccessState, { state: 'visible', timeout: 5000 });
+  }
+
+  async getCreatedLinkOptions() {
+    const rows = this.page.locator(this.selectors.createdLinkRow);
+    const count = await rows.count();
+    const labels = [];
+
+    for (let i = 0; i < count; i++) {
+      const labelText = await rows.nth(i).locator(this.selectors.createdLinkLabel).textContent();
+      labels.push(labelText.trim());
+    }
+
+    return labels;
+  }
+
+  async getCreatedLinkUrl(label) {
+    const row = this.page.locator(this.selectors.createdLinkRow).filter({
+      has: this.page.locator(`${this.selectors.createdLinkLabel}:has-text("${label}")`)
+    });
+    return await row.locator(this.selectors.createdLinkInput).inputValue();
+  }
+
+  async copyCreatedLinkOption(label) {
+    const row = this.page.locator(this.selectors.createdLinkRow).filter({
+      has: this.page.locator(`${this.selectors.createdLinkLabel}:has-text("${label}")`)
+    });
+    await row.locator(this.selectors.createdLinkCopyButton).click();
+  }
+
+  async clickCreatedShareDone() {
+    await this.page.locator(this.selectors.successDoneButton).click();
+  }
+
+  async clickCreatedShareCreateAnother() {
+    await this.page.locator(this.selectors.successCreateAnotherButton).click();
   }
 
   /**

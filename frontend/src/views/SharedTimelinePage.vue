@@ -1,7 +1,7 @@
 <template>
-  <div class="shared-timeline-page">
+  <div class="shared-timeline-page" :class="{ 'shared-timeline-page--embed': isEmbedView }">
     <!-- Header -->
-    <div class="shared-header">
+    <div v-if="!isEmbedView" class="shared-header">
       <!-- Content shown when authenticated -->
       <div v-if="authenticated && shareInfo && timelineData" class="header-authenticated">
         <!-- Row 1: Timeline Title (Brand, Name, Status) -->
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="shared-content">
+    <div class="shared-content" :class="{ 'shared-content--embed': isEmbedView }">
       <!-- Loading State -->
       <div v-if="loading" class="state-container">
         <ProgressSpinner />
@@ -145,7 +145,11 @@
       </Card>
 
       <!-- Timeline View -->
-      <div v-else-if="authenticated && shareInfo && timelineData" class="timeline-view">
+      <div
+        v-else-if="authenticated && shareInfo && timelineData"
+        class="timeline-view"
+        :class="{ 'timeline-view--embed': isEmbedView }"
+      >
         <!-- Empty State: No timeline data -->
         <Card v-if="!hasTimelineData && !hasPathData" class="info-card">
           <template #header>
@@ -175,7 +179,15 @@
         </Card>
 
         <!-- Timeline Display -->
-        <div v-else class="timeline-container">
+        <div
+          v-else
+          class="timeline-container"
+          :class="{
+            'timeline-container--embed': isEmbedView,
+            'timeline-container--map-only-embed': isMapOnlyEmbed,
+            'timeline-container--timeline-embed': isTimelineEmbed
+          }"
+        >
           <div class="timeline-map">
             <!-- Empty state for map when no path data -->
             <div v-if="!hasPathData" class="empty-map-state">
@@ -208,7 +220,7 @@
                 @viewer-location-stop="viewerLocation.disable"
             />
           </div>
-          <div class="timeline-sidebar">
+          <div v-if="!isMapOnlyEmbed" class="timeline-sidebar">
             <!-- Empty state for timeline when no timeline data -->
             <div v-if="!hasTimelineData" class="empty-timeline-state">
               <i class="pi pi-list" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
@@ -278,6 +290,9 @@ const currentLocation = ref(null)
 const sharedNotes = ref([])
 const timelineMapRef = ref(null)
 const shouldCenterViewerLocation = ref(false)
+const isMapOnlyEmbed = computed(() => route.query.embed === 'map')
+const isTimelineEmbed = computed(() => route.query.embed === 'timeline')
+const isEmbedView = computed(() => isMapOnlyEmbed.value || isTimelineEmbed.value)
 
 // Component refs
 // Date filter state
@@ -1130,6 +1145,98 @@ function handleTimelineItemClick(item) {
   .timeline-map {
     height: 300px;
     min-height: 300px;
+  }
+}
+
+.shared-timeline-page--embed {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--gp-surface-ground);
+}
+
+.p-dark .shared-timeline-page--embed {
+  background-color: var(--gp-surface-dark);
+}
+
+.shared-content--embed {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+}
+
+.shared-content--embed .state-container {
+  flex: 1;
+}
+
+.shared-content--embed > .password-card,
+.shared-content--embed > .info-card,
+.shared-content--embed > .error-card {
+  width: min(500px, calc(100% - 2rem));
+  margin: auto;
+}
+
+.timeline-view--embed {
+  height: 100%;
+}
+
+.timeline-container--embed {
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.timeline-container--map-only-embed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.timeline-container--embed .timeline-map,
+.timeline-container--embed .timeline-sidebar {
+  border-radius: 0;
+  min-height: 0;
+}
+
+.timeline-container--embed .timeline-sidebar {
+  width: 400px;
+  min-width: 400px;
+  max-width: 400px;
+}
+
+@media (max-width: 768px) {
+  .shared-content--embed {
+    padding: 0;
+  }
+
+  .timeline-container--embed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 55fr) minmax(0, 45fr);
+    gap: 0;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .timeline-container--map-only-embed {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .timeline-container--embed .timeline-map {
+    height: auto;
+    min-height: 0;
+  }
+
+  .timeline-container--embed .timeline-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    max-height: none;
   }
 }
 </style>

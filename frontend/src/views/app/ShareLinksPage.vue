@@ -28,6 +28,7 @@
 
         <!-- Menu rendered unconditionally so it's available in empty state too -->
         <Menu ref="menu" id="create_menu" :model="createMenuItems" :popup="true" />
+        <Menu ref="copyMenu" id="link_copy_menu" :model="copyMenuItems" :popup="true" />
 
         <!-- Share Links Content -->
         <div class="share-links-content">
@@ -89,9 +90,11 @@
                           />
                           <Button
                               icon="pi pi-copy"
-                              @click="copyToClipboard(getShareUrl(link))"
+                              @click="openCopyMenu($event, link)"
                               class="copy-btn"
-                              v-tooltip="'Copy to clipboard'"
+                              aria-haspopup="true"
+                              aria-controls="link_copy_menu"
+                              v-tooltip="'Copy link'"
                           />
                         </div>
                       </div>
@@ -240,9 +243,11 @@
                             />
                             <Button
                                 icon="pi pi-copy"
-                                @click="copyToClipboard(getShareUrl(link))"
+                                @click="openCopyMenu($event, link)"
                                 class="copy-btn"
-                                v-tooltip="'Copy to clipboard'"
+                                aria-haspopup="true"
+                                aria-controls="link_copy_menu"
+                                v-tooltip="'Copy link'"
                             />
                           </div>
                         </div>
@@ -345,14 +350,23 @@
         <!-- Create/Edit Link Dialog -->
         <Dialog
             v-model:visible="showCreateDialog"
-            :header="editingLink ? 'Edit Share Link' : 'Create Share Link'"
+            :header="liveSuccessState ? 'Share Link Created' : (editingLink ? 'Edit Share Link' : 'Create Share Link')"
             :modal="true"
             :closable="true"
             :draggable="false"
             :style="{width: '90vw', maxWidth: '700px'}"
             :breakpoints="{'960px': '90vw', '640px': '95vw'}"
+            @hide="closeDialog"
         >
-          <form @submit.prevent="submitLinkForm" class="link-form">
+          <ShareLinkSuccessState
+              v-if="liveSuccessState && createdLiveShare"
+              :share="createdLiveShare"
+              :base-url="shareLinksStore.baseUrl"
+              @create-another="resetLiveCreateForm"
+              @done="closeDialog"
+          />
+
+          <form v-else @submit.prevent="submitLinkForm" class="link-form">
             <div class="form-group">
               <label for="name" class="form-label">Name</label>
               <InputText
@@ -596,11 +610,13 @@ import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
+import ShareLinkSuccessState from '@/components/sharing/ShareLinkSuccessState.vue'
 import Menu from 'primevue/menu'
 import Message from 'primevue/message'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
+import { buildShareLinkOptions, buildShareUrl } from '@/utils/shareLinkUrls'
 
 const timezone = useTimezone()
 
@@ -634,6 +650,10 @@ const showDeleteDialog = ref(false)
 const editingLink = ref(null)
 const linkToDelete = ref(null)
 const menu = ref(null)
+const copyMenu = ref(null)
+const copyMenuLink = ref(null)
+const createdLiveShare = ref(null)
+const liveSuccessState = computed(() => !editingLink.value && !!createdLiveShare.value)
 
 // Form state
 const linkForm = reactive({
@@ -719,6 +739,12 @@ const resetForm = () => {
 const closeDialog = () => {
   showCreateDialog.value = false
   editingLink.value = null
+  createdLiveShare.value = null
+  resetForm()
+}
+
+const resetLiveCreateForm = () => {
+  createdLiveShare.value = null
   resetForm()
 }
 
@@ -827,13 +853,8 @@ const submitLinkForm = async () => {
         life: 3000
       })
     } else {
-      await shareLinksStore.createShareLink(formData)
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Share link created successfully',
-        life: 3000
-      })
+      createdLiveShare.value = await shareLinksStore.createShareLink(formData)
+      return
     }
 
     closeDialog()
@@ -874,11 +895,23 @@ const deleteLink = async () => {
 }
 
 const getShareUrl = (link) => {
-  const baseUrl = shareLinksStore.baseUrl || window.location.origin;
-  // Make sure that the base URL does not have a trailing slash
-  const sanitizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  const path = link.share_type === 'TIMELINE' ? 'shared-timeline' : 'shared';
-  return `${sanitizedBaseUrl}/${path}/${link.id}`;
+  return buildShareUrl(link, shareLinksStore.baseUrl)
+}
+
+const copyMenuItems = computed(() => {
+  const link = copyMenuLink.value
+  if (!link) return []
+
+  return buildShareLinkOptions(link, shareLinksStore.baseUrl).map((option) => ({
+    label: `Copy ${option.label}`,
+    icon: option.key === 'share' ? 'pi pi-link' : option.key === 'map' ? 'pi pi-map' : 'pi pi-list',
+    command: () => copyToClipboard(option.url)
+  }))
+})
+
+const openCopyMenu = (event, link) => {
+  copyMenuLink.value = link
+  copyMenu.value?.toggle(event)
 }
 
 const copyToClipboard = async (text) => {
@@ -918,7 +951,6 @@ const formatShowHistory = (link) => {
 
 function handleTimelineCreated(share) {
   console.log('Timeline share created:', share)
-  showTimelineDialog.value = false
   editingLink.value = null
   shareLinksStore.fetchShareLinks() // Refresh list
 }

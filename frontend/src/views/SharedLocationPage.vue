@@ -1,7 +1,7 @@
 <template>
-  <div class="shared-location-page">
+  <div class="shared-location-page" :class="{ 'shared-location-page--map-embed': isMapEmbed }">
     <!-- Header with Theme Toggle -->
-    <div class="shared-header">
+    <div v-if="!isMapEmbed" class="shared-header">
       <div class="header-content">
         <div class="logo-section" @click="navigateToHome">
           <img src="/geopulse-logo.svg" alt="GeoPulse" class="logo"/>
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="shared-content">
+    <div class="shared-content" :class="{ 'shared-content--map-embed': isMapEmbed }">
       <!-- Loading State -->
       <div v-if="loading" class="loading-state">
         <ProgressSpinner/>
@@ -76,7 +76,7 @@
       <!-- Location Data Display -->
       <div v-else-if="shareData" class="location-display">
         <!-- Location Info -->
-        <Card class="location-info-card">
+        <Card v-if="!isMapEmbed" class="location-info-card">
           <template #content>
             <div class="location-info">
               <h2 class="share-title">{{ shareData.shareName || 'Shared Location' }}</h2>
@@ -104,10 +104,10 @@
           </template>
         </Card>
 
-        <div v-if="shareData.latitude">
+        <div v-if="shareData.latitude" class="map-section" :class="{ 'map-section--embed': isMapEmbed }">
           <!-- Map Container -->
-          <Card class="map-card">
-            <template #header>
+          <Card class="map-card" :class="{ 'map-card--embed': isMapEmbed }">
+            <template v-if="!isMapEmbed" #header>
               <div class="map-header">
                 <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
                 <Button
@@ -123,7 +123,7 @@
               </div>
             </template>
             <template #content>
-              <div class="map-container">
+              <div class="map-container" :class="{ 'map-container--embed': isMapEmbed }">
                 <MapContainer
                     ref="mapContainerRef"
                     map-id="shared-location-map"
@@ -140,6 +140,7 @@
                 >
                   <template #controls>
                     <ViewerLocationControl
+                        v-if="!isMapEmbed"
                         :status="viewerLocationStatus"
                         :active="viewerLocationActive"
                         :message="viewerLocationMessage"
@@ -169,7 +170,7 @@
                         :latitude="shareData.latitude"
                         :longitude="shareData.longitude"
                         :share-data="shareData"
-                        :open-popup="true"
+                        :open-popup="!isMapEmbed"
                         marker-type="current-location"
                     />
 
@@ -201,7 +202,7 @@
     </div>
 
     <!-- Footer -->
-    <div class="shared-footer">
+    <div v-if="!isMapEmbed" class="shared-footer">
       <div class="footer-content">
         <p class="footer-text">
           Powered by <strong>GeoPulse</strong> - Location Analytics Platform
@@ -238,6 +239,7 @@ const route = useRoute()
 const linkId = route.params.linkId
 const shareLinksStore = useShareLinksStore()
 const viewerLocation = useViewerLocation()
+const isMapEmbed = computed(() => route.query.embed === 'map')
 
 // State
 const loading = ref(true)
@@ -613,6 +615,14 @@ onMounted(() => {
   background: linear-gradient(135deg, var(--gp-surface-light) 0%, var(--gp-surface-gray) 100%);
 }
 
+.shared-location-page--map-embed {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--gp-surface-light);
+}
+
 /* Header */
 .shared-header {
   background: var(--p-surface-card);
@@ -673,6 +683,14 @@ onMounted(() => {
   width: 100%;
 }
 
+.shared-content--map-embed {
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+}
+
 .loading-state, .error-state, .password-state {
   display: flex;
   flex-direction: column;
@@ -680,6 +698,14 @@ onMounted(() => {
   justify-content: center;
   min-height: 400px;
   text-align: center;
+}
+
+.shared-content--map-embed .loading-state,
+.shared-content--map-embed .error-state,
+.shared-content--map-embed .password-state,
+.shared-content--map-embed .no-data-state {
+  min-height: 100%;
+  padding: 1rem;
 }
 
 .error-card, .password-card {
@@ -788,8 +814,30 @@ onMounted(() => {
   gap: 1.5rem;
 }
 
+.shared-content--map-embed .location-display {
+  gap: 0;
+  height: 100%;
+}
+
+.map-section--embed {
+  height: 100%;
+}
+
 .location-info-card, .map-card {
   width: 100%;
+}
+
+.map-card--embed {
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.map-card--embed :deep(.p-card-body),
+.map-card--embed :deep(.p-card-content) {
+  height: 100%;
+  padding: 0;
 }
 
 .location-info {
@@ -890,6 +938,12 @@ onMounted(() => {
   overflow: hidden;
 }
 
+.map-container--embed {
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+}
+
 /* Footer */
 .shared-footer {
   background: var(--p-surface-50);
@@ -915,6 +969,10 @@ onMounted(() => {
 /* Dark Mode Support */
 .p-dark .shared-location-page {
   background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
+}
+
+.p-dark .shared-location-page--map-embed {
+  background: var(--gp-surface-dark);
 }
 
 .p-dark .shared-location-page .shared-footer {
@@ -977,8 +1035,16 @@ onMounted(() => {
     padding: 1rem 1rem;
   }
 
+  .shared-content--map-embed {
+    padding: 0;
+  }
+
   .location-display {
     gap: 1rem;
+  }
+
+  .shared-content--map-embed .location-display {
+    gap: 0;
   }
 
   .location-info {

@@ -37,7 +37,9 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Create Live Location Shares', () => {
-        test('should create basic live location share with current location only', async ({page, isolatedUsers, dbManager}) => {
+        test('should create basic live location share with current location only', async ({page, isolatedUsers, dbManager, context}) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
             const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Open menu and select Live Location
@@ -54,12 +56,7 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitCreateForm();
-            await shareLinksPage.waitForSuccessToast('created');
-            await shareLinksPage.waitForToastToDisappear();
-
-            // Reload to see the new link
-            await page.reload();
-            await shareLinksPage.waitForPageLoad();
+            await shareLinksPage.waitForShareLinkSuccessState();
 
             // Verify database
             const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
@@ -67,6 +64,17 @@ test.describe('Share Links Management', () => {
             expect(links[0].name).toBe('Current Location Only');
             expect(links[0].show_history).toBe(false);
             expect(links[0].share_type).toBe(TestConstants.SHARE_TYPES.LIVE_LOCATION);
+
+            const successOptions = await shareLinksPage.getCreatedLinkOptions();
+            expect(successOptions).toEqual(['Share Link', 'Map Embed Link']);
+            await shareLinksPage.copyCreatedLinkOption('Map Embed Link');
+            await shareLinksPage.waitForSuccessToast('map embed');
+            const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+            expect(clipboardText).toContain(`/shared/${links[0].id}?embed=map`);
+
+            await shareLinksPage.clickCreatedShareDone();
+            await page.reload();
+            await shareLinksPage.waitForPageLoad();
 
             // Verify UI
             expect(await shareLinksPage.hasLiveLocationSharesSection()).toBe(true);
@@ -106,8 +114,8 @@ test.describe('Share Links Management', () => {
             await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
             await shareLinksPage.submitCreateForm();
-            await shareLinksPage.waitForSuccessToast('created');
-            await shareLinksPage.waitForToastToDisappear();
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             // Reload
             await page.reload();
@@ -141,8 +149,8 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitCreateForm();
-            await shareLinksPage.waitForSuccessToast('created');
-            await shareLinksPage.waitForToastToDisappear();
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             // Reload
             await page.reload();
@@ -238,7 +246,9 @@ test.describe('Share Links Management', () => {
             expect(dateRangeText).toContain('24/09/2025');
         });
 
-        test('should create timeline share via UI', async ({page, isolatedUsers, dbManager}) => {
+        test('should create timeline share via UI', async ({page, isolatedUsers, dbManager, context}) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
             const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Create timeline share
@@ -258,14 +268,7 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitTimelineShareForm();
-
-            // Wait for dialog to close (indicating success)
-            await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
-
-            // Reload to see the new link
-            await page.reload();
-            await shareLinksPage.waitForPageLoad();
+            await shareLinksPage.waitForShareLinkSuccessState();
 
             // Verify database
             const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
@@ -274,6 +277,17 @@ test.describe('Share Links Management', () => {
             expect(createdLink.share_type).toBe(TestConstants.SHARE_TYPES.TIMELINE);
             expect(createdLink.show_current_location).toBe(true);
             expect(createdLink.show_photos).toBe(false);
+
+            const successOptions = await shareLinksPage.getCreatedLinkOptions();
+            expect(successOptions).toEqual(['Share Link', 'Map Embed Link', 'Map + Timeline Embed Link']);
+            await shareLinksPage.copyCreatedLinkOption('Map + Timeline Embed Link');
+            await shareLinksPage.waitForSuccessToast('map + timeline');
+            const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+            expect(clipboardText).toContain(`/shared-timeline/${createdLink.id}?embed=timeline`);
+
+            await shareLinksPage.clickCreatedShareDone();
+            await page.reload();
+            await shareLinksPage.waitForPageLoad();
 
             // Verify UI
             expect(await shareLinksPage.hasTimelineSharesSection()).toBe(true);
@@ -302,10 +316,8 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitTimelineShareForm();
-
-            // Wait for dialog to close (indicating success)
-            await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             // Reload
             await page.reload();
@@ -687,6 +699,65 @@ test.describe('Share Links Management', () => {
             // Verify toast
             await shareLinksPage.waitForSuccessToast('copied');
         });
+
+        test('should expose live location share embed copy options', async ({page, isolatedUsers, dbManager, context}) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
+
+            const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: 'f1000000-0000-0000-0000-000000000001',
+                name: 'Live Embed Copy Test',
+                expires_at: DateFactory.futureDate(15).toISOString()
+            });
+
+            await shareLinksPage.navigate();
+            await shareLinksPage.waitForPageLoad();
+
+            await shareLinksPage.openCopyMenu('Live Embed Copy Test');
+            const options = await shareLinksPage.getCopyMenuOptions();
+            expect(options).toEqual(expect.arrayContaining([
+                'Copy Share Link',
+                'Copy Map Embed Link'
+            ]));
+            expect(options).not.toContain('Copy Map + Timeline Embed Link');
+
+            await shareLinksPage.clickCopyMenuItem('Copy Map Embed Link');
+            await shareLinksPage.waitForSuccessToast('copied');
+
+            const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+            expect(clipboardText).toContain(`/shared/${link.id}?embed=map`);
+        });
+
+        test('should expose timeline share embed copy options', async ({page, isolatedUsers, dbManager, context}) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
+
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
+            const link = await ShareLinkFactory.createTimeline(dbManager, user.id, {
+                id: 'f1000000-0000-0000-0000-000000000002',
+                name: 'Timeline Embed Copy Test',
+                dateRange: { startDate, endDate, expiresAt }
+            });
+
+            await shareLinksPage.navigate();
+            await shareLinksPage.waitForPageLoad();
+
+            await shareLinksPage.openCopyMenu('Timeline Embed Copy Test');
+            const options = await shareLinksPage.getCopyMenuOptions();
+            expect(options).toEqual(expect.arrayContaining([
+                'Copy Share Link',
+                'Copy Map Embed Link',
+                'Copy Map + Timeline Embed Link'
+            ]));
+
+            await shareLinksPage.clickCopyMenuItem('Copy Map + Timeline Embed Link');
+            await shareLinksPage.waitForSuccessToast('copied');
+
+            const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+            expect(clipboardText).toContain(`/shared-timeline/${link.id}?embed=timeline`);
+        });
     });
 
     test.describe('Full CRUD Lifecycle', () => {
@@ -710,8 +781,8 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitCreateForm();
-            await shareLinksPage.waitForSuccessToast('created');
-            await shareLinksPage.waitForToastToDisappear();
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             await page.reload();
             await shareLinksPage.waitForPageLoad();
@@ -783,8 +854,8 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitTimelineShareForm();
-            await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             await page.reload();
             await shareLinksPage.waitForPageLoad();
@@ -898,8 +969,8 @@ test.describe('Share Links Management', () => {
             });
 
             await shareLinksPage.submitCreateForm();
-            await shareLinksPage.waitForSuccessToast('created');
-            await shareLinksPage.waitForToastToDisappear();
+            await shareLinksPage.waitForShareLinkSuccessState();
+            await shareLinksPage.clickCreatedShareDone();
 
             await page.reload();
             await shareLinksPage.waitForPageLoad();

@@ -66,6 +66,7 @@ export class SharedTimelinePage {
             // Timeline map
             timelineMap: '.timeline-map',
             leafletMap: '.leaflet-container',
+            mapCanvas: '.leaflet-container, .maplibregl-map',
             mapMarkers: '.leaflet-marker-pane',
             mapPaths: '.leaflet-overlay-pane path',
             currentLocationMarker: '.current-location-marker',
@@ -76,6 +77,9 @@ export class SharedTimelinePage {
             timelineItems: '.timeline-card',
             stayCard: '.timeline-card--stay',
             tripCard: '.timeline-card--trip',
+            viewerLocationControl: '.timeline-viewer-location-control',
+            timelineMapControls: '.timeline-map-control-stack',
+            zoomToDataButton: '.timeline-map-control-stack button[title^="Zoom to"]',
 
             // Cards
             card: '.p-card',
@@ -97,6 +101,10 @@ export class SharedTimelinePage {
      */
     async navigateToSharedTimeline(linkId) {
         await this.page.goto(`/shared-timeline/${linkId}`);
+    }
+
+    async navigateToSharedTimelineEmbed(linkId, embedMode) {
+        await this.page.goto(`/shared-timeline/${linkId}?embed=${embedMode}`);
     }
 
     async isOnSharedTimelinePage() {
@@ -175,6 +183,10 @@ export class SharedTimelinePage {
     async getHeader() {
         const metaText = await this.page.locator('.header-row-2').textContent();
         return metaText;
+    }
+
+    async isHeaderVisible() {
+        return await this.page.locator(this.selectors.header).isVisible();
     }
 
     async getExpirationText() {
@@ -298,11 +310,15 @@ export class SharedTimelinePage {
      * Map Methods
      */
     async isMapDisplayed() {
-        return await this.page.locator(this.selectors.leafletMap).isVisible();
+        return await this.page.locator(this.selectors.mapCanvas).isVisible();
+    }
+
+    async isTimelineSidebarVisible() {
+        return await this.page.locator(this.selectors.timelineSidebar).isVisible();
     }
 
     async waitForMapReady() {
-        await this.page.waitForSelector(this.selectors.leafletMap, {state: 'visible', timeout: 10000});
+        await this.page.waitForSelector(this.selectors.mapCanvas, {state: 'visible', timeout: 10000});
         await this.page.waitForTimeout(1000);
     }
 
@@ -343,6 +359,26 @@ export class SharedTimelinePage {
             return false;
         });
         return hasPath;
+    }
+
+    async getControlsBoundingBoxes() {
+        const mapControls = this.page.locator(`${this.selectors.timelineMapControls} .map-controls`).first();
+        const viewerControl = this.page.locator(this.selectors.viewerLocationControl).first();
+
+        return {
+            mapControls: await mapControls.boundingBox(),
+            viewerControl: await viewerControl.boundingBox()
+        };
+    }
+
+    async getZoomToDataIconClasses() {
+        const icon = this.page.locator(`${this.selectors.zoomToDataButton} i`).first();
+        return await icon.getAttribute('class');
+    }
+
+    async getViewerLocationIconClasses() {
+        const icon = this.page.locator(`${this.selectors.viewerLocationControl} .viewer-location-button i`).first();
+        return await icon.getAttribute('class');
     }
 
     async clickTimelineMarker(index = 0) {
