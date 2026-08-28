@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -86,6 +87,44 @@ class MapMatchingTimelineChangeObserverTransactionTest {
         assertThat(awaitAutomaticReconciliationCount(userId)).isOne();
     }
 
+    @Test
+    void timelineDataChangedQueuesAutomaticRangeForBackdatedTripAfterHistoricalCursorPassed() {
+        Instant backdatedTripStart = Instant.parse("2026-08-13T05:44:50Z");
+        Instant affectedTo = Instant.parse("2026-08-28T20:07:01Z");
+        UUID jobId = UUID.randomUUID();
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            insertHistoricalReconciliationPast(backdatedTripStart);
+
+            UserEntity user = entityManager.find(UserEntity.class, userId);
+            entityManager.persist(TimelineTripEntity.builder()
+                    .user(user)
+                    .timestamp(backdatedTripStart)
+                    .tripDuration(2_974)
+                    .distanceMeters(14_829)
+                    .startPoint(GeoUtils.createPoint(30.5234, 50.4501))
+                    .endPoint(GeoUtils.createPoint(30.6334, 50.5601))
+                    .movementType("CAR")
+                    .build());
+            entityManager.flush();
+            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, backdatedTripStart, affectedTo, jobId));
+        });
+
+        assertThat(awaitAutomaticReconciliationCount(userId)).isOne();
+
+        Object[] row = QuarkusTransaction.requiringNew().call(() -> (Object[]) entityManager.createNativeQuery("""
+                SELECT range_start, range_end
+                FROM map_matching_reconciliations
+                WHERE user_id = ?1
+                  AND source = 'AUTOMATIC'
+                """)
+                .setParameter(1, userId)
+                .getSingleResult());
+
+        assertThat(toInstant(row[0])).isEqualTo(backdatedTripStart);
+        assertThat(toInstant(row[1])).isEqualTo(affectedTo);
+    }
+
     private long awaitAutomaticReconciliationCount(UUID userId) {
         AssertionError lastFailure = null;
         for (int attempt = 0; attempt < 20; attempt++) {
@@ -121,6 +160,31 @@ class MapMatchingTimelineChangeObserverTransactionTest {
                 .setParameter(2, value)
                 .setParameter(3, valueType)
                 .executeUpdate();
+    }
+
+    private void insertHistoricalReconciliationPast(Instant backdatedTripStart) {
+        entityManager.createNativeQuery("""
+                INSERT INTO map_matching_reconciliations (
+                    user_id, source, range_start, range_end, cursor_at, cursor_trip_id,
+                    eligible_at, total_trips, scanned_trips, completed_at, created_at, updated_at
+                )
+                VALUES (?1, ?2, ?3, ?4, ?4, 10306, NOW(), 1602, 1602, NOW(), NOW(), NOW())
+                """)
+                .setParameter(1, userId)
+                .setParameter(2, MapMatchingSource.HISTORICAL.name())
+                .setParameter(3, backdatedTripStart.minusSeconds(3600))
+                .setParameter(4, Instant.parse("2026-08-25T12:18:04Z"))
+                .executeUpdate();
+    }
+
+    private Instant toInstant(Object value) {
+        if (value instanceof Instant instant) {
+            return instant;
+        }
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return timestamp.toInstant();
+        }
+        return null;
     }
 
     private void sleepQuietly() {

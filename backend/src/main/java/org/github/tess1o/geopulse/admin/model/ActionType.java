@@ -35,6 +35,9 @@ public enum ActionType {
     TIMELINE_REGENERATION_CAMPAIGN_CREATED,
     TIMELINE_REGENERATION_CAMPAIGN_RETRIED,
 
+    // Map matching maintenance
+    MAP_MATCHING_HISTORICAL_REBUILD,
+
     // Admin actions
     ADMIN_LOGIN
 }

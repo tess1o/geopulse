@@ -123,6 +123,21 @@ class MapMatchingWorkerStatusTest {
     }
 
     @Test
+    void rebuildHistoricalQueueRestartsHistoricalReconciliationAndWakesWorker() {
+        when(reconciliationRepository.restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class)))
+                .thenReturn(2L);
+        when(executor.submit(any(Runnable.class))).thenReturn(CompletableFuture.completedFuture(null));
+
+        worker.executor = executor;
+
+        long queuedUsers = worker.rebuildHistoricalQueue();
+
+        assertThat(queuedUsers).isEqualTo(2L);
+        verify(reconciliationRepository).restartAllTripOwners(eq(MapMatchingSource.HISTORICAL), any(Instant.class));
+        verify(executor).submit(any(Runnable.class));
+    }
+
+    @Test
     void separatesWorkerBackfillQueueAndDiagnosticStatus() {
         Instant targetActivity = Instant.parse("2026-08-22T21:10:00Z");
         Instant reconciliationActivity = Instant.parse("2026-08-22T21:11:00Z");

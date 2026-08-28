@@ -16,6 +16,7 @@ import MapMatchingSettingsTab from './MapMatchingSettingsTab.vue'
 
 const mocks = vi.hoisted(() => ({
   get: vi.fn(),
+  post: vi.fn(),
   loadSettings: vi.fn().mockResolvedValue([]),
   resetSetting: vi.fn()
 }))
@@ -23,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/utils/apiService', () => ({
   default: {
     get: mocks.get,
-    post: vi.fn()
+    post: mocks.post
   }
 }))
 
@@ -104,6 +105,7 @@ describe('MapMatchingSettingsTab processing status', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mocks.get.mockReset().mockResolvedValue(statusResponse)
+    mocks.post.mockReset()
   })
 
   afterEach(() => {
@@ -190,5 +192,38 @@ describe('MapMatchingSettingsTab processing status', () => {
     wrapper.unmount()
     await vi.advanceTimersByTimeAsync(6000)
     expect(mocks.get).toHaveBeenCalledTimes(2)
+  })
+
+  it('rebuilds the historical queue and refreshes status', async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        ...statusResponse.data,
+        worker: {
+          ...statusResponse.data.worker,
+          running: false,
+          phase: 'IDLE'
+        }
+      }
+    })
+    mocks.post.mockResolvedValue({
+      data: {
+        queuedUsers: 2,
+        message: 'Historical map matching queue rebuilt'
+      }
+    })
+    const wrapper = mountTab()
+    await flushPromises()
+
+    const rebuildButton = wrapper.findAll('button')
+      .find(button => button.text() === 'Rebuild Historical Queue')
+    expect(rebuildButton).toBeTruthy()
+
+    await rebuildButton.trigger('click')
+    await flushPromises()
+
+    expect(mocks.post).toHaveBeenCalledWith('/admin/settings/map-matching/historical/rebuild')
+    expect(mocks.get).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
   })
 })

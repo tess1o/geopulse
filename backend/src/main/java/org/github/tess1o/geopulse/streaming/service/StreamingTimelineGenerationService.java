@@ -30,6 +30,7 @@ import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -234,6 +235,8 @@ public class StreamingTimelineGenerationService {
             log.info("Timeline trip post-processing completed for user {} in {} ms (events={})",
                     userId, elapsedMillis(tripPostProcessingStartNanos), events.size());
 
+            RawTimeline generatedTimeline = null;
+
             if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
@@ -247,6 +250,8 @@ public class StreamingTimelineGenerationService {
                     rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
                     recordTimelineStage(stageStart, trigger, "merge", "success");
                 }
+
+                generatedTimeline = rawTimeline;
 
                 // Step 7: Persisting timeline to database (80%)
                 updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
@@ -305,7 +310,8 @@ public class StreamingTimelineGenerationService {
             log.info("Successfully completed timeline regeneration for user {} " + "from timestamp {} in {} seconds",
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
             stageStart = metricsStart();
-            fireTimelineDataChanged(userId, regenerationStartTime, Instant.now(), jobId);
+            TimelineDataRange timelineDataRange = calculateTimelineDataRange(regenerationStartTime, Instant.now(), generatedTimeline);
+            fireTimelineDataChanged(userId, timelineDataRange.affectedFrom(), timelineDataRange.affectedTo(), jobId);
             recordTimelineStage(stageStart, trigger, "timeline_changed_event", "success");
 
         } catch (Exception e) {
@@ -468,6 +474,65 @@ public class StreamingTimelineGenerationService {
             return;
         }
         timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
+    }
+
+    static TimelineDataRange calculateTimelineDataRange(Instant fallbackFrom, Instant fallbackTo, RawTimeline rawTimeline) {
+        TimelineDataRange range = TimelineDataRange.of(fallbackFrom, fallbackTo);
+        if (rawTimeline == null || rawTimeline.isEmpty()) {
+            return range;
+        }
+
+        if (rawTimeline.getStays() != null) {
+            for (var stay : rawTimeline.getStays()) {
+                if (stay != null) {
+                    range = range.include(stay.getStartTime(), endAt(stay.getStartTime(), stay.getDuration()));
+                }
+            }
+        }
+        if (rawTimeline.getTrips() != null) {
+            for (var trip : rawTimeline.getTrips()) {
+                if (trip != null) {
+                    range = range.include(trip.getStartTime(), endAt(trip.getStartTime(), trip.getDuration()));
+                }
+            }
+        }
+        if (rawTimeline.getDataGaps() != null) {
+            for (var dataGap : rawTimeline.getDataGaps()) {
+                if (dataGap != null) {
+                    range = range.include(dataGap.getStartTime(), endAt(dataGap.getStartTime(), dataGap.getDuration()));
+                }
+            }
+        }
+        return range;
+    }
+
+    private static Instant endAt(Instant start, Duration duration) {
+        if (start == null) {
+            return null;
+        }
+        return duration == null ? start : start.plus(duration);
+    }
+
+    record TimelineDataRange(Instant affectedFrom, Instant affectedTo) {
+        static TimelineDataRange of(Instant affectedFrom, Instant affectedTo) {
+            return new TimelineDataRange(affectedFrom, affectedTo);
+        }
+
+        TimelineDataRange include(Instant start, Instant end) {
+            return new TimelineDataRange(earliest(affectedFrom, start), latest(affectedTo, end));
+        }
+
+        private static Instant earliest(Instant first, Instant second) {
+            if (first == null) return second;
+            if (second == null) return first;
+            return first.isBefore(second) ? first : second;
+        }
+
+        private static Instant latest(Instant first, Instant second) {
+            if (first == null) return second;
+            if (second == null) return first;
+            return first.isAfter(second) ? first : second;
+        }
     }
 
     /**

@@ -11,7 +11,9 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.BulkUpdateRequest;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
+import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.SettingInfo;
+import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
@@ -360,6 +362,48 @@ public class AdminSettingsResource {
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public Response mapMatchingStatus() {
         return Response.ok(ApiResponse.success(mapMatchingWorker.status())).build();
+    }
+
+    @POST
+    @Path("/map-matching/historical/rebuild")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response rebuildMapMatchingHistoricalQueue(
+            @HeaderParam("X-Forwarded-For") String forwardedFor,
+            @HeaderParam("X-Real-IP") String realIp) {
+        if (!mapMatchingConfiguration.isEnabled()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Map matching is disabled"))
+                    .build();
+        }
+        if (!mapMatchingConfiguration.backfillEnabled()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Historical backfill is disabled"))
+                    .build();
+        }
+        if (!"valhalla".equals(mapMatchingConfiguration.provider()) || !mapMatchingConfiguration.valhallaConfigured()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Valhalla is not configured"))
+                    .build();
+        }
+
+        long queuedUsers = mapMatchingWorker.rebuildHistoricalQueue();
+        UUID adminId = currentUserService.getCurrentUserId();
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        auditLogService.logAction(
+                adminId,
+                ActionType.MAP_MATCHING_HISTORICAL_REBUILD,
+                TargetType.SETTING,
+                "map-matching.historical-rebuild",
+                Map.of("queuedUsers", queuedUsers),
+                ipAddress
+        );
+
+        return Response.ok(ApiResponse.success(Map.of(
+                "queuedUsers", queuedUsers,
+                "message", queuedUsers == 0
+                        ? "No timeline trips found to rebuild"
+                        : "Historical map matching queue rebuilt"
+        ))).build();
     }
 
     private String limitErrorBody(String body) {

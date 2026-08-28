@@ -139,6 +139,14 @@ public class MapMatchingWorker {
         wake("setting changed: " + key);
     }
 
+    public long rebuildHistoricalQueue() {
+        long queuedUsers = reconciliationRepository.restartAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
+        if (queuedUsers > 0) {
+            wake("admin historical rebuild");
+        }
+        return queuedUsers;
+    }
+
     @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:60s}", delayed = "20s",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {

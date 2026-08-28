@@ -97,6 +97,15 @@
             <h3>{{ statusSummary }}</h3>
           </div>
           <div class="buttons">
+            <Button
+              label="Rebuild Historical Queue"
+              icon="pi pi-history"
+              severity="secondary"
+              outlined
+              :loading="rebuildingHistoricalQueue"
+              :disabled="rebuildHistoricalQueueDisabled"
+              @click="rebuildHistoricalQueue"
+            />
             <Button label="Refresh" icon="pi pi-refresh" severity="secondary" outlined
               :loading="loadingStatus" @click="loadStatus" />
           </div>
@@ -213,6 +222,7 @@ const hasUnsavedChanges = ref(false)
 const isSaving = ref(false)
 const testingConnection = ref(false)
 const loadingStatus = ref(false)
+const rebuildingHistoricalQueue = ref(false)
 const status = ref({})
 let statusRefreshTimer = null
 let statusRequestInFlight = false
@@ -263,6 +273,12 @@ const queue = computed(() => status.value.queue || {})
 const diagnostics = computed(() => status.value.diagnostics || {})
 const pendingReconciliationCount = computed(() => Number(diagnostics.value.pendingReconciliations) || 0)
 const hasPendingReconciliations = computed(() => pendingReconciliationCount.value > 0)
+const canRebuildHistoricalQueue = computed(() =>
+  status.value.enabled && status.value.configured && backfill.value.enabled
+)
+const rebuildHistoricalQueueDisabled = computed(() =>
+  adminReadOnly.value || rebuildingHistoricalQueue.value || worker.value.running || !canRebuildHistoricalQueue.value
+)
 const waitingForQuietPeriod = computed(() => {
   if (!hasPendingReconciliations.value || !diagnostics.value.nextReconciliationEligibleAt) return false
   return new Date(diagnostics.value.nextReconciliationEligibleAt).getTime() > Date.now()
@@ -435,6 +451,31 @@ const testConnection = async () => {
     })
   } finally {
     testingConnection.value = false
+  }
+}
+
+const rebuildHistoricalQueue = async () => {
+  if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
+  rebuildingHistoricalQueue.value = true
+  try {
+    const response = await apiService.post('/admin/settings/map-matching/historical/rebuild')
+    const data = response?.data || {}
+    toast.add({
+      severity: 'success',
+      summary: 'Historical Queue Rebuilt',
+      detail: data.message || `Queued ${formatNumber(data.queuedUsers)} user histories for re-scan`,
+      life: 4000
+    })
+    await loadStatus()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Rebuild Failed',
+      detail: error.response?.data?.message || error.message || 'Failed to rebuild historical map matching queue',
+      life: 5000
+    })
+  } finally {
+    rebuildingHistoricalQueue.value = false
   }
 }
 
