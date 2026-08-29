@@ -441,7 +441,7 @@ public class WeatherService {
         }
 
         long resetTargets = 0;
-        Instant staleLockBefore = Instant.now().minus(Duration.ofMinutes(Math.max(1, inProgressTimeoutMinutes)));
+        Instant staleLockBefore = Instant.now().minus(Duration.ofMinutes(configurationService.inProgressTargetTimeoutMinutes()));
         resetTargets += targetRepository.resetStaleInProgressTargets(staleLockBefore);
 
         if (!configurationService.failedTargetRetryEnabled()) {

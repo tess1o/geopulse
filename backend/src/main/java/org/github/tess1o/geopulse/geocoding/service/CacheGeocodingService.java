@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import jakarta.transaction.Transactional.TxType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingCacheException;
 import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
@@ -38,6 +39,9 @@ public class CacheGeocodingService {
     @ConfigProperty(name = "geocoding.cache.max-bbox-area-km2", defaultValue = "5000")
     @StaticInitSafe
     double maxBboxAreaKm2;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     @Inject
     public CacheGeocodingService(
@@ -239,6 +243,9 @@ public class CacheGeocodingService {
     }
 
     private double getMaxBboxAreaSquareMeters() {
-        return Math.max(0d, maxBboxAreaKm2) * 1_000_000d;
+        double maxArea = settingsService == null
+                ? maxBboxAreaKm2
+                : settingsService.getInteger("geocoding.cache.max-bbox-area-km2");
+        return Math.max(0d, maxArea) * 1_000_000d;
     }
 }

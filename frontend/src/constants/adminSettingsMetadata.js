@@ -21,6 +21,18 @@ export const SETTING_METADATA = {
     label: 'Auto-Link OIDC Accounts',
     description: 'Automatically link OIDC accounts by email (security risk)'
   },
+  'auth.oidc.callback-base-url': {
+    label: 'OIDC Callback Base URL',
+    description: 'Optional public base URL used to build OIDC callback redirects'
+  },
+  'auth.oidc.jwks-cache.ttl-hours': {
+    label: 'JWKS Cache TTL',
+    description: 'Hours to cache OIDC provider signing keys'
+  },
+  'auth.oidc.cleanup.session-states.enabled': {
+    label: 'OIDC Session Cleanup',
+    description: 'Clean up expired OIDC login session state records'
+  },
   'auth.login.enabled': {
     label: 'Login Enabled',
     description: 'Allow users to log in (master switch)'
@@ -153,6 +165,22 @@ export const SETTING_METADATA = {
     label: 'ChibiGeo Delay',
     description: 'Delay between ChibiGeo requests (milliseconds)'
   },
+  'geocoding.cache.max-bbox-area-km2': {
+    label: 'Cache BBox Limit',
+    description: 'Maximum provider bounding box area accepted for geocoding cache matching'
+  },
+  'geocoding.reconcile.item.max-attempts': {
+    label: 'Reconcile Attempts',
+    description: 'Maximum attempts when reconciling one cached geocoding record'
+  },
+  'geocoding.reconcile.circuit-open-wait-ms': {
+    label: 'Circuit Open Wait',
+    description: 'Milliseconds to wait when provider circuit breaker is open during reconciliation'
+  },
+  'geocoding.reconcile.inter-item-delay-ms': {
+    label: 'Reconcile Pacing',
+    description: 'Delay between reconciled geocoding records in milliseconds'
+  },
 
   // Weather Settings
   'weather.enabled': {
@@ -230,6 +258,34 @@ export const SETTING_METADATA = {
   'weather.failed-target-retry.cooldown-hours': {
     label: 'Failed Retry Cooldown',
     description: 'Hours before a failed weather target can be retried'
+  },
+  'weather.open-meteo.connect-timeout-seconds': {
+    label: 'Open-Meteo Connect Timeout',
+    description: 'Seconds to wait while opening an Open-Meteo connection'
+  },
+  'weather.open-meteo.read-timeout-seconds': {
+    label: 'Open-Meteo Read Timeout',
+    description: 'Seconds to wait for Open-Meteo responses'
+  },
+  'weather.pirate.connect-timeout-seconds': {
+    label: 'Pirate Connect Timeout',
+    description: 'Seconds to wait while opening a Pirate Weather connection'
+  },
+  'weather.pirate.read-timeout-seconds': {
+    label: 'Pirate Read Timeout',
+    description: 'Seconds to wait for Pirate Weather responses'
+  },
+  'weather.targets.completed-retention-days': {
+    label: 'Completed Target Retention',
+    description: 'Days to retain completed weather target records'
+  },
+  'weather.targets.failed-retention-days': {
+    label: 'Failed Target Retention',
+    description: 'Days to retain failed weather target records'
+  },
+  'weather.targets.in-progress-timeout-minutes': {
+    label: 'In-Progress Target Timeout',
+    description: 'Minutes before in-progress weather targets are considered stale'
   },
 
   // Map Matching Settings
@@ -352,6 +408,70 @@ export const SETTING_METADATA = {
     label: 'Upload Timeout (Hours)',
     description: 'How long an upload session remains valid'
   },
+  'import.transaction-timeout-minutes': {
+    label: 'Import Transaction Timeout',
+    description: 'Maximum transaction duration for one import job'
+  },
+  'import.upload-cleanup-minutes': {
+    label: 'Upload Cleanup Interval',
+    description: 'How often expired chunked upload sessions are cleaned up'
+  },
+  'import.geonames.cities.enabled': {
+    label: 'City Import Enabled',
+    description: 'Enable GeoNames city dataset import'
+  },
+  'import.geonames.cities.url': {
+    label: 'City Dataset URL',
+    description: 'GeoNames city dataset ZIP archive URL'
+  },
+  'import.geonames.cities.batch-size': {
+    label: 'City Batch Size',
+    description: 'Rows processed per GeoNames city import batch'
+  },
+  'import.geonames.cities.min-row-threshold': {
+    label: 'City Row Threshold',
+    description: 'Minimum staged GeoNames city rows required before replacing data'
+  },
+  'import.geonames.cities.force-refresh': {
+    label: 'Force City Refresh',
+    description: 'Reimport city data even when existing data passes the threshold'
+  },
+  'import.geonames.cities.connect-timeout-seconds': {
+    label: 'City Connect Timeout',
+    description: 'Seconds to wait while connecting to the GeoNames city download'
+  },
+  'import.geonames.cities.read-timeout-seconds': {
+    label: 'City Read Timeout',
+    description: 'Seconds to wait for GeoNames city download reads'
+  },
+  'import.geonames.countries.enabled': {
+    label: 'Country Import Enabled',
+    description: 'Enable GeoNames country dataset import'
+  },
+  'import.geonames.countries.url': {
+    label: 'Country Dataset URL',
+    description: 'GeoNames country dataset URL'
+  },
+  'import.geonames.countries.batch-size': {
+    label: 'Country Batch Size',
+    description: 'Rows processed per GeoNames country import batch'
+  },
+  'import.geonames.countries.min-row-threshold': {
+    label: 'Country Row Threshold',
+    description: 'Minimum staged GeoNames country rows required before replacing data'
+  },
+  'import.geonames.countries.force-refresh': {
+    label: 'Force Country Refresh',
+    description: 'Reimport country data even when existing data passes the threshold'
+  },
+  'import.geonames.countries.connect-timeout-seconds': {
+    label: 'Country Connect Timeout',
+    description: 'Seconds to wait while connecting to the GeoNames country download'
+  },
+  'import.geonames.countries.read-timeout-seconds': {
+    label: 'Country Read Timeout',
+    description: 'Seconds to wait for GeoNames country download reads'
+  },
   'import.geojson-streaming-batch-size': {
     label: 'GeoJSON Batch Size',
     description: 'Batch size for streaming GeoJSON parser'
@@ -407,6 +527,62 @@ export const SETTING_METADATA = {
   'system.user.default-temperature-unit': {
     label: 'Default Temperature Unit',
     description: 'Temperature unit assigned to newly created users'
+  },
+  'system.timeline.view.item-limit': {
+    label: 'Timeline View Item Limit',
+    description: 'Maximum number of timeline items returned in a single view request'
+  },
+  'system.timeline.processing.thread-pool-size': {
+    label: 'Timeline Processing Threads',
+    description: 'Number of worker threads used for timeline processing'
+  },
+  'system.version-check.github-api-url': {
+    label: 'Release API URL',
+    description: 'GitHub-compatible API URL used to check for GeoPulse updates'
+  },
+  'system.version-check.release-url': {
+    label: 'Release Page URL',
+    description: 'Fallback release page URL shown with update information'
+  },
+  'system.version-check.cache-ttl-minutes': {
+    label: 'Update Cache TTL',
+    description: 'Minutes to cache version update checks'
+  },
+  'system.version-check.connect-timeout-seconds': {
+    label: 'Update Connect Timeout',
+    description: 'Seconds to wait while connecting to the update API'
+  },
+  'system.version-check.read-timeout-seconds': {
+    label: 'Update Read Timeout',
+    description: 'Seconds to wait for update API responses'
+  },
+  'system.water-dataset.url': {
+    label: 'Water Dataset URL',
+    description: 'Water dataset archive URL used for Boat setup'
+  },
+  'system.water-dataset.sha256': {
+    label: 'Water Dataset Checksum',
+    description: 'Optional expected SHA-256 checksum for the water dataset archive'
+  },
+  'system.water-dataset.auto-import': {
+    label: 'Water Auto-Import',
+    description: 'Automatically import the water dataset when Boat setup requires it'
+  },
+  'system.water-dataset.connect-timeout-seconds': {
+    label: 'Water Connect Timeout',
+    description: 'Seconds to wait while connecting to the water dataset download'
+  },
+  'system.water-dataset.download-timeout-hours': {
+    label: 'Water Download Timeout',
+    description: 'Maximum duration for a water dataset download'
+  },
+  'system.water-dataset.download-stall-timeout-seconds': {
+    label: 'Water Stall Timeout',
+    description: 'Seconds without downloaded bytes before the water download fails'
+  },
+  'system.water-dataset.setup-start-timeout-minutes': {
+    label: 'Boat Setup Start Timeout',
+    description: 'Minutes before a queued Boat setup job is treated as failed to start'
   },
   'system.notifications.apprise.enabled': {
     label: 'Enable Apprise Notifications',

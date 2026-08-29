@@ -4,6 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,5 +19,9 @@ public class SystemSettingsRepository implements PanacheRepositoryBase<SystemSet
 
     public void deleteByKey(String key) {
         delete("key", key);
+    }
+
+    public List<SystemSettingsEntity> listAllSettings() {
+        return listAll();
     }
 }

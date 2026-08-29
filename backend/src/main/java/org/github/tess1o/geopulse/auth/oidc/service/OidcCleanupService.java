@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 
 import java.time.Instant;
@@ -27,6 +28,9 @@ public class OidcCleanupService {
     @Inject
     OidcLinkingTokenService linkingTokenService;
 
+    @Inject
+    SystemSettingsService settingsService;
+
     @ConfigProperty(name = "geopulse.oidc.cleanup.session-states.enabled", defaultValue = "true")
     @StaticInitSafe
     boolean sessionStatesCleanupEnabled;
@@ -43,7 +47,7 @@ public class OidcCleanupService {
     @Scheduled(every = "5m")
     @Transactional
     public void cleanupExpiredSessionStates() {
-        if (!sessionStatesCleanupEnabled) {
+        if (!sessionStateCleanupEnabled()) {
             return;
         }
         
@@ -66,7 +70,7 @@ public class OidcCleanupService {
     @Scheduled(every = "24h", delay = 1, delayUnit = TimeUnit.HOURS)
     @Transactional
     public void cleanupOldSessionStates() {
-        if (!sessionStatesCleanupEnabled) {
+        if (!sessionStateCleanupEnabled()) {
             return;
         }
         
@@ -99,5 +103,11 @@ public class OidcCleanupService {
         } catch (Exception e) {
             log.error("Failed to clean up expired linking tokens", e);
         }
+    }
+
+    private boolean sessionStateCleanupEnabled() {
+        return settingsService == null
+                ? sessionStatesCleanupEnabled
+                : settingsService.getBoolean("auth.oidc.cleanup.session-states.enabled");
     }
 }

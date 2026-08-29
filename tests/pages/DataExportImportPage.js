@@ -62,7 +62,15 @@ export class DataExportImportPage {
           favorites: '#favorites',
           reversegeocodinglocation: '#reversegeocodinglocation',
           locationsources: '#locationsources',
-          userinfo: '#userinfo'
+          userinfo: '#userinfo',
+          periodtags: '#periodtags',
+          timelineoverrides: '#timelineoverrides',
+          tripworkspace: '#tripworkspace',
+          notificationtemplates: '#notificationtemplates',
+          geofencing: '#geofencing',
+          notes: '#notes',
+          weathersamples: '#weathersamples',
+          mapmatching: '#mapmatching'
         },
 
         // Date range
@@ -114,7 +122,15 @@ export class DataExportImportPage {
           favorites: '#import-favorites',
           reversegeocodinglocation: '#import-reversegeocodinglocation',
           locationsources: '#import-locationsources',
-          userinfo: '#import-userinfo'
+          userinfo: '#import-userinfo',
+          periodtags: '#import-periodtags',
+          timelineoverrides: '#import-timelineoverrides',
+          tripworkspace: '#import-tripworkspace',
+          notificationtemplates: '#import-notificationtemplates',
+          geofencing: '#import-geofencing',
+          notes: '#import-notes',
+          weathersamples: '#import-weathersamples',
+          mapmatching: '#import-mapmatching'
         },
 
         // Import options - date filter
@@ -725,6 +741,33 @@ export class DataExportImportPage {
   }
 
   /**
+   * Get count of completed map-matching path matches for a user.
+   */
+  static async getMapMatchingPathMatchesCount(dbManager, userId, key = null) {
+    let query = `
+      SELECT COUNT(*) as count
+      FROM timeline_trip_path_matches
+      WHERE user_id = $1
+        AND status = 'MATCHED'
+        AND matched_segments_json IS NOT NULL
+    `;
+    const params = [userId];
+
+    if (key) {
+      query += `
+        AND provider = $2
+        AND profile = $3
+        AND config_hash = $4
+        AND input_hash = $5
+      `;
+      params.push(key.provider, key.profile, key.configHash, key.inputHash);
+    }
+
+    const result = await dbManager.client.query(query, params);
+    return parseInt(result.rows[0].count);
+  }
+
+  /**
    * Insert sample GPS data for testing with reverse geocoding data
    */
   static async insertSampleGpsData(dbManager, userId, count, dateRange = null) {
@@ -786,6 +829,77 @@ export class DataExportImportPage {
     }
 
     return insertedIds;
+  }
+
+  /**
+   * Insert a timeline trip with one completed map-matching cache row.
+   */
+  static async insertSampleMapMatchingPathMatch(dbManager, userId, options = {}) {
+    const provider = options.provider || 'valhalla';
+    const profile = options.profile || 'pedestrian';
+    const configHash = options.configHash || `config-${Date.now()}`;
+    const inputHash = options.inputHash || `input-${Date.now()}`;
+    const timestamp = options.timestamp || '2024-01-15T12:30:00Z';
+    const matchedSegmentsJson = options.matchedSegmentsJson ||
+        '[[{"lat":50.4501,"lon":30.5234},{"lat":50.4511,"lon":30.5244}]]';
+
+    const tripResult = await dbManager.client.query(`
+      INSERT INTO timeline_trips (
+        user_id,
+        timestamp,
+        trip_duration,
+        start_point,
+        end_point,
+        distance_meters,
+        movement_type,
+        created_at,
+        last_updated
+      )
+      VALUES (
+        $1,
+        $2,
+        600,
+        ST_SetSRID(ST_MakePoint(30.5234, 50.4501), 4326),
+        ST_SetSRID(ST_MakePoint(30.5244, 50.4511), 4326),
+        150,
+        'WALKING',
+        NOW(),
+        NOW()
+      )
+      RETURNING id
+    `, [userId, timestamp]);
+
+    const tripId = tripResult.rows[0].id;
+    await dbManager.client.query(`
+      INSERT INTO timeline_trip_path_matches (
+        trip_id,
+        user_id,
+        provider,
+        profile,
+        config_hash,
+        input_hash,
+        status,
+        attempts,
+        next_attempt_at,
+        last_attempt_at,
+        completed_at,
+        matched_segments_json,
+        source,
+        priority,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'MATCHED', 1, NOW(), NOW(), NOW(), $7, 'ON_DEMAND', 100, NOW(), NOW())
+    `, [tripId, userId, provider, profile, configHash, inputHash, matchedSegmentsJson]);
+
+    return {
+      tripId,
+      provider,
+      profile,
+      configHash,
+      inputHash,
+      matchedSegmentsJson
+    };
   }
 
   /**

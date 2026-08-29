@@ -156,7 +156,11 @@ const collectionKeys = ['weather.ongoing.enabled', 'weather.ongoing.interval-min
 const quotaKeys = ['weather.quota.daily-request-limit', 'weather.quota.ongoing-reserve']
 const advancedKeys = ['weather.open-meteo.forecast-url', 'weather.open-meteo.archive-url',
   'weather.pirate.base-url', 'weather.pirate.time-machine-url', 'weather.coordinate-precision',
-  'weather.failed-target-retry.enabled', 'weather.failed-target-retry.cooldown-hours']
+  'weather.failed-target-retry.enabled', 'weather.failed-target-retry.cooldown-hours',
+  'weather.open-meteo.connect-timeout-seconds', 'weather.open-meteo.read-timeout-seconds',
+  'weather.pirate.connect-timeout-seconds', 'weather.pirate.read-timeout-seconds',
+  'weather.targets.completed-retention-days', 'weather.targets.failed-retention-days',
+  'weather.targets.in-progress-timeout-minutes']
 
 const getSetting = key => settings.value.find(setting => setting.key === key)
 const getOriginalSetting = key => originalSettings.value.find(setting => setting.key === key)

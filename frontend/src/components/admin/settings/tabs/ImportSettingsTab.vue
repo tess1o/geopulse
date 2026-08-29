@@ -106,6 +106,99 @@
         </template>
       </SettingItem>
     </SettingSection>
+
+    <details class="advanced-settings">
+      <summary>GeoNames</summary>
+      <SettingSection title="City Dataset">
+        <SettingItem
+          v-for="setting in geonamesCitySettings"
+          :key="setting.key"
+          :setting="setting"
+          @reset="handleReset(setting)"
+        >
+          <template #control="{ setting }">
+            <InputSwitch
+              v-if="setting.valueType === 'BOOLEAN'"
+              v-model="setting.currentValue"
+              @change="handleUpdate(setting)"
+              :disabled="setting.readOnly"
+            />
+            <InputText
+              v-else-if="setting.valueType === 'STRING'"
+              v-model="setting.currentValue"
+              @change="handleUpdate(setting)"
+              class="url-input"
+              :disabled="setting.readOnly"
+            />
+            <InputNumber
+              v-else
+              v-model="setting.currentValue"
+              @update:modelValue="handleUpdate(setting)"
+              :min="1"
+              :step="setting.key.includes('batch-size') ? 100 : 1"
+              style="width: 150px"
+              :disabled="setting.readOnly"
+            />
+          </template>
+        </SettingItem>
+      </SettingSection>
+
+      <SettingSection title="Country Dataset">
+        <SettingItem
+          v-for="setting in geonamesCountrySettings"
+          :key="setting.key"
+          :setting="setting"
+          @reset="handleReset(setting)"
+        >
+          <template #control="{ setting }">
+            <InputSwitch
+              v-if="setting.valueType === 'BOOLEAN'"
+              v-model="setting.currentValue"
+              @change="handleUpdate(setting)"
+              :disabled="setting.readOnly"
+            />
+            <InputText
+              v-else-if="setting.valueType === 'STRING'"
+              v-model="setting.currentValue"
+              @change="handleUpdate(setting)"
+              class="url-input"
+              :disabled="setting.readOnly"
+            />
+            <InputNumber
+              v-else
+              v-model="setting.currentValue"
+              @update:modelValue="handleUpdate(setting)"
+              :min="1"
+              :step="setting.key.includes('batch-size') ? 100 : 1"
+              style="width: 150px"
+              :disabled="setting.readOnly"
+            />
+          </template>
+        </SettingItem>
+      </SettingSection>
+    </details>
+
+    <details class="advanced-settings">
+      <summary>Advanced Operations</summary>
+      <SettingSection title="Import Runtime">
+        <SettingItem
+          v-for="setting in advancedOperationSettings"
+          :key="setting.key"
+          :setting="setting"
+          @reset="handleReset(setting)"
+        >
+          <template #control="{ setting }">
+            <InputNumber
+              v-model="setting.currentValue"
+              @update:modelValue="handleUpdate(setting)"
+              :min="1"
+              style="width: 150px"
+              :disabled="setting.readOnly"
+            />
+          </template>
+        </SettingItem>
+      </SettingSection>
+    </details>
   </div>
 </template>
 
@@ -156,6 +249,20 @@ const streamingSettings = computed(() =>
   importSettings.value.filter(s => s.key.includes('streaming-batch-size'))
 )
 
+const geonamesCitySettings = computed(() =>
+  importSettings.value.filter(s => s.key.startsWith('import.geonames.cities.'))
+)
+
+const geonamesCountrySettings = computed(() =>
+  importSettings.value.filter(s => s.key.startsWith('import.geonames.countries.'))
+)
+
+const advancedOperationSettings = computed(() =>
+  importSettings.value.filter(s =>
+    ['import.transaction-timeout-minutes', 'import.upload-cleanup-minutes'].includes(s.key)
+  )
+)
+
 onMounted(async () => {
   importSettings.value = await loadSettings('import')
 })
@@ -171,3 +278,31 @@ const handleReset = async (setting) => {
   await resetSetting(setting)
 }
 </script>
+
+<style scoped>
+@import '../admin-settings-common.css';
+
+.advanced-settings {
+  margin: 1rem 0;
+  border: 1px solid var(--gp-border-light);
+  border-radius: 6px;
+}
+
+.advanced-settings summary {
+  padding: 1rem;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.url-input {
+  width: min(56vw, 720px);
+  min-width: 420px;
+}
+
+@media (max-width: 768px) {
+  .url-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+</style>

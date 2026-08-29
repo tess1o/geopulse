@@ -66,6 +66,28 @@
       Changing primary/fallback provider affects new lookups only. Existing cached geocoding records remain unchanged until reconciled.
     </Message>
 
+    <details class="advanced-settings">
+      <summary>Advanced Operations</summary>
+      <SettingSection title="Cache and Reconciliation">
+        <SettingItem
+          v-for="setting in advancedOperationSettings"
+          :key="setting.key"
+          :setting="setting"
+          @reset="handleReset(setting)"
+        >
+          <template #control="{ setting }">
+            <InputNumber
+              v-model="setting.currentValue"
+              @update:modelValue="markDirty"
+              :min="1"
+              :step="setting.key.includes('delay') || setting.key.includes('wait') ? 100 : 1"
+              class="delay-input"
+            />
+          </template>
+        </SettingItem>
+      </SettingSection>
+    </details>
+
     <SettingSection title="Providers">
       <div class="providers-workspace">
         <div class="providers-workspace-header">
@@ -589,9 +611,21 @@ const providerDefinitions = [
 ]
 
 const routingKeys = ['geocoding.primary-provider', 'geocoding.fallback-provider', 'geocoding.delay-ms']
+const advancedOperationKeys = [
+  'geocoding.cache.max-bbox-area-km2',
+  'geocoding.reconcile.item.max-attempts',
+  'geocoding.reconcile.circuit-open-wait-ms',
+  'geocoding.reconcile.inter-item-delay-ms'
+]
 
 const routingSettings = computed(() =>
   routingKeys
+    .map(key => getSetting(key))
+    .filter(Boolean)
+)
+
+const advancedOperationSettings = computed(() =>
+  advancedOperationKeys
     .map(key => getSetting(key))
     .filter(Boolean)
 )
@@ -1246,6 +1280,18 @@ const deleteCustomProvider = async (provider) => {
 
 .provider-switch-note {
   margin-bottom: 1rem;
+}
+
+.advanced-settings {
+  margin: 1rem 0;
+  border: 1px solid var(--gp-border-light);
+  border-radius: 6px;
+}
+
+.advanced-settings summary {
+  padding: 1rem;
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .providers-workspace {

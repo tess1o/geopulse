@@ -47,6 +47,12 @@ public class CustomGeocodingProviderService {
                 .toList();
     }
 
+    public List<CustomGeocodingProviderResponse> listForBackupExport() {
+        return repository.listAllSorted().stream()
+                .map(provider -> toResponse(provider, false))
+                .toList();
+    }
+
     public List<CustomGeocodingProviderEntity> listEnabledEntities() {
         return repository.listEnabled();
     }
@@ -83,11 +89,31 @@ public class CustomGeocodingProviderService {
     }
 
     @Transactional
+    public CustomGeocodingProviderResponse upsertFromBackup(CustomGeocodingProviderRequest request) {
+        String normalizedName = normalizeName(request.getName());
+        CustomGeocodingProviderEntity entity = repository.findByName(normalizedName).orElse(null);
+        validateRequest(request, entity == null ? null : entity.getName());
+        if (entity == null) {
+            entity = new CustomGeocodingProviderEntity();
+        }
+        apply(entity, request, true);
+        repository.persist(entity);
+        return toResponse(entity, false);
+    }
+
+    @Transactional
     public void delete(String name) {
         CustomGeocodingProviderEntity entity = repository.findByName(name)
                 .orElseThrow(() -> new NotFoundException("Custom geocoding provider not found: " + name));
         assertNotSelected(entity.getName(), "delete");
         repository.delete(entity);
+    }
+
+    @Transactional
+    public boolean deleteFromBackupImport(String name) {
+        Optional<CustomGeocodingProviderEntity> entity = repository.findByName(name);
+        entity.ifPresent(repository::delete);
+        return entity.isPresent();
     }
 
     public Map<String, String> decryptHeaders(CustomGeocodingProviderEntity entity) {

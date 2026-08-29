@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
@@ -58,6 +59,9 @@ public class ReverseGeocodingManagementService {
     private final FavoriteLocationService favoriteLocationService;
     @Inject
     CustomGeocodingProviderService customGeocodingProviderService;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     @ConfigProperty(name = "geocoding.reconcile.item.max-attempts", defaultValue = "3")
     int reconcileItemMaxAttempts;
@@ -546,7 +550,7 @@ public class ReverseGeocodingManagementService {
 
     @ActivateRequestContext
     void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName) {
-        processReconciliationJob(jobId, userId, ids, providerName, Math.max(0, reconcileInterItemDelayMs));
+        processReconciliationJob(jobId, userId, ids, providerName, Math.max(0, reconcileInterItemDelayMs()));
     }
 
     @ActivateRequestContext
@@ -611,7 +615,7 @@ public class ReverseGeocodingManagementService {
                 && (providerName.equalsIgnoreCase("geoapify") || providerName.equalsIgnoreCase("chibigeo"))) {
             return Math.max(0, configService.getDelayMsForProvider(providerName));
         }
-        return Math.max(0, reconcileInterItemDelayMs);
+        return Math.max(0, reconcileInterItemDelayMs());
     }
 
     @Transactional
@@ -645,7 +649,7 @@ public class ReverseGeocodingManagementService {
      * per-item retry budget and circuit-open cooldown between attempts within bulk jobs.
      */
     private ReconciliationAttemptResult reconcileWithRetry(UUID userId, Long geocodingId, String providerName, UUID jobId) {
-        int maxAttempts = Math.max(1, reconcileItemMaxAttempts);
+        int maxAttempts = Math.max(1, reconcileItemMaxAttempts());
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
@@ -660,7 +664,7 @@ public class ReverseGeocodingManagementService {
                 }
 
                 if (circuitOpen) {
-                    long waitMs = Math.max(0, reconcileCircuitOpenWaitMs);
+                    long waitMs = Math.max(0, reconcileCircuitOpenWaitMs());
                     log.warn("Circuit breaker open while reconciling geocoding result {} in job {}. " +
                                     "Waiting {}ms before retry {}/{}",
                             geocodingId, jobId, waitMs, attempt + 1, maxAttempts);
@@ -790,5 +794,23 @@ public class ReverseGeocodingManagementService {
             return right == null;
         }
         return left.equals(right);
+    }
+
+    private int reconcileItemMaxAttempts() {
+        return settingsService == null
+                ? reconcileItemMaxAttempts
+                : settingsService.getInteger("geocoding.reconcile.item.max-attempts");
+    }
+
+    private long reconcileCircuitOpenWaitMs() {
+        return settingsService == null
+                ? reconcileCircuitOpenWaitMs
+                : settingsService.getInteger("geocoding.reconcile.circuit-open-wait-ms");
+    }
+
+    private long reconcileInterItemDelayMs() {
+        return settingsService == null
+                ? reconcileInterItemDelayMs
+                : settingsService.getInteger("geocoding.reconcile.inter-item-delay-ms");
     }
 }

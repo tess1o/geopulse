@@ -260,8 +260,11 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Open-Meteo URL is not configured");
         }
+        int connectTimeout = Math.max(1, configurationService.openMeteoConnectTimeoutSeconds());
+        int readTimeout = Math.max(1, configurationService.openMeteoReadTimeoutSeconds());
         java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
-                configurationService.forecastUrl(), configurationService.archiveUrl()));
+                clientCacheKey(configurationService.forecastUrl(), connectTimeout, readTimeout),
+                clientCacheKey(configurationService.archiveUrl(), connectTimeout, readTimeout)));
         clients.entrySet().removeIf(entry -> {
             if (activeUrls.contains(entry.getKey())) {
                 return false;
@@ -269,11 +272,15 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
             closeClient(entry.getValue());
             return true;
         });
-        return clients.computeIfAbsent(url, key -> RestClientBuilder.newBuilder()
-                .baseUri(URI.create(key))
-                .connectTimeout(Math.max(1, connectTimeoutSeconds), TimeUnit.SECONDS)
-                .readTimeout(Math.max(1, readTimeoutSeconds), TimeUnit.SECONDS)
+        return clients.computeIfAbsent(clientCacheKey(url, connectTimeout, readTimeout), key -> RestClientBuilder.newBuilder()
+                .baseUri(URI.create(url))
+                .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+                .readTimeout(readTimeout, TimeUnit.SECONDS)
                 .build(OpenMeteoRestClient.class));
+    }
+
+    private String clientCacheKey(String url, int connectTimeout, int readTimeout) {
+        return url + "|" + connectTimeout + "|" + readTimeout;
     }
 
     private OpenMeteoResponse readPayload(Response response) {

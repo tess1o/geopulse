@@ -248,7 +248,7 @@ public class WeatherPipelineWorker {
             return false;
         }
         Instant now = Instant.now();
-        Instant staleClaimCutoff = now.minus(Duration.ofMinutes(Math.max(1, inProgressTimeoutMinutes)));
+        Instant staleClaimCutoff = now.minus(Duration.ofMinutes(configurationService.inProgressTargetTimeoutMinutes()));
         if (targetRepository.hasStaleInProgressTargets(staleClaimCutoff)) {
             return true;
         }

@@ -321,6 +321,7 @@ test.describe('Data Export & Import', () => {
             const selectedDataTypes = await exportImportPage.getSelectedDataTypes();
             expect(selectedDataTypes.length).toBeGreaterThan(0);
             expect(selectedDataTypes).toContain('rawgps');
+            expect(selectedDataTypes).toContain('mapmatching');
         });
     });
 
@@ -898,6 +899,8 @@ test.describe('Data Export & Import', () => {
 
             const selectedFormat = await exportImportPage.getSelectedImportFormat();
             expect(selectedFormat).toBe('geopulse');
+            const selectedDataTypes = await exportImportPage.getSelectedImportDataTypes();
+            expect(selectedDataTypes).toContain('mapmatching');
         });
 
         test('should disable import button when no file is selected', async ({ page, isolatedUsers, dbManager}) => {
@@ -961,6 +964,14 @@ test.describe('Data Export & Import', () => {
                 exportUserId,
                 testIdentity,
                 'all-data'
+            );
+            const exportedMapMatch = await DataExportImportPage.insertSampleMapMatchingPathMatch(
+                dbManager,
+                exportUserId,
+                {
+                    configHash: `config-${testIdentity.uniqueToken}-all-data`,
+                    inputHash: `input-${testIdentity.uniqueToken}-all-data`
+                }
             );
 
             // Login and create export
@@ -1035,10 +1046,16 @@ test.describe('Data Export & Import', () => {
                 importUserId,
                 exportedGeocoding.displayName
             );
+            const mapMatchingCount = await DataExportImportPage.getMapMatchingPathMatchesCount(
+                dbManager,
+                importUserId,
+                exportedMapMatch
+            );
 
             expect(gpsCount).toBe(100);
             expect(favoritesCount).toBe(5);
             expect(reverseGeocodingCount).toBe(1);
+            expect(mapMatchingCount).toBe(1);
 
             // Cleanup
             if (fs.existsSync(exportFilePath)) {
@@ -1060,6 +1077,14 @@ test.describe('Data Export & Import', () => {
                 exportUserId,
                 testIdentity,
                 'selective'
+            );
+            const exportedMapMatch = await DataExportImportPage.insertSampleMapMatchingPathMatch(
+                dbManager,
+                exportUserId,
+                {
+                    configHash: `config-${testIdentity.uniqueToken}-selective`,
+                    inputHash: `input-${testIdentity.uniqueToken}-selective`
+                }
             );
 
             // Login and create export
@@ -1125,10 +1150,16 @@ test.describe('Data Export & Import', () => {
                 importUserId,
                 exportedGeocoding.displayName
             );
+            const mapMatchingCount = await DataExportImportPage.getMapMatchingPathMatchesCount(
+                dbManager,
+                importUserId,
+                exportedMapMatch
+            );
 
             expect(gpsCount).toBe(50);
             expect(favoritesCount).toBe(0); // Favorites should not be imported
             expect(reverseGeocodingCount).toBe(0); // Reverse geocoding was not selected for import
+            expect(mapMatchingCount).toBe(0); // Map matching was not selected for import
 
             // Cleanup
             if (fs.existsSync(exportFilePath)) {

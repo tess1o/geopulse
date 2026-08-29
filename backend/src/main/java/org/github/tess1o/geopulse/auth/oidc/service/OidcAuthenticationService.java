@@ -33,6 +33,7 @@ import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionReposit
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
@@ -77,6 +78,9 @@ public class OidcAuthenticationService {
 
     @Inject
     AdminBootstrapService adminBootstrapService;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     @ConfigProperty(name = "geopulse.oidc.callback-base-url")
     @StaticInitSafe
@@ -522,7 +526,9 @@ public class OidcAuthenticationService {
     }
 
     private String getEffectiveCallbackBaseUrl() {
-        Optional<String> callback = firstConfiguredUrl(callbackBaseUrl);
+        Optional<String> callback = firstConfiguredUrl(settingsService == null
+                ? callbackBaseUrl
+                : Optional.ofNullable(settingsService.getString("auth.oidc.callback-base-url")));
         if (callback.isPresent()) {
             return callback.get();
         }
@@ -664,8 +670,11 @@ public class OidcAuthenticationService {
         CachedJwks cached = jwksCache.get(jwksUri);
 
         // Check if cache is expired or missing
+        int ttlHours = settingsService == null
+                ? jwksCacheTtlHours
+                : settingsService.getInteger("auth.oidc.jwks-cache.ttl-hours");
         boolean needsRefresh = cached == null ||
-                cached.cachedAt.plus(jwksCacheTtlHours, ChronoUnit.HOURS).isBefore(Instant.now());
+                cached.cachedAt.plus(Math.max(1, ttlHours), ChronoUnit.HOURS).isBefore(Instant.now());
 
         if (needsRefresh) {
             try {

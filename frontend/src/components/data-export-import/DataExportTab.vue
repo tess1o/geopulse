@@ -509,7 +509,21 @@ const {
 } = storeToRefs(exportImportStore)
 
 // State
-const selectedDataTypes = ref(['rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo'])
+const selectedDataTypes = ref([
+  'rawgps',
+  'favorites',
+  'reversegeocodinglocation',
+  'locationsources',
+  'userinfo',
+  'periodtags',
+  'timelineoverrides',
+  'tripworkspace',
+  'notificationtemplates',
+  'geofencing',
+  'notes',
+  'weathersamples',
+  'mapmatching'
+])
 const exportStartDate = ref(null)
 const exportEndDate = ref(null)
 const exportFormat = ref('geopulse')
@@ -548,6 +562,54 @@ const availableDataTypes = ref([
     label: 'User Information',
     description: 'Your profile and preferences (excludes sensitive data)',
     icon: 'pi pi-user'
+  },
+  {
+    key: 'periodtags',
+    label: 'Timeline Labels',
+    description: 'Period tags and timeline labels',
+    icon: 'pi pi-tags'
+  },
+  {
+    key: 'timelineoverrides',
+    label: 'Timeline Overrides',
+    description: 'Manual trip type and data gap corrections',
+    icon: 'pi pi-pencil'
+  },
+  {
+    key: 'tripworkspace',
+    label: 'Trip Plans',
+    description: 'Trips, plans, notes, and collaborators',
+    icon: 'pi pi-briefcase'
+  },
+  {
+    key: 'notificationtemplates',
+    label: 'Notification Templates',
+    description: 'Templates used by geofence notifications',
+    icon: 'pi pi-bell'
+  },
+  {
+    key: 'geofencing',
+    label: 'Geofences',
+    description: 'Geofence rules and monitored subjects',
+    icon: 'pi pi-map-marker'
+  },
+  {
+    key: 'notes',
+    label: 'Timeline Notes',
+    description: 'GeoPulse notes attached to timeline places and dates',
+    icon: 'pi pi-file-edit'
+  },
+  {
+    key: 'weathersamples',
+    label: 'Weather Samples',
+    description: 'Fetched weather observations in the selected range',
+    icon: 'pi pi-cloud'
+  },
+  {
+    key: 'mapmatching',
+    label: 'Map Matching',
+    description: 'Completed matched route cache for timeline trips',
+    icon: 'pi pi-directions'
   }
 ])
 

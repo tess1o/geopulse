@@ -8,6 +8,7 @@ import jakarta.transaction.SystemException;
 import jakarta.transaction.TransactionManager;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 
 import java.io.IOException;
@@ -30,6 +31,9 @@ public class ImportDataService {
 
     @Inject
     TransactionManager transactionManager;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     @ConfigProperty(name = "geopulse.import.transaction-timeout-minutes", defaultValue = "1440")
     long importTransactionTimeoutMinutes;
@@ -82,6 +86,9 @@ public class ImportDataService {
     }
 
     private int resolveImportTransactionTimeoutSeconds() {
+        long importTransactionTimeoutMinutes = settingsService == null
+                ? this.importTransactionTimeoutMinutes
+                : settingsService.getInteger("import.transaction-timeout-minutes");
         if (importTransactionTimeoutMinutes < 1) {
             throw new IllegalArgumentException(
                     "geopulse.import.transaction-timeout-minutes must be at least 1 minute");

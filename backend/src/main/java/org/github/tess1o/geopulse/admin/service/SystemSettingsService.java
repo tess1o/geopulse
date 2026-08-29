@@ -55,6 +55,12 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.auth.oidc.registration.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC registration"));
         SETTING_DEFINITIONS.put("auth.oidc.auto-link-accounts",
                 new SettingDefinition("geopulse.oidc.auto-link-accounts", "false", ValueType.BOOLEAN, "auth", "Auto-link OIDC accounts by email"));
+        SETTING_DEFINITIONS.put("auth.oidc.callback-base-url",
+                new SettingDefinition("geopulse.oidc.callback-base-url", "", ValueType.STRING, "auth", "Base URL used to build OIDC callback URLs"));
+        SETTING_DEFINITIONS.put("auth.oidc.jwks-cache.ttl-hours",
+                new SettingDefinition("geopulse.oidc.jwks-cache.ttl-hours", "24", ValueType.INTEGER, "auth", "Hours to cache OIDC provider signing keys"));
+        SETTING_DEFINITIONS.put("auth.oidc.cleanup.session-states.enabled",
+                new SettingDefinition("geopulse.oidc.cleanup.session-states.enabled", "true", ValueType.BOOLEAN, "auth", "Clean up expired OIDC session state records"));
         SETTING_DEFINITIONS.put("auth.login.enabled",
                 new SettingDefinition("geopulse.auth.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable all login"));
         SETTING_DEFINITIONS.put("auth.password-login.enabled",
@@ -105,7 +111,7 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("geocoding.mapbox.enabled",
                 new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.mapbox.access-token",
-                new SettingDefinition("geocoding.provider.mapbox.access-token", "", ValueType.ENCRYPTED, "geocoding", "Mapbox access token (encrypted)"));
+                new SettingDefinition("geocoding.mapbox.access-token", "", ValueType.ENCRYPTED, "geocoding", "Mapbox access token (encrypted)"));
 
         SETTING_DEFINITIONS.put("geocoding.geoapify.enabled",
                 new SettingDefinition("geocoding.provider.geoapify.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Geoapify geocoding provider"));
@@ -122,6 +128,14 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.chibigeo.api-key", "", ValueType.ENCRYPTED, "geocoding", "ChibiGeo API key (encrypted)"));
         SETTING_DEFINITIONS.put("geocoding.chibigeo.language",
                 new SettingDefinition("geocoding.provider.chibigeo.language", "", ValueType.STRING, "geocoding", "ChibiGeo language preference (allowed Photon codes; empty = provider default)"));
+        SETTING_DEFINITIONS.put("geocoding.cache.max-bbox-area-km2",
+                new SettingDefinition("geocoding.cache.max-bbox-area-km2", "5000", ValueType.INTEGER, "geocoding", "Maximum provider bounding box area accepted for cache matching"));
+        SETTING_DEFINITIONS.put("geocoding.reconcile.item.max-attempts",
+                new SettingDefinition("geocoding.reconcile.item.max-attempts", "4", ValueType.INTEGER, "geocoding", "Maximum attempts when reconciling one cached geocoding record"));
+        SETTING_DEFINITIONS.put("geocoding.reconcile.circuit-open-wait-ms",
+                new SettingDefinition("geocoding.reconcile.circuit-open-wait.ms", "20000", ValueType.INTEGER, "geocoding", "Milliseconds to wait when a provider circuit is open during reconciliation"));
+        SETTING_DEFINITIONS.put("geocoding.reconcile.inter-item-delay-ms",
+                new SettingDefinition("geocoding.reconcile.inter-item-delay.ms", "1000", ValueType.INTEGER, "geocoding", "Delay between reconciled geocoding records in milliseconds"));
 
         // GPS processing defaults
         SETTING_DEFINITIONS.put("gps.filter.inaccurate-data.enabled",
@@ -170,6 +184,20 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.weather.failed-target-retry.enabled", "true", ValueType.BOOLEAN, "weather", "Retry stale failed weather targets after cooldown"));
         SETTING_DEFINITIONS.put("weather.failed-target-retry.cooldown-hours",
                 new SettingDefinition("geopulse.weather.failed-target-retry.cooldown-hours", "24", ValueType.INTEGER, "weather", "Hours before a failed weather target can be retried"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.connect-timeout-seconds",
+                new SettingDefinition("geopulse.weather.open-meteo.connect-timeout-seconds", "5", ValueType.INTEGER, "weather", "Open-Meteo connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("weather.open-meteo.read-timeout-seconds",
+                new SettingDefinition("geopulse.weather.open-meteo.read-timeout-seconds", "15", ValueType.INTEGER, "weather", "Open-Meteo read timeout in seconds"));
+        SETTING_DEFINITIONS.put("weather.pirate.connect-timeout-seconds",
+                new SettingDefinition("geopulse.weather.pirate.connect-timeout-seconds", "5", ValueType.INTEGER, "weather", "Pirate Weather connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("weather.pirate.read-timeout-seconds",
+                new SettingDefinition("geopulse.weather.pirate.read-timeout-seconds", "15", ValueType.INTEGER, "weather", "Pirate Weather read timeout in seconds"));
+        SETTING_DEFINITIONS.put("weather.targets.completed-retention-days",
+                new SettingDefinition("geopulse.weather.targets.completed-retention-days", "7", ValueType.INTEGER, "weather", "Days to retain completed weather target records"));
+        SETTING_DEFINITIONS.put("weather.targets.failed-retention-days",
+                new SettingDefinition("geopulse.weather.targets.failed-retention-days", "30", ValueType.INTEGER, "weather", "Days to retain failed weather target records"));
+        SETTING_DEFINITIONS.put("weather.targets.in-progress-timeout-minutes",
+                new SettingDefinition("geopulse.weather.targets.in-progress-timeout-minutes", "60", ValueType.INTEGER, "weather", "Minutes before in-progress weather targets are considered stale"));
 
         // Map matching settings
         SETTING_DEFINITIONS.put("map-matching.enabled",
@@ -232,6 +260,40 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.import.max-file-size-gb", "10", ValueType.INTEGER, "import", "Maximum file size allowed (GB)"));
         SETTING_DEFINITIONS.put("import.upload-timeout-hours",
                 new SettingDefinition("geopulse.import.upload-timeout-hours", "2", ValueType.INTEGER, "import", "Upload session timeout (hours)"));
+        SETTING_DEFINITIONS.put("import.transaction-timeout-minutes",
+                new SettingDefinition("geopulse.import.transaction-timeout-minutes", "1440", ValueType.INTEGER, "import", "Maximum transaction duration for one import job"));
+        SETTING_DEFINITIONS.put("import.upload-cleanup-minutes",
+                new SettingDefinition("geopulse.import.upload-cleanup-minutes", "15", ValueType.INTEGER, "import", "How often expired chunked upload sessions are cleaned up"));
+
+        // GeoNames import settings
+        SETTING_DEFINITIONS.put("import.geonames.cities.enabled",
+                new SettingDefinition("geopulse.geonames.import.enabled", "true", ValueType.BOOLEAN, "import", "Enable GeoNames city dataset import"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.url",
+                new SettingDefinition("geopulse.geonames.import.url", "https://download.geonames.org/export/dump/cities500.zip", ValueType.STRING, "import", "GeoNames city dataset archive URL"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.batch-size",
+                new SettingDefinition("geopulse.geonames.import.batch-size", "1000", ValueType.INTEGER, "import", "GeoNames city import batch size"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.min-row-threshold",
+                new SettingDefinition("geopulse.geonames.import.min-row-threshold", "100000", ValueType.INTEGER, "import", "Minimum staged GeoNames city rows required before replacing data"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.force-refresh",
+                new SettingDefinition("geopulse.geonames.import.force-refresh", "false", ValueType.BOOLEAN, "import", "Reimport GeoNames city data even when existing data passes the threshold"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.connect-timeout-seconds",
+                new SettingDefinition("geopulse.geonames.import.connect-timeout-seconds", "20", ValueType.INTEGER, "import", "GeoNames city download connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("import.geonames.cities.read-timeout-seconds",
+                new SettingDefinition("geopulse.geonames.import.read-timeout-seconds", "300", ValueType.INTEGER, "import", "GeoNames city download read timeout in seconds"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.enabled",
+                new SettingDefinition("geopulse.geonames.country-import.enabled", "true", ValueType.BOOLEAN, "import", "Enable GeoNames country dataset import"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.url",
+                new SettingDefinition("geopulse.geonames.country-import.url", "https://download.geonames.org/export/dump/countryInfo.txt", ValueType.STRING, "import", "GeoNames country dataset URL"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.batch-size",
+                new SettingDefinition("geopulse.geonames.country-import.batch-size", "200", ValueType.INTEGER, "import", "GeoNames country import batch size"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.min-row-threshold",
+                new SettingDefinition("geopulse.geonames.country-import.min-row-threshold", "200", ValueType.INTEGER, "import", "Minimum staged GeoNames country rows required before replacing data"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.force-refresh",
+                new SettingDefinition("geopulse.geonames.country-import.force-refresh", "false", ValueType.BOOLEAN, "import", "Reimport GeoNames country data even when existing data passes the threshold"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.connect-timeout-seconds",
+                new SettingDefinition("geopulse.geonames.country-import.connect-timeout-seconds", "20", ValueType.INTEGER, "import", "GeoNames country download connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("import.geonames.countries.read-timeout-seconds",
+                new SettingDefinition("geopulse.geonames.country-import.read-timeout-seconds", "120", ValueType.INTEGER, "import", "GeoNames country download read timeout in seconds"));
 
         // Streaming batch sizes for each format
         SETTING_DEFINITIONS.put("import.geojson-streaming-batch-size",
@@ -268,6 +330,30 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
         SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
                 new SettingDefinition("geopulse.timeline.view.item-limit", "150", ValueType.INTEGER, "system", "Max timeline items in view"));
+        SETTING_DEFINITIONS.put("system.version-check.github-api-url",
+                new SettingDefinition("geopulse.version-check.github-api-url", "https://api.github.com/repos/tess1o/geopulse/releases/latest", ValueType.STRING, "system", "GitHub API URL used to check for GeoPulse updates"));
+        SETTING_DEFINITIONS.put("system.version-check.release-url",
+                new SettingDefinition("geopulse.version-check.release-url", "https://github.com/tess1o/geopulse/releases", ValueType.STRING, "system", "Fallback release page URL for update notifications"));
+        SETTING_DEFINITIONS.put("system.version-check.cache-ttl-minutes",
+                new SettingDefinition("geopulse.version-check.cache-ttl-minutes", "60", ValueType.INTEGER, "system", "Minutes to cache version update checks"));
+        SETTING_DEFINITIONS.put("system.version-check.connect-timeout-seconds",
+                new SettingDefinition("geopulse.version-check.connect-timeout-seconds", "5", ValueType.INTEGER, "system", "Version check connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("system.version-check.read-timeout-seconds",
+                new SettingDefinition("geopulse.version-check.read-timeout-seconds", "8", ValueType.INTEGER, "system", "Version check read timeout in seconds"));
+        SETTING_DEFINITIONS.put("system.water-dataset.url",
+                new SettingDefinition("geopulse.water-dataset.url", "https://github.com/tess1o/GeoPulse/releases/download/water-surfaces-v1/geopulse-water-surfaces-v1.copy.gz", ValueType.STRING, "system", "Water dataset archive URL used for Boat setup"));
+        SETTING_DEFINITIONS.put("system.water-dataset.sha256",
+                new SettingDefinition("geopulse.water-dataset.sha256", "", ValueType.STRING, "system", "Expected SHA-256 checksum for the water dataset archive"));
+        SETTING_DEFINITIONS.put("system.water-dataset.auto-import",
+                new SettingDefinition("geopulse.water-dataset.auto-import", "true", ValueType.BOOLEAN, "system", "Automatically import the Boat water dataset when needed"));
+        SETTING_DEFINITIONS.put("system.water-dataset.connect-timeout-seconds",
+                new SettingDefinition("geopulse.water-dataset.connect-timeout-seconds", "30", ValueType.INTEGER, "system", "Water dataset download connection timeout in seconds"));
+        SETTING_DEFINITIONS.put("system.water-dataset.download-timeout-hours",
+                new SettingDefinition("geopulse.water-dataset.download-timeout-hours", "6", ValueType.INTEGER, "system", "Maximum duration for a water dataset download"));
+        SETTING_DEFINITIONS.put("system.water-dataset.download-stall-timeout-seconds",
+                new SettingDefinition("geopulse.water-dataset.download-stall-timeout-seconds", "120", ValueType.INTEGER, "system", "Seconds without downloaded bytes before the water dataset download is treated as stalled"));
+        SETTING_DEFINITIONS.put("system.water-dataset.setup-start-timeout-minutes",
+                new SettingDefinition("geopulse.water-dataset.setup-start-timeout-minutes", "5", ValueType.INTEGER, "system", "Minutes before a queued Boat setup job is considered failed to start"));
         SETTING_DEFINITIONS.put("system.notifications.apprise.enabled",
                 new SettingDefinition("geopulse.notifications.apprise.enabled", "false", ValueType.BOOLEAN, "system", "Enable/disable Apprise external notifications"));
         SETTING_DEFINITIONS.put("system.notifications.apprise.api-url",
@@ -349,6 +435,19 @@ public class SystemSettingsService {
 
     public TemperatureUnit getDefaultTemperatureUnit() {
         return parseTemperatureUnitOrDefault(getValue(DEFAULT_TEMPERATURE_UNIT_KEY));
+    }
+
+    public Map<String, SettingDefinition> getSettingDefinitions() {
+        return Collections.unmodifiableMap(SETTING_DEFINITIONS);
+    }
+
+    public void validateValueForImport(String key, String value) {
+        SettingDefinition def = SETTING_DEFINITIONS.get(key);
+        if (def == null) {
+            throw new IllegalArgumentException("Unknown setting key: " + key);
+        }
+        validateValue(value, def.valueType());
+        validateSettingConstraints(key, value);
     }
 
     /**
@@ -567,7 +666,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "weather", "map-matching", "gps", "import", "export", "system")) {
+        for (String category : List.of("auth", "geocoding", "weather", "map-matching", "ai", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 
@@ -638,6 +737,18 @@ public class SystemSettingsService {
                 throw new IllegalArgumentException("Setting " + key + " must be between 0 and 5");
             }
         }
+        if (key.startsWith("weather.") && SETTING_DEFINITIONS.get(key).valueType() == ValueType.INTEGER
+                && !"weather.quota.daily-request-limit".equals(key)
+                && !"weather.quota.ongoing-reserve".equals(key)
+                && !"weather.coordinate-precision".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 1) {
+                throw new IllegalArgumentException("Setting " + key + " must be at least 1");
+            }
+        }
+        if (key.startsWith("weather.") && (key.endsWith("-url") || key.endsWith(".url"))) {
+            validateOptionalHttpUrl(key, value);
+        }
         if ("weather.primary-provider".equals(key) || "weather.secondary-provider".equals(key)) {
             String normalized = value == null ? "" : value.trim().replace('-', '_').toUpperCase(Locale.ROOT);
             if (!normalized.isBlank()
@@ -672,6 +783,64 @@ public class SystemSettingsService {
             if (parsed > 100) {
                 throw new IllegalArgumentException("Setting " + key + " must be at most 100");
             }
+        }
+        if (key.startsWith("auth.oidc.") && key.endsWith("-url")) {
+            validateOptionalHttpUrl(key, value);
+        }
+        if ("auth.oidc.jwks-cache.ttl-hours".equals(key)) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+        if (key.startsWith("geocoding.reconcile.") || "geocoding.cache.max-bbox-area-km2".equals(key)) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+        if (key.startsWith("import.geonames.") && key.endsWith(".url")) {
+            validateRequiredHttpUrl(key, value);
+        }
+        if (key.startsWith("import.geonames.") && SETTING_DEFINITIONS.get(key).valueType() == ValueType.INTEGER) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+        if ("import.transaction-timeout-minutes".equals(key) || "import.upload-cleanup-minutes".equals(key)) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+        if (key.startsWith("system.version-check.") && key.endsWith("-url")) {
+            validateRequiredHttpUrl(key, value);
+        }
+        if (key.startsWith("system.version-check.") && SETTING_DEFINITIONS.get(key).valueType() == ValueType.INTEGER) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+        if ("system.water-dataset.url".equals(key)) {
+            validateRequiredHttpUrl(key, value);
+        }
+        if ("system.water-dataset.sha256".equals(key)) {
+            String trimmed = value == null ? "" : value.trim();
+            if (!trimmed.isBlank() && !trimmed.matches("^[a-fA-F0-9]{64}$")) {
+                throw new IllegalArgumentException("Setting " + key + " must be a SHA-256 hex digest");
+            }
+        }
+        if (key.startsWith("system.water-dataset.") && SETTING_DEFINITIONS.get(key).valueType() == ValueType.INTEGER) {
+            requireIntegerAtLeast(key, value, 1);
+        }
+    }
+
+    private void requireIntegerAtLeast(String key, String value, int minimum) {
+        int parsed = Integer.parseInt(value);
+        if (parsed < minimum) {
+            throw new IllegalArgumentException("Setting " + key + " must be at least " + minimum);
+        }
+    }
+
+    private void validateOptionalHttpUrl(String key, String value) {
+        String trimmed = value == null ? "" : value.trim();
+        if (!trimmed.isBlank()) {
+            validateRequiredHttpUrl(key, trimmed);
+        }
+    }
+
+    private void validateRequiredHttpUrl(String key, String value) {
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isBlank()
+                || (!trimmed.startsWith("http://") && !trimmed.startsWith("https://"))) {
+            throw new IllegalArgumentException("Setting " + key + " must start with http:// or https://");
         }
     }
 

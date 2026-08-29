@@ -7,6 +7,11 @@ import org.github.tess1o.geopulse.admin.model.*;
 @RegisterForReflection(
         targets = {
                 // DTOs
+                AdminSettingsBackupDto.class,
+                AdminSettingsBackupDto.SettingBackupDto.class,
+                AdminSettingsBackupDto.OidcProviderBackupDto.class,
+                AdminSettingsBackupDto.CustomGeocodingProviderBackupDto.class,
+                AdminSettingsImportResult.class,
                 BulkUpdateRequest.class,
                 CreateOidcProviderRequest.class,
                 OidcProviderResponse.class,

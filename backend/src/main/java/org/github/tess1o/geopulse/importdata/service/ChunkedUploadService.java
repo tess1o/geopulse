@@ -15,6 +15,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +45,7 @@ public class ChunkedUploadService {
     String chunksDirectory;
 
     private final ConcurrentHashMap<UUID, ChunkedUploadSession> activeSessions = new ConcurrentHashMap<>();
+    private volatile Instant lastUploadCleanupAt = Instant.EPOCH;
 
     @PostConstruct
     void initTempDirectory() {
@@ -65,7 +68,7 @@ public class ChunkedUploadService {
             log.info("  Chunk size: {} MB", getChunkSizeBytes());
             log.info("  Max file size: {} GB", getMaxFileSizeBytes());
             log.info("  Session timeout: {} hours", getSessionTimeoutHours());
-            log.info("  Cleanup interval: {} minutes", uploadCleanupMinutes);
+            log.info("  Cleanup interval: {} minutes", getUploadCleanupMinutes());
 
             // Clean up any orphaned directories from previous runs
             cleanupOrphanedDirectories();
@@ -330,8 +333,15 @@ public class ChunkedUploadService {
     /**
      * Scheduled cleanup of expired upload sessions
      */
-    @Scheduled(every = "${geopulse.import.upload-cleanup-minutes}m")
+    @Scheduled(every = "1m")
     void cleanupExpiredSessions() {
+        Instant now = Instant.now();
+        int cleanupMinutes = getUploadCleanupMinutes();
+        if (Duration.between(lastUploadCleanupAt, now).toMinutes() < cleanupMinutes) {
+            return;
+        }
+        lastUploadCleanupAt = now;
+
         List<ChunkedUploadSession> expiredSessions = activeSessions.values().stream()
                 .filter(ChunkedUploadSession::isExpired)
                 .toList();
@@ -360,6 +370,12 @@ public class ChunkedUploadService {
      */
     public long getMaxFileSizeBytes() {
         return settingsService.getInteger("import.max-file-size-gb") * 1024L * 1024L * 1024L;
+    }
+
+    private int getUploadCleanupMinutes() {
+        return Math.max(1, settingsService == null
+                ? uploadCleanupMinutes
+                : settingsService.getInteger("import.upload-cleanup-minutes"));
     }
 
     /**

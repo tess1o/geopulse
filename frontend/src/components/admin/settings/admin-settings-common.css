@@ -60,6 +60,18 @@
   text-align: right;
 }
 
+.advanced-settings {
+  margin: 1rem 0;
+  border: 1px solid var(--gp-border-light);
+  border-radius: 6px;
+}
+
+.advanced-settings summary {
+  padding: 1rem;
+  cursor: pointer;
+  font-weight: 800;
+}
+
 /* Text Utilities */
 .text-muted {
   color: var(--text-color-secondary);

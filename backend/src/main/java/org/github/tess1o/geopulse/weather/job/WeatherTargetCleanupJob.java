@@ -44,6 +44,8 @@ public class WeatherTargetCleanupJob {
             return;
         }
 
+        int completedRetentionDays = configurationService.completedTargetRetentionDays();
+        int failedRetentionDays = configurationService.failedTargetRetentionDays();
         log.info("Weather target cleanup job triggered: completedRetentionDays={}, failedRetentionDays={}",
                 completedRetentionDays, failedRetentionDays);
         try {

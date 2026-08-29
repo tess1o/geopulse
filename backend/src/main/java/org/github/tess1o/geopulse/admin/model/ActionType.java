@@ -7,6 +7,8 @@ public enum ActionType {
     // Settings
     SETTING_CHANGED,
     SETTING_RESET,
+    ADMIN_SETTINGS_EXPORTED,
+    ADMIN_SETTINGS_IMPORTED,
 
     // User management
     USER_ENABLED,

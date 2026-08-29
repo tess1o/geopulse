@@ -58,6 +58,7 @@ import AISettingsTab from '@/components/admin/settings/tabs/AISettingsTab.vue'
 import GPSProcessingSettingsTab from '@/components/admin/settings/tabs/GPSProcessingSettingsTab.vue'
 import ImportSettingsTab from '@/components/admin/settings/tabs/ImportSettingsTab.vue'
 import ExportSettingsTab from '@/components/admin/settings/tabs/ExportSettingsTab.vue'
+import AdminSettingsBackupTab from '@/components/admin/settings/tabs/AdminSettingsBackupTab.vue'
 import NotificationsSettingsTab from '@/components/admin/settings/tabs/NotificationsSettingsTab.vue'
 import SystemSettingsTab from '@/components/admin/settings/tabs/SystemSettingsTab.vue'
 
@@ -123,6 +124,11 @@ const tabItems = ref([
     key: 'export'
   },
   {
+    label: 'Settings Backup',
+    icon: 'pi pi-file-export',
+    key: 'settings-backup'
+  },
+  {
     label: 'Notifications',
     icon: 'pi pi-bell',
     key: 'notifications'
@@ -134,7 +140,7 @@ const tabItems = ref([
   }
 ])
 
-const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
+const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'ai', 'gps', 'import', 'export', 'settings-backup', 'notifications', 'system']
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -150,6 +156,7 @@ const currentTabComponent = computed(() => {
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,
     export: ExportSettingsTab,
+    'settings-backup': AdminSettingsBackupTab,
     notifications: NotificationsSettingsTab,
     system: SystemSettingsTab
   }

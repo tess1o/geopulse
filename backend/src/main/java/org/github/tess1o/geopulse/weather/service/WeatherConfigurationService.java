@@ -38,6 +38,13 @@ public class WeatherConfigurationService {
     public static final String COORDINATE_PRECISION = "weather.coordinate-precision";
     public static final String FAILED_TARGET_RETRY_ENABLED = "weather.failed-target-retry.enabled";
     public static final String FAILED_TARGET_RETRY_COOLDOWN_HOURS = "weather.failed-target-retry.cooldown-hours";
+    public static final String OPEN_METEO_CONNECT_TIMEOUT_SECONDS = "weather.open-meteo.connect-timeout-seconds";
+    public static final String OPEN_METEO_READ_TIMEOUT_SECONDS = "weather.open-meteo.read-timeout-seconds";
+    public static final String PIRATE_CONNECT_TIMEOUT_SECONDS = "weather.pirate.connect-timeout-seconds";
+    public static final String PIRATE_READ_TIMEOUT_SECONDS = "weather.pirate.read-timeout-seconds";
+    public static final String TARGETS_COMPLETED_RETENTION_DAYS = "weather.targets.completed-retention-days";
+    public static final String TARGETS_FAILED_RETENTION_DAYS = "weather.targets.failed-retention-days";
+    public static final String TARGETS_IN_PROGRESS_TIMEOUT_MINUTES = "weather.targets.in-progress-timeout-minutes";
 
     @Inject
     SystemSettingsService settingsService;
@@ -170,6 +177,34 @@ public class WeatherConfigurationService {
 
     public int failedTargetRetryCooldownHours() {
         return Math.max(1, settingsService.getInteger(FAILED_TARGET_RETRY_COOLDOWN_HOURS));
+    }
+
+    public int openMeteoConnectTimeoutSeconds() {
+        return Math.max(1, settingsService.getInteger(OPEN_METEO_CONNECT_TIMEOUT_SECONDS));
+    }
+
+    public int openMeteoReadTimeoutSeconds() {
+        return Math.max(1, settingsService.getInteger(OPEN_METEO_READ_TIMEOUT_SECONDS));
+    }
+
+    public int pirateConnectTimeoutSeconds() {
+        return Math.max(1, settingsService.getInteger(PIRATE_CONNECT_TIMEOUT_SECONDS));
+    }
+
+    public int pirateReadTimeoutSeconds() {
+        return Math.max(1, settingsService.getInteger(PIRATE_READ_TIMEOUT_SECONDS));
+    }
+
+    public int completedTargetRetentionDays() {
+        return Math.max(1, settingsService.getInteger(TARGETS_COMPLETED_RETENTION_DAYS));
+    }
+
+    public int failedTargetRetentionDays() {
+        return Math.max(1, settingsService.getInteger(TARGETS_FAILED_RETENTION_DAYS));
+    }
+
+    public int inProgressTargetTimeoutMinutes() {
+        return Math.max(1, settingsService.getInteger(TARGETS_IN_PROGRESS_TIMEOUT_MINUTES));
     }
 
     public double bucketCoordinate(double value) {

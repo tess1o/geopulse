@@ -21,6 +21,14 @@ public final class ExportImportConstants {
         public static final String USER_INFO = "userinfo";
         public static final String LOCATION_SOURCES = "locationsources";
         public static final String REVERSE_GEOCODING_LOCATION = "reversegeocodinglocation";
+        public static final String PERIOD_TAGS = "periodtags";
+        public static final String TIMELINE_OVERRIDES = "timelineoverrides";
+        public static final String TRIP_WORKSPACE = "tripworkspace";
+        public static final String NOTIFICATION_TEMPLATES = "notificationtemplates";
+        public static final String GEOFENCING = "geofencing";
+        public static final String NOTES = "notes";
+        public static final String WEATHER_SAMPLES = "weathersamples";
+        public static final String MAP_MATCHING = "mapmatching";
     }
 
     /**
@@ -35,6 +43,14 @@ public final class ExportImportConstants {
         public static final String USER_INFO = "user-info.json";
         public static final String LOCATION_SOURCES = "location-sources.json";
         public static final String REVERSE_GEOCODING = "reverse-geocoding.json";
+        public static final String PERIOD_TAGS = "period-tags.json";
+        public static final String TIMELINE_OVERRIDES = "timeline-overrides.json";
+        public static final String TRIP_WORKSPACE = "trip-workspace.json";
+        public static final String NOTIFICATION_TEMPLATES = "notification-templates.json";
+        public static final String GEOFENCING = "geofencing.json";
+        public static final String NOTES = "notes.json";
+        public static final String WEATHER_SAMPLES = "weather-samples.json";
+        public static final String MAP_MATCHING = "map-matching.json";
     }
 
     /**

@@ -242,6 +242,22 @@ const adminService = {
         return apiService.post(`/admin/timeline-regeneration-campaigns/${campaignId}/retry-failed`, {});
     },
 
+    // ==================== Admin Settings Backup ====================
+
+    async exportAdminSettingsBackup() {
+        return apiService.download('/admin/settings-backup/export');
+    },
+
+    async importAdminSettingsBackup(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return unwrapApiResponse(await apiService.post('/admin/settings-backup/import', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        }));
+    },
+
     // ==================== Audit Log Management ====================
 
     /**

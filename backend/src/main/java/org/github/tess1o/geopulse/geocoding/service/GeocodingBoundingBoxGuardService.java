@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.io.WKTWriter;
 
@@ -20,6 +21,9 @@ public class GeocodingBoundingBoxGuardService {
 
     @ConfigProperty(name = "geocoding.cache.max-bbox-area-km2", defaultValue = "5000")
     double maxBboxAreaKm2;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     private final EntityManager entityManager;
     private final WKTWriter wktWriter = new WKTWriter();
@@ -52,13 +56,17 @@ public class GeocodingBoundingBoxGuardService {
                 providerName,
                 entityId,
                 areaSquareMeters / SQUARE_METERS_PER_SQUARE_KILOMETER,
-                maxBboxAreaKm2);
+                maxBboxAreaKm2());
 
         return null;
     }
 
     public double getMaxBboxAreaSquareMeters() {
-        return Math.max(0d, maxBboxAreaKm2) * SQUARE_METERS_PER_SQUARE_KILOMETER;
+        return Math.max(0d, maxBboxAreaKm2()) * SQUARE_METERS_PER_SQUARE_KILOMETER;
+    }
+
+    private double maxBboxAreaKm2() {
+        return settingsService == null ? maxBboxAreaKm2 : settingsService.getInteger("geocoding.cache.max-bbox-area-km2");
     }
 
     private Double calculateAreaSquareMeters(Polygon boundingBox) {

@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 
 import java.io.IOException;
 import java.net.URI;
@@ -35,6 +36,8 @@ public class VersionStatusService {
     private final ReleaseFetcher releaseFetcher;
     private final String currentVersion;
     private final String defaultReleaseUrl;
+    private final ObjectMapper objectMapper;
+    private final SystemSettingsService settingsService;
     private final Object lock = new Object();
 
     private volatile CachedRelease cachedRelease;
@@ -43,24 +46,15 @@ public class VersionStatusService {
     public VersionStatusService(
             ObjectMapper objectMapper,
             @ConfigProperty(name = "quarkus.application.version") String currentVersion,
-            @ConfigProperty(name = "geopulse.version-check.github-api-url", defaultValue = DEFAULT_GITHUB_LATEST_RELEASE_URL) String githubLatestReleaseUrl,
-            @ConfigProperty(name = "geopulse.version-check.release-url", defaultValue = DEFAULT_RELEASES_URL) String defaultReleaseUrl,
-            @ConfigProperty(name = "geopulse.version-check.cache-ttl-minutes", defaultValue = "60") long cacheTtlMinutes,
-            @ConfigProperty(name = "geopulse.version-check.connect-timeout-seconds", defaultValue = "5") long connectTimeoutSeconds,
-            @ConfigProperty(name = "geopulse.version-check.read-timeout-seconds", defaultValue = "8") long readTimeoutSeconds
+            SystemSettingsService settingsService
     ) {
-        this(
-                currentVersion,
-                Clock.systemUTC(),
-                Duration.ofMinutes(Math.max(1, cacheTtlMinutes)),
-                defaultReleaseUrl,
-                new GitHubReleaseHttpFetcher(
-                        objectMapper,
-                        githubLatestReleaseUrl,
-                        Duration.ofSeconds(Math.max(1, connectTimeoutSeconds)),
-                        Duration.ofSeconds(Math.max(1, readTimeoutSeconds))
-                )
-        );
+        this.currentVersion = currentVersion;
+        this.clock = Clock.systemUTC();
+        this.cacheTtl = null;
+        this.defaultReleaseUrl = null;
+        this.releaseFetcher = null;
+        this.objectMapper = objectMapper;
+        this.settingsService = settingsService;
     }
 
     VersionStatusService(
@@ -75,13 +69,17 @@ public class VersionStatusService {
         this.cacheTtl = cacheTtl;
         this.defaultReleaseUrl = sanitizeReleaseUrl(defaultReleaseUrl);
         this.releaseFetcher = releaseFetcher;
+        this.objectMapper = null;
+        this.settingsService = null;
     }
 
     public VersionStatusResponse getVersionStatus() {
         Instant now = clock.instant();
         CachedRelease snapshot = cachedRelease;
+        Duration effectiveCacheTtl = cacheTtl();
+        String effectiveDefaultReleaseUrl = defaultReleaseUrl();
 
-        if (isFresh(snapshot, now)) {
+        if (isFresh(snapshot, now, effectiveCacheTtl)) {
             return toResponse(snapshot, SOURCE_STATUS_FRESH);
         }
 
@@ -89,13 +87,13 @@ public class VersionStatusService {
             now = clock.instant();
             snapshot = cachedRelease;
 
-            if (isFresh(snapshot, now)) {
+            if (isFresh(snapshot, now, effectiveCacheTtl)) {
                 return toResponse(snapshot, SOURCE_STATUS_FRESH);
             }
 
             try {
-                GitHubReleaseInfo latest = releaseFetcher.fetchLatestRelease();
-                CachedRelease refreshed = CachedRelease.from(latest, now, defaultReleaseUrl);
+                GitHubReleaseInfo latest = releaseFetcher().fetchLatestRelease();
+                CachedRelease refreshed = CachedRelease.from(latest, now, effectiveDefaultReleaseUrl);
                 cachedRelease = refreshed;
                 return toResponse(refreshed, SOURCE_STATUS_FRESH);
             } catch (Exception exception) {
@@ -112,7 +110,7 @@ public class VersionStatusService {
                         safeCurrentVersion(),
                         null,
                         false,
-                        defaultReleaseUrl,
+                        effectiveDefaultReleaseUrl,
                         null,
                         SOURCE_STATUS_UNAVAILABLE
                 );
@@ -120,8 +118,34 @@ public class VersionStatusService {
         }
     }
 
-    private boolean isFresh(CachedRelease snapshot, Instant now) {
-        return snapshot != null && now.isBefore(snapshot.fetchedAt().plus(cacheTtl));
+    private boolean isFresh(CachedRelease snapshot, Instant now, Duration effectiveCacheTtl) {
+        return snapshot != null && now.isBefore(snapshot.fetchedAt().plus(effectiveCacheTtl));
+    }
+
+    private Duration cacheTtl() {
+        if (settingsService == null) {
+            return cacheTtl;
+        }
+        return Duration.ofMinutes(Math.max(1, settingsService.getInteger("system.version-check.cache-ttl-minutes")));
+    }
+
+    private String defaultReleaseUrl() {
+        if (settingsService == null) {
+            return defaultReleaseUrl;
+        }
+        return sanitizeReleaseUrl(settingsService.getString("system.version-check.release-url"));
+    }
+
+    private ReleaseFetcher releaseFetcher() {
+        if (settingsService == null) {
+            return releaseFetcher;
+        }
+        return new GitHubReleaseHttpFetcher(
+                objectMapper,
+                settingsService.getString("system.version-check.github-api-url"),
+                Duration.ofSeconds(Math.max(1, settingsService.getInteger("system.version-check.connect-timeout-seconds"))),
+                Duration.ofSeconds(Math.max(1, settingsService.getInteger("system.version-check.read-timeout-seconds")))
+        );
     }
 
     private VersionStatusResponse toResponse(CachedRelease snapshot, String sourceStatus) {

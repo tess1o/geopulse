@@ -8,6 +8,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStartResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStatusDTO;
@@ -68,6 +69,9 @@ public class BoatSetupService {
     @Inject
     @Identifier("timeline-processing")
     ExecutorService executorService;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     @ConfigProperty(name = "geopulse.water-dataset.url")
     Optional<String> datasetUrl;
@@ -218,7 +222,7 @@ public class BoatSetupService {
 
         String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
         if (datasetVersion == null) {
-            if (!autoImport) {
+            if (!autoImport()) {
                 throw new IllegalStateException("Boat setup requires water dataset import. Enable auto import or configure "
                         + "GEOPULSE_WATER_DATASET_LOCAL_PATH. See " + DOCS_URL);
             }
@@ -635,7 +639,7 @@ public class BoatSetupService {
                           AND updated_at < NOW() - (:timeoutMinutes * INTERVAL '1 minute')
                         """)
                 .setParameter("userId", userId)
-                .setParameter("timeoutMinutes", positiveOrDefault(setupStartTimeoutMinutes, 5))
+                .setParameter("timeoutMinutes", positiveOrDefault(setupStartTimeoutMinutes(), 5))
                 .setParameter("errorMessage", "Boat setup did not make progress after starting. Retry setup; if this repeats, check backend logs and offline setup instructions.")
                 .setParameter("docsUrl", DOCS_URL)
                 .executeUpdate());
@@ -872,10 +876,16 @@ public class BoatSetupService {
     }
 
     private String configuredDatasetUrl() {
+        if (settingsService != null) {
+            return settingsService.getString("system.water-dataset.url").trim();
+        }
         return normalizedConfigValue(datasetUrl);
     }
 
     private String configuredDatasetSha256() {
+        if (settingsService != null) {
+            return settingsService.getString("system.water-dataset.sha256").trim();
+        }
         return normalizedConfigValue(datasetSha256);
     }
 
@@ -895,15 +905,35 @@ public class BoatSetupService {
     }
 
     private Duration configuredConnectTimeout() {
-        return Duration.ofSeconds(positiveOrDefault(datasetConnectTimeoutSeconds, 30));
+        return Duration.ofSeconds(positiveOrDefault(datasetConnectTimeoutSeconds(), 30));
     }
 
     private Duration configuredDownloadTimeout() {
-        return Duration.ofHours(positiveOrDefault(datasetDownloadTimeoutHours, 6));
+        return Duration.ofHours(positiveOrDefault(datasetDownloadTimeoutHours(), 6));
     }
 
     private Duration configuredDownloadStallTimeout() {
-        return Duration.ofSeconds(positiveOrDefault(datasetDownloadStallTimeoutSeconds, 120));
+        return Duration.ofSeconds(positiveOrDefault(datasetDownloadStallTimeoutSeconds(), 120));
+    }
+
+    private boolean autoImport() {
+        return settingsService == null ? autoImport : settingsService.getBoolean("system.water-dataset.auto-import");
+    }
+
+    private long datasetConnectTimeoutSeconds() {
+        return settingsService == null ? datasetConnectTimeoutSeconds : settingsService.getInteger("system.water-dataset.connect-timeout-seconds");
+    }
+
+    private long datasetDownloadTimeoutHours() {
+        return settingsService == null ? datasetDownloadTimeoutHours : settingsService.getInteger("system.water-dataset.download-timeout-hours");
+    }
+
+    private long datasetDownloadStallTimeoutSeconds() {
+        return settingsService == null ? datasetDownloadStallTimeoutSeconds : settingsService.getInteger("system.water-dataset.download-stall-timeout-seconds");
+    }
+
+    private long setupStartTimeoutMinutes() {
+        return settingsService == null ? setupStartTimeoutMinutes : settingsService.getInteger("system.water-dataset.setup-start-timeout-minutes");
     }
 
     private long positiveOrDefault(long value, long defaultValue) {

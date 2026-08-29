@@ -274,8 +274,11 @@ public class PirateWeatherClient implements WeatherProviderClient {
         if (url == null || url.isBlank()) {
             throw new IllegalArgumentException("Pirate Weather URL is not configured");
         }
+        int connectTimeout = Math.max(1, configurationService.pirateConnectTimeoutSeconds());
+        int readTimeout = Math.max(1, configurationService.pirateReadTimeoutSeconds());
         java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
-                configurationService.pirateBaseUrl(), configurationService.pirateTimeMachineUrl()));
+                clientCacheKey(configurationService.pirateBaseUrl(), connectTimeout, readTimeout),
+                clientCacheKey(configurationService.pirateTimeMachineUrl(), connectTimeout, readTimeout)));
         clients.entrySet().removeIf(entry -> {
             if (activeUrls.contains(entry.getKey())) {
                 return false;
@@ -283,11 +286,15 @@ public class PirateWeatherClient implements WeatherProviderClient {
             closeClient(entry.getValue());
             return true;
         });
-        return clients.computeIfAbsent(url, key -> RestClientBuilder.newBuilder()
-                .baseUri(URI.create(key))
-                .connectTimeout(Math.max(1, connectTimeoutSeconds), TimeUnit.SECONDS)
-                .readTimeout(Math.max(1, readTimeoutSeconds), TimeUnit.SECONDS)
+        return clients.computeIfAbsent(clientCacheKey(url, connectTimeout, readTimeout), key -> RestClientBuilder.newBuilder()
+                .baseUri(URI.create(url))
+                .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+                .readTimeout(readTimeout, TimeUnit.SECONDS)
                 .build(PirateWeatherRestClient.class));
+    }
+
+    private String clientCacheKey(String url, int connectTimeout, int readTimeout) {
+        return url + "|" + connectTimeout + "|" + readTimeout;
     }
 
     private PirateWeatherResponse readPayload(Response response) {
