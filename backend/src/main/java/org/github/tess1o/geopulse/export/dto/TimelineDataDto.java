@@ -64,6 +64,16 @@ public class TimelineDataDto {
          */
         private Long duration;
         private String transportMode;
+        private String movementTypeSource;
+        private Double avgGpsSpeed;
+        private Double maxGpsSpeed;
+        private Double speedVariance;
+        private Integer lowAccuracyPointsCount;
+        private Double waterDistanceMeters;
+        private Double waterDistanceRatio;
+        private Double longestWaterSegmentMeters;
+        private Integer waterSampleCount;
+        private Boolean waterEvidenceAvailable;
     }
     
     @Data

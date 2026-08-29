@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.export.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -13,10 +14,30 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
+import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
+import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
+import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
+import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
+import org.github.tess1o.geopulse.notes.repository.TimelineNoteRepository;
+import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
+import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
+import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
+import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
+import org.github.tess1o.geopulse.trips.repository.TripRepository;
+import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
+import org.github.tess1o.geopulse.weather.repository.WeatherSampleRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -44,6 +65,9 @@ public class ExportDataCollectorService {
     GpsPointRepository gpsPointRepository;
 
     @Inject
+    EntityManager entityManager;
+
+    @Inject
     TimelineStayRepository timelineStayRepository;
 
     @Inject
@@ -63,6 +87,48 @@ public class ExportDataCollectorService {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    PeriodTagRepository periodTagRepository;
+
+    @Inject
+    TimelineTripMovementOverrideRepository tripMovementOverrideRepository;
+
+    @Inject
+    TimelineDataGapStayOverrideRepository dataGapStayOverrideRepository;
+
+    @Inject
+    TripRepository tripRepository;
+
+    @Inject
+    NotificationTemplateRepository notificationTemplateRepository;
+
+    @Inject
+    GeofenceRuleRepository geofenceRuleRepository;
+
+    @Inject
+    TimelineNoteRepository timelineNoteRepository;
+
+    @Inject
+    WeatherSampleRepository weatherSampleRepository;
+
+    public List<TimelineTripPathMatchEntity> collectMapMatchingPathMatches(ExportJob job) {
+        return entityManager.createQuery("""
+                SELECT pathMatch FROM TimelineTripPathMatchEntity pathMatch
+                JOIN FETCH pathMatch.trip trip
+                WHERE pathMatch.user.id = :userId
+                  AND pathMatch.status = :status
+                  AND pathMatch.matchedSegmentsJson IS NOT NULL
+                  AND trip.timestamp >= :startDate
+                  AND trip.timestamp <= :endDate
+                ORDER BY trip.timestamp ASC, pathMatch.id ASC
+                """, TimelineTripPathMatchEntity.class)
+                .setParameter("userId", job.getUserId())
+                .setParameter("status", MapMatchingStatus.MATCHED)
+                .setParameter("startDate", job.getDateRange().getStartDate())
+                .setParameter("endDate", job.getDateRange().getEndDate())
+                .getResultList();
+    }
 
     /**
      * Collects GPS points for a specific time range (used for trip/stay processing).
@@ -199,6 +265,82 @@ public class ExportDataCollectorService {
 
         log.debug("Collected {} reverse geocoding locations", locations.size());
         return locations;
+    }
+
+    public List<PeriodTagEntity> collectPeriodTags(ExportJob job) {
+        var startDate = job.getDateRange().getStartDate();
+        var endDate = job.getDateRange().getEndDate();
+        return periodTagRepository.findByUserId(job.getUserId()).stream()
+                .filter(tag -> !tag.getStartTime().isAfter(endDate))
+                .filter(tag -> tag.getEndTime() == null || !tag.getEndTime().isBefore(startDate))
+                .toList();
+    }
+
+    public List<TimelineTripMovementOverrideEntity> collectTripMovementOverrides(UUID userId) {
+        return tripMovementOverrideRepository.findByUserId(userId);
+    }
+
+    public List<TimelineDataGapStayOverrideEntity> collectDataGapStayOverrides(UUID userId) {
+        return dataGapStayOverrideRepository.findByUserId(userId);
+    }
+
+    public List<TripEntity> collectTrips(UUID userId) {
+        return tripRepository.findByUserId(userId);
+    }
+
+    public List<TripPlanItemEntity> collectTripPlanItems(List<Long> tripIds) {
+        if (tripIds == null || tripIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.createQuery(
+                        "SELECT item FROM TripPlanItemEntity item " +
+                                "WHERE item.trip.id IN :tripIds " +
+                                "ORDER BY item.trip.id, item.orderIndex ASC, item.createdAt ASC",
+                        TripPlanItemEntity.class)
+                .setParameter("tripIds", tripIds)
+                .getResultList();
+    }
+
+    public List<TripCollaboratorEntity> collectTripCollaborators(List<Long> tripIds) {
+        if (tripIds == null || tripIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.createQuery(
+                        "SELECT collaborator FROM TripCollaboratorEntity collaborator " +
+                                "JOIN FETCH collaborator.collaborator " +
+                                "WHERE collaborator.trip.id IN :tripIds " +
+                                "ORDER BY collaborator.trip.id, collaborator.createdAt ASC",
+                        TripCollaboratorEntity.class)
+                .setParameter("tripIds", tripIds)
+                .getResultList();
+    }
+
+    public List<NotificationTemplateEntity> collectNotificationTemplates(UUID userId) {
+        return notificationTemplateRepository.findByUser(userId);
+    }
+
+    public List<GeofenceRuleEntity> collectGeofenceRules(UUID userId) {
+        return geofenceRuleRepository.findByOwner(userId);
+    }
+
+    public List<TimelineNoteEntity> collectNotes(ExportJob job) {
+        return timelineNoteRepository.findByUserIdAndTimeRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate()
+        );
+    }
+
+    public List<WeatherSampleEntity> collectWeatherSamples(ExportJob job) {
+        return weatherSampleRepository.findByUserAndRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate(),
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     /**

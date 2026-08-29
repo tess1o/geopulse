@@ -49,6 +49,7 @@ public final class ExportImportConstants {
      * Export version constants
      */
     public static final class Versions {
-        public static final String CURRENT = "1.0";
+        public static final String CURRENT = "1.1";
+        public static final String V1_0 = "1.0";
     }
 }

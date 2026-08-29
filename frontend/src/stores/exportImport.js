@@ -635,6 +635,14 @@ export const useExportImportStore = defineStore('exportImport', {
                 reversegeocodinglocation: 'Reverse Geocoding Data',
                 locationsources: 'Location Sources',
                 userinfo: 'User Information',
+                periodtags: 'Timeline Labels',
+                timelineoverrides: 'Timeline Overrides',
+                tripworkspace: 'Trip Plans',
+                notificationtemplates: 'Notification Templates',
+                geofencing: 'Geofences',
+                notes: 'Timeline Notes',
+                weathersamples: 'Weather Samples',
+                mapmatching: 'Map Matching',
                 statistics: 'Statistics'
             }
             return displayNames[dataType] || dataType

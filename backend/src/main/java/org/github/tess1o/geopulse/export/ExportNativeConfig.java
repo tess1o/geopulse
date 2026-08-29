@@ -23,5 +23,5 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         ExportDateRange.class,
         ExportResource.ListExportJobsResponse.class
 })
-public class ExportNativeConfig {
+    public class ExportNativeConfig {
 }

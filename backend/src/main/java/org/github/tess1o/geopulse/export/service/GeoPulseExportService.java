@@ -16,7 +16,10 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.ZipOutputStream;
 
 @ApplicationScoped
@@ -125,6 +128,38 @@ public class GeoPulseExportService {
                         break;
                     case ExportImportConstants.DataTypes.LOCATION_SOURCES:
                         addLocationSourcesData(zos, job);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.PERIOD_TAGS:
+                        addPeriodTagsData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.TIMELINE_OVERRIDES:
+                        addTimelineOverridesData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.TRIP_WORKSPACE:
+                        addTripWorkspaceData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES:
+                        addNotificationTemplatesData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.GEOFENCING:
+                        addGeofencingData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.NOTES:
+                        addNotesData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.WEATHER_SAMPLES:
+                        addWeatherSamplesData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.MAP_MATCHING:
+                        addMapMatchingData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.FAVORITES:
@@ -359,5 +394,103 @@ public class GeoPulseExportService {
                 geocodingData);
 
         log.debug("Exported {} reverse geocoding locations", geocodingLocations.size());
+    }
+
+    private void addPeriodTagsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting period tags...");
+        var tags = dataCollectorService.collectPeriodTags(job);
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.PERIOD_TAGS,
+                exportDataMapper.toPeriodTagsDataDto(tags, job)
+        );
+        log.debug("Exported {} period tags", tags.size());
+    }
+
+    private void addTimelineOverridesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting timeline overrides...");
+        var tripOverrides = dataCollectorService.collectTripMovementOverrides(job.getUserId());
+        var gapOverrides = dataCollectorService.collectDataGapStayOverrides(job.getUserId());
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.TIMELINE_OVERRIDES,
+                exportDataMapper.toTimelineOverridesDataDto(tripOverrides, gapOverrides)
+        );
+        log.debug("Exported {} trip movement overrides and {} data-gap stay overrides",
+                tripOverrides.size(), gapOverrides.size());
+    }
+
+    private void addTripWorkspaceData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting trip workspace...");
+        var trips = dataCollectorService.collectTrips(job.getUserId());
+        List<Long> tripIds = trips.stream().map(trip -> trip.getId()).toList();
+        Map<Long, List<org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity>> planItemsByTripId =
+                dataCollectorService.collectTripPlanItems(tripIds).stream()
+                        .collect(Collectors.groupingBy(item -> item.getTrip().getId()));
+        Map<Long, List<org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity>> collaboratorsByTripId =
+                dataCollectorService.collectTripCollaborators(tripIds).stream()
+                        .collect(Collectors.groupingBy(collaborator -> collaborator.getTrip().getId()));
+
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.TRIP_WORKSPACE,
+                exportDataMapper.toTripWorkspaceDataDto(trips, planItemsByTripId, collaboratorsByTripId)
+        );
+        log.debug("Exported {} trip workspace records", trips.size());
+    }
+
+    private void addNotificationTemplatesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting notification templates...");
+        var templates = dataCollectorService.collectNotificationTemplates(job.getUserId());
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES,
+                exportDataMapper.toNotificationTemplatesDataDto(templates)
+        );
+        log.debug("Exported {} notification templates", templates.size());
+    }
+
+    private void addGeofencingData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting geofencing rules...");
+        var rules = dataCollectorService.collectGeofenceRules(job.getUserId());
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.GEOFENCING,
+                exportDataMapper.toGeofencingDataDto(rules)
+        );
+        log.debug("Exported {} geofence rules", rules.size());
+    }
+
+    private void addNotesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting notes...");
+        var notes = dataCollectorService.collectNotes(job);
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.NOTES,
+                exportDataMapper.toNotesDataDto(notes, job)
+        );
+        log.debug("Exported {} notes", notes.size());
+    }
+
+    private void addWeatherSamplesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting weather samples...");
+        var samples = dataCollectorService.collectWeatherSamples(job);
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.WEATHER_SAMPLES,
+                exportDataMapper.toWeatherSamplesDataDto(samples, job)
+        );
+        log.debug("Exported {} weather samples", samples.size());
+    }
+
+    private void addMapMatchingData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting map matching data...");
+        var pathMatches = dataCollectorService.collectMapMatchingPathMatches(job);
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.MAP_MATCHING,
+                exportDataMapper.toMapMatchingDataDto(pathMatches, job)
+        );
+        log.debug("Exported {} map matching path matches", pathMatches.size());
     }
 }

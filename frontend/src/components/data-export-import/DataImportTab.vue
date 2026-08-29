@@ -519,7 +519,21 @@ const clearDataBeforeImport = ref(false)
 const importStartDate = ref(null)
 const importEndDate = ref(null)
 const importOptions = ref({
-  dataTypes: ['rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo']
+  dataTypes: [
+    'rawgps',
+    'favorites',
+    'reversegeocodinglocation',
+    'locationsources',
+    'userinfo',
+    'periodtags',
+    'timelineoverrides',
+    'tripworkspace',
+    'notificationtemplates',
+    'geofencing',
+    'notes',
+    'weathersamples',
+    'mapmatching'
+  ]
 })
 
 // Data types configuration
@@ -553,6 +567,54 @@ const availableDataTypes = ref([
     label: 'User Information',
     description: 'Your profile and preferences (excludes sensitive data)',
     icon: 'pi pi-user'
+  },
+  {
+    key: 'periodtags',
+    label: 'Timeline Labels',
+    description: 'Period tags and timeline labels',
+    icon: 'pi pi-tags'
+  },
+  {
+    key: 'timelineoverrides',
+    label: 'Timeline Overrides',
+    description: 'Manual trip type and data gap corrections',
+    icon: 'pi pi-pencil'
+  },
+  {
+    key: 'tripworkspace',
+    label: 'Trip Plans',
+    description: 'Trips, plans, notes, and collaborators',
+    icon: 'pi pi-briefcase'
+  },
+  {
+    key: 'notificationtemplates',
+    label: 'Notification Templates',
+    description: 'Templates used by geofence notifications',
+    icon: 'pi pi-bell'
+  },
+  {
+    key: 'geofencing',
+    label: 'Geofences',
+    description: 'Geofence rules and monitored subjects',
+    icon: 'pi pi-map-marker'
+  },
+  {
+    key: 'notes',
+    label: 'Timeline Notes',
+    description: 'GeoPulse notes attached to timeline places and dates',
+    icon: 'pi pi-file-edit'
+  },
+  {
+    key: 'weathersamples',
+    label: 'Weather Samples',
+    description: 'Fetched weather observations in the selected range',
+    icon: 'pi pi-cloud'
+  },
+  {
+    key: 'mapmatching',
+    label: 'Map Matching',
+    description: 'Restores completed matched route cache for timeline trips',
+    icon: 'pi pi-directions'
   }
 ])
 

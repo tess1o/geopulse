@@ -14,16 +14,30 @@ import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.*;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.importdata.mapper.ImportDataMapper;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
+import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
+import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
+import org.github.tess1o.geopulse.notes.model.NoteLocationSource;
+import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
+import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
+import org.github.tess1o.geopulse.trips.model.entity.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
+import org.github.tess1o.geopulse.weather.model.WeatherSampleEntity;
+import org.github.tess1o.geopulse.weather.model.WeatherTargetSource;
 import org.locationtech.jts.geom.*;
 
 import java.io.ByteArrayInputStream;
@@ -72,7 +86,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             .build();
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
-
     @Override
     public String getFormat() {
         return ExportImportConstants.Formats.GEOPULSE;
@@ -118,6 +131,30 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         break;
                     case ExportImportConstants.FileNames.REVERSE_GEOCODING:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION);
+                        break;
+                    case ExportImportConstants.FileNames.PERIOD_TAGS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.PERIOD_TAGS);
+                        break;
+                    case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
+                        break;
+                    case ExportImportConstants.FileNames.TRIP_WORKSPACE:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TRIP_WORKSPACE);
+                        break;
+                    case ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES);
+                        break;
+                    case ExportImportConstants.FileNames.GEOFENCING:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.GEOFENCING);
+                        break;
+                    case ExportImportConstants.FileNames.NOTES:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.NOTES);
+                        break;
+                    case ExportImportConstants.FileNames.WEATHER_SAMPLES:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.WEATHER_SAMPLES);
+                        break;
+                    case ExportImportConstants.FileNames.MAP_MATCHING:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.MAP_MATCHING);
                         break;
                     default:
                         log.warn("Unknown file in import: {}", fileName);
@@ -183,17 +220,18 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
     private void processFilesInOrder(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
         int totalProgress = 0;
+        ImportReferenceMaps referenceMaps = new ImportReferenceMaps();
 
         // 1. Import reverse geocoding locations first (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.REVERSE_GEOCODING)) {
-            importReverseGeocodingData(fileContents.get(ExportImportConstants.FileNames.REVERSE_GEOCODING), job);
+            importReverseGeocodingData(fileContents.get(ExportImportConstants.FileNames.REVERSE_GEOCODING), job, referenceMaps);
             totalProgress += 5;
             job.setProgress(totalProgress);
         }
 
         // 2. Import favorites (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
-            importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job);
+            importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job, referenceMaps);
             totalProgress += 10;
             job.setProgress(totalProgress);
         }
@@ -246,13 +284,46 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             totalProgress += 5;
             job.setProgress(totalProgress);
         }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.PERIOD_TAGS)) {
+            importPeriodTagsData(fileContents.get(ExportImportConstants.FileNames.PERIOD_TAGS), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES)) {
+            importTimelineOverridesData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_OVERRIDES), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES)) {
+            importNotificationTemplatesData(fileContents.get(ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TRIP_WORKSPACE)) {
+            importTripWorkspaceData(fileContents.get(ExportImportConstants.FileNames.TRIP_WORKSPACE), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.GEOFENCING)) {
+            importGeofencingData(fileContents.get(ExportImportConstants.FileNames.GEOFENCING), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
+            importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.WEATHER_SAMPLES)) {
+            importWeatherSamplesData(fileContents.get(ExportImportConstants.FileNames.WEATHER_SAMPLES), job);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.MAP_MATCHING)) {
+            importMapMatchingData(fileContents.get(ExportImportConstants.FileNames.MAP_MATCHING), job);
+        }
     }
 
     private void validateMetadata(ZipInputStream zis, ImportJob job) throws IOException {
         byte[] content = zis.readAllBytes();
         ExportMetadataDto metadata = objectMapper.readValue(content, ExportMetadataDto.class);
 
-        if (!ExportImportConstants.Versions.CURRENT.equals(metadata.getVersion())) {
+        if (!ExportImportConstants.Versions.CURRENT.equals(metadata.getVersion()) &&
+                !ExportImportConstants.Versions.V1_0.equals(metadata.getVersion())) {
             throw new IllegalArgumentException("Unsupported export version: " + metadata.getVersion());
         }
 
@@ -278,6 +349,22 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.LOCATION_SOURCES;
             case ExportImportConstants.FileNames.REVERSE_GEOCODING:
                 return ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION;
+            case ExportImportConstants.FileNames.PERIOD_TAGS:
+                return ExportImportConstants.DataTypes.PERIOD_TAGS;
+            case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
+                return ExportImportConstants.DataTypes.TIMELINE_OVERRIDES;
+            case ExportImportConstants.FileNames.TRIP_WORKSPACE:
+                return ExportImportConstants.DataTypes.TRIP_WORKSPACE;
+            case ExportImportConstants.FileNames.NOTIFICATION_TEMPLATES:
+                return ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES;
+            case ExportImportConstants.FileNames.GEOFENCING:
+                return ExportImportConstants.DataTypes.GEOFENCING;
+            case ExportImportConstants.FileNames.NOTES:
+                return ExportImportConstants.DataTypes.NOTES;
+            case ExportImportConstants.FileNames.WEATHER_SAMPLES:
+                return ExportImportConstants.DataTypes.WEATHER_SAMPLES;
+            case ExportImportConstants.FileNames.MAP_MATCHING:
+                return ExportImportConstants.DataTypes.MAP_MATCHING;
             default:
                 return null;
         }
@@ -397,7 +484,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     // Data gaps import removed - data gaps are now regenerated during timeline generation
 
     @Transactional
-    public void importFavoritesData(byte[] content, ImportJob job) throws IOException {
+    public void importFavoritesData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         FavoritesDataDto favoritesData = objectMapper.readValue(content, FavoritesDataDto.class);
         log.info("Importing {} favorite points and {} favorite areas for user {} using duplicate detection",
                 favoritesData.getPoints().size(), favoritesData.getAreas().size(), job.getUserId());
@@ -434,11 +521,14 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     favorite.setMergeImpact(false);
 
                     favoritesRepository.persist(favorite);
+                    entityManager.flush();
+                    referenceMaps.favoriteIds.put(pointDto.getId(), favorite.getId());
                     importedFavorites++;
                 } else {
                     // Update existing favorite with potentially better data
                     FavoritesEntity existing = duplicates.get(0);
                     updateFavoriteIfNecessary(existing, pointDto.getCity(), pointDto.getCountry());
+                    referenceMaps.favoriteIds.put(pointDto.getId(), existing.getId());
                     skippedFavorites++;
                 }
             } catch (Exception e) {
@@ -470,11 +560,14 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     favorite.setMergeImpact(false);
 
                     favoritesRepository.persist(favorite);
+                    entityManager.flush();
+                    referenceMaps.favoriteIds.put(areaDto.getId(), favorite.getId());
                     importedFavorites++;
                 } else {
                     // Update existing favorite with potentially better data
                     FavoritesEntity existing = duplicates.get(0);
                     updateFavoriteIfNecessary(existing, areaDto.getCity(), areaDto.getCountry());
+                    referenceMaps.favoriteIds.put(areaDto.getId(), existing.getId());
                     skippedFavorites++;
                 }
             } catch (Exception e) {
@@ -617,11 +710,11 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
     }
 
-    public void importReverseGeocodingData(byte[] content, ImportJob job) throws IOException {
+    public void importReverseGeocodingData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         try {
             QuarkusTransaction.requiringNew()
                     .call(() -> {
-                        importReverseGeocodingDataInTransaction(content, job);
+                        importReverseGeocodingDataInTransaction(content, job, referenceMaps);
                         return null;
                     });
         } catch (QuarkusTransactionException e) {
@@ -629,7 +722,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
     }
 
-    private void importReverseGeocodingDataInTransaction(byte[] content, ImportJob job) throws IOException {
+    private void importReverseGeocodingDataInTransaction(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         ReverseGeocodingDataDto geocodingData = objectMapper.readValue(content, ReverseGeocodingDataDto.class);
         log.info("Importing {} reverse geocoding locations for user {} with user assignment logic",
                 geocodingData.getLocations().size(), job.getUserId());
@@ -671,79 +764,29 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     );
                 }
 
-                // Determine if this was a user-specific entity in the export
-                boolean wasUserSpecific = true;
+                ReverseGeocodingLocationEntity existing = findExistingUserGeocoding(job.getUserId(), requestCoordinates);
+                ReverseGeocodingLocationEntity entity = existing == null ? new ReverseGeocodingLocationEntity() : existing;
 
-                if (wasUserSpecific) {
-                    // User-specific entity from export - assign to importing user (not original user!)
-                    // Use native query to insert with user_id and auto-generated ID
-                    String insertSql = """
-                        INSERT INTO reverse_geocoding_location
-                        (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
-                         created_at, last_accessed_at, city, country, user_id)
-                        VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """;
+                entity.setUser(importingUser);
+                entity.setRequestCoordinates(requestCoordinates);
+                entity.setResultCoordinates(resultCoordinates);
+                entity.setBoundingBox(boundingBox);
+                entity.setDisplayName(locationDto.getDisplayName());
+                entity.setProviderName(locationDto.getProviderName());
+                entity.setCreatedAt(defaultInstant(locationDto.getCreatedAt()));
+                entity.setLastAccessedAt(defaultInstant(locationDto.getLastAccessedAt()));
+                entity.setCity(locationDto.getCity());
+                entity.setCountry(locationDto.getCountry());
+                entityManager.persist(entity);
+                entityManager.flush();
+                referenceMaps.geocodingIds.put(locationDto.getId(), entity.getId());
 
-                    entityManager.createNativeQuery(insertSql)
-                            .setParameter(1, requestCoordinates)
-                            .setParameter(2, resultCoordinates)
-                            .setParameter(3, boundingBox)
-                            .setParameter(4, locationDto.getDisplayName())
-                            .setParameter(5, locationDto.getProviderName())
-                            .setParameter(6, locationDto.getCreatedAt())
-                            .setParameter(7, locationDto.getLastAccessedAt())
-                            .setParameter(8, locationDto.getCity())
-                            .setParameter(9, locationDto.getCountry())
-                            .setParameter(10, job.getUserId())  // Assign to importing user
-                            .executeUpdate();
-
+                if (existing == null) {
                     imported++;
                     log.debug("Imported user-specific geocoding entity (assigned to user {})", job.getUserId());
-
                 } else {
-                    // Original entity from export (user_id was NULL)
-                    // Check if already exists in database
-                    org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity existing =
-                            entityManager.createQuery(
-                                "SELECT r FROM ReverseGeocodingLocationEntity r " +
-                                "WHERE r.user IS NULL " +
-                                "AND r.requestCoordinates = :coords",
-                                org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity.class)
-                            .setParameter("coords", requestCoordinates)
-                            .getResultStream()
-                            .findFirst()
-                            .orElse(null);
-
-                    if (existing != null) {
-                        // Original already exists - skip (reuse existing)
-                        skipped++;
-                        log.debug("Skipped importing original geocoding entity at ({}, {}) - already exists as {}",
-                                locationDto.getRequestLatitude(), locationDto.getRequestLongitude(), existing.getId());
-                    } else {
-                        // Original doesn't exist - create it with auto-generated ID
-                        String insertSql = """
-                            INSERT INTO reverse_geocoding_location
-                            (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
-                             created_at, last_accessed_at, city, country, user_id)
-                            VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
-                            """;
-
-                        entityManager.createNativeQuery(insertSql)
-                                .setParameter(1, requestCoordinates)
-                                .setParameter(2, resultCoordinates)
-                                .setParameter(3, boundingBox)
-                                .setParameter(4, locationDto.getDisplayName())
-                                .setParameter(5, locationDto.getProviderName())
-                                .setParameter(6, locationDto.getCreatedAt())
-                                .setParameter(7, locationDto.getLastAccessedAt())
-                                .setParameter(8, locationDto.getCity())
-                                .setParameter(9, locationDto.getCountry())
-                                .executeUpdate();
-
-                        imported++;
-                        log.debug("Imported original geocoding entity at ({}, {})",
-                                locationDto.getRequestLatitude(), locationDto.getRequestLongitude());
-                    }
+                    skipped++;
+                    log.debug("Updated existing user-specific geocoding entity {}", existing.getId());
                 }
 
             } catch (Exception e) {
@@ -754,6 +797,638 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         log.info("Successfully imported {} reverse geocoding locations (skipped {} existing originals)",
                 imported, skipped);
+    }
+
+    @Transactional
+    public void importPeriodTagsData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        PeriodTagsDataDto data = objectMapper.readValue(content, PeriodTagsDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        int imported = 0;
+        int updated = 0;
+        List<PeriodTagsDataDto.PeriodTagDto> periodTags = emptyIfNull(data.getPeriodTags());
+        for (PeriodTagsDataDto.PeriodTagDto dto : periodTags) {
+            if (dto.getTagName() == null || dto.getStartTime() == null || shouldSkipDueToDateFilter(dto.getStartTime(), job)) {
+                continue;
+            }
+
+            PeriodTagEntity entity = entityManager.createQuery("""
+                            SELECT tag FROM PeriodTagEntity tag
+                            WHERE tag.user.id = :userId
+                              AND tag.tagName = :name
+                              AND tag.startTime = :startTime
+                            """, PeriodTagEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("name", dto.getTagName())
+                    .setParameter("startTime", dto.getStartTime())
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+
+            boolean isNew = entity == null;
+            if (isNew) {
+                entity = new PeriodTagEntity();
+                entity.setUser(user);
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+
+            entity.setTagName(dto.getTagName());
+            entity.setStartTime(dto.getStartTime());
+            entity.setEndTime(dto.getEndTime());
+            entity.setSource(dto.getSource());
+            entity.setIsActive(Boolean.TRUE.equals(dto.getActive()));
+            entity.setColor(dto.getColor());
+            entity.setShowAsPreset(dto.getShowAsPreset() == null ? Boolean.TRUE : dto.getShowAsPreset());
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            entityManager.flush();
+
+            if (dto.getId() != null) {
+                referenceMaps.periodTagIds.put(dto.getId(), entity.getId());
+            }
+            if (isNew) {
+                imported++;
+            } else {
+                updated++;
+            }
+        }
+        log.info("Imported {} and updated {} period tags for user {}", imported, updated, job.getUserId());
+    }
+
+    @Transactional
+    public void importTimelineOverridesData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        TimelineOverridesDataDto data = objectMapper.readValue(content, TimelineOverridesDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        int tripOverrides = 0;
+        for (TimelineOverridesDataDto.TripMovementOverrideDto dto : emptyIfNull(data.getTripMovementOverrides())) {
+            if (dto.getSourceTripTimestamp() == null || shouldSkipDueToDateFilter(dto.getSourceTripTimestamp(), job)) {
+                continue;
+            }
+            TimelineTripMovementOverrideEntity entity = entityManager.createQuery("""
+                            SELECT override FROM TimelineTripMovementOverrideEntity override
+                            WHERE override.user.id = :userId
+                              AND override.sourceTripTimestamp = :timestamp
+                              AND override.sourceTripDurationSeconds = :duration
+                            """, TimelineTripMovementOverrideEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("timestamp", dto.getSourceTripTimestamp())
+                    .setParameter("duration", dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineTripMovementOverrideEntity::new);
+
+            entity.setUser(user);
+            entity.setMovementType(dto.getMovementType());
+            entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
+            entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
+            entity.setSourceDistanceMeters(dto.getSourceDistanceMeters() == null ? 0L : dto.getSourceDistanceMeters());
+            entity.setSourceStartLatitude(defaultDouble(dto.getSourceStartLatitude()));
+            entity.setSourceStartLongitude(defaultDouble(dto.getSourceStartLongitude()));
+            entity.setSourceEndLatitude(defaultDouble(dto.getSourceEndLatitude()));
+            entity.setSourceEndLongitude(defaultDouble(dto.getSourceEndLongitude()));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            tripOverrides++;
+        }
+
+        int gapOverrides = 0;
+        for (TimelineOverridesDataDto.DataGapStayOverrideDto dto : emptyIfNull(data.getDataGapStayOverrides())) {
+            if (dto.getSourceGapStartTime() == null || shouldSkipDueToDateFilter(dto.getSourceGapStartTime(), job)) {
+                continue;
+            }
+            TimelineDataGapStayOverrideEntity entity = entityManager.createQuery("""
+                            SELECT override FROM TimelineDataGapStayOverrideEntity override
+                            WHERE override.user.id = :userId
+                              AND override.sourceGapStartTime = :startTime
+                              AND override.sourceGapEndTime = :endTime
+                            """, TimelineDataGapStayOverrideEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("startTime", dto.getSourceGapStartTime())
+                    .setParameter("endTime", dto.getSourceGapEndTime())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineDataGapStayOverrideEntity::new);
+
+            entity.setUser(user);
+            entity.setLocationStrategy(parseEnum(DataGapStayOverrideLocationStrategy.class, dto.getLocationStrategy(), DataGapStayOverrideLocationStrategy.SELECTED_LOCATION));
+            entity.setSelectedFavoriteId(resolveMappedId(dto.getSelectedFavoriteId(), referenceMaps.favoriteIds));
+            entity.setSelectedGeocodingId(resolveMappedId(dto.getSelectedGeocodingId(), referenceMaps.geocodingIds));
+            entity.setSelectedLatitude(dto.getSelectedLatitude());
+            entity.setSelectedLongitude(dto.getSelectedLongitude());
+            entity.setSelectedLocationName(dto.getSelectedLocationName());
+            entity.setSourceGapStartTime(dto.getSourceGapStartTime());
+            entity.setSourceGapEndTime(dto.getSourceGapEndTime());
+            entity.setSourceGapDurationSeconds(dto.getSourceGapDurationSeconds() == null ? 0L : dto.getSourceGapDurationSeconds());
+            entity.setSourceBeforeLatitude(defaultDouble(dto.getSourceBeforeLatitude()));
+            entity.setSourceBeforeLongitude(defaultDouble(dto.getSourceBeforeLongitude()));
+            entity.setSourceAfterLatitude(defaultDouble(dto.getSourceAfterLatitude()));
+            entity.setSourceAfterLongitude(defaultDouble(dto.getSourceAfterLongitude()));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            gapOverrides++;
+        }
+        log.info("Imported/updated {} trip overrides and {} gap overrides for user {}",
+                tripOverrides, gapOverrides, job.getUserId());
+    }
+
+    @Transactional
+    public void importNotificationTemplatesData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        NotificationTemplatesDataDto data = objectMapper.readValue(content, NotificationTemplatesDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        List<NotificationTemplatesDataDto.NotificationTemplateDto> templates = emptyIfNull(data.getTemplates());
+        for (NotificationTemplatesDataDto.NotificationTemplateDto dto : templates) {
+            if (dto.getName() == null) {
+                continue;
+            }
+            NotificationTemplateEntity entity = entityManager.createQuery("""
+                            SELECT template FROM NotificationTemplateEntity template
+                            WHERE template.user.id = :userId AND template.name = :name
+                            """, NotificationTemplateEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("name", dto.getName())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(NotificationTemplateEntity::new);
+
+            entity.setUser(user);
+            entity.setName(dto.getName());
+            entity.setDestination(dto.getDestination());
+            entity.setExternalRoutingMode(parseEnum(AppriseExternalRoutingMode.class, dto.getExternalRoutingMode(), AppriseExternalRoutingMode.URLS));
+            entity.setAppriseConfigKey(dto.getAppriseConfigKey());
+            entity.setAppriseTag(dto.getAppriseTag());
+            entity.setTitleTemplate(dto.getTitleTemplate());
+            entity.setBodyTemplate(dto.getBodyTemplate());
+            entity.setDefaultForEnter(Boolean.TRUE.equals(dto.getDefaultForEnter()));
+            entity.setDefaultForLeave(Boolean.TRUE.equals(dto.getDefaultForLeave()));
+            entity.setEnabled(dto.getEnabled() == null || dto.getEnabled());
+            entity.setSendInApp(dto.getSendInApp() == null || dto.getSendInApp());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            entityManager.flush();
+
+            if (dto.getId() != null) {
+                referenceMaps.notificationTemplateIds.put(dto.getId(), entity.getId());
+            }
+        }
+        log.info("Imported/updated {} notification templates for user {}", templates.size(), job.getUserId());
+    }
+
+    @Transactional
+    public void importTripWorkspaceData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        TripWorkspaceDataDto data = objectMapper.readValue(content, TripWorkspaceDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        List<TripWorkspaceDataDto.TripDto> trips = emptyIfNull(data.getTrips());
+        for (TripWorkspaceDataDto.TripDto dto : trips) {
+            if (dto.getName() == null || (dto.getStartTime() != null && shouldSkipDueToDateFilter(dto.getStartTime(), job))) {
+                continue;
+            }
+            TripEntity entity = findExistingTrip(job.getUserId(), dto)
+                    .orElseGet(TripEntity::new);
+
+            entity.setUser(user);
+            Long mappedPeriodTagId = dto.getPeriodTagId() == null ? null : referenceMaps.periodTagIds.get(dto.getPeriodTagId());
+            entity.setPeriodTag(mappedPeriodTagId == null ? null : entityManager.getReference(PeriodTagEntity.class, mappedPeriodTagId));
+            entity.setName(dto.getName());
+            entity.setStartTime(dto.getStartTime());
+            entity.setEndTime(dto.getEndTime());
+            entity.setStatus(parseEnum(TripStatus.class, dto.getStatus(), TripStatus.UPCOMING));
+            entity.setColor(dto.getColor());
+            entity.setNotes(dto.getNotes());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            entityManager.flush();
+
+            if (dto.getId() != null) {
+                referenceMaps.tripIds.put(dto.getId(), entity.getId());
+            }
+            importTripPlanItems(entity, dto.getPlanItems());
+            importTripCollaborators(entity, dto.getCollaborators());
+        }
+        log.info("Imported/updated {} trip workspace records for user {}", trips.size(), job.getUserId());
+    }
+
+    private void importTripPlanItems(TripEntity trip, List<TripWorkspaceDataDto.TripPlanItemDto> items) {
+        if (items == null) {
+            return;
+        }
+        for (TripWorkspaceDataDto.TripPlanItemDto dto : items) {
+            TripPlanItemEntity entity = entityManager.createQuery("""
+                            SELECT item FROM TripPlanItemEntity item
+                            WHERE item.trip.id = :tripId AND item.title = :title AND item.orderIndex = :orderIndex
+                            """, TripPlanItemEntity.class)
+                    .setParameter("tripId", trip.getId())
+                    .setParameter("title", dto.getTitle())
+                    .setParameter("orderIndex", dto.getOrderIndex() == null ? 0 : dto.getOrderIndex())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TripPlanItemEntity::new);
+            entity.setTrip(trip);
+            entity.setTitle(dto.getTitle());
+            entity.setNotes(dto.getNotes());
+            entity.setLatitude(dto.getLatitude());
+            entity.setLongitude(dto.getLongitude());
+            entity.setPlannedDay(dto.getPlannedDay());
+            entity.setPriority(parseEnum(TripPlanItemPriority.class, dto.getPriority(), TripPlanItemPriority.OPTIONAL));
+            entity.setOrderIndex(dto.getOrderIndex() == null ? 0 : dto.getOrderIndex());
+            entity.setIsVisited(Boolean.TRUE.equals(dto.getVisited()));
+            entity.setVisitConfidence(dto.getVisitConfidence());
+            entity.setVisitSource(parseEnum(TripPlanItemVisitSource.class, dto.getVisitSource(), null));
+            entity.setVisitedAt(dto.getVisitedAt());
+            entity.setManualOverrideState(parseEnum(TripPlanItemOverrideState.class, dto.getManualOverrideState(), null));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+        }
+    }
+
+    private void importTripCollaborators(TripEntity trip, List<TripWorkspaceDataDto.TripCollaboratorDto> collaborators) {
+        if (collaborators == null) {
+            return;
+        }
+        for (TripWorkspaceDataDto.TripCollaboratorDto dto : collaborators) {
+            if (dto.getEmail() == null) {
+                continue;
+            }
+            Optional<UserEntity> collaboratorUser = userRepository.findByEmailIgnoreCase(dto.getEmail());
+            if (collaboratorUser.isEmpty() || collaboratorUser.get().getId().equals(trip.getUser().getId())) {
+                continue;
+            }
+            boolean exists = entityManager.createQuery("""
+                            SELECT COUNT(collaborator) FROM TripCollaboratorEntity collaborator
+                            WHERE collaborator.trip.id = :tripId AND collaborator.collaborator.id = :collaboratorId
+                            """, Long.class)
+                    .setParameter("tripId", trip.getId())
+                    .setParameter("collaboratorId", collaboratorUser.get().getId())
+                    .getSingleResult() > 0;
+            if (!exists) {
+                TripCollaboratorEntity entity = TripCollaboratorEntity.builder()
+                        .trip(trip)
+                        .collaborator(collaboratorUser.get())
+                        .accessRole(parseEnum(TripCollaboratorAccessRole.class, dto.getAccessRole(), TripCollaboratorAccessRole.VIEW))
+                        .createdAt(defaultInstant(dto.getCreatedAt()))
+                        .updatedAt(Instant.now())
+                        .build();
+                entityManager.persist(entity);
+            }
+        }
+    }
+
+    @Transactional
+    public void importGeofencingData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        GeofencingDataDto data = objectMapper.readValue(content, GeofencingDataDto.class);
+        UserEntity owner = getImportingUser(job);
+
+        List<GeofencingDataDto.GeofenceRuleDto> rules = emptyIfNull(data.getRules());
+        for (GeofencingDataDto.GeofenceRuleDto dto : rules) {
+            if (dto.getName() == null) {
+                continue;
+            }
+            GeofenceRuleEntity entity = entityManager.createQuery("""
+                            SELECT rule FROM GeofenceRuleEntity rule
+                            WHERE rule.ownerUser.id = :userId AND rule.name = :name
+                            """, GeofenceRuleEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("name", dto.getName())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(GeofenceRuleEntity::new);
+            entity.setOwnerUser(owner);
+            entity.setName(dto.getName());
+            entity.setNorthEastLat(dto.getNorthEastLat());
+            entity.setNorthEastLon(dto.getNorthEastLon());
+            entity.setSouthWestLat(dto.getSouthWestLat());
+            entity.setSouthWestLon(dto.getSouthWestLon());
+            entity.setMonitorEnter(dto.getMonitorEnter() == null || dto.getMonitorEnter());
+            entity.setMonitorLeave(dto.getMonitorLeave() == null || dto.getMonitorLeave());
+            entity.setCooldownSeconds(dto.getCooldownSeconds() == null ? 120 : dto.getCooldownSeconds());
+            entity.setEnterTemplate(resolveTemplate(dto.getEnterTemplateId(), referenceMaps));
+            entity.setLeaveTemplate(resolveTemplate(dto.getLeaveTemplateId(), referenceMaps));
+            entity.setStatus(parseEnum(GeofenceRuleStatus.class, dto.getStatus(), GeofenceRuleStatus.ACTIVE));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            entityManager.flush();
+
+            importGeofenceSubjects(entity, dto.getSubjects());
+        }
+        log.info("Imported/updated {} geofence rules for user {}", rules.size(), job.getUserId());
+    }
+
+    private NotificationTemplateEntity resolveTemplate(Long oldTemplateId, ImportReferenceMaps referenceMaps) {
+        if (oldTemplateId == null) {
+            return null;
+        }
+        Long mappedId = referenceMaps.notificationTemplateIds.get(oldTemplateId);
+        return mappedId == null ? null : entityManager.getReference(NotificationTemplateEntity.class, mappedId);
+    }
+
+    private void importGeofenceSubjects(GeofenceRuleEntity rule, List<GeofencingDataDto.SubjectDto> subjects) {
+        if (subjects == null) {
+            return;
+        }
+        for (GeofencingDataDto.SubjectDto dto : subjects) {
+            UserEntity subject = dto.getEmail() == null
+                    ? null
+                    : userRepository.findByEmailIgnoreCase(dto.getEmail()).orElse(null);
+            if (subject == null) {
+                continue;
+            }
+            boolean exists = entityManager.createQuery("""
+                            SELECT COUNT(subject) FROM GeofenceRuleSubjectEntity subject
+                            WHERE subject.rule.id = :ruleId AND subject.subjectUser.id = :subjectUserId
+                            """, Long.class)
+                    .setParameter("ruleId", rule.getId())
+                    .setParameter("subjectUserId", subject.getId())
+                    .getSingleResult() > 0;
+            if (!exists) {
+                GeofenceRuleSubjectEntity entity = GeofenceRuleSubjectEntity.builder()
+                        .id(new GeofenceRuleSubjectId(rule.getId(), subject.getId()))
+                        .rule(rule)
+                        .subjectUser(subject)
+                        .createdAt(defaultInstant(dto.getCreatedAt()))
+                        .build();
+                entityManager.persist(entity);
+            }
+        }
+    }
+
+    @Transactional
+    public void importNotesData(byte[] content, ImportJob job) throws IOException {
+        NotesDataDto data = objectMapper.readValue(content, NotesDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        List<NotesDataDto.NoteDto> notes = emptyIfNull(data.getNotes());
+        for (NotesDataDto.NoteDto dto : notes) {
+            if (dto.getContentMarkdown() == null || dto.getEventTime() == null || shouldSkipDueToDateFilter(dto.getEventTime(), job)) {
+                continue;
+            }
+            TimelineNoteEntity entity = entityManager.createQuery("""
+                            SELECT note FROM TimelineNoteEntity note
+                            WHERE note.user.id = :userId
+                              AND note.eventTime = :eventTime
+                              AND note.contentMarkdown = :content
+                            """, TimelineNoteEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("eventTime", dto.getEventTime())
+                    .setParameter("content", dto.getContentMarkdown())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(TimelineNoteEntity::new);
+            entity.setUser(user);
+            entity.setTitle(dto.getTitle());
+            entity.setContentMarkdown(dto.getContentMarkdown());
+            entity.setSnippet(dto.getSnippet());
+            entity.setEventTime(dto.getEventTime());
+            entity.setLocation(dto.getLatitude() != null && dto.getLongitude() != null
+                    ? GeoUtils.createPoint(dto.getLongitude(), dto.getLatitude())
+                    : null);
+            entity.setLocationSource(parseEnum(NoteLocationSource.class, dto.getLocationSource(), NoteLocationSource.NONE));
+            entity.setAnchorType(parseEnum(NoteAnchorType.class, dto.getAnchorType(), NoteAnchorType.TIMESTAMP));
+            entity.setSourceItemStartTime(dto.getSourceItemStartTime());
+            entity.setSourceItemDurationSeconds(dto.getSourceItemDurationSeconds());
+            entity.setSourceStartLatitude(dto.getSourceStartLatitude());
+            entity.setSourceStartLongitude(dto.getSourceStartLongitude());
+            entity.setSourceEndLatitude(dto.getSourceEndLatitude());
+            entity.setSourceEndLongitude(dto.getSourceEndLongitude());
+            entity.setSourceDistanceMeters(dto.getSourceDistanceMeters());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entity.setDeletedAt(dto.getDeletedAt());
+            entityManager.persist(entity);
+        }
+        log.info("Imported/updated {} notes for user {}", notes.size(), job.getUserId());
+    }
+
+    @Transactional
+    public void importWeatherSamplesData(byte[] content, ImportJob job) throws IOException {
+        WeatherSamplesDataDto data = objectMapper.readValue(content, WeatherSamplesDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        List<WeatherSamplesDataDto.WeatherSampleDto> samples = emptyIfNull(data.getSamples());
+        for (WeatherSamplesDataDto.WeatherSampleDto dto : samples) {
+            if (dto.getProvider() == null || dto.getObservedAt() == null || shouldSkipDueToDateFilter(dto.getObservedAt(), job)) {
+                continue;
+            }
+            WeatherSampleEntity entity = entityManager.createQuery("""
+                            SELECT sample FROM WeatherSampleEntity sample
+                            WHERE sample.user.id = :userId
+                              AND sample.provider = :provider
+                              AND sample.latitudeBucket = :latBucket
+                              AND sample.longitudeBucket = :lonBucket
+                              AND sample.observedAt = :observedAt
+                            """, WeatherSampleEntity.class)
+                    .setParameter("userId", job.getUserId())
+                    .setParameter("provider", dto.getProvider())
+                    .setParameter("latBucket", defaultDouble(dto.getLatitudeBucket()))
+                    .setParameter("lonBucket", defaultDouble(dto.getLongitudeBucket()))
+                    .setParameter("observedAt", dto.getObservedAt())
+                    .getResultStream()
+                    .findFirst()
+                    .orElseGet(WeatherSampleEntity::new);
+            entity.setUser(user);
+            entity.setProvider(dto.getProvider());
+            entity.setSource(parseEnum(WeatherTargetSource.class, dto.getSource(), WeatherTargetSource.IMPORT_BACKFILL));
+            entity.setRequestedLatitude(defaultDouble(dto.getRequestedLatitude()));
+            entity.setRequestedLongitude(defaultDouble(dto.getRequestedLongitude()));
+            entity.setProviderLatitude(dto.getProviderLatitude());
+            entity.setProviderLongitude(dto.getProviderLongitude());
+            entity.setLatitudeBucket(defaultDouble(dto.getLatitudeBucket()));
+            entity.setLongitudeBucket(defaultDouble(dto.getLongitudeBucket()));
+            entity.setObservedAt(dto.getObservedAt());
+            entity.setFetchedAt(defaultInstant(dto.getFetchedAt()));
+            entity.setTimezone(dto.getTimezone());
+            entity.setWeatherCode(dto.getWeatherCode());
+            entity.setTemperature(dto.getTemperature());
+            entity.setApparentTemperature(dto.getApparentTemperature());
+            entity.setHumidity(dto.getHumidity());
+            entity.setPrecipitation(dto.getPrecipitation());
+            entity.setRain(dto.getRain());
+            entity.setSnowfall(dto.getSnowfall());
+            entity.setCloudCover(dto.getCloudCover());
+            entity.setWindSpeed(dto.getWindSpeed());
+            entity.setWindGust(dto.getWindGust());
+            entity.setWindDirection(dto.getWindDirection());
+            entity.setPressure(dto.getPressure());
+            entity.setRawData(dto.getRawData());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+        }
+        log.info("Imported/updated {} weather samples for user {}", samples.size(), job.getUserId());
+    }
+
+    @Transactional
+    public void importMapMatchingData(byte[] content, ImportJob job) throws IOException {
+        MapMatchingDataDto data = objectMapper.readValue(content, MapMatchingDataDto.class);
+        UserEntity user = getImportingUser(job);
+
+        List<MapMatchingDataDto.PathMatchDto> pathMatches = emptyIfNull(data.getPathMatches());
+        for (MapMatchingDataDto.PathMatchDto dto : pathMatches) {
+            if (dto.getProvider() == null
+                    || dto.getProfile() == null
+                    || dto.getConfigHash() == null
+                    || dto.getInputHash() == null
+                    || dto.getMatchedSegmentsJson() == null
+                    || !MapMatchingStatus.MATCHED.name().equals(dto.getStatus())
+                    || shouldSkipDueToDateFilter(dto.getTripTimestamp(), job)) {
+                continue;
+            }
+
+            TimelineTripPathMatchEntity entity = findExistingMapMatchingPathMatch(job.getUserId(), dto)
+                    .orElseGet(TimelineTripPathMatchEntity::new);
+            entity.setUser(user);
+            entity.setProvider(dto.getProvider());
+            entity.setProfile(dto.getProfile());
+            entity.setConfigHash(dto.getConfigHash());
+            entity.setInputHash(dto.getInputHash());
+            entity.setStatus(MapMatchingStatus.MATCHED);
+            entity.setAttempts(dto.getAttempts() == null ? 0 : dto.getAttempts());
+            entity.setNextAttemptAt(defaultInstant(dto.getNextAttemptAt()));
+            entity.setLastAttemptAt(dto.getLastAttemptAt());
+            entity.setLockedAt(null);
+            entity.setCompletedAt(defaultInstant(dto.getCompletedAt()));
+            entity.setLastError(null);
+            entity.setMatchedSegmentsJson(dto.getMatchedSegmentsJson());
+            entity.setSource(dto.getSource() == null ? "ON_DEMAND" : dto.getSource());
+            entity.setPriority(dto.getPriority() == null ? 100 : dto.getPriority());
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+        }
+        log.info("Imported/updated {} map matching path matches for user {}", pathMatches.size(), job.getUserId());
+    }
+
+    private UserEntity getImportingUser(ImportJob job) {
+        UserEntity user = userRepository.findById(job.getUserId());
+        if (user == null) {
+            throw new IllegalStateException("User not found: " + job.getUserId());
+        }
+        return user;
+    }
+
+    private ReverseGeocodingLocationEntity findExistingUserGeocoding(UUID userId, Point requestCoordinates) {
+        if (requestCoordinates == null) {
+            return null;
+        }
+        return entityManager.createQuery("""
+                        SELECT location FROM ReverseGeocodingLocationEntity location
+                        WHERE location.user.id = :userId
+                          AND location.requestCoordinates = :requestCoordinates
+                        """, ReverseGeocodingLocationEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("requestCoordinates", requestCoordinates)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Optional<TripEntity> findExistingTrip(UUID userId, TripWorkspaceDataDto.TripDto dto) {
+        if (dto.getStartTime() == null) {
+            return entityManager.createQuery("""
+                            SELECT trip FROM TripEntity trip
+                            WHERE trip.user.id = :userId
+                              AND trip.name = :name
+                              AND trip.startTime IS NULL
+                            """, TripEntity.class)
+                    .setParameter("userId", userId)
+                    .setParameter("name", dto.getName())
+                    .getResultStream()
+                    .findFirst();
+        }
+        return entityManager.createQuery("""
+                        SELECT trip FROM TripEntity trip
+                        WHERE trip.user.id = :userId
+                          AND trip.name = :name
+                          AND trip.startTime = :startTime
+                        """, TripEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("name", dto.getName())
+                .setParameter("startTime", dto.getStartTime())
+                .getResultStream()
+                .findFirst();
+    }
+
+    private Optional<TimelineTripPathMatchEntity> findExistingMapMatchingPathMatch(UUID userId,
+                                                                                   MapMatchingDataDto.PathMatchDto dto) {
+        return entityManager.createQuery("""
+                SELECT pathMatch FROM TimelineTripPathMatchEntity pathMatch
+                WHERE pathMatch.user.id = :userId
+                  AND pathMatch.provider = :provider
+                  AND pathMatch.profile = :profile
+                  AND pathMatch.configHash = :configHash
+                  AND pathMatch.inputHash = :inputHash
+                """, TimelineTripPathMatchEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("provider", dto.getProvider())
+                .setParameter("profile", dto.getProfile())
+                .setParameter("configHash", dto.getConfigHash())
+                .setParameter("inputHash", dto.getInputHash())
+                .getResultStream()
+                .findFirst();
+    }
+
+    private Long resolveMappedId(Long oldId, Map<Long, Long> mappedIds) {
+        if (oldId == null) {
+            return null;
+        }
+        return mappedIds.get(oldId);
+    }
+
+    private Instant defaultInstant(Instant value) {
+        return value == null ? Instant.now() : value;
+    }
+
+    private double defaultDouble(Double value) {
+        return value == null ? 0.0 : value;
+    }
+
+    private <E extends Enum<E>> E parseEnum(Class<E> enumClass, String value, E fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Enum.valueOf(enumClass, value);
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown {} value '{}', using fallback {}", enumClass.getSimpleName(), value, fallback);
+            return fallback;
+        }
+    }
+
+    private <T> List<T> emptyIfNull(List<T> values) {
+        return values == null ? Collections.emptyList() : values;
+    }
+
+    private static class ImportReferenceMaps {
+        private final Map<Long, Long> periodTagIds = new HashMap<>();
+        private final Map<Long, Long> favoriteIds = new HashMap<>();
+        private final Map<Long, Long> geocodingIds = new HashMap<>();
+        private final Map<Long, Long> tripIds = new HashMap<>();
+        private final Map<Long, Long> notificationTemplateIds = new HashMap<>();
     }
 
     /**
@@ -780,7 +1455,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     private boolean shouldSkipDueToDateFilter(java.time.Instant timestamp, ImportJob job) {
-        if (job.getOptions().getDateRangeFilter() == null) {
+        if (timestamp == null || job.getOptions().getDateRangeFilter() == null) {
             return false;
         }
         return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
