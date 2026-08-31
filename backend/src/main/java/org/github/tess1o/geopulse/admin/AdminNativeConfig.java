@@ -1,7 +1,9 @@
 package org.github.tess1o.geopulse.admin;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.admin.dto.*;
+import org.github.tess1o.geopulse.admin.dto.backup.*;
 import org.github.tess1o.geopulse.admin.model.*;
 
 @RegisterForReflection(
@@ -12,6 +14,16 @@ import org.github.tess1o.geopulse.admin.model.*;
                 AdminSettingsBackupDto.OidcProviderBackupDto.class,
                 AdminSettingsBackupDto.CustomGeocodingProviderBackupDto.class,
                 AdminSettingsImportResult.class,
+                AdminBackupConfigDto.class,
+                AdminBackupFileDto.class,
+                AdminBackupManifestDto.class,
+                AdminBackupStatusDto.class,
+                AdminFullBackupUsersDto.class,
+                AdminFullBackupUsersDto.UserBackupDto.class,
+                AdminFullBackupUsersDto.ApiTokenBackupDto.class,
+                AdminFullBackupUsersDto.OidcConnectionBackupDto.class,
+                UserAISettings.class,
+                RestoreLocalBackupRequest.class,
                 BulkUpdateRequest.class,
                 CreateOidcProviderRequest.class,
                 OidcProviderResponse.class,

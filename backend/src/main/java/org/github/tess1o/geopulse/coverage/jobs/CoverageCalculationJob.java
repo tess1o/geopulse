@@ -10,6 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
@@ -37,6 +38,9 @@ public class CoverageCalculationJob {
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @ConfigProperty(name = "geopulse.coverage.processing.max-concurrent-tasks", defaultValue = "2")
     @StaticInitSafe
@@ -75,6 +79,10 @@ public class CoverageCalculationJob {
     @Scheduled(every = "${geopulse.coverage.job.interval:2h}", delayed = "${geopulse.coverage.job.delay:0m}")
     @Blocking
     public void processCoverage() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping coverage processing while full backup restore is running");
+            return;
+        }
         long startedAtNanos = metricsStart();
         String result = "success";
         List<UUID> usersToProcess = coverageRepository.findUsersWithNewCoverage(

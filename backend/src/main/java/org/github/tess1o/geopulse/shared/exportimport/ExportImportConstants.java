@@ -29,6 +29,8 @@ public final class ExportImportConstants {
         public static final String NOTES = "notes";
         public static final String WEATHER_SAMPLES = "weathersamples";
         public static final String MAP_MATCHING = "mapmatching";
+        public static final String FRIENDS = "friends";
+        public static final String FRIEND_PERMISSIONS = "friendpermissions";
     }
 
     /**
@@ -51,6 +53,8 @@ public final class ExportImportConstants {
         public static final String NOTES = "notes.json";
         public static final String WEATHER_SAMPLES = "weather-samples.json";
         public static final String MAP_MATCHING = "map-matching.json";
+        public static final String FRIENDS = "friends.json";
+        public static final String FRIEND_PERMISSIONS = "friend-permissions.json";
     }
 
     /**

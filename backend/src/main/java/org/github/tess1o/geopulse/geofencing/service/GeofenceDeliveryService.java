@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus;
@@ -29,6 +30,9 @@ public class GeofenceDeliveryService {
     private final GeofenceNotificationProjectionService notificationProjectionService;
 
     @Inject
+    BackupMaintenanceService backupMaintenanceService;
+
+    @Inject
     public GeofenceDeliveryService(GeofenceEventRepository eventRepository,
                                    AppriseNotificationService appriseNotificationService,
                                    GeofenceNotificationProjectionService notificationProjectionService) {
@@ -40,6 +44,10 @@ public class GeofenceDeliveryService {
     @Scheduled(every = "${geopulse.geofence.delivery.interval:30s}")
     @Transactional
     public void processPendingDeliveries() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping geofence delivery while full backup restore is running");
+            return;
+        }
         List<GeofenceEventEntity> pending = eventRepository.findPendingForDelivery(DELIVERY_BATCH_SIZE, MAX_ATTEMPTS);
         if (pending.isEmpty()) {
             return;

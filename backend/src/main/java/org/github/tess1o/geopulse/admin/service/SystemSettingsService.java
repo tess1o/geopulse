@@ -321,6 +321,18 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("export.temp-file-retention-hours",
                 new SettingDefinition("geopulse.export.temp-file-retention-hours", "24", ValueType.INTEGER, "export", "Temp file retention (hours)"));
 
+        // Full backup settings
+        SETTING_DEFINITIONS.put("backup.scheduled.enabled",
+                new SettingDefinition("geopulse.backup.scheduled.enabled", "false", ValueType.BOOLEAN, "backup", "Enable scheduled full backups"));
+        SETTING_DEFINITIONS.put("backup.scheduled.cron",
+                new SettingDefinition("geopulse.backup.scheduled.cron", "0 0 3 * * ?", ValueType.STRING, "backup", "Cron expression for scheduled full backups"));
+        SETTING_DEFINITIONS.put("backup.local.path",
+                new SettingDefinition("geopulse.backup.local.path", "/data/geopulse-backups", ValueType.STRING, "backup", "Local folder path for full backup ZIP files"));
+        SETTING_DEFINITIONS.put("backup.retention.count",
+                new SettingDefinition("geopulse.backup.retention.count", "7", ValueType.INTEGER, "backup", "Number of local full backups to retain"));
+        SETTING_DEFINITIONS.put("backup.operation.timeout-minutes",
+                new SettingDefinition("geopulse.backup.operation.timeout-minutes", "120", ValueType.INTEGER, "backup", "Maximum duration for full backup and restore operations"));
+
         // System performance
         SETTING_DEFINITIONS.put(DEFAULT_DISTANCE_UNIT_KEY,
                 new SettingDefinition("geopulse.user.default-distance-unit", "KILOMETERS", ValueType.STRING, "system", "Default distance unit for newly created users"));
@@ -519,7 +531,13 @@ public class SystemSettingsService {
     }
 
     private String normalizeConfigFallbackValue(String value) {
-        return "\"\"".equals(value) ? "" : value;
+        if (value == null) {
+            return "";
+        }
+        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     /**

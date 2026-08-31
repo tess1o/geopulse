@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
 import org.github.tess1o.geopulse.mapmatching.event.MapMatchingSettingsChangedEvent;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingReconciliation;
@@ -47,6 +48,9 @@ public class MapMatchingWorker {
 
     @Inject
     MapMatchingWorkerExecution workerExecution;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     private final AtomicBoolean running = new AtomicBoolean();
     private final AtomicBoolean rerunRequested = new AtomicBoolean();
@@ -150,12 +154,20 @@ public class MapMatchingWorker {
     @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:60s}", delayed = "20s",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping map-matching watchdog while full backup restore is running");
+            return;
+        }
         wake("watchdog");
     }
 
     @Scheduled(cron = "${geopulse.timeline.map-matching.cache.cleanup.cron:0 45 3 * * ?}",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void cleanupDetachedCache() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping map-matching cache cleanup while full backup restore is running");
+            return;
+        }
         Instant now = Instant.now();
         long deleted = targetRepository.cleanupDetached(
                 now.minus(30, ChronoUnit.DAYS),
@@ -166,6 +178,9 @@ public class MapMatchingWorker {
     }
 
     public boolean wake(String reason) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            return false;
+        }
         rerunRequested.set(true);
         boolean submitted = running.compareAndSet(false, true);
         if (submitted) submitDrain(reason == null ? "manual" : reason);

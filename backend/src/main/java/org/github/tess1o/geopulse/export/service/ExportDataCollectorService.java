@@ -8,6 +8,10 @@ import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
+import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
+import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -111,6 +115,12 @@ public class ExportDataCollectorService {
 
     @Inject
     WeatherSampleRepository weatherSampleRepository;
+
+    @Inject
+    FriendshipRepository friendshipRepository;
+
+    @Inject
+    UserFriendPermissionRepository friendPermissionRepository;
 
     public List<TimelineTripPathMatchEntity> collectMapMatchingPathMatches(ExportJob job) {
         return entityManager.createQuery("""
@@ -244,6 +254,14 @@ public class ExportDataCollectorService {
 
         log.debug("Collected {} location sources", sources.size());
         return sources;
+    }
+
+    public List<UserFriendEntity> collectFriends(UUID userId) {
+        return friendshipRepository.list("user.id", userId);
+    }
+
+    public List<UserFriendPermissionEntity> collectFriendPermissions(UUID userId) {
+        return friendPermissionRepository.findAllByUserId(userId);
     }
 
     /**

@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
@@ -132,6 +133,8 @@ class ExportImportIntegrationTest {
     TimelineTripPathMatchRepository timelineTripPathMatchRepository;
     @Inject
     EntityManager entityManager;
+    @Inject
+    AIEncryptionService encryptionService;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final ObjectMapper objectMapper = JsonMapper.builder()
@@ -327,8 +330,19 @@ class ExportImportIntegrationTest {
         testGpsSource = new GpsSourceConfigEntity();
         testGpsSource.setUser(testUser);
         testGpsSource.setUsername("test-user");
+        testGpsSource.setPasswordHash("gps-password-hash");
+        testGpsSource.setToken("gps-source-token");
+        testGpsSource.setDeviceId("test-device");
+        testGpsSource.setPayloadEncryptionSecretEncrypted(encryptionService.encrypt("owntracks-payload-secret"));
+        testGpsSource.setPayloadEncryptionSecretKeyId(encryptionService.getCurrentKeyId());
         testGpsSource.setSourceType(GpsSourceType.OWNTRACKS);
         testGpsSource.setActive(true);
+        testGpsSource.setConnectionType(GpsSourceConfigEntity.ConnectionType.MQTT);
+        testGpsSource.setFilterInaccurateData(true);
+        testGpsSource.setMaxAllowedAccuracy(50);
+        testGpsSource.setMaxAllowedSpeed(120);
+        testGpsSource.setEnableDuplicateDetection(true);
+        testGpsSource.setDuplicateDetectionThresholdMinutes(20);
         gpsSourceRepository.persist(testGpsSource);
     }
 
@@ -581,6 +595,16 @@ class ExportImportIntegrationTest {
                     testGpsPoint.getLatitude(),
                     testGpsPoint.getAccuracy(),
                     testGpsSource.getUsername(),
+                    testGpsSource.getPasswordHash(),
+                    testGpsSource.getToken(),
+                    testGpsSource.getDeviceId(),
+                    decryptPayloadEncryptionSecret(testGpsSource),
+                    testGpsSource.getConnectionType().name(),
+                    testGpsSource.isFilterInaccurateData(),
+                    testGpsSource.getMaxAllowedAccuracy(),
+                    testGpsSource.getMaxAllowedSpeed(),
+                    testGpsSource.isEnableDuplicateDetection(),
+                    testGpsSource.getDuplicateDetectionThresholdMinutes(),
                     testPeriodTag.getTagName(),
                     testPeriodTag.getStartTime(),
                     testPeriodTag.getColor(),
@@ -678,6 +702,22 @@ class ExportImportIntegrationTest {
         assertEquals(1, rawGps.getPoints().size());
         assertEquals("test-device", rawGps.getPoints().get(0).getDeviceId());
 
+        LocationSourcesDataDto locationSources = read(entries, ExportImportConstants.FileNames.LOCATION_SOURCES, LocationSourcesDataDto.class);
+        assertEquals(1, locationSources.getSources().size());
+        LocationSourcesDataDto.SourceDto source = locationSources.getSources().get(0);
+        assertEquals("OWNTRACKS", source.getType());
+        assertEquals("test-user", source.getUsername());
+        assertEquals("gps-password-hash", source.getPasswordHash());
+        assertEquals("gps-source-token", source.getToken());
+        assertEquals("test-device", source.getDeviceId());
+        assertEquals("owntracks-payload-secret", source.getPayloadEncryptionSecret());
+        assertEquals("MQTT", source.getConnectionType());
+        assertTrue(source.isFilterInaccurateData());
+        assertEquals(50, source.getMaxAllowedAccuracy());
+        assertEquals(120, source.getMaxAllowedSpeed());
+        assertTrue(source.isEnableDuplicateDetection());
+        assertEquals(20, source.getDuplicateDetectionThresholdMinutes());
+
         TimelineDataDto timeline = read(entries, ExportImportConstants.FileNames.TIMELINE_DATA, TimelineDataDto.class);
         assertEquals(1, timeline.getStays().size());
         assertEquals(1, timeline.getTrips().size());
@@ -740,6 +780,13 @@ class ExportImportIntegrationTest {
 
     private <T> T read(Map<String, byte[]> entries, String fileName, Class<T> clazz) throws Exception {
         return objectMapper.readValue(entries.get(fileName), clazz);
+    }
+
+    private String decryptPayloadEncryptionSecret(GpsSourceConfigEntity source) {
+        if (source.getPayloadEncryptionSecretEncrypted() == null || source.getPayloadEncryptionSecretEncrypted().isBlank()) {
+            return null;
+        }
+        return encryptionService.decrypt(source.getPayloadEncryptionSecretEncrypted(), source.getPayloadEncryptionSecretKeyId());
     }
 
     private Map<String, byte[]> unzip(byte[] data) throws Exception {
@@ -880,9 +927,21 @@ class ExportImportIntegrationTest {
             assertEquals(originalData.gpsLatitude(), gpsPoints.get(0).getLatitude(), 0.000001);
             assertEquals(originalData.gpsAccuracy(), gpsPoints.get(0).getAccuracy(), 0.001);
 
-            GpsSourceConfigEntity importedGpsSource = gpsSourceRepository.findAll().firstResult();
+            GpsSourceConfigEntity importedGpsSource = gpsSourceRepository.findByUserId(testUser.getId()).stream()
+                    .findFirst()
+                    .orElse(null);
             assertNotNull(importedGpsSource);
             assertEquals(originalData.gpsSourceUsername(), importedGpsSource.getUsername());
+            assertEquals(originalData.gpsSourcePasswordHash(), importedGpsSource.getPasswordHash());
+            assertEquals(originalData.gpsSourceToken(), importedGpsSource.getToken());
+            assertEquals(originalData.gpsSourceDeviceId(), importedGpsSource.getDeviceId());
+            assertEquals(originalData.gpsSourcePayloadEncryptionSecret(), decryptPayloadEncryptionSecret(importedGpsSource));
+            assertEquals(originalData.gpsSourceConnectionType(), importedGpsSource.getConnectionType().name());
+            assertEquals(originalData.gpsSourceFilterInaccurateData(), importedGpsSource.isFilterInaccurateData());
+            assertEquals(originalData.gpsSourceMaxAllowedAccuracy(), importedGpsSource.getMaxAllowedAccuracy());
+            assertEquals(originalData.gpsSourceMaxAllowedSpeed(), importedGpsSource.getMaxAllowedSpeed());
+            assertEquals(originalData.gpsSourceEnableDuplicateDetection(), importedGpsSource.isEnableDuplicateDetection());
+            assertEquals(originalData.gpsSourceDuplicateDetectionThresholdMinutes(), importedGpsSource.getDuplicateDetectionThresholdMinutes());
 
             PeriodTagEntity periodTag = periodTagRepository.findByUserId(testUser.getId()).get(0);
             assertEquals(originalData.periodTagName(), periodTag.getTagName());
@@ -1062,6 +1121,16 @@ class ExportImportIntegrationTest {
             double gpsLatitude,
             Double gpsAccuracy,
             String gpsSourceUsername,
+            String gpsSourcePasswordHash,
+            String gpsSourceToken,
+            String gpsSourceDeviceId,
+            String gpsSourcePayloadEncryptionSecret,
+            String gpsSourceConnectionType,
+            boolean gpsSourceFilterInaccurateData,
+            Integer gpsSourceMaxAllowedAccuracy,
+            Integer gpsSourceMaxAllowedSpeed,
+            boolean gpsSourceEnableDuplicateDetection,
+            Integer gpsSourceDuplicateDetectionThresholdMinutes,
             String periodTagName,
             Instant periodTagStartTime,
             String periodTagColor,

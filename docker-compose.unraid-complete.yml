@@ -39,6 +39,7 @@ services:
     volumes:
       - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/keys:/app/keys
       - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/import-drop:/data/geopulse-import
+      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/backups:/data/geopulse-backups
     depends_on:
       geopulse-keygen:
         condition: service_completed_successfully

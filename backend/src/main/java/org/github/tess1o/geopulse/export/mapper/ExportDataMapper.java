@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.export.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
@@ -10,6 +12,8 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
 import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
@@ -34,6 +38,9 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class ExportDataMapper {
+
+    @Inject
+    AIEncryptionService encryptionService;
 
     public ExportMetadataDto toMetadataDto(ExportJob job) {
         return ExportMetadataDto.builder()
@@ -202,9 +209,25 @@ public class ExportDataMapper {
                 .id(source.getId())
                 .type(source.getSourceType() != null ? source.getSourceType().name() : "UNKNOWN")
                 .username(source.getUsername())
+                .passwordHash(source.getPasswordHash())
+                .token(source.getToken())
+                .deviceId(source.getDeviceId())
+                .payloadEncryptionSecret(decryptPayloadEncryptionSecret(source))
                 .active(source.isActive())
                 .connectionType(source.getConnectionType() != null ? source.getConnectionType().name() : "HTTP")
+                .filterInaccurateData(source.isFilterInaccurateData())
+                .maxAllowedAccuracy(source.getMaxAllowedAccuracy())
+                .maxAllowedSpeed(source.getMaxAllowedSpeed())
+                .enableDuplicateDetection(source.isEnableDuplicateDetection())
+                .duplicateDetectionThresholdMinutes(source.getDuplicateDetectionThresholdMinutes())
                 .build();
+    }
+
+    private String decryptPayloadEncryptionSecret(GpsSourceConfigEntity source) {
+        if (source.getPayloadEncryptionSecretEncrypted() == null || source.getPayloadEncryptionSecretEncrypted().isBlank()) {
+            return null;
+        }
+        return encryptionService.decrypt(source.getPayloadEncryptionSecretEncrypted(), source.getPayloadEncryptionSecretKeyId());
     }
 
     public LocationSourcesDataDto toLocationSourcesDataDto(List<GpsSourceConfigEntity> sources) {
@@ -216,6 +239,47 @@ public class ExportDataMapper {
                 .dataType("locationSources")
                 .exportDate(Instant.now())
                 .sources(sourceDtos)
+                .build();
+    }
+
+    public FriendsDataDto.FriendDto toFriendDto(UserFriendEntity friend) {
+        return FriendsDataDto.FriendDto.builder()
+                .id(friend.getId())
+                .userId(friend.getUser().getId())
+                .friendId(friend.getFriend().getId())
+                .userEmail(friend.getUser().getEmail())
+                .friendEmail(friend.getFriend().getEmail())
+                .createdAt(friend.getCreatedAt())
+                .build();
+    }
+
+    public FriendsDataDto toFriendsDataDto(List<UserFriendEntity> friends) {
+        return FriendsDataDto.builder()
+                .dataType("friends")
+                .exportDate(Instant.now())
+                .friends(friends.stream().map(this::toFriendDto).collect(Collectors.toList()))
+                .build();
+    }
+
+    public FriendPermissionsDataDto.FriendPermissionDto toFriendPermissionDto(UserFriendPermissionEntity permission) {
+        return FriendPermissionsDataDto.FriendPermissionDto.builder()
+                .id(permission.getId())
+                .userId(permission.getUser().getId())
+                .friendId(permission.getFriend().getId())
+                .userEmail(permission.getUser().getEmail())
+                .friendEmail(permission.getFriend().getEmail())
+                .shareTimeline(permission.getShareTimeline())
+                .shareLiveLocation(permission.getShareLiveLocation())
+                .createdAt(permission.getCreatedAt())
+                .updatedAt(permission.getUpdatedAt())
+                .build();
+    }
+
+    public FriendPermissionsDataDto toFriendPermissionsDataDto(List<UserFriendPermissionEntity> permissions) {
+        return FriendPermissionsDataDto.builder()
+                .dataType("friendPermissions")
+                .exportDate(Instant.now())
+                .permissions(permissions.stream().map(this::toFriendPermissionDto).collect(Collectors.toList()))
                 .build();
     }
 

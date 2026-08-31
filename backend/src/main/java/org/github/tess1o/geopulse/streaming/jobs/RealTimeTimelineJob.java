@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaignService;
@@ -40,6 +41,9 @@ public class RealTimeTimelineJob {
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
 
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
+
     @ConfigProperty(name = "geopulse.timeline.processing.thread-pool-size", defaultValue = "2")
     @StaticInitSafe
     int maxConcurrentTasks;
@@ -63,6 +67,10 @@ public class RealTimeTimelineJob {
     @Blocking
     @Scheduled(every = "${geopulse.timeline.job.interval:5m}", delayed = "${geopulse.timeline.job.delay:5m}")
     public void processRealTimeUpdates() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping real-time timeline processing while full backup restore is running");
+            return;
+        }
         long startedAtNanos = metricsStart();
         List<UserEntity> users = UserEntity.list("timelineStatus", TimelineStatus.IDLE);
         countRealtimeUsers("discovered", users.size());

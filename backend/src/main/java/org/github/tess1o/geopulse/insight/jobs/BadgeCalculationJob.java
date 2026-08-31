@@ -3,10 +3,12 @@ package org.github.tess1o.geopulse.insight.jobs;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.insight.model.BadgeProcessingResult;
 import org.github.tess1o.geopulse.insight.service.UserBadgeService;
 
@@ -23,6 +25,9 @@ public class BadgeCalculationJob {
 
     private final UserBadgeService userBadgeService;
     private final EntityManager entityManager;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @ConfigProperty(name = "geopulse.badges.calculation.enabled", defaultValue = "true")
     @StaticInitSafe
@@ -41,6 +46,10 @@ public class BadgeCalculationJob {
      */
     @Scheduled(every = "${geopulse.badges.calculation.interval}", delayed = "${geopulse.badges.calculation.delay}")
     public void processBadges() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping badge calculation while full backup restore is running");
+            return;
+        }
         if (!badgeCalculationEnabled) {
             log.debug("Badge calculation is disabled, skipping scheduled update");
             return;

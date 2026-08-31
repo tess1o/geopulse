@@ -19,6 +19,7 @@ public class SequenceResetService {
         "favorite_locations", "favorite_locations_id_seq",
         "timeline_stays", "timeline_stays_id_seq", 
         "timeline_trips", "timeline_trips_id_seq",
+        "timeline_data_gaps", "timeline_data_gaps_id_seq",
         "gps_points", "gps_points_id_seq"
         // Note: gps_source_config uses UUID, not a sequence
     );

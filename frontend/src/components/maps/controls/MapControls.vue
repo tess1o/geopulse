@@ -33,15 +33,15 @@
       </button>
 
       <button
-        v-if="showPathComparisonControl"
-        @click="handleTogglePathComparison"
-        :class="{ active: pathComparisonEnabled }"
-        :title="pathComparisonEnabled ? 'Hide raw GPS comparison' : 'Compare raw GPS and matched routes'"
-        :aria-pressed="pathComparisonEnabled"
-        class="control-button"
+        v-if="showRouteDisplayModeControl"
+        @click="handleCycleRouteDisplayMode"
+        :class="[routeDisplayModeButtonClass, { active: routeDisplayModeActive }]"
+        :title="routeDisplayModeButtonTitle"
+        :aria-label="routeDisplayModeButtonTitle"
+        class="control-button route-mode-button"
         :disabled="!map || !showPath"
       >
-        <i class="pi pi-clone"></i>
+        <i :class="routeDisplayModeIcon"></i>
       </button>
 
       <button
@@ -160,6 +160,10 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import {
+  ROUTE_DISPLAY_MODES,
+  normalizeRouteDisplayMode
+} from '@/constants/routeDisplayModes'
 
 const props = defineProps({
   map: {
@@ -178,13 +182,13 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  showPathComparisonControl: {
+  showRouteDisplayModeControl: {
     type: Boolean,
     default: false
   },
-  pathComparisonEnabled: {
-    type: Boolean,
-    default: false
+  routeDisplayMode: {
+    type: String,
+    default: ROUTE_DISPLAY_MODES.MATCHED
   },
   showRawGpsPointsControl: {
     type: Boolean,
@@ -268,7 +272,7 @@ const emit = defineEmits([
   'toggle-favorites',
   'toggle-timeline',
   'toggle-path',
-  'toggle-path-comparison',
+  'cycle-route-display-mode',
   'toggle-raw-gps-points',
   'toggle-immich',
   'toggle-notes',
@@ -290,8 +294,8 @@ const handleTogglePath = () => {
   emit('toggle-path', !props.showPath)
 }
 
-const handleTogglePathComparison = () => {
-  emit('toggle-path-comparison', !props.pathComparisonEnabled)
+const handleCycleRouteDisplayMode = () => {
+  emit('cycle-route-display-mode')
 }
 
 const handleToggleRawGpsPoints = () => {
@@ -346,6 +350,40 @@ const heatmapButtonTitle = computed(() => {
   if (!props.heatmapAvailable) return 'Select a date range to enable heatmap'
   if (props.heatmapEnabled) return 'Heatmap enabled'
   return 'Show heatmap'
+})
+
+const normalizedRouteDisplayMode = computed(() => normalizeRouteDisplayMode(props.routeDisplayMode))
+
+const routeDisplayModeActive = computed(() => (
+  normalizedRouteDisplayMode.value !== ROUTE_DISPLAY_MODES.MATCHED
+))
+
+const routeDisplayModeButtonClass = computed(() => (
+  `route-display-mode-${normalizedRouteDisplayMode.value}`
+))
+
+const routeDisplayModeButtonTitle = computed(() => {
+  if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.RAW) {
+    return 'Showing raw GPS route. Click to compare matched and raw GPS routes'
+  }
+
+  if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.COMPARISON) {
+    return 'Comparing matched route with raw GPS. Click to show matched route'
+  }
+
+  return 'Showing matched route. Click to show raw GPS route'
+})
+
+const routeDisplayModeIcon = computed(() => {
+  if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.RAW) {
+    return 'pi pi-wave-pulse'
+  }
+
+  if (normalizedRouteDisplayMode.value === ROUTE_DISPLAY_MODES.COMPARISON) {
+    return 'pi pi-clone'
+  }
+
+  return 'pi pi-directions'
 })
 
 const rawGpsPointsButtonTitle = computed(() => {
@@ -428,6 +466,22 @@ onBeforeUnmount(() => {
 .control-button.active:hover {
   background: var(--gp-primary-dark, #1e40af);
   transform: translateY(-1px);
+}
+
+.control-button.route-display-mode-raw.active {
+  background: #0f766e;
+}
+
+.control-button.route-display-mode-raw.active:hover {
+  background: #115e59;
+}
+
+.control-button.route-display-mode-comparison.active {
+  background: #7c3aed;
+}
+
+.control-button.route-display-mode-comparison.active:hover {
+  background: #6d28d9;
 }
 
 .control-button:focus {

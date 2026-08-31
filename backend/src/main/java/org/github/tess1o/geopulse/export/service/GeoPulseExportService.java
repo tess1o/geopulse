@@ -162,6 +162,14 @@ public class GeoPulseExportService {
                         addMapMatchingData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
+                    case ExportImportConstants.DataTypes.FRIENDS:
+                        addFriendsData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
+                    case ExportImportConstants.DataTypes.FRIEND_PERMISSIONS:
+                        addFriendPermissionsData(zos, job, currentProgress);
+                        currentProgress += progressPerType;
+                        break;
                     case ExportImportConstants.DataTypes.FAVORITES:
                     case ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION:
                         // Already handled above to ensure proper dependency order
@@ -492,5 +500,27 @@ public class GeoPulseExportService {
                 exportDataMapper.toMapMatchingDataDto(pathMatches, job)
         );
         log.debug("Exported {} map matching path matches", pathMatches.size());
+    }
+
+    private void addFriendsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting friends...");
+        var friends = dataCollectorService.collectFriends(job.getUserId());
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.FRIENDS,
+                exportDataMapper.toFriendsDataDto(friends)
+        );
+        log.debug("Exported {} directed friend relationships", friends.size());
+    }
+
+    private void addFriendPermissionsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting friend permissions...");
+        var permissions = dataCollectorService.collectFriendPermissions(job.getUserId());
+        streamingZipExportService.addSimpleJsonFileToZip(
+                zos,
+                ExportImportConstants.FileNames.FRIEND_PERMISSIONS,
+                exportDataMapper.toFriendPermissionsDataDto(permissions)
+        );
+        log.debug("Exported {} friend permission records", permissions.size());
     }
 }

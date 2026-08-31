@@ -9,6 +9,7 @@ import jakarta.enterprise.event.TransactionPhase;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.streaming.events.TimelineDataChangedEvent;
 import org.github.tess1o.geopulse.weather.dto.WeatherProcessingStatus;
@@ -56,6 +57,9 @@ public class WeatherPipelineWorker {
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @ConfigProperty(name = "geopulse.weather.targets.in-progress-timeout-minutes", defaultValue = "60")
     int inProgressTimeoutMinutes;
@@ -116,6 +120,10 @@ public class WeatherPipelineWorker {
 
     @Scheduled(every = "1m", delayed = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping weather watchdog while full backup restore is running");
+            return;
+        }
         long started = metricsStart();
         boolean due = hasDueWork();
         if (due) {
@@ -127,6 +135,14 @@ public class WeatherPipelineWorker {
     }
 
     public WeatherWorkAcceptedResponse wake(String reason) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            return WeatherWorkAcceptedResponse.builder()
+                    .accepted(false)
+                    .alreadyRunning(false)
+                    .queuedUserRanges((int) Math.min(Integer.MAX_VALUE, reconciliationRepository.countPendingUserRanges()))
+                    .message("Weather processing is paused while full backup restore is running")
+                    .build();
+        }
         rerunRequested.set(true);
         boolean submitted = running.compareAndSet(false, true);
         if (submitted) {

@@ -242,7 +242,7 @@ const adminService = {
         return apiService.post(`/admin/timeline-regeneration-campaigns/${campaignId}/retry-failed`, {});
     },
 
-    // ==================== Admin Settings Backup ====================
+    // ==================== Admin Settings Export ====================
 
     async exportAdminSettingsBackup() {
         return apiService.download('/admin/settings-backup/export');
@@ -256,6 +256,52 @@ const adminService = {
                 'Content-Type': 'multipart/form-data'
             }
         }));
+    },
+
+    async downloadFullBackup() {
+        return apiService.download('/admin/backups/download');
+    },
+
+    async runFullBackupNow() {
+        return unwrapApiResponse(await apiService.post('/admin/backups/run-now', {}));
+    },
+
+    async getBackupFiles() {
+        return unwrapApiResponse(await apiService.get('/admin/backups/files'));
+    },
+
+    async downloadLocalBackup(fileName) {
+        return apiService.download(`/admin/backups/files/${encodeURIComponent(fileName)}`);
+    },
+
+    async deleteLocalBackup(fileName) {
+        return unwrapApiResponse(await apiService.delete(`/admin/backups/files/${encodeURIComponent(fileName)}`));
+    },
+
+    async restoreUploadedFullBackup(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return unwrapApiResponse(await apiService.post('/admin/backups/restore/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        }));
+    },
+
+    async restoreLocalFullBackup(fileName) {
+        return unwrapApiResponse(await apiService.post('/admin/backups/restore/local', { fileName }));
+    },
+
+    async getBackupConfig() {
+        return unwrapApiResponse(await apiService.get('/admin/backups/config'));
+    },
+
+    async updateBackupConfig(config) {
+        return unwrapApiResponse(await apiService.put('/admin/backups/config', config));
+    },
+
+    async getBackupStatus() {
+        return unwrapApiResponse(await apiService.get('/admin/backups/status'));
     },
 
     // ==================== Audit Log Management ====================

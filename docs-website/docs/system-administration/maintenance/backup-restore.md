@@ -16,16 +16,88 @@ GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. 
 - **User accounts** - authentication and preferences
 - **Reverse geocoding cache** - address lookups to reduce API calls
 - **Settings** - application configuration
+- **GPS sources** - source tokens, device IDs, filtering, duplicate detection, and OwnTracks payload encryption settings
+- **Relationships and permissions** - friends, sharing links, and friend location permissions
 
 :::tip JWT Keys Don't Need Backup
 GeoPulse automatically generates JWT keys on first startup if they don't exist. You don't need to back up the keys from `/app/keys` - if lost, new keys will be generated automatically. Existing users will simply need to log in again.
 :::
 
+:::warning Database Backups Need Encryption Keys
+If you back up GeoPulse with `pg_dump`, also back up the AI encryption key configured by `GEOPULSE_AI_ENCRYPTION_KEY_LOCATION` (default: `/app/keys/ai-encryption-key.txt`). Without the same key, encrypted database values such as user AI settings and OwnTracks payload encryption secrets cannot be decrypted after restore.
+:::
+
+## Admin Backup
+
+GeoPulse includes an Admin Backup page under **Administration > Settings > Backup**. This is the easiest option when you want a portable application-data backup instead of a raw PostgreSQL snapshot.
+
+### Admin Settings Export
+
+The Admin Settings Export creates a JSON file for admin-managed behavior and provider configuration. It is useful for moving global settings between instances without moving user data.
+
+It includes:
+
+- System settings managed from the admin UI
+- OIDC provider configuration
+- Custom geocoding provider configuration
+- Provider credentials, tokens, custom headers, and client secrets needed by those settings
+
+It does not include users, GPS history, timelines, friendships, sharing permissions, database contents, JWT keys, or runtime infrastructure settings.
+
+### Full App Backup
+
+The Full App Backup creates a ZIP archive containing portable GeoPulse application data. It is designed to restore GeoPulse data into another instance, including an instance with a different AI encryption key.
+
+It includes:
+
+- Admin settings and provider configuration
+- Users and password hashes
+- User preferences and AI assistant settings
+- GPS points, visits, trips, timelines, data gaps, and generated location data
+- Reverse geocoding cache
+- GPS source configuration including tokens, device IDs, usernames, active flags, source types, connection types, password hashes, filtering settings, duplicate detection settings, and OwnTracks payload encryption secrets
+- Friends, friend permissions, and sharing links
+
+It does not include:
+
+- JWT private/public keys
+- Active browser sessions or issued JWTs
+- PostgreSQL server files, Docker volumes, compose files, `.env`, TLS files, or other deployment infrastructure
+- Files outside the GeoPulse application data model
+
+:::warning Sensitive Archive
+Full backup archives contain plaintext app secrets, plaintext AI provider API keys, plaintext OwnTracks payload encryption secrets, user password hashes, GPS source token hashes, OIDC links, GPS history, friendships, and sharing permissions. Store these archives as highly sensitive files and encrypt them before copying them off the server.
+:::
+
+### Local Scheduled Backups
+
+The Admin Backup page can write scheduled full backups to a server-side folder mounted into the backend container.
+
+Configurable options:
+
+- **Enabled** - turns the scheduled backup job on or off
+- **Cron** - schedule expression for automatic backups
+- **Folder Path** - folder inside the backend container where backup ZIP files are written
+- **Retention** - number of local backup files to keep
+- **Timeout Minutes** - maximum time allowed for a backup or restore operation
+
+The page also provides:
+
+- **Run Backup Now** - immediately creates a full backup in the configured local folder
+- **Download Full Backup** - generates a full backup and downloads it in the browser
+- **Local Backups** - lists backup files already present in the configured folder
+- **Download local backup** - downloads a selected server-side backup file
+- **Restore local backup** - restores a selected file from the backup folder without uploading it again
+- **Delete backup** - removes a selected file from the local backup folder
+- **Restore uploaded backup** - uploads a backup ZIP from your computer and restores it
+
+During restore, GeoPulse pauses restore-sensitive background processors so imported data is not immediately overwritten or regenerated while the restore transaction is running. Export operations do not require the same pause because they read current data without replacing it.
+
 ## Manual Backups
 
 ### Creating a Backup
 
-The simplest way to back up your GeoPulse database is using `pg_dump`:
+The simplest way to back up your GeoPulse database directly is using `pg_dump`:
 
 ```bash
 # Create a compressed backup with current timestamp
@@ -55,7 +127,15 @@ docker exec -t geopulse-postgres pg_dump \
 - **Plain SQL**: Larger files but can be inspected and edited with a text editor
 :::
 
+:::warning Back Up `/app/keys/ai-encryption-key.txt`
+`pg_dump` backs up encrypted database values as encrypted text. To restore those values on another server, copy the AI encryption key from the source server too. With the default Docker Compose setup, this file is mounted from `./keys/ai-encryption-key.txt` on the host to `/app/keys/ai-encryption-key.txt` in the backend container.
+
+JWT private/public keys are different: they are not required for data recovery, and replacing them only signs users out.
+:::
+
 ### Restoring from Backup
+
+Before restoring a `pg_dump` backup onto a new server, place the source server's AI encryption key at the path configured by `GEOPULSE_AI_ENCRYPTION_KEY_LOCATION` (default: `/app/keys/ai-encryption-key.txt`). If the key is missing or different, encrypted AI settings and OwnTracks payload encryption secrets from the database backup will not be readable.
 
 #### Restore Custom Format Backup
 
@@ -157,6 +237,8 @@ crontab -e
 0 2 * * * /usr/local/bin/geopulse-backup.sh >> /var/log/geopulse-backup.log 2>&1
 ```
 
+Remember to back up the AI encryption key alongside scheduled `pg_dump` files. The database dump alone is not enough for a complete restore of encrypted app settings.
+
 ### Using Docker Container (Cross-platform)
 
 Add a backup service to your `docker-compose.yml`:
@@ -188,6 +270,8 @@ Then start the backup service:
 ```bash
 docker compose up -d geopulse-backup
 ```
+
+This service backs up PostgreSQL only. Keep a separate secure copy of the AI encryption key file from the source server.
 
 ## Verification and Testing
 
@@ -262,9 +346,12 @@ If you need to restore GeoPulse on a new server:
 
 2. **Clone your GeoPulse configuration**:
 ```bash
-# Copy your .env file and docker-compose.yml to new server
+# Copy your .env, docker-compose.yml, and encryption keys to new server
 scp .env docker-compose.yml newserver:/opt/geopulse/
+scp -r keys newserver:/opt/geopulse/
 ```
+
+At minimum, the copied `keys` folder must include the AI encryption key used by the source database. JWT key files are optional for disaster recovery; preserving them keeps already-issued JWTs valid, while replacing them signs users in again.
 
 3. **Start PostgreSQL only**:
 ```bash

@@ -9,6 +9,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.streaming.service.TimelineRegenerationCampaignService;
 
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +26,9 @@ public class TimelineRegenerationCampaignJob {
     @Inject
     @Identifier("timeline-processing")
     ExecutorService executorService;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @ConfigProperty(name = "geopulse.timeline.regeneration-campaign.max-concurrent-tasks", defaultValue = "2")
     @StaticInitSafe
@@ -50,6 +54,10 @@ public class TimelineRegenerationCampaignJob {
             identity = "timeline-regeneration-campaign"
     )
     public void processCampaigns() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping timeline regeneration campaign processing while full backup restore is running");
+            return;
+        }
         try {
             campaignService.recoverStaleRunningCampaignUsers();
             campaignService.reconcileActiveCampaigns();

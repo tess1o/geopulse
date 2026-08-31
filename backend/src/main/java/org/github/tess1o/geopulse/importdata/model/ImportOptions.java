@@ -19,4 +19,11 @@ public class ImportOptions {
      * This ensures only data where replacements exist will be deleted.
      */
     private boolean clearDataBeforeImport = false;
+
+    /**
+     * Full admin backup restore mode. When true, timeline rows from the export
+     * are restored as a snapshot and raw GPS import must not trigger timeline
+     * regeneration when timeline data is present.
+     */
+    private boolean snapshotRestore = false;
 }

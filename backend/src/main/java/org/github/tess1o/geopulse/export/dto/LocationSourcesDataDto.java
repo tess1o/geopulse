@@ -26,7 +26,16 @@ public class LocationSourcesDataDto {
         private UUID id;
         private String type;
         private String username;
+        private String passwordHash;
+        private String token;
+        private String deviceId;
+        private String payloadEncryptionSecret;
         private boolean active;
         private String connectionType;
+        private boolean filterInaccurateData;
+        private Integer maxAllowedAccuracy;
+        private Integer maxAllowedSpeed;
+        private boolean enableDuplicateDetection;
+        private Integer duplicateDetectionThresholdMinutes;
     }
 }

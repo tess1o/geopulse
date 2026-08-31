@@ -6,6 +6,7 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
@@ -32,6 +33,9 @@ public class ImportJobService {
 
     @Inject
     BadgeRecalculationService badgeRecalculationService;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @Inject
     TimelineJobProgressService timelineJobProgressService;
@@ -116,6 +120,10 @@ public class ImportJobService {
     @Scheduled(every = "2s")
     @RunOnVirtualThread
     public void processImportJobs() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping import job processing while full backup restore is running");
+            return;
+        }
         if (!schedulerEnabled) {
             log.info("Import scheduler is disabled. Skipping scheduled import jobs.");
             return;

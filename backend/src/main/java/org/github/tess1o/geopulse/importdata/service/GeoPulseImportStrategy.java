@@ -10,10 +10,15 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
+import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
+import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.*;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -30,9 +35,14 @@ import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.DataGapStayOverrideLocationStrategy;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.trips.model.entity.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -81,6 +91,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Inject
     GpsSourceRepository gpsSourceRepository;
 
+    @Inject
+    FriendshipRepository friendshipRepository;
+
+    @Inject
+    UserFriendPermissionRepository friendPermissionRepository;
+
+    @Inject
+    AIEncryptionService encryptionService;
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -113,8 +132,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         detectedDataTypes.add(ExportImportConstants.DataTypes.RAW_GPS);
                         break;
                     case ExportImportConstants.FileNames.TIMELINE_DATA:
-                        // Timeline data will be regenerated from GPS data - skip detection
-                        log.debug("Timeline data found in export - will be regenerated from GPS data");
+                        if (job.getOptions().isSnapshotRestore()) {
+                            detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE);
+                        } else {
+                            // Timeline data will be regenerated from GPS data for normal user imports.
+                            log.debug("Timeline data found in export - will be regenerated from GPS data");
+                        }
                         break;
                     case ExportImportConstants.FileNames.DATA_GAPS:
                         // Data gaps will be regenerated during timeline generation - skip detection
@@ -155,6 +178,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         break;
                     case ExportImportConstants.FileNames.MAP_MATCHING:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.MAP_MATCHING);
+                        break;
+                    case ExportImportConstants.FileNames.FRIENDS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.FRIENDS);
+                        break;
+                    case ExportImportConstants.FileNames.FRIEND_PERMISSIONS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.FRIEND_PERMISSIONS);
                         break;
                     default:
                         log.warn("Unknown file in import: {}", fileName);
@@ -238,6 +267,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         // Check if GPS data exists for import
         boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
+        boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
+        boolean snapshotRestore = job.getOptions().isSnapshotRestore();
 
         // Handle data clearing before import if requested
         if (job.getOptions().isClearDataBeforeImport()) {
@@ -255,8 +286,17 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        // 4. Always regenerate timeline after GPS import (skipping timeline/gaps data in export)
-        if (hasGpsData && firstGpsTimestamp != null) {
+        // 4. Full backup restores are snapshots: import stored timeline rows instead of regenerating.
+        if (snapshotRestore && hasTimelineData) {
+            importTimelineDataSnapshot(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job, referenceMaps);
+            totalProgress += 35;
+            job.setProgress(totalProgress);
+            log.info("Restored timeline snapshot for user {}; skipping timeline regeneration", job.getUserId());
+        } else if (hasGpsData && firstGpsTimestamp != null) {
+            if (snapshotRestore) {
+                log.warn("Snapshot restore for user {} has GPS data but no timeline snapshot; falling back to timeline regeneration",
+                        job.getUserId());
+            }
             log.info("Regenerating timeline from imported GPS data starting from timestamp: {}", firstGpsTimestamp);
 
             // Update progress FIRST, before blocking timeline trigger
@@ -306,7 +346,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.NOTES)) {
-            importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job);
+            importNotesData(fileContents.get(ExportImportConstants.FileNames.NOTES), job, referenceMaps);
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.WEATHER_SAMPLES)) {
@@ -314,7 +354,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.MAP_MATCHING)) {
-            importMapMatchingData(fileContents.get(ExportImportConstants.FileNames.MAP_MATCHING), job);
+            importMapMatchingData(fileContents.get(ExportImportConstants.FileNames.MAP_MATCHING), job, referenceMaps);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.FRIENDS)) {
+            importFriendsData(fileContents.get(ExportImportConstants.FileNames.FRIENDS), job);
+        }
+
+        if (fileContents.containsKey(ExportImportConstants.FileNames.FRIEND_PERMISSIONS)) {
+            importFriendPermissionsData(fileContents.get(ExportImportConstants.FileNames.FRIEND_PERMISSIONS), job);
         }
     }
 
@@ -365,6 +413,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.WEATHER_SAMPLES;
             case ExportImportConstants.FileNames.MAP_MATCHING:
                 return ExportImportConstants.DataTypes.MAP_MATCHING;
+            case ExportImportConstants.FileNames.FRIENDS:
+                return ExportImportConstants.DataTypes.FRIENDS;
+            case ExportImportConstants.FileNames.FRIEND_PERMISSIONS:
+                return ExportImportConstants.DataTypes.FRIEND_PERMISSIONS;
             default:
                 return null;
         }
@@ -479,9 +531,197 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         return gpsEntities;
     }
 
-    // Timeline import removed - timeline is now always regenerated from GPS data
+    @Transactional
+    public void importTimelineDataSnapshot(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        TimelineDataDto timelineData = objectMapper.readValue(content, TimelineDataDto.class);
+        UserEntity user = getImportingUser(job);
 
-    // Data gaps import removed - data gaps are now regenerated during timeline generation
+        int stays = importTimelineStaysSnapshot(timelineData, user, job, referenceMaps);
+        int trips = importTimelineTripsSnapshot(timelineData, user, job, referenceMaps);
+        int dataGaps = importTimelineDataGapsSnapshot(timelineData, user, job, referenceMaps);
+        entityManager.flush();
+
+        log.info("Imported timeline snapshot for user {}: {} stays, {} trips, {} data gaps",
+                job.getUserId(), stays, trips, dataGaps);
+    }
+
+    private int importTimelineStaysSnapshot(TimelineDataDto timelineData,
+                                            UserEntity user,
+                                            ImportJob job,
+                                            ImportReferenceMaps referenceMaps) {
+        int imported = 0;
+        for (TimelineDataDto.StayDto dto : emptyIfNull(timelineData.getStays())) {
+            if (dto.getId() <= 0
+                    || dto.getTimestamp() == null
+                    || dto.getLatitude() == null
+                    || dto.getLongitude() == null
+                    || shouldSkipDueToDateFilter(dto.getTimestamp(), job)) {
+                continue;
+            }
+
+            Long favoriteId = resolveMappedId(dto.getFavoriteId(), referenceMaps.favoriteIds);
+            Long geocodingId = resolveMappedId(dto.getGeocodingId(), referenceMaps.geocodingIds);
+            String locationSource = favoriteId == null ? LocationSource.GEOCODING.name() : LocationSource.FAVORITE.name();
+
+            entityManager.createNativeQuery("""
+                            INSERT INTO timeline_stays
+                            (id, user_id, timestamp, stay_duration, location, location_name,
+                             favorite_id, geocoding_id, created_at, last_updated, location_source)
+                            VALUES (:id, :userId, :timestamp, :duration,
+                                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
+                                    :locationName, :favoriteId, :geocodingId, :createdAt, :lastUpdated, :locationSource)
+                            ON CONFLICT (id) DO UPDATE SET
+                                user_id = EXCLUDED.user_id,
+                                timestamp = EXCLUDED.timestamp,
+                                stay_duration = EXCLUDED.stay_duration,
+                                location = EXCLUDED.location,
+                                location_name = EXCLUDED.location_name,
+                                favorite_id = EXCLUDED.favorite_id,
+                                geocoding_id = EXCLUDED.geocoding_id,
+                                created_at = EXCLUDED.created_at,
+                                last_updated = EXCLUDED.last_updated,
+                                location_source = EXCLUDED.location_source
+                            """)
+                    .setParameter("id", dto.getId())
+                    .setParameter("userId", user.getId())
+                    .setParameter("timestamp", dto.getTimestamp())
+                    .setParameter("duration", durationSeconds(dto.getTimestamp(), dto.getEndTime(), dto.getDuration()))
+                    .setParameter("longitude", dto.getLongitude())
+                    .setParameter("latitude", dto.getLatitude())
+                    .setParameter("locationName", dto.getAddress() == null ? "" : dto.getAddress())
+                    .setParameter("favoriteId", favoriteId)
+                    .setParameter("geocodingId", geocodingId)
+                    .setParameter("createdAt", Instant.now())
+                    .setParameter("lastUpdated", Instant.now())
+                    .setParameter("locationSource", locationSource)
+                    .executeUpdate();
+
+            referenceMaps.timelineStayIds.put(dto.getId(), dto.getId());
+            imported++;
+        }
+        return imported;
+    }
+
+    private int importTimelineTripsSnapshot(TimelineDataDto timelineData,
+                                            UserEntity user,
+                                            ImportJob job,
+                                            ImportReferenceMaps referenceMaps) {
+        int imported = 0;
+        for (TimelineDataDto.TripDto dto : emptyIfNull(timelineData.getTrips())) {
+            if (dto.getId() <= 0
+                    || dto.getTimestamp() == null
+                    || dto.getStartLatitude() == null
+                    || dto.getStartLongitude() == null
+                    || dto.getEndLatitude() == null
+                    || dto.getEndLongitude() == null
+                    || shouldSkipDueToDateFilter(dto.getTimestamp(), job)) {
+                continue;
+            }
+
+            MovementTypeSource source = parseEnum(MovementTypeSource.class, dto.getMovementTypeSource(), MovementTypeSource.AUTO);
+            entityManager.createNativeQuery("""
+                            INSERT INTO timeline_trips
+                            (id, user_id, timestamp, trip_duration, start_point, end_point,
+                             distance_meters, movement_type, movement_type_source, avg_gps_speed, max_gps_speed,
+                             speed_variance, low_accuracy_points_count, water_distance_meters, water_distance_ratio,
+                             longest_water_segment_meters, water_sample_count, water_evidence_available,
+                             created_at, last_updated)
+                            VALUES (:id, :userId, :timestamp, :duration,
+                                    ST_SetSRID(ST_MakePoint(:startLongitude, :startLatitude), 4326),
+                                    ST_SetSRID(ST_MakePoint(:endLongitude, :endLatitude), 4326),
+                                    :distance, :movementType, :movementTypeSource, :avgGpsSpeed, :maxGpsSpeed,
+                                    :speedVariance, :lowAccuracyPointsCount, :waterDistanceMeters, :waterDistanceRatio,
+                                    :longestWaterSegmentMeters, :waterSampleCount, :waterEvidenceAvailable,
+                                    :createdAt, :lastUpdated)
+                            ON CONFLICT (id) DO UPDATE SET
+                                user_id = EXCLUDED.user_id,
+                                timestamp = EXCLUDED.timestamp,
+                                trip_duration = EXCLUDED.trip_duration,
+                                start_point = EXCLUDED.start_point,
+                                end_point = EXCLUDED.end_point,
+                                distance_meters = EXCLUDED.distance_meters,
+                                movement_type = EXCLUDED.movement_type,
+                                movement_type_source = EXCLUDED.movement_type_source,
+                                avg_gps_speed = EXCLUDED.avg_gps_speed,
+                                max_gps_speed = EXCLUDED.max_gps_speed,
+                                speed_variance = EXCLUDED.speed_variance,
+                                low_accuracy_points_count = EXCLUDED.low_accuracy_points_count,
+                                water_distance_meters = EXCLUDED.water_distance_meters,
+                                water_distance_ratio = EXCLUDED.water_distance_ratio,
+                                longest_water_segment_meters = EXCLUDED.longest_water_segment_meters,
+                                water_sample_count = EXCLUDED.water_sample_count,
+                                water_evidence_available = EXCLUDED.water_evidence_available,
+                                created_at = EXCLUDED.created_at,
+                                last_updated = EXCLUDED.last_updated
+                            """)
+                    .setParameter("id", dto.getId())
+                    .setParameter("userId", user.getId())
+                    .setParameter("timestamp", dto.getTimestamp())
+                    .setParameter("duration", durationSeconds(dto.getTimestamp(), dto.getEndTime(), dto.getDuration()))
+                    .setParameter("startLongitude", dto.getStartLongitude())
+                    .setParameter("startLatitude", dto.getStartLatitude())
+                    .setParameter("endLongitude", dto.getEndLongitude())
+                    .setParameter("endLatitude", dto.getEndLatitude())
+                    .setParameter("distance", dto.getDistance() == null ? 0L : dto.getDistance())
+                    .setParameter("movementType", dto.getTransportMode())
+                    .setParameter("movementTypeSource", source.name())
+                    .setParameter("avgGpsSpeed", dto.getAvgGpsSpeed())
+                    .setParameter("maxGpsSpeed", dto.getMaxGpsSpeed())
+                    .setParameter("speedVariance", dto.getSpeedVariance())
+                    .setParameter("lowAccuracyPointsCount", dto.getLowAccuracyPointsCount())
+                    .setParameter("waterDistanceMeters", dto.getWaterDistanceMeters())
+                    .setParameter("waterDistanceRatio", dto.getWaterDistanceRatio())
+                    .setParameter("longestWaterSegmentMeters", dto.getLongestWaterSegmentMeters())
+                    .setParameter("waterSampleCount", dto.getWaterSampleCount())
+                    .setParameter("waterEvidenceAvailable", dto.getWaterEvidenceAvailable())
+                    .setParameter("createdAt", Instant.now())
+                    .setParameter("lastUpdated", Instant.now())
+                    .executeUpdate();
+
+            referenceMaps.timelineTripIds.put(dto.getId(), dto.getId());
+            imported++;
+        }
+        return imported;
+    }
+
+    private int importTimelineDataGapsSnapshot(TimelineDataDto timelineData,
+                                               UserEntity user,
+                                               ImportJob job,
+                                               ImportReferenceMaps referenceMaps) {
+        int imported = 0;
+        for (TimelineDataDto.DataGapDto dto : emptyIfNull(timelineData.getDataGaps())) {
+            if (dto.getId() <= 0
+                    || dto.getStartTime() == null
+                    || dto.getEndTime() == null
+                    || !dto.getEndTime().isAfter(dto.getStartTime())
+                    || shouldSkipDueToDateFilter(dto.getStartTime(), job)) {
+                continue;
+            }
+
+            entityManager.createNativeQuery("""
+                            INSERT INTO timeline_data_gaps
+                            (id, user_id, start_time, end_time, duration_seconds, created_at)
+                            VALUES (:id, :userId, :startTime, :endTime, :durationSeconds, :createdAt)
+                            ON CONFLICT (id) DO UPDATE SET
+                                user_id = EXCLUDED.user_id,
+                                start_time = EXCLUDED.start_time,
+                                end_time = EXCLUDED.end_time,
+                                duration_seconds = EXCLUDED.duration_seconds,
+                                created_at = EXCLUDED.created_at
+                            """)
+                    .setParameter("id", dto.getId())
+                    .setParameter("userId", user.getId())
+                    .setParameter("startTime", dto.getStartTime())
+                    .setParameter("endTime", dto.getEndTime())
+                    .setParameter("durationSeconds", Math.max(1L, dto.getDurationSeconds()))
+                    .setParameter("createdAt", defaultInstant(dto.getCreatedAt()))
+                    .executeUpdate();
+
+            referenceMaps.timelineDataGapIds.put(dto.getId(), dto.getId());
+            imported++;
+        }
+        return imported;
+    }
 
     @Transactional
     public void importFavoritesData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
@@ -643,32 +883,25 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 org.github.tess1o.geopulse.shared.gps.GpsSourceType sourceType = 
                     org.github.tess1o.geopulse.shared.gps.GpsSourceType.valueOf(sourceDto.getType());
 
-                // Check for duplicates by user + username + type
-                List<GpsSourceConfigEntity> duplicates = gpsSourceRepository.findByUserAndUsernameAndType(
-                        job.getUserId(), sourceDto.getUsername(), sourceType);
+                Optional<GpsSourceConfigEntity> existingById = sourceDto.getId() == null
+                        ? Optional.empty()
+                        : gpsSourceRepository.findByConfigIdAndUserId(sourceDto.getId(), job.getUserId());
+                List<GpsSourceConfigEntity> duplicates = existingById
+                        .map(List::of)
+                        .orElseGet(() -> gpsSourceRepository.findByUserAndUsernameAndType(
+                                job.getUserId(), sourceDto.getUsername(), sourceType));
 
                 if (duplicates.isEmpty()) {
-                    // Create new GPS source configuration
                     GpsSourceConfigEntity sourceConfig = new GpsSourceConfigEntity();
-                    sourceConfig.setUser(user);
-                    sourceConfig.setUsername(sourceDto.getUsername());
-                    sourceConfig.setSourceType(sourceType);
-                    sourceConfig.setActive(sourceDto.isActive());
-                    
-                    // Set connection type
-                    GpsSourceConfigEntity.ConnectionType connectionType = 
-                        sourceDto.getConnectionType() != null ? 
-                        GpsSourceConfigEntity.ConnectionType.valueOf(sourceDto.getConnectionType()) : 
-                        GpsSourceConfigEntity.ConnectionType.HTTP;
-                    sourceConfig.setConnectionType(connectionType);
-
-                    gpsSourceRepository.persist(sourceConfig);
+                    if (sourceDto.getId() != null) {
+                        sourceConfig.setId(sourceDto.getId());
+                    }
+                    applyLocationSourceDto(sourceConfig, user, sourceDto, sourceType);
+                    persistNewLocationSource(sourceConfig);
                     imported++;
                 } else {
-                    // Update existing source configuration with potentially better data
                     GpsSourceConfigEntity existing = duplicates.get(0);
-                    updateSourceConfigIfNecessary(existing, sourceDto.isActive(), 
-                        sourceDto.getConnectionType());
+                    applyLocationSourceDto(existing, user, sourceDto, sourceType);
                     skipped++;
                 }
             } catch (Exception e) {
@@ -679,35 +912,98 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         log.info("Successfully imported {} GPS sources using duplicate detection (skipped {} duplicates)", imported, skipped);
     }
 
-    /**
-     * Update existing GPS source configuration with better data if available
-     */
-    private void updateSourceConfigIfNecessary(GpsSourceConfigEntity existing, boolean newActive, String newConnectionType) {
-        boolean updated = false;
-
-        // Update active status to true if new source is active and existing is not
-        if (newActive && !existing.isActive()) {
-            existing.setActive(true);
-            updated = true;
+    private void persistNewLocationSource(GpsSourceConfigEntity sourceConfig) {
+        if (sourceConfig.getId() == null) {
+            gpsSourceRepository.persist(sourceConfig);
+        } else {
+            entityManager.createNativeQuery("""
+                            INSERT INTO gps_source_config (
+                                id,
+                                user_id,
+                                username,
+                                password_hash,
+                                token,
+                                device_id,
+                                payload_encryption_secret_encrypted,
+                                payload_encryption_secret_key_id,
+                                source_type,
+                                active,
+                                connection_type,
+                                filter_inaccurate_data,
+                                max_allowed_accuracy,
+                                max_allowed_speed,
+                                enable_duplicate_detection,
+                                duplicate_detection_threshold_minutes
+                            ) VALUES (
+                                :id,
+                                :userId,
+                                :username,
+                                :passwordHash,
+                                :token,
+                                :deviceId,
+                                :payloadEncryptionSecretEncrypted,
+                                :payloadEncryptionSecretKeyId,
+                                :sourceType,
+                                :active,
+                                :connectionType,
+                                :filterInaccurateData,
+                                :maxAllowedAccuracy,
+                                :maxAllowedSpeed,
+                                :enableDuplicateDetection,
+                                :duplicateDetectionThresholdMinutes
+                            )
+                            """)
+                    .setParameter("id", sourceConfig.getId())
+                    .setParameter("userId", sourceConfig.getUser().getId())
+                    .setParameter("username", sourceConfig.getUsername())
+                    .setParameter("passwordHash", sourceConfig.getPasswordHash())
+                    .setParameter("token", sourceConfig.getToken())
+                    .setParameter("deviceId", sourceConfig.getDeviceId())
+                    .setParameter("payloadEncryptionSecretEncrypted", sourceConfig.getPayloadEncryptionSecretEncrypted())
+                    .setParameter("payloadEncryptionSecretKeyId", sourceConfig.getPayloadEncryptionSecretKeyId())
+                    .setParameter("sourceType", sourceConfig.getSourceType().name())
+                    .setParameter("active", sourceConfig.isActive())
+                    .setParameter("connectionType", sourceConfig.getConnectionType().name())
+                    .setParameter("filterInaccurateData", sourceConfig.isFilterInaccurateData())
+                    .setParameter("maxAllowedAccuracy", sourceConfig.getMaxAllowedAccuracy())
+                    .setParameter("maxAllowedSpeed", sourceConfig.getMaxAllowedSpeed())
+                    .setParameter("enableDuplicateDetection", sourceConfig.isEnableDuplicateDetection())
+                    .setParameter("duplicateDetectionThresholdMinutes", sourceConfig.getDuplicateDetectionThresholdMinutes())
+                    .executeUpdate();
         }
+    }
 
-        // Update connection type if it's provided and different
-        if (newConnectionType != null) {
-            try {
-                GpsSourceConfigEntity.ConnectionType newType = 
-                    GpsSourceConfigEntity.ConnectionType.valueOf(newConnectionType);
-                if (!newType.equals(existing.getConnectionType())) {
-                    existing.setConnectionType(newType);
-                    updated = true;
-                }
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid connection type: {}", newConnectionType);
-            }
+    private void applyLocationSourceDto(GpsSourceConfigEntity target,
+                                        UserEntity user,
+                                        LocationSourcesDataDto.SourceDto sourceDto,
+                                        org.github.tess1o.geopulse.shared.gps.GpsSourceType sourceType) {
+        target.setUser(user);
+        target.setSourceType(sourceType);
+        target.setUsername(sourceDto.getUsername());
+        target.setPasswordHash(sourceDto.getPasswordHash());
+        target.setToken(sourceDto.getToken());
+        target.setDeviceId(sourceDto.getDeviceId());
+        target.setActive(sourceDto.isActive());
+        target.setConnectionType(parseConnectionType(sourceDto.getConnectionType()));
+        target.setFilterInaccurateData(sourceDto.isFilterInaccurateData());
+        target.setMaxAllowedAccuracy(sourceDto.getMaxAllowedAccuracy());
+        target.setMaxAllowedSpeed(sourceDto.getMaxAllowedSpeed());
+        target.setEnableDuplicateDetection(sourceDto.isEnableDuplicateDetection());
+        target.setDuplicateDetectionThresholdMinutes(sourceDto.getDuplicateDetectionThresholdMinutes());
+        if (sourceDto.getPayloadEncryptionSecret() == null || sourceDto.getPayloadEncryptionSecret().isBlank()) {
+            target.setPayloadEncryptionSecretEncrypted(null);
+            target.setPayloadEncryptionSecretKeyId(null);
+        } else {
+            target.setPayloadEncryptionSecretEncrypted(encryptionService.encrypt(sourceDto.getPayloadEncryptionSecret()));
+            target.setPayloadEncryptionSecretKeyId(encryptionService.getCurrentKeyId());
         }
+    }
 
-        if (updated) {
-            gpsSourceRepository.persist(existing);
+    private GpsSourceConfigEntity.ConnectionType parseConnectionType(String connectionType) {
+        if (connectionType == null || connectionType.isBlank()) {
+            return GpsSourceConfigEntity.ConnectionType.HTTP;
         }
+        return GpsSourceConfigEntity.ConnectionType.valueOf(connectionType);
     }
 
     public void importReverseGeocodingData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
@@ -880,6 +1176,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
             entity.setUser(user);
             entity.setMovementType(dto.getMovementType());
+            Long mappedTripId = resolveMappedId(dto.getTripId(), referenceMaps.timelineTripIds);
+            entity.setTrip(mappedTripId == null ? null : entityManager.getReference(TimelineTripEntity.class, mappedTripId));
             entity.setSourceTripTimestamp(dto.getSourceTripTimestamp());
             entity.setSourceTripDurationSeconds(dto.getSourceTripDurationSeconds() == null ? 0L : dto.getSourceTripDurationSeconds());
             entity.setSourceDistanceMeters(dto.getSourceDistanceMeters() == null ? 0L : dto.getSourceDistanceMeters());
@@ -914,6 +1212,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     .orElseGet(TimelineDataGapStayOverrideEntity::new);
 
             entity.setUser(user);
+            Long mappedDataGapId = resolveMappedId(dto.getDataGapId(), referenceMaps.timelineDataGapIds);
+            Long mappedStayId = resolveMappedId(dto.getStayId(), referenceMaps.timelineStayIds);
+            entity.setDataGap(mappedDataGapId == null ? null : entityManager.getReference(TimelineDataGapEntity.class, mappedDataGapId));
+            entity.setStay(mappedStayId == null ? null : entityManager.getReference(TimelineStayEntity.class, mappedStayId));
             entity.setLocationStrategy(parseEnum(DataGapStayOverrideLocationStrategy.class, dto.getLocationStrategy(), DataGapStayOverrideLocationStrategy.SELECTED_LOCATION));
             entity.setSelectedFavoriteId(resolveMappedId(dto.getSelectedFavoriteId(), referenceMaps.favoriteIds));
             entity.setSelectedGeocodingId(resolveMappedId(dto.getSelectedGeocodingId(), referenceMaps.geocodingIds));
@@ -1172,7 +1474,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     @Transactional
-    public void importNotesData(byte[] content, ImportJob job) throws IOException {
+    public void importNotesData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         NotesDataDto data = objectMapper.readValue(content, NotesDataDto.class);
         UserEntity user = getImportingUser(job);
 
@@ -1203,6 +1505,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     : null);
             entity.setLocationSource(parseEnum(NoteLocationSource.class, dto.getLocationSource(), NoteLocationSource.NONE));
             entity.setAnchorType(parseEnum(NoteAnchorType.class, dto.getAnchorType(), NoteAnchorType.TIMESTAMP));
+            Long mappedStayId = resolveMappedId(dto.getStayId(), referenceMaps.timelineStayIds);
+            Long mappedTripId = resolveMappedId(dto.getTripId(), referenceMaps.timelineTripIds);
+            entity.setStay(mappedStayId == null ? null : entityManager.getReference(TimelineStayEntity.class, mappedStayId));
+            entity.setTrip(mappedTripId == null ? null : entityManager.getReference(TimelineTripEntity.class, mappedTripId));
             entity.setSourceItemStartTime(dto.getSourceItemStartTime());
             entity.setSourceItemDurationSeconds(dto.getSourceItemDurationSeconds());
             entity.setSourceStartLatitude(dto.getSourceStartLatitude());
@@ -1281,7 +1587,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     @Transactional
-    public void importMapMatchingData(byte[] content, ImportJob job) throws IOException {
+    public void importMapMatchingData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
         MapMatchingDataDto data = objectMapper.readValue(content, MapMatchingDataDto.class);
         UserEntity user = getImportingUser(job);
 
@@ -1300,6 +1606,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             TimelineTripPathMatchEntity entity = findExistingMapMatchingPathMatch(job.getUserId(), dto)
                     .orElseGet(TimelineTripPathMatchEntity::new);
             entity.setUser(user);
+            Long mappedTripId = resolveMappedId(dto.getTripId(), referenceMaps.timelineTripIds);
+            entity.setTrip(mappedTripId == null ? null : entityManager.getReference(TimelineTripEntity.class, mappedTripId));
             entity.setProvider(dto.getProvider());
             entity.setProfile(dto.getProfile());
             entity.setConfigHash(dto.getConfigHash());
@@ -1392,11 +1700,81 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 .findFirst();
     }
 
+    @Transactional
+    public void importFriendsData(byte[] content, ImportJob job) throws IOException {
+        FriendsDataDto data = objectMapper.readValue(content, FriendsDataDto.class);
+        int imported = 0;
+        for (FriendsDataDto.FriendDto dto : emptyIfNull(data.getFriends())) {
+            UserEntity user = resolveUser(dto.getUserId(), dto.getUserEmail()).orElse(null);
+            UserEntity friend = resolveUser(dto.getFriendId(), dto.getFriendEmail()).orElse(null);
+            if (user == null || friend == null || user.getId().equals(friend.getId())) {
+                continue;
+            }
+            if (!friendshipRepository.existsFriendship(user.getId(), friend.getId())) {
+                UserFriendEntity entity = new UserFriendEntity();
+                entity.setUser(user);
+                entity.setFriend(friend);
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+                entityManager.persist(entity);
+                imported++;
+            }
+        }
+        log.info("Imported {} directed friend relationships", imported);
+    }
+
+    @Transactional
+    public void importFriendPermissionsData(byte[] content, ImportJob job) throws IOException {
+        FriendPermissionsDataDto data = objectMapper.readValue(content, FriendPermissionsDataDto.class);
+        int importedOrUpdated = 0;
+        for (FriendPermissionsDataDto.FriendPermissionDto dto : emptyIfNull(data.getPermissions())) {
+            UserEntity user = resolveUser(dto.getUserId(), dto.getUserEmail()).orElse(null);
+            UserEntity friend = resolveUser(dto.getFriendId(), dto.getFriendEmail()).orElse(null);
+            if (user == null || friend == null || user.getId().equals(friend.getId())) {
+                continue;
+            }
+
+            UserFriendPermissionEntity entity = friendPermissionRepository
+                    .findByUserIdAndFriendId(user.getId(), friend.getId())
+                    .orElseGet(UserFriendPermissionEntity::new);
+            entity.setUser(user);
+            entity.setFriend(friend);
+            entity.setShareTimeline(Boolean.TRUE.equals(dto.getShareTimeline()));
+            entity.setShareLiveLocation(Boolean.TRUE.equals(dto.getShareLiveLocation()));
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
+            }
+            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
+            entityManager.persist(entity);
+            importedOrUpdated++;
+        }
+        log.info("Imported/updated {} friend permission records", importedOrUpdated);
+    }
+
+    private Optional<UserEntity> resolveUser(UUID userId, String email) {
+        if (userId != null) {
+            UserEntity user = userRepository.findById(userId);
+            if (user != null) {
+                return Optional.of(user);
+            }
+        }
+        return userRepository.findByEmailIgnoreCase(email);
+    }
+
     private Long resolveMappedId(Long oldId, Map<Long, Long> mappedIds) {
         if (oldId == null) {
             return null;
         }
         return mappedIds.get(oldId);
+    }
+
+    private long durationSeconds(Instant start, Instant end, Long fallback) {
+        if (fallback != null) {
+            return Math.max(0L, fallback);
+        }
+        if (start != null && end != null && end.isAfter(start)) {
+            return end.getEpochSecond() - start.getEpochSecond();
+        }
+        return 0L;
     }
 
     private Instant defaultInstant(Instant value) {
@@ -1427,6 +1805,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         private final Map<Long, Long> periodTagIds = new HashMap<>();
         private final Map<Long, Long> favoriteIds = new HashMap<>();
         private final Map<Long, Long> geocodingIds = new HashMap<>();
+        private final Map<Long, Long> timelineStayIds = new HashMap<>();
+        private final Map<Long, Long> timelineTripIds = new HashMap<>();
+        private final Map<Long, Long> timelineDataGapIds = new HashMap<>();
         private final Map<Long, Long> tripIds = new HashMap<>();
         private final Map<Long, Long> notificationTemplateIds = new HashMap<>();
     }
@@ -1464,17 +1845,40 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
     /**
      * Clear existing GPS data before GeoPulse import based on the date ranges in the import file.
-     * Timeline data will be cleared automatically during timeline regeneration.
+     * Normal imports let timeline regeneration replace derived timeline rows; snapshot
+     * restores clear timeline rows up front and import them directly from the backup.
      */
     private void clearExistingDataBeforeImport(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
-        log.info("Clearing existing GPS data before GeoPulse import for user {} (timeline will be regenerated)", job.getUserId());
+        log.info("Clearing existing GPS data before GeoPulse import for user {}", job.getUserId());
         
         // Calculate deletion range for GPS data if present
         if (fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA)) {
             clearGpsDataForImport(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
         }
-        
-        // Timeline data clearing is not needed - regeneration process handles it
+
+        if (job.getOptions().isSnapshotRestore()
+                && fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA)) {
+            clearTimelineSnapshotData(job.getUserId());
+        }
+    }
+
+    private void clearTimelineSnapshotData(UUID userId) {
+        log.info("Clearing existing timeline snapshot data for user {}", userId);
+        executeUserDelete("DELETE FROM timeline_notes WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_trip_path_matches WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM map_matching_reconciliations WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_trip_movement_overrides WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_data_gap_stay_overrides WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_stays WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_trips WHERE user_id = :userId", userId);
+        executeUserDelete("DELETE FROM timeline_data_gaps WHERE user_id = :userId", userId);
+    }
+
+    private void executeUserDelete(String sql, UUID userId) {
+        int deleted = entityManager.createNativeQuery(sql)
+                .setParameter("userId", userId)
+                .executeUpdate();
+        log.debug("Deleted {} rows with snapshot cleanup SQL: {}", deleted, sql);
     }
     
     private void clearGpsDataForImport(byte[] content, ImportJob job) throws IOException {

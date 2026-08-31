@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -28,6 +29,9 @@ public class AsyncTimelineGenerationService {
 
     @Inject
     StreamingTimelineGenerationService timelineGenerationService;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @Inject
     TimelineJobProgressService jobProgressService;
@@ -125,6 +129,10 @@ public class AsyncTimelineGenerationService {
 
     @Scheduled(every = "2s")
     void drainPendingRegenerations() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+            log.info("Skipping queued timeline regeneration drain while full backup restore is running");
+            return;
+        }
         for (UUID userId : pendingRegenerationStartTimes.keySet()) {
             drainPendingRegeneration(userId);
         }

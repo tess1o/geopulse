@@ -31,8 +31,8 @@
             :show-favorites="showFavorites"
             :show-timeline="showTimeline"
             :show-path="showPath"
-            :show-path-comparison-control="pathComparisonAvailable"
-            :path-comparison-enabled="showPathComparison"
+            :show-route-display-mode-control="routeDisplayModeControlAvailable"
+            :route-display-mode="routeDisplayMode"
             :show-raw-gps-points-control="!props.isPublicView"
             :raw-gps-points-enabled="showRawGpsPoints"
             :raw-gps-points-loading="rawGpsPointsLoading"
@@ -54,7 +54,7 @@
             @toggle-favorites="toggleFavorites"
             @toggle-timeline="toggleTimeline"
             @toggle-path="togglePath"
-            @toggle-path-comparison="showPathComparison = $event"
+            @cycle-route-display-mode="cycleRouteDisplayMode"
             @toggle-raw-gps-points="handleToggleRawGpsPoints"
             @toggle-immich="toggleImmich"
             @toggle-notes="toggleNotes"
@@ -94,7 +94,7 @@
           :enabled="heatmapEnabled"
         />
 
-        <!-- Single interactive path: raw until the page-wide matched source is ready. -->
+        <!-- Single interactive path: matched route unless raw route mode is selected. -->
         <PathLayer
           v-if="map && isReady"
           ref="pathLayerRef"
@@ -113,11 +113,11 @@
 
         <!-- Diagnostic overlay: raw GPS above the matched route. -->
         <PathLayer
-          v-if="map && isReady && pathComparisonAvailable"
+          v-if="map && isReady && routeDisplayModeControlAvailable"
           :map="map"
           :path-data="rawComparisonPathData"
           :highlighted-trip="null"
-          :visible="showPath && showPathComparison"
+          :visible="showPath && routeDisplayModeUsesComparison && rawComparisonPathData.length > 0"
           :path-options="rawComparisonPathOptions"
           :inspection-enabled="false"
           :focus-highlighted-trip="false"
@@ -1857,11 +1857,9 @@ const resolveRawGpsPointLocation = async (point) => {
 
 
 // Computed data from stores and props
-const processedPathData = computed(() => {
+const pathDataToSegments = (pathData) => {
   // A deliberate null means this layer has no remaining raw fallback segments.
   // Falling back to the store would redraw raw geometry after the atomic swap.
-  const pathData = props.pathData
-
   if (!pathData) return []
 
   // Prefer backend-computed segments (each segment is a contiguous recorded track,
@@ -1881,16 +1879,19 @@ const processedPathData = computed(() => {
   }
 
   return []
-})
+}
 
 const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
 
 const {
-  showPathComparison,
+  routeDisplayMode,
+  routeDisplayModeControlAvailable,
+  routeDisplayModeUsesRawPath,
+  routeDisplayModeUsesComparison,
   rawComparisonPathData,
-  pathComparisonAvailable
+  cycleRouteDisplayMode
 } = useMapMatchingComparison({
   rawPathData: computed(() => props.rawPathData),
   timelineData: processedTimelineData,
@@ -1898,6 +1899,10 @@ const {
   highlightedTripHasMatchedPath,
   matchedTripIds: computed(() => props.matchedTripIds)
 })
+
+const processedPathData = computed(() => pathDataToSegments(
+  routeDisplayModeUsesRawPath.value ? props.rawPathData : props.pathData
+))
 
 const processedFavoritesData = computed(() => {
   const storeFavorites = favoritesStore.favoritePlaces

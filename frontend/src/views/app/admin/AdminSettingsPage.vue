@@ -124,9 +124,9 @@ const tabItems = ref([
     key: 'export'
   },
   {
-    label: 'Settings Backup',
+    label: 'Backup',
     icon: 'pi pi-file-export',
-    key: 'settings-backup'
+    key: 'backup'
   },
   {
     label: 'Notifications',
@@ -140,7 +140,16 @@ const tabItems = ref([
   }
 ])
 
-const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'ai', 'gps', 'import', 'export', 'settings-backup', 'notifications', 'system']
+const legacyTabAliases = {
+  'settings-backup': 'backup'
+}
+
+const normalizeTabKey = (tabKey) => {
+  if (typeof tabKey !== 'string') return tabKey
+  return legacyTabAliases[tabKey] || tabKey
+}
+
+const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'ai', 'gps', 'import', 'export', 'backup', 'notifications', 'system']
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -156,7 +165,7 @@ const currentTabComponent = computed(() => {
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,
     export: ExportSettingsTab,
-    'settings-backup': AdminSettingsBackupTab,
+    backup: AdminSettingsBackupTab,
     notifications: NotificationsSettingsTab,
     system: SystemSettingsTab
   }
@@ -190,8 +199,8 @@ const jumpToRouteSetting = async (settingKey, hintOverride = null) => {
 const handleSettingsSearchNavigate = async (item) => {
   if (!item?.setting) return
 
-  const nextTab = item.tab || activeTab.value
-  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : activeTab.value
+  const nextTab = normalizeTabKey(item.tab || activeTab.value)
+  const currentTab = normalizeTabKey(typeof route.query.tab === 'string' ? route.query.tab : activeTab.value)
   const currentSetting = typeof route.query.setting === 'string' ? route.query.setting : ''
 
   if (currentTab === nextTab && currentSetting === item.setting) {
@@ -210,8 +219,13 @@ const handleSettingsSearchNavigate = async (item) => {
 
 // Watch for route changes to update active tab
 watch(() => route.query.tab, (newTab) => {
-  if (newTab && validTabs.includes(newTab) && newTab !== activeTab.value) {
-    activeTab.value = newTab
+  const normalizedTab = normalizeTabKey(newTab)
+  if (newTab && normalizedTab !== newTab) {
+    router.replace({ query: { ...route.query, tab: normalizedTab } })
+    return
+  }
+  if (normalizedTab && validTabs.includes(normalizedTab) && normalizedTab !== activeTab.value) {
+    activeTab.value = normalizedTab
   }
 })
 
@@ -233,8 +247,12 @@ watch(
 // Initialize tab from URL on mount
 onMounted(() => {
   const tabParam = route.query.tab
-  if (tabParam && validTabs.includes(tabParam)) {
-    activeTab.value = tabParam
+  const normalizedTab = normalizeTabKey(tabParam)
+  if (tabParam && normalizedTab !== tabParam) {
+    router.replace({ query: { ...route.query, tab: normalizedTab } })
+  }
+  if (normalizedTab && validTabs.includes(normalizedTab)) {
+    activeTab.value = normalizedTab
   }
 })
 </script>

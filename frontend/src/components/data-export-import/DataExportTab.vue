@@ -522,7 +522,9 @@ const selectedDataTypes = ref([
   'geofencing',
   'notes',
   'weathersamples',
-  'mapmatching'
+  'mapmatching',
+  'friends',
+  'friendpermissions'
 ])
 const exportStartDate = ref(null)
 const exportEndDate = ref(null)
@@ -610,6 +612,18 @@ const availableDataTypes = ref([
     label: 'Map Matching',
     description: 'Completed matched route cache for timeline trips',
     icon: 'pi pi-directions'
+  },
+  {
+    key: 'friends',
+    label: 'Friends',
+    description: 'Directed friend relationships',
+    icon: 'pi pi-users'
+  },
+  {
+    key: 'friendpermissions',
+    label: 'Friend Permissions',
+    description: 'Timeline and live location sharing permissions',
+    icon: 'pi pi-lock'
   }
 ])
 
