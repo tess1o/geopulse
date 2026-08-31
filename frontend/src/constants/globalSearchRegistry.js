@@ -13,6 +13,7 @@ const ADMIN_TAB_BY_PREFIX = [
   { prefix: 'ai.', tab: 'ai', tabLabel: 'AI Assistant' },
   { prefix: 'import.', tab: 'import', tabLabel: 'Import' },
   { prefix: 'export.', tab: 'export', tabLabel: 'Export' },
+  { prefix: 'backup.', tab: 'backup', tabLabel: 'Backup' },
   { prefix: 'system.notifications.', tab: 'notifications', tabLabel: 'Notifications' },
   { prefix: 'system.', tab: 'system', tabLabel: 'System' }
 ]

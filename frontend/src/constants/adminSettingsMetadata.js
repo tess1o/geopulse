@@ -519,6 +519,28 @@ export const SETTING_METADATA = {
     description: 'How long to keep temporary export files before cleanup'
   },
 
+  // Backup Settings
+  'backup.scheduled.enabled': {
+    label: 'Scheduled Backups',
+    description: 'Enable automatic full backups written to the local backup folder'
+  },
+  'backup.scheduled.cron': {
+    label: 'Backup Schedule Cron',
+    description: 'Cron expression used to schedule automatic full backups'
+  },
+  'backup.local.path': {
+    label: 'Backup Folder Path',
+    description: 'Backend container folder where local full backup ZIP files are written'
+  },
+  'backup.retention.count': {
+    label: 'Backup Retention Count',
+    description: 'Number of local full backup files to keep'
+  },
+  'backup.operation.timeout-minutes': {
+    label: 'Backup Timeout Minutes',
+    description: 'Maximum duration for full backup and restore operations'
+  },
+
   // System / Notifications Settings
   'system.user.default-distance-unit': {
     label: 'Default Distance Unit',

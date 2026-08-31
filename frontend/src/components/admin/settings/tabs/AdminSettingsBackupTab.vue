@@ -111,15 +111,15 @@
             <div class="config-grid">
               <div class="config-group schedule-group">
                 <h5>Schedule</h5>
-                <label class="config-field toggle-field"><span>Enabled</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
-                <label class="config-field"><span>Cron</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
+                <label class="config-field toggle-field" data-setting-id="backup.scheduled.enabled"><span>Enabled</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
+                <label class="config-field" data-setting-id="backup.scheduled.cron"><span>Cron</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
               </div>
               <div class="config-group">
                 <h5>Storage</h5>
-                <label class="config-field"><span>Folder Path</span><InputText v-model="backupConfig.localPath" :disabled="adminReadOnly" /></label>
+                <label class="config-field" data-setting-id="backup.local.path"><span>Folder Path</span><InputText v-model="backupConfig.localPath" :disabled="adminReadOnly" /></label>
                 <div class="config-row">
-                  <label class="config-field"><span>Retention Days</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
-                  <label class="config-field"><span>Timeout Minutes</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
+                  <label class="config-field" data-setting-id="backup.retention.count"><span>Retention Days</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
+                  <label class="config-field" data-setting-id="backup.operation.timeout-minutes"><span>Timeout Minutes</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
                 </div>
               </div>
             </div>
@@ -134,7 +134,7 @@
                 <h4>Local Backups</h4>
                 <p class="text-muted">Files available in the configured server-side backup folder.</p>
               </div>
-              <Button icon="pi pi-refresh" text rounded :loading="loadingFiles" aria-label="Refresh local backups" @click="loadBackupFiles" />
+              <Button icon="pi pi-refresh" text rounded :loading="loadingFiles" aria-label="Refresh local backups" v-tooltip.top="'Refresh local backups'" @click="loadBackupFiles" />
             </div>
             <DataTable :value="backupFiles" dataKey="fileName" responsiveLayout="scroll" class="backup-files-table">
               <Column field="fileName" header="File" />
@@ -143,9 +143,9 @@
               <Column header="Actions">
                 <template #body="{ data }">
                   <div class="file-actions">
-                    <Button icon="pi pi-download" text rounded :disabled="adminReadOnly || operationRunning" aria-label="Download backup" @click="downloadLocalBackup(data.fileName)" />
-                    <Button icon="pi pi-undo" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Restore backup" @click="openRestoreLocalDialog(data.fileName)" />
-                    <Button icon="pi pi-trash" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Delete backup" @click="openDeleteDialog(data.fileName)" />
+                    <Button icon="pi pi-download" text rounded :disabled="adminReadOnly || operationRunning" aria-label="Download backup" v-tooltip.top="'Download backup'" @click="downloadLocalBackup(data.fileName)" />
+                    <Button icon="pi pi-undo" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Restore backup" v-tooltip.top="'Restore backup'" @click="openRestoreLocalDialog(data.fileName)" />
+                    <Button icon="pi pi-trash" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Delete backup" v-tooltip.top="'Delete backup'" @click="openDeleteDialog(data.fileName)" />
                   </div>
                 </template>
               </Column>
@@ -538,24 +538,33 @@ onUnmounted(() => {
 @import '../admin-settings-common.css';
 
 .backup-page {
+  --backup-section-bg: var(--gp-surface-white);
+  --backup-section-border: color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium));
+  --backup-section-header-bg: color-mix(in srgb, var(--gp-primary) 7%, var(--gp-surface-white));
+  --backup-panel-bg: var(--gp-surface-light);
+  --backup-panel-border: var(--gp-border-medium);
+  --backup-progress-bg: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  --backup-subsection-bg: var(--gp-surface-white);
+  --backup-config-bg: var(--gp-surface-light);
+
   display: grid;
   gap: 1.75rem;
   padding: 0 1rem 1.5rem;
 }
 
 .backup-section {
-  border: 1px solid rgba(96, 165, 250, 0.28);
+  border: 1px solid var(--backup-section-border);
   border-left: 4px solid var(--gp-primary);
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(15, 23, 42, 0.26);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.12);
+  background: var(--backup-section-bg);
+  box-shadow: var(--gp-shadow-card);
 }
 
 .backup-section-header {
   padding: 1.25rem 1.45rem;
-  border-bottom: 1px solid rgba(96, 165, 250, 0.26);
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.16), rgba(15, 23, 42, 0.08));
+  border-bottom: 1px solid var(--backup-section-border);
+  background: var(--backup-section-header-bg);
 }
 
 .backup-section-header h3 {
@@ -584,14 +593,14 @@ onUnmounted(() => {
 }
 
 .backup-panel {
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid var(--backup-panel-border);
   border-radius: 8px;
   padding: 1.15rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 1rem;
-  background: rgba(2, 6, 23, 0.24);
+  background: var(--backup-panel-bg);
 }
 
 .backup-panel-header {
@@ -651,11 +660,11 @@ onUnmounted(() => {
 
 .backup-progress {
   padding: 1.1rem;
-  border: 1px solid rgba(96, 165, 250, 0.25);
+  border: 1px solid var(--backup-section-border);
   border-radius: 8px;
   display: grid;
   gap: 0.75rem;
-  background: rgba(37, 99, 235, 0.1);
+  background: var(--backup-progress-bg);
 }
 
 .restore-progress {
@@ -685,9 +694,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 1rem;
   padding: 1.15rem;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid var(--backup-panel-border);
   border-radius: 8px;
-  background: rgba(2, 6, 23, 0.2);
+  background: var(--backup-subsection-bg);
 }
 
 .subsection-header {
@@ -714,9 +723,9 @@ onUnmounted(() => {
   gap: 0.9rem;
   min-width: 0;
   padding: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  border: 1px solid var(--backup-panel-border);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.24);
+  background: var(--backup-config-bg);
 }
 
 .config-group h5 {
@@ -821,5 +830,22 @@ onUnmounted(() => {
     flex-direction: column;
     gap: 0.35rem;
   }
+}
+</style>
+
+<style>
+.p-dark .admin-settings .backup-page {
+  --backup-section-bg: color-mix(in srgb, var(--gp-surface-dark) 62%, var(--gp-surface-darker));
+  --backup-section-border: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-border-medium));
+  --backup-section-header-bg: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-darker)),
+    color-mix(in srgb, var(--gp-surface-dark) 28%, var(--gp-surface-darker))
+  );
+  --backup-panel-bg: transparent;
+  --backup-panel-border: color-mix(in srgb, var(--gp-border-medium) 58%, var(--gp-surface-darker));
+  --backup-progress-bg: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-darker));
+  --backup-subsection-bg: color-mix(in srgb, var(--gp-surface-dark) 18%, var(--gp-surface-darker));
+  --backup-config-bg: color-mix(in srgb, var(--gp-surface-dark) 24%, var(--gp-surface-darker));
 }
 </style>

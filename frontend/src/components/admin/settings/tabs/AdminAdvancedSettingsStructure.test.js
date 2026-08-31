@@ -18,6 +18,7 @@ import ImportSettingsTab from './ImportSettingsTab.vue'
 import SystemSettingsTab from './SystemSettingsTab.vue'
 import { buildAdminSettingsIndex } from '@/constants/globalSearchRegistry'
 import { useAuthStore } from '@/stores/auth'
+import { searchAndRankItems } from '@/utils/globalSearchScoring'
 
 const mocks = vi.hoisted(() => ({
   loadSettings: vi.fn(),
@@ -186,5 +187,11 @@ describe('Admin advanced settings structure', () => {
     expect(indexedSettings.has('weather.open-meteo.connect-timeout-seconds')).toBe(true)
     expect(indexedSettings.has('import.geonames.countries.url')).toBe(true)
     expect(indexedSettings.has('system.version-check.github-api-url')).toBe(true)
+    expect(indexedSettings.has('backup.local.path')).toBe(true)
+
+    const backupResults = searchAndRankItems('backup', index, { minScore: 120 }).map(entry => entry.item)
+    expect(backupResults.length).toBeGreaterThan(0)
+    expect(backupResults.every(item => item.tab === 'backup')).toBe(true)
+    expect(backupResults.map(item => item.setting)).toContain('backup.local.path')
   })
 })

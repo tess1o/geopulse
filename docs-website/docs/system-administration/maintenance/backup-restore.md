@@ -93,6 +93,20 @@ The page also provides:
 
 During restore, GeoPulse pauses restore-sensitive background processors so imported data is not immediately overwritten or regenerated while the restore transaction is running. Export operations do not require the same pause because they read current data without replacing it.
 
+#### Backup Folder Permissions
+
+With the default Docker Compose file, the backend container writes backups to `/data/geopulse-backups`, which is mounted from `./backups` on the host. The backend image runs as a non-root user, UID `1001`, so the host backup directory must be writable by UID `1001`.
+
+Create or fix the folder from the directory that contains your `docker-compose.yml`:
+
+```bash
+mkdir -p backups
+sudo chown -R 1001:0 backups
+sudo chmod -R g+rwX backups
+```
+
+Then retry **Administration > Settings > Backup**. If the folder was created by Docker automatically, it may be owned by `root:root` with `0755` permissions, which lets GeoPulse read the folder but not create backup files.
+
 ## Manual Backups
 
 ### Creating a Backup
@@ -401,6 +415,45 @@ To move GeoPulse from one server to another:
 5. **Verify everything works** before decommissioning old server
 
 ## Troubleshooting
+
+### Save Failed: Backup Folder Is Not Writable
+
+If saving Backup settings fails with an error like:
+
+```text
+Backup folder is not writable: /data/geopulse-backups
+```
+
+the host directory mounted into the backend container is not writable by the GeoPulse backend user. In the default Docker Compose setup, `/data/geopulse-backups` maps to `./backups` next to your `docker-compose.yml`.
+
+Check the host directory:
+
+```bash
+ls -lah backups
+```
+
+If it is owned by `root:root` and has permissions like `drwxr-xr-x`, only root can write to it. Fix ownership and group write permissions:
+
+```bash
+sudo chown -R 1001:0 backups
+sudo chmod -R g+rwX backups
+```
+
+For example, if GeoPulse is installed in `/srv/projects/dev/geopulse-dev`:
+
+```bash
+cd /srv/projects/dev/geopulse-dev
+sudo chown -R 1001:0 backups
+sudo chmod -R g+rwX backups
+```
+
+You can verify write access from inside the backend container:
+
+```bash
+docker compose exec geopulse-backend sh -c 'touch /data/geopulse-backups/.write-test && rm /data/geopulse-backups/.write-test'
+```
+
+After the verification command succeeds, save the Backup settings again.
 
 ### Backup Taking Too Long
 
