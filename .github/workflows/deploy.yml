@@ -65,9 +65,9 @@ jobs:
             bash -s -- "$ENVIRONMENT" "$VERSION" <<'EOF'
           set -euo pipefail
 
-          ENVIRONMENT="$1"
-          VERSION="$2"
-
+          ENVIRONMENT="${1:-}"
+          VERSION="${2:-}"
+          
           case "$ENVIRONMENT" in
             dev)
               REMOTE_PATH="/srv/projects/dev/geopulse-dev"
