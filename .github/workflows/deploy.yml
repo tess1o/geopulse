@@ -1,4 +1,4 @@
-me: Deploy GeoPulse
+name: Deploy GeoPulse
 
 on:
   workflow_dispatch:
