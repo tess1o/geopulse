@@ -1,0 +1,134 @@
+me: Deploy GeoPulse
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+      version:
+        description: "Production version, e.g. 1.37.2"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geopulse-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Validate input
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$ENVIRONMENT" = "prod" ] && [ -z "$VERSION" ]; then
+            echo "Production deployment requires version"
+            exit 1
+          fi
+
+      - name: Deploy
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" \
+            bash -s -- "$ENVIRONMENT" "$VERSION" <<'EOF'
+          set -euo pipefail
+
+          ENVIRONMENT="$1"
+          VERSION="$2"
+
+          case "$ENVIRONMENT" in
+            dev)
+              REMOTE_PATH="/srv/projects/dev/geopulse-dev"
+              COMPOSE_FILE=""
+              ;;
+
+            prod)
+              REMOTE_PATH="/srv/projects/geopulse"
+              COMPOSE_FILE="geopulse-docker-compose.yaml"
+
+              if [ -z "$VERSION" ]; then
+                echo "Version is required for prod"
+                exit 1
+              fi
+              ;;
+
+            *)
+              echo "Unknown environment: $ENVIRONMENT"
+              exit 1
+              ;;
+          esac
+
+          echo "Deploying GeoPulse $ENVIRONMENT..."
+
+          cd "$REMOTE_PATH"
+
+          if [ "$ENVIRONMENT" = "prod" ]; then
+            echo "Updating GEOPULSE_VERSION..."
+
+            sed -i \
+              "s/^GEOPULSE_VERSION=.*/GEOPULSE_VERSION=$VERSION/" \
+              .env
+
+            grep '^GEOPULSE_VERSION=' .env
+
+            echo "Pulling images..."
+            docker compose \
+              -f "$COMPOSE_FILE" \
+              pull
+
+            echo "Deploying..."
+            docker compose \
+              -f "$COMPOSE_FILE" \
+              up -d
+
+            echo "Status:"
+            docker compose \
+              -f "$COMPOSE_FILE" \
+              ps
+
+          else
+
+            echo "Pulling images..."
+            docker compose pull
+
+            echo "Deploying..."
+            docker compose up -d
+
+            echo "Status:"
+            docker compose ps
+          fi
+
+          echo "GeoPulse $ENVIRONMENT deployment completed."
+          EOF
