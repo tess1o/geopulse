@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCountryRecord;
 import org.github.tess1o.geopulse.geocoding.repository.GeonamesCountryRepository;
@@ -64,6 +65,9 @@ public class GeonamesCountryImportService {
     SystemSettingsService settingsService;
 
     @Inject
+    BackupMaintenanceService backupMaintenanceService;
+
+    @Inject
     public GeonamesCountryImportService(
             GeonamesCountryRepository geonamesCountryRepository,
             GeonamesCountryLineParser lineParser,
@@ -77,6 +81,10 @@ public class GeonamesCountryImportService {
     void onStart(@Observes StartupEvent ignored) {
         if (!importEnabled()) {
             log.info("GeoNames country import is disabled");
+            return;
+        }
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
+            log.info("Skipping GeoNames country startup import while full restore is active or requires retry");
             return;
         }
 
@@ -94,6 +102,10 @@ public class GeonamesCountryImportService {
         }
 
         try {
+            if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
+                log.info("Skipping GeoNames country import while full restore is active or requires retry");
+                return;
+            }
             long existingRows = geonamesCountryRepository.countCountries();
             long minimumRowThreshold = minimumRowThreshold();
             if (!forceRefresh() && existingRows >= minimumRowThreshold) {

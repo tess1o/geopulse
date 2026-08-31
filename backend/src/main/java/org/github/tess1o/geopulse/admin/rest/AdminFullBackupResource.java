@@ -251,13 +251,17 @@ public class AdminFullBackupResource {
     }
 
     private void audit(ActionType actionType, String fileName, String forwardedFor, String realIp) {
-        auditLogService.logAction(
-                currentUserService.getCurrentUserId(),
-                actionType,
-                TargetType.BACKUP,
-                fileName,
-                Map.of("fileName", fileName),
-                UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
-        );
+        try {
+            auditLogService.logAction(
+                    currentUserService.getCurrentUserId(),
+                    actionType,
+                    TargetType.BACKUP,
+                    fileName,
+                    Map.of("fileName", fileName),
+                    UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
+            );
+        } catch (Exception e) {
+            log.warn("Failed to write backup audit log for {} {}", actionType, fileName, e);
+        }
     }
 }

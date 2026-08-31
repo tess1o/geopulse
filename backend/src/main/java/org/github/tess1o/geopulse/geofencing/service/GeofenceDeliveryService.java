@@ -44,7 +44,7 @@ public class GeofenceDeliveryService {
     @Scheduled(every = "${geopulse.geofence.delivery.interval:30s}")
     @Transactional
     public void processPendingDeliveries() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping geofence delivery while full backup restore is running");
             return;
         }

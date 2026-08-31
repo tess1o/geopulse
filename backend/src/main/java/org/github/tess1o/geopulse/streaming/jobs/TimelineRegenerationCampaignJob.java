@@ -54,7 +54,7 @@ public class TimelineRegenerationCampaignJob {
             identity = "timeline-regeneration-campaign"
     )
     public void processCampaigns() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping timeline regeneration campaign processing while full backup restore is running");
             return;
         }

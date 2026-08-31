@@ -67,7 +67,7 @@ public class RealTimeTimelineJob {
     @Blocking
     @Scheduled(every = "${geopulse.timeline.job.interval:5m}", delayed = "${geopulse.timeline.job.delay:5m}")
     public void processRealTimeUpdates() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping real-time timeline processing while full backup restore is running");
             return;
         }

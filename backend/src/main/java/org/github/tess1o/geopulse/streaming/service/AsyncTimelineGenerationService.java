@@ -129,7 +129,7 @@ public class AsyncTimelineGenerationService {
 
     @Scheduled(every = "2s")
     void drainPendingRegenerations() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping queued timeline regeneration drain while full backup restore is running");
             return;
         }

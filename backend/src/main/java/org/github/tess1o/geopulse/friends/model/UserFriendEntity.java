@@ -11,7 +11,13 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "user_friends")
+@Table(
+        name = "user_friends",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_friends_user_friend",
+                columnNames = {"user_id", "friend_id"}
+        )
+)
 @Getter
 @Setter
 @RequiredArgsConstructor

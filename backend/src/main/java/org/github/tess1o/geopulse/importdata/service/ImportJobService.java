@@ -120,7 +120,7 @@ public class ImportJobService {
     @Scheduled(every = "2s")
     @RunOnVirtualThread
     public void processImportJobs() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping import job processing while full backup restore is running");
             return;
         }

@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCityRecord;
 import org.github.tess1o.geopulse.geocoding.repository.GeonamesCityRepository;
@@ -62,6 +63,9 @@ public class GeonamesCityImportService {
     SystemSettingsService settingsService;
 
     @Inject
+    BackupMaintenanceService backupMaintenanceService;
+
+    @Inject
     public GeonamesCityImportService(
             GeonamesCityRepository geonamesCityRepository,
             GeonamesCityLineParser lineParser,
@@ -75,6 +79,10 @@ public class GeonamesCityImportService {
     void onStart(@Observes StartupEvent ignored) {
         if (!importEnabled()) {
             log.info("GeoNames city import is disabled");
+            return;
+        }
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
+            log.info("Skipping GeoNames city startup import while full restore is active or requires retry");
             return;
         }
 
@@ -92,6 +100,10 @@ public class GeonamesCityImportService {
         }
 
         try {
+            if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
+                log.info("Skipping GeoNames city import while full restore is active or requires retry");
+                return;
+            }
             long existingRows = geonamesCityRepository.countCities();
             long minimumRowThreshold = minimumRowThreshold();
             if (!forceRefresh() && existingRows >= minimumRowThreshold) {

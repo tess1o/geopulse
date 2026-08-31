@@ -51,6 +51,7 @@ import org.github.tess1o.geopulse.admin.model.*;
                 OidcProviderEntity.class,
                 SystemSettingsEntity.class,
                 AuditLogEntity.class,
+                AdminRestoreOperationEntity.class,
                 UserInvitationEntity.class,
                 // Enums
                 Role.class,

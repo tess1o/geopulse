@@ -15,6 +15,8 @@ import java.util.UUID;
 public class AdminBackupStatusDto {
     private boolean backupRunning;
     private boolean restoreRunning;
+    private boolean restoreRequired;
+    private boolean environmentBlocked;
     private String status;
     private String operation;
     private String fileName;

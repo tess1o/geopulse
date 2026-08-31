@@ -79,7 +79,7 @@ public class CoverageCalculationJob {
     @Scheduled(every = "${geopulse.coverage.job.interval:2h}", delayed = "${geopulse.coverage.job.delay:0m}")
     @Blocking
     public void processCoverage() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping coverage processing while full backup restore is running");
             return;
         }

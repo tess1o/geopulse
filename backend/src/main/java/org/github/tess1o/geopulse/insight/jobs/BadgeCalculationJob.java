@@ -46,7 +46,7 @@ public class BadgeCalculationJob {
      */
     @Scheduled(every = "${geopulse.badges.calculation.interval}", delayed = "${geopulse.badges.calculation.delay}")
     public void processBadges() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping badge calculation while full backup restore is running");
             return;
         }

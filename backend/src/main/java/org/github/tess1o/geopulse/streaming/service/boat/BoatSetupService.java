@@ -8,6 +8,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStartResponseDTO;
@@ -72,6 +73,9 @@ public class BoatSetupService {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    BackupMaintenanceService backupMaintenanceService;
 
     @ConfigProperty(name = "geopulse.water-dataset.url")
     Optional<String> datasetUrl;
@@ -147,6 +151,7 @@ public class BoatSetupService {
     }
 
     public BoatSetupStartResponseDTO startSetup(UUID userId) {
+        assertRestoreNotBlocked();
         BoatSetupStatusDTO currentStatus = getCurrentSetupStatus(userId);
         if (currentStatus != null && "READY".equals(currentStatus.status())) {
             return BoatSetupStartResponseDTO.builder()
@@ -219,6 +224,7 @@ public class BoatSetupService {
         if (!shouldUseBoatSetup(config)) {
             return null;
         }
+        assertRestoreNotBlocked();
 
         String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
         if (datasetVersion == null) {
@@ -250,6 +256,7 @@ public class BoatSetupService {
 
     private void runSetupJob(UUID userId, UUID jobId) {
         try {
+            assertRestoreNotBlocked();
             updateJob(jobId, "RUNNING", null, null, "Starting Boat setup", 1, null);
             ensureDatasetReady(jobId);
             String datasetVersion = gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion();
@@ -300,6 +307,7 @@ public class BoatSetupService {
     }
 
     private void ensureDatasetReady(UUID jobId) {
+        assertRestoreNotBlocked();
         if (gpsPointEnvironmentService.getCurrentEnvironmentDatasetVersion() != null) {
             updateJob(jobId, null, "READY", null, "Water dataset ready", 25, null);
             return;
@@ -319,6 +327,7 @@ public class BoatSetupService {
     }
 
     private void importDataset(UUID jobId) {
+        assertRestoreNotBlocked();
         Path artifactPath = null;
         try {
             String sourceDescription = resolveSourceDescription();
@@ -918,6 +927,12 @@ public class BoatSetupService {
 
     private boolean autoImport() {
         return settingsService == null ? autoImport : settingsService.getBoolean("system.water-dataset.auto-import");
+    }
+
+    private void assertRestoreNotBlocked() {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
+            throw new IllegalStateException("Full restore is active or requires retry");
+        }
     }
 
     private long datasetConnectTimeoutSeconds() {

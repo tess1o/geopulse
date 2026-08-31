@@ -120,7 +120,7 @@ public class WeatherPipelineWorker {
 
     @Scheduled(every = "1m", delayed = "10s", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping weather watchdog while full backup restore is running");
             return;
         }
@@ -135,7 +135,7 @@ public class WeatherPipelineWorker {
     }
 
     public WeatherWorkAcceptedResponse wake(String reason) {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             return WeatherWorkAcceptedResponse.builder()
                     .accepted(false)
                     .alreadyRunning(false)

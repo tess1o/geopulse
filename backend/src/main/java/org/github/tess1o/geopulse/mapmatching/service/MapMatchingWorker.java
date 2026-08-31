@@ -154,7 +154,7 @@ public class MapMatchingWorker {
     @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:60s}", delayed = "20s",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void watchdog() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping map-matching watchdog while full backup restore is running");
             return;
         }
@@ -164,7 +164,7 @@ public class MapMatchingWorker {
     @Scheduled(cron = "${geopulse.timeline.map-matching.cache.cleanup.cron:0 45 3 * * ?}",
             concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void cleanupDetachedCache() {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             log.info("Skipping map-matching cache cleanup while full backup restore is running");
             return;
         }
@@ -178,7 +178,7 @@ public class MapMatchingWorker {
     }
 
     public boolean wake(String reason) {
-        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreRunning()) {
+        if (backupMaintenanceService != null && backupMaintenanceService.isRestoreBlocked()) {
             return false;
         }
         rerunRequested.set(true);

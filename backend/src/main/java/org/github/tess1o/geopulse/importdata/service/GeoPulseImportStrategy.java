@@ -15,10 +15,6 @@ import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
-import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
-import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
-import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
-import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.*;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -90,12 +86,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
     @Inject
     GpsSourceRepository gpsSourceRepository;
-
-    @Inject
-    FriendshipRepository friendshipRepository;
-
-    @Inject
-    UserFriendPermissionRepository friendPermissionRepository;
 
     @Inject
     AIEncryptionService encryptionService;
@@ -1034,6 +1024,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         for (ReverseGeocodingDataDto.ReverseGeocodingLocationDto locationDto : geocodingData.getLocations()) {
             try {
+                if (job.getOptions().isSnapshotRestore()) {
+                    if (restoreReverseGeocodingSnapshotLocation(locationDto, job.getUserId(), referenceMaps)) {
+                        imported++;
+                    } else {
+                        skipped++;
+                    }
+                    continue;
+                }
+
                 // Create geometry objects for coordinates and bounding box
                 Point requestCoordinates = null;
                 if (locationDto.getRequestLatitude() != null && locationDto.getRequestLongitude() != null) {
@@ -1093,6 +1092,91 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         log.info("Successfully imported {} reverse geocoding locations (skipped {} existing originals)",
                 imported, skipped);
+    }
+
+    private boolean restoreReverseGeocodingSnapshotLocation(ReverseGeocodingDataDto.ReverseGeocodingLocationDto locationDto,
+                                                           UUID userId,
+                                                           ImportReferenceMaps referenceMaps) {
+        if (locationDto.getId() <= 0
+                || locationDto.getRequestLatitude() == null
+                || locationDto.getRequestLongitude() == null
+                || locationDto.getDisplayName() == null
+                || locationDto.getProviderName() == null) {
+            return false;
+        }
+
+        entityManager.createNativeQuery("""
+                        INSERT INTO reverse_geocoding_location (
+                            id, user_id, request_coordinates, result_coordinates, bounding_box,
+                            display_name, provider_name, created_at, last_accessed_at, city, country
+                        ) VALUES (
+                            :id,
+                            :userId,
+                            ST_SetSRID(ST_MakePoint(
+                                CAST(:requestLongitude AS double precision),
+                                CAST(:requestLatitude AS double precision)
+                            ), 4326),
+                            CASE
+                                WHEN CAST(:resultLongitude AS double precision) IS NULL
+                                  OR CAST(:resultLatitude AS double precision) IS NULL
+                                THEN NULL
+                                ELSE ST_SetSRID(ST_MakePoint(
+                                    CAST(:resultLongitude AS double precision),
+                                    CAST(:resultLatitude AS double precision)
+                                ), 4326)
+                            END,
+                            CASE
+                                WHEN CAST(:southWestLongitude AS double precision) IS NULL
+                                  OR CAST(:southWestLatitude AS double precision) IS NULL
+                                  OR CAST(:northEastLongitude AS double precision) IS NULL
+                                  OR CAST(:northEastLatitude AS double precision) IS NULL
+                                THEN NULL
+                                ELSE ST_MakeEnvelope(
+                                    CAST(:southWestLongitude AS double precision),
+                                    CAST(:southWestLatitude AS double precision),
+                                    CAST(:northEastLongitude AS double precision),
+                                    CAST(:northEastLatitude AS double precision),
+                                    4326
+                                )
+                            END,
+                            :displayName,
+                            :providerName,
+                            :createdAt,
+                            :lastAccessedAt,
+                            :city,
+                            :country
+                        )
+                        ON CONFLICT (id) DO UPDATE SET
+                            user_id = EXCLUDED.user_id,
+                            request_coordinates = EXCLUDED.request_coordinates,
+                            result_coordinates = EXCLUDED.result_coordinates,
+                            bounding_box = EXCLUDED.bounding_box,
+                            display_name = EXCLUDED.display_name,
+                            provider_name = EXCLUDED.provider_name,
+                            created_at = EXCLUDED.created_at,
+                            last_accessed_at = EXCLUDED.last_accessed_at,
+                            city = EXCLUDED.city,
+                            country = EXCLUDED.country
+                        """)
+                .setParameter("id", locationDto.getId())
+                .setParameter("userId", userId)
+                .setParameter("requestLongitude", locationDto.getRequestLongitude())
+                .setParameter("requestLatitude", locationDto.getRequestLatitude())
+                .setParameter("resultLongitude", locationDto.getResultLongitude())
+                .setParameter("resultLatitude", locationDto.getResultLatitude())
+                .setParameter("southWestLongitude", locationDto.getBoundingBoxSouthWestLongitude())
+                .setParameter("southWestLatitude", locationDto.getBoundingBoxSouthWestLatitude())
+                .setParameter("northEastLongitude", locationDto.getBoundingBoxNorthEastLongitude())
+                .setParameter("northEastLatitude", locationDto.getBoundingBoxNorthEastLatitude())
+                .setParameter("displayName", locationDto.getDisplayName())
+                .setParameter("providerName", locationDto.getProviderName())
+                .setParameter("createdAt", defaultInstant(locationDto.getCreatedAt()))
+                .setParameter("lastAccessedAt", defaultInstant(locationDto.getLastAccessedAt()))
+                .setParameter("city", locationDto.getCity())
+                .setParameter("country", locationDto.getCountry())
+                .executeUpdate();
+        referenceMaps.geocodingIds.put(locationDto.getId(), locationDto.getId());
+        return true;
     }
 
     @Transactional
@@ -1710,14 +1794,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             if (user == null || friend == null || user.getId().equals(friend.getId())) {
                 continue;
             }
-            if (!friendshipRepository.existsFriendship(user.getId(), friend.getId())) {
-                UserFriendEntity entity = new UserFriendEntity();
-                entity.setUser(user);
-                entity.setFriend(friend);
-                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
-                entityManager.persist(entity);
-                imported++;
-            }
+            imported += entityManager.createNativeQuery("""
+                            INSERT INTO user_friends (user_id, friend_id, created_at)
+                            VALUES (:userId, :friendId, :createdAt)
+                            ON CONFLICT (user_id, friend_id) DO NOTHING
+                            """)
+                    .setParameter("userId", user.getId())
+                    .setParameter("friendId", friend.getId())
+                    .setParameter("createdAt", defaultInstant(dto.getCreatedAt()))
+                    .executeUpdate();
         }
         log.info("Imported {} directed friend relationships", imported);
     }
@@ -1733,19 +1818,24 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 continue;
             }
 
-            UserFriendPermissionEntity entity = friendPermissionRepository
-                    .findByUserIdAndFriendId(user.getId(), friend.getId())
-                    .orElseGet(UserFriendPermissionEntity::new);
-            entity.setUser(user);
-            entity.setFriend(friend);
-            entity.setShareTimeline(Boolean.TRUE.equals(dto.getShareTimeline()));
-            entity.setShareLiveLocation(Boolean.TRUE.equals(dto.getShareLiveLocation()));
-            if (entity.getCreatedAt() == null) {
-                entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
-            }
-            entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
-            entityManager.persist(entity);
-            importedOrUpdated++;
+            importedOrUpdated += entityManager.createNativeQuery("""
+                            INSERT INTO user_friend_permissions (
+                                user_id, friend_id, share_timeline, share_live_location, created_at, updated_at
+                            ) VALUES (
+                                :userId, :friendId, :shareTimeline, :shareLiveLocation, :createdAt, :updatedAt
+                            )
+                            ON CONFLICT (user_id, friend_id) DO UPDATE SET
+                                share_timeline = EXCLUDED.share_timeline,
+                                share_live_location = EXCLUDED.share_live_location,
+                                updated_at = EXCLUDED.updated_at
+                            """)
+                    .setParameter("userId", user.getId())
+                    .setParameter("friendId", friend.getId())
+                    .setParameter("shareTimeline", Boolean.TRUE.equals(dto.getShareTimeline()))
+                    .setParameter("shareLiveLocation", Boolean.TRUE.equals(dto.getShareLiveLocation()))
+                    .setParameter("createdAt", defaultInstant(dto.getCreatedAt()))
+                    .setParameter("updatedAt", defaultInstant(dto.getUpdatedAt()))
+                    .executeUpdate();
         }
         log.info("Imported/updated {} friend permission records", importedOrUpdated);
     }
@@ -1872,6 +1962,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         executeUserDelete("DELETE FROM timeline_stays WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_trips WHERE user_id = :userId", userId);
         executeUserDelete("DELETE FROM timeline_data_gaps WHERE user_id = :userId", userId);
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private void executeUserDelete(String sql, UUID userId) {

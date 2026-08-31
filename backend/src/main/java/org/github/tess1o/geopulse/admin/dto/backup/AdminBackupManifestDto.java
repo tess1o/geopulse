@@ -14,7 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBackupManifestDto {
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int CURRENT_SCHEMA_VERSION = 2;
 
     private int schemaVersion;
     private String backupType;
@@ -23,5 +23,6 @@ public class AdminBackupManifestDto {
     private Instant exportedAt;
     private int userCount;
     private List<UUID> userIds;
+    private List<String> referenceEntries;
     private List<String> warnings;
 }
