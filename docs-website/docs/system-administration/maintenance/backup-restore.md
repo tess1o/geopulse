@@ -101,7 +101,7 @@ sudo chmod -R g+rwX backups
 
 If you override the container user, use that UID instead. Do not make the working directory world-readable. Manual/Proxmox installations must install matching PostgreSQL clients and configure a persistent writable working directory.
 
-Helm enables `backend.backupPersistence` by default with a 20 GiB PVC. Configure `existingClaim`, `storageClass`, `size`, `mountPath`, and `workPath` as needed. Do not use `emptyDir` for restoration. Before activation, reduce backend replicas to one. Keep the health probe available. Requests already in flight may fail while the database pool closes and the process exits.
+Helm enables `backend.backupPersistence` by default with a 20 GiB PVC mounted at `/data/geopulse-backups`; `GEOPULSE_BACKUP_WORK_PATH` defaults to `/data/geopulse-backups/.work`. Configure `existingClaim`, `storageClass`, `size`, `mountPath`, and `workPath` as needed. Do not use `emptyDir` for restoration. Backup password, schedule, retention, backup folder, and operation timeout are normally configured in **Administration > Settings > Backup**; their environment variables are only startup defaults/fallbacks and are overridden once saved in GeoPulse. Before activation, reduce backend replicas to one. Keep PostgreSQL running and keep the health probe available. Requests already in flight may fail while the database pool closes and the backend process exits. If the backend does not return automatically, restart or replace only the backend pod while keeping the backup PVC attached.
 
 ### Backend restart and manual fallback
 

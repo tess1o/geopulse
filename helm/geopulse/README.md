@@ -103,6 +103,14 @@ backend:
 
 A mount is only visible to the container it is declared on, so a volume shared between the backend and the frontend has to be listed under both.
 
+### Backup and Restore
+
+The chart enables durable backend backup storage by default with `backend.backupPersistence`. It creates a PVC mounted at `/data/geopulse-backups` and sets `GEOPULSE_BACKUP_WORK_PATH` to `/data/geopulse-backups/.work`, which is required for restore journals and uploaded backup archives to survive backend pod replacement.
+
+Configure backup password, schedule, retention, backup folder, and timeout in **Administration > Settings > Backup**. The corresponding `GEOPULSE_BACKUP_*` environment variables are startup defaults/fallbacks; use `backend.extraEnv` with `secretKeyRef` when bootstrapping backup or restore passwords from Kubernetes Secrets.
+
+For restore activation, scale the backend deployment to exactly one replica and keep PostgreSQL running. GeoPulse exits only the backend process after the database cutover; if the pod does not restart automatically, restart or replace the backend pod while keeping the backup PVC attached. External PostgreSQL must be a direct server connection with privileges for database creation, rename, session termination, PostGIS extension creation, and `SET ROLE`.
+
 ### Most Common Parameters
 
 | Parameter | Description | Default |
@@ -114,6 +122,8 @@ A mount is only visible to the container it is declared on, so a volume shared b
 | `route.enabled` | Enable Gateway API route | `false` |
 | `postgres.persistence.enabled` | Enable PostgreSQL persistence | `true` |
 | `postgres.persistence.size` | PostgreSQL storage size | `10Gi` |
+| `backend.backupPersistence.enabled` | Enable durable backup and restore work storage | `true` |
+| `backend.backupPersistence.size` | Backup storage size | `20Gi` |
 
 For the complete list of parameters, see the [values.yaml](values.yaml) file or visit the [Helm Configuration Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-configuration-guide).
 
