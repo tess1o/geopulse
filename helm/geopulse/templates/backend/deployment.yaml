@@ -41,8 +41,6 @@ spec:
             - /bin/sh
             - /scripts/generate-keys.sh
           volumeMounts:
-            - name: backups
-              mountPath: {{ .Values.backend.backupPersistence.mountPath | quote }}
             - name: keys
               mountPath: /keys
             - name: keygen-script

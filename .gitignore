@@ -67,5 +67,6 @@ npm-debug.log*
 /tests/downloads/
 /backend/src/main/gen/
 /valhalla/
+/backup/
 build_native.sh
 deploy-geopulse.sh

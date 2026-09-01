@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupConfigDto;
+import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupStatusResponse;
 import org.github.tess1o.geopulse.admin.dto.backup.RestoreLocalBackupRequest;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
@@ -24,8 +25,9 @@ import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -34,6 +36,9 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
 public class AdminFullBackupResource {
+    private static final String BACKUP_FAILURE_MESSAGE =
+            "Could not create encrypted backup. Verify the backup password, client tools, permissions, and free disk space.";
+
     @Context
     HttpServerRequest httpRequest;
 
@@ -64,19 +69,30 @@ public class AdminFullBackupResource {
                     .build();
         }
         try {
+            String operationId = maintenanceService.currentOperationId();
             String fileName = backupService.writeLocalBackup();
             java.nio.file.Path completed = backupService.resolveLocalBackup(fileName);
             long size = Files.size(completed);
+            InputStream download = Files.newInputStream(completed);
+            maintenanceService.finishSuccess(fileName, size);
             StreamingOutput stream = output -> {
-                try { Files.copy(completed, output); }
-                finally { maintenanceService.finishSuccess(fileName, size); }
+                try (download) {
+                    download.transferTo(output);
+                    log.info("Backup operation {} download completed; file={}", operationId, fileName);
+                } catch (IOException e) {
+                    log.warn("Backup operation {} file was created but browser download was interrupted; file={}",
+                            operationId, fileName);
+                    throw e;
+                }
             };
-            audit(ActionType.ADMIN_FULL_BACKUP_EXPORTED, fileName, forwardedFor, realIp);
+            audit(ActionType.ADMIN_FULL_BACKUP_CREATED, fileName, operationId, forwardedFor, realIp);
+            audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, fileName, operationId, forwardedFor, realIp);
             return Response.ok(stream).header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
                     .header("Content-Type", "application/octet-stream").build();
         } catch (Exception e) {
-            maintenanceService.finishFailure("Could not create encrypted backup. Verify the backup password, client tools, permissions, and free disk space.");
-            return Response.serverError().entity(ApiResponse.error(maintenanceService.getStatus().getError())).build();
+            log.error("Full backup download creation failed; failureType={}", e.getClass().getSimpleName());
+            maintenanceService.finishFailure(BACKUP_FAILURE_MESSAGE);
+            return Response.serverError().entity(ApiResponse.error(BACKUP_FAILURE_MESSAGE)).build();
         }
     }
 
@@ -91,16 +107,17 @@ public class AdminFullBackupResource {
                     .build();
         }
         try {
+            String operationId = maintenanceService.currentOperationId();
             String fileName = backupService.writeLocalBackup();
             long size = Files.size(backupService.resolveLocalBackup(fileName));
             maintenanceService.finishSuccess(fileName, size);
-            audit(ActionType.ADMIN_FULL_BACKUP_EXPORTED, fileName, forwardedFor, realIp);
+            audit(ActionType.ADMIN_FULL_BACKUP_CREATED, fileName, operationId, forwardedFor, realIp);
             return Response.ok(ApiResponse.success(Map.of("fileName", fileName, "sizeBytes", size))).build();
         } catch (Exception e) {
-            log.error("Manual full backup failed", e);
-            maintenanceService.finishFailure(e.getMessage());
+            log.error("Manual full backup failed; failureType={}", e.getClass().getSimpleName());
+            maintenanceService.finishFailure(BACKUP_FAILURE_MESSAGE);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create full backup: " + e.getMessage()))
+                    .entity(ApiResponse.error(BACKUP_FAILURE_MESSAGE))
                     .build();
         }
     }
@@ -112,8 +129,9 @@ public class AdminFullBackupResource {
         try {
             return Response.ok(ApiResponse.success(backupService.listLocalBackups())).build();
         } catch (Exception e) {
+            log.warn("Failed to list local backup files", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to list backup files: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to list local backup files. Check the configured backup folder."))
                     .build();
         }
     }
@@ -122,16 +140,32 @@ public class AdminFullBackupResource {
     @Path("/files/{fileName}")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Produces("application/octet-stream")
-    public Response downloadLocalBackup(@PathParam("fileName") String fileName) {
+    public Response downloadLocalBackup(@PathParam("fileName") String fileName,
+                                        @HeaderParam("X-Forwarded-For") String forwardedFor,
+                                        @HeaderParam("X-Real-IP") String realIp) {
         try {
             java.nio.file.Path file = backupService.resolveLocalBackup(fileName);
-            StreamingOutput stream = output -> Files.copy(file, output);
+            InputStream download = Files.newInputStream(file);
+            String operationId = UUID.randomUUID().toString();
+            StreamingOutput stream = output -> {
+                try (download) {
+                    download.transferTo(output);
+                    log.info("Backup download operation {} completed; file={}", operationId, fileName);
+                } catch (IOException e) {
+                    log.warn("Backup download operation {} was interrupted; file={}", operationId, fileName);
+                    throw e;
+                }
+            };
+            audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, fileName, operationId, forwardedFor, realIp);
             return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
                     .header("Content-Type", "application/octet-stream")
                     .build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        } catch (IOException e) {
+            log.warn("Could not open local backup for download; file={}", fileName, e);
+            return Response.serverError().entity(ApiResponse.error("Failed to open the local backup file.")).build();
         }
     }
 
@@ -141,22 +175,26 @@ public class AdminFullBackupResource {
     public Response deleteLocalBackup(@PathParam("fileName") String fileName,
                                       @HeaderParam("X-Forwarded-For") String forwardedFor,
                                       @HeaderParam("X-Real-IP") String realIp) {
-        if (maintenanceService.getStatus().isBackupRunning() || maintenanceService.getStatus().isRestoreRunning()) {
+        if (!maintenanceService.tryStartFileMutation("delete")) {
             return Response.status(Response.Status.CONFLICT)
                     .entity(ApiResponse.error("Cannot delete a backup while another backup or restore is running"))
                     .build();
         }
         try {
+            String operationId = UUID.randomUUID().toString();
             backupService.deleteLocalBackup(fileName);
-            audit(ActionType.ADMIN_FULL_BACKUP_DELETED, fileName, forwardedFor, realIp);
+            audit(ActionType.ADMIN_FULL_BACKUP_DELETED, fileName, operationId, forwardedFor, realIp);
+            log.info("Backup file operation {} deleted {}", operationId, fileName);
             return Response.ok(ApiResponse.success(Map.of("fileName", fileName))).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         } catch (Exception e) {
             log.error("Failed to delete local backup {}", fileName, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete local backup: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to delete the local backup. Check backup folder permissions."))
                     .build();
+        } finally {
+            maintenanceService.finishFileMutation();
         }
     }
 
@@ -172,10 +210,11 @@ public class AdminFullBackupResource {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error("Backup file is required")).build();
         }
         try {
-            return prepareRestore(file.uploadedFile(), file.fileName(), password);
+            return prepareRestore(file.uploadedFile(), file.fileName(), password, forwardedFor, realIp);
         } catch (Exception e) {
+            log.warn("Could not read uploaded full backup", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to read uploaded backup: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to read the uploaded backup."))
                     .build();
         }
     }
@@ -187,13 +226,15 @@ public class AdminFullBackupResource {
                                  @HeaderParam("X-Forwarded-For") String forwardedFor,
                                  @HeaderParam("X-Real-IP") String realIp) {
         try {
+            if (request == null) throw new IllegalArgumentException("Restore request is required");
             java.nio.file.Path file = backupService.resolveLocalBackup(request.getFileName());
-            return prepareRestore(file, request.getFileName(), request.getPassword());
+            return prepareRestore(file, request.getFileName(), request.getPassword(), forwardedFor, realIp);
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         } catch (Exception e) {
+            log.warn("Could not open selected local backup for restore", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to restore local backup: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to open the selected local backup."))
                     .build();
         }
     }
@@ -223,16 +264,18 @@ public class AdminFullBackupResource {
     @GET
     @Path("/status")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response status() {
-        return Response.ok(ApiResponse.success(maintenanceService.getStatus())).build();
+    public AdminBackupStatusResponse status() {
+        return AdminBackupStatusResponse.success(maintenanceService.getStatus());
     }
 
     @POST
     @Path("/restore/retry")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response retryPreparedRestore() {
+    public Response retryPreparedRestore(@HeaderParam("X-Forwarded-For") String forwardedFor,
+                                         @HeaderParam("X-Real-IP") String realIp) {
         try {
-            backupService.retryActivation();
+            String operationId = backupService.retryActivation();
+            audit(ActionType.ADMIN_FULL_RESTORE_RETRIED, maintenanceService.getStatus().getFileName(), operationId, forwardedFor, realIp);
             return Response.accepted(ApiResponse.success(maintenanceService.getStatus())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.CONFLICT).entity(ApiResponse.error(e.getMessage())).build();
@@ -242,9 +285,12 @@ public class AdminFullBackupResource {
     @POST
     @Path("/restore/discard")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response discardPreparedRestore() {
+    public Response discardPreparedRestore(@HeaderParam("X-Forwarded-For") String forwardedFor,
+                                           @HeaderParam("X-Real-IP") String realIp) {
         try {
-            backupService.discardPrepared();
+            String fileName = maintenanceService.getStatus().getFileName();
+            String operationId = backupService.discardPrepared();
+            audit(ActionType.ADMIN_FULL_RESTORE_DISCARDED, fileName, operationId, forwardedFor, realIp);
             return Response.ok(ApiResponse.success(maintenanceService.getStatus())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.CONFLICT).entity(ApiResponse.error(e.getMessage())).build();
@@ -253,9 +299,11 @@ public class AdminFullBackupResource {
         }
     }
 
-    private Response prepareRestore(java.nio.file.Path source, String fileName, String password) {
+    private Response prepareRestore(java.nio.file.Path source, String fileName, String password,
+                                    String forwardedFor, String realIp) {
         try {
             String operationId = backupService.startRestore(source, fileName, password);
+            audit(ActionType.ADMIN_FULL_BACKUP_IMPORTED, fileName, operationId, forwardedFor, realIp);
             return Response.accepted(ApiResponse.success(Map.of("operationId", operationId, "state", "PREPARING"))).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
@@ -266,14 +314,15 @@ public class AdminFullBackupResource {
         }
     }
 
-    private void audit(ActionType actionType, String fileName, String forwardedFor, String realIp) {
+    private void audit(ActionType actionType, String fileName, String operationId,
+                       String forwardedFor, String realIp) {
         try {
             auditLogService.logAction(
                     currentUserService.getCurrentUserId(),
                     actionType,
                     TargetType.BACKUP,
                     fileName,
-                    Map.of("fileName", fileName),
+                    Map.of("fileName", fileName == null ? "" : fileName, "operationId", operationId),
                     UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
             );
         } catch (Exception e) {

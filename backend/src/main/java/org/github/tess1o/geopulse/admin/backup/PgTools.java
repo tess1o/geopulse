@@ -5,10 +5,12 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * No shell, no credentials in arguments, bounded stderr, and a deadline that kills hung clients.
  */
+@Slf4j
 public final class PgTools {
     private final NativeBackupContext context;
 
@@ -16,15 +18,16 @@ public final class PgTools {
         this.context = context;
     }
 
-    public int major(String tool) throws IOException {
+    public int major(String operationId, String tool) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        run(tool, List.of("--version"), context.postgres().database(), false, bytes, Instant.now().plusSeconds(15));
+        run(operationId, tool, List.of("--version"), context.postgres().database(), false, bytes, Instant.now().plusSeconds(15));
         var match = java.util.regex.Pattern.compile("PostgreSQL\\) (\\d+)").matcher(bytes.toString(java.nio.charset.StandardCharsets.UTF_8));
         if (!match.find()) throw new IOException("Cannot determine " + tool + " version");
         return Integer.parseInt(match.group(1));
     }
 
-    public void run(String tool, List<String> arguments, String database, boolean admin, OutputStream output, Instant deadline) throws IOException {
+    public void run(String operationId, String tool, List<String> arguments, String database, boolean admin,
+                    OutputStream output, Instant deadline) throws IOException {
         List<String> command = new ArrayList<>();
         command.add(context.binaryDirectory().isBlank() ? tool : Path.of(context.binaryDirectory(), tool).toString());
         command.addAll(arguments);
@@ -48,6 +51,7 @@ public final class PgTools {
         long millis = java.time.Duration.between(Instant.now(), deadline).toMillis();
         if (millis <= 0) throw new IOException("Backup operation timed out");
         Process process = builder.start();
+        log.info("Backup/restore operation {} started native tool {}; database={}", operationId, tool, database);
         process.getOutputStream().close();
         try (ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().factory())) {
             var timeout = timer.schedule(process::destroyForcibly, millis, TimeUnit.MILLISECONDS);
@@ -65,8 +69,11 @@ public final class PgTools {
                 int exit = process.waitFor();
                 errors.join();
                 if (Instant.now().isAfter(deadline)) throw new IOException("Backup operation timed out");
-                if (exit != 0)
+                if (exit != 0) {
+                    log.warn("Backup/restore operation {} native tool {} exited with status {}", operationId, tool, exit);
                     throw new IOException(tool + " failed (exit " + exit + "). Check database permissions, tool compatibility, and free disk space.");
+                }
+                log.info("Backup/restore operation {} native tool {} exited with status 0", operationId, tool);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Backup operation interrupted", e);

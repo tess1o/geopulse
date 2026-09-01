@@ -33,19 +33,21 @@ public final class RestoreJournal {
             throw new IOException("Incomplete restore journal");
         RestoreState state = JSON.treeToValue(tree, RestoreState.class);
         try {
-            java.util.UUID.fromString(state.operationId);
-            Instant.parse(state.startedAt);
+            state.validateDurableShape();
         } catch (RuntimeException e) {
-            throw new IOException("Invalid restore journal identity or timestamp", e);
+            throw new IOException("Invalid restore journal", e);
         }
-        if (!java.util.Set.of("PREPARING", "ACTIVATING", "SWAPPED_PENDING_RESTART", "COMPLETED", "PREPARATION_FAILED", "ACTIVATION_RETRYABLE", "ACTIVATION_FAILED", "DISCARDED").contains(state.state))
-            throw new IOException("Unknown restore journal state");
         return state;
     }
 
     public synchronized void write(RestoreState state) throws IOException {
         secureDirectory(root);
         state.updatedAt = Instant.now().toString();
+        try {
+            state.validateDurableShape();
+        } catch (RuntimeException e) {
+            throw new IOException("Refusing to persist invalid restore journal", e);
+        }
         Path temp = Files.createTempFile(root, "journal-", ".tmp");
         secureFile(temp);
         try {
@@ -63,6 +65,11 @@ public final class RestoreJournal {
 
     public synchronized void archive(RestoreState state) throws IOException {
         if (state == null) return;
+        try {
+            state.validateDurableShape();
+        } catch (RuntimeException e) {
+            throw new IOException("Refusing to archive invalid restore journal", e);
+        }
         Path history = root.resolve("history");
         secureDirectory(history);
         Path target = history.resolve(state.operationId + ".json");

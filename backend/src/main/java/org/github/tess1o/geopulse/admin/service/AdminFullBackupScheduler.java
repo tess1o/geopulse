@@ -88,8 +88,8 @@ public class AdminFullBackupScheduler {
             maintenanceService.finishSuccess(fileName, size);
             log.info("Scheduled full backup completed: {}", fileName);
         } catch (Exception e) {
-            log.error("Scheduled full backup failed", e);
-            maintenanceService.finishFailure(e.getMessage());
+            log.error("Scheduled full backup failed; failureType={}", e.getClass().getSimpleName());
+            maintenanceService.finishFailure("Scheduled encrypted backup failed. Check client tools, database permissions, backup storage, and free disk space.");
         }
     }
 

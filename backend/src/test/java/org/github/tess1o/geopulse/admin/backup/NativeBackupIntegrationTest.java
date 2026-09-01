@@ -104,7 +104,7 @@ class NativeBackupIntegrationTest {
                 }
             } catch (Exception e) { throw new RuntimeException(e); }
         });
-        try { new NativeDatabaseBackup(source).write(archive,password,deadline()); }
+        try { new NativeDatabaseBackup(source).write(archive,password,deadline(), "integration-backup"); }
         finally { writing.set(false); writer.join(); }
         RestoreState state = prepare();
         assertOriginalUntouched();
@@ -124,7 +124,8 @@ class NativeBackupIntegrationTest {
             assertThat(scalar(c,"SELECT ST_AsText(coordinates) FROM gps_points")).isEqualTo("POINT(30.5 50.4)");
             assertThat(scalar(c,"SELECT nextval('gps_points_id_seq')")).isEqualTo("2");
         }
-        state.state="ACTIVATING"; destination.journal().write(state);
+        state.transition(RestoreOperationState.ACTIVATING, RestorePhase.CUTOVER, null);
+        destination.journal().write(state);
         DatabaseCutover cutover = new DatabaseCutover(destination.postgres());
         cutover.activate(state);
         assertThat(cutover.isCommitted(state)).isTrue(); // This is also the lost commit-acknowledgement reconciliation.
@@ -135,11 +136,11 @@ class NativeBackupIntegrationTest {
             assertThat(scalar(c,"SELECT datallowconn FROM pg_database WHERE oid="+state.originalOid)).isEqualTo("f");
         }
         assertThat(Files.readAllBytes(Path.of(destination.keyLocation()))).isEqualTo(destinationKeyFile);
-        assertThat(destination.journal().read().state).isEqualTo("ACTIVATING");
+        assertThat(destination.journal().read().state).isEqualTo(RestoreOperationState.ACTIVATING);
     }
 
     @Test void wrongPasswordAndSchemaMismatchNeverCreateStagingOrChangeLiveData() throws Exception {
-        new NativeDatabaseBackup(source).write(archive,password,deadline());
+        new NativeDatabaseBackup(source).write(archive,password,deadline(), "integration-backup");
         RestoreState state = new RestoreState();
         assertThatThrownBy(() -> new NativeDatabaseBackup(destination).prepare(archive,"wrong".toCharArray(),state,deadline(),p -> {})).isInstanceOf(Exception.class);
         assertThat(state.stagingDatabase).isNull();
@@ -150,15 +151,16 @@ class NativeBackupIntegrationTest {
 
     @Test void brokenSecretsAbortPreparationWithoutClearingOriginalValues() throws Exception {
         try (Connection c=source.postgres().connect(source.postgres().database(),false)) { execute(c,"UPDATE oidc_providers SET client_secret_encrypted='invalid-ciphertext'"); }
-        new NativeDatabaseBackup(source).write(archive,password,deadline());
+        new NativeDatabaseBackup(source).write(archive,password,deadline(), "integration-backup");
         RestoreState state = new RestoreState();
+        state.fileName = archive.getFileName().toString();
         assertThatThrownBy(() -> new NativeDatabaseBackup(destination).prepare(archive,password,state,deadline(),p -> {})).isInstanceOf(Exception.class);
         new NativeDatabaseBackup(destination).discard(state);
         assertOriginalUntouched();
     }
 
     @Test void cutoverTerminatesClientsAndPostgresRollsBackBothRenamesOnFailure() throws Exception {
-        new NativeDatabaseBackup(source).write(archive,password,deadline());
+        new NativeDatabaseBackup(source).write(archive,password,deadline(), "integration-backup");
         RestoreState state=prepare();
         try (Connection client=destination.postgres().connect(destination.postgres().database(),false)) {
             new DatabaseCutover(destination.postgres()).activate(state);
@@ -183,7 +185,7 @@ class NativeBackupIntegrationTest {
     }
 
     private RestoreState prepare() throws Exception {
-        RestoreState state=new RestoreState(); destination.journal().write(state);
+        RestoreState state=new RestoreState(); state.fileName=archive.getFileName().toString(); destination.journal().write(state);
         new NativeDatabaseBackup(destination).prepare(archive,password,state,deadline(),p -> {});
         return state;
     }

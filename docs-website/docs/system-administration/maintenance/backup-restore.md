@@ -31,11 +31,11 @@ If you back up GeoPulse with `pg_dump`, also back up the AI encryption key confi
 
 Use **Administration > Settings > Backup** for complete, password-encrypted `.gpb` backups. GeoPulse streams a native PostgreSQL custom-format dump from one consistent snapshot. The application remains usable during backup. Files appear in the backup list only after encryption and writing succeed; retention runs after successful publication.
 
-A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states, mobile authentication codes, and restore-operation records. Deployment files, external files, PostgreSQL roles, and JWT keys are not included.
+A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes. Deployment files, external files, PostgreSQL roles, and JWT keys are not included.
 
 ### Passwords
 
-Configure a backup password before using **Run Backup Now**, **Download Full Backup**, or scheduled backups. GeoPulse stores this password encrypted with the installation key and never returns it in configuration responses. Changing it affects new backups only. Restoration always asks for the password used to create that particular backup.
+Configure a 12–1024 character backup password before using **Run Backup Now**, **Download Full Backup**, or scheduled backups. GeoPulse stores this password encrypted with the installation key and never returns it in configuration responses. Changing it affects new backups only. Restoration always asks for the password used to create that particular backup. Restore accepts any non-empty password up to 1024 characters so archives created with an older, shorter password remain recoverable.
 
 :::warning Keep the password outside GeoPulse
 Save the backup password in a password manager or another secure location independent of this installation. There is no password recovery or bypass. Losing it makes the archive unusable, even if you still have the destination installation's key. A settings export intentionally does not contain this password.
@@ -54,6 +54,8 @@ The `.gpb` envelope uses a random Tink `AES256_GCM_HKDF_1MB` Streaming AEAD key.
 
 Preparation errors leave the original application and data available without a restart. If the backend stops during preparation, the next startup discards incomplete staging. If activation cannot acquire its exclusive lock or is interrupted before the pool closes, the original application resumes and the staged database can be retried or discarded from the admin page. If the connection pool was already closed, GeoPulse exits; startup identifies whether PostgreSQL committed or rolled back the cutover by comparing recorded database OIDs.
 
+While activation or identity recovery blocks the application, backend admission control returns `503 Service Unavailable` with `X-GeoPulse-Restore-Blocked: true`. Health/version, maintenance status, logout, and the required admin retry/discard/status endpoints remain available. `/api/maintenance/status` is explicitly non-cacheable and exposes only public lifecycle information.
+
 :::danger Trusted backups only
 PostgreSQL dumps execute SQL. Only restore archives created by trusted administrators from trusted installations. Knowing an archive password authenticates its bytes, not the safety of its SQL. Legacy full-backup ZIPs and user-export ZIPs are not accepted by this restore feature.
 :::
@@ -65,6 +67,17 @@ Version 1 requires matching application database schemas (including Flyway migra
 The application role needs read access to the entire source database for backup and ownership/access to all restored application objects. The restore role must connect to the maintenance database, create databases from `template0`, create the required PostGIS extensions, terminate database sessions, change database connection permissions, rename the live/staging databases, and assume the application role (`SET ROLE`). A dedicated restore role can be supplied; otherwise the application credentials are used. Default Compose PostgreSQL credentials have the required privileges. Managed PostgreSQL services may require administrator configuration or may not support this workflow. Activation deliberately disconnects **every client of the live and staged GeoPulse databases**; unrelated databases are untouched.
 
 ### Persistent storage and runtime configuration
+
+Full backup behavior is configured from **Administration > Settings > Backup**. These values are stored in `system_settings`; when no database value exists, GeoPulse falls back to the matching runtime property/environment variable. After you save a value in the admin UI, that database value takes precedence over the environment fallback.
+
+| Admin setting | Property / environment variable | Default | Purpose |
+| --- | --- | --- | --- |
+| `backup.password` | `geopulse.backup.password` / `GEOPULSE_BACKUP_PASSWORD` | Empty | Password used for new encrypted `.gpb` backups. Saved values are encrypted in GeoPulse; environment values are ordinary deployment secrets. |
+| `backup.scheduled.enabled` | `geopulse.backup.scheduled.enabled` / `GEOPULSE_BACKUP_SCHEDULED_ENABLED` | `false` | Enables scheduled full backups. |
+| `backup.scheduled.cron` | `geopulse.backup.scheduled.cron` / `GEOPULSE_BACKUP_SCHEDULED_CRON` | `0 0 3 * * ?` | Quarkus cron expression for scheduled full backups. |
+| `backup.local.path` | `geopulse.backup.local.path` / `GEOPULSE_BACKUP_LOCAL_PATH` | `/data/geopulse-backups` | Folder where encrypted full backup files are published and listed. |
+| `backup.retention.count` | `geopulse.backup.retention.count` / `GEOPULSE_BACKUP_RETENTION_COUNT` | `7` | Number of local encrypted full backups to retain after a successful backup. |
+| `backup.operation.timeout-minutes` | `geopulse.backup.operation.timeout-minutes` / `GEOPULSE_BACKUP_OPERATION_TIMEOUT_MINUTES` | `120` | Maximum duration for full backup and restore operations. |
 
 The working directory must survive **process, container, and pod replacement**, independently of database-stored backup-folder settings. Keep it private to the backend OS user, on storage supporting atomic file replacement and durable fsync. Never delete or relocate its journal during an operation. All replicas of one deployment must use the same working storage; restoration still requires reducing to one instance.
 

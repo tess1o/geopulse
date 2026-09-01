@@ -2,14 +2,17 @@ package org.github.tess1o.geopulse.admin.backup;
 
 import java.io.IOException;
 import java.sql.*;
+import lombok.extern.slf4j.Slf4j;
 
 /** The only component allowed to rename databases. Both renames commit or roll back together. */
+@Slf4j
 public final class DatabaseCutover {
     public enum CurrentIdentity { ORIGINAL, STAGED, UNEXPECTED }
     private final PostgresTarget postgres;
     public DatabaseCutover(PostgresTarget postgres) { this.postgres = postgres; }
 
     public void validateReady(RestoreState state) throws Exception {
+        state.validateDatabaseIdentity(postgres.database(), true);
         try (Connection control = postgres.connect(postgres.maintenanceDatabase(), true)) {
             if (NativeDatabaseBackup.databaseOid(control, state.originalDatabase) != state.originalOid
                     || NativeDatabaseBackup.databaseOid(control, state.stagingDatabase) != state.stagingOid
@@ -29,6 +32,7 @@ public final class DatabaseCutover {
     }
 
     public void activate(RestoreState state) throws Exception {
+        state.validateDatabaseIdentity(postgres.database(), true);
         SQLException last = null;
         for (int attempt = 1; attempt <= 3; attempt++) {
             if (!terminateConnections(state.originalOid, state.stagingOid)) continue;
@@ -44,9 +48,12 @@ public final class DatabaseCutover {
                     NativeDatabaseBackup.execute(control, "ALTER DATABASE " + PostgresTarget.quote(state.previousDatabase)
                             + " ALLOW_CONNECTIONS false");
                     control.commit();
+                    log.info("Restore operation {} committed database cutover on attempt {}", state.operationId, attempt);
                     return;
                 } catch (SQLException failure) {
                     last = failure;
+                    log.warn("Restore operation {} cutover attempt {} rolled back; sqlState={}",
+                            state.operationId, attempt, failure.getSQLState());
                     try { control.rollback(); } catch (SQLException ignored) { }
                 }
             }

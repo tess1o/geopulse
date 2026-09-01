@@ -29,7 +29,8 @@ public final class NativeDatabaseBackup {
         tools = new PgTools(context);
     }
 
-    public void write(Path output, char[] password, Instant deadline) throws Exception {
+    public void write(Path output, char[] password, Instant deadline, String operationId) throws Exception {
+        log.info("Backup operation {} creating encrypted native database backup; file={}", operationId, output.getFileName());
         KeyCipher key = KeyCipher.load(context.keyLocation());
         RestoreJournal.createPrivateFile(output);
         try (Connection snapshot = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(snapshot, deadline)) {
@@ -37,8 +38,10 @@ public final class NativeDatabaseBackup {
             snapshot.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             snapshot.setReadOnly(true);
             NativeBackupManifest manifest = describe(snapshot);
-            if (tools.major("pg_dump") != manifest.postgresMajor) {
-                log.error("pg_dump major error. pg_dump={}, postgre version={}", tools.major("pg_dump"), manifest.postgresMajor);
+            int pgDumpMajor = tools.major(operationId, "pg_dump");
+            if (pgDumpMajor != manifest.postgresMajor) {
+                log.error("Backup operation {} pg_dump/server major mismatch; toolMajor={}; serverMajor={}",
+                        operationId, pgDumpMajor, manifest.postgresMajor);
                 throw new IOException("pg_dump must match the server PostgreSQL major version");
             }
             String snapshotId = scalar(snapshot, "SELECT pg_export_snapshot()");
@@ -49,9 +52,9 @@ public final class NativeDatabaseBackup {
                 zip.setLevel(0); // pg_dump custom format already compresses table data.
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 zip.putNextEntry(new ZipEntry("database.dump"));
-                tools.run("pg_dump", List.of("--format=custom", "--snapshot=" + snapshotId,
-                                "--exclude-table-data=public.oidc_session_states", "--exclude-table-data=public.mobile_auth_codes",
-                                "--exclude-table-data=public.admin_restore_operations"), context.postgres().database(), false,
+                tools.run(operationId, "pg_dump", List.of("--format=custom", "--snapshot=" + snapshotId,
+                                "--exclude-table-data=public.oidc_session_states", "--exclude-table-data=public.mobile_auth_codes"),
+                        context.postgres().database(), false,
                         new DigestOutputStream(zip, digest), deadline);
                 zip.closeEntry();
                 manifest.dumpSha256 = HexFormat.of().formatHex(digest.digest());
@@ -65,13 +68,15 @@ public final class NativeDatabaseBackup {
                 }
             }
             snapshot.rollback();
+            log.info("Backup operation {} encrypted native database backup completed; file={}", operationId, output.getFileName());
         } catch (Exception e) {
             Files.deleteIfExists(output);
             throw e;
         }
     }
 
-    public void prepare(Path archive, char[] password, RestoreState state, Instant deadline, Consumer<String> phase) throws Exception {
+    public void prepare(Path archive, char[] password, RestoreState state, Instant deadline, Consumer<RestorePhase> phase) throws Exception {
+        log.info("Restore operation {} preparation started", state.operationId);
         Path extracted = Files.createDirectory(context.workPath().resolve(state.operationId + ".extract"));
         RestoreJournal.secureDirectory(extracted);
         byte[] sourceKey = null;
@@ -115,7 +120,7 @@ public final class NativeDatabaseBackup {
             if (!source.fingerprint().equals(manifest.sourceKeyFingerprint))
                 throw new IOException("Backup key fingerprint mismatch");
             state.keyFingerprint = destination.fingerprint();
-            phase.accept("preflight");
+            phase.accept(RestorePhase.PREFLIGHT);
             List<Map<String, Object>> localSettings;
             try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(live, deadline)) {
                 NativeBackupManifest local = describe(live);
@@ -124,7 +129,7 @@ public final class NativeDatabaseBackup {
                     throw new IOException("Backup requires the same application database schema and PostgreSQL major version");
                 localSettings = rows(live, "SELECT * FROM system_settings WHERE key LIKE 'backup.%' ORDER BY key");
             }
-            if (tools.major("pg_restore") != manifest.postgresMajor)
+            if (tools.major(state.operationId, "pg_restore") != manifest.postgresMajor)
                 throw new IOException("pg_restore must match the server PostgreSQL major version");
             try (Connection admin = context.postgres().connect(context.postgres().maintenanceDatabase(), true); ConnectionDeadline guard = new ConnectionDeadline(admin, deadline)) {
                 state.originalDatabase = context.postgres().database();
@@ -136,8 +141,9 @@ public final class NativeDatabaseBackup {
                 createStaging(admin, state, manifest);
                 state.stagingOid = databaseOid(admin, state.stagingDatabase);
                 context.journal().write(state);
+                log.info("Restore operation {} created staging database {}", state.operationId, state.stagingDatabase);
             }
-            phase.accept("restoring");
+            phase.accept(RestorePhase.RESTORING);
             Set<String> installedSchemas = new HashSet<>();
             try (Connection staging = context.postgres().connect(state.stagingDatabase, true); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
                 installExtensions(staging, manifest);
@@ -146,7 +152,7 @@ public final class NativeDatabaseBackup {
             }
             Path restoreList = extracted.resolve("restore.list");
             try (OutputStream out = Files.newOutputStream(restoreList, StandardOpenOption.CREATE_NEW)) {
-                tools.run("pg_restore", List.of("--list", extracted.resolve("database.dump").toString()), state.stagingDatabase, true, out, deadline);
+                tools.run(state.operationId, "pg_restore", List.of("--list", extracted.resolve("database.dump").toString()), state.stagingDatabase, true, out, deadline);
             }
             if (Files.size(restoreList) > 16 * 1024 * 1024)
                 throw new IOException("Backup object list exceeds size limit");
@@ -155,10 +161,10 @@ public final class NativeDatabaseBackup {
             // restore every application/data object, with extension-owned objects supplied by the server.
             objects.removeIf(line -> installedSchemas.stream().anyMatch(schema -> line.matches("^[0-9]+; [0-9]+ [0-9]+ SCHEMA - " + java.util.regex.Pattern.quote(schema) + " .*")));
             Files.write(restoreList, objects);
-            tools.run("pg_restore", List.of("--dbname=" + state.stagingDatabase, "--exit-on-error", "--no-owner", "--no-acl", "--no-comments",
+            tools.run(state.operationId, "pg_restore", List.of("--dbname=" + state.stagingDatabase, "--exit-on-error", "--no-owner", "--no-acl", "--no-comments",
                             "--role=" + context.postgres().username(), "--use-list=" + restoreList, extracted.resolve("database.dump").toString()),
                     state.stagingDatabase, true, OutputStream.nullOutputStream(), deadline);
-            phase.accept("secrets");
+            phase.accept(RestorePhase.SECRETS);
             try (Connection staging = context.postgres().connect(state.stagingDatabase, false); ConnectionDeadline guard = new ConnectionDeadline(staging, deadline)) {
                 staging.setAutoCommit(false);
                 try {
@@ -170,7 +176,7 @@ public final class NativeDatabaseBackup {
                     throw e;
                 }
                 staging.setAutoCommit(true);
-                phase.accept("validating");
+                phase.accept(RestorePhase.VALIDATING);
                 NativeBackupManifest restored = describe(staging);
                 if (!manifest.schemaFingerprint.equals(restored.schemaFingerprint) || !manifest.migrations.equals(restored.migrations)
                         || !manifest.extensions.equals(restored.extensions))
@@ -180,6 +186,7 @@ public final class NativeDatabaseBackup {
                 execute(staging, "ANALYZE");
             }
             checkDeadline(deadline);
+            log.info("Restore operation {} preparation and validation completed", state.operationId);
         } finally {
             if (sourceKey != null) Arrays.fill(sourceKey, (byte) 0);
             RestoreJournal.removeTree(extracted);
@@ -361,14 +368,16 @@ public final class NativeDatabaseBackup {
 
     public void discard(RestoreState state) throws Exception {
         if (state.stagingDatabase == null) return;
-        String expected = "gp_restore_" + state.operationId.replace("-", "");
-        if (!expected.equals(state.stagingDatabase)) throw new IOException("Staging database identity mismatch");
+        // Never infer a deletion target from journal text alone. A staging database is removable only
+        // when its operation-derived name, configured original database, and recorded positive OIDs agree.
+        state.validateDatabaseIdentity(context.postgres().database(), true);
         try (Connection admin = context.postgres().connect(context.postgres().maintenanceDatabase(), true)) {
             long oid = databaseOid(admin, state.stagingDatabase);
             if (oid == 0) return;
-            if (state.stagingOid != 0 && oid != state.stagingOid)
+            if (oid != state.stagingOid)
                 throw new IOException("Staging database OID changed; manual cleanup is required");
             execute(admin, "DROP DATABASE " + PostgresTarget.quote(state.stagingDatabase));
+            log.info("Restore operation {} dropped staging database {}", state.operationId, state.stagingDatabase);
         }
     }
 
