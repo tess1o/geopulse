@@ -28,7 +28,7 @@ import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import java.util.zip.ZipOutputStream;
+
 
 @Path("/api/admin/backups")
 @Produces(MediaType.APPLICATION_JSON)
@@ -55,7 +55,7 @@ public class AdminFullBackupResource {
     @GET
     @Path("/download")
     @RolesAllowed(SecurityRoles.ADMIN)
-    @Produces("application/zip")
+    @Produces("application/octet-stream")
     public Response downloadFullBackup(@HeaderParam("X-Forwarded-For") String forwardedFor,
                                        @HeaderParam("X-Real-IP") String realIp) {
         if (!maintenanceService.tryStartBackup("download")) {
@@ -63,21 +63,21 @@ public class AdminFullBackupResource {
                     .entity(ApiResponse.error("Another backup or restore is already running"))
                     .build();
         }
-        String fileName = "geopulse-full-backup-" + Instant.now().getEpochSecond() + ".zip";
-        StreamingOutput stream = output -> {
-            try (ZipOutputStream zos = new ZipOutputStream(output)) {
-                backupService.writeFullBackup(zos);
-                maintenanceService.finishSuccess(fileName, null);
-                audit(ActionType.ADMIN_FULL_BACKUP_EXPORTED, fileName, forwardedFor, realIp);
-            } catch (Exception e) {
-                maintenanceService.finishFailure(e.getMessage());
-                throw e;
-            }
-        };
-        return Response.ok(stream)
-                .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
-                .header("Content-Type", "application/zip")
-                .build();
+        try {
+            String fileName = backupService.writeLocalBackup();
+            java.nio.file.Path completed = backupService.resolveLocalBackup(fileName);
+            long size = Files.size(completed);
+            StreamingOutput stream = output -> {
+                try { Files.copy(completed, output); }
+                finally { maintenanceService.finishSuccess(fileName, size); }
+            };
+            audit(ActionType.ADMIN_FULL_BACKUP_EXPORTED, fileName, forwardedFor, realIp);
+            return Response.ok(stream).header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+                    .header("Content-Type", "application/octet-stream").build();
+        } catch (Exception e) {
+            maintenanceService.finishFailure("Could not create encrypted backup. Verify the backup password, client tools, permissions, and free disk space.");
+            return Response.serverError().entity(ApiResponse.error(maintenanceService.getStatus().getError())).build();
+        }
     }
 
     @POST
@@ -121,14 +121,14 @@ public class AdminFullBackupResource {
     @GET
     @Path("/files/{fileName}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    @Produces("application/zip")
+    @Produces("application/octet-stream")
     public Response downloadLocalBackup(@PathParam("fileName") String fileName) {
         try {
             java.nio.file.Path file = backupService.resolveLocalBackup(fileName);
             StreamingOutput stream = output -> Files.copy(file, output);
             return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
-                    .header("Content-Type", "application/zip")
+                    .header("Content-Type", "application/octet-stream")
                     .build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
@@ -165,13 +165,14 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response restoreUploaded(@RestForm("file") FileUpload file,
+                                    @RestForm("password") String password,
                                     @HeaderParam("X-Forwarded-For") String forwardedFor,
                                     @HeaderParam("X-Real-IP") String realIp) {
         if (file == null || file.uploadedFile() == null) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error("Backup file is required")).build();
         }
         try {
-            return restoreBytes(Files.readAllBytes(file.uploadedFile()), file.fileName(), forwardedFor, realIp);
+            return prepareRestore(file.uploadedFile(), file.fileName(), password);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to read uploaded backup: " + e.getMessage()))
@@ -187,7 +188,7 @@ public class AdminFullBackupResource {
                                  @HeaderParam("X-Real-IP") String realIp) {
         try {
             java.nio.file.Path file = backupService.resolveLocalBackup(request.getFileName());
-            return restoreBytes(Files.readAllBytes(file), request.getFileName(), forwardedFor, realIp);
+            return prepareRestore(file, request.getFileName(), request.getPassword());
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
         } catch (Exception e) {
@@ -226,27 +227,42 @@ public class AdminFullBackupResource {
         return Response.ok(ApiResponse.success(maintenanceService.getStatus())).build();
     }
 
-    private Response restoreBytes(byte[] backupBytes, String fileName, String forwardedFor, String realIp) {
-        if (!maintenanceService.tryStartRestore("restore", fileName)) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(ApiResponse.error("Another backup or restore is already running"))
-                    .build();
-        }
+    @POST
+    @Path("/restore/retry")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response retryPreparedRestore() {
         try {
-            UUID adminId = currentUserService.getCurrentUserId();
-            backupService.restoreFullBackup(backupBytes, adminId);
-            maintenanceService.finishSuccess(fileName, (long) backupBytes.length);
-            audit(ActionType.ADMIN_FULL_BACKUP_IMPORTED, fileName, forwardedFor, realIp);
-            return Response.ok(ApiResponse.success(Map.of("fileName", fileName))).build();
+            backupService.retryActivation();
+            return Response.accepted(ApiResponse.success(maintenanceService.getStatus())).build();
         } catch (IllegalArgumentException e) {
-            maintenanceService.finishFailure(e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+            return Response.status(Response.Status.CONFLICT).entity(ApiResponse.error(e.getMessage())).build();
+        }
+    }
+
+    @POST
+    @Path("/restore/discard")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public Response discardPreparedRestore() {
+        try {
+            backupService.discardPrepared();
+            return Response.ok(ApiResponse.success(maintenanceService.getStatus())).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.CONFLICT).entity(ApiResponse.error(e.getMessage())).build();
         } catch (Exception e) {
-            log.error("Full backup restore failed", e);
-            maintenanceService.finishFailure(e.getMessage());
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to restore full backup: " + e.getMessage()))
-                    .build();
+            return Response.serverError().entity(ApiResponse.error("Could not discard staging. The application remains blocked; check database connections and permissions.")).build();
+        }
+    }
+
+    private Response prepareRestore(java.nio.file.Path source, String fileName, String password) {
+        try {
+            String operationId = backupService.startRestore(source, fileName, password);
+            return Response.accepted(ApiResponse.success(Map.of("operationId", operationId, "state", "PREPARING"))).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(e.getMessage())).build();
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.CONFLICT).entity(ApiResponse.error(e.getMessage())).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(ApiResponse.error("Could not prepare the restore. Check persistent working storage and database permissions.")).build();
         }
     }
 

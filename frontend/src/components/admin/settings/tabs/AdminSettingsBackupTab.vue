@@ -53,7 +53,7 @@
         <div class="backup-section-header">
           <div>
             <h3>Full App Backup</h3>
-            <p class="text-muted">Portable application data backup for users, settings, GPS history, relationships, and permissions.</p>
+            <p class="text-muted">Password-encrypted PostgreSQL backup of application data and secrets.</p>
           </div>
         </div>
 
@@ -67,7 +67,7 @@
                 </div>
                 <i class="pi pi-download backup-panel-icon"></i>
               </div>
-              <Button label="Download Full Backup" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning" @click="downloadFullBackup" />
+              <Button label="Download Full Backup" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="downloadFullBackup" />
             </section>
 
             <section class="backup-panel">
@@ -78,12 +78,22 @@
                 </div>
                 <i class="pi pi-save backup-panel-icon"></i>
               </div>
-              <Button label="Run Backup Now" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning" @click="runBackupNow" />
+              <Button label="Run Backup Now" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="runBackupNow" />
             </section>
           </div>
 
           <Message severity="warn" :closable="false" class="backup-warning">
-            Full backups include plaintext app secrets, user password hashes, API token hashes, OIDC links, GPS data, friends, and sharing permissions.
+            Full backups are encrypted with your backup password. Save that password outside GeoPulse: without it, the backup cannot be recovered. Restore only trusted backups. Restore preparation runs online; activation briefly stops GeoPulse and restarts the backend automatically.
+          </Message>
+
+          <Message v-if="backupStatus?.state === 'ACTIVATION_RETRYABLE'" severity="warn" :closable="false">
+            <div class="retryable-restore">
+              <span>{{ backupStatus.error || 'Activation did not complete. The original database is active and the prepared restore is retained.' }}</span>
+              <div class="file-actions">
+                <Button label="Retry Activation" icon="pi pi-refresh" :loading="restoring" @click="retryActivation" />
+                <Button label="Discard Prepared Restore" icon="pi pi-trash" severity="danger" outlined :loading="deleting" @click="discardPreparedRestore" />
+              </div>
+            </div>
           </Message>
 
           <div v-if="showBackupProgress" class="backup-progress">
@@ -110,6 +120,9 @@
             </div>
             <div class="config-grid">
               <div class="config-group schedule-group">
+                <h5>Backup password</h5>
+                <label class="config-field"><span>{{ backupConfig.passwordConfigured ? 'Change password (leave empty to keep)' : 'Password required for all full backups' }}</span><InputText v-model="backupPassword" type="password" autocomplete="new-password" :disabled="adminReadOnly" /></label>
+                <label class="config-field"><span>Confirm new password</span><InputText v-model="backupPasswordConfirmation" type="password" autocomplete="new-password" :disabled="adminReadOnly" /></label>
                 <h5>Schedule</h5>
                 <label class="config-field toggle-field" data-setting-id="backup.scheduled.enabled"><span>Enabled</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
                 <label class="config-field" data-setting-id="backup.scheduled.cron"><span>Cron</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
@@ -118,7 +131,7 @@
                 <h5>Storage</h5>
                 <label class="config-field" data-setting-id="backup.local.path"><span>Folder Path</span><InputText v-model="backupConfig.localPath" :disabled="adminReadOnly" /></label>
                 <div class="config-row">
-                  <label class="config-field" data-setting-id="backup.retention.count"><span>Retention Days</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
+                  <label class="config-field" data-setting-id="backup.retention.count"><span>Backups to Keep</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
                   <label class="config-field" data-setting-id="backup.operation.timeout-minutes"><span>Timeout Minutes</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
                 </div>
               </div>
@@ -156,12 +169,12 @@
             <div class="subsection-header">
               <div>
                 <h4>Restore Uploaded Full Backup</h4>
-                <p class="text-muted">Upload a ZIP backup from your machine and restore it into this instance.</p>
+                <p class="text-muted">Upload an encrypted .gpb backup. Preparation runs in the background while GeoPulse stays available; activation then replaces newer data and restarts the backend.</p>
               </div>
             </div>
             <div class="restore-upload-row">
               <div class="inline-upload">
-                <FileUpload ref="fullFileUpload" mode="basic" accept=".zip,application/zip" chooseLabel="Choose Full Backup" :auto="false" :disabled="adminReadOnly || operationRunning" @select="onFullFileSelect" @clear="onFullFileClear" />
+                <FileUpload ref="fullFileUpload" mode="basic" accept=".gpb,application/octet-stream" chooseLabel="Choose Full Backup" :auto="false" :disabled="adminReadOnly || operationRunning" @select="onFullFileSelect" @clear="onFullFileClear" />
                 <div v-if="selectedFullFile" class="selected-file"><i class="pi pi-file"></i><span>{{ selectedFullFile.name }}</span></div>
               </div>
               <Button label="Restore Uploaded Backup" icon="pi pi-upload" severity="danger" :loading="restoring" :disabled="adminReadOnly || operationRunning || !selectedFullFile" @click="openRestoreUploadDialog" />
@@ -197,7 +210,8 @@
         <i class="pi pi-exclamation-triangle"></i>
         <div>
           <p>Restoring a full backup can replace users, app settings, GPS data, friends, and permissions.</p>
-          <p class="text-muted">Background processors will be skipped while restore is running.</p>
+          <p class="text-muted">Preparation runs while GeoPulse remains available. Activation briefly blocks application work, replaces newer data, and restarts the backend automatically.</p>
+          <label class="config-field"><span>Source backup password</span><InputText v-model="restorePassword" type="password" autocomplete="off" /></label>
         </div>
       </div>
       <div v-else class="restore-progress">
@@ -216,7 +230,7 @@
       </div>
       <template #footer>
         <Button v-if="!restoreProgressInDialog" label="Cancel" icon="pi pi-times" text @click="restoreDialogVisible = false" />
-        <Button v-if="!restoreProgressInDialog" label="Restore" icon="pi pi-undo" severity="danger" :loading="restoring" @click="restoreFullBackup" />
+        <Button v-if="!restoreProgressInDialog" label="Restore" icon="pi pi-undo" severity="danger" :loading="restoring" :disabled="!restorePassword" @click="restoreFullBackup" />
         <Button v-else label="Restoring" icon="pi pi-spin pi-spinner" severity="danger" disabled />
       </template>
     </Dialog>
@@ -253,8 +267,12 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import adminService from '@/utils/adminService'
+import { applyMaintenanceStatus, refreshMaintenance } from '@/stores/maintenance'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
+const backupPassword = ref('')
+const backupPasswordConfirmation = ref('')
+const restorePassword = ref('')
 const toast = useToast()
 const authStore = useAuthStore()
 const { adminReadOnly } = storeToRefs(authStore)
@@ -415,6 +433,11 @@ const loadBackupConfig = async () => {
 const loadBackupStatus = async () => {
   try {
     backupStatus.value = await adminService.getBackupStatus()
+    if (statusPoller.value && !backupStatus.value?.backupRunning && !backupStatus.value?.restoreRunning
+      && !restoring.value && !runningNow.value && !fullDownloading.value) {
+      window.clearInterval(statusPoller.value)
+      statusPoller.value = null
+    }
   } catch {
     backupStatus.value = null
   }
@@ -424,7 +447,10 @@ const saveBackupConfig = async () => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
   savingConfig.value = true
   try {
-    backupConfig.value = await adminService.updateBackupConfig(backupConfig.value)
+    if (backupPassword.value !== backupPasswordConfirmation.value) throw new Error('Backup passwords do not match')
+    backupConfig.value = await adminService.updateBackupConfig({ ...backupConfig.value, password: backupPassword.value || undefined })
+    backupPassword.value = ''
+    backupPasswordConfirmation.value = ''
     toast.add({ severity: 'success', summary: 'Settings Saved', detail: 'Backup settings updated.', life: 3000 })
     await loadBackupFiles()
   } catch (error) {
@@ -482,20 +508,44 @@ const restoreFullBackup = async () => {
   startBackupStatusPolling()
   try {
     const result = restoreSource.value === 'local'
-      ? await adminService.restoreLocalFullBackup(restoreLocalFileName.value)
-      : await adminService.restoreUploadedFullBackup(selectedFullFile.value)
+      ? await adminService.restoreLocalFullBackup(restoreLocalFileName.value, restorePassword.value)
+      : await adminService.restoreUploadedFullBackup(selectedFullFile.value, restorePassword.value)
     restoreDialogVisible.value = false
     selectedFullFile.value = null
     fullFileUpload.value?.clear?.()
-    toast.add({ severity: 'success', summary: 'Restore Complete', detail: `Restored ${result.fileName}`, life: 5000 })
-    await Promise.all([loadBackupFiles(), loadBackupStatus()])
+    restorePassword.value = ''
+    applyMaintenanceStatus({
+      state: 'PREPARING', blocked: false, warning: true,
+      message: 'Restoration is being prepared in the background. GeoPulse remains available, but data and changes newer than this backup will be replaced when restoration activates.'
+    })
+    await refreshMaintenance()
   } catch (error) {
     restoreDialogVisible.value = false
+    await stopBackupStatusPolling()
     toast.add({ severity: 'error', summary: 'Restore Failed', detail: error.response?.data?.message || error.message || 'Failed to restore full backup', life: 6000 })
   } finally {
     restoring.value = false
-    stopBackupStatusPolling()
   }
+}
+
+const retryActivation = async () => {
+  restoring.value = true
+  try {
+    await adminService.retryPreparedRestore()
+    await refreshMaintenance()
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Activation Retry Failed', detail: error.response?.data?.message || error.message, life: 6000 })
+  } finally { restoring.value = false }
+}
+
+const discardPreparedRestore = async () => {
+  deleting.value = true
+  try {
+    await adminService.discardPreparedRestore()
+    await Promise.all([loadBackupStatus(), refreshMaintenance()])
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Discard Failed', detail: error.response?.data?.message || error.message, life: 6000 })
+  } finally { deleting.value = false }
 }
 
 const startBackupStatusPolling = () => {

@@ -278,9 +278,10 @@ const adminService = {
         return unwrapApiResponse(await apiService.delete(`/admin/backups/files/${encodeURIComponent(fileName)}`));
     },
 
-    async restoreUploadedFullBackup(file) {
+    async restoreUploadedFullBackup(file, password) {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('password', password);
         return unwrapApiResponse(await apiService.post('/admin/backups/restore/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
@@ -288,8 +289,16 @@ const adminService = {
         }));
     },
 
-    async restoreLocalFullBackup(fileName) {
-        return unwrapApiResponse(await apiService.post('/admin/backups/restore/local', { fileName }));
+    async restoreLocalFullBackup(fileName, password) {
+        return unwrapApiResponse(await apiService.post('/admin/backups/restore/local', { fileName, password }));
+    },
+
+    async discardPreparedRestore() {
+        return unwrapApiResponse(await apiService.post('/admin/backups/restore/discard', {}));
+    },
+
+    async retryPreparedRestore() {
+        return unwrapApiResponse(await apiService.post('/admin/backups/restore/retry', {}));
     },
 
     async getBackupConfig() {

@@ -24,6 +24,7 @@ services:
       - ./dumps:/app/dumps
       - ./logs:/app/logs
       - ./import-drop:/data/geopulse-import
+      - ./backups:/data/geopulse-backups
     depends_on:
       geopulse-keygen-dev:
         condition: service_completed_successfully

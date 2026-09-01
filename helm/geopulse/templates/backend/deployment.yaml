@@ -41,6 +41,8 @@ spec:
             - /bin/sh
             - /scripts/generate-keys.sh
           volumeMounts:
+            - name: backups
+              mountPath: {{ .Values.backend.backupPersistence.mountPath | quote }}
             - name: keys
               mountPath: /keys
             - name: keygen-script
@@ -68,8 +70,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          {{- if or .Values.backend.javaOpts .Values.backend.extraEnv }}
           env:
+            - name: GEOPULSE_BACKUP_WORK_PATH
+              value: {{ .Values.backend.backupPersistence.workPath | quote }}
             {{- if .Values.backend.javaOpts }}
             - name: JAVA_OPTS
               value: {{ .Values.backend.javaOpts | quote }}
@@ -77,7 +80,6 @@ spec:
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "geopulse.fullname" . }}-config
@@ -111,6 +113,8 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            - name: backups
+              mountPath: {{ .Values.backend.backupPersistence.mountPath | quote }}
             - name: keys
               mountPath: /app/keys
               readOnly: true
@@ -123,6 +127,14 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
       {{- end }}
       volumes:
+        - name: backups
+          {{- if .Values.backend.backupPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.backupPersistence.existingClaim | default (printf "%s-backups" (include "geopulse.fullname" .)) }}
+          {{- else }}
+          # Development only. Restoration cannot survive pod replacement with emptyDir.
+          emptyDir: {}
+          {{- end }}
         - name: keys
           {{- if .Values.keygen.persistence.enabled }}
           persistentVolumeClaim:

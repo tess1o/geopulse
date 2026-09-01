@@ -44,6 +44,17 @@ RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
 FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6
 WORKDIR /work
 
+# PGDG publishes matching clients for both amd64 and arm64. No PostgreSQL server is installed.
+RUN microdnf install -y ca-certificates curl-minimal \
+    && curl --fail --location --output /tmp/pgdg.rpm "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-$(uname -m)/pgdg-redhat-repo-latest.noarch.rpm" \
+    && rpm -i /tmp/pgdg.rpm \
+    && microdnf install -y --disablerepo='pgdg*' --enablerepo=pgdg17 --enablerepo=pgdg-common postgresql17 \
+    && microdnf clean all \
+    && rm /tmp/pgdg.rpm \
+    && mkdir -p /data/geopulse-backups \
+    && chmod 777 /data/geopulse-backups
+ENV GEOPULSE_BACKUP_BINARY_DIRECTORY=/usr/pgsql-17/bin
+
 # Set permissions for arbitrary UIDs and GIDs
 # Uses 777 for maximum flexibility - supports both OpenShift pattern (any UID with GID 0)
 # and standard docker-compose (any UID:GID combination like 1000:1000)

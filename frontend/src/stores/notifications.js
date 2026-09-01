@@ -3,6 +3,7 @@ import apiService from '@/utils/apiService'
 import router from '@/router'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { resolveNotificationDisplay, resolveNotificationRoute } from '@/utils/notificationDisplay'
+import { interruptsApplicationRequests, isMaintenanceInterruption } from '@/stores/maintenance'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
 const BACKLOG_WATERMARK_PREFIX = 'gp.notifications.backlog.watermark.'
@@ -151,7 +152,7 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     startPolling() {
-      if (this.isPolling) {
+      if (this.isPolling || interruptsApplicationRequests()) {
         return
       }
 
@@ -194,7 +195,7 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     scheduleNextPoll(delayMs = POLL_INTERVAL_MS) {
-      if (!this.isPolling || typeof window === 'undefined') {
+      if (!this.isPolling || interruptsApplicationRequests() || typeof window === 'undefined') {
         return
       }
 
@@ -213,6 +214,10 @@ export const useNotificationsStore = defineStore('notifications', {
           this.pollBackoffMs = POLL_INTERVAL_MS
           this.scheduleNextPoll(POLL_INTERVAL_MS)
         } catch (error) {
+          if (isMaintenanceInterruption(error) || interruptsApplicationRequests()) {
+            this.stopPolling()
+            return
+          }
           this.pollBackoffMs = Math.min(this.pollBackoffMs * 2, MAX_BACKOFF_MS)
           this.scheduleNextPoll(this.pollBackoffMs)
         }
@@ -225,7 +230,7 @@ export const useNotificationsStore = defineStore('notifications', {
       }
 
       this._onVisibilityChange = () => {
-        if (typeof document !== 'undefined' && !document.hidden) {
+        if (typeof document !== 'undefined' && !document.hidden && !interruptsApplicationRequests()) {
           this.refresh({
             emitToasts: false,
             emitBrowser: false,
@@ -235,6 +240,7 @@ export const useNotificationsStore = defineStore('notifications', {
       }
 
       this._onWindowFocus = () => {
+        if (interruptsApplicationRequests()) return
         this.refresh({
           emitToasts: false,
           emitBrowser: false,

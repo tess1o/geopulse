@@ -14,13 +14,16 @@ import java.util.Optional;
 
 @QuarkusMain
 public class GeoPulseMain implements QuarkusApplication {
+    public static void main(String... args) {
+        Quarkus.run(GeoPulseMain.class, args);
+    }
 
     static final int EXIT_OK = 0;
     static final int EXIT_USAGE = 2;
     static final int EXIT_FAILED = 1;
 
     @Override
-    public int run(String... args) {
+    public int run(String... args) throws Exception {
         List<String> commandArgs = applicationArgs(args);
         if (commandArgs.isEmpty()) {
             Quarkus.waitForExit();

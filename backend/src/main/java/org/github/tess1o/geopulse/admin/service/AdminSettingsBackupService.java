@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 public class AdminSettingsBackupService {
 
     private static final Set<String> BACKUP_EXCLUDED_SETTING_KEYS = Set.of(
-            "import.drop-folder.path"
+            "import.drop-folder.path", "backup.password"
     );
 
     @Inject
@@ -311,7 +311,7 @@ public class AdminSettingsBackupService {
 
     private void removeMissingSystemSettings(Set<String> importedSettingKeys) {
         for (SystemSettingsEntity existing : settingsRepository.listAllSettings()) {
-            if (!importedSettingKeys.contains(existing.getKey())) {
+            if (!importedSettingKeys.contains(existing.getKey()) && !BACKUP_EXCLUDED_SETTING_KEYS.contains(existing.getKey())) {
                 settingsRepository.deleteByKey(existing.getKey());
             }
         }

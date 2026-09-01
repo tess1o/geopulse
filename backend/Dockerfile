@@ -34,13 +34,16 @@ COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/quarkus/ /app/q
 FROM eclipse-temurin:25-jdk-alpine
 WORKDIR /app
 
+# The full-backup format requires clients matching the bundled PostgreSQL 17 server.
+RUN apk add --no-cache postgresql17-client
+
 # Create directories and set permissions for arbitrary UIDs and GIDs
 # Supports both OpenShift pattern (any UID with GID 0) and standard docker-compose (any UID:GID)
 # Uses UID 1001 to match native image for consistency
-RUN mkdir -p /app/dumps /app/logs && \
+RUN mkdir -p /app/dumps /app/logs /data/geopulse-backups && \
     addgroup -g 1001 -S appgroup && \
     adduser -u 1001 -G appgroup -S appuser && \
-    chmod 777 /app/dumps /app/logs && \
+    chmod 777 /app/dumps /app/logs /data/geopulse-backups && \
     chown -R 1001:0 /app && \
     chmod -R g+rwX /app
 

@@ -32,6 +32,7 @@ import SharedTimelinePage from "@/views/SharedTimelinePage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
 import { useAuthStore } from '@/stores/auth'
+import { maintenance, refreshMaintenance } from '@/stores/maintenance'
 
 // Auth guard function
 const requireAuth = async (to, from, next) => {
@@ -487,6 +488,11 @@ router.afterEach((to) => {
     const baseTitle = 'GeoPulse'
     const pageTitle = to.meta.title
     document.title = pageTitle ? `${pageTitle} - ${baseTitle}` : baseTitle
+})
+
+router.beforeEach(async () => {
+    if (!maintenance.initialized) await refreshMaintenance()
+    if (maintenance.blocked || maintenance.unavailable || maintenance.activated) return false
 })
 
 export default router

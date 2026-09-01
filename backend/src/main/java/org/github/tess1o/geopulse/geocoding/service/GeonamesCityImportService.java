@@ -1,12 +1,12 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.arc.Arc;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCityRecord;
@@ -56,7 +56,6 @@ public class GeonamesCityImportService {
 
     private final GeonamesCityRepository geonamesCityRepository;
     private final GeonamesCityLineParser lineParser;
-    private final ManagedExecutor managedExecutor;
     private final AtomicBoolean importInProgress = new AtomicBoolean(false);
 
     @Inject
@@ -68,12 +67,10 @@ public class GeonamesCityImportService {
     @Inject
     public GeonamesCityImportService(
             GeonamesCityRepository geonamesCityRepository,
-            GeonamesCityLineParser lineParser,
-            ManagedExecutor managedExecutor
+            GeonamesCityLineParser lineParser
     ) {
         this.geonamesCityRepository = geonamesCityRepository;
         this.lineParser = lineParser;
-        this.managedExecutor = managedExecutor;
     }
 
     void onStart(@Observes StartupEvent ignored) {
@@ -86,11 +83,17 @@ public class GeonamesCityImportService {
             return;
         }
 
-        managedExecutor.runAsync(this::importIfNeededOnStartup)
-                .exceptionally(throwable -> {
-                    log.error("GeoNames startup import failed: {}", throwable.getMessage(), throwable);
-                    return null;
-                });
+        Thread.ofVirtual().name("geonames-city-startup-import").start(this::runStartupImport);
+    }
+
+    private void runStartupImport() {
+        var requestContext = Arc.container().requestContext();
+        requestContext.activate();
+        try {
+            importIfNeededOnStartup();
+        } finally {
+            requestContext.terminate();
+        }
     }
 
     void importIfNeededOnStartup() {

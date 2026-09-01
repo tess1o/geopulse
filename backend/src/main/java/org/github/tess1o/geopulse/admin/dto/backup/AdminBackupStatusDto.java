@@ -13,6 +13,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBackupStatusDto {
+    private String operationId;
+    private String stagingDatabase;
+    private String previousDatabase;
+    private String state;
+    private boolean restartRequired;
     private boolean backupRunning;
     private boolean restoreRunning;
     private boolean restoreRequired;
