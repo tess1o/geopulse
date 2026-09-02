@@ -125,6 +125,7 @@ import { useFriendsStore } from '@/stores/friends'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import apiService from '@/utils/apiService'
+import { isMaintenanceInterruption } from '@/stores/maintenance'
 
 const props = defineProps({
   variant: {
@@ -418,9 +419,11 @@ onMounted(async () => {
   try {
     await friendsStore.fetchReceivedInvitations()
   } catch (error) {
-    // Use our improved error handler but don't show toast for this background operation
-    // Just log it - navigation should still work even if this fails
-    handleError(error, { life: 2000, severity: 'warn' })
+    if (!isMaintenanceInterruption(error)) {
+      // Use our improved error handler but don't show toast for this background operation
+      // Just log it - navigation should still work even if this fails
+      handleError(error, { life: 2000, severity: 'warn' })
+    }
   }
 
   // Load app version status

@@ -21,6 +21,17 @@ backend:
 
   replicaCount: 1
 
+  # Must survive pod replacement: contains encrypted backups and the activation journal.
+  # Reduce backend replicas to one before restore activation.
+  backupPersistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 20Gi
+    mountPath: /data/geopulse-backups
+    workPath: /data/geopulse-backups/.work
+
   service:
     type: ClusterIP
     port: 8080
@@ -89,7 +100,7 @@ backend:
   extraEnvFrom: []
 
   # Additional volumes / volume mounts, appended to the ones the chart sets.
-  # The chart only mounts the generated keys, so anything else the backend needs
+  # The chart mounts generated keys and backup storage; anything else the backend needs
   # to read or write - an import directory, a CA bundle - has to come from here.
   # Example:
   #   extraVolumes:
@@ -109,6 +120,7 @@ backend:
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000  # Can be any UID >= 1000
+    fsGroup: 0       # Images grant group 0 write access to mounted application storage
 
   # Node selector
   nodeSelector: {}

@@ -10,11 +10,17 @@
     "name" : "Admin: Dashboard",
     "description" : "Read administrator dashboard metrics and system statistics."
   }, {
+    "name" : "Admin: Geocoding Providers",
+    "description" : "Manage custom geocoding provider instances."
+  }, {
     "name" : "Admin: Invitations",
     "description" : "Manage account invitations and registration links."
   }, {
     "name" : "Admin: OIDC Providers",
     "description" : "Manage OpenID Connect provider configuration."
+  }, {
+    "name" : "Admin: Settings Backup",
+    "description" : "Export and import admin-configurable global settings."
   }, {
     "name" : "Admin: System Settings",
     "description" : "View, update, reset, and test system-wide settings."
@@ -186,6 +192,113 @@
             "maximum" : 180.0,
             "minimum" : -180.0,
             "type" : "number"
+          }
+        }
+      },
+      "AdminBackupConfigDto" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "writeOnly" : true
+          },
+          "passwordConfigured" : {
+            "type" : "boolean"
+          },
+          "scheduledEnabled" : {
+            "type" : "boolean"
+          },
+          "scheduledCron" : {
+            "type" : "string"
+          },
+          "localPath" : {
+            "type" : "string"
+          },
+          "retentionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "operationTimeoutMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "AdminBackupStatusDto" : {
+        "type" : "object",
+        "properties" : {
+          "operationId" : {
+            "type" : "string"
+          },
+          "stagingDatabase" : {
+            "type" : "string"
+          },
+          "previousDatabase" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "restartRequired" : {
+            "type" : "boolean"
+          },
+          "backupRunning" : {
+            "type" : "boolean"
+          },
+          "restoreRunning" : {
+            "type" : "boolean"
+          },
+          "restoreRequired" : {
+            "type" : "boolean"
+          },
+          "environmentBlocked" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "operation" : {
+            "type" : "string"
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "sizeBytes" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "phase" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "progressPercent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "startedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "completedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "error" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AdminBackupStatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/AdminBackupStatusDto"
           }
         }
       },
@@ -994,6 +1107,48 @@
           }
         }
       },
+      "CustomGeocodingProviderRequest" : {
+        "required" : [ "name", "displayName", "type", "url" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 50,
+            "pattern" : "^[a-z0-9][a-z0-9-]*$",
+            "type" : "string"
+          },
+          "displayName" : {
+            "maxLength" : 50,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "type" : {
+            "pattern" : "^(photon|nominatim)$",
+            "type" : "string"
+          },
+          "url" : {
+            "maxLength" : 500,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "language" : {
+            "maxLength" : 50,
+            "type" : "string"
+          },
+          "headers" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "delayMs" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
       "DataGapStayOverrideRequest" : {
         "type" : "object",
         "properties" : {
@@ -1696,6 +1851,70 @@
           }
         }
       },
+      "MaintenanceStatusDto" : {
+        "type" : "object",
+        "properties" : {
+          "state" : {
+            "type" : "string"
+          },
+          "blocked" : {
+            "type" : "boolean"
+          },
+          "warning" : {
+            "type" : "boolean"
+          },
+          "restarting" : {
+            "type" : "boolean"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "backupCreatedAt" : {
+            "type" : "string"
+          },
+          "completedAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MaintenanceStatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "data" : {
+            "$ref" : "#/components/schemas/MaintenanceStatusDto"
+          }
+        }
+      },
+      "MapMatchingResolutionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "tripIds" : {
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        }
+      },
+      "MapMatchingStatusRequest" : {
+        "type" : "object",
+        "properties" : {
+          "targetIds" : {
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        }
+      },
       "MapRenderMode" : {
         "enum" : [ "RASTER", "VECTOR" ],
         "type" : "string"
@@ -1822,6 +2041,18 @@
             "type" : "number"
           },
           "device_id" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RestoreLocalBackupRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string",
+            "writeOnly" : true
+          },
+          "fileName" : {
             "type" : "string"
           }
         }
@@ -2748,6 +2979,9 @@
           },
           "autoShowTripReplayControls" : {
             "type" : "boolean"
+          },
+          "mapMatchingEnabled" : {
+            "type" : "boolean"
           }
         }
       },
@@ -3518,6 +3752,475 @@
         } ]
       }
     },
+    "/api/admin/backups/config" : {
+      "put" : {
+        "operationId" : "AdminFullBackupResource_updateConfig",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdminBackupConfigDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Config",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      },
+      "get" : {
+        "operationId" : "AdminFullBackupResource_getConfig",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Get Config",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/download" : {
+      "get" : {
+        "operationId" : "AdminFullBackupResource_downloadFullBackup",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/octet-stream" : { }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Download Full Backup",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/files" : {
+      "get" : {
+        "operationId" : "AdminFullBackupResource_listFiles",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "List Files",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/files/{fileName}" : {
+      "get" : {
+        "operationId" : "AdminFullBackupResource_downloadLocalBackup",
+        "parameters" : [ {
+          "name" : "fileName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/octet-stream" : { }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Download Local Backup",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      },
+      "delete" : {
+        "operationId" : "AdminFullBackupResource_deleteLocalBackup",
+        "parameters" : [ {
+          "name" : "fileName",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Delete Local Backup",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/restore/discard" : {
+      "post" : {
+        "operationId" : "AdminFullBackupResource_discardPreparedRestore",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Discard Prepared Restore",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/restore/local" : {
+      "post" : {
+        "operationId" : "AdminFullBackupResource_restoreLocal",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RestoreLocalBackupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Restore Local",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/restore/retry" : {
+      "post" : {
+        "operationId" : "AdminFullBackupResource_retryPreparedRestore",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Retry Prepared Restore",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/restore/upload" : {
+      "post" : {
+        "operationId" : "AdminFullBackupResource_restoreUploaded",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  },
+                  "password" : {
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Restore Uploaded",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/run-now" : {
+      "post" : {
+        "operationId" : "AdminFullBackupResource_runBackupNow",
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Run Backup Now",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/backups/status" : {
+      "get" : {
+        "operationId" : "AdminFullBackupResource_status",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdminBackupStatusResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Status",
+        "tags" : [ "Admin Full Backup Resource" ],
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
     "/api/admin/dashboard/stats" : {
       "get" : {
         "operationId" : "AdminDashboardResource_getDashboardStats",
@@ -3541,6 +4244,148 @@
         "summary" : "Get Dashboard Stats",
         "security" : [ {
           "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
+        } ]
+      }
+    },
+    "/api/admin/geocoding/providers" : {
+      "get" : {
+        "operationId" : "AdminCustomGeocodingProviderResource_list",
+        "tags" : [ "Admin: Geocoding Providers" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "List",
+        "security" : [ {
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
+        } ]
+      },
+      "post" : {
+        "operationId" : "AdminCustomGeocodingProviderResource_create",
+        "tags" : [ "Admin: Geocoding Providers" ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CustomGeocodingProviderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/geocoding/providers/{name}" : {
+      "put" : {
+        "operationId" : "AdminCustomGeocodingProviderResource_update",
+        "tags" : [ "Admin: Geocoding Providers" ],
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CustomGeocodingProviderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      },
+      "delete" : {
+        "operationId" : "AdminCustomGeocodingProviderResource_delete",
+        "tags" : [ "Admin: Geocoding Providers" ],
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Delete",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
         } ]
       }
     },
@@ -4032,6 +4877,100 @@
         } ]
       }
     },
+    "/api/admin/settings-backup/export" : {
+      "get" : {
+        "operationId" : "AdminSettingsBackupResource_exportSettingsBackup",
+        "tags" : [ "Admin: Settings Backup" ],
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Export Settings Backup",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/settings-backup/import" : {
+      "post" : {
+        "operationId" : "AdminSettingsBackupResource_importSettingsBackup",
+        "tags" : [ "Admin: Settings Backup" ],
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Import Settings Backup",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
     "/api/admin/settings/bulk" : {
       "post" : {
         "operationId" : "AdminSettingsResource_bulkUpdateSettings",
@@ -4079,6 +5018,97 @@
           }
         },
         "summary" : "Bulk Update Settings",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/settings/map-matching/historical/rebuild" : {
+      "post" : {
+        "operationId" : "AdminSettingsResource_rebuildMapMatchingHistoricalQueue",
+        "tags" : [ "Admin: System Settings" ],
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Rebuild Map Matching Historical Queue",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/settings/map-matching/status" : {
+      "get" : {
+        "operationId" : "AdminSettingsResource_mapMatchingStatus",
+        "tags" : [ "Admin: System Settings" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Map Matching Status",
+        "security" : [ {
+          "jwt" : [ "ADMIN", "DEMO_ADMIN_READ" ]
+        } ]
+      }
+    },
+    "/api/admin/settings/map-matching/valhalla/test" : {
+      "post" : {
+        "operationId" : "AdminSettingsResource_testValhallaConnection",
+        "tags" : [ "Admin: System Settings" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Test Valhalla Connection",
         "security" : [ {
           "jwt" : [ "ADMIN" ]
         } ]
@@ -10705,6 +11735,103 @@
           }
         },
         "summary" : "Search",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/maintenance/status" : {
+      "get" : {
+        "operationId" : "MaintenanceStatusResource_status",
+        "responses" : {
+          "200" : {
+            "description" : "Public restore maintenance status",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MaintenanceStatusResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary" : "Status",
+        "tags" : [ "Maintenance Status Resource" ]
+      }
+    },
+    "/api/map-matching/resolve" : {
+      "post" : {
+        "operationId" : "MapMatchingResource_resolve",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MapMatchingResolutionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Resolve",
+        "tags" : [ "Map Matching Resource" ],
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/map-matching/status" : {
+      "post" : {
+        "operationId" : "MapMatchingResource_status",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MapMatchingStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Status",
+        "tags" : [ "Map Matching Resource" ],
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import chunkedUploadService from '../utils/chunkedUploadService'
+import { isMaintenanceInterruption } from './maintenance'
 
 const TERMINAL_IMPORT_STATUSES = new Set(['completed', 'failed'])
 
@@ -593,6 +594,10 @@ export const useExportImportStore = defineStore('exportImport', {
 
                     return response
                 } catch (error) {
+                    if (isMaintenanceInterruption(error)) {
+                        isCancelled = true
+                        return
+                    }
                     console.error('Polling error:', error)
                     // Retry on error after longer delay
                     if (!isCancelled) {

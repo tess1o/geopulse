@@ -469,6 +469,7 @@ helm install geopulse ./helm/geopulse -f minimal-values.yaml
 Notes:
 - With `keygen.persistence.enabled=false`, keys are generated at backend startup and stored in an `emptyDir`. This is suitable only for single-backend dev/testing.
 - For multiple backend replicas on different nodes, use a storage class that supports `ReadWriteMany`, or force backend pods onto the same node.
+- `backend.backupPersistence.enabled=false` uses `emptyDir` backup storage and is suitable only for throwaway testing. Full restore operations need durable backup storage.
 
 ### Production Setup with Ingress
 
@@ -527,6 +528,13 @@ config:
 
 ```bash
 helm install geopulse ./helm/geopulse -f production-values.yaml
+```
+
+The production example runs two backend replicas for normal availability. Before activating a full restore from **Administration > Settings > Backup**, scale the backend down to exactly one replica and keep PostgreSQL running:
+
+```bash
+kubectl scale deployment geopulse-backend --replicas=1
+kubectl rollout status deployment/geopulse-backend
 ```
 
 ### Production Setup with Gateway API
@@ -596,6 +604,25 @@ externalPostgres:
 ```bash
 helm install geopulse ./helm/geopulse -f external-db-values.yaml
 ```
+
+Full restore requires a direct PostgreSQL connection to one server. Do not point `externalPostgres.host` at a transaction-pooling endpoint. The restore role must be able to connect to the maintenance database, create and rename databases, terminate sessions for the GeoPulse databases, create the required PostGIS extensions, and assume the application role with `SET ROLE`. Managed PostgreSQL services may need a separate privileged restore role supplied through `GEOPULSE_BACKUP_RESTORE_USERNAME` and `GEOPULSE_BACKUP_RESTORE_PASSWORD`, and some managed services may not support this workflow.
+
+### Backup and Restore on Kubernetes
+
+The chart enables `backend.backupPersistence` by default, creating a 20 GiB PVC mounted at `/data/geopulse-backups`. The backend sets `GEOPULSE_BACKUP_WORK_PATH` to `/data/geopulse-backups/.work`, so restore journals, encrypted uploads, and extracted dumps survive backend pod replacement.
+
+Configure backup password, scheduled backups, retention count, local backup path, and operation timeout in **Administration > Settings > Backup**. Their environment variables are optional startup defaults for GitOps/bootstrap setups; once a value is saved in GeoPulse, the database setting takes precedence over the environment fallback. Use `backend.extraEnv` with `secretKeyRef` for `GEOPULSE_BACKUP_PASSWORD` or `GEOPULSE_BACKUP_RESTORE_PASSWORD` instead of putting secrets in ConfigMaps.
+
+For restore:
+
+1. Confirm `backend.backupPersistence.enabled=true` or provide `backend.backupPersistence.existingClaim`.
+2. Confirm `keygen.persistence.enabled=true`; the destination key PVC must remain mounted while GeoPulse re-encrypts restored secrets.
+3. Scale the backend deployment to exactly one replica before restore activation.
+4. Keep PostgreSQL running during activation. GeoPulse renames databases through PostgreSQL and exits only the backend process.
+5. If the backend does not come back automatically, restart or replace only the backend pod while keeping the backup PVC attached.
+6. After validating the restored data, clean up any retained previous database using the exact name recorded by the restore journal.
+
+The native backend image includes PostgreSQL 17 client tools, matching the chart's bundled PostgreSQL 17 server. If you use a custom backend image or external PostgreSQL with a different major version, ensure `pg_dump` and `pg_restore` in the backend match the server major version, or set `GEOPULSE_BACKUP_BINARY_DIRECTORY` through `backend.extraEnv`.
 
 ### Self-Hosted Geocoding
 
@@ -672,6 +699,13 @@ serviceMonitor:
 | `backend.service.port`            | Backend service port                                                                                                                                                                                           | `8080`                    |
 | `backend.resources.limits.memory` | Backend memory limit                                                                                                                                                                                           | `1Gi`                     |
 | `backend.resources.limits.cpu`    | Backend CPU limit                                                                                                                                                                                              | `1000m`                   |
+| `backend.backupPersistence.enabled` | Create durable backend backup storage for encrypted `.gpb` files and restore journals                                                                                                                        | `true`                    |
+| `backend.backupPersistence.existingClaim` | Existing PVC to mount for backup storage instead of creating one                                                                                                                                       | `""`                      |
+| `backend.backupPersistence.storageClass` | Storage class for the backup PVC                                                                                                                                                                        | `""`                      |
+| `backend.backupPersistence.accessMode` | Access mode for the backup PVC; use storage compatible with your replica scheduling                                                                                                                         | `ReadWriteOnce`           |
+| `backend.backupPersistence.size`  | Backup PVC size                                                                                                                                                                                                 | `20Gi`                    |
+| `backend.backupPersistence.mountPath` | Backend mount path for local encrypted full backup files                                                                                                                                                   | `/data/geopulse-backups`  |
+| `backend.backupPersistence.workPath` | Persistent work path for restore journals, uploads, and extracted dumps                                                                                                                                     | `/data/geopulse-backups/.work` |
 
 ### Frontend Parameters
 

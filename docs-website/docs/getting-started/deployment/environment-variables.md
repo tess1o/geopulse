@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **310** distinct env vars.
+Backend runtime currently includes **321** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -195,6 +195,24 @@ Notes:
 | `GEOPULSE_EXPORT_TEMP_DIR` | `/tmp/geopulse/exports` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-directory\`. | Readable path/URI in container filesystem. | Backend restart |
 | `GEOPULSE_EXPORT_TEMP_FILE_RETENTION_HOURS` | `24` | Export temp file configuration (for large file handling) Export files are written to temp directory and streamed to clients to prevent OOM Property: \`geopulse.export.temp-file-retention-hours\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_EXPORT_TRIP_POINT_LIMIT` | `10000` | Batch sizes for streaming exports Property: \`geopulse.export.trip-point-limit\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
+
+### Backup and Restore (11)
+
+Full backup settings can be managed in **Administration > Settings > Backup**. For these six admin-backed settings, database values take precedence; the environment variable is used only when no saved `system_settings` value exists.
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_BACKUP_PASSWORD` | `(empty)` | Password used for new encrypted `.gpb` backups. Saved admin values are encrypted in GeoPulse; environment values are ordinary deployment secrets. Property: \`geopulse.backup.password\`. | Sensitive secret; 12-1024 characters for new backups. Keep a recovery copy outside GeoPulse. | Backend restart |
+| `GEOPULSE_BACKUP_SCHEDULED_ENABLED` | `false` | Enables scheduled full backups. Property: \`geopulse.backup.scheduled.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_BACKUP_SCHEDULED_CRON` | `0 0 3 * * ?` | Cron expression for scheduled full backups. Property: \`geopulse.backup.scheduled.cron\`. | Valid Quarkus cron expression. | Backend restart |
+| `GEOPULSE_BACKUP_LOCAL_PATH` | `/data/geopulse-backups` | Folder where encrypted full backup files are published and listed. Property: \`geopulse.backup.local.path\`. | Writable directory for the backend user. | Backend restart |
+| `GEOPULSE_BACKUP_RETENTION_COUNT` | `7` | Number of local encrypted full backups retained after a successful backup. Property: \`geopulse.backup.retention.count\`. | Non-negative integer. | Backend restart |
+| `GEOPULSE_BACKUP_OPERATION_TIMEOUT_MINUTES` | `120` | Maximum duration for full backup and restore operations. Property: \`geopulse.backup.operation.timeout-minutes\`. | Positive integer minutes. | Backend restart |
+| `GEOPULSE_BACKUP_WORK_PATH` | `/data/geopulse-backups/.work` | Persistent private work directory for restore journals, encrypted uploads, and temporary extracted dumps. Property: \`geopulse.backup.work-path\`. | Writable directory on durable storage; must survive backend/container/pod replacement. | Backend restart |
+| `GEOPULSE_BACKUP_BINARY_DIRECTORY` | `(empty)` | Directory containing matching-major `pg_dump` and `pg_restore`; empty uses `PATH` on JVM builds. Native images set `/usr/pgsql-17/bin`. Property: \`geopulse.backup.binary-directory\`. | Directory with executable PostgreSQL client tools matching the server major version. | Backend restart |
+| `GEOPULSE_BACKUP_MAINTENANCE_DATABASE` | `postgres` | Database used for restore coordination and activation. Property: \`geopulse.backup.maintenance-database\`. | Existing database reachable by the restore role. | Backend restart |
+| `GEOPULSE_BACKUP_RESTORE_USERNAME` | `(empty)` | Optional dedicated restore role username; empty falls back to the application datasource username. Property: \`geopulse.backup.restore.username\`. | Role must be able to create/rename databases, manage connections, create required extensions, and assume the application role. | Backend restart |
+| `GEOPULSE_BACKUP_RESTORE_PASSWORD` | `(empty)` | Password for the dedicated restore role; empty falls back to the application datasource password. Property: \`geopulse.backup.restore.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 
 ### Coverage (1)
 

@@ -63,6 +63,21 @@ public class OwnTracksMqttService {
     OwnTracksPayloadDecryptionService payloadDecryptionService;
 
     private MqttClient mqttClient;
+    private volatile boolean maintenancePaused;
+
+    public void pauseForRestore() {
+        maintenancePaused = true;
+        if (mqttClient != null && mqttClient.isConnected()) {
+            try { mqttClient.disconnectForcibly(1000, 1000, false); }
+            catch (MqttException e) { log.warn("Could not disconnect MQTT during restore; incoming messages will be ignored until restart"); }
+        }
+    }
+
+    public void resumeAfterRestore() {
+        maintenancePaused = false;
+        reconnecting.set(false);
+        if (mqttClient != null && !mqttClient.isConnected()) scheduleReconnect();
+    }
     private MqttConnectOptions connectOptions;
     private ScheduledExecutorService reconnectExecutor;
     private AtomicInteger reconnectAttempts = new AtomicInteger(0);
@@ -191,6 +206,10 @@ public class OwnTracksMqttService {
 
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
+                if (maintenancePaused) {
+                    log.debug("Dropping MQTT message received while restore activation is blocking ingestion");
+                    return;
+                }
                 try {
                     handleMqttMessage(topic, new String(message.getPayload()));
                 } catch (Exception e) {
@@ -218,6 +237,7 @@ public class OwnTracksMqttService {
      * Schedule reconnection attempt with exponential backoff
      */
     private void scheduleReconnect() {
+        if (maintenancePaused) return;
         // Prevent multiple overlapping reconnection attempts
         if (!reconnecting.compareAndSet(false, true)) {
             log.debug("Reconnection already in progress, skipping duplicate attempt");
@@ -242,6 +262,10 @@ public class OwnTracksMqttService {
         log.info("Scheduling MQTT reconnection attempt {} in {} seconds", currentAttempt, delaySeconds);
 
         reconnectExecutor.schedule(() -> {
+            if (maintenancePaused) {
+                reconnecting.set(false);
+                return;
+            }
             try {
                 if (mqttClient.isConnected()) {
                     log.debug("MQTT client already connected, skipping reconnection attempt");

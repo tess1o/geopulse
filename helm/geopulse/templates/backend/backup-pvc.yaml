@@ -1,0 +1,17 @@
+{{- if and .Values.backend.backupPersistence.enabled (not .Values.backend.backupPersistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geopulse.fullname" . }}-backups
+  labels:
+    {{- include "geopulse.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.backend.backupPersistence.accessMode }}
+  {{- with .Values.backend.backupPersistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backend.backupPersistence.size }}
+{{- end }}

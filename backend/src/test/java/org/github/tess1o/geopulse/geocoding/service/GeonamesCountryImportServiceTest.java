@@ -32,8 +32,7 @@ class GeonamesCountryImportServiceTest {
     void setUp() {
         service = new GeonamesCountryImportService(
                 geonamesCountryRepository,
-                new GeonamesCountryLineParser(),
-                null
+                new GeonamesCountryLineParser()
         );
         service.batchSize = 50;
         service.minimumRowThreshold = 1;

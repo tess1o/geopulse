@@ -1,13 +1,17 @@
 ---
 title: Backup and Restore
-description: Back up and restore your GeoPulse data and configuration.
+description: Back up and restore your GeoPulse database and database-stored configuration.
 ---
 
 # Backup and Restore
 
-Regular backups are essential for protecting your location tracking data. This guide covers everything you need to know about backing up and restoring your GeoPulse installation.
+Regular backups are essential for protecting your location tracking data. This guide covers everything you need to know about backing up and restoring your GeoPulse database.
 
 ## What Gets Backed Up?
+
+GeoPulse backups are **database backups**. They back up and restore the PostgreSQL database only. Runtime/deployment configuration is not included: `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, mounted volumes outside PostgreSQL, external files, PostgreSQL roles, and reverse-proxy settings must be backed up and restored separately.
+
+Settings are included only when they exist in the database, usually because you changed them in the Admin UI. If a setting is only supplied by an environment variable or runtime property, the backup does not contain that value. After restore, GeoPulse will use the destination server's own environment/runtime value for that setting.
 
 GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. This includes:
 
@@ -15,7 +19,7 @@ GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. 
 - **Visits and trips** - processed location data and stay points
 - **User accounts** - authentication and preferences
 - **Reverse geocoding cache** - address lookups to reduce API calls
-- **Settings** - application configuration
+- **Database-stored settings** - settings saved in GeoPulse, usually from the Admin UI
 - **GPS sources** - source tokens, device IDs, filtering, duplicate detection, and OwnTracks payload encryption settings
 - **Relationships and permissions** - friends, sharing links, and friend location permissions
 
@@ -27,77 +31,75 @@ GeoPulse automatically generates JWT keys on first startup if they don't exist. 
 If you back up GeoPulse with `pg_dump`, also back up the AI encryption key configured by `GEOPULSE_AI_ENCRYPTION_KEY_LOCATION` (default: `/app/keys/ai-encryption-key.txt`). Without the same key, encrypted database values such as user AI settings and OwnTracks payload encryption secrets cannot be decrypted after restore.
 :::
 
-## Admin Backup
+## Encrypted full backups from the admin UI
 
-GeoPulse includes an Admin Backup page under **Administration > Settings > Backup**. This is the easiest option when you want a portable application-data backup instead of a raw PostgreSQL snapshot.
+Use **Administration > Settings > Backup** for complete, password-encrypted `.gpb` backups. GeoPulse streams a native PostgreSQL custom-format dump from one consistent snapshot. The application remains usable during backup. Files appear in the backup list only after encryption and writing succeed; retention runs after successful publication.
 
-### Admin Settings Export
+A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted database-stored settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes.
 
-The Admin Settings Export creates a JSON file for admin-managed behavior and provider configuration. It is useful for moving global settings between instances without moving user data.
-
-It includes:
-
-- System settings managed from the admin UI
-- OIDC provider configuration
-- Custom geocoding provider configuration
-- Provider credentials, tokens, custom headers, and client secrets needed by those settings
-
-It does not include users, GPS history, timelines, friendships, sharing permissions, database contents, JWT keys, or runtime infrastructure settings.
-
-### Full App Backup
-
-The Full App Backup creates a ZIP archive containing portable GeoPulse application data. It is designed to restore GeoPulse data into another instance, including an instance with a different AI encryption key.
-
-It includes:
-
-- Admin settings and provider configuration
-- Users and password hashes
-- User preferences and AI assistant settings
-- GPS points, visits, trips, timelines, data gaps, and generated location data
-- Reverse geocoding cache
-- GPS source configuration including tokens, device IDs, usernames, active flags, source types, connection types, password hashes, filtering settings, duplicate detection settings, and OwnTracks payload encryption secrets
-- Friends, friend permissions, and sharing links
-
-It does not include:
-
-- JWT private/public keys
-- Active browser sessions or issued JWTs
-- PostgreSQL server files, Docker volumes, compose files, `.env`, TLS files, or other deployment infrastructure
-- Files outside the GeoPulse application data model
-
-:::warning Sensitive Archive
-Full backup archives contain plaintext app secrets, plaintext AI provider API keys, plaintext OwnTracks payload encryption secrets, user password hashes, GPS source token hashes, OIDC links, GPS history, friendships, and sharing permissions. Store these archives as highly sensitive files and encrypt them before copying them off the server.
+:::warning Runtime configuration is not backed up
+Full backups do **not** include `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, external files, PostgreSQL roles, JWT keys, or reverse-proxy settings. If a value is configured only through an environment variable, restore will not recreate it. If you changed the same setting in the Admin UI and it was saved to `system_settings`, that database value is backed up and restored.
 :::
 
-### Local Scheduled Backups
+### Passwords
 
-The Admin Backup page can write scheduled full backups to a server-side folder mounted into the backend container.
+Configure a 12–1024 character backup password before using **Run Backup Now**, **Download Full Backup**, or scheduled backups. GeoPulse stores this password encrypted with the installation key and never returns it in configuration responses. Changing it affects new backups only. Restoration always asks for the password used to create that particular backup. Restore accepts any non-empty password up to 1024 characters so archives created with an older, shorter password remain recoverable.
 
-Configurable options:
+:::warning Keep the password outside GeoPulse
+Save the backup password in a password manager or another secure location independent of this installation. There is no password recovery or bypass. Losing it makes the archive unusable, even if you still have the destination installation's key. A settings export intentionally does not contain this password.
+:::
 
-- **Enabled** - turns the scheduled backup job on or off
-- **Cron** - schedule expression for automatic backups
-- **Folder Path** - folder inside the backend container where backup ZIP files are written
-- **Retention** - number of local backup files to keep
-- **Timeout Minutes** - maximum time allowed for a backup or restore operation
+The `.gpb` envelope uses a random Tink `AES256_GCM_HKDF_1MB` Streaming AEAD key. Argon2id derives its password-wrapping key with a fresh salt, 64 MiB memory, three iterations, and one lane. The entire archive, manifest, and source key are authenticated and encrypted. Unsupported envelope versions and parameters are rejected.
 
-The page also provides:
+### Restore and restart workflow
 
-- **Run Backup Now** - immediately creates a full backup in the configured local folder
-- **Download Full Backup** - generates a full backup and downloads it in the browser
-- **Local Backups** - lists backup files already present in the configured folder
-- **Download local backup** - downloads a selected server-side backup file
-- **Restore local backup** - restores a selected file from the backup folder without uploading it again
-- **Delete backup** - removes a selected file from the local backup folder
-- **Restore uploaded backup** - uploads a backup ZIP from your computer and restores it
+1. Upload a trusted `.gpb` archive or select a local backup, then enter the password used to create it.
+2. GeoPulse authenticates and extracts the archive and restores it into a separate database on the same PostgreSQL server. The application, HTTP ingestion, MQTT, and background jobs remain operational. Every page shows: **“Restoration is being prepared in the background. GeoPulse remains available, but data and changes newer than this backup will be replaced when restoration activates.”**
+3. GeoPulse converts all restored secrets to the destination's existing encryption key, preserves the destination backup configuration/password, and validates the replacement. The destination key file is never changed and may be mounted read-only.
+4. Once staging is valid, activation starts automatically. Exactly one backend instance must remain at this point. GeoPulse gives browsers three seconds to observe the activation state, pauses the Quarkus scheduler and MQTT ingestion, and then closes its database pool. Requests or background work already in progress may fail during this short cutover.
+5. GeoPulse closes its application connection pool and, through a separate connection to the maintenance database, terminates clients connected to the live and staged databases. It renames both databases in one PostgreSQL transaction, disables connections to the retained previous database, records the committed swap, and exits normally.
+6. A container or configured service manager may restart the backend automatically. Watch the backend logs and confirm that GeoPulse starts again. A directly launched JAR has no supervisor and normally remains stopped. If the backend does not return, start or restart **only the GeoPulse backend** manually and leave PostgreSQL running. The connection URL remains unchanged. After startup confirms the staged database OID, every browser logs out without refreshing its old token and returns to `/login`.
 
-During restore, GeoPulse pauses restore-sensitive background processors so imported data is not immediately overwritten or regenerated while the restore transaction is running. Export operations do not require the same pause because they read current data without replacing it.
+Preparation errors leave the original application and data available without a restart. If the backend stops during preparation, the next startup discards incomplete staging. If activation cannot acquire its exclusive lock or is interrupted before the pool closes, the original application resumes and the staged database can be retried or discarded from the admin page. If the connection pool was already closed, GeoPulse exits; startup identifies whether PostgreSQL committed or rolled back the cutover by comparing recorded database OIDs.
 
-#### Backup Folder Permissions
+While activation or identity recovery blocks the application, backend admission control returns `503 Service Unavailable` with `X-GeoPulse-Restore-Blocked: true`. Health/version, maintenance status, logout, and the required admin retry/discard/status endpoints remain available. `/api/maintenance/status` is explicitly non-cacheable and exposes only public lifecycle information.
 
-With the default Docker Compose file, the backend container writes backups to `/data/geopulse-backups`, which is mounted from `./backups` on the host. The backend image runs as a non-root user, UID `1001`, so the host backup directory must be writable by UID `1001`.
+:::danger Trusted backups only
+PostgreSQL dumps execute SQL. Only restore archives created by trusted administrators from trusted installations. Knowing an archive password authenticates its bytes, not the safety of its SQL. Legacy full-backup ZIPs and user-export ZIPs are not accepted by this restore feature.
+:::
 
-Create or fix the folder from the directory that contains your `docker-compose.yml`:
+### Supported versions and database permissions
+
+Version 1 requires matching application database schemas (including Flyway migration history) and matching PostgreSQL major versions. Every recorded extension version must be available on the destination server. The standard images bundle PostgreSQL 17 client tools, matching the bundled PostgreSQL server. No cross-version migration or legacy importer is provided. Databases using the standard libc locale are supported; ICU databases are currently rejected during preparation.
+
+The application role needs read access to the entire source database for backup and ownership/access to all restored application objects. The restore role must connect to the maintenance database, create databases from `template0`, create the required PostGIS extensions, terminate database sessions, change database connection permissions, rename the live/staging databases, and assume the application role (`SET ROLE`). A dedicated restore role can be supplied; otherwise the application credentials are used. Default Compose PostgreSQL credentials have the required privileges. Managed PostgreSQL services may require administrator configuration or may not support this workflow. Activation deliberately disconnects **every client of the live and staged GeoPulse databases**; unrelated databases are untouched.
+
+### Persistent storage and runtime configuration
+
+Full backup behavior is configured from **Administration > Settings > Backup**. These values are stored in `system_settings`; when no database value exists, GeoPulse falls back to the matching runtime property/environment variable. After you save a value in the admin UI, that database value takes precedence over the environment fallback.
+
+| Admin setting | Property / environment variable | Default | Purpose |
+| --- | --- | --- | --- |
+| `backup.password` | `geopulse.backup.password` / `GEOPULSE_BACKUP_PASSWORD` | Empty | Password used for new encrypted `.gpb` backups. Saved values are encrypted in GeoPulse; environment values are ordinary deployment secrets. |
+| `backup.scheduled.enabled` | `geopulse.backup.scheduled.enabled` / `GEOPULSE_BACKUP_SCHEDULED_ENABLED` | `false` | Enables scheduled full backups. |
+| `backup.scheduled.cron` | `geopulse.backup.scheduled.cron` / `GEOPULSE_BACKUP_SCHEDULED_CRON` | `0 0 3 * * ?` | Quarkus cron expression for scheduled full backups. |
+| `backup.local.path` | `geopulse.backup.local.path` / `GEOPULSE_BACKUP_LOCAL_PATH` | `/data/geopulse-backups` | Folder where encrypted full backup files are published and listed. |
+| `backup.retention.count` | `geopulse.backup.retention.count` / `GEOPULSE_BACKUP_RETENTION_COUNT` | `7` | Number of local encrypted full backups to retain after a successful backup. |
+| `backup.operation.timeout-minutes` | `geopulse.backup.operation.timeout-minutes` / `GEOPULSE_BACKUP_OPERATION_TIMEOUT_MINUTES` | `120` | Maximum duration for full backup and restore operations. |
+
+The working directory must survive **process, container, and pod replacement**, independently of database-stored backup-folder settings. Keep it private to the backend OS user, on storage supporting atomic file replacement and durable fsync. Never delete or relocate its journal during an operation. All replicas of one deployment must use the same working storage; restoration still requires reducing to one instance.
+
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `GEOPULSE_BACKUP_WORK_PATH` | `/data/geopulse-backups/.work` | External restore journal, encrypted upload, temporary extracted dump |
+| `GEOPULSE_BACKUP_BINARY_DIRECTORY` | PATH (JVM); `/usr/pgsql-17/bin` (native image) | Matching-major `pg_dump` and `pg_restore` binaries |
+| `GEOPULSE_BACKUP_MAINTENANCE_DATABASE` | `postgres` | Database used for coordination and activation |
+| `GEOPULSE_BACKUP_RESTORE_USERNAME` | Application username | Optional dedicated restore role |
+| `GEOPULSE_BACKUP_RESTORE_PASSWORD` | Application password | Dedicated restore role password |
+
+Set these and the datasource/key settings through environment variables or `-D` JVM properties. Connection details must point directly to a single PostgreSQL server, not a transaction-pooling endpoint. Budget filesystem space for encrypted uploads plus the extracted native dump, and PostgreSQL space for the live, staged, and retained previous databases plus WAL/index construction. The operation timeout is configured in the admin page. Streaming avoids loading whole backups into the Java heap; Argon2 additionally needs 64 MiB per operation.
+
+Compose mounts `./backups` at `/data/geopulse-backups`. Unraid uses the `backups` directory under `GEOPULSE_APPDATA`. For the default backend UID, prepare host permissions with:
 
 ```bash
 mkdir -p backups
@@ -105,9 +107,48 @@ sudo chown -R 1001:0 backups
 sudo chmod -R g+rwX backups
 ```
 
-Then retry **Administration > Settings > Backup**. If the folder was created by Docker automatically, it may be owned by `root:root` with `0755` permissions, which lets GeoPulse read the folder but not create backup files.
+If you override the container user, use that UID instead. Do not make the working directory world-readable. Manual/Proxmox installations must install matching PostgreSQL clients and configure a persistent writable working directory.
 
-## Manual Backups
+Helm enables `backend.backupPersistence` by default with a 20 GiB PVC mounted at `/data/geopulse-backups`; `GEOPULSE_BACKUP_WORK_PATH` defaults to `/data/geopulse-backups/.work`. Configure `existingClaim`, `storageClass`, `size`, `mountPath`, and `workPath` as needed. Do not use `emptyDir` for restoration. Backup password, schedule, retention, backup folder, and operation timeout are normally configured in **Administration > Settings > Backup**; their environment variables are only startup defaults/fallbacks and are overridden once saved in GeoPulse. Before activation, reduce backend replicas to one. Keep PostgreSQL running and keep the health probe available. Requests already in flight may fail while the database pool closes and the backend process exits. If the backend does not return automatically, restart or replace only the backend pod while keeping the backup PVC attached.
+
+### Backend restart and manual fallback
+
+GeoPulse calls `Quarkus.asyncExit(0)` after a successful cutover. This stops the backend process; GeoPulse does not start a replacement process itself. Containers and pods restart only when their configured restart policy does so. A directly launched JAR remains stopped unless an external supervisor starts it again.
+
+Watch the backend logs after activation and confirm that GeoPulse completes startup. If it does not return, use the normal control for the backend only:
+
+- Compose: `docker compose restart geopulse-backend`.
+- Kubernetes: restart or replace the single backend pod while keeping the backup PVC attached.
+- Unraid: restart the GeoPulse backend container from the Docker page.
+- Direct JAR: run the same backend start command again.
+- systemd/Proxmox/other supervisors: restart only the backend process or service.
+
+**Do not restart PostgreSQL.** GeoPulse exits its own process; it does not call Docker, Kubernetes, systemd, or hypervisor APIs.
+
+#### Why can `/api/maintenance/status` log an error while the backend exits?
+
+The maintenance page polls this endpoint while waiting for the backend to return. One poll can reach Quarkus after shutdown has begun but before the HTTP socket has closed, producing a `500` or an `Error Occurred After Shutdown` message. This shutdown race does not by itself mean the database swap failed. Check the subsequent backend logs and health status after restart. If no new backend process starts, restart the GeoPulse backend manually.
+
+### Recovery and previous-database cleanup
+
+The private `restore-state.json` records operation state, database names/OIDs, destination key fingerprint, and sanitized errors. It contains no restore password. Completed operation journals move into the private `.work/history` directory when a later restore starts, preserving the exact retained database name for cleanup. Activation records `ACTIVATING` before renaming; if commit acknowledgement is lost, normal startup connects through the unchanged application URL and compares OIDs to recognize whether the swap committed. It never repeats database renames during startup.
+
+After activation, the original database remains named `gp_previous_<operation-id-without-hyphens>` with connections disabled. No automatic rollback occurs once users can write to restored data. Confirm that the restore is correct, then an administrator can connect to the maintenance database and explicitly `DROP DATABASE` the exact previous database recorded in the journal. Dropping it permanently removes that recovery copy; do not use `CASCADE` schema deletion or wildcard cleanup. The current archive retention policy never deletes previous databases.
+
+For activation failure, stop every backend instance, retain a copy of the journal, and inspect the database names/OIDs through the maintenance database. If the transaction rolled back, restart GeoPulse and use **Retry Activation** or **Discard Prepared Restore**. If the rename committed but startup cannot be repaired, a database administrator may restore the previous database name in a transaction after ensuring both databases have no clients, re-enable connections to the recovered original, and archive/remove the failed operation journal **before** restarting. Preserve the failed restored database for investigation. Never rename based only on guessed names, and never roll back this way after normal writes have resumed without an explicit data-recovery decision.
+
+#### What if the backend crashes between the two rename statements?
+
+Both `ALTER DATABASE ... RENAME` statements run in one PostgreSQL transaction. If the backend disappears before commit, PostgreSQL rolls the whole transaction back and the original database keeps its configured name. On restart, GeoPulse recognizes the original OID and reports **Activation Retryable**. If PostgreSQL committed but the backend lost the commit response, the configured name has the staged OID and the retained previous name has the original OID; startup recognizes that as a completed swap. Do not guess which case occurred from names alone: use the OIDs stored in `restore-state.json`. An unexpected third identity is treated as **Activation Failed** and requires the recovery procedure above.
+
+### Settings and user exports remain separate
+
+**Admin settings export** is JSON for global settings and provider configuration. It can contain plaintext provider credentials; handle it as sensitive. It excludes the backup password, runtime infrastructure, and user data. Ordinary per-user export/import is unchanged and is not a full-database restore.
+
+## Manual PostgreSQL backups (separate from `.gpb`)
+
+The commands below are independent DBA workflows, not files accepted by the admin restore UI. Unlike `.gpb`, raw dumps require a separate copy of the source encryption key and separate encryption/storage protection.
+
 
 ### Creating a Backup
 
@@ -358,12 +399,14 @@ If you need to restore GeoPulse on a new server:
 
 1. **Install Docker and Docker Compose** on the new server
 
-2. **Clone your GeoPulse configuration**:
+2. **Clone your GeoPulse runtime configuration**:
 ```bash
 # Copy your .env, docker-compose.yml, and encryption keys to new server
 scp .env docker-compose.yml newserver:/opt/geopulse/
 scp -r keys newserver:/opt/geopulse/
 ```
+
+Backups restore the database only. They do not restore environment variables or deployment files, so copy your source `.env`, Compose/Helm/Kubernetes/systemd configuration, proxy configuration, and any other runtime settings separately. For example, authentication flags such as `GEOPULSE_AUTH_LOGIN_ENABLED` and `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` are restored only if you saved the corresponding settings in the Admin UI; values that existed only in the source server's `.env` must be copied manually.
 
 At minimum, the copied `keys` folder must include the AI encryption key used by the source database. JWT key files are optional for disaster recovery; preserving them keeps already-issued JWTs valid, while replacing them signs users in again.
 
@@ -410,9 +453,10 @@ To move GeoPulse from one server to another:
 
 1. **Create backup on source server** (see Manual Backups above)
 2. **Transfer backup file** to destination server
-3. **Follow disaster recovery steps** to restore on new server
-4. **Update DNS/firewall** rules to point to new server
-5. **Verify everything works** before decommissioning old server
+3. **Copy runtime configuration separately** (`.env`, Compose/Helm/Kubernetes/systemd/proxy configuration, environment variables, and external mounted files)
+4. **Follow disaster recovery steps** to restore on new server
+5. **Update DNS/firewall** rules to point to new server
+6. **Verify everything works** before decommissioning old server
 
 ## Troubleshooting
 

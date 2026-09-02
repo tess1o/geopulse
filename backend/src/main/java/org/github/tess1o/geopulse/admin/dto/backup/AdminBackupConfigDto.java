@@ -10,6 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBackupConfigDto {
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.WRITE_ONLY)
+    @lombok.ToString.Exclude
+    private String password;
+    private boolean passwordConfigured;
     private boolean scheduledEnabled;
     private String scheduledCron;
     private String localPath;

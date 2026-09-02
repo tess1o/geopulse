@@ -1,10 +1,47 @@
 import axios from 'axios';
+import {
+    MaintenanceInterruption,
+    interruptsApplicationRequests,
+    isKnownRestoreActive,
+    isMaintenanceInterruption,
+    maintenance,
+    markMaintenanceUnavailable
+} from '@/stores/maintenance';
 import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
+let maintenanceAbortController = new AbortController();
+
+function isCompletionLogout(url = '') {
+    return maintenance.activated && String(url).includes('/auth/logout');
+}
+
+function assertApplicationTransportAvailable(endpoint = '') {
+    if (interruptsApplicationRequests() && !isCompletionLogout(endpoint)) {
+        throw new MaintenanceInterruption();
+    }
+}
+
+axios.interceptors.request.use(config => {
+    assertApplicationTransportAvailable(config.url);
+    // Activation aborts the shared signal. Completion logout is the sole application
+    // request allowed afterward, so it must use an independent transport signal.
+    if (!config.signal && !isCompletionLogout(config.url)) config.signal = maintenanceAbortController.signal;
+    return config;
+});
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('geopulse:maintenance-change', () => {
+        if (interruptsApplicationRequests()) {
+            maintenanceAbortController.abort(new MaintenanceInterruption());
+        } else if (maintenanceAbortController.signal.aborted) {
+            maintenanceAbortController = new AbortController();
+        }
+    });
+}
 /**
  * API Service for handling HTTP requests
  */
@@ -101,6 +138,7 @@ const apiService = {
      * @returns {Promise<boolean>} True if refresh was successful
      */
     async refreshToken() {
+        assertApplicationTransportAvailable('/auth/refresh-cookie');
         // If a refresh is already in progress, return the existing promise
         if (this._refreshingToken) {
             return this._refreshTokenPromise;
@@ -115,7 +153,9 @@ const apiService = {
                 await this._performSecureRequest('post', '/auth/refresh-cookie', {});
                 return true;
             } catch (refreshError) {
-                console.error('Cookie refresh failed:', refreshError);
+                if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
+                    throw new MaintenanceInterruption();
+                }
                 const status = refreshError.response?.status;
 
                 // Invalid/expired refresh cookie -> treat as auth expiration
@@ -150,6 +190,9 @@ const apiService = {
             try {
                 return await requestFn();
             } catch (error) {
+                if (interruptsApplicationRequests() || isMaintenanceInterruption(error)) {
+                    throw new MaintenanceInterruption();
+                }
                 // Retry on 401 with token refresh
                 if (error.response?.status === 401 && attempt < maxRetries) {
                     if (this.hasCachedUserProfile()) {
@@ -162,6 +205,9 @@ const apiService = {
                                 continue; // Retry the request
                             }
                         } catch (refreshError) {
+                            if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
+                                throw new MaintenanceInterruption();
+                            }
                             console.error('Token refresh failed:', refreshError);
                             await this.handleError(refreshError);
                             throw refreshError;
@@ -177,6 +223,7 @@ const apiService = {
     },
 
     async checkAuthExpired(endpoint) {
+        assertApplicationTransportAvailable(endpoint);
         // Skip auth check for public endpoints
         const publicEndpoints = [
             '/auth/login',
@@ -440,6 +487,15 @@ const apiService = {
      * @param {Error} error - Error object
      */
     handleError(error) {
+        if (isMaintenanceInterruption(error) || interruptsApplicationRequests() && (axios.isCancel(error) || isBackendDown(error))) {
+            return;
+        }
+        if (isKnownRestoreActive() && isBackendDown(error)) {
+            markMaintenanceUnavailable();
+            return;
+        }
+        if (maintenance.blocked) return;
+
         // If unauthorized, clear auth data and redirect to login if logged in
         if (error.response && error.response.status === 401) {
             const hadCachedUserProfile = this.hasCachedUserProfile();

@@ -6,13 +6,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminBackupStatusDto {
+    private String operationId;
+    private String stagingDatabase;
+    private String previousDatabase;
+    private String state;
+    private boolean restartRequired;
     private boolean backupRunning;
     private boolean restoreRunning;
     private boolean restoreRequired;
@@ -24,10 +28,6 @@ public class AdminBackupStatusDto {
     private String phase;
     private String message;
     private Integer progressPercent;
-    private Integer processedUsers;
-    private Integer totalUsers;
-    private UUID currentUserId;
-    private String currentUserEmail;
     private Instant startedAt;
     private Instant completedAt;
     private String error;

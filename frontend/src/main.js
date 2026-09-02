@@ -9,6 +9,9 @@ import {createApp, watch} from "vue";
 import PrimeVue from "primevue/config";
 
 import App from "./App.vue";
+import { acknowledgeActivation, maintenance, markMaintenanceUnavailable, refreshMaintenance, startMaintenancePolling } from '@/stores/maintenance'
+import apiService from '@/utils/apiService'
+import { useAuthStore } from '@/stores/auth'
 import GeopulsePreset from "@/presets/GeopulsePreset";
 import { initializeThemeMode } from "@/utils/themeMode";
 import router from "./router";
@@ -45,6 +48,8 @@ async function cleanupDevelopmentServiceWorkers() {
     }
 }
 
+async function startApplication() {
+await refreshMaintenance()
 const app = createApp(App);
 const timezone = useTimezone()
 
@@ -87,3 +92,26 @@ watch(
 )
 
 app.mount("#app");
+
+startMaintenancePolling()
+let signingOut = false
+watch(() => [maintenance.blocked, maintenance.unavailable, maintenance.activated], async ([blocked, unavailable], previous) => {
+    if (blocked || unavailable) return
+    if (maintenance.activated) {
+        if (signingOut) return
+        signingOut = true
+        try {
+            // HttpOnly cookies require a server-confirmed logout, not just local cache removal.
+            await apiService.logoutStrict()
+            useAuthStore().clearUser()
+            acknowledgeActivation()
+            window.location.replace('/login')
+        } catch {
+            markMaintenanceUnavailable()
+        } finally { signingOut = false }
+    } else if (previous?.some(Boolean)) {
+        void router.replace(window.location.pathname + window.location.search)
+    }
+}, { immediate: true })
+}
+void startApplication()

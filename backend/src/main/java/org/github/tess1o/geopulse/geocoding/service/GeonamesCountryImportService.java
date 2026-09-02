@@ -1,12 +1,12 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.arc.Arc;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.context.ManagedExecutor;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geocoding.model.GeonamesCountryRecord;
@@ -58,7 +58,6 @@ public class GeonamesCountryImportService {
 
     private final GeonamesCountryRepository geonamesCountryRepository;
     private final GeonamesCountryLineParser lineParser;
-    private final ManagedExecutor managedExecutor;
     private final AtomicBoolean importInProgress = new AtomicBoolean(false);
 
     @Inject
@@ -70,12 +69,10 @@ public class GeonamesCountryImportService {
     @Inject
     public GeonamesCountryImportService(
             GeonamesCountryRepository geonamesCountryRepository,
-            GeonamesCountryLineParser lineParser,
-            ManagedExecutor managedExecutor
+            GeonamesCountryLineParser lineParser
     ) {
         this.geonamesCountryRepository = geonamesCountryRepository;
         this.lineParser = lineParser;
-        this.managedExecutor = managedExecutor;
     }
 
     void onStart(@Observes StartupEvent ignored) {
@@ -88,11 +85,17 @@ public class GeonamesCountryImportService {
             return;
         }
 
-        managedExecutor.runAsync(this::importIfNeededOnStartup)
-                .exceptionally(throwable -> {
-                    log.error("GeoNames country startup import failed: {}", throwable.getMessage(), throwable);
-                    return null;
-                });
+        Thread.ofVirtual().name("geonames-country-startup-import").start(this::runStartupImport);
+    }
+
+    private void runStartupImport() {
+        var requestContext = Arc.container().requestContext();
+        requestContext.activate();
+        try {
+            importIfNeededOnStartup();
+        } finally {
+            requestContext.terminate();
+        }
     }
 
     void importIfNeededOnStartup() {
