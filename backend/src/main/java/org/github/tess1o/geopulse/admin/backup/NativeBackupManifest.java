@@ -11,6 +11,7 @@ public class NativeBackupManifest {
     public int postgresMajor;
     public Map<String,String> extensions = new TreeMap<>();
     public List<List<String>> migrations = new ArrayList<>();
+    public List<List<String>> schema = new ArrayList<>();
     public String schemaFingerprint;
     public String dumpSha256;
     public String sourceKeyFingerprint;

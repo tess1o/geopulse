@@ -1,13 +1,17 @@
 ---
 title: Backup and Restore
-description: Back up and restore your GeoPulse data and configuration.
+description: Back up and restore your GeoPulse database and database-stored configuration.
 ---
 
 # Backup and Restore
 
-Regular backups are essential for protecting your location tracking data. This guide covers everything you need to know about backing up and restoring your GeoPulse installation.
+Regular backups are essential for protecting your location tracking data. This guide covers everything you need to know about backing up and restoring your GeoPulse database.
 
 ## What Gets Backed Up?
+
+GeoPulse backups are **database backups**. They back up and restore the PostgreSQL database only. Runtime/deployment configuration is not included: `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, mounted volumes outside PostgreSQL, external files, PostgreSQL roles, and reverse-proxy settings must be backed up and restored separately.
+
+Settings are included only when they exist in the database, usually because you changed them in the Admin UI. If a setting is only supplied by an environment variable or runtime property, the backup does not contain that value. After restore, GeoPulse will use the destination server's own environment/runtime value for that setting.
 
 GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. This includes:
 
@@ -15,7 +19,7 @@ GeoPulse stores all your data in a PostgreSQL database with PostGIS extensions. 
 - **Visits and trips** - processed location data and stay points
 - **User accounts** - authentication and preferences
 - **Reverse geocoding cache** - address lookups to reduce API calls
-- **Settings** - application configuration
+- **Database-stored settings** - settings saved in GeoPulse, usually from the Admin UI
 - **GPS sources** - source tokens, device IDs, filtering, duplicate detection, and OwnTracks payload encryption settings
 - **Relationships and permissions** - friends, sharing links, and friend location permissions
 
@@ -31,7 +35,11 @@ If you back up GeoPulse with `pg_dump`, also back up the AI encryption key confi
 
 Use **Administration > Settings > Backup** for complete, password-encrypted `.gpb` backups. GeoPulse streams a native PostgreSQL custom-format dump from one consistent snapshot. The application remains usable during backup. Files appear in the backup list only after encryption and writing succeed; retention runs after successful publication.
 
-A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes. Deployment files, external files, PostgreSQL roles, and JWT keys are not included.
+A full backup preserves application tables, IDs, credentials, API tokens, relationships, spatial data, sequences, Flyway history, and encrypted database-stored settings. Its encrypted manifest records the application version, database schema, PostgreSQL/PostGIS versions, and checksums. It also includes the source installation encryption key **inside the encrypted archive**. It excludes transient OIDC login states and mobile authentication codes.
+
+:::warning Runtime configuration is not backed up
+Full backups do **not** include `.env` files, Docker Compose files, Helm values, Kubernetes manifests, systemd units, JVM `-D` properties, environment variables, external files, PostgreSQL roles, JWT keys, or reverse-proxy settings. If a value is configured only through an environment variable, restore will not recreate it. If you changed the same setting in the Admin UI and it was saved to `system_settings`, that database value is backed up and restored.
+:::
 
 ### Passwords
 
@@ -391,12 +399,14 @@ If you need to restore GeoPulse on a new server:
 
 1. **Install Docker and Docker Compose** on the new server
 
-2. **Clone your GeoPulse configuration**:
+2. **Clone your GeoPulse runtime configuration**:
 ```bash
 # Copy your .env, docker-compose.yml, and encryption keys to new server
 scp .env docker-compose.yml newserver:/opt/geopulse/
 scp -r keys newserver:/opt/geopulse/
 ```
+
+Backups restore the database only. They do not restore environment variables or deployment files, so copy your source `.env`, Compose/Helm/Kubernetes/systemd configuration, proxy configuration, and any other runtime settings separately. For example, authentication flags such as `GEOPULSE_AUTH_LOGIN_ENABLED` and `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` are restored only if you saved the corresponding settings in the Admin UI; values that existed only in the source server's `.env` must be copied manually.
 
 At minimum, the copied `keys` folder must include the AI encryption key used by the source database. JWT key files are optional for disaster recovery; preserving them keeps already-issued JWTs valid, while replacing them signs users in again.
 
@@ -443,9 +453,10 @@ To move GeoPulse from one server to another:
 
 1. **Create backup on source server** (see Manual Backups above)
 2. **Transfer backup file** to destination server
-3. **Follow disaster recovery steps** to restore on new server
-4. **Update DNS/firewall** rules to point to new server
-5. **Verify everything works** before decommissioning old server
+3. **Copy runtime configuration separately** (`.env`, Compose/Helm/Kubernetes/systemd/proxy configuration, environment variables, and external mounted files)
+4. **Follow disaster recovery steps** to restore on new server
+5. **Update DNS/firewall** rules to point to new server
+6. **Verify everything works** before decommissioning old server
 
 ## Troubleshooting
 

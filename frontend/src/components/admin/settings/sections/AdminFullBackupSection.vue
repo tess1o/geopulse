@@ -30,6 +30,17 @@
         Full backups are encrypted with your backup password. Save that password outside GeoPulse: without it, the backup cannot be recovered. Restore only trusted backups. Restore preparation runs online; activation briefly stops GeoPulse and restarts the backend automatically.
       </Message>
 
+      <Message v-if="restorePreparationFailed" severity="error" :closable="false">
+        <div class="restore-failure">
+          <div>
+            <h4>Restore preparation failed</h4>
+            <p>{{ restoreFailureMessage }}</p>
+            <p class="text-muted">The original database remains active and no restored data was applied.</p>
+            <p v-if="backupStatus?.fileName" class="text-muted">Backup file: {{ backupStatus.fileName }}</p>
+          </div>
+        </div>
+      </Message>
+
       <Message v-if="backupStatus?.state === 'ACTIVATION_RETRYABLE'" severity="warn" :closable="false">
         <div class="retryable-restore">
           <span>{{ backupStatus.error || 'Activation did not complete. The original database is active and the prepared restore is retained.' }}</span>
@@ -178,20 +189,30 @@ const deleteFileName = ref('')
 const deleting = ref(false)
 const backupStatus = ref(null)
 const statusPoller = ref(null)
+const restoreStatusPending = ref(false)
 const backupConfig = ref({ scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120 })
 
+const RESTORE_TERMINAL_STATES = new Set(['PREPARATION_FAILED', 'ACTIVATION_RETRYABLE', 'ACTIVATION_FAILED', 'COMPLETED', 'DISCARDED'])
 const operationRunning = computed(() => backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning || restoring.value || runningNow.value || fullDownloading.value)
 const restoreProgressInDialog = computed(() => restoreDialogVisible.value && (restoring.value || backupStatus.value?.restoreRunning))
-const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || ['completed', 'failed'].includes(backupStatus.value?.status))
+const restoreStarting = computed(() => restoring.value && restoreStatusPending.value)
+const restorePreparationFailed = computed(() => backupStatus.value?.state === 'PREPARATION_FAILED')
+const restoreTerminal = computed(() => RESTORE_TERMINAL_STATES.has(backupStatus.value?.state))
+const restoreFailureMessage = computed(() => backupStatus.value?.error || backupStatus.value?.message || 'Restore preparation failed.')
+const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || restorePreparationFailed.value || ['completed', 'failed'].includes(backupStatus.value?.status))
 const backupProgressValue = computed(() => Math.max(0, Math.min(100, backupStatus.value?.progressPercent ?? 0)))
 const backupProgressTitle = computed(() => {
-  if (backupStatus.value?.restoreRunning) return 'Restore in progress'
+  if (restoreStarting.value || backupStatus.value?.restoreRunning) return 'Restore in progress'
+  if (restorePreparationFailed.value) return 'Restore preparation failed'
   if (backupStatus.value?.backupRunning) return 'Backup in progress'
   if (backupStatus.value?.status === 'completed') return 'Last backup operation completed'
   if (backupStatus.value?.status === 'failed') return 'Last backup operation failed'
   return 'Backup status'
 })
-const backupProgressMessage = computed(() => backupStatus.value?.error || backupStatus.value?.message || backupStatus.value?.phase || 'Waiting for status')
+const backupProgressMessage = computed(() => {
+  if (restoreStarting.value) return 'Restoration is being prepared in the background. GeoPulse remains available until activation.'
+  return backupStatus.value?.error || backupStatus.value?.message || backupStatus.value?.phase || 'Waiting for status'
+})
 
 const onFullFileSelect = (event) => { selectedFullFile.value = event.files?.[0] || null }
 const onFullFileClear = () => { selectedFullFile.value = null }
@@ -200,7 +221,13 @@ const showError = (summary, error, fallback) => toast.add({ severity: 'error', s
 const loadBackupStatus = async () => {
   try {
     backupStatus.value = await adminService.getBackupStatus()
-    if (statusPoller.value && !backupStatus.value?.backupRunning && !backupStatus.value?.restoreRunning && !restoring.value && !runningNow.value && !fullDownloading.value) stopBackupStatusPolling(false)
+    if (restoreTerminal.value) {
+      restoreStatusPending.value = false
+      await refreshMaintenance()
+    }
+    const localOperationRunning = restoring.value || runningNow.value || fullDownloading.value
+    const remoteOperationRunning = backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning
+    if (statusPoller.value && !remoteOperationRunning && !localOperationRunning && (!restoreStatusPending.value || restoreTerminal.value)) stopBackupStatusPolling(false)
   } catch { backupStatus.value = null }
 }
 const startBackupStatusPolling = () => {
@@ -280,6 +307,16 @@ const openRestoreUploadDialog = () => {
 const restoreFullBackup = async () => {
   if (!restorePassword.value || restorePassword.value.length > 1024) return showError('Restore Failed', new Error('Restore password must contain 1–1024 characters'), '')
   restoring.value = true
+  restoreStatusPending.value = true
+  backupStatus.value = {
+    state: 'PREPARING',
+    status: 'preparing',
+    operation: 'restore',
+    restoreRunning: true,
+    progressPercent: 0,
+    fileName: restoreSource.value === 'local' ? restoreLocalFileName.value : selectedFullFile.value?.name,
+    message: 'Restoration is being prepared in the background. GeoPulse remains available until activation.'
+  }
   startBackupStatusPolling()
   try {
     await (restoreSource.value === 'local'
@@ -290,6 +327,7 @@ const restoreFullBackup = async () => {
     await refreshMaintenance()
   } catch (error) {
     restoreDialogVisible.value = false
+    restoreStatusPending.value = false
     await stopBackupStatusPolling()
     showError('Restore Failed', error, 'Failed to restore full backup')
   } finally { restoring.value = false }
@@ -327,7 +365,10 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 .backup-panel-icon { color: var(--gp-primary); font-size: 1.25rem; }
 .backup-progress { padding: 1.1rem; border: 1px solid color-mix(in srgb, var(--gp-primary) 26%, var(--gp-border-medium)); border-radius: 8px; display: grid; gap: 0.75rem; background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white)); }
 .progress-heading span, .progress-caption { color: var(--gp-text-secondary); font-size: 0.9rem; }
-.restore-progress, .backup-subsection, .config-group, .retryable-restore { display: grid; gap: 1rem; }
+.restore-progress, .backup-subsection, .config-group, .retryable-restore, .restore-failure { display: grid; gap: 1rem; }
+.restore-failure h4 { margin: 0 0 0.5rem; color: var(--gp-text-primary); }
+.restore-failure p { margin: 0 0 0.45rem; line-height: 1.5; overflow-wrap: anywhere; }
+.restore-failure p:last-child { margin-bottom: 0; }
 .config-group { padding: 1rem; }
 .config-group h5 { margin: 0; }
 .config-field { display: flex; flex-direction: column; gap: 0.35rem; color: var(--gp-text-secondary); font-size: 0.9rem; min-width: 0; }
@@ -345,7 +386,86 @@ onUnmounted(() => { stopBackupStatusPolling(false) })
 @media (max-width: 768px) {
   .backup-grid, .config-grid, .config-row, .restore-upload-row { grid-template-columns: 1fr; }
   .backup-section-header, .backup-section-body { padding: 1rem; }
+  .backup-section,
+  .backup-section-header > div,
+  .backup-section-body,
+  .backup-panel,
+  .backup-panel-header > div,
+  .backup-subsection,
+  .subsection-header > div,
+  .backup-progress,
+  .config-group,
+  .restore-upload-row,
+  .inline-upload,
+  .retryable-restore,
+  .restore-failure { min-width: 0; }
+  .backup-panel,
+  .backup-subsection,
+  .config-group,
+  .backup-progress { padding: 0.85rem; }
+  .backup-panel-header,
+  .subsection-header { gap: 0.65rem; }
+  .backup-panel-icon { flex: 0 0 auto; }
+  .backup-section-header h3,
+  .backup-panel h4,
+  .subsection-header h4,
+  .progress-heading h4,
+  .backup-section-header p,
+  .backup-panel p,
+  .subsection-header p,
+  .progress-heading span,
+  .progress-caption,
+  .config-field,
+  .selected-file span { overflow-wrap: anywhere; }
   .progress-heading, .progress-caption { flex-direction: column; gap: 0.35rem; }
+  .section-actions { justify-content: stretch; }
+  .section-actions :deep(.p-button),
+  .restore-upload-row > :deep(.p-button),
+  .backup-panel > :deep(.p-button),
+  .file-actions :deep(.p-button) { max-width: 100%; }
+  .section-actions :deep(.p-button),
+  .restore-upload-row > :deep(.p-button) { width: 100%; }
+  .inline-upload :deep(.p-fileupload-choose) {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .full-backup-section :deep(.p-message),
+  .full-backup-section :deep(.p-message-text),
+  .full-backup-section :deep(.p-message-detail) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .backup-files-table :deep(.p-datatable-wrapper) { overflow-x: hidden; }
+  .backup-files-table :deep(.p-datatable-table) {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .backup-files-table :deep(th),
+  .backup-files-table :deep(td) {
+    padding: 0.65rem 0.45rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+  .backup-files-table :deep(th:nth-child(1)),
+  .backup-files-table :deep(td:nth-child(1)) { width: 34%; }
+  .backup-files-table :deep(th:nth-child(2)),
+  .backup-files-table :deep(td:nth-child(2)) { width: 16%; }
+  .backup-files-table :deep(th:nth-child(3)),
+  .backup-files-table :deep(td:nth-child(3)) { width: 25%; }
+  .backup-files-table :deep(th:nth-child(4)),
+  .backup-files-table :deep(td:nth-child(4)) { width: 25%; }
+  .file-actions {
+    gap: 0;
+    justify-content: flex-start;
+  }
+  .file-actions :deep(.p-button.p-button-icon-only) {
+    width: 1.85rem;
+    min-width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+  }
 }
 </style>
 

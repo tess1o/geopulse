@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   getBackupConfig: vi.fn(),
   getBackupFiles: vi.fn(),
   getBackupStatus: vi.fn(),
-  updateBackupConfig: vi.fn()
+  updateBackupConfig: vi.fn(),
+  restoreLocalFullBackup: vi.fn(),
+  restoreUploadedFullBackup: vi.fn(),
+  refreshMaintenance: vi.fn()
 }))
 
 vi.mock('primevue/usetoast', () => ({ useToast: () => mocks.toast }))
@@ -15,10 +18,12 @@ vi.mock('@/utils/adminService', () => ({
     getBackupConfig: mocks.getBackupConfig,
     getBackupFiles: mocks.getBackupFiles,
     getBackupStatus: mocks.getBackupStatus,
-    updateBackupConfig: mocks.updateBackupConfig
+    updateBackupConfig: mocks.updateBackupConfig,
+    restoreLocalFullBackup: mocks.restoreLocalFullBackup,
+    restoreUploadedFullBackup: mocks.restoreUploadedFullBackup
   }
 }))
-vi.mock('@/stores/maintenance', () => ({ applyMaintenanceStatus: vi.fn(), refreshMaintenance: vi.fn() }))
+vi.mock('@/stores/maintenance', () => ({ applyMaintenanceStatus: vi.fn(), refreshMaintenance: mocks.refreshMaintenance }))
 
 const ButtonStub = {
   props: ['label', 'disabled', 'loading'],
@@ -52,6 +57,7 @@ const mountSection = () => mount(AdminFullBackupSection, {
 
 describe('AdminFullBackupSection password validation', () => {
   beforeEach(() => {
+    vi.useRealTimers()
     mocks.toast.add.mockReset()
     mocks.getBackupConfig.mockReset().mockResolvedValue({
       passwordConfigured: true,
@@ -64,6 +70,9 @@ describe('AdminFullBackupSection password validation', () => {
     mocks.getBackupFiles.mockReset().mockResolvedValue([])
     mocks.getBackupStatus.mockReset().mockResolvedValue({ status: 'idle' })
     mocks.updateBackupConfig.mockReset().mockImplementation(async config => ({ ...config, passwordConfigured: true }))
+    mocks.restoreLocalFullBackup.mockReset().mockResolvedValue({ operationId: 'restore-operation', state: 'PREPARING' })
+    mocks.restoreUploadedFullBackup.mockReset().mockResolvedValue({ operationId: 'restore-operation', state: 'PREPARING' })
+    mocks.refreshMaintenance.mockReset().mockResolvedValue()
   })
 
   it('enforces the new-password bounds before calling the API', async () => {
@@ -87,6 +96,94 @@ describe('AdminFullBackupSection password validation', () => {
     await flushPromises()
 
     expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ password: 'twelve-chars!' }))
+    wrapper.unmount()
+  })
+
+  it('renders restore preparation failures as a persistent visible error', async () => {
+    mocks.getBackupStatus.mockResolvedValue({
+      state: 'PREPARATION_FAILED',
+      status: 'preparation_failed',
+      operation: 'restore',
+      fileName: 'incompatible-backup.gpb',
+      error: 'Backup requires the same application database schema and PostgreSQL major version'
+    })
+
+    const wrapper = mountSection()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Restore preparation failed')
+    expect(wrapper.text()).toContain('Backup requires the same application database schema and PostgreSQL major version')
+    expect(wrapper.text()).toContain('The original database remains active and no restored data was applied.')
+    expect(wrapper.text()).toContain('Backup file: incompatible-backup.gpb')
+    wrapper.unmount()
+  })
+
+  it('keeps polling after an accepted restore until preparation reaches a terminal failure', async () => {
+    vi.useFakeTimers()
+    mocks.getBackupStatus
+      .mockResolvedValueOnce({ status: 'idle' })
+      .mockResolvedValueOnce({ state: 'PREPARING', status: 'preparing', operation: 'restore', restoreRunning: true, progressPercent: 20 })
+      .mockResolvedValueOnce({
+        state: 'PREPARATION_FAILED',
+        status: 'preparation_failed',
+        operation: 'restore',
+        restoreRunning: false,
+        fileName: 'bad-schema.gpb',
+        error: 'Backup requires the same application database schema and PostgreSQL major version'
+      })
+
+    const wrapper = mountSection()
+    await flushPromises()
+    wrapper.vm.openRestoreLocalDialog('bad-schema.gpb')
+    wrapper.vm.restorePassword = 'source-password'
+    await wrapper.vm.restoreFullBackup()
+    await flushPromises()
+
+    expect(mocks.restoreLocalFullBackup).toHaveBeenCalledWith('bad-schema.gpb', 'source-password')
+    expect(mocks.getBackupStatus).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+
+    expect(mocks.getBackupStatus).toHaveBeenCalledTimes(3)
+    expect(wrapper.text()).toContain('Restore preparation failed')
+    expect(wrapper.text()).toContain('Backup requires the same application database schema and PostgreSQL major version')
+    expect(mocks.refreshMaintenance).toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+    expect(mocks.getBackupStatus).toHaveBeenCalledTimes(3)
+    wrapper.unmount()
+  })
+
+  it('does not show a previous preparation failure while submitting a new restore', async () => {
+    let resolveRestore
+    mocks.getBackupStatus.mockResolvedValue({
+      state: 'PREPARATION_FAILED',
+      status: 'preparation_failed',
+      operation: 'restore',
+      restoreRunning: false,
+      fileName: 'old-backup.gpb',
+      error: 'Incorrect backup password or damaged backup'
+    })
+    mocks.restoreUploadedFullBackup.mockReturnValue(new Promise(resolve => { resolveRestore = resolve }))
+
+    const wrapper = mountSection()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Incorrect backup password or damaged backup')
+
+    wrapper.vm.selectedFullFile = new File(['backup'], 'new-backup.gpb')
+    wrapper.vm.openRestoreUploadDialog()
+    wrapper.vm.restorePassword = 'new-password'
+    const restorePromise = wrapper.vm.restoreFullBackup()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('Restore in progress')
+    expect(wrapper.text()).toContain('Restoration is being prepared in the background')
+    expect(wrapper.text()).not.toContain('Incorrect backup password or damaged backup')
+
+    resolveRestore({ operationId: 'restore-operation', state: 'PREPARING' })
+    await restorePromise
     wrapper.unmount()
   })
 })

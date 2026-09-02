@@ -26,6 +26,7 @@ describe('online restore maintenance lifecycle', () => {
     message: 'Restored data was activated. GeoPulse is stopping the backend to complete restoration.'
   }
   const respond = data => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data }) }))
+  const failStatus = (status = 500) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }))
 
   it('checks public status without authentication cookies', async () => {
     respond(preparing)
@@ -59,15 +60,75 @@ describe('online restore maintenance lifecycle', () => {
     expect(module.maintenance.message).toBe(swapped.message)
   })
 
+  it('keeps restart mode stable across repeated failed status polls after cutover', async () => {
+    const module = await import('./maintenance')
+    module.applyMaintenanceStatus(swapped)
+    failStatus(500)
+
+    await module.refreshMaintenance()
+    expect(module.maintenance.state).toBe('SWAPPED_PENDING_RESTART')
+    expect(module.maintenance.unavailable).toBe(true)
+    expect(module.maintenanceScreenVisible()).toBe(true)
+
+    await module.refreshMaintenance()
+    expect(module.maintenance.state).toBe('SWAPPED_PENDING_RESTART')
+    expect(module.maintenance.unavailable).toBe(true)
+    expect(module.maintenanceScreenVisible()).toBe(true)
+  })
+
+  it('preserves unavailable restart mode when replaying active restore state from another tab', async () => {
+    const module = await import('./maintenance')
+    module.applyMaintenanceStatus(swapped)
+    module.markMaintenanceUnavailable()
+
+    module.applyMaintenanceStatus(swapped, { broadcast: false, trusted: false })
+
+    expect(module.maintenance.state).toBe('SWAPPED_PENDING_RESTART')
+    expect(module.maintenance.unavailable).toBe(true)
+    expect(module.maintenanceScreenVisible()).toBe(true)
+  })
+
+  it('allows a server-confirmed completion to clear unavailable restart mode', async () => {
+    const module = await import('./maintenance')
+    module.applyMaintenanceStatus(swapped)
+    module.markMaintenanceUnavailable()
+    respond({ state: 'COMPLETED', completedAt: '2026-09-02T07:30:00Z', blocked: false })
+
+    await module.refreshMaintenance()
+
+    expect(module.maintenance.state).toBe('COMPLETED')
+    expect(module.maintenance.unavailable).toBe(false)
+    expect(module.maintenance.activated).toBe(true)
+    expect(module.maintenanceScreenVisible()).toBe(true)
+  })
+
   it('shares an active restore with a newly opened tab', async () => {
     let module = await import('./maintenance')
     module.applyMaintenanceStatus(swapped)
     const values = new Map()
     vi.stubGlobal('sessionStorage', { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) })
+    respond(swapped)
     vi.resetModules()
     module = await import('./maintenance')
     expect(module.maintenance.state).toBe('SWAPPED_PENDING_RESTART')
+    expect(module.interruptsApplicationRequests()).toBe(false)
+    await module.refreshMaintenance()
     expect(module.interruptsApplicationRequests()).toBe(true)
+  })
+
+  it('does not show a stale shared restore screen before server confirmation', async () => {
+    let module = await import('./maintenance')
+    module.applyMaintenanceStatus(swapped)
+    const values = new Map()
+    vi.stubGlobal('sessionStorage', { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: key => values.delete(key) })
+    respond({ state: 'IDLE', blocked: false, warning: false, message: '' })
+    vi.resetModules()
+    module = await import('./maintenance')
+    expect(module.maintenance.state).toBe('SWAPPED_PENDING_RESTART')
+    expect(module.maintenanceScreenVisible()).toBe(false)
+    await module.refreshMaintenance()
+    expect(module.maintenance.state).toBe('IDLE')
+    expect(module.maintenanceScreenVisible()).toBe(false)
   })
 
   it('keeps completion logout blocking across a transient backend failure and reload', async () => {

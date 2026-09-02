@@ -124,9 +124,12 @@ public final class NativeDatabaseBackup {
             List<Map<String, Object>> localSettings;
             try (Connection live = context.postgres().connect(context.postgres().database(), false); ConnectionDeadline guard = new ConnectionDeadline(live, deadline)) {
                 NativeBackupManifest local = describe(live);
-                if (manifest.postgresMajor != local.postgresMajor || !manifest.migrations.equals(local.migrations)
-                        || !Objects.equals(manifest.schemaFingerprint, local.schemaFingerprint))
-                    throw new IOException("Backup requires the same application database schema and PostgreSQL major version");
+                boolean incompatible = manifest.postgresMajor != local.postgresMajor || !manifest.migrations.equals(local.migrations);
+                if (incompatible || !Objects.equals(manifest.schemaFingerprint, local.schemaFingerprint)) {
+                    logRestoreManifestMismatch(state.operationId, manifest, local);
+                    if (incompatible)
+                        throw new IOException("Backup requires the same Flyway migration history and PostgreSQL major version");
+                }
                 localSettings = rows(live, "SELECT * FROM system_settings WHERE key LIKE 'backup.%' ORDER BY key");
             }
             if (tools.major(state.operationId, "pg_restore") != manifest.postgresMajor)
@@ -203,9 +206,82 @@ public final class NativeDatabaseBackup {
         }
         result.migrations = strings(connection, "SELECT version, description, type, script, checksum, success FROM flyway_schema_history ORDER BY installed_rank");
         // Excludes runtime values/sequence positions and extension-owned objects; includes all application columns and constraints.
-        List<List<String>> schema = schemaDescription(connection);
-        result.schemaFingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(JSON.writeValueAsBytes(schema)));
+        result.schema = schemaDescription(connection);
+        result.schemaFingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(JSON.writeValueAsBytes(result.schema)));
         return result;
+    }
+
+    private static void logRestoreManifestMismatch(String operationId, NativeBackupManifest backup, NativeBackupManifest local) {
+        if (backup.postgresMajor != local.postgresMajor) {
+            log.warn("Restore operation {} PostgreSQL major mismatch; backupMajor={}; localMajor={}",
+                    operationId, backup.postgresMajor, local.postgresMajor);
+        }
+        if (!backup.migrations.equals(local.migrations)) {
+            log.warn("Restore operation {} migration history mismatch; backupCount={}; localCount={}",
+                    operationId, backup.migrations.size(), local.migrations.size());
+            for (String line : migrationDiff(backup.migrations, local.migrations)) {
+                log.warn("Restore operation {} migration difference: {}", operationId, line);
+            }
+        }
+        if (!Objects.equals(backup.schemaFingerprint, local.schemaFingerprint)) {
+            log.warn("Restore operation {} schema fingerprint mismatch; backupFingerprint={}; localFingerprint={}",
+                    operationId, backup.schemaFingerprint, local.schemaFingerprint);
+            if (backup.schema != null && !backup.schema.isEmpty()) {
+                log.warn("Restore operation {} schema row mismatch; backupCount={}; localCount={}",
+                        operationId, backup.schema.size(), local.schema.size());
+                for (String line : rowDiff(backup.schema, local.schema, "schema")) {
+                    log.warn("Restore operation {} schema difference: {}", operationId, line);
+                }
+            } else {
+                log.warn("Restore operation {} backup manifest does not include schema rows; create a new backup with this version to log exact schema differences",
+                        operationId);
+            }
+        }
+    }
+
+    private static List<String> migrationDiff(List<List<String>> backup, List<List<String>> local) {
+        return rowDiff(backup, local, "migration");
+    }
+
+    private static List<String> rowDiff(List<List<String>> backup, List<List<String>> local, String rowType) {
+        List<String> diff = new ArrayList<>();
+        int common = Math.min(backup.size(), local.size());
+        for (int i = 0; i < common; i++) {
+            if (!backup.get(i).equals(local.get(i))) {
+                diff.add("index=" + i + "; backup=" + rowSummary(backup.get(i), rowType) + "; local=" + rowSummary(local.get(i), rowType));
+            }
+        }
+        for (int i = common; i < backup.size(); i++) {
+            diff.add("backup-only index=" + i + "; " + rowSummary(backup.get(i), rowType));
+        }
+        for (int i = common; i < local.size(); i++) {
+            diff.add("local-only index=" + i + "; " + rowSummary(local.get(i), rowType));
+        }
+        if (diff.size() > 50) {
+            List<String> capped = new ArrayList<>(diff.subList(0, 50));
+            capped.add("... " + (diff.size() - 50) + " more " + rowType + " differences omitted");
+            return capped;
+        }
+        return diff;
+    }
+
+    private static String rowSummary(List<String> row, String rowType) {
+        if ("migration".equals(rowType)) return migrationRow(row);
+        return row.toString();
+    }
+
+    private static String migrationRow(List<String> row) {
+        return switch (row.size()) {
+            case 0 -> "[]";
+            case 1 -> "version=" + row.get(0);
+            case 2 -> "version=" + row.get(0) + ", description=" + row.get(1);
+            case 3 -> "version=" + row.get(0) + ", description=" + row.get(1) + ", type=" + row.get(2);
+            case 4 -> "version=" + row.get(0) + ", description=" + row.get(1) + ", type=" + row.get(2) + ", script=" + row.get(3);
+            case 5 -> "version=" + row.get(0) + ", description=" + row.get(1) + ", type=" + row.get(2) + ", script=" + row.get(3)
+                    + ", checksum=" + row.get(4);
+            default -> "version=" + row.get(0) + ", description=" + row.get(1) + ", type=" + row.get(2) + ", script=" + row.get(3)
+                    + ", checksum=" + row.get(4) + ", success=" + row.get(5);
+        };
     }
 
     private static List<List<String>> schemaDescription(Connection connection) throws SQLException {

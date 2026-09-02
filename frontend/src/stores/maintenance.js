@@ -8,22 +8,29 @@ const ACTIVE_STATES = new Set(['PREPARING', 'ACTIVATING', 'SWAPPED_PENDING_RESTA
 const INTERRUPTING_STATES = new Set(['ACTIVATING', 'SWAPPED_PENDING_RESTART', 'ACTIVATION_FAILED'])
 
 function readStored() {
-  try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(SHARED_STORAGE_KEY) || 'null') }
-  catch { return null }
+  try {
+    const sessionValue = sessionStorage.getItem(STORAGE_KEY)
+    if (sessionValue) return { data: JSON.parse(sessionValue), source: 'session' }
+    const sharedValue = localStorage.getItem(SHARED_STORAGE_KEY)
+    if (sharedValue) return { data: JSON.parse(sharedValue), source: 'shared' }
+  } catch { /* ignore stale persisted state */ }
+  return { data: null, source: null }
 }
 
 const saved = readStored()
+const savedData = saved.data
 export const maintenance = reactive({
-  state: saved?.state || 'IDLE',
-  blocked: !!saved?.blocked,
-  warning: !!saved?.warning,
-  message: saved?.message || '',
-  backupCreatedAt: saved?.backupCreatedAt || '',
+  state: savedData?.state || 'IDLE',
+  blocked: !!savedData?.blocked,
+  warning: !!savedData?.warning,
+  message: savedData?.message || '',
+  backupCreatedAt: savedData?.backupCreatedAt || '',
   initialized: false,
-  unavailable: !!saved?.unavailable,
-  activated: !!saved?.activated,
-  completedAt: saved?.completedAt || null,
-  offlineSince: saved?.offlineSince || null,
+  unavailable: !!savedData?.unavailable,
+  activated: !!savedData?.activated,
+  completedAt: savedData?.completedAt || null,
+  offlineSince: savedData?.offlineSince || null,
+  needsConfirmation: saved.source === 'shared',
   manualRestartRequired: false
 })
 
@@ -37,8 +44,9 @@ export class MaintenanceInterruption extends Error {
 
 export const isMaintenanceInterruption = error => error instanceof MaintenanceInterruption || error?.code === 'GEOPULSE_RESTORE_MAINTENANCE'
 export const isKnownRestoreActive = () => ACTIVE_STATES.has(maintenance.state) || maintenance.activated
-export const interruptsApplicationRequests = () => maintenance.activated || INTERRUPTING_STATES.has(maintenance.state) || (maintenance.unavailable && isKnownRestoreActive())
-export const maintenanceScreenVisible = () => maintenance.activated || INTERRUPTING_STATES.has(maintenance.state) || (maintenance.unavailable && isKnownRestoreActive())
+const confirmedOrUnavailable = () => !maintenance.needsConfirmation || maintenance.unavailable
+export const interruptsApplicationRequests = () => confirmedOrUnavailable() && (maintenance.activated || INTERRUPTING_STATES.has(maintenance.state) || (maintenance.unavailable && isKnownRestoreActive()))
+export const maintenanceScreenVisible = () => confirmedOrUnavailable() && (maintenance.activated || INTERRUPTING_STATES.has(maintenance.state) || (maintenance.unavailable && isKnownRestoreActive()))
 
 let pending
 let poller
@@ -73,16 +81,20 @@ function persistAndBroadcast(data, broadcast) {
 
 function armManualRestartFallback() {
   if (restartFallbackTimer) clearTimeout(restartFallbackTimer)
-  maintenance.manualRestartRequired = false
   if (!maintenance.offlineSince) return
   const remaining = Math.max(0, 60000 - (Date.now() - maintenance.offlineSince))
-  restartFallbackTimer = setTimeout(() => { maintenance.manualRestartRequired = true }, remaining)
+  maintenance.manualRestartRequired = remaining === 0
+  if (remaining > 0) {
+    restartFallbackTimer = setTimeout(() => { maintenance.manualRestartRequired = true }, remaining)
+  }
 }
 
-export function applyMaintenanceStatus(data, { broadcast = true } = {}) {
+export function applyMaintenanceStatus(data, { broadcast = true, trusted = true } = {}) {
   if (!data?.state) return
   const previousState = maintenance.state
   const observedRestore = ACTIVE_STATES.has(previousState) || maintenance.unavailable || maintenance.blocked
+  const shouldPreserveUnavailable = !trusted && maintenance.unavailable && ACTIVE_STATES.has(data.state)
+  const unavailable = !!data.unavailable || shouldPreserveUnavailable
   Object.assign(maintenance, {
     state: data.state,
     blocked: !!data.blocked,
@@ -90,10 +102,12 @@ export function applyMaintenanceStatus(data, { broadcast = true } = {}) {
     message: data.message || '',
     backupCreatedAt: data.backupCreatedAt || '',
     initialized: true,
-    unavailable: false,
-    offlineSince: null,
-    manualRestartRequired: false
+    needsConfirmation: false,
+    unavailable,
+    offlineSince: unavailable ? (data.offlineSince || maintenance.offlineSince || Date.now()) : null,
+    manualRestartRequired: unavailable ? maintenance.manualRestartRequired : false
   })
+  if (unavailable) armManualRestartFallback()
   if (data.state === 'COMPLETED') {
     let unseen = observedRestore
     try { unseen ||= !!data.completedAt && localStorage.getItem(COMPLETED_KEY) !== data.completedAt } catch { unseen = true }
@@ -104,7 +118,7 @@ export function applyMaintenanceStatus(data, { broadcast = true } = {}) {
   } else if (['PREPARATION_FAILED', 'ACTIVATION_RETRYABLE', 'DISCARDED', 'IDLE'].includes(data.state)) {
     maintenance.activated = false
   }
-  persistAndBroadcast({ ...data, activated: maintenance.activated, completedAt: maintenance.completedAt || data.completedAt, unavailable: false, offlineSince: null }, broadcast)
+  persistAndBroadcast({ ...data, activated: maintenance.activated, completedAt: maintenance.completedAt || data.completedAt, unavailable, offlineSince: maintenance.offlineSince }, broadcast)
   dispatchChange(previousState)
 }
 
@@ -112,6 +126,7 @@ export function markMaintenanceUnavailable() {
   if (!isKnownRestoreActive()) return false
   const previousState = maintenance.state
   maintenance.unavailable = true
+  maintenance.needsConfirmation = false
   maintenance.blocked = true
   maintenance.warning = false
   maintenance.offlineSince ||= Date.now()
@@ -131,7 +146,7 @@ export async function refreshMaintenance() {
       })
       if (!response.ok) throw new Error('Maintenance status unavailable')
       const payload = await response.json()
-      applyMaintenanceStatus(payload.data)
+      applyMaintenanceStatus(payload.data, { trusted: true })
     } catch {
       maintenance.initialized = true
       markMaintenanceUnavailable()
@@ -156,12 +171,12 @@ if (typeof window !== 'undefined') {
   if ('BroadcastChannel' in window) {
     try {
       channel = new BroadcastChannel('geopulse-restore-maintenance')
-      channel.onmessage = event => applyMaintenanceStatus(event.data, { broadcast: false })
+      channel.onmessage = event => applyMaintenanceStatus(event.data, { broadcast: false, trusted: false })
     } catch { channel = null }
   }
   window.addEventListener('storage', event => {
     if (event.key !== RELAY_KEY || !event.newValue) return
-    try { applyMaintenanceStatus(JSON.parse(event.newValue), { broadcast: false }) } catch { /* ignore malformed cross-tab state */ }
+    try { applyMaintenanceStatus(JSON.parse(event.newValue), { broadcast: false, trusted: false }) } catch { /* ignore malformed cross-tab state */ }
   })
   if (maintenance.unavailable) armManualRestartFallback()
 }

@@ -124,7 +124,7 @@ const tabItems = ref([
     key: 'export'
   },
   {
-    label: 'Backup',
+    label: 'Backup and Restore',
     icon: 'pi pi-file-export',
     key: 'backup'
   },

@@ -139,13 +139,17 @@ class NativeBackupIntegrationTest {
         assertThat(destination.journal().read().state).isEqualTo(RestoreOperationState.ACTIVATING);
     }
 
-    @Test void wrongPasswordAndSchemaMismatchNeverCreateStagingOrChangeLiveData() throws Exception {
+    @Test void wrongPasswordNeverCreatesStagingAndLiveSchemaDriftOnlyWarns() throws Exception {
         new NativeDatabaseBackup(source).write(archive,password,deadline(), "integration-backup");
         RestoreState state = new RestoreState();
         assertThatThrownBy(() -> new NativeDatabaseBackup(destination).prepare(archive,"wrong".toCharArray(),state,deadline(),p -> {})).isInstanceOf(Exception.class);
         assertThat(state.stagingDatabase).isNull();
         try (Connection c=destination.postgres().connect(destination.postgres().database(),false)) { execute(c,"ALTER TABLE users ADD COLUMN incompatible boolean"); }
-        assertThatThrownBy(this::prepare).hasMessageContaining("same application database schema");
+        RestoreState drifted = prepare();
+        try (Connection c=destination.postgres().connect(drifted.stagingDatabase,false)) {
+            assertThat(scalar(c,"SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='incompatible'")).isEqualTo("0");
+        }
+        new NativeDatabaseBackup(destination).discard(drifted);
         assertOriginalUntouched();
     }
 
