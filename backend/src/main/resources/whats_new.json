@@ -1,5 +1,17 @@
 [
   {
+    "version": "1.38.0",
+    "title": "GeoPulse 1.38.0",
+    "highlights": [
+      "Added Map Matching functionality with Valhalla integration",
+      "Added System Backup and Restore from Admin UI",
+      "Shared live or timeline page can be fully embedded to other websites",
+      "Allow to add Custom Reverse Geocoding providers with Nominatim or Photon compatible API",
+      "Fixed MultiPoint GeoJSON support to match Colota implementation"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.38.0"
+  },
+  {
     "version": "1.37.1",
     "title": "GeoPulse 1.37.1",
     "highlights": [
