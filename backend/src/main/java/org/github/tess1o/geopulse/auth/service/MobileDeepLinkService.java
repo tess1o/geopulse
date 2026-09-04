@@ -24,8 +24,6 @@ import java.util.UUID;
 @Slf4j
 public class MobileDeepLinkService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-
     @Inject
     MobileAuthCodeRepository mobileAuthCodeRepository;
 
@@ -105,7 +103,7 @@ public class MobileDeepLinkService {
 
     private String generateRandomCode() {
         byte[] bytes = new byte[18];
-        SECURE_RANDOM.nextBytes(bytes);
+        new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

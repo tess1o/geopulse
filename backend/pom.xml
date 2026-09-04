@@ -38,6 +38,7 @@
         <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
         <bouncycastle.version>1.85.2</bouncycastle.version>
+        <quarkus-mcp-server.version>2.0.0</quarkus-mcp-server.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -205,6 +206,11 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.mcp</groupId>
+            <artifactId>quarkus-mcp-server-http</artifactId>
+            <version>${quarkus-mcp-server.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
