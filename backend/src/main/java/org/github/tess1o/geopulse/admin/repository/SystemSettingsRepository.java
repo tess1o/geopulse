@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.admin.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Optional;
 @ApplicationScoped
 public class SystemSettingsRepository implements PanacheRepositoryBase<SystemSettingsEntity, String> {
 
+    @Transactional
     public Optional<SystemSettingsEntity> findByKey(String key) {
         return find("key", key).firstResultOptional();
     }
