@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.38.1",
+    "title": "GeoPulse 1.38.1",
+    "highlights": [
+      "Fixed regression from release 1.38.0 related to Reverse Geocoding reconciliation UI"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.38.1"
+  },
+  {
     "version": "1.38.0",
     "title": "GeoPulse 1.38.0",
     "highlights": [
@@ -37,7 +45,7 @@
     ],
     "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.37.0"
   },
-   {
+  {
     "version": "1.36.3",
     "title": "GeoPulse 1.36.3",
     "highlights": [
