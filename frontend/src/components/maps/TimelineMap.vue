@@ -847,7 +847,7 @@ const zoomControlTitle = computed(() => (
 ))
 
 const zoomControlIcon = computed(() => (
-  canZoomToCurrentLocation.value ? 'pi pi-crosshairs' : 'pi pi-arrows-alt'
+  canZoomToCurrentLocation.value ? 'pi pi-compass' : 'pi pi-arrows-alt'
 ))
 
 // Controls configuration
@@ -2290,7 +2290,7 @@ defineExpose({
   .map-view-container :global(.leaflet-bottom),
   .map-view-container :global(.maplibregl-ctrl-bottom-left),
   .map-view-container :global(.maplibregl-ctrl-bottom-right) {
-    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 0.15rem + env(safe-area-inset-bottom)) !important;
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + env(safe-area-inset-bottom)) !important;
     z-index: 880 !important;
     pointer-events: none !important;
   }
@@ -2314,6 +2314,8 @@ defineExpose({
 
   .map-view-container :global(.maplibregl-ctrl-attrib) {
     margin-bottom: 0 !important;
+    font-size: 9px !important;
+    white-space: nowrap;
   }
 
   .mobile-trip-summary {

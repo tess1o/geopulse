@@ -38,7 +38,7 @@
         :class="[routeDisplayModeButtonClass, { active: routeDisplayModeActive }]"
         :title="routeDisplayModeButtonTitle"
         :aria-label="routeDisplayModeButtonTitle"
-        class="control-button route-mode-button"
+        class="control-button route-mode-button mobile-secondary-control"
         :disabled="!map || !showPath"
       >
         <i :class="routeDisplayModeIcon"></i>
@@ -59,7 +59,7 @@
       <div
         v-if="showHeatmap"
         ref="heatmapControlRef"
-        class="heatmap-control"
+        class="heatmap-control mobile-secondary-control"
       >
         <button
           @click="toggleHeatmapPopover"
@@ -125,7 +125,7 @@
         @click="handleToggleNotes"
         :class="{ active: showNotes, 'notes-loading': notesLoading }"
         :title="showNotes ? 'Hide Notes' : 'Show Notes'"
-        class="control-button"
+        class="control-button mobile-secondary-control"
         :disabled="!map || notesLoading"
       >
         <i class="pi pi-file-edit"></i>
@@ -137,13 +137,35 @@
         @click="handleToggleWeather"
         :class="{ active: showWeather, 'weather-loading': weatherLoading }"
         :title="showWeather ? 'Hide Weather' : 'Show Weather'"
-        class="control-button"
+        class="control-button mobile-secondary-control"
         :disabled="!map || weatherLoading"
       >
         <i class="pi pi-cloud"></i>
         <span v-if="weatherLoading" class="loading-indicator"></span>
       </button>
+
+      <button
+        v-if="hasMoreControls"
+        type="button"
+        class="control-button more-controls-trigger"
+        :class="{ active: moreControlsActive }"
+        title="More map controls"
+        aria-label="More map controls"
+        aria-haspopup="menu"
+        aria-controls="map-controls-more-menu"
+        :disabled="!map"
+        @click="toggleMoreMenu"
+      >
+        <i class="pi pi-ellipsis-h"></i>
+      </button>
     </div>
+
+    <Menu
+      ref="moreMenuRef"
+      id="map-controls-more-menu"
+      :model="moreMenuItems"
+      popup
+    />
 
     <div v-if="showZoomControls" class="control-group">
       <button
@@ -160,6 +182,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import Menu from 'primevue/menu'
 import {
   ROUTE_DISPLAY_MODES,
   normalizeRouteDisplayMode
@@ -320,6 +343,7 @@ const handleZoomToData = () => {
 
 const heatmapControlRef = ref(null)
 const heatmapPopoverOpen = ref(false)
+const moreMenuRef = ref(null)
 
 const toggleHeatmapPopover = () => {
   if (!props.heatmapAvailable || !props.map) return
@@ -339,6 +363,10 @@ const disableHeatmap = () => {
 
 const closeHeatmapPopover = () => {
   heatmapPopoverOpen.value = false
+}
+
+const toggleMoreMenu = (event) => {
+  moreMenuRef.value?.toggle(event)
 }
 
 // Computed properties
@@ -389,6 +417,81 @@ const routeDisplayModeIcon = computed(() => {
 const rawGpsPointsButtonTitle = computed(() => {
   if (props.rawGpsPointsLoading) return 'Loading raw GPS points'
   return props.rawGpsPointsEnabled ? 'Hide raw GPS points' : 'Show raw GPS points'
+})
+
+const hasMoreControls = computed(() => (
+  props.showRouteDisplayModeControl
+  || props.showHeatmap
+  || props.showNotesButton
+  || props.showWeatherButton
+))
+
+const moreControlsActive = computed(() => (
+  (props.showRouteDisplayModeControl && routeDisplayModeActive.value)
+  || (props.showHeatmap && props.heatmapEnabled)
+  || (props.showNotesButton && props.showNotes)
+  || (props.showWeatherButton && props.showWeather)
+))
+
+const moreMenuItems = computed(() => {
+  const items = []
+
+  if (props.showRouteDisplayModeControl) {
+    items.push({
+      label: routeDisplayModeButtonTitle.value,
+      icon: routeDisplayModeIcon.value,
+      disabled: !props.map || !props.showPath,
+      command: handleCycleRouteDisplayMode
+    })
+  }
+
+  if (props.showHeatmap) {
+    if (items.length) items.push({ separator: true })
+    items.push(
+      {
+        label: 'Heatmap: Stays',
+        icon: 'pi pi-home',
+        disabled: !props.map || !props.heatmapAvailable,
+        command: () => selectHeatmapLayer('stays')
+      },
+      {
+        label: 'Heatmap: Trips',
+        icon: 'pi pi-directions',
+        disabled: !props.map || !props.heatmapAvailable,
+        command: () => selectHeatmapLayer('trips')
+      }
+    )
+
+    if (props.heatmapEnabled) {
+      items.push({
+        label: 'Turn off Heatmap',
+        icon: 'pi pi-times',
+        command: disableHeatmap
+      })
+    }
+  }
+
+  if (props.showNotesButton) {
+    if (items.length) items.push({ separator: true })
+    items.push({
+      label: props.showNotes ? 'Hide Notes' : 'Show Notes',
+      icon: 'pi pi-file-edit',
+      disabled: !props.map || props.notesLoading,
+      command: handleToggleNotes
+    })
+  }
+
+  if (props.showWeatherButton) {
+    if (items.length) items.push({ separator: true })
+    items.push({
+      label: props.showWeather ? 'Hide Weather' : 'Show Weather',
+      icon: 'pi pi-cloud',
+      disabled: !props.map || props.weatherLoading,
+      command: handleToggleWeather
+    })
+  }
+
+  return items
 })
 
 const handleDocumentClick = (event) => {
@@ -617,7 +720,11 @@ onBeforeUnmount(() => {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+.more-controls-trigger {
+  display: none;
+}
+
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
   .map-controls {
     flex-direction: row;
   }
@@ -638,6 +745,14 @@ onBeforeUnmount(() => {
 
   .control-button i {
     font-size: 14px;
+  }
+
+  .mobile-secondary-control {
+    display: none;
+  }
+
+  .more-controls-trigger {
+    display: flex;
   }
 }
 </style>
