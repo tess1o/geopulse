@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayConversionPreviewDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
+import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
@@ -25,6 +26,7 @@ import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationS
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
+import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.time.Instant;
@@ -76,6 +78,9 @@ public class StreamingTimelineResource {
 
     @Inject
     DataGapStayOverrideService dataGapStayOverrideService;
+
+    @Inject
+    TripStaySplitOverrideService tripStaySplitOverrideService;
 
     @Inject
     StreamingTimelineGenerationService timelineGenerationService;
@@ -330,6 +335,80 @@ public class StreamingTimelineResource {
         }
     }
 
+    @POST
+    @Path("/trips/{tripId}/stay-split/preview")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response previewTripStaySplit(@PathParam("tripId") Long tripId, TripStaySplitRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = tripStaySplitOverrideService.previewSplit(userId, tripId, request);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to preview Trip -> Stay -> Trip split for trip {} and user {}", tripId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to preview trip split: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/trips/{tripId}/stay-split")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response splitTripWithStay(@PathParam("tripId") Long tripId, TripStaySplitRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = tripStaySplitOverrideService.splitTrip(userId, tripId, request);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to split trip {} with stay for user {}", tripId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to split trip: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/trip-stay-split-overrides/{overrideId}")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = timelineGenerationService.resetTripStaySplitOverride(userId, overrideId);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip split override not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (Exception e) {
+            log.error("Failed to reset Trip -> Stay -> Trip override {} for user {}", overrideId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to reset trip split override: " + e.getMessage()))
+                    .build();
+        }
+    }
+
     @GET
     @Path("/data-gaps/{gapId}/stay-conversion-preview")
     @RolesAllowed({"USER", "ADMIN"})
@@ -390,17 +469,12 @@ public class StreamingTimelineResource {
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
-            var result = dataGapStayOverrideService.removeManualOverride(userId, overrideId);
+            var result = timelineGenerationService.resetDataGapStayOverride(userId, overrideId);
             if (result.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(ApiResponse.error("Data gap override not found or access denied"))
                         .build();
             }
-
-            if (result.get().regenerationStartTime() != null) {
-                timelineGenerationService.generateTimelineFromTimestamp(userId, result.get().regenerationStartTime());
-            }
-
             return Response.ok(ApiResponse.success(result.get())).build();
         } catch (Exception e) {
             log.error("Failed to reset Data Gap -> Stay override {} for user {}", overrideId, userId, e);

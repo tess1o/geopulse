@@ -16,6 +16,8 @@ import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockExce
 import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.service.trips.StreamingTripPostProcessor;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
@@ -78,6 +80,9 @@ public class StreamingTimelineGenerationService {
     DataGapStayOverrideService dataGapStayOverrideService;
 
     @Inject
+    TripStaySplitOverrideService tripStaySplitOverrideService;
+
+    @Inject
     TimelineNoteService timelineNoteService;
 
     @Inject
@@ -115,6 +120,22 @@ public class StreamingTimelineGenerationService {
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp) {
         generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null, "unknown");
+    }
+
+    @Transactional
+    public Optional<TripStaySplitResponse> resetTripStaySplitOverride(UUID userId, Long overrideId) {
+        Optional<TripStaySplitResponse> result = tripStaySplitOverrideService.removeManualOverride(userId, overrideId);
+        result.map(TripStaySplitResponse::regenerationStartTime)
+                .ifPresent(timestamp -> generateTimelineFromTimestamp(userId, timestamp));
+        return result;
+    }
+
+    @Transactional
+    public Optional<DataGapStayOverrideResponseDTO> resetDataGapStayOverride(UUID userId, Long overrideId) {
+        Optional<DataGapStayOverrideResponseDTO> result = dataGapStayOverrideService.removeManualOverride(userId, overrideId);
+        result.map(DataGapStayOverrideResponseDTO::regenerationStartTime)
+                .ifPresent(timestamp -> generateTimelineFromTimestamp(userId, timestamp));
+        return result;
     }
 
     /**
@@ -268,6 +289,10 @@ public class StreamingTimelineGenerationService {
                         rawTimeline.getDataGaps().size(),
                         rawTimeline.getTotalEventCount());
 
+                // Re-apply manual Trip -> Stay -> Trip splits before movement overrides reattach.
+                stageStart = metricsStart();
+                tripStaySplitOverrideService.reapplyManualOverrides(userId);
+                recordTimelineStage(stageStart, trigger, "trip_split_overrides", "success");
                 // Re-attach manual movement-type overrides to regenerated trips.
                 stageStart = metricsStart();
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);

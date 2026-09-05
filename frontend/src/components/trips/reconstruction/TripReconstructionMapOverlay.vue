@@ -79,7 +79,7 @@ watch(() => props.map, (nextMap) => {
 
   mapAdapter.value.initialize?.(nextMap)
   renderOverlay()
-})
+}, { immediate: true })
 
 watch(
   () => [props.activeSegment, props.activeSegmentIndex, props.contextPoints, props.contextTripLines],

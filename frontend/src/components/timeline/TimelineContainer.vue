@@ -108,6 +108,7 @@
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
               @reset-data-gap-override="handleResetDataGapOverride"
+              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
             />
@@ -124,6 +125,7 @@
               @export-gpx="handleExportStayAsGpx"
               @rename-stay="handleRenameStay"
               @reset-data-gap-override="handleResetDataGapOverride"
+              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
             />
@@ -142,6 +144,7 @@
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
               @edit-movement-type="handleQuickEditMovementType"
+              @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
             />
@@ -159,6 +162,7 @@
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
               @edit-movement-type="handleQuickEditMovementType"
+              @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
             />
@@ -207,6 +211,14 @@
       @converted="handleDataGapConverted"
       @close="handleCloseDataGapConversionDialog"
     />
+
+    <TripStaySplitDialog
+      :visible="tripSplitDialogVisible"
+      :trip="selectedTripForSplit"
+      :read-only="readOnly"
+      @split="handleTripSplitSaved"
+      @close="handleCloseTripSplitDialog"
+    />
   </div>
 </template>
 
@@ -241,6 +253,9 @@ const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
 const DataGapToStayDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/DataGapToStayDialog.vue')
 )
+const TripStaySplitDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripStaySplitDialog.vue')
+)
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
@@ -258,6 +273,8 @@ const quickEditDialogVisible = ref(false)
 const selectedTripForQuickEdit = ref(null)
 const dataGapConversionDialogVisible = ref(false)
 const selectedDataGapForConversion = ref(null)
+const tripSplitDialogVisible = ref(false)
+const selectedTripForSplit = ref(null)
 const timelineContainerRef = ref(null)
 
 // Props
@@ -316,6 +333,7 @@ const emit = defineEmits([
   'rename-stay',
   'timeline-refresh-requested',
   'reset-data-gap-override',
+  'reset-trip-split-override',
   'navigate-date'
 ])
 
@@ -539,6 +557,14 @@ const handleResetDataGapOverride = (stayItem) => {
   emit('reset-data-gap-override', stayItem)
 }
 
+const handleResetTripSplitOverride = (stayItem) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
+  emit('reset-trip-split-override', stayItem)
+}
+
 const handleExportTripAsGpx = async (tripItem) => {
   try {
     await exportImportStore.exportTripAsGpx(tripItem.id)
@@ -614,6 +640,24 @@ const handleCloseDataGapConversionDialog = () => {
 }
 
 const handleDataGapConverted = () => {
+  emit('timeline-refresh-requested')
+}
+
+const handleSplitTripWithStay = (tripItem) => {
+  if (props.readOnly) {
+    showReadOnlyToast()
+    return
+  }
+  selectedTripForSplit.value = tripItem
+  tripSplitDialogVisible.value = true
+}
+
+const handleCloseTripSplitDialog = () => {
+  tripSplitDialogVisible.value = false
+  selectedTripForSplit.value = null
+}
+
+const handleTripSplitSaved = () => {
   emit('timeline-refresh-requested')
 }
 

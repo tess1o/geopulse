@@ -140,7 +140,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'photo-show-on-map', 'note-saved'])
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -177,6 +177,15 @@ const contextMenuItems = computed(() => {
       icon: 'pi pi-question-circle',
       command: () => {
         emit('show-classification', props.tripItem)
+      }
+    },
+    {
+      label: 'Split trip with stay...',
+      icon: 'pi pi-directions-alt',
+      disabled: props.readOnly,
+      command: () => {
+        if (props.readOnly) return
+        emit('split-trip-with-stay', props.tripItem)
       }
     }
   ]

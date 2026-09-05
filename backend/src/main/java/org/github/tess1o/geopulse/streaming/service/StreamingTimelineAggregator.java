@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripStaySplitOverrideRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Duration;
@@ -35,6 +36,9 @@ public class StreamingTimelineAggregator {
 
     @Inject
     TimelineDataGapStayOverrideRepository dataGapStayOverrideRepository;
+
+    @Inject
+    TimelineTripStaySplitOverrideRepository tripStaySplitOverrideRepository;
 
     @Inject
     StreamingTimelineConverter converter;
@@ -173,6 +177,7 @@ public class StreamingTimelineAggregator {
             timeline.getStays().add(stayDTO);
         }
         attachDataGapOverrideMetadata(userId, timeline.getStays());
+        attachTripSplitOverrideMetadata(userId, timeline.getStays());
 
         // Get trips with boundary expansion
         var tripEntities = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
@@ -235,6 +240,39 @@ public class StreamingTimelineAggregator {
                 return;
             }
             stay.setDataGapOverrideId(firstOverrideByStayId.get(stay.getId()));
+        });
+    }
+
+    private void attachTripSplitOverrideMetadata(UUID userId, List<TimelineStayLocationDTO> stays) {
+        if (stays == null || stays.isEmpty()) {
+            return;
+        }
+
+        List<Long> stayIds = stays.stream()
+                .map(TimelineStayLocationDTO::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (stayIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Long> firstOverrideByStayId = new HashMap<>();
+        tripStaySplitOverrideRepository.findByUserIdAndStayIds(userId, stayIds).forEach(override -> {
+            if (override.getStay() == null || override.getStay().getId() == null || override.getId() == null) {
+                return;
+            }
+            firstOverrideByStayId.putIfAbsent(override.getStay().getId(), override.getId());
+        });
+
+        if (firstOverrideByStayId.isEmpty()) {
+            return;
+        }
+
+        stays.forEach(stay -> {
+            if (stay.getId() == null) {
+                return;
+            }
+            stay.setTripSplitOverrideId(firstOverrideByStayId.get(stay.getId()));
         });
     }
 

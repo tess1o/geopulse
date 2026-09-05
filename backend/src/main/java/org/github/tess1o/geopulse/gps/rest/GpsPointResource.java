@@ -151,7 +151,8 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response getGpsPointPath(
             @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("endTime") String endTime,
+            @QueryParam("simplify") @DefaultValue("true") boolean simplify) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point path for user {} between {} and {}", user.getEmail(), startTime, endTime);
 
@@ -161,7 +162,7 @@ public class GpsPointResource {
             GpsPointPathDTO path = gpsPointService.getGpsPointPath(user.getId(), start, end);
             TimelineConfig config = configurationProvider.getConfigurationForUser(user.getId());
 
-            if (config.getPathSimplificationEnabled()) {
+            if (simplify && config.getPathSimplificationEnabled()) {
                 path.setPoints(simplifyPath(user.getId(), start, end, path.getPoints(), config));
             }
 

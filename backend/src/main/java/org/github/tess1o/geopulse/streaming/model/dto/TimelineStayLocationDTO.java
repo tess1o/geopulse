@@ -34,6 +34,12 @@ public class TimelineStayLocationDTO implements GpsPoint {
     private Long dataGapOverrideId;
 
     /**
+     * Manual Trip -> Stay -> Trip override ID that currently maps to this stay.
+     * Null means this stay is not a manually inserted split stay.
+     */
+    private Long tripSplitOverrideId;
+
+    /**
      * Duration of stay in seconds
      */
     private long stayDuration;

@@ -596,10 +596,19 @@ const registerEvents = () => {
     props.map.on('mouseleave', state.lineLayerId, handlePathLeave)
   }
 
-  props.map.on('click', state.highlightedHitLayerId, handleHighlightedLineClick)
-  props.map.on('mousemove', state.highlightedHitLayerId, handleHighlightedLineMouseMove)
-  props.map.on('mouseleave', state.highlightedHitLayerId, handleHighlightedLineMouseLeave)
-  props.map.on('touchstart', state.highlightedHitLayerId, handleHighlightedLineTouchStart)
+  const highlightedListeners = []
+  if (hasMapLibreLayer(props.map, state.highlightedHitLayerId)) {
+    props.map.on('click', state.highlightedHitLayerId, handleHighlightedLineClick)
+    props.map.on('mousemove', state.highlightedHitLayerId, handleHighlightedLineMouseMove)
+    props.map.on('mouseleave', state.highlightedHitLayerId, handleHighlightedLineMouseLeave)
+    props.map.on('touchstart', state.highlightedHitLayerId, handleHighlightedLineTouchStart)
+    highlightedListeners.push(
+      { event: 'click', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineClick },
+      { event: 'mousemove', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseMove },
+      { event: 'mouseleave', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseLeave },
+      { event: 'touchstart', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineTouchStart }
+    )
+  }
 
   state.listeners = [
     ...(!hasFocusedHighlightedTrip() && props.inspectionEnabled
@@ -609,10 +618,7 @@ const registerEvents = () => {
           { event: 'mouseleave', layerId: state.lineLayerId, handler: handlePathLeave }
         ]
       : []),
-    { event: 'click', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineClick },
-    { event: 'mousemove', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseMove },
-    { event: 'mouseleave', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineMouseLeave },
-    { event: 'touchstart', layerId: state.highlightedHitLayerId, handler: handleHighlightedLineTouchStart }
+    ...highlightedListeners
   ]
 }
 
@@ -655,6 +661,7 @@ const renderLayer = () => {
 
   replayController.registerReplayUserCameraHandlers()
   const highlightedTrip = isTripItem(props.highlightedTrip) ? props.highlightedTrip : null
+  const hasHighlightedTrip = Boolean(highlightedTrip)
   const highlightedTripUsesSpeedBands = isCarMovementType(highlightedTrip?.movementType)
   const highlightedLineColor = highlightedTripUsesSpeedBands
     ? highlightedLineColorExpression
@@ -665,15 +672,8 @@ const renderLayer = () => {
   const pathLineDashArray = resolvePathLineDashArray(props.pathOptions.dashArray)
 
   const pathCollection = buildPathCollection(props.pathData)
-  const highlighted = buildHighlightedData({
-    highlightedTrip,
-    pathData: props.pathData,
-    allowPathDataFallback: props.allowPathDataTripFallback
-  })
-  const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
 
   ensureGeoJsonSource(props.map, state.sourceId, pathCollection)
-  ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
 
   ensureLayer(props.map, {
     id: state.lineLayerId,
@@ -692,6 +692,49 @@ const renderLayer = () => {
       ...(pathLineDashArray ? { 'line-dasharray': pathLineDashArray } : {})
     }
   })
+
+  if (hasMapLibreLayer(props.map, state.lineLayerId)) {
+    props.map.setPaintProperty(
+      state.lineLayerId,
+      'line-color',
+      props.pathOptions.color || '#007bff'
+    )
+    props.map.setPaintProperty(
+      state.lineLayerId,
+      'line-width',
+      props.pathOptions.weight || 4
+    )
+    props.map.setPaintProperty(
+      state.lineLayerId,
+      'line-opacity',
+      hasFocusedHighlightedTrip()
+        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
+        : (props.pathOptions.opacity ?? 0.8)
+    )
+    props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
+  }
+
+  if (!hasHighlightedTrip) {
+    unregisterEvents()
+    closeHighlightedTripPopup()
+    removeHighlightedEndpointMarkers()
+    removeLayers(props.map, [state.highlightedHitLayerId, state.highlightedLineLayerId])
+    removeSources(props.map, [state.highlightedSourceId])
+    hoverController.syncTripHoverContext(null, [])
+    syncReplayFocusLayerVisibility()
+    syncReplayMarker()
+    registerEvents()
+    return
+  }
+
+  const highlighted = buildHighlightedData({
+    highlightedTrip,
+    pathData: props.pathData,
+    allowPathDataFallback: props.allowPathDataTripFallback
+  })
+  const highlightedLineCoordinates = highlighted.fullLineCoordinates || []
+
+  ensureGeoJsonSource(props.map, state.highlightedSourceId, highlighted.lineCollection)
 
   ensureLayer(props.map, {
     id: state.highlightedLineLayerId,
@@ -731,27 +774,6 @@ const renderLayer = () => {
       highlightedLineColor
     )
     props.map.setPaintProperty(state.highlightedLineLayerId, 'line-dasharray', highlightedLineDashArray)
-  }
-
-  if (hasMapLibreLayer(props.map, state.lineLayerId)) {
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-color',
-      props.pathOptions.color || '#007bff'
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-width',
-      props.pathOptions.weight || 4
-    )
-    props.map.setPaintProperty(
-      state.lineLayerId,
-      'line-opacity',
-      hasFocusedHighlightedTrip()
-        ? HIGHLIGHTED_TRIP_BACKGROUND_OPACITY
-        : (props.pathOptions.opacity ?? 0.8)
-    )
-    props.map.setPaintProperty(state.lineLayerId, 'line-dasharray', pathLineDashArray || [1, 0])
   }
 
   syncReplayFocusLayerVisibility()

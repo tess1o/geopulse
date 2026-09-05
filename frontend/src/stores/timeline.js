@@ -303,6 +303,44 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        async fetchTripPath(startTime, endTime, options = {}) {
+            try {
+                const params = { startTime, endTime }
+                if (options.simplify === false) params.simplify = false
+                const response = await apiService.get('/gps/path', params)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async previewTripStaySplit(tripId, payload) {
+            try {
+                const response = await apiService.post(`/streaming-timeline/trips/${tripId}/stay-split/preview`, payload)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async splitTripWithStay(tripId, payload) {
+            try {
+                const response = await apiService.put(`/streaming-timeline/trips/${tripId}/stay-split`, payload)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async resetTripStaySplitOverride(overrideId) {
+            try {
+                const response = await apiService.delete(`/streaming-timeline/trip-stay-split-overrides/${overrideId}`)
+                return response?.data
+            } catch (error) {
+                throw error
+            }
+        },
+
         applyTripMovementUpdate(updatedTrip) {
             this.timelineData = applyTripMovementUpdateToTimelineItems(this.timelineData, updatedTrip)
         },

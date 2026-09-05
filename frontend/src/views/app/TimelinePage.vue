@@ -82,6 +82,7 @@
               @rename-stay="handleRenameStay"
               @timeline-refresh-requested="handleTimelineRefreshRequested"
               @reset-data-gap-override="handleResetDataGapOverride"
+              @reset-trip-split-override="handleResetTripSplitOverride"
               @photo-show-on-map="handleTimelinePhotoShowOnMap"
               @navigate-date="handleNavigateDate"
           />
@@ -648,6 +649,39 @@ const handleResetDataGapOverride = (stayItem) => {
         })
       } catch (error) {
         const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
+        toast.add({
+          severity: 'error',
+          summary: 'Reset Failed',
+          detail: errorMessage,
+          life: 5000
+        })
+      }
+    }
+  })
+}
+
+const handleResetTripSplitOverride = (stayItem) => {
+  const overrideId = stayItem?.tripSplitOverrideId
+  if (!overrideId) {
+    return
+  }
+
+  confirm.require({
+    header: 'Undo Manual Trip Split',
+    message: 'Undo this manual trip split and regenerate timeline segments?',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await timelineStore.resetTripStaySplitOverride(overrideId)
+        await reloadCurrentRange()
+        toast.add({
+          severity: 'success',
+          summary: 'Split Reset',
+          detail: 'Manual trip split was reset to automatic behavior.',
+          life: 3000
+        })
+      } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual trip split'
         toast.add({
           severity: 'error',
           summary: 'Reset Failed',

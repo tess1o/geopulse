@@ -26,7 +26,7 @@
       <div class="timeline-subtitle">
         🏠 Stayed at
         <span class="location-name">{{ stayItem.locationName }}</span>
-        <span v-if="canResetDataGapOverride" class="manual-gap-indicator">(Manual)</span>
+        <span v-if="isManualStay" class="manual-gap-indicator">(Manual)</span>
         <button
           v-if="canRenameStay"
           class="location-edit-icon-btn"
@@ -38,12 +38,12 @@
           <i class="pi pi-pencil"></i>
         </button>
         <button
-          v-if="canResetDataGapOverride"
+          v-if="isManualStay"
           class="location-reset-icon-btn"
-          aria-label="Reset data gap override"
-          :title="readOnly ? 'Reset is disabled in demo mode' : 'Reset to automatic data gap'"
+          :aria-label="resetManualStayLabel"
+          :title="readOnly ? 'Reset is disabled in demo mode' : resetManualStayLabel"
           :disabled="readOnly"
-          @click.stop="handleResetDataGapOverride"
+          @click.stop="handleResetManualStay"
         >
           <i class="pi pi-refresh"></i>
         </button>
@@ -132,7 +132,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'note-saved'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay', 'reset-data-gap-override', 'reset-trip-split-override', 'note-saved'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -188,6 +188,17 @@ const contextMenuItems = computed(() => {
       disabled: props.readOnly,
       command: () => {
         handleResetDataGapOverride()
+      }
+    })
+  }
+
+  if (canResetTripSplitOverride.value) {
+    items.push({
+      label: 'Undo manual trip split',
+      icon: 'pi pi-refresh',
+      disabled: props.readOnly,
+      command: () => {
+        handleResetTripSplitOverride()
       }
     })
   }
@@ -280,6 +291,16 @@ const canResetDataGapOverride = computed(() => {
   return Boolean(props.stayItem.dataGapOverrideId)
 })
 
+const canResetTripSplitOverride = computed(() => {
+  return Boolean(props.stayItem.tripSplitOverrideId)
+})
+
+const isManualStay = computed(() => canResetDataGapOverride.value || canResetTripSplitOverride.value)
+
+const resetManualStayLabel = computed(() => (
+  canResetTripSplitOverride.value ? 'Undo manual trip split' : 'Reset to automatic data gap'
+))
+
 const canManageMatchingNotes = computed(() => {
   return props.allowNoteCreation && matchingNotes.value.some((note) => (
     note?.source === 'GEOPULSE' && note?.editable !== false && note?.id != null
@@ -327,6 +348,19 @@ const handleRenameStay = () => {
 const handleResetDataGapOverride = () => {
   if (!canResetDataGapOverride.value || props.readOnly) return
   emit('reset-data-gap-override', props.stayItem)
+}
+
+const handleResetTripSplitOverride = () => {
+  if (!canResetTripSplitOverride.value || props.readOnly) return
+  emit('reset-trip-split-override', props.stayItem)
+}
+
+const handleResetManualStay = () => {
+  if (canResetTripSplitOverride.value) {
+    handleResetTripSplitOverride()
+    return
+  }
+  handleResetDataGapOverride()
 }
 
 const navigateToPlaceDetails = () => {
