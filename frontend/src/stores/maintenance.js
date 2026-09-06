@@ -156,7 +156,7 @@ export async function refreshMaintenance() {
 }
 
 export function startMaintenancePolling() {
-  if (!poller) poller = window.setInterval(refreshMaintenance, 2000)
+  if (!poller) poller = window.setInterval(refreshMaintenance, 5000)
 }
 
 export function acknowledgeActivation() {

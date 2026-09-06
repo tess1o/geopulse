@@ -95,6 +95,11 @@ const restApiItems = [
         id: 'api/api-tokens',
         label: 'API Tokens',
     },
+    {
+        type: 'doc',
+        id: 'api/mcp',
+        label: 'MCP Server',
+    },
     ...(hasGeneratedApiReference ? [
         ...(publicApiItems.length > 0 ? [{
             type: 'category',
@@ -214,6 +219,11 @@ const sidebars = {
                         'user-guide/timeline/travel_classification',
                         {
                             type: 'doc',
+                            id: 'user-guide/timeline/manual-trip-split',
+                            label: 'Split a Trip with a Stay',
+                        },
+                        {
+                            type: 'doc',
                             id: 'user-guide/timeline/map-matching',
                             label: 'Map Matching',
                         },
@@ -321,6 +331,7 @@ const sidebars = {
                             id: 'system-administration/configuration/valhalla-map-matching',
                             label: 'Valhalla Map Matching',
                         },
+                        'system-administration/configuration/panoramax',
                         'system-administration/configuration/reverse-geocoding',
                         'system-administration/configuration/weather',
                         'system-administration/configuration/import',
