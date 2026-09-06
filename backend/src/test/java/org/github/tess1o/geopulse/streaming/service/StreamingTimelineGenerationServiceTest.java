@@ -74,4 +74,27 @@ class StreamingTimelineGenerationServiceTest {
         assertThat(range.affectedFrom()).isEqualTo(fallbackFrom);
         assertThat(range.affectedTo()).isEqualTo(fallbackTo);
     }
+
+    @Test
+    void detectsWhetherGeneratedTimelineContainsTrips() {
+        RawTimeline rawTimeline = RawTimeline.builder()
+                .stays(List.of(Stay.builder()
+                        .startTime(Instant.parse("2026-08-28T20:30:00Z"))
+                        .duration(Duration.ofMinutes(45))
+                        .build()))
+                .trips(List.of(Trip.builder()
+                        .startTime(Instant.parse("2026-08-28T21:30:00Z"))
+                        .duration(Duration.ofMinutes(10))
+                        .tripType(TripType.CAR)
+                        .build()))
+                .dataGaps(List.of(DataGap.builder()
+                        .startTime(Instant.parse("2026-08-28T22:00:00Z"))
+                        .duration(Duration.ofHours(2))
+                        .build()))
+                .build();
+
+        assertThat(StreamingTimelineGenerationService.hasGeneratedTrips(rawTimeline)).isTrue();
+        assertThat(StreamingTimelineGenerationService.hasGeneratedTrips(
+                RawTimeline.builder().stays(rawTimeline.getStays()).build())).isFalse();
+    }
 }

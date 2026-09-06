@@ -80,6 +80,7 @@ public class MapMatchingWorker {
     }
 
     void onTimelineChanged(@Observes(during = TransactionPhase.AFTER_SUCCESS) TimelineDataChangedEvent event) {
+        if (!event.isTripsChanged()) return;
         submitTimelineChanged(event.getUserId(), event.getAffectedFrom(), event.getAffectedTo());
     }
 

@@ -69,7 +69,7 @@ class MapMatchingWorkerStatusTest {
         worker.executor = executor;
         worker.workerExecution = new MapMatchingWorkerExecution();
 
-        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null));
+        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null, true));
 
         verify(executor).submit(any(Runnable.class));
         verifyNoInteractions(reconciliationRepository);
@@ -93,12 +93,22 @@ class MapMatchingWorkerStatusTest {
         worker.executor = executor;
         worker.workerExecution = new MapMatchingWorkerExecution();
 
-        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null));
+        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null, true));
         submittedWork.getAllValues().getFirst().run();
 
         verify(reconciliationRepository, times(0)).enqueue(
                 any(UUID.class), any(Instant.class), any(Instant.class), any(MapMatchingSource.class), any(Instant.class));
         verify(executor).submit(any(Runnable.class));
+    }
+
+    @Test
+    void timelineChangeWithoutTripsDoesNotQueueAutomaticReconciliation() {
+        worker.executor = executor;
+
+        worker.onTimelineChanged(new TimelineDataChangedEvent(
+                UUID.randomUUID(), Instant.now(), Instant.now().plusSeconds(1), null, false));
+
+        verifyNoInteractions(executor, reconciliationRepository);
     }
 
     @Test

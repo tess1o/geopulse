@@ -19,4 +19,5 @@ public class TimelineDataChangedEvent {
     private final Instant affectedFrom;
     private final Instant affectedTo;
     private final UUID jobId;
+    private final boolean tripsChanged;
 }

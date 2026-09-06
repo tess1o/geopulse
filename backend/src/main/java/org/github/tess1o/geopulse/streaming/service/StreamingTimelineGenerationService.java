@@ -336,7 +336,8 @@ public class StreamingTimelineGenerationService {
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
             stageStart = metricsStart();
             TimelineDataRange timelineDataRange = calculateTimelineDataRange(regenerationStartTime, Instant.now(), generatedTimeline);
-            fireTimelineDataChanged(userId, timelineDataRange.affectedFrom(), timelineDataRange.affectedTo(), jobId);
+            fireTimelineDataChanged(userId, timelineDataRange.affectedFrom(), timelineDataRange.affectedTo(), jobId,
+                    hasGeneratedTrips(generatedTimeline));
             recordTimelineStage(stageStart, trigger, "timeline_changed_event", "success");
 
         } catch (Exception e) {
@@ -494,11 +495,12 @@ public class StreamingTimelineGenerationService {
                 Parameters.with("status", TimelineStatus.IDLE).and("userId", userId));
     }
 
-    private void fireTimelineDataChanged(UUID userId, Instant affectedFrom, Instant affectedTo, UUID jobId) {
+    private void fireTimelineDataChanged(UUID userId, Instant affectedFrom, Instant affectedTo, UUID jobId,
+                                         boolean tripsChanged) {
         if (userId == null || affectedFrom == null || affectedTo == null) {
             return;
         }
-        timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
+        timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId, tripsChanged));
     }
 
     static TimelineDataRange calculateTimelineDataRange(Instant fallbackFrom, Instant fallbackTo, RawTimeline rawTimeline) {
@@ -529,6 +531,11 @@ public class StreamingTimelineGenerationService {
             }
         }
         return range;
+    }
+
+    static boolean hasGeneratedTrips(RawTimeline rawTimeline) {
+        return rawTimeline != null && rawTimeline.getTrips() != null
+                && rawTimeline.getTrips().stream().anyMatch(trip -> trip != null && trip.getStartTime() != null);
     }
 
     private static Instant endAt(Instant start, Duration duration) {

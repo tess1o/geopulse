@@ -81,7 +81,7 @@ class MapMatchingTimelineChangeObserverTransactionTest {
                     .movementType("WALK")
                     .build());
             entityManager.flush();
-            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId));
+            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, affectedFrom, affectedTo, jobId, true));
         });
 
         assertThat(awaitAutomaticReconciliationCount(userId)).isOne();
@@ -107,7 +107,7 @@ class MapMatchingTimelineChangeObserverTransactionTest {
                     .movementType("CAR")
                     .build());
             entityManager.flush();
-            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, backdatedTripStart, affectedTo, jobId));
+            timelineDataChangedEvent.fire(new TimelineDataChangedEvent(userId, backdatedTripStart, affectedTo, jobId, true));
         });
 
         assertThat(awaitAutomaticReconciliationCount(userId)).isOne();

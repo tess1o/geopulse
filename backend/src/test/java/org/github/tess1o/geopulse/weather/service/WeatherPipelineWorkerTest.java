@@ -92,7 +92,7 @@ class WeatherPipelineWorkerTest {
         when(weatherService.queueHistoricalBackfill(userId, from, to))
                 .thenReturn(WeatherReconciliationQueueStatus.QUEUED);
 
-        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null));
+        worker.onTimelineChanged(new TimelineDataChangedEvent(userId, from, to, null, false));
 
         assertThat(executor.queuedTasks()).isOne();
         verify(weatherService, never()).queueHistoricalBackfill(any(), any(), any());
