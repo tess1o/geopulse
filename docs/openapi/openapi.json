@@ -2435,6 +2435,37 @@
         "enum" : [ "UNPLANNED", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
         "type" : "string"
       },
+      "TripStaySplitRequest" : {
+        "required" : [ "stayStartTime", "stayEndTime", "anchorTimestamp", "latitude", "longitude" ],
+        "type" : "object",
+        "properties" : {
+          "stayStartTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "stayEndTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "anchorTimestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "locationName" : {
+            "maxLength" : 500,
+            "type" : "string"
+          }
+        }
+      },
       "TripVisitOverrideRequestDto" : {
         "type" : "object",
         "properties" : {
@@ -5109,6 +5140,32 @@
           }
         },
         "summary" : "Test Valhalla Connection",
+        "security" : [ {
+          "jwt" : [ "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/admin/settings/panoramax/test" : {
+      "post" : {
+        "operationId" : "AdminSettingsResource_testPanoramaxConnection",
+        "tags" : [ "Admin: System Settings" ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Test Panoramax Connection",
         "security" : [ {
           "jwt" : [ "ADMIN" ]
         } ]
@@ -10076,6 +10133,13 @@
             "type" : "string"
           }
         }, {
+          "name" : "simplify",
+          "in" : "query",
+          "schema" : {
+            "default" : true,
+            "type" : "boolean"
+          }
+        }, {
           "name" : "startTime",
           "in" : "query",
           "schema" : {
@@ -13829,6 +13893,41 @@
         } ]
       }
     },
+    "/api/streaming-timeline/trip-stay-split-overrides/{overrideId}" : {
+      "delete" : {
+        "operationId" : "StreamingTimelineResource_resetTripStaySplitOverride",
+        "tags" : [ "User: Timeline" ],
+        "parameters" : [ {
+          "name" : "overrideId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          }
+        },
+        "summary" : "Reset Trip Stay Split Override",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
     "/api/streaming-timeline/trips/{tripId}/classification" : {
       "get" : {
         "operationId" : "StreamingTimelineResource_getTripClassificationDetails",
@@ -13940,6 +14039,102 @@
           }
         },
         "summary" : "Reset Trip Movement Type",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/streaming-timeline/trips/{tripId}/stay-split" : {
+      "put" : {
+        "operationId" : "StreamingTimelineResource_splitTripWithStay",
+        "tags" : [ "User: Timeline" ],
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TripStaySplitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Split Trip With Stay",
+        "security" : [ {
+          "jwt" : [ "USER", "ADMIN" ]
+        } ]
+      }
+    },
+    "/api/streaming-timeline/trips/{tripId}/stay-split/preview" : {
+      "post" : {
+        "operationId" : "StreamingTimelineResource_previewTripStaySplit",
+        "tags" : [ "User: Timeline" ],
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TripStaySplitRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Authentication is required or the provided credentials are invalid."
+          },
+          "403" : {
+            "description" : "The authenticated user does not have permission to access this resource."
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Preview Trip Stay Split",
         "security" : [ {
           "jwt" : [ "USER", "ADMIN" ]
         } ]
@@ -16420,7 +16615,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.38.1",
+    "version" : "1.39.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
