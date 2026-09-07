@@ -18,7 +18,7 @@ searchable timeline of stays, trips, and movement patterns. It runs fully on you
 **Immich**, **Memos**, and **Weather** so photos, notes, and conditions appear directly on your map history.
 
 <div align="center">
-  <img src="images/Timeline.jpg" alt="GeoPulse Timeline" width="800" style="border-radius: 8px;"/>
+  <img src="docs-website/static/img/geopulse-app-timeline.png" alt="GeoPulse Timeline" width="800" style="border-radius: 8px;"/>
   <p><em>Comprehensive timeline visualization with automatic trip classification.</em></p>
 </div>
 
@@ -59,6 +59,8 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Smart Detection:** Automatically converts GPS points into stays, trips, and data gaps.
 - **Custom Logic:** Fully configurable detection sensitivity and travel mode classification.
 - **Deep Insights:** Analytics for distance, visit frequency, and movement patterns over time.
+- **[Map Matching](https://tess1o.github.io/geopulse/docs/user-guide/timeline/map-matching):** Valhalla-backed route refinement makes noisy trip paths follow roads and paths while raw GPS remains authoritative.
+- **[Panoramax](https://tess1o.github.io/geopulse/docs/system-administration/configuration/panoramax):** Optional public street-level imagery coverage and photo viewing on Timeline maps.
 - **Immich Integration:** Photos from your library appear directly on your map timeline.
 - **Memos Integration:** Timestamped notes from Memos can appear alongside your timeline.
 - **Weather Integration:** Current weather enrichment is enabled by default for trips, stays, map layers, and journey insights; historical backfill is admin opt-in. See [Weather processing architecture](docs/WEATHER_PROCESSING.md).
@@ -67,6 +69,11 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 
 - **Real-time Tracking:** Supports OwnTracks (HTTP/MQTT), Overland, GPSLogger, Home Assistant, Traccar, Dawarich or Colota.
 - **Universal Import:** Bulk import from Google Timeline, GPX, GeoJSON, OwnTracks exports, and CSV.
+
+**AI Chat & MCP**
+
+- **AI Chat:** Bring your own OpenAI-compatible key for AI-assisted insights.
+- **[MCP Server](https://tess1o.github.io/geopulse/docs/api/mcp):** Read-only, API-token-authenticated tools for AI clients to query their timeline and permitted friend data.
 
 **Sharing & Privacy**
 
@@ -80,7 +87,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Lightweight:** Typically under 100MB RAM and 1% CPU usage.
 - **Self-Sovereign:** No telemetry, no analytics beacons, and no third-party tracking.
 - **Data Freedom:** Full data export and per-account deletion support.
-- **Optional AI:** Bring your own OpenAI-compatible key for AI-assisted insights.
+- **[Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore):** Encrypted, password-protected full backups with manual restore and scheduled automatic backups.
 
 ---
 

@@ -257,6 +257,87 @@
           "url": "/app/admin/settings?tab=geocoding"
         }
       ]
+    },
+    {
+      "id": "schedule-encrypted-backups",
+      "title": "Schedule encrypted backups",
+      "description": "Admins can configure backup storage and a password in Admin Settings, then enable cron-scheduled full backups. Restore a trusted backup from the same screen with its password.",
+      "icon": "pi pi-file-export",
+      "audiences": ["admin"],
+      "links": [
+        {
+          "label": "Open Backup & Restore",
+          "url": "/app/admin/settings?tab=backup"
+        },
+        {
+          "label": "Backup & Restore docs",
+          "url": "https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore"
+        }
+      ]
+    },
+    {
+      "id": "configure-map-matching",
+      "title": "Refine routes with Map Matching",
+      "description": "Admins can configure a Valhalla server and enable Map Matching globally. Users can then opt in to road-following route geometry while raw GPS remains unchanged.",
+      "icon": "pi pi-map",
+      "audiences": ["admin"],
+      "links": [
+        {
+          "label": "Open Map Matching settings",
+          "url": "/app/admin/settings?tab=map-matching"
+        },
+        {
+          "label": "Map Matching docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/timeline/map-matching"
+        }
+      ]
+    },
+    {
+      "id": "connect-an-ai-client-with-mcp",
+      "title": "Connect an AI client with MCP",
+      "description": "MCP (Model Context Protocol) lets ChatGPT and other AI clients use GeoPulse's read-only timeline tools. It is enabled by default; create an API token in Profile → Security before connecting.",
+      "icon": "pi pi-sparkles",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "MCP Server docs",
+          "url": "https://tess1o.github.io/geopulse/docs/api/mcp"
+        },
+        {
+          "label": "Open API Tokens",
+          "url": "/app/profile?tab=security"
+        }
+      ]
+    },
+    {
+      "id": "split-a-trip-with-a-stay",
+      "title": "Split a trip with a missed stop",
+      "description": "If GeoPulse combines a meaningful stop into one trip, open that trip's context menu and choose “Split trip with stay...”. It creates Trip → Stay → Trip and keeps the correction after regeneration.",
+      "icon": "pi pi-directions-alt",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Open timeline",
+          "url": "/app/timeline"
+        },
+        {
+          "label": "Manual trip split docs",
+          "url": "https://tess1o.github.io/geopulse/docs/user-guide/timeline/manual-trip-split"
+        }
+      ]
+    },
+    {
+      "id": "weather-on-your-timeline",
+      "title": "See weather along your timeline",
+      "description": "Weather adds conditions to stays, trips, Timeline maps, and Journey Insights. Ongoing collection is enabled by default; an administrator can opt into historical backfill.",
+      "icon": "pi pi-cloud",
+      "audiences": ["all"],
+      "links": [
+        {
+          "label": "Weather docs",
+          "url": "https://tess1o.github.io/geopulse/docs/system-administration/configuration/weather"
+        }
+      ]
     }
   ]
 }

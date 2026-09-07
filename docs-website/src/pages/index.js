@@ -2,9 +2,18 @@ import clsx from 'clsx';
 import {useEffect, useState} from 'react';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import styles from './index.module.css';
+
+const DEFAULT_GITHUB_STATS = {stars: 1394, forks: 57};
+const githubCountFormatter = new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 1});
+const githubForkFormatter = new Intl.NumberFormat('en-US');
+
+function githubStat(value, fallback) {
+    return Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+}
 
 const exploreFeatures = [
     {
@@ -39,11 +48,12 @@ const exploreFeatures = [
         id: 'timeline',
         tabLabel: 'Timeline',
         title: 'Stays, Trips, and Gaps',
-        description: 'GeoPulse converts raw points into timeline events with configurable detection logic.',
+        description: 'GeoPulse turns raw points into timeline events, then lets you refine routes and correct missed stops.',
         highlights: [
             'Automatic stay/trip/gap detection',
-            'Travel classification tuning (walk/car/bicycle/train/flight)',
-            'Manual movement-type overrides with rebuild-safe reapply',
+            'Configurable travel modes from walking and cycling to motorcycle, train, flight, and boat',
+            'Split a missed stop into Trip → Stay → Trip; the correction survives regeneration',
+            'Optional Valhalla Map Matching follows roads while raw GPS remains authoritative',
         ],
         link: '/docs/user-guide/core-features/timeline',
         accent: 'chipTeal',
@@ -70,7 +80,7 @@ const exploreFeatures = [
         highlights: [
             'Invite, accept, reject, and cancel friend requests',
             'Separate permissions for live location and timeline history',
-            'Live map and shared timeline views for permitted friends',
+            'Live map and shared timeline views, including embeddable shared locations',
         ],
         link: '/docs/user-guide/social-and-sharing/friends',
         accent: 'chipRose',
@@ -105,16 +115,30 @@ const exploreFeatures = [
         icon: 'image',
     },
     {
+        id: 'weather',
+        tabLabel: 'Weather',
+        title: 'Weather Along Your Timeline',
+        description: 'Add local conditions to the places and journeys in your location history.',
+        highlights: [
+            'See temperature, precipitation, wind, and conditions on stays, trips, and Timeline maps',
+            'Compare weather patterns in Journey Insights and earn weather-related badges',
+            'Ongoing collection uses Open-Meteo by default; admins can opt into historical backfill',
+        ],
+        link: '/docs/system-administration/configuration/weather',
+        accent: 'chipSky',
+        icon: 'cloud',
+    },
+    {
         id: 'ai',
         tabLabel: 'AI',
-        title: 'AI Assistant (Optional)',
-        description: 'Ask natural-language questions about your personal movement history.',
+        title: 'AI Assistant & MCP',
+        description: 'Ask natural-language questions or connect an AI client to your personal movement history.',
         highlights: [
-            'Bring your own OpenAI-compatible API key/model',
+            'Bring your own OpenAI-compatible API key/model with encrypted per-user settings',
             'Query stays, trips, places, and travel patterns',
-            'Per-user configuration and encrypted key storage',
+            'MCP is enabled by default for API-token-authenticated, read-only AI tools',
         ],
-        link: '/docs/user-guide/using-geopulse/ai-assistant',
+        link: '/docs/api/mcp',
         accent: 'chipTeal',
         icon: 'sparkles',
     },
@@ -268,6 +292,12 @@ function Icon({name, className}) {
                     <path d="m21 16-5-5L5 19" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
                 </svg>
             );
+        case 'cloud':
+            return (
+                <svg {...common}>
+                    <path d="M7 18h10a4 4 0 0 0 .8-7.9A5.5 5.5 0 0 0 7.2 8.7 4.5 4.5 0 0 0 7 18Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                </svg>
+            );
         case 'sparkles':
             return (
                 <svg {...common}>
@@ -322,6 +352,11 @@ function HeroOrbit() {
 }
 
 function Hero() {
+    const {siteConfig} = useDocusaurusContext();
+    const configuredStats = siteConfig.customFields?.githubStats;
+    const stars = githubStat(configuredStats?.stars, DEFAULT_GITHUB_STATS.stars);
+    const forks = githubStat(configuredStats?.forks, DEFAULT_GITHUB_STATS.forks);
+
     return (
         <section className={styles.heroSection}>
             <div className={clsx('container', styles.heroContainer)}>
@@ -349,12 +384,12 @@ function Hero() {
                         </span>
                         <span className={styles.githubMetric}>
                             <Icon name="star" className={styles.starIcon} />
-                            <span>1.3K Stars</span>
+                            <span>{githubCountFormatter.format(stars)} Stars</span>
                         </span>
                         <span className={styles.badgeSeparator}>.</span>
                         <span className={styles.githubMetric}>
                             <Icon name="fork" className={styles.forkIcon} />
-                            <span>50 Forks</span>
+                            <span>{githubForkFormatter.format(forks)} Forks</span>
                         </span>
                     </Link>
                     <p className={styles.socialProofText}>The privacy-first, open-source alternative to Google Timeline.</p>
