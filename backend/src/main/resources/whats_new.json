@@ -1,5 +1,18 @@
 [
   {
+    "version": "1.39.0",
+    "title": "GeoPulse 1.39.0",
+    "highlights": [
+      "Added MCP server support for read-only access to timelines, stays, trips, route statistics, and shared friend data",
+      "Added manual trip splitting to insert a missed stay and retain it during timeline regeneration",
+      "Added Panoramax street-level imagery integration for timeline maps",
+      "Collapsed map controls into a \"More...\" menu on mobile devices",
+      "Fixed map matching for ongoing trips",
+      "Updated documentation for MCP, Panoramax, and manual trip splitting"
+    ],
+    "releaseUrl": "https://github.com/tess1o/geopulse/releases/tag/v1.39.0"
+  },
+  {
     "version": "1.38.1",
     "title": "GeoPulse 1.38.1",
     "highlights": [
