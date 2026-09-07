@@ -6,12 +6,12 @@
       <DemoReadOnlyBanner />
 
       <div class="page-header">
-        <h1>Admin Dashboard</h1>
-        <p class="text-muted">System overview and quick actions</p>
+        <h1>Administration</h1>
+        <p class="text-muted">Instance health, operations, and access management</p>
       </div>
 
       <div class="stats-header">
-        <h2 class="stats-title">System Overview</h2>
+        <h2 class="stats-title">Instance Health</h2>
         <Button
           icon="pi pi-refresh"
           label="Refresh"
@@ -20,6 +20,29 @@
           @click="loadStats"
           :loading="loading"
         />
+      </div>
+
+      <div v-if="healthLoaded" class="health-summary" :class="{ 'health-summary--warning': healthWarnings.length }">
+        <i :class="healthWarnings.length ? 'pi pi-exclamation-triangle' : 'pi pi-check-circle'" />
+        <span>{{ healthWarnings.length ? `${healthWarnings.length} item${healthWarnings.length === 1 ? '' : 's'} need attention` : 'No configuration issues detected' }}</span>
+      </div>
+
+      <div v-if="healthLoaded" class="health-grid">
+        <Card v-for="card in healthCards" :key="card.label" class="health-card">
+          <template #content>
+            <div class="health-card-header">
+              <span><i :class="card.icon" /> {{ card.label }}</span>
+              <Tag :value="card.status" :severity="card.severity" />
+            </div>
+            <p>{{ card.detail }}</p>
+            <Button :label="card.action" size="small" text @click="router.push(card.to)" />
+          </template>
+        </Card>
+      </div>
+      <Message v-else-if="!loading" severity="warn" :closable="false">Health details are temporarily unavailable. Refresh to try again.</Message>
+
+      <div class="stats-header usage-header">
+        <h2 class="stats-title">Instance Usage</h2>
       </div>
 
       <div class="stats-grid">
@@ -144,12 +167,12 @@
 
     <!-- Quick Actions -->
     <div class="quick-actions-grid">
-      <!-- User Management -->
+      <!-- People & Access -->
       <Card class="actions-card">
         <template #content>
           <h3 class="actions-title">
             <i class="pi pi-users actions-icon"></i>
-            User Management
+            People & Access
           </h3>
           <div class="actions-buttons">
             <router-link to="/app/admin/users" class="no-underline">
@@ -161,26 +184,36 @@
             <router-link to="/app/admin/oidc-providers" class="no-underline">
               <Button label="OIDC Providers" icon="pi pi-key" severity="secondary" class="action-button" />
             </router-link>
+            <router-link to="/app/admin/audit-logs" class="no-underline">
+              <Button label="Audit Logs" icon="pi pi-history" severity="secondary" class="action-button" />
+            </router-link>
           </div>
         </template>
       </Card>
 
-      <!-- System Configuration -->
+      <!-- Operations -->
       <Card class="actions-card">
         <template #content>
           <h3 class="actions-title">
-            <i class="pi pi-cog actions-icon"></i>
-            System Configuration
+            <i class="pi pi-database actions-icon"></i>
+            Operations
           </h3>
+          <div class="actions-buttons">
+            <router-link to="/app/admin/backups" class="no-underline">
+              <Button label="Backups & Restore" icon="pi pi-database" class="action-button" />
+            </router-link>
+            <router-link to="/app/admin/timeline-regeneration-campaigns" class="no-underline">
+              <Button label="Timeline Processing" icon="pi pi-refresh" severity="secondary" class="action-button" />
+            </router-link>
+          </div>
+        </template>
+      </Card>
+      <Card class="actions-card">
+        <template #content>
+          <h3 class="actions-title"><i class="pi pi-cog actions-icon"></i> Configuration</h3>
           <div class="actions-buttons">
             <router-link to="/app/admin/settings" class="no-underline">
               <Button label="System Settings" icon="pi pi-cog" class="action-button" />
-            </router-link>
-            <router-link to="/app/admin/audit-logs" class="no-underline">
-              <Button label="Audit Logs" icon="pi pi-history" severity="secondary" class="action-button" />
-            </router-link>
-            <router-link to="/app/admin/timeline-regeneration-campaigns" class="no-underline">
-              <Button label="Timeline Regeneration" icon="pi pi-refresh" severity="secondary" class="action-button" />
             </router-link>
           </div>
         </template>
@@ -198,6 +231,7 @@ import Card from 'primevue/card'
 import Skeleton from 'primevue/skeleton'
 import Breadcrumb from 'primevue/breadcrumb'
 import Tag from 'primevue/tag'
+import Message from 'primevue/message'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import adminService from '@/utils/adminService'
@@ -224,6 +258,7 @@ const stats = ref({
 })
 
 const loading = ref(false)
+const healthLoaded = ref(false)
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -296,6 +331,55 @@ const weatherNextAction = computed(() => {
   return null
 })
 
+const health = computed(() => stats.value.health || {})
+const securityWarnings = computed(() => health.value.security?.warnings || [])
+const healthWarnings = computed(() => {
+  if (!healthLoaded.value) return []
+  const warnings = [...securityWarnings.value]
+  if (!health.value.backup?.latestBackupAt) warnings.push('No local backup found')
+  if (!health.value.ingestion?.latestReceivedAt) warnings.push('No GPS data received')
+  if (Number(health.value.timeline?.failedJobs || 0) > 0) warnings.push('Timeline jobs failed')
+  return warnings
+})
+const healthCards = computed(() => {
+  const backup = health.value.backup || {}
+  const ingestion = health.value.ingestion || {}
+  const timeline = health.value.timeline || {}
+  const weather = stats.value.weatherStatus || {}
+  const lastReceived = ingestion.latestReceivedAt
+  const backupReady = Boolean(backup.latestBackupAt)
+  const processing = Number(timeline.queuedJobs || 0) + Number(timeline.runningJobs || 0)
+  const failedJobs = Number(timeline.failedJobs || 0)
+  const weatherProblem = weather.providerHealth?.status && weather.providerHealth.status !== 'HEALTHY'
+  return [
+    {
+      label: 'Backups', icon: 'pi pi-database', to: '/app/admin/backups', action: 'Open backups',
+      status: backupReady ? 'READY' : 'ACTION NEEDED', severity: backupReady ? 'success' : 'warn',
+      detail: backupReady ? `Latest backup ${formatDateTime(backup.latestBackupAt)}` : 'No local backup found yet.'
+    },
+    {
+      label: 'GPS Ingestion', icon: 'pi pi-map-marker', to: '/app/admin/users', action: 'Manage users',
+      status: lastReceived ? 'RECEIVING' : 'NO DATA', severity: lastReceived ? 'success' : 'warn',
+      detail: lastReceived ? `Latest point received ${formatDateTime(lastReceived)}` : 'No GPS points have been received.'
+    },
+    {
+      label: 'Timeline Processing', icon: 'pi pi-refresh', to: '/app/admin/timeline-regeneration-campaigns', action: 'View processing',
+      status: failedJobs ? 'FAILED' : processing ? 'RUNNING' : 'IDLE', severity: failedJobs ? 'danger' : processing ? 'info' : 'success',
+      detail: failedJobs ? `${failedJobs} failed job${failedJobs === 1 ? '' : 's'} in the current process.` : processing ? `${processing} job${processing === 1 ? '' : 's'} active.` : 'No active timeline jobs.'
+    },
+    {
+      label: 'Weather', icon: 'pi pi-cloud', to: '/app/admin/settings?tab=weather', action: 'Open weather settings',
+      status: weatherProblem ? 'ATTENTION' : weather.enabled === false ? 'DISABLED' : 'READY', severity: weatherProblem ? 'warn' : weather.enabled === false ? 'secondary' : 'success',
+      detail: weatherProblem ? (weather.providerHealth?.status || 'Provider needs attention') : weather.enabled === false ? 'Weather enrichment is disabled.' : 'Weather provider is available.'
+    },
+    {
+      label: 'Security', icon: 'pi pi-shield', to: '/app/admin/settings?tab=authentication', action: 'Open security settings',
+      status: securityWarnings.value.length ? 'ACTION NEEDED' : 'READY', severity: securityWarnings.value.length ? 'warn' : 'success',
+      detail: securityWarnings.value.length ? securityWarnings.value[0] : 'No configuration warnings.'
+    }
+  ]
+})
+
 const isFutureTimestamp = (value) => {
   if (!value) return false
   const timestamp = new Date(value).getTime()
@@ -319,6 +403,7 @@ const loadStats = async () => {
   try {
     const dashboardStats = await adminService.getDashboardStats()
     stats.value = dashboardStats
+    healthLoaded.value = !!dashboardStats?.health
   } catch (error) {
     console.error('Failed to load admin stats:', error)
     // Keep existing values on error
@@ -364,6 +449,13 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
+.health-summary { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding: .8rem 1rem; border-radius: var(--gp-radius-medium); background: var(--gp-success-light, #ecfdf5); color: var(--gp-success-dark, #166534); }
+.health-summary--warning { background: var(--gp-warning-light, #fff7ed); color: var(--gp-warning-dark, #9a3412); }
+.health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.health-card-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 600; }
+.health-card p { min-height: 2.8rem; margin: 1rem 0 .5rem; color: var(--text-color-secondary); font-size: .9rem; line-height: 1.4; }
+.usage-header { margin-top: .5rem; }
+
 .stats-title {
   margin: 0;
   font-size: 1.25rem;
@@ -382,12 +474,14 @@ onMounted(() => {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+  .health-grid { grid-template-columns: 1fr; }
 }
 
 /* Stat Cards */

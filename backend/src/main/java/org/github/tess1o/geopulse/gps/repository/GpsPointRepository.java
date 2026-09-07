@@ -143,6 +143,11 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .firstResultOptional();
     }
 
+    public Optional<GpsPointEntity> findLatestReceived() {
+        return find("createdAt IS NOT NULL ORDER BY createdAt DESC")
+                .firstResultOptional();
+    }
+
     public Optional<GpsPointEntity> findLatest(UUID userId) {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId)
                 .firstResultOptional();

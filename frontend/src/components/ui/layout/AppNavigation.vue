@@ -39,17 +39,24 @@
                 <span class="gp-nav-section-title">Administration</span>
               </div>
 
-              <!-- User Management -->
               <NavigationSection
-                title="User Management"
-                :items="adminUserManagementItems"
+                title="Overview"
+                :items="adminOverviewItems"
                 @item-click="handleItemClick"
               />
-
-              <!-- System Configuration -->
               <NavigationSection
-                title="System Configuration"
-                :items="adminSystemItems"
+                title="Operations"
+                :items="adminOperationsItems"
+                @item-click="handleItemClick"
+              />
+              <NavigationSection
+                title="People & Access"
+                :items="adminPeopleItems"
+                @item-click="handleItemClick"
+              />
+              <NavigationSection
+                title="Configuration"
+                :items="adminConfigurationItems"
                 @item-click="handleItemClick"
               />
             </template>
@@ -315,7 +322,31 @@ const accountItems = computed(() => [
   }
 ])
 
-const adminUserManagementItems = computed(() => [
+const adminOverviewItems = computed(() => [
+  {
+    label: 'Overview',
+    icon: 'pi pi-th-large',
+    to: '/app/admin',
+    key: 'admin-dashboard'
+  }
+])
+
+const adminOperationsItems = computed(() => [
+  {
+    label: 'Backups & Restore',
+    icon: 'pi pi-database',
+    to: '/app/admin/backups',
+    key: 'admin-backups'
+  },
+  {
+    label: 'Timeline Processing',
+    icon: 'pi pi-refresh',
+    to: '/app/admin/timeline-regeneration-campaigns',
+    key: 'admin-timeline-regeneration'
+  }
+])
+
+const adminPeopleItems = computed(() => [
   {
     label: 'Manage Users',
     icon: 'pi pi-users',
@@ -333,42 +364,22 @@ const adminUserManagementItems = computed(() => [
     icon: 'pi pi-key',
     to: '/app/admin/oidc-providers',
     key: 'admin-oidc-providers'
+  },
+  {
+    label: 'Audit Logs',
+    icon: 'pi pi-history',
+    to: '/app/admin/audit-logs',
+    key: 'admin-audit-logs',
+    disabled: adminReadOnly.value
   }
 ])
 
-const adminSystemItems = computed(() => {
-  const items = [
-    {
-      label: 'System Settings',
-      icon: 'pi pi-cog',
-      to: '/app/admin/settings',
-      key: 'admin-settings'
-    },
-    {
-      label: 'Admin Dashboard',
-      icon: 'pi pi-th-large',
-      to: '/app/admin',
-      key: 'admin-dashboard'
-    },
-    {
-      label: 'Timeline Regeneration',
-      icon: 'pi pi-refresh',
-      to: '/app/admin/timeline-regeneration-campaigns',
-      key: 'admin-timeline-regeneration'
-    }
-  ]
-
-  if (!adminReadOnly.value) {
-    items.push({
-      label: 'Audit Logs',
-      icon: 'pi pi-history',
-      to: '/app/admin/audit-logs',
-      key: 'admin-audit-logs'
-    })
-  }
-
-  return items
-})
+const adminConfigurationItems = computed(() => [{
+  label: 'System Settings',
+  icon: 'pi pi-cog',
+  to: '/app/admin/settings',
+  key: 'admin-settings'
+}])
 
 // Methods
 const handleItemClick = (item) => {

@@ -2,56 +2,6 @@
   <Card class="profile-info-card">
     <template #content>
       <form @submit.prevent="handleSubmit" class="profile-form">
-        <!-- Avatar Section -->
-        <div class="avatar-section">
-          <div class="avatar-preview">
-            <Avatar
-              :image="currentAvatarImage"
-              size="xlarge"
-              class="user-avatar"
-            />
-            <div class="avatar-info">
-              <h3 class="avatar-title">Profile Picture</h3>
-              <p class="avatar-description">Choose a preset avatar or upload your own (optimized for map markers)</p>
-              <div class="avatar-actions">
-                <Button
-                  type="button"
-                  label="Upload Custom Avatar"
-                  icon="pi pi-upload"
-                  size="small"
-                  outlined
-                  :disabled="readOnly"
-                  @click="triggerAvatarUpload"
-                />
-                <input
-                  ref="avatarFileInput"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  class="hidden-avatar-input"
-                  @change="handleAvatarFileChange"
-                />
-                <small class="help-text">Accepted: PNG, JPEG, WEBP. Automatically resized before upload.</small>
-                <small v-if="selectedAvatarFile" class="help-text">Custom avatar selected: {{ selectedAvatarFile.name }}</small>
-                <small v-if="errors.avatar" class="error-message">
-                  {{ errors.avatar }}
-                </small>
-              </div>
-            </div>
-          </div>
-
-          <div class="avatar-grid">
-            <div
-              v-for="(avatar, index) in avatarOptions"
-              :key="index"
-              :class="['avatar-option', { active: avatar === localAvatar, disabled: readOnly }]"
-              @click="selectBuiltInAvatar(avatar)"
-            >
-              <Avatar :image="avatar" size="large" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Full Name Field -->
         <div class="form-section">
           <div class="form-field" data-setting-id="fullName">
             <label for="fullName" class="form-label">Full Name</label>
@@ -66,17 +16,6 @@
             <small v-if="errors.fullName" class="error-message">
               {{ errors.fullName }}
             </small>
-          </div>
-
-          <div class="form-field" data-setting-id="email">
-            <label for="email" class="form-label">Email Address</label>
-            <InputText
-              id="email"
-              :value="userEmail"
-              disabled
-              class="w-full"
-            />
-            <small class="help-text">Email cannot be changed</small>
           </div>
 
           <div class="form-field" data-setting-id="timezone">
@@ -228,6 +167,28 @@
           </div>
 
         </div>
+
+        <section class="avatar-section">
+          <h2 class="avatar-section-title">Profile image <span>Optional</span></h2>
+          <div class="avatar-preview">
+            <Avatar :image="currentAvatarImage" size="xlarge" class="user-avatar" />
+            <div class="avatar-info">
+              <p class="avatar-description">Choose a preset avatar or upload your own for map markers.</p>
+              <div class="avatar-actions">
+                <Button type="button" label="Upload Custom Avatar" icon="pi pi-upload" size="small" outlined :disabled="readOnly" @click="triggerAvatarUpload" />
+                <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden-avatar-input" @change="handleAvatarFileChange" />
+                <small class="help-text">Accepted: PNG, JPEG, WEBP. Automatically resized before upload.</small>
+                <small v-if="selectedAvatarFile" class="help-text">Custom avatar selected: {{ selectedAvatarFile.name }}</small>
+                <small v-if="errors.avatar" class="error-message">{{ errors.avatar }}</small>
+              </div>
+            </div>
+          </div>
+          <div class="avatar-grid">
+            <div v-for="(avatar, index) in avatarOptions" :key="index" :class="['avatar-option', { active: avatar === localAvatar, disabled: readOnly }]" @click="selectBuiltInAvatar(avatar)">
+              <Avatar :image="avatar" size="large" />
+            </div>
+          </div>
+        </section>
 
         <!-- Action Buttons -->
         <div class="form-actions">
@@ -452,15 +413,13 @@ const hasChanges = computed(() => {
     ? form.value.customRedirectUrl
     : form.value.defaultRedirectUrl
 
-  return selectedAvatarFile.value !== null ||
-         form.value.fullName !== props.userName ||
-         localAvatar.value !== props.userAvatar ||
-         form.value.timezone !== props.userTimezone ||
-         form.value.dateFormat !== props.userDateFormat ||
-         form.value.timeFormat !== props.userTimeFormat ||
-         form.value.distanceUnit !== props.userDistanceUnit ||
-         form.value.temperatureUnit !== props.userTemperatureUnit ||
-         effectiveRedirectUrl !== props.userDefaultRedirectUrl
+  const accountChanged = selectedAvatarFile.value !== null || form.value.fullName !== props.userName || localAvatar.value !== props.userAvatar
+  const preferencesChanged = form.value.timezone !== props.userTimezone ||
+    form.value.dateFormat !== props.userDateFormat || form.value.timeFormat !== props.userTimeFormat ||
+    form.value.distanceUnit !== props.userDistanceUnit || form.value.temperatureUnit !== props.userTemperatureUnit ||
+    effectiveRedirectUrl !== props.userDefaultRedirectUrl
+
+  return accountChanged || preferencesChanged
 })
 const currentAvatarImage = computed(() => avatarPreviewUrl.value || localAvatar.value || '/avatars/avatar1.png')
 
@@ -722,6 +681,9 @@ onUnmounted(() => {
 .avatar-section {
   margin-bottom: 2rem;
 }
+
+.avatar-section-title { margin: 0 0 1rem; color: var(--gp-text-primary); font-size: 1rem; }
+.avatar-section-title span { margin-left: .5rem; color: var(--gp-text-secondary); font-weight: 400; font-size: .85rem; }
 
 .avatar-preview {
   display: flex;

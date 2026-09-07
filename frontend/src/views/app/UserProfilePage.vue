@@ -6,10 +6,11 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">User Profile</h1>
+              <h1 class="page-title">Personal Settings</h1>
               <p class="page-description">
-                Manage your personal information and security settings
+                Manage your account, preferences, and connected apps
               </p>
+              <p v-if="activeTab === 'general'" class="account-context">Signed in as {{ userEmail }}</p>
             </div>
             <div class="header-actions">
               <SettingsSearchTrigger
@@ -27,21 +28,34 @@
 
         <!-- Profile Content -->
         <div class="profile-content">
-          <TabContainer
-            :tabs="tabItems"
-            :activeIndex="activeTabIndex"
-            :equalWidth="true"
-            @tab-change="handleTabChange"
-            class="profile-tabs"
-          >
+          <div class="settings-layout">
+            <label class="mobile-settings-select">
+              <span>Settings section</span>
+              <select :value="activeTab" @change="selectTab($event.target.value)">
+                <optgroup v-for="group in settingsGroups" :key="group.label" :label="group.label">
+                  <option v-for="tab in group.items" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
+                </optgroup>
+              </select>
+            </label>
+            <nav class="settings-nav" aria-label="Personal settings sections">
+              <section v-for="group in settingsGroups" :key="group.label" class="settings-nav-group">
+                <h2>{{ group.label }}</h2>
+                <button v-for="tab in group.items" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="selectTab(tab.key)">
+                  <i :class="tab.icon" aria-hidden="true" />{{ tab.label }}
+                </button>
+              </section>
+            </nav>
+            <section class="settings-content">
             <keep-alive>
               <component
                 :is="currentTabComponent"
+                :key="activeTab"
                 v-bind="currentTabProps"
                 v-on="currentTabHandlers"
               />
             </keep-alive>
-          </TabContainer>
+            </section>
+          </div>
         </div>
 
         <Toast />
@@ -63,15 +77,12 @@ import Message from 'primevue/message'
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
-import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
 // Tab components
 import ProfileTab from '@/components/profile/ProfileTab.vue'
 import SecurityTab from '@/components/profile/SecurityTab.vue'
-import AIAssistantTab from '@/components/profile/AIAssistantTab.vue'
-import ImmichTab from '@/components/profile/ImmichTab.vue'
-import MemosTab from '@/components/profile/MemosTab.vue'
 import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
+import ConnectedAppsTab from '@/components/profile/ConnectedAppsTab.vue'
 import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
 
 // Store
@@ -98,8 +109,8 @@ const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immic
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
 // State
-const activeTab = ref('profile')
-const validTabs = ['profile', 'security', 'timelineDisplay', 'ai', 'immich', 'memos']
+const activeTab = ref('general')
+const validTabs = ['general', 'security', 'timeline', 'connectedApps']
 const profileUnsavedConfirmGroup = 'profile-unsaved-changes'
 const settingHintsById = Object.fromEntries(
   PROFILE_SETTINGS_SEARCH_INDEX
@@ -134,51 +145,23 @@ const timelineDisplayPrefs = ref({
 })
 
 // Tab configuration
-const tabItems = ref([
-  {
-    label: 'Profile',
-    icon: 'pi pi-user',
-    key: 'profile'
-  },
-  {
-    label: 'Security',
-    icon: 'pi pi-shield',
-    key: 'security'
-  },
-  {
-    label: 'Display',
-    icon: 'pi pi-eye',
-    key: 'timelineDisplay'
-  },
-  {
-    label: 'AI Assistant',
-    icon: 'pi pi-sparkles',
-    key: 'ai'
-  },
-  {
-    label: 'Immich',
-    icon: 'pi pi-images',
-    key: 'immich'
-  },
-  {
-    label: 'Memos',
-    icon: 'pi pi-file-edit',
-    key: 'memos'
-  }
-])
-
-const activeTabIndex = computed(() => {
-  return tabItems.value.findIndex(tab => tab.key === activeTab.value)
-})
+const settingsGroups = [
+  { label: 'Personal', items: [
+    { label: 'General', icon: 'pi pi-user', key: 'general' },
+    { label: 'Security', icon: 'pi pi-shield', key: 'security' }
+  ] },
+  { label: 'Experience', items: [{ label: 'Timeline & Map', icon: 'pi pi-map', key: 'timeline' }] },
+  { label: 'Connected Apps', items: [{ label: 'Connected Apps', icon: 'pi pi-box', key: 'connectedApps' }] }
+]
+const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
+const legacyApps = { ai: 'ai', immich: 'immich', memos: 'memos' }
 
 // Stable map from key → component definition so keep-alive can cache by component name
 const tabComponents = {
-  profile: ProfileTab,
+  general: ProfileTab,
   security: SecurityTab,
-  timelineDisplay: TimelineDisplayTab,
-  ai: AIAssistantTab,
-  immich: ImmichTab,
-  memos: MemosTab,
+  timeline: TimelineDisplayTab,
+  connectedApps: ConnectedAppsTab,
 }
 
 const currentTabComponent = computed(() => tabComponents[activeTab.value] || null)
@@ -194,7 +177,7 @@ const handleTabDirtyChange = (tabKey, isDirty) => {
 
 const currentTabProps = computed(() => {
   const allProps = {
-    profile: {
+    general: {
       readOnly: demoReadOnly.value,
       userName: userName.value,
       userEmail: userEmail.value,
@@ -204,58 +187,46 @@ const currentTabProps = computed(() => {
       userTemperatureUnit: temperatureUnit.value || 'CELSIUS',
       userDefaultRedirectUrl: defaultRedirectUrl.value || '',
       userDateFormat: dateFormat.value || 'MDY',
-      userTimeFormat: timeFormat.value || '24h',
+      userTimeFormat: timeFormat.value || '24h'
     },
     security: {
       readOnly: demoReadOnly.value,
       hasPassword: hasPassword.value,
     },
-    timelineDisplay: {
+    timeline: {
       readOnly: demoReadOnly.value,
       initialPreferences: timelineDisplayPrefs.value,
     },
-    ai: {
-      readOnly: demoReadOnly.value,
-      initialSettings: aiSettings.value,
-    },
-    immich: {
-      readOnly: demoReadOnly.value,
-      config: immichConfig.value,
-      loading: immichLoading.value,
-    },
-    memos: {
-      readOnly: demoReadOnly.value,
-      config: memosConfig.value,
-      loading: memosLoading.value,
-    },
+    connectedApps: { readOnly: demoReadOnly.value, activeApp: route.query.app || 'ai', aiSettings: aiSettings.value, immichConfig: immichConfig.value, immichLoading: immichLoading.value, memosConfig: memosConfig.value, memosLoading: memosLoading.value },
   }
   return allProps[activeTab.value] || {}
 })
 
 const currentTabHandlers = computed(() => {
   const handlers = {
-    profile: { save: handleProfileSave, 'dirty-change': (isDirty) => handleTabDirtyChange('profile', isDirty) },
+    general: { save: handleProfileSave, 'dirty-change': (isDirty) => handleTabDirtyChange('general', isDirty) },
     security: { save: handlePasswordSave, 'dirty-change': (isDirty) => handleTabDirtyChange('security', isDirty) },
-    timelineDisplay: {
+    timeline: {
       save: handleTimelineDisplaySave,
-      'dirty-change': (isDirty) => handleTabDirtyChange('timelineDisplay', isDirty)
+      'dirty-change': (isDirty) => handleTabDirtyChange('timeline', isDirty)
     },
-    ai: { save: handleAISave, 'dirty-change': (isDirty) => handleTabDirtyChange('ai', isDirty) },
-    immich: { save: handleImmichSave, 'dirty-change': (isDirty) => handleTabDirtyChange('immich', isDirty) },
-    memos: { save: handleMemosSave, 'dirty-change': (isDirty) => handleTabDirtyChange('memos', isDirty) },
+    connectedApps: {
+      'ai-save': handleAISave, 'immich-save': handleImmichSave, 'memos-save': handleMemosSave,
+      'dirty-change': ({ key, dirty }) => handleTabDirtyChange(key, dirty),
+      'select-app': (app) => router.replace({ query: { ...route.query, tab: 'connectedApps', app } })
+    },
   }
   return handlers[activeTab.value] || {}
 })
 
 // Methods
-const handleTabChange = (event) => {
-  const selectedTab = tabItems.value[event.index]
-  if (selectedTab) {
-    activeTab.value = selectedTab.key
-    const nextQuery = { ...route.query, tab: selectedTab.key }
-    delete nextQuery.setting
-    router.replace({ query: nextQuery })
-  }
+const selectTab = (tab) => {
+  if (!validTabs.includes(tab)) return
+  activeTab.value = tab
+  const nextQuery = { ...route.query, tab }
+  delete nextQuery.setting
+  if (tab !== 'connectedApps') delete nextQuery.app
+  router.replace({ query: nextQuery })
 }
 
 const getErrorMessage = (error) => {
@@ -297,7 +268,8 @@ const jumpToRouteSetting = async (settingId, hintOverride = null) => {
 const handleSettingsSearchNavigate = async (item) => {
   if (!item?.setting) return
 
-  const nextTab = item.tab || activeTab.value
+  const nextTab = legacyTabs[item.tab] || item.tab || activeTab.value
+  const nextApp = legacyApps[item.tab]
   const currentTab = typeof route.query.tab === 'string' ? route.query.tab : activeTab.value
   const currentSetting = typeof route.query.setting === 'string' ? route.query.setting : ''
 
@@ -311,6 +283,7 @@ const handleSettingsSearchNavigate = async (item) => {
     tab: nextTab,
     setting: item.setting
   }
+  if (nextApp) nextQuery.app = nextApp
 
   router.replace({ query: nextQuery })
 }
@@ -566,8 +539,9 @@ const loadTimelineDisplayPreferences = async () => {
 }
 
 watch(() => route.query.tab, (newTab) => {
-  if (newTab && validTabs.includes(newTab)) {
-    activeTab.value = newTab
+  const normalizedTab = legacyTabs[newTab] || newTab
+  if (normalizedTab && validTabs.includes(normalizedTab)) {
+    activeTab.value = normalizedTab
   }
 })
 
@@ -577,7 +551,8 @@ watch(
     if (route.path !== '/app/profile') return
     if (!setting || typeof setting !== 'string') return
 
-    const tabChanged = typeof tab === 'string' && tab !== activeTab.value
+    const normalizedTab = legacyTabs[tab] || tab
+    const tabChanged = typeof normalizedTab === 'string' && normalizedTab !== activeTab.value
     const delayMs = tabChanged ? 240 : 80
     window.setTimeout(() => {
       void jumpToRouteSetting(setting)
@@ -677,8 +652,12 @@ onMounted(async () => {
 
   // Handle tab query parameter
   const tabParam = route.query.tab
-  if (tabParam && validTabs.includes(tabParam)) {
-    activeTab.value = tabParam
+  const normalizedTab = legacyTabs[tabParam] || tabParam
+  if (normalizedTab && validTabs.includes(normalizedTab)) {
+    activeTab.value = normalizedTab
+    if (normalizedTab !== tabParam) {
+      router.replace({ query: { ...route.query, tab: normalizedTab, ...(legacyApps[tabParam] ? { app: legacyApps[tabParam] } : {}) } })
+    }
   }
 })
 
@@ -728,14 +707,22 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
+.account-context { margin: .35rem 0 0; color: var(--gp-text-secondary); font-size: .9rem; }
+
 /* Profile Content */
 .profile-content {
   margin-bottom: 2rem;
 }
 
-.profile-tabs {
-  width: 100%;
-}
+.settings-layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; }
+.settings-nav { display: grid; align-content: start; gap: 1rem; }
+.settings-nav-group { display: grid; gap: .25rem; }
+.settings-nav h2 { margin: 0 0 .25rem; color: var(--gp-text-muted); font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
+.settings-nav button { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .65rem .75rem; border: 0; border-radius: var(--gp-radius-medium); background: transparent; color: var(--gp-text-secondary); font: inherit; text-align: left; cursor: pointer; }
+.settings-nav button:hover, .settings-nav button.active { background: var(--gp-timeline-blue); color: var(--gp-primary-dark); }
+.settings-nav button.active { font-weight: 600; }
+.settings-content { min-width: 0; }
+.mobile-settings-select { display: none; }
 
 :deep(.profile-section-card.p-card) {
   width: 100%;
@@ -785,6 +772,11 @@ onUnmounted(() => {
     display: flex;
     justify-content: flex-end;
   }
+
+  .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
+  .settings-nav { display: none; }
+  .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; padding: 0 1rem; }
+  .mobile-settings-select select { width: 100%; min-height: 2.75rem; padding: 0 .75rem; border: 1px solid var(--gp-border-medium); border-radius: var(--gp-radius-medium); background: var(--gp-surface-white); color: var(--gp-text-primary); font: inherit; }
 }
 
 @media (max-width: 480px) {

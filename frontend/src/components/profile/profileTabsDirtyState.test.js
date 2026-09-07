@@ -242,6 +242,21 @@ describe('profile tab dirty state', () => {
     expect(lastDirtyValue(wrapper)).toBe(false)
   })
 
+  it('keeps general settings together', async () => {
+    const props = {
+      userName: 'Ada Lovelace', userEmail: 'ada@example.com', userAvatar: '/avatars/avatar1.png',
+      userTimezone: 'UTC', userDistanceUnit: 'KILOMETERS', userTemperatureUnit: 'CELSIUS',
+      userDefaultRedirectUrl: '', userDateFormat: 'MDY', userTimeFormat: '24h'
+    }
+    const wrapper = mount(ProfileTab, { props, global: globalOptions })
+    await flushPromises()
+
+    expect(wrapper.find('#fullName').exists()).toBe(true)
+    expect(wrapper.find('#timezone').exists()).toBe(true)
+    await wrapper.find('select').setValue('Europe/Kyiv')
+    expect(lastDirtyValue(wrapper)).toBe(true)
+  })
+
   it('emits dirty changes from the security tab and clears after reset', async () => {
     const wrapper = mount(SecurityTab, {
       props: {

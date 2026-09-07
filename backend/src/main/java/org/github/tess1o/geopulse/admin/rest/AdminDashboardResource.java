@@ -12,7 +12,13 @@ import org.github.tess1o.geopulse.prometheus.UserMetrics;
 import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.weather.service.WeatherStatusService;
+import org.github.tess1o.geopulse.admin.service.AdminFullBackupService;
+import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -35,6 +41,11 @@ public class AdminDashboardResource {
 
     @Inject
     WeatherStatusService weatherStatusService;
+
+    @Inject AdminFullBackupService backupService;
+    @Inject BackupMaintenanceService backupMaintenanceService;
+    @Inject GpsPointRepository gpsPointRepository;
+    @Inject TimelineJobProgressService timelineJobProgressService;
 
     /**
      * Get dashboard statistics
@@ -60,6 +71,7 @@ public class AdminDashboardResource {
             stats.put("totalGpsPoints", gpsPointsMetrics.getTotalGpsPoints());
             stats.put("gpsActivity24h", gpsPointsMetrics.getGpsPointsLast24h());
             stats.put("weatherStatus", weatherStatusService.status());
+            stats.put("health", health());
 
             // Add metadata about metrics status
             stats.put("metricsEnabled", Map.of(
@@ -76,5 +88,33 @@ public class AdminDashboardResource {
                     .entity(Map.of("error", "Failed to retrieve dashboard statistics"))
                     .build();
         }
+    }
+
+    private Map<String, Object> health() {
+        Map<String, Object> health = new HashMap<>();
+        try {
+            Instant latestBackup = backupService.listLocalBackups().stream()
+                    .map(file -> file.getLastModifiedAt())
+                    .filter(java.util.Objects::nonNull)
+                    .max(Comparator.naturalOrder()).orElse(null);
+            health.put("backup", Map.of(
+                    "scheduled", backupService.getConfig().isScheduledEnabled(),
+                    "latestBackupAt", latestBackup == null ? "" : latestBackup.toString(),
+                    "status", backupMaintenanceService.getStatus().getStatus()));
+        } catch (Exception e) {
+            health.put("backup", Map.of("scheduled", false, "latestBackupAt", "", "status", "unavailable"));
+        }
+
+        Instant latestReceived = gpsPointRepository.findLatestReceived()
+                .map(point -> point.getCreatedAt()).orElse(null);
+        health.put("ingestion", Map.of(
+                "latestReceivedAt", latestReceived == null ? "" : latestReceived.toString(),
+                "pointsLast24h", gpsPointsMetrics.getGpsPointsLast24h()));
+        health.put("timeline", timelineJobProgressService.getStatistics());
+
+        java.util.List<String> warnings = new java.util.ArrayList<>();
+        if (!backupService.getConfig().isScheduledEnabled()) warnings.add("Scheduled backups are disabled");
+        health.put("security", Map.of("warnings", warnings));
+        return health;
     }
 }

@@ -8,7 +8,7 @@
             <i class="pi pi-eye"></i>
           </div>
           <div class="display-info">
-            <h3 class="display-title">Display Settings</h3>
+            <h3 class="display-title">Timeline &amp; Map</h3>
             <p class="display-description">
               These settings affect only how your timeline is displayed in the UI.
               Changes take effect immediately and do not require timeline regeneration.
@@ -17,7 +17,9 @@
         </div>
 
         <!-- Map Tile Provider Section -->
-        <div class="section">
+        <details class="section advanced-section map-source-section">
+          <summary>Map source</summary>
+          <div class="advanced-section-content">
           <h3 class="section-title">Map Tile Provider</h3>
           <p class="section-description">
             Choose rendering mode and configure both raster and vector map sources
@@ -79,7 +81,8 @@
               Used when render mode is Vector. Leave empty to use default OpenFreeMap style.
             </small>
           </div>
-        </div>
+          </div>
+        </details>
 
         <!-- Default Date Range Section -->
         <div class="section">
@@ -112,7 +115,7 @@
             Control whether telemetry from the latest point is shown in the current-location popup
           </p>
 
-          <SettingCard
+          <SettingCard class="compact-setting"
             title="Show Telemetry In Current Location Popup"
             description="Display mapped telemetry values in the map popup for your current location"
             details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
@@ -135,7 +138,7 @@
             Control what appears when a trip is selected on the map
           </p>
 
-          <SettingCard
+          <SettingCard class="compact-setting"
             title="Auto-show Replay Controls"
             description="Show the replay control bar automatically when a trip is selected"
             details="When disabled, trip replay remains available from a compact Replay button."
@@ -151,13 +154,15 @@
           </SettingCard>
         </div>
 
-        <div class="section">
+        <details class="section advanced-section">
+          <summary>Advanced map &amp; performance</summary>
+          <div class="advanced-section-content">
           <h3 class="section-title">Map Matching</h3>
           <p class="section-description">
             Use a configured Valhalla service to fit displayed trip paths to roads and paths
           </p>
 
-          <SettingCard
+          <SettingCard class="compact-setting"
             title="Enable Map Matching"
             description="Display cached matched trip geometry when available"
             :details="mapMatchingDetails"
@@ -173,10 +178,8 @@
               />
             </template>
           </SettingCard>
-        </div>
 
-        <!-- GPS Path Simplification Section -->
-        <div class="section">
+          <!-- GPS Path Simplification Section -->
           <h3 class="section-title">GPS Path Simplification</h3>
           <p class="section-description">
             Configure how GPS paths are simplified when displayed on the map
@@ -265,7 +268,8 @@
               />
             </template>
           </SettingCard>
-        </div>
+          </div>
+        </details>
 
         <!-- Action Buttons -->
         <div class="form-actions">
@@ -654,6 +658,17 @@ const handleReset = () => {
   margin-left: auto;
 }
 
+.advanced-section { order: 5; border: 1px solid var(--gp-border-light); border-radius: var(--gp-radius-medium); background: var(--gp-surface-light); }
+.map-source-section { order: 4; }
+.advanced-section summary { padding: 1rem; color: var(--gp-text-primary); font-weight: 600; cursor: pointer; }
+.advanced-section-content { display: flex; flex-direction: column; gap: 1rem; padding: 0 1rem 1rem; }
+:deep(.compact-setting.p-card) { box-shadow: none; }
+:deep(.compact-setting .p-card-body) { padding: .85rem 1rem; }
+:deep(.compact-setting .setting-layout) { align-items: center; gap: 1rem; }
+:deep(.compact-setting .setting-description), :deep(.compact-setting .setting-details) { display: none; }
+:deep(.compact-setting .setting-title) { margin: 0; font-size: 1rem; }
+:deep(.compact-setting .setting-control) { min-width: auto; flex-direction: row; gap: .75rem; }
+
 
 /* Form Actions */
 .form-actions {
@@ -679,6 +694,9 @@ const handleReset = () => {
   .form-actions button {
     width: 100%;
   }
+
+  :deep(.compact-setting .setting-layout) { grid-template-columns: 1fr auto; }
+  :deep(.compact-setting .setting-control) { width: auto; align-items: center; }
 
 }
 </style>

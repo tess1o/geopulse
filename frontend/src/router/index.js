@@ -429,6 +429,13 @@ const routes = [
         beforeEnter: requireAdmin
     },
     {
+        path: '/app/admin/backups',
+        name: 'Admin Backups',
+        component: () => import('@/views/app/admin/AdminBackupsPage.vue'),
+        meta: {title: 'Backups & Restore'},
+        beforeEnter: requireAdmin
+    },
+    {
         path: '/app/admin/users',
         name: 'Admin Users',
         component: () => import('@/views/app/admin/AdminUsersPage.vue'),
