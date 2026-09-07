@@ -123,7 +123,7 @@ class TripStaySplitOverrideResetTransactionBoundaryTest {
 
     @Test
     @Transactional
-    void replaysAPersistedSplitAfterTimelineRowsAreRebuilt() {
+    void replaysAPersistedSplitAfterTimelineRowsAreRebuiltWithSubsecondTripEnd() {
         Instant tripStart = Instant.parse("2026-02-10T10:00:00Z");
         UserEntity user = userRepository.findById(userId);
         createFavorite(user, 50.4501, 30.5234);
@@ -175,7 +175,7 @@ class TripStaySplitOverrideResetTransactionBoundaryTest {
         createGpsPoint(user, start.plusSeconds(180), 50.45011, 30.52342);
         createGpsPoint(user, start.plusSeconds(240), 50.45008, 30.52338);
         createGpsPoint(user, start.plusSeconds(300), 50.4550, 30.5300);
-        createGpsPoint(user, start.plusSeconds(360), 50.4600, 30.5400);
+        createGpsPoint(user, start.plusSeconds(360).plusNanos(633_838_000), 50.4600, 30.5400);
     }
 
     private void createGpsPoint(UserEntity user, Instant timestamp, double latitude, double longitude) {

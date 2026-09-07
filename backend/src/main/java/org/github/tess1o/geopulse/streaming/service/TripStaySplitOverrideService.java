@@ -317,7 +317,8 @@ public class TripStaySplitOverrideService {
                                          ResolvedLocation location,
                                          boolean firstLeg,
                                          TimelineConfig config) {
-        List<GPSPoint> points = gpsPointRepository.findEssentialPointsInInterval(userId, start, end);
+        List<GPSPoint> points = gpsPointRepository.findEssentialPointsInInterval(
+                userId, start, firstLeg ? end : end.plusSeconds(1));
         if (firstLeg) {
             if (points.isEmpty() || points.getFirst().getTimestamp().isAfter(start)) {
                 throw new IllegalArgumentException("First trip leg has no GPS points");
