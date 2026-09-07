@@ -22,6 +22,14 @@ if (!releaseVersionMatch) {
 
 const releaseVersion = releaseVersionMatch[1].trim();
 const releaseTag = `v${releaseVersion}`;
+const parseGithubStat = (value, fallback) => {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+};
+const githubStats = {
+    stars: parseGithubStat(process.env.GEOPULSE_GITHUB_STARS, 1394),
+    forks: parseGithubStat(process.env.GEOPULSE_GITHUB_FORKS, 57),
+};
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -42,6 +50,10 @@ const config = {
     trailingSlash: false,
 
     onBrokenLinks: 'throw',
+
+    customFields: {
+        githubStats,
+    },
 
     // Even if you don't use internationalization, you can use this field to set
     // useful metadata like html lang. For example, if your site is Chinese, you

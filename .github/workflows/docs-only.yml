@@ -1,6 +1,8 @@
 name: Update Docs Only
 
 on:
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -24,6 +26,20 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Read GitHub repository stats
+        id: github-stats
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          stars="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.stargazers_count')"
+          forks="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.forks_count')"
+
+          [[ "$stars" =~ ^[0-9]+$ ]] && [[ "$forks" =~ ^[0-9]+$ ]]
+
+          echo "stars=$stars" >> "$GITHUB_OUTPUT"
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+          echo "Publishing $stars stars and $forks forks"
 
       - name: Restore existing Helm charts from gh-pages
         run: |
@@ -78,6 +94,8 @@ jobs:
         env:
           GIT_USER: ${{ github.actor }}
           GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+          GEOPULSE_GITHUB_STARS: ${{ steps.github-stats.outputs.stars }}
+          GEOPULSE_GITHUB_FORKS: ${{ steps.github-stats.outputs.forks }}
         run: |
           cd docs-website
           npm run deploy
