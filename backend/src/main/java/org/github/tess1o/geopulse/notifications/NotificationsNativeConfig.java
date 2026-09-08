@@ -11,7 +11,8 @@ import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 import org.github.tess1o.geopulse.notifications.model.entity.UserNotificationEntity;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
-import org.github.tess1o.geopulse.notifications.model.entity.GpsHealthIncidentEntity;
+import org.github.tess1o.geopulse.notifications.model.entity.IncidentEntity;
+import org.github.tess1o.geopulse.notifications.model.entity.IncidentType;
 
 @RegisterForReflection(targets = {
         UserNotificationEntity.class,
@@ -24,7 +25,8 @@ import org.github.tess1o.geopulse.notifications.model.entity.GpsHealthIncidentEn
         UnreadCountDto.class,
         NotificationPreferences.class,
         NotificationPreferences.Channel.class,
-        GpsHealthIncidentEntity.class,
+        IncidentEntity.class,
+        IncidentType.class,
         NotificationPreferencesDto.class,
         UpdateNotificationPreferencesRequest.class,
         ReleaseAnnouncementResponse.class

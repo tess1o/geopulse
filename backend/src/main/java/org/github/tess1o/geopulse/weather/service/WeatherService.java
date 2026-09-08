@@ -473,7 +473,7 @@ public class WeatherService {
         Instant now = Instant.now();
         long claimablePendingTargets = targetRepository.countClaimablePendingTargets(now);
         String primaryProvider = primaryProviderKey();
-        ExternalIntegrationHealthDto providerHealth = integrationHealthService.currentHealth(WEATHER_INTEGRATION, primaryProvider);
+        ExternalIntegrationHealthDto providerHealth = integrationHealthService.findCurrentHealth(WEATHER_INTEGRATION, primaryProvider);
         return WeatherStatusResponse.builder()
                 .enabled(enabled)
                 .configured(configured)

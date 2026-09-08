@@ -62,6 +62,12 @@ public class ExternalIntegrationHealthService {
     }
 
     @Transactional
+    public ExternalIntegrationHealthDto findCurrentHealth(ExternalIntegrationType integrationType, String providerKey) {
+        return healthRepository.findByIntegrationAndProvider(integrationType, providerKey)
+                .map(this::toDto).orElse(null);
+    }
+
+    @Transactional
     public void recordSuccess(ExternalIntegrationType integrationType, String providerKey) {
         ExternalIntegrationHealthEntity health = healthRepository.getOrCreate(integrationType, providerKey);
         ExternalIntegrationHealthStatus previousStatus = health.getStatus();

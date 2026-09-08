@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.backup.*;
 import org.github.tess1o.geopulse.admin.dto.backup.*;
+import org.github.tess1o.geopulse.geofencing.model.entity.AppriseExternalRoutingMode;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -32,6 +33,12 @@ public class AdminFullBackupService {
         return AdminBackupConfigDto.builder().scheduledEnabled(settingsService.getBoolean("backup.scheduled.enabled"))
                 .scheduledCron(settingsService.getString("backup.scheduled.cron")).localPath(settingsService.getString("backup.local.path"))
                 .retentionCount(settingsService.getInteger("backup.retention.count")).operationTimeoutMinutes(settingsService.getInteger("backup.operation.timeout-minutes"))
+                .healthMaxAgeDays(settingsService.getInteger("backup.health.max-age-days"))
+                .healthAppriseEnabled(settingsService.getBoolean("backup.health.apprise.enabled"))
+                .healthAppriseRoutingMode(appriseRoutingMode())
+                .healthAppriseDestination(settingsService.getString("backup.health.apprise.destination"))
+                .healthAppriseConfigKey(settingsService.getString("backup.health.apprise.config-key"))
+                .healthAppriseTag(settingsService.getString("backup.health.apprise.tag"))
                 .passwordConfigured(!settingsService.getString("backup.password").isBlank()).build();
     }
 
@@ -45,6 +52,12 @@ public class AdminFullBackupService {
         settingsService.setValue("backup.local.path", config.getLocalPath(), adminId);
         settingsService.setValue("backup.retention.count", Integer.toString(config.getRetentionCount()), adminId);
         settingsService.setValue("backup.operation.timeout-minutes", Integer.toString(config.getOperationTimeoutMinutes()), adminId);
+        settingsService.setValue("backup.health.max-age-days", Integer.toString(config.getHealthMaxAgeDays()), adminId);
+        settingsService.setValue("backup.health.apprise.enabled", Boolean.toString(config.isHealthAppriseEnabled()), adminId);
+        settingsService.setValue("backup.health.apprise.routing-mode", routingMode(config).name(), adminId);
+        settingsService.setValue("backup.health.apprise.destination", nullToEmpty(config.getHealthAppriseDestination()), adminId);
+        settingsService.setValue("backup.health.apprise.config-key", nullToEmpty(config.getHealthAppriseConfigKey()), adminId);
+        settingsService.setValue("backup.health.apprise.tag", nullToEmpty(config.getHealthAppriseTag()), adminId);
     }
 
     public void validateConfig(AdminBackupConfigDto config) {
@@ -56,6 +69,11 @@ public class AdminFullBackupService {
             throw new IllegalArgumentException("Retention count must be between 1 and 365");
         if (config.getOperationTimeoutMinutes() < 1 || config.getOperationTimeoutMinutes() > 1440)
             throw new IllegalArgumentException("Operation timeout must be between 1 and 1440 minutes");
+        if (config.getHealthMaxAgeDays() < 0 || config.getHealthMaxAgeDays() > 365)
+            throw new IllegalArgumentException("Backup health age must be between 0 and 365 days");
+        if (config.isHealthAppriseEnabled() && (routingMode(config) == AppriseExternalRoutingMode.KEY_TAG
+                ? isBlank(config.getHealthAppriseConfigKey()) : isBlank(config.getHealthAppriseDestination())))
+            throw new IllegalArgumentException("Configure an Apprise destination or config key before enabling backup health alerts");
         if (config.getPassword() != null && !config.getPassword().isEmpty()
                 && (config.getPassword().length() < MIN_NEW_BACKUP_PASSWORD_LENGTH
                 || config.getPassword().length() > MAX_BACKUP_PASSWORD_LENGTH))
@@ -98,6 +116,11 @@ public class AdminFullBackupService {
         return storageService.list();
     }
 
+    public Instant getLatestLocalBackupAt() throws IOException {
+        return listLocalBackups().stream().map(AdminBackupFileDto::getLastModifiedAt)
+                .filter(Objects::nonNull).max(Comparator.naturalOrder()).orElse(null);
+    }
+
     public Path resolveLocalBackup(String name) {
         return storageService.resolve(name);
     }
@@ -117,5 +140,21 @@ public class AdminFullBackupService {
     private Instant deadline() {
         return Instant.now().plusSeconds(settingsService.getInteger("backup.operation.timeout-minutes") * 60L);
     }
+
+    private AppriseExternalRoutingMode appriseRoutingMode() {
+        try {
+            return AppriseExternalRoutingMode.valueOf(settingsService.getString("backup.health.apprise.routing-mode"));
+        } catch (Exception ignored) {
+            return AppriseExternalRoutingMode.URLS;
+        }
+    }
+
+    private AppriseExternalRoutingMode routingMode(AdminBackupConfigDto config) {
+        return config.getHealthAppriseRoutingMode() == null ? AppriseExternalRoutingMode.URLS : config.getHealthAppriseRoutingMode();
+    }
+
+    private boolean isBlank(String value) { return value == null || value.isBlank(); }
+
+    private String nullToEmpty(String value) { return value == null ? "" : value; }
 
 }

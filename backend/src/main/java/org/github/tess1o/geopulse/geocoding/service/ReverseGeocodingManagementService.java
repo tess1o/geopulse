@@ -20,6 +20,10 @@ import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.UpdateResult;
+import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -62,6 +66,9 @@ public class ReverseGeocodingManagementService {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    ExternalIntegrationHealthService integrationHealthService;
 
     @ConfigProperty(name = "geocoding.reconcile.item.max-attempts", defaultValue = "3")
     int reconcileItemMaxAttempts;
@@ -758,6 +765,59 @@ public class ReverseGeocodingManagementService {
         }
 
         return providers;
+    }
+
+    /** Persisted health for configured reverse-geocoding providers, based only on observed calls. */
+    public Map<String, Object> getProviderHealth() {
+        List<Map<String, Object>> providers = new ArrayList<>();
+        for (GeocodingProviderDTO provider : getEnabledProviders().stream()
+                .filter(provider -> Boolean.TRUE.equals(provider.getIsPrimary()) || Boolean.TRUE.equals(provider.getIsFallback()))
+                .toList()) {
+            ExternalIntegrationHealthDto providerHealth = integrationHealthService.findCurrentHealth(
+                    ExternalIntegrationType.GEOCODING, provider.getName());
+            Map<String, Object> snapshot = new HashMap<>();
+            snapshot.put("name", provider.getName());
+            snapshot.put("displayName", provider.getDisplayName());
+            snapshot.put("primary", Boolean.TRUE.equals(provider.getIsPrimary()));
+            snapshot.put("fallback", Boolean.TRUE.equals(provider.getIsFallback()));
+            snapshot.put("status", geocodingHealthStatus(providerHealth));
+            if (providerHealth != null) {
+                snapshot.put("lastSuccessAt", providerHealth.getLastSuccessAt());
+                snapshot.put("lastFailureAt", providerHealth.getLastFailureAt());
+                snapshot.put("lastErrorMessage", providerHealth.getLastErrorMessage());
+                snapshot.put("circuitBreakerObservedOpenAt", providerHealth.getStatus() == ExternalIntegrationHealthStatus.CIRCUIT_OPEN
+                        ? providerHealth.getLastFailureAt() : null);
+            }
+            providers.add(snapshot);
+        }
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", aggregateGeocodingHealth(providers));
+        health.put("providers", providers);
+        return health;
+    }
+
+    private String geocodingHealthStatus(ExternalIntegrationHealthDto health) {
+        if (health == null) return "UNKNOWN";
+        if (health.getStatus() == ExternalIntegrationHealthStatus.HEALTHY) return "HEALTHY";
+        if (health.getStatus() == ExternalIntegrationHealthStatus.CIRCUIT_OPEN) return "CIRCUIT_OPEN";
+        return "DEGRADED";
+    }
+
+    private String aggregateGeocodingHealth(List<Map<String, Object>> providers) {
+        if (providers.isEmpty()) return "NOT_CONFIGURED";
+        Map<String, Object> primary = providers.stream()
+                .filter(provider -> Boolean.TRUE.equals(provider.get("primary"))).findFirst().orElse(null);
+        if (primary != null) {
+            String primaryStatus = (String) primary.get("status");
+            if ("HEALTHY".equals(primaryStatus)) return "HEALTHY";
+            boolean fallbackHealthy = providers.stream().anyMatch(provider ->
+                    Boolean.TRUE.equals(provider.get("fallback")) && "HEALTHY".equals(provider.get("status")));
+            if (fallbackHealthy && ("CIRCUIT_OPEN".equals(primaryStatus) || "DEGRADED".equals(primaryStatus))) return "DEGRADED";
+            return primaryStatus;
+        }
+        if (providers.stream().anyMatch(provider -> "CIRCUIT_OPEN".equals(provider.get("status")))) return "CIRCUIT_OPEN";
+        if (providers.stream().anyMatch(provider -> "DEGRADED".equals(provider.get("status")))) return "DEGRADED";
+        return providers.stream().allMatch(provider -> "HEALTHY".equals(provider.get("status"))) ? "HEALTHY" : "UNKNOWN";
     }
 
     /**

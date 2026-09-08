@@ -267,6 +267,7 @@ public class BackupMaintenanceService {
         backupStatus.setSizeBytes(size);
         backupStatus.setProgressPercent(100);
         backupStatus.setCompletedAt(Instant.now());
+        backupStatus.setMessage("Backup completed successfully.");
         backupStatus.setError(null);
         log.info("Backup operation {} completed; file={}; sizeBytes={}", operationId, name, size);
     }
@@ -304,7 +305,7 @@ public class BackupMaintenanceService {
     }
 
     public synchronized AdminBackupStatusDto getStatus() {
-        if (restore == null || backupRunning) return backupStatus;
+        if (restore == null || backupRunning || backupFinishedAfterRestore()) return backupStatus;
         return AdminBackupStatusDto.builder().operationId(restore.operationId).state(restore.state.name())
                 .status(restore.state.name().toLowerCase(Locale.ROOT)).stagingDatabase(restore.stagingDatabase)
                 .previousDatabase(restore.previousDatabase).operation("restore").restoreRunning(isRestoreRunning())
@@ -313,6 +314,11 @@ public class BackupMaintenanceService {
                 .fileName(restore.fileName).phase(restore.phase.wireName()).progressPercent(restore.progress)
                 .message(restore.message()).error(restore.error).startedAt(Instant.parse(restore.startedAt))
                 .completedAt(restore.state == RestoreOperationState.COMPLETED ? Instant.parse(restore.updatedAt) : null).build();
+    }
+
+    private boolean backupFinishedAfterRestore() {
+        return !restoreActive() && backupStatus.getCompletedAt() != null
+                && !backupStatus.getCompletedAt().isBefore(Instant.parse(restore.updatedAt));
     }
 
     private void transition(RestoreOperationState state, RestorePhase phase, String error) {

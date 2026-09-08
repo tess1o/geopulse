@@ -339,7 +339,7 @@ const adminOperationsItems = computed(() => [
     key: 'admin-backups'
   },
   {
-    label: 'Timeline Processing',
+    label: 'Timeline Regeneration Campaigns',
     icon: 'pi pi-refresh',
     to: '/app/admin/timeline-regeneration-campaigns',
     key: 'admin-timeline-regeneration'

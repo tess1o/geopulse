@@ -340,6 +340,18 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.backup.retention.count", "7", ValueType.INTEGER, "backup", "Number of local full backups to retain"));
         SETTING_DEFINITIONS.put("backup.operation.timeout-minutes",
                 new SettingDefinition("geopulse.backup.operation.timeout-minutes", "120", ValueType.INTEGER, "backup", "Maximum duration for full backup and restore operations"));
+        SETTING_DEFINITIONS.put("backup.health.max-age-days",
+                new SettingDefinition("geopulse.backup.health.max-age-days", "2", ValueType.INTEGER, "backup", "Maximum age of the latest local backup before an alert"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.enabled",
+                new SettingDefinition("geopulse.backup.health.apprise.enabled", "false", ValueType.BOOLEAN, "backup", "Send backup health alerts through Apprise"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.routing-mode",
+                new SettingDefinition("geopulse.backup.health.apprise.routing-mode", "URLS", ValueType.STRING, "backup", "Apprise routing mode for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.destination",
+                new SettingDefinition("geopulse.backup.health.apprise.destination", "", ValueType.STRING, "backup", "Apprise destination URLs for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.config-key",
+                new SettingDefinition("geopulse.backup.health.apprise.config-key", "", ValueType.STRING, "backup", "Apprise config key for backup health alerts"));
+        SETTING_DEFINITIONS.put("backup.health.apprise.tag",
+                new SettingDefinition("geopulse.backup.health.apprise.tag", "", ValueType.STRING, "backup", "Optional Apprise tag for backup health alerts"));
 
         // System performance
         SETTING_DEFINITIONS.put(DEFAULT_DISTANCE_UNIT_KEY,

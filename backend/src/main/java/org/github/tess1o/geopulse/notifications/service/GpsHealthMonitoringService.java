@@ -6,10 +6,11 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
-import org.github.tess1o.geopulse.notifications.model.entity.GpsHealthIncidentEntity;
+import org.github.tess1o.geopulse.notifications.model.entity.IncidentEntity;
+import org.github.tess1o.geopulse.notifications.model.entity.IncidentType;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
-import org.github.tess1o.geopulse.notifications.repository.GpsHealthIncidentRepository;
+import org.github.tess1o.geopulse.notifications.repository.IncidentRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -23,12 +24,12 @@ import java.util.Map;
 public class GpsHealthMonitoringService {
     private final UserRepository userRepository;
     private final GpsPointRepository pointRepository;
-    private final GpsHealthIncidentRepository incidentRepository;
+    private final IncidentRepository incidentRepository;
     private final NotificationPreferencesService preferencesService;
     private final NotificationPublisherService publisher;
 
     public GpsHealthMonitoringService(UserRepository userRepository, GpsPointRepository pointRepository,
-                                      GpsHealthIncidentRepository incidentRepository,
+                                      IncidentRepository incidentRepository,
                                       NotificationPreferencesService preferencesService, NotificationPublisherService publisher) {
         this.userRepository = userRepository;
         this.pointRepository = pointRepository;
@@ -65,7 +66,8 @@ public class GpsHealthMonitoringService {
         }
         Duration threshold = Duration.ofMinutes(preferences.getGpsSilenceMinutes());
         Instant eligibleAt = monitoringStartedAt.plus(threshold);
-        GpsHealthIncidentEntity incident = incidentRepository.findById(user.getId());
+        String incidentId = "gps-health:" + user.getId();
+        IncidentEntity incident = incidentRepository.findById(incidentId);
         if (now.isBefore(eligibleAt) && (incident == null || incident.getOpenedAt() == null)) {
             log.debug("GPS health monitor grace period active: user={}, eligibleAt={}, remainingSeconds={}",
                     user.getId(), eligibleAt, Duration.between(now, eligibleAt).toSeconds());
@@ -77,8 +79,10 @@ public class GpsHealthMonitoringService {
         boolean quiet = latestReceivedAt == null || latestReceivedAt.isBefore(cutoff);
         if (quiet && (incident == null || incident.getOpenedAt() == null)) {
             if (incident == null) {
-                incident = new GpsHealthIncidentEntity();
+                incident = new IncidentEntity();
+                incident.setId(incidentId);
                 incident.setUserId(user.getId());
+                incident.setType(IncidentType.GPS_HEALTH);
                 incidentRepository.persist(incident);
             }
             incident.setOpenedAt(now);

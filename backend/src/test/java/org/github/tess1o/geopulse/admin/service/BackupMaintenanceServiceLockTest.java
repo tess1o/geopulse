@@ -3,7 +3,9 @@ package org.github.tess1o.geopulse.admin.service;
 import org.github.tess1o.geopulse.admin.backup.NativeBackupContext;
 import org.github.tess1o.geopulse.admin.backup.PostgresTarget;
 import org.github.tess1o.geopulse.admin.backup.RestoreOperationState;
+import org.github.tess1o.geopulse.admin.backup.RestorePhase;
 import org.github.tess1o.geopulse.admin.backup.RestoreState;
+import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupStatusDto;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -13,6 +15,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
@@ -44,6 +47,22 @@ class BackupMaintenanceServiceLockTest {
         assertThat(service.restoreState().state).isEqualTo(RestoreOperationState.ACTIVATION_FAILED);
         assertThat(service.isRestoreBlocked()).isTrue();
         assertThat(field(service, "operationLocked")).isEqualTo(true);
+    }
+
+    @Test
+    void completedBackupSupersedesAnOlderCompletedRestoreStatus() throws Exception {
+        BackupMaintenanceService service = new BackupMaintenanceService();
+        RestoreState restore = new RestoreState();
+        restore.state = RestoreOperationState.COMPLETED;
+        restore.phase = RestorePhase.COMPLETED;
+        restore.updatedAt = Instant.now().minusSeconds(1).toString();
+        set(service, "restore", restore);
+        set(service, "backupRunning", true);
+        set(service, "backupStatus", AdminBackupStatusDto.builder().operationId("backup-id").status("running").build());
+
+        service.finishSuccess("backup.gpb", 42L);
+
+        assertThat(service.getStatus().getMessage()).isEqualTo("Backup completed successfully.");
     }
 
     private BackupMaintenanceService serviceWithLockResults(Boolean... results) throws Exception {

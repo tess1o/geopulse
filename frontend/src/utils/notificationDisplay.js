@@ -41,6 +41,13 @@ const NOTIFICATION_SOURCE_CONFIG = {
     route: '/app/admin/dashboard',
     actionLabel: 'Open Admin Dashboard'
   },
+  BACKUP_HEALTH: {
+    sourceLabel: 'Backup health',
+    icon: 'pi pi-database',
+    severity: 'warn',
+    route: '/app/admin/backups',
+    actionLabel: 'Open backup settings'
+  },
   GPS_HEALTH: {
     sourceLabel: 'GPS health',
     icon: 'pi pi-map-marker',

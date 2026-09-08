@@ -27,6 +27,9 @@ import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
 import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
@@ -87,6 +90,9 @@ public class AdminSettingsResource {
 
     @Inject
     MapMatchingWorker mapMatchingWorker;
+
+    @Inject
+    ExternalIntegrationHealthService integrationHealthService;
 
     /**
      * Get all settings grouped by category.
@@ -390,13 +396,20 @@ public class AdminSettingsResource {
             responsePayload.put("success", response.statusCode() >= 200 && response.statusCode() < 300);
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                integrationHealthService.recordSuccess(ExternalIntegrationType.MAP_MATCHING, "valhalla");
                 return Response.ok(responsePayload).build();
             }
+            integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, "valhalla",
+                    ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE, "HTTP_" + response.statusCode(),
+                    String.valueOf(responsePayload.get("message")), null, null);
             return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
         } catch (Exception e) {
             responsePayload.put("success", false);
             responsePayload.put("statusCode", 0);
             responsePayload.put("message", e.getMessage() == null ? "Valhalla connection failed" : e.getMessage());
+            integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, "valhalla",
+                    ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE, e.getClass().getSimpleName(),
+                    e.getMessage(), null, null);
             return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
         }
     }

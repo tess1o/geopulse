@@ -23,6 +23,9 @@ import org.github.tess1o.geopulse.geocoding.service.external.GeoapifyGeocodingSe
 import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
 
@@ -52,6 +55,7 @@ public class GeocodingProviderFactory {
     private final PhotonResponseAdapter photonAdapter;
     private final NominatimResponseAdapter nominatimAdapter;
     private final String nominatimUserAgent;
+    private final ExternalIntegrationHealthService integrationHealthService;
 
     @Inject
     public GeocodingProviderFactory(NominatimGeocodingService nominatimService,
@@ -64,6 +68,7 @@ public class GeocodingProviderFactory {
                                     CustomGeocodingProviderService customProviderService,
                                     PhotonResponseAdapter photonAdapter,
                                     NominatimResponseAdapter nominatimAdapter,
+                                    ExternalIntegrationHealthService integrationHealthService,
                                     @ConfigProperty(name = "quarkus.rest-client.nominatim-api.user-agent", defaultValue = "GeoPulse/1.0") String nominatimUserAgent) {
         this.nominatimService = nominatimService;
         this.googleMapsService = googleMapsService;
@@ -75,6 +80,7 @@ public class GeocodingProviderFactory {
         this.customProviderService = customProviderService;
         this.photonAdapter = photonAdapter;
         this.nominatimAdapter = nominatimAdapter;
+        this.integrationHealthService = integrationHealthService;
         this.nominatimUserAgent = nominatimUserAgent;
     }
 
@@ -110,7 +116,7 @@ public class GeocodingProviderFactory {
      * Call a specific provider by name.
      */
     private Uni<FormattableGeocodingResult> callProvider(String providerName, Point requestCoordinates) {
-        return switch (providerName.toLowerCase()) {
+        Uni<FormattableGeocodingResult> request = switch (providerName.toLowerCase()) {
             case "nominatim" -> {
                 if (!nominatimService.isEnabled()) {
                     yield Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));
@@ -149,6 +155,16 @@ public class GeocodingProviderFactory {
             }
             default -> callCustomProvider(providerName, requestCoordinates);
         };
+        return request
+                .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, providerName))
+                .onFailure().invoke(failure -> integrationHealthService.recordFailure(
+                        ExternalIntegrationType.GEOCODING,
+                        providerName,
+                        isCircuitOpen(failure) ? ExternalIntegrationHealthStatus.CIRCUIT_OPEN : ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE,
+                        isCircuitOpen(failure) ? "CIRCUIT_OPEN" : failure.getClass().getSimpleName(),
+                        failure.getMessage(),
+                        null,
+                        null));
     }
 
     /**
@@ -166,6 +182,13 @@ public class GeocodingProviderFactory {
                 .map(CustomGeocodingProviderEntity::getName)
                 .forEach(enabled::add);
         return enabled;
+    }
+
+    private boolean isCircuitOpen(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException) return true;
+        }
+        return false;
     }
 
     /**

@@ -147,4 +147,12 @@ class ExternalIntegrationHealthServiceTest {
 
         assertThat(service.isFetchBlocked(ExternalIntegrationType.WEATHER, "OPEN_METEO", now)).isFalse();
     }
+
+    @Test
+    void findCurrentHealthDoesNotCreateAnUnobservedProviderRow() {
+        when(healthRepository.findByIntegrationAndProvider(ExternalIntegrationType.GEOCODING, "photon"))
+                .thenReturn(Optional.empty());
+
+        assertThat(service.findCurrentHealth(ExternalIntegrationType.GEOCODING, "photon")).isNull();
+    }
 }

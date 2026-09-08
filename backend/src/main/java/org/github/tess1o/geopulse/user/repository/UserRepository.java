@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserSearchDTO;
+import org.github.tess1o.geopulse.admin.model.Role;
 
 import java.util.List;
 import java.util.Locale;
@@ -53,6 +54,10 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
 
     public List<UserEntity> findActiveUsers() {
         return list("isActive = true");
+    }
+
+    public List<UserEntity> findActiveAdmins() {
+        return list("isActive = true and role = ?1", Role.ADMIN);
     }
 
     /**

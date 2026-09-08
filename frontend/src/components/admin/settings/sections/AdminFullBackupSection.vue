@@ -83,6 +83,24 @@
               <label class="config-field" data-setting-id="backup.operation.timeout-minutes"><span>Timeout Minutes</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
             </div>
           </div>
+          <div class="config-group">
+            <h5>Health Alerts</h5>
+            <label class="config-field" data-setting-id="backup.health.max-age-days">
+              <span>Warn After Days</span>
+              <InputNumber v-model="backupConfig.healthMaxAgeDays" :min="0" :max="365" :disabled="adminReadOnly" />
+            </label>
+            <small class="text-muted">Set to 0 to disable backup freshness warnings and notifications. Active admins receive in-app alerts when enabled.</small>
+            <label class="config-field" data-setting-id="backup.health.apprise.enabled">
+              <span>Send External Alert</span>
+              <ToggleSwitch v-model="backupConfig.healthAppriseEnabled" :disabled="adminReadOnly || backupConfig.healthMaxAgeDays === 0" />
+            </label>
+            <template v-if="backupConfig.healthAppriseEnabled">
+              <label class="config-field"><span>Apprise Routing</span><Select v-model="backupConfig.healthAppriseRoutingMode" :options="appriseRoutingOptions" optionLabel="label" optionValue="value" :disabled="adminReadOnly" /></label>
+              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>Config Key</span><InputText v-model="backupConfig.healthAppriseConfigKey" :disabled="adminReadOnly" /></label>
+              <label v-else class="config-field"><span>Destination URLs</span><InputText v-model="backupConfig.healthAppriseDestination" :disabled="adminReadOnly" /></label>
+              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>Tag (optional)</span><InputText v-model="backupConfig.healthAppriseTag" :disabled="adminReadOnly" /></label>
+            </template>
+          </div>
         </div>
         <div class="section-actions"><Button label="Save Backup Settings" icon="pi pi-save" :loading="savingConfig" :disabled="adminReadOnly" @click="saveBackupConfig" /></div>
       </section>
@@ -162,6 +180,7 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import ProgressBar from 'primevue/progressbar'
+import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
 import adminService from '@/utils/adminService'
@@ -190,7 +209,8 @@ const deleting = ref(false)
 const backupStatus = ref(null)
 const statusPoller = ref(null)
 const restoreStatusPending = ref(false)
-const backupConfig = ref({ scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120 })
+const backupConfig = ref({ scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120, healthMaxAgeDays: 2, healthAppriseEnabled: false, healthAppriseRoutingMode: 'URLS', healthAppriseDestination: '', healthAppriseConfigKey: '', healthAppriseTag: '' })
+const appriseRoutingOptions = [{ label: 'Destination URLs', value: 'URLS' }, { label: 'Config Key and Tag', value: 'KEY_TAG' }]
 
 const RESTORE_TERMINAL_STATES = new Set(['PREPARATION_FAILED', 'ACTIVATION_RETRYABLE', 'ACTIVATION_FAILED', 'COMPLETED', 'DISCARDED'])
 const operationRunning = computed(() => backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning || restoring.value || runningNow.value || fullDownloading.value)
@@ -245,7 +265,7 @@ const loadBackupFiles = async () => {
   try { backupFiles.value = await adminService.getBackupFiles() } catch (error) { showError('Load Failed', error, 'Failed to load local backups') } finally { loadingFiles.value = false }
 }
 const loadBackupConfig = async () => {
-  try { backupConfig.value = await adminService.getBackupConfig() } catch (error) { showError('Load Failed', error, 'Failed to load backup settings') }
+  try { backupConfig.value = { ...backupConfig.value, ...await adminService.getBackupConfig() } } catch (error) { showError('Load Failed', error, 'Failed to load backup settings') }
 }
 
 const downloadFullBackup = async () => {

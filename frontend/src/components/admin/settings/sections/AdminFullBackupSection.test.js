@@ -99,6 +99,18 @@ describe('AdminFullBackupSection password validation', () => {
     wrapper.unmount()
   })
 
+  it('saves zero days to disable backup freshness alerts', async () => {
+    const wrapper = mountSection()
+    await flushPromises()
+
+    wrapper.vm.backupConfig.healthMaxAgeDays = 0
+    wrapper.vm.backupConfig.healthAppriseEnabled = false
+    await wrapper.vm.saveBackupConfig()
+
+    expect(mocks.updateBackupConfig).toHaveBeenCalledWith(expect.objectContaining({ healthMaxAgeDays: 0, healthAppriseEnabled: false }))
+    wrapper.unmount()
+  })
+
   it('renders restore preparation failures as a persistent visible error', async () => {
     mocks.getBackupStatus.mockResolvedValue({
       state: 'PREPARATION_FAILED',

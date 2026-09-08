@@ -5,5 +5,6 @@ public enum ExternalIntegrationHealthStatus {
     PROVIDER_QUOTA_EXCEEDED,
     INTERNAL_QUOTA_EXCEEDED,
     PROVIDER_UNAVAILABLE,
+    CIRCUIT_OPEN,
     CONFIG_ERROR
 }

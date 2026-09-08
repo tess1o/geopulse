@@ -32,9 +32,27 @@
           <template #content>
             <div class="health-card-header">
               <span><i :class="card.icon" /> {{ card.label }}</span>
-              <Tag :value="card.status" :severity="card.severity" />
+              <div class="health-card-tags">
+                <Tag v-if="card.warning" :value="card.warning" severity="warn" />
+                <Tag :value="card.statusLabel || card.status" :severity="card.severity" />
+              </div>
             </div>
-            <p>{{ card.detail }}</p>
+            <div v-if="card.providers?.length" class="geocoding-provider-list">
+              <div v-for="provider in card.providers" :key="provider.name" class="geocoding-provider-row">
+                <div>
+                  <div class="geocoding-provider-name">
+                    <strong>{{ provider.displayName }}</strong>
+                    <Tag v-if="provider.primary" value="PRIMARY" severity="info" class="geocoding-provider-role" />
+                    <Tag v-if="provider.fallback" value="FALLBACK" severity="warn" class="geocoding-provider-role" />
+                  </div>
+                  <small>{{ provider.detail }}</small>
+                </div>
+                <div class="geocoding-provider-tags">
+                  <Tag :value="provider.statusLabel" :severity="provider.severity" />
+                </div>
+              </div>
+            </div>
+            <p v-else>{{ card.detail }}</p>
             <Button :label="card.action" size="small" text @click="router.push(card.to)" />
           </template>
         </Card>
@@ -108,62 +126,61 @@
         </Card>
       </div>
 
+      <div class="operational-health-grid">
       <Card class="weather-health-card">
         <template #content>
-          <div class="weather-health-header">
-            <div>
-              <p class="stat-label">Weather Health</p>
-              <h3 class="weather-health-title">
-                <Skeleton v-if="loading" width="8rem" height="1.75rem" />
-                <template v-else>{{ weatherHealthLabel }}</template>
-              </h3>
+          <details class="operational-health-details">
+            <summary class="weather-health-header">
+              <div>
+                <p class="stat-label">Weather Integration Health</p>
+                <h3 class="weather-health-title">
+                  <Skeleton v-if="loading" width="8rem" height="1.75rem" />
+                  <template v-else>{{ weatherHealthLabel }}</template>
+                </h3>
+              </div>
+              <Tag v-if="!loading" :value="weatherHealthBadge" :severity="weatherHealthSeverity" />
+            </summary>
+            <div v-if="loading" class="weather-health-details">
+              <Skeleton width="100%" height="1rem" />
+              <Skeleton width="75%" height="1rem" />
             </div>
-            <Tag
-              v-if="!loading"
-              :value="weatherHealthBadge"
-              :severity="weatherHealthSeverity"
-            />
-          </div>
-
-          <div v-if="loading" class="weather-health-details">
-            <Skeleton width="100%" height="1rem" />
-            <Skeleton width="75%" height="1rem" />
-          </div>
-          <div v-else class="weather-health-details">
-            <div class="weather-health-row">
-              <span>Provider</span>
-              <strong>{{ stats.weatherStatus?.provider || 'OPEN_METEO' }}</strong>
+            <div v-else class="weather-health-details">
+              <div class="weather-health-row"><span>Provider</span><strong>{{ stats.weatherStatus?.provider || 'OPEN_METEO' }}</strong></div>
+              <div class="weather-health-row"><span>Daily quota</span><strong>{{ formatNumber(stats.weatherStatus?.requestsRemainingToday || 0) }} remaining</strong></div>
+              <div class="weather-health-row"><span>Pending targets</span><strong>{{ formatNumber(weatherPendingTargets) }}</strong></div>
+              <div class="weather-health-row"><span>Historical ranges</span><strong>{{ weatherBacklogText }}</strong></div>
+              <div class="weather-health-row"><span>Claimable pending</span><strong>{{ formatNumber(weatherClaimablePendingTargets) }}</strong></div>
+              <div class="weather-health-row"><span>Fetch status</span><strong class="weather-health-status">{{ weatherFetchStatus }}</strong></div>
+              <div v-if="weatherProviderHealth?.lastErrorMessage" class="weather-health-message">{{ weatherProviderHealth.lastErrorMessage }}</div>
+              <div v-if="weatherNextAction" class="weather-health-row"><span>{{ weatherNextAction.label }}</span><strong>{{ weatherNextAction.value }}</strong></div>
             </div>
-            <div class="weather-health-row">
-              <span>Daily quota</span>
-              <strong>{{ formatNumber(stats.weatherStatus?.requestsRemainingToday || 0) }} remaining</strong>
-            </div>
-            <div class="weather-health-row">
-              <span>Pending targets</span>
-              <strong>{{ formatNumber(weatherPendingTargets) }}</strong>
-            </div>
-            <div class="weather-health-row">
-              <span>Historical ranges</span>
-              <strong>{{ weatherBacklogText }}</strong>
-            </div>
-            <div class="weather-health-row">
-              <span>Claimable pending</span>
-              <strong>{{ formatNumber(weatherClaimablePendingTargets) }}</strong>
-            </div>
-            <div class="weather-health-row">
-              <span>Fetch status</span>
-              <strong class="weather-health-status">{{ weatherFetchStatus }}</strong>
-            </div>
-            <div v-if="weatherProviderHealth?.lastErrorMessage" class="weather-health-message">
-              {{ weatherProviderHealth.lastErrorMessage }}
-            </div>
-            <div v-if="weatherNextAction" class="weather-health-row">
-              <span>{{ weatherNextAction.label }}</span>
-              <strong>{{ weatherNextAction.value }}</strong>
-            </div>
-          </div>
+          </details>
         </template>
       </Card>
+
+      <Card class="weather-health-card">
+        <template #content>
+          <details class="operational-health-details">
+            <summary class="weather-health-header">
+              <div>
+                <p class="stat-label">Map Matching Integration Health</p>
+                <h3 class="weather-health-title">{{ mapMatchingHealthLabel }}</h3>
+              </div>
+              <Tag :value="mapMatchingHealthBadge" :severity="mapMatchingHealthSeverity" />
+            </summary>
+            <div class="weather-health-details">
+              <div class="weather-health-row"><span>Provider</span><strong>{{ mapMatchingHealth.provider || 'Valhalla' }}</strong></div>
+              <div class="weather-health-row"><span>Queue</span><strong>{{ formatNumber(mapMatchingQueue.queued || 0) }} queued, {{ formatNumber(mapMatchingQueue.processing || 0) }} processing</strong></div>
+              <div class="weather-health-row"><span>Historical backfill</span><strong>{{ mapMatchingBackfill.enabled ? `${formatNumber(mapMatchingBackfill.remainingTrips || 0)} trips remaining` : 'Disabled' }}</strong></div>
+              <div class="weather-health-row"><span>Last activity</span><strong>{{ formatDateTime(mapMatchingWorker.lastActivityAt) }}</strong></div>
+              <div v-if="mapMatchingProviderHealth?.lastSuccessAt" class="weather-health-row"><span>Last provider success</span><strong>{{ formatDateTime(mapMatchingProviderHealth.lastSuccessAt) }}</strong></div>
+              <div v-if="mapMatchingProviderHealth?.lastErrorMessage" class="weather-health-message">{{ mapMatchingProviderHealth.lastErrorMessage }}</div>
+              <div v-if="mapMatchingWorker.lastError" class="weather-health-message">{{ mapMatchingWorker.lastError }}</div>
+            </div>
+          </details>
+        </template>
+      </Card>
+      </div>
 
     <!-- Quick Actions -->
     <div class="quick-actions-grid">
@@ -203,7 +220,7 @@
               <Button label="Backups & Restore" icon="pi pi-database" class="action-button" />
             </router-link>
             <router-link to="/app/admin/timeline-regeneration-campaigns" class="no-underline">
-              <Button label="Timeline Processing" icon="pi pi-refresh" severity="secondary" class="action-button" />
+              <Button label="Timeline Regeneration Campaigns" icon="pi pi-refresh" severity="secondary" class="action-button" />
             </router-link>
           </div>
         </template>
@@ -259,6 +276,7 @@ const stats = ref({
 
 const loading = ref(false)
 const healthLoaded = ref(false)
+const GPS_INGESTION_STALE_AFTER_MS = 24 * 60 * 60 * 1000
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -333,44 +351,117 @@ const weatherNextAction = computed(() => {
 
 const health = computed(() => stats.value.health || {})
 const securityWarnings = computed(() => health.value.security?.warnings || [])
+const geocodingHealth = computed(() => health.value.geocoding || { status: 'UNKNOWN', providers: [] })
+const mapMatchingHealth = computed(() => health.value.mapMatching || {})
+const mapMatchingProviderHealth = computed(() => mapMatchingHealth.value.providerHealth || null)
+const mapMatchingWorker = computed(() => mapMatchingHealth.value.status?.worker || {})
+const mapMatchingQueue = computed(() => mapMatchingHealth.value.status?.queue || {})
+const mapMatchingBackfill = computed(() => mapMatchingHealth.value.status?.backfill || {})
+const mapMatchingHealthBadge = computed(() => {
+  if (!mapMatchingHealth.value.enabled) return 'DISABLED'
+  if (!mapMatchingHealth.value.configured) return 'NOT CONFIGURED'
+  if (mapMatchingWorker.value.lastError) return 'BLOCKED'
+  return mapMatchingProviderHealth.value?.status || 'UNKNOWN'
+})
+const mapMatchingHealthLabel = computed(() => {
+  const badge = mapMatchingHealthBadge.value
+  if (badge === 'HEALTHY') return mapMatchingWorker.value.running ? 'Processing map matching' : 'Operational'
+  if (badge === 'UNKNOWN') return 'No provider request observed'
+  return badge.replaceAll('_', ' ')
+})
+const mapMatchingHealthSeverity = computed(() => {
+  const badge = mapMatchingHealthBadge.value
+  if (badge === 'DISABLED' || badge === 'UNKNOWN') return 'secondary'
+  if (badge === 'HEALTHY') return mapMatchingWorker.value.running ? 'info' : 'success'
+  return badge === 'PROVIDER_UNAVAILABLE' || badge === 'CONFIG_ERROR' ? 'danger' : 'warn'
+})
+const isGpsIngestionStale = computed(() => {
+  const latestReceivedAt = health.value.ingestion?.latestReceivedAt
+  const receivedAt = new Date(latestReceivedAt).getTime()
+  return Number.isFinite(receivedAt) && Date.now() - receivedAt > GPS_INGESTION_STALE_AFTER_MS
+})
 const healthWarnings = computed(() => {
   if (!healthLoaded.value) return []
   const warnings = [...securityWarnings.value]
   if (!health.value.backup?.latestBackupAt) warnings.push('No local backup found')
+  else if (health.value.backup?.stale) warnings.push(`Latest backup is older than the configured ${health.value.backup.healthMaxAgeDays}-day limit`)
   if (!health.value.ingestion?.latestReceivedAt) warnings.push('No GPS data received')
-  if (Number(health.value.timeline?.failedJobs || 0) > 0) warnings.push('Timeline jobs failed')
+  else if (isGpsIngestionStale.value) warnings.push('GPS ingestion has been inactive for over 24 hours')
+  const geocodingStatus = geocodingHealth.value.status
+  const fallbackConfigured = geocodingHealth.value.providers?.some(provider => provider.fallback)
+  if (['NOT_CONFIGURED', 'DEGRADED', 'CIRCUIT_OPEN'].includes(geocodingStatus)) {
+    warnings.push('Reverse geocoding needs attention')
+  } else if (!fallbackConfigured) {
+    warnings.push('No reverse-geocoding fallback configured')
+  }
+  if (mapMatchingHealth.value.enabled && (!mapMatchingHealth.value.configured
+      || mapMatchingWorker.value.lastError
+      || (mapMatchingProviderHealth.value?.status && mapMatchingProviderHealth.value.status !== 'HEALTHY'))) {
+    warnings.push('Map matching needs attention')
+  }
   return warnings
 })
+const geocodingSeverity = (status) => ({
+  HEALTHY: 'success',
+  UNKNOWN: 'secondary',
+  DEGRADED: 'warn',
+  CIRCUIT_OPEN: 'danger',
+  NOT_CONFIGURED: 'warn',
+}[status] || 'secondary')
+const geocodingStatusLabel = (status) => status.replaceAll('_', ' ')
+const geocodingProviderDetail = (provider) => {
+  if (provider.status === 'UNKNOWN') return 'No provider requests observed.'
+  if (provider.status === 'CIRCUIT_OPEN') return `Circuit breaker was last observed open ${formatDateTime(provider.circuitBreakerObservedOpenAt)}.`
+  if (provider.status === 'DEGRADED') return provider.lastErrorMessage || `Last failure ${formatDateTime(provider.lastFailureAt)}.`
+  return `Last success ${formatDateTime(provider.lastSuccessAt)}.`
+}
 const healthCards = computed(() => {
   const backup = health.value.backup || {}
   const ingestion = health.value.ingestion || {}
-  const timeline = health.value.timeline || {}
+  const geocoding = geocodingHealth.value
+  const geocodingStatus = geocoding.status || 'UNKNOWN'
+  const geocodingProviders = Array.isArray(geocoding.providers) ? geocoding.providers : []
   const weather = stats.value.weatherStatus || {}
   const lastReceived = ingestion.latestReceivedAt
   const backupReady = Boolean(backup.latestBackupAt)
-  const processing = Number(timeline.queuedJobs || 0) + Number(timeline.runningJobs || 0)
-  const failedJobs = Number(timeline.failedJobs || 0)
-  const weatherProblem = weather.providerHealth?.status && weather.providerHealth.status !== 'HEALTHY'
+  const backupStale = backup.stale === true
+  const weatherProblem = weather.enabled && weather.providerHealth?.status && weather.providerHealth.status !== 'HEALTHY'
+  const mapMatchingBadge = mapMatchingHealthBadge.value
   return [
     {
       label: 'Backups', icon: 'pi pi-database', to: '/app/admin/backups', action: 'Open backups',
-      status: backupReady ? 'READY' : 'ACTION NEEDED', severity: backupReady ? 'success' : 'warn',
-      detail: backupReady ? `Latest backup ${formatDateTime(backup.latestBackupAt)}` : 'No local backup found yet.'
+      status: backupReady ? backupStale ? 'STALE' : 'READY' : 'ACTION NEEDED', severity: backupReady && !backupStale ? 'success' : 'warn',
+      detail: backupReady ? `Latest backup ${formatDateTime(backup.latestBackupAt)}${backupStale ? ` (older than ${backup.healthMaxAgeDays} days)` : ''}` : 'No local backup found yet.'
     },
     {
       label: 'GPS Ingestion', icon: 'pi pi-map-marker', to: '/app/admin/users', action: 'Manage users',
-      status: lastReceived ? 'RECEIVING' : 'NO DATA', severity: lastReceived ? 'success' : 'warn',
+      status: lastReceived ? isGpsIngestionStale.value ? 'STALE' : 'RECEIVING' : 'NO DATA', severity: lastReceived && !isGpsIngestionStale.value ? 'success' : 'warn',
       detail: lastReceived ? `Latest point received ${formatDateTime(lastReceived)}` : 'No GPS points have been received.'
     },
     {
-      label: 'Timeline Processing', icon: 'pi pi-refresh', to: '/app/admin/timeline-regeneration-campaigns', action: 'View processing',
-      status: failedJobs ? 'FAILED' : processing ? 'RUNNING' : 'IDLE', severity: failedJobs ? 'danger' : processing ? 'info' : 'success',
-      detail: failedJobs ? `${failedJobs} failed job${failedJobs === 1 ? '' : 's'} in the current process.` : processing ? `${processing} job${processing === 1 ? '' : 's'} active.` : 'No active timeline jobs.'
+      label: 'Reverse Geocoding', icon: 'pi pi-map-marker', to: '/app/admin/settings?tab=geocoding', action: 'Open geocoding settings',
+      status: geocodingStatus, statusLabel: geocodingStatusLabel(geocodingStatus), severity: geocodingSeverity(geocodingStatus),
+      warning: geocodingStatus === 'NOT_CONFIGURED' || geocodingProviders.some(provider => provider.fallback) ? null : 'NO FALLBACK',
+      providers: [...geocodingProviders].sort((a, b) => Number(b.primary) - Number(a.primary) || Number(b.fallback) - Number(a.fallback)).map(provider => ({
+        ...provider,
+        statusLabel: geocodingStatusLabel(provider.status),
+        severity: geocodingSeverity(provider.status),
+        detail: geocodingProviderDetail(provider)
+      })),
+      detail: geocodingStatus === 'NOT_CONFIGURED' ? 'No enabled providers configured.' : ''
     },
     {
       label: 'Weather', icon: 'pi pi-cloud', to: '/app/admin/settings?tab=weather', action: 'Open weather settings',
       status: weatherProblem ? 'ATTENTION' : weather.enabled === false ? 'DISABLED' : 'READY', severity: weatherProblem ? 'warn' : weather.enabled === false ? 'secondary' : 'success',
       detail: weatherProblem ? (weather.providerHealth?.status || 'Provider needs attention') : weather.enabled === false ? 'Weather enrichment is disabled.' : 'Weather provider is available.'
+    },
+    {
+      label: 'Map Matching', icon: 'pi pi-directions-alt', to: '/app/admin/settings?tab=map-matching', action: 'Open map matching settings',
+      status: mapMatchingBadge, statusLabel: mapMatchingBadge.replaceAll('_', ' '), severity: mapMatchingHealthSeverity.value,
+      detail: !mapMatchingHealth.value.enabled ? 'Optional map matching is disabled.'
+        : !mapMatchingHealth.value.configured ? 'Valhalla is not configured.'
+          : mapMatchingProviderHealth.value?.lastSuccessAt ? `Last Valhalla success ${formatDateTime(mapMatchingProviderHealth.value.lastSuccessAt)}`
+            : 'No Valhalla requests observed yet.'
     },
     {
       label: 'Security', icon: 'pi pi-shield', to: '/app/admin/settings?tab=authentication', action: 'Open security settings',
@@ -453,7 +544,15 @@ onMounted(() => {
 .health-summary--warning { background: var(--gp-warning-light, #fff7ed); color: var(--gp-warning-dark, #9a3412); }
 .health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-bottom: 2rem; }
 .health-card-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-weight: 600; }
+.health-card-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .25rem; }
 .health-card p { min-height: 2.8rem; margin: 1rem 0 .5rem; color: var(--text-color-secondary); font-size: .9rem; line-height: 1.4; }
+.geocoding-provider-list { display: grid; gap: .6rem; margin: 1rem 0 .5rem; }
+.geocoding-provider-row { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; color: var(--text-color-secondary); font-size: .8rem; }
+.geocoding-provider-name { display: flex; align-items: center; gap: .35rem; }
+.geocoding-provider-row strong, .geocoding-provider-row small { display: block; }
+.geocoding-provider-row strong { color: var(--text-color); }
+.geocoding-provider-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .25rem; }
+.geocoding-provider-role { font-size: .65rem; padding: .1rem .3rem; }
 .usage-header { margin-top: .5rem; }
 
 .stats-title {
@@ -541,8 +640,11 @@ onMounted(() => {
   color: var(--purple-500);
 }
 
-.weather-health-card {
+.operational-health-grid {
   margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .weather-health-card :deep(.p-card-body) {
@@ -558,6 +660,25 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.operational-health-details summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.operational-health-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.operational-health-details summary::after {
+  content: '⌄';
+  color: var(--text-color-secondary);
+  margin-left: auto;
+}
+
+.operational-health-details[open] summary::after {
+  transform: rotate(180deg);
 }
 
 .weather-health-title {
@@ -608,6 +729,7 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .operational-health-grid { grid-template-columns: 1fr; }
   .quick-actions-grid {
     grid-template-columns: 1fr;
   }

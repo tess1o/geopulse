@@ -2,9 +2,9 @@ package org.github.tess1o.geopulse.notifications.service;
 
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
-import org.github.tess1o.geopulse.notifications.model.entity.GpsHealthIncidentEntity;
+import org.github.tess1o.geopulse.notifications.model.entity.IncidentEntity;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
-import org.github.tess1o.geopulse.notifications.repository.GpsHealthIncidentRepository;
+import org.github.tess1o.geopulse.notifications.repository.IncidentRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 class GpsHealthMonitoringServiceTest {
     @Mock UserRepository users;
     @Mock GpsPointRepository points;
-    @Mock GpsHealthIncidentRepository incidents;
+    @Mock IncidentRepository incidents;
     @Mock NotificationPreferencesService preferences;
     @Mock NotificationPublisherService publisher;
 
@@ -46,11 +46,11 @@ class GpsHealthMonitoringServiceTest {
         when(users.findActiveUsers()).thenReturn(List.of(user));
         when(preferences.getEntityPreferences(user)).thenReturn(prefs);
         when(points.findLatestReceivedByUserId(userId)).thenReturn(null);
-        when(incidents.findById(userId)).thenReturn(null);
+        when(incidents.findById("gps-health:" + userId)).thenReturn(null);
 
         new GpsHealthMonitoringService(users, points, incidents, preferences, publisher).checkHealthAt(now);
 
-        verify(incidents).persist(any(GpsHealthIncidentEntity.class));
+        verify(incidents).persist(any(IncidentEntity.class));
         ArgumentCaptor<NotificationType> type = ArgumentCaptor.forClass(NotificationType.class);
         ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
         verify(publisher).publish(eq(user), any(), type.capture(), any(), body.capture(), any(), any(), any());
@@ -67,11 +67,11 @@ class GpsHealthMonitoringServiceTest {
                 .gpsMonitoringStartedAt(now.minusSeconds(60)).build();
         when(users.findActiveUsers()).thenReturn(List.of(user));
         when(preferences.getEntityPreferences(user)).thenReturn(prefs);
-        when(incidents.findById(userId)).thenReturn(null);
+        when(incidents.findById("gps-health:" + userId)).thenReturn(null);
 
         new GpsHealthMonitoringService(users, points, incidents, preferences, publisher).checkHealthAt(now);
 
-        verify(incidents, never()).persist(any(GpsHealthIncidentEntity.class));
+        verify(incidents, never()).persist(any(IncidentEntity.class));
         verifyNoInteractions(publisher);
     }
 
@@ -82,11 +82,11 @@ class GpsHealthMonitoringServiceTest {
         UserEntity user = new UserEntity(); user.setId(userId);
         NotificationPreferences prefs = NotificationPreferences.builder().gpsHealthEnabled(true).gpsSilenceMinutes(30)
                 .gpsMonitoringStartedAt(now.minusSeconds(3600)).build();
-        GpsHealthIncidentEntity incident = new GpsHealthIncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
+        IncidentEntity incident = new IncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
         when(users.findActiveUsers()).thenReturn(List.of(user));
         when(preferences.getEntityPreferences(user)).thenReturn(prefs);
         when(points.findLatestReceivedByUserId(userId)).thenReturn(now.minusSeconds(10));
-        when(incidents.findById(userId)).thenReturn(incident);
+        when(incidents.findById("gps-health:" + userId)).thenReturn(incident);
 
         new GpsHealthMonitoringService(users, points, incidents, preferences, publisher).checkHealthAt(now);
 
@@ -103,11 +103,11 @@ class GpsHealthMonitoringServiceTest {
         UserEntity user = new UserEntity(); user.setId(userId);
         NotificationPreferences prefs = NotificationPreferences.builder().gpsHealthEnabled(true).gpsSilenceMinutes(60)
                 .gpsMonitoringStartedAt(now.minusSeconds(60)).build();
-        GpsHealthIncidentEntity incident = new GpsHealthIncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
+        IncidentEntity incident = new IncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
         when(users.findActiveUsers()).thenReturn(List.of(user));
         when(preferences.getEntityPreferences(user)).thenReturn(prefs);
         when(points.findLatestReceivedByUserId(userId)).thenReturn(now.minusSeconds(10));
-        when(incidents.findById(userId)).thenReturn(incident);
+        when(incidents.findById("gps-health:" + userId)).thenReturn(incident);
 
         new GpsHealthMonitoringService(users, points, incidents, preferences, publisher).checkHealthAt(now);
 
@@ -122,15 +122,15 @@ class GpsHealthMonitoringServiceTest {
         UserEntity user = new UserEntity(); user.setId(userId);
         NotificationPreferences prefs = NotificationPreferences.builder().gpsHealthEnabled(true).gpsSilenceMinutes(30)
                 .gpsMonitoringStartedAt(now.minusSeconds(3600)).build();
-        GpsHealthIncidentEntity incident = new GpsHealthIncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
+        IncidentEntity incident = new IncidentEntity(); incident.setOpenedAt(now.minusSeconds(1800));
         when(users.findActiveUsers()).thenReturn(List.of(user));
         when(preferences.getEntityPreferences(user)).thenReturn(prefs);
         when(points.findLatestReceivedByUserId(userId)).thenReturn(now.minusSeconds(1801));
-        when(incidents.findById(userId)).thenReturn(incident);
+        when(incidents.findById("gps-health:" + userId)).thenReturn(incident);
 
         new GpsHealthMonitoringService(users, points, incidents, preferences, publisher).checkHealthAt(now);
 
-        verify(incidents, never()).persist(any(GpsHealthIncidentEntity.class));
+        verify(incidents, never()).persist(any(IncidentEntity.class));
         verifyNoInteractions(publisher);
     }
 }

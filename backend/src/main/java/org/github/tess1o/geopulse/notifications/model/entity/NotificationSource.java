@@ -8,6 +8,7 @@ public enum NotificationSource {
     FRIEND_INVITE,
     WEATHER,
     GPS_HEALTH,
+    BACKUP_HEALTH,
     PRODUCT,
     REWIND
 }

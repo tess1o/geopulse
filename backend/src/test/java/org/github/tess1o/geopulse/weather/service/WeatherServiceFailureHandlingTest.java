@@ -403,7 +403,7 @@ class WeatherServiceFailureHandlingTest {
         when(quotaService.requestsUsedToday()).thenReturn(203L);
         when(targetRepository.countByStatus()).thenReturn(Map.of("PENDING", 4525L));
         when(targetRepository.countClaimablePendingTargets(any(Instant.class))).thenReturn(4525L);
-        when(integrationHealthService.currentHealth(any(), eq(PROVIDER))).thenReturn(providerHealth);
+        when(integrationHealthService.findCurrentHealth(any(), eq(PROVIDER))).thenReturn(providerHealth);
 
         WeatherStatusResponse status = service.status();
 

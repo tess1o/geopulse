@@ -15,10 +15,15 @@ import org.github.tess1o.geopulse.weather.service.WeatherStatusService;
 import org.github.tess1o.geopulse.admin.service.AdminFullBackupService;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
+import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
+import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
+import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Instant;
-import java.util.Comparator;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -46,6 +51,10 @@ public class AdminDashboardResource {
     @Inject BackupMaintenanceService backupMaintenanceService;
     @Inject GpsPointRepository gpsPointRepository;
     @Inject TimelineJobProgressService timelineJobProgressService;
+    @Inject ReverseGeocodingManagementService reverseGeocodingManagementService;
+    @Inject MapMatchingConfiguration mapMatchingConfiguration;
+    @Inject MapMatchingWorker mapMatchingWorker;
+    @Inject ExternalIntegrationHealthService integrationHealthService;
 
     /**
      * Get dashboard statistics
@@ -93,16 +102,19 @@ public class AdminDashboardResource {
     private Map<String, Object> health() {
         Map<String, Object> health = new HashMap<>();
         try {
-            Instant latestBackup = backupService.listLocalBackups().stream()
-                    .map(file -> file.getLastModifiedAt())
-                    .filter(java.util.Objects::nonNull)
-                    .max(Comparator.naturalOrder()).orElse(null);
-            health.put("backup", Map.of(
-                    "scheduled", backupService.getConfig().isScheduledEnabled(),
-                    "latestBackupAt", latestBackup == null ? "" : latestBackup.toString(),
-                    "status", backupMaintenanceService.getStatus().getStatus()));
+            var config = backupService.getConfig();
+            Instant latestBackup = backupService.getLatestLocalBackupAt();
+            boolean stale = config.getHealthMaxAgeDays() > 0 && latestBackup != null
+                    && latestBackup.isBefore(Instant.now().minus(Duration.ofDays(config.getHealthMaxAgeDays())));
+            Map<String, Object> backup = new HashMap<>();
+            backup.put("scheduled", config.isScheduledEnabled());
+            backup.put("latestBackupAt", latestBackup == null ? "" : latestBackup.toString());
+            backup.put("status", backupMaintenanceService.getStatus().getStatus());
+            backup.put("healthMaxAgeDays", config.getHealthMaxAgeDays());
+            backup.put("stale", stale);
+            health.put("backup", backup);
         } catch (Exception e) {
-            health.put("backup", Map.of("scheduled", false, "latestBackupAt", "", "status", "unavailable"));
+            health.put("backup", Map.of("scheduled", false, "latestBackupAt", "", "status", "unavailable", "healthMaxAgeDays", 0, "stale", false));
         }
 
         Instant latestReceived = gpsPointRepository.findLatestReceived()
@@ -110,11 +122,24 @@ public class AdminDashboardResource {
         health.put("ingestion", Map.of(
                 "latestReceivedAt", latestReceived == null ? "" : latestReceived.toString(),
                 "pointsLast24h", gpsPointsMetrics.getGpsPointsLast24h()));
+        health.put("geocoding", reverseGeocodingManagementService.getProviderHealth());
+        health.put("mapMatching", mapMatchingHealth());
         health.put("timeline", timelineJobProgressService.getStatistics());
 
         java.util.List<String> warnings = new java.util.ArrayList<>();
         if (!backupService.getConfig().isScheduledEnabled()) warnings.add("Scheduled backups are disabled");
         health.put("security", Map.of("warnings", warnings));
+        return health;
+    }
+
+    private Map<String, Object> mapMatchingHealth() {
+        Map<String, Object> health = new HashMap<>();
+        String provider = mapMatchingConfiguration.provider();
+        health.put("enabled", mapMatchingConfiguration.isEnabled());
+        health.put("configured", mapMatchingConfiguration.valhallaConfigured());
+        health.put("provider", provider);
+        health.put("providerHealth", integrationHealthService.findCurrentHealth(ExternalIntegrationType.MAP_MATCHING, provider));
+        health.put("status", mapMatchingWorker.status());
         return health;
     }
 }
