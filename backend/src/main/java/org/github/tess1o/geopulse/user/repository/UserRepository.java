@@ -51,6 +51,10 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
         return findById(userId) != null;
     }
 
+    public List<UserEntity> findActiveUsers() {
+        return list("isActive = true");
+    }
+
     /**
      * Search users to invite by excluding current user, existing friends, and users with pending invitations.
      * This is an optimized single SQL query version.

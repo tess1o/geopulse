@@ -14,6 +14,11 @@ import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationPageDt
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 import org.github.tess1o.geopulse.notifications.service.UserNotificationService;
+import org.github.tess1o.geopulse.notifications.service.NotificationPreferencesService;
+import org.github.tess1o.geopulse.notifications.service.ReleaseAnnouncementService;
+import org.github.tess1o.geopulse.notifications.model.dto.NotificationPreferencesDto;
+import org.github.tess1o.geopulse.notifications.model.dto.UpdateNotificationPreferencesRequest;
+import org.github.tess1o.geopulse.notifications.model.dto.ReleaseAnnouncementResponse;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.List;
@@ -31,12 +36,46 @@ public class NotificationResource {
 
     private final UserNotificationService notificationService;
     private final CurrentUserService currentUserService;
+    private final NotificationPreferencesService preferencesService;
+    private final ReleaseAnnouncementService releaseAnnouncementService;
 
     @Inject
     public NotificationResource(UserNotificationService notificationService,
-                                CurrentUserService currentUserService) {
+                                CurrentUserService currentUserService,
+                                NotificationPreferencesService preferencesService,
+                                ReleaseAnnouncementService releaseAnnouncementService) {
         this.notificationService = notificationService;
         this.currentUserService = currentUserService;
+        this.preferencesService = preferencesService;
+        this.releaseAnnouncementService = releaseAnnouncementService;
+    }
+
+    @GET
+    @Path("/preferences")
+    public Response getPreferences() {
+        return Response.ok(ApiResponse.success(preferencesService.get(currentUserService.getCurrentUserId()))).build();
+    }
+
+    @PUT
+    @Path("/preferences")
+    public Response updatePreferences(UpdateNotificationPreferencesRequest request) {
+        try {
+            NotificationPreferencesDto result = preferencesService.update(currentUserService.getCurrentUserId(), request);
+            return Response.ok(ApiResponse.success(result)).build();
+        } catch (IllegalArgumentException exception) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(exception.getMessage())).build();
+        }
+    }
+
+    @POST
+    @Path("/release/current")
+    public Response currentReleaseAnnouncement() {
+        try {
+            ReleaseAnnouncementResponse result = releaseAnnouncementService.current(currentUserService.getCurrentUserId());
+            return Response.ok(ApiResponse.success(result)).build();
+        } catch (IllegalArgumentException exception) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(exception.getMessage())).build();
+        }
     }
 
     @GET

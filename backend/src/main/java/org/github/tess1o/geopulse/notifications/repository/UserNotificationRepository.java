@@ -21,7 +21,7 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
     }
 
     public List<UserNotificationEntity> findByOwner(UUID ownerUserId, int limit) {
-        return find("ownerUser.id = ?1 ORDER BY occurredAt DESC", ownerUserId)
+        return find("ownerUser.id = ?1 AND inAppEnabled = true ORDER BY occurredAt DESC", ownerUserId)
                 .page(0, Math.max(1, limit))
                 .list();
     }
@@ -32,7 +32,7 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
                                                       Boolean seen,
                                                       NotificationSource source,
                                                       NotificationType type) {
-        StringBuilder where = new StringBuilder("n.ownerUser.id = :ownerUserId");
+        StringBuilder where = new StringBuilder("n.ownerUser.id = :ownerUserId AND n.inAppEnabled = true");
         Map<String, Object> params = new HashMap<>();
         params.put("ownerUserId", ownerUserId);
 
@@ -64,11 +64,11 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
     }
 
     public long countUnreadByOwner(UUID ownerUserId) {
-        return count("ownerUser.id = ?1 AND seenAt IS NULL", ownerUserId);
+        return count("ownerUser.id = ?1 AND inAppEnabled = true AND seenAt IS NULL", ownerUserId);
     }
 
     public Long findLatestUnreadIdByOwner(UUID ownerUserId) {
-        return find("ownerUser.id = ?1 AND seenAt IS NULL ORDER BY id DESC", ownerUserId)
+        return find("ownerUser.id = ?1 AND inAppEnabled = true AND seenAt IS NULL ORDER BY id DESC", ownerUserId)
                 .firstResultOptional()
                 .map(UserNotificationEntity::getId)
                 .orElse(null);

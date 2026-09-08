@@ -6,5 +6,8 @@ public enum NotificationSource {
     IMPORT,
     EXPORT,
     FRIEND_INVITE,
-    WEATHER
+    WEATHER,
+    GPS_HEALTH,
+    PRODUCT,
+    REWIND
 }

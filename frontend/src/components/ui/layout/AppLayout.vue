@@ -17,6 +17,14 @@
         </div>
       </template>
     </Toast>
+    <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" header="What’s new">
+      <div v-if="releaseAnnouncement" class="gp-release-announcement">
+        <h3>{{ releaseAnnouncement.title }}</h3>
+        <ul class="gp-release-announcement-list"><li v-for="highlight in releaseAnnouncement.highlights" :key="highlight">{{ highlight }}</li></ul>
+        <a v-if="releaseAnnouncement.releaseUrl" class="gp-release-announcement-link" :href="releaseAnnouncement.releaseUrl" target="_blank" rel="noopener">Read full release notes <i class="pi pi-external-link" aria-hidden="true" /></a>
+      </div>
+      <template #footer><Button label="Got it" @click="dismissReleaseAnnouncement" /></template>
+    </Dialog>
     <Toast group="gp-notifications" position="top-right">
       <template #message="slotProps">
         <button
@@ -57,12 +65,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import Toast from 'primevue/toast'
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import apiService from '@/utils/apiService'
 
 const props = defineProps({
   variant: {
@@ -97,6 +108,9 @@ const emit = defineEmits(['invite-friend', 'toggle-location-sharing'])
 const toast = useToast()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const releaseDialogVisible = ref(false)
+const releaseAnnouncement = ref(null)
+const releaseNotificationId = ref(null)
 
 const layoutClasses = computed(() => ({
   [`gp-app-layout--${props.variant}`]: props.variant !== 'default',
@@ -136,11 +150,33 @@ const notificationToastHint = (message) => {
   return 'Open Notification'
 }
 
+const loadReleaseAnnouncement = async () => {
+  try {
+    const response = await apiService.post('/notifications/release/current')
+    const data = response?.data || response
+    if (data?.show && data?.release && data?.notification?.id) {
+      releaseAnnouncement.value = data.release
+      releaseNotificationId.value = data.notification.id
+      releaseDialogVisible.value = true
+    }
+  } catch (_) {
+    // A missing release entry must never block the app shell.
+  }
+}
+
+const dismissReleaseAnnouncement = async () => {
+  releaseDialogVisible.value = false
+  if (releaseNotificationId.value) {
+    try { await notificationsStore.markSeen(releaseNotificationId.value) } catch (_) {}
+  }
+}
+
 onMounted(() => {
   notificationsStore.setToastHandler(emitNotificationToast)
 
   if (authStore.isAuthenticated) {
     notificationsStore.startPolling()
+    void loadReleaseAnnouncement()
   }
 })
 
@@ -149,6 +185,7 @@ watch(
   (isAuthenticated) => {
     if (isAuthenticated) {
       notificationsStore.startPolling()
+      void loadReleaseAnnouncement()
       return
     }
     notificationsStore.resetSessionState({ clearBacklogWatermark: true })
@@ -186,6 +223,12 @@ onUnmounted(() => {
   background: var(--gp-surface-light);
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+.gp-release-announcement { display: grid; gap: .75rem; max-width: 38rem; }
+.gp-release-announcement h3, .gp-release-announcement ul { margin: 0; }
+.gp-release-announcement-list { padding-left: 1.4rem; list-style: disc; display: grid; gap: .45rem; }
+.gp-release-announcement-link { color: var(--gp-primary); font-weight: 600; text-decoration: underline; text-underline-offset: .18em; width: fit-content; }
+.gp-release-announcement-link:hover { color: var(--gp-primary-dark, var(--gp-primary)); }
 
 .gp-app-layout--full-height {
   min-height: 100vh;

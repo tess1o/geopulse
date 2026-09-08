@@ -16,6 +16,10 @@ public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfi
         return list("user.id = ?1", userId);
     }
 
+    public List<GpsSourceConfigEntity> findActiveByUserId(UUID userId) {
+        return list("user.id = ?1 and active = true", userId);
+    }
+
     public Optional<GpsSourceConfigEntity> findByConfigIdAndUserId(UUID configId, UUID userId) {
         return list("user.id = ?1 and id = ?2", userId, configId).stream().findFirst();
     }

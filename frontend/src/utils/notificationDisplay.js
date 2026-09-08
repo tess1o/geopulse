@@ -40,6 +40,27 @@ const NOTIFICATION_SOURCE_CONFIG = {
     severity: 'warn',
     route: '/app/admin/dashboard',
     actionLabel: 'Open Admin Dashboard'
+  },
+  GPS_HEALTH: {
+    sourceLabel: 'GPS health',
+    icon: 'pi pi-map-marker',
+    severity: 'warn',
+    route: '/app/notifications',
+    actionLabel: 'Open Notifications'
+  },
+  PRODUCT: {
+    sourceLabel: 'Product',
+    icon: 'pi pi-sparkles',
+    severity: 'info',
+    route: '/app/notifications',
+    actionLabel: 'Open Notifications'
+  },
+  REWIND: {
+    sourceLabel: 'Rewind',
+    icon: 'pi pi-history',
+    severity: 'info',
+    route: '/app/rewind',
+    actionLabel: 'Open Rewind'
   }
 }
 
@@ -109,6 +130,18 @@ const NOTIFICATION_TYPE_CONFIG = {
     severity: 'success',
     route: '/app/admin/dashboard',
     actionLabel: 'Open Admin Dashboard'
+  },
+  GPS_HEALTH_INCIDENT_OPENED: {
+    typeLabel: 'GPS tracking is quiet', icon: 'pi pi-exclamation-triangle', severity: 'warn', route: '/app/notifications', actionLabel: 'Open Notifications'
+  },
+  GPS_HEALTH_INCIDENT_RESOLVED: {
+    typeLabel: 'GPS tracking resumed', icon: 'pi pi-check-circle', severity: 'success', route: '/app/notifications', actionLabel: 'Open Notifications'
+  },
+  PRODUCT_RELEASE_AVAILABLE: {
+    typeLabel: 'What’s new', icon: 'pi pi-sparkles', severity: 'info', route: '/app/notifications', actionLabel: 'Open Notifications'
+  },
+  REWIND_READY: {
+    typeLabel: 'Rewind ready', icon: 'pi pi-history', severity: 'info', route: '/app/rewind', actionLabel: 'Open Rewind'
   }
 }
 

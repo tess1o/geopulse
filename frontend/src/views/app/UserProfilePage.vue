@@ -83,6 +83,7 @@ import ProfileTab from '@/components/profile/ProfileTab.vue'
 import SecurityTab from '@/components/profile/SecurityTab.vue'
 import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
 import ConnectedAppsTab from '@/components/profile/ConnectedAppsTab.vue'
+import NotificationsPreferencesTab from '@/components/profile/NotificationsPreferencesTab.vue'
 import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue'
 
 // Store
@@ -110,7 +111,7 @@ const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
 // State
 const activeTab = ref('general')
-const validTabs = ['general', 'security', 'timeline', 'connectedApps']
+const validTabs = ['general', 'security', 'timeline', 'notifications', 'connectedApps']
 const profileUnsavedConfirmGroup = 'profile-unsaved-changes'
 const settingHintsById = Object.fromEntries(
   PROFILE_SETTINGS_SEARCH_INDEX
@@ -150,7 +151,7 @@ const settingsGroups = [
     { label: 'General', icon: 'pi pi-user', key: 'general' },
     { label: 'Security', icon: 'pi pi-shield', key: 'security' }
   ] },
-  { label: 'Experience', items: [{ label: 'Timeline & Map', icon: 'pi pi-map', key: 'timeline' }] },
+  { label: 'Experience', items: [{ label: 'Timeline & Map', icon: 'pi pi-map', key: 'timeline' }, { label: 'Notifications', icon: 'pi pi-bell', key: 'notifications' }] },
   { label: 'Connected Apps', items: [{ label: 'Connected Apps', icon: 'pi pi-box', key: 'connectedApps' }] }
 ]
 const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
@@ -161,6 +162,7 @@ const tabComponents = {
   general: ProfileTab,
   security: SecurityTab,
   timeline: TimelineDisplayTab,
+  notifications: NotificationsPreferencesTab,
   connectedApps: ConnectedAppsTab,
 }
 
@@ -197,6 +199,7 @@ const currentTabProps = computed(() => {
       readOnly: demoReadOnly.value,
       initialPreferences: timelineDisplayPrefs.value,
     },
+    notifications: { readOnly: demoReadOnly.value },
     connectedApps: { readOnly: demoReadOnly.value, activeApp: route.query.app || 'ai', aiSettings: aiSettings.value, immichConfig: immichConfig.value, immichLoading: immichLoading.value, memosConfig: memosConfig.value, memosLoading: memosLoading.value },
   }
   return allProps[activeTab.value] || {}
@@ -210,6 +213,7 @@ const currentTabHandlers = computed(() => {
       save: handleTimelineDisplaySave,
       'dirty-change': (isDirty) => handleTabDirtyChange('timeline', isDirty)
     },
+    notifications: { saved: () => toast.add({ severity: 'success', summary: 'Notification preferences saved', life: 3000 }) },
     connectedApps: {
       'ai-save': handleAISave, 'immich-save': handleImmichSave, 'memos-save': handleMemosSave,
       'dirty-change': ({ key, dirty }) => handleTabDirtyChange(key, dirty),

@@ -50,6 +50,10 @@ public class UserNotificationEntity implements Serializable {
     @Column(name = "seen_at")
     private Instant seenAt;
 
+    @Column(name = "in_app_enabled", nullable = false)
+    @Builder.Default
+    private boolean inAppEnabled = true;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_status", length = 20)
     private GeofenceDeliveryStatus deliveryStatus;

@@ -40,13 +40,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .list();
     }
 
-    public List<GpsPointEntity> findMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime, int limit) {
-        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp ASC",
-                userId, startTime, endTime)
-                .page(0, limit)
-                .list();
-    }
-
     public List<GpsPointEntity> findEligibleMapPointsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime,
                                                                            int limit, Double maxAccuracy) {
         return find(buildEligibleTimePeriodQuery(maxAccuracy) + " ORDER BY timestamp ASC",
@@ -151,6 +144,19 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public Optional<GpsPointEntity> findLatest(UUID userId) {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId)
                 .firstResultOptional();
+    }
+
+    /** Latest arrival at GeoPulse for a user. createdAt is ingestion health, not device clock time. */
+    public Instant findLatestReceivedByUserId(UUID userId) {
+        return getEntityManager().createQuery(
+                        "SELECT MAX(gp.createdAt) FROM GpsPointEntity gp WHERE gp.user.id = :userId",
+                        Instant.class)
+                .setParameter("userId", userId)
+                .getSingleResult();
+    }
+
+    public boolean existsByUserIdAndTimePeriod(UUID userId, Instant startTime, Instant endTime) {
+        return count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3", userId, startTime, endTime) > 0;
     }
 
     public Optional<GpsPointEntity> findLatestByUserIdAtOrBeforeTimestamp(UUID userId, Instant timestamp) {
@@ -306,10 +312,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @param limit         Number of points to fetch
      * @return List of lightweight GPS points for this chunk
      */
-    public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
-                                                 Instant cursorTimestamp, Long cursorId, int limit) {
-        return findEssentialDataChunk(userId, fromTimestamp, cursorTimestamp, cursorId, limit, null);
-    }
 
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
                                                  Instant cursorTimestamp, Long cursorId, int limit,
