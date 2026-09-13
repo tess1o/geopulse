@@ -138,6 +138,7 @@ const tripTypeConfig = {
   RUNNING: { label: 'Running', color: 'contrast' },
   CAR: { label: 'Car', color: 'primary' },
   MOTORCYCLE: { label: 'Motorcycle', color: 'info' },
+  PUBLIC_TRANSPORT: { label: 'Public Transportation', color: 'secondary' },
   TRAIN: { label: 'Train', color: 'secondary' },
   FLIGHT: { label: 'Flight', color: 'danger' },
   BOAT: { label: 'Boat', color: 'info' }

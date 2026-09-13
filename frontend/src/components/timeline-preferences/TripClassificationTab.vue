@@ -240,9 +240,9 @@
     <TransportTypeCard
       type="car"
       title="Motor Vehicle"
-      subtitle="Car or motorcycle label"
+      subtitle="Car, motorcycle, or public transportation label"
       icon="pi pi-car"
-      description="Detects car or motorcycle-like trips using shared motor vehicle speed thresholds. The selected label controls how matching trips are classified."
+      description="Detects car-like trips using shared motor vehicle speed thresholds. Public Transportation is a label for those trips, not bus detection."
       :enabled="isMotorVehicleEnabled"
       @update:enabled="updateMotorVehicleEnabled"
       :collapsible="true"
@@ -274,22 +274,34 @@
               aria-label="Enable motorcycle label"
             />
           </div>
+
+          <div class="label-toggle" data-setting-id="publicTransportationEnabled">
+            <div>
+              <label class="parameter-label">Public Transportation Label</label>
+              <p class="parameter-description">Allow detected car-like trips to be labeled as public transportation.</p>
+            </div>
+            <ToggleSwitch
+              :model-value="modelValue.publicTransportationEnabled === true"
+              @update:model-value="updatePref('publicTransportationEnabled', $event)"
+              aria-label="Enable public transportation label"
+            />
+          </div>
         </div>
 
         <div
-          v-if="modelValue.carEnabled !== false && modelValue.motorcycleEnabled === true"
+          v-if="enabledMotorizedLabels.length > 1"
           class="parameter-group"
           data-setting-id="preferredMotorizedType"
         >
           <label class="parameter-label">Preferred Motor Vehicle Label</label>
           <p class="parameter-description">
-            When both labels are enabled, detected motor vehicle trips use this label by default.
+            When multiple labels are enabled, detected motor vehicle trips use this label by default.
           </p>
           <div class="control-value">{{ formatPreferredMotorizedType(modelValue.preferredMotorizedType) }}</div>
           <Select
             :model-value="modelValue.preferredMotorizedType || 'CAR'"
             @update:model-value="updatePref('preferredMotorizedType', $event)"
-            :options="preferredMotorizedTypeOptions"
+            :options="enabledMotorizedLabels"
             optionLabel="label"
             optionValue="value"
             placeholder="Select preferred label"
@@ -713,14 +725,21 @@ const tripsAlgorithmOptions = [
   { label: 'Multiple trips', value: 'multiple' }
 ]
 
-const preferredMotorizedTypeOptions = [
+const motorizedTypeOptions = [
   { label: 'Car', value: 'CAR' },
-  { label: 'Motorcycle', value: 'MOTORCYCLE' }
+  { label: 'Motorcycle', value: 'MOTORCYCLE' },
+  { label: 'Public Transportation', value: 'PUBLIC_TRANSPORT' }
 ]
 
 const isMotorVehicleEnabled = computed(() => {
-  return props.modelValue.carEnabled !== false || props.modelValue.motorcycleEnabled === true
+  return props.modelValue.carEnabled !== false || props.modelValue.motorcycleEnabled === true || props.modelValue.publicTransportationEnabled === true
 })
+
+const enabledMotorizedLabels = computed(() => motorizedTypeOptions.filter(({ value }) => (
+  (value === 'CAR' && props.modelValue.carEnabled !== false) ||
+  (value === 'MOTORCYCLE' && props.modelValue.motorcycleEnabled === true) ||
+  (value === 'PUBLIC_TRANSPORT' && props.modelValue.publicTransportationEnabled === true)
+)))
 
 const updatePref = (key, value) => {
   emit('update:modelValue', {
@@ -741,12 +760,13 @@ const updateMotorVehicleEnabled = (enabled) => {
   emit('update:modelValue', {
     ...props.modelValue,
     carEnabled: false,
-    motorcycleEnabled: false
+    motorcycleEnabled: false,
+    publicTransportationEnabled: false
   })
 }
 
 const formatPreferredMotorizedType = (type) => {
-  return type === 'MOTORCYCLE' ? 'Motorcycle' : 'Car'
+  return motorizedTypeOptions.find((option) => option.value === type)?.label || 'Car'
 }
 
 const boatSetupSeverity = computed(() => {

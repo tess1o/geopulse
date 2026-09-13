@@ -124,6 +124,10 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String motorcycleEnabled;
 
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.public_transportation.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String publicTransportationEnabled;
+
     @ConfigProperty(name = "geopulse.timeline.travel.classification.preferred_motorized_type", defaultValue = "CAR")
     @StaticInitSafe
     String preferredMotorizedType;

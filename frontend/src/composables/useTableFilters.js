@@ -47,6 +47,7 @@ export function useTableFilters(options = {}) {
         {label: 'Walk', value: 'WALK'},
         {label: 'Car', value: 'CAR'},
         {label: 'Motorcycle', value: 'MOTORCYCLE'},
+        {label: 'Public Transportation', value: 'PUBLIC_TRANSPORT'},
         {label: 'Bicycle', value: 'BICYCLE'},
         {label: 'Running', value: 'RUNNING'},
         {label: 'Train', value: 'TRAIN'},

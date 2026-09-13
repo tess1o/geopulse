@@ -48,7 +48,7 @@ const comparisonText = computed(() => {
   return 'About the same as the previous period'
 })
 const movementModes = computed(() => {
-  const definitions = [['carDistance', 'Car', '#3b82f6'], ['walkDistance', 'Walk', '#10b981'], ['bicycleDistance', 'Bicycle', '#f59e0b'], ['runningDistance', 'Running', '#8b5cf6'], ['motorcycleDistance', 'Motorcycle', '#06b6d4'], ['trainDistance', 'Train', '#64748b'], ['flightDistance', 'Flight', '#ef4444'], ['boatDistance', 'Boat', '#14b8a6'], ['unknownDistance', 'Other', '#94a3b8']]
+  const definitions = [['carDistance', 'Car', '#3b82f6'], ['walkDistance', 'Walk', '#10b981'], ['bicycleDistance', 'Bicycle', '#f59e0b'], ['runningDistance', 'Running', '#8b5cf6'], ['motorcycleDistance', 'Motorcycle', '#06b6d4'], ['publicTransportDistance', 'Public Transportation', '#64748b'], ['trainDistance', 'Train', '#64748b'], ['flightDistance', 'Flight', '#ef4444'], ['boatDistance', 'Boat', '#14b8a6'], ['unknownDistance', 'Other', '#94a3b8']]
   const total = Number(props.metrics?.totalDistance) || 0
   return definitions.map(([key, label, color]) => ({ key, label, color, distance: Number(props.metrics?.[key]) || 0 })).filter((mode) => mode.distance > 0).map((mode) => ({ ...mode, share: Math.max(1, Math.round((mode.distance / total) * 100)) }))
 })

@@ -505,6 +505,7 @@ const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
     'MOTORCYCLE': 'info',
+    'PUBLIC_TRANSPORT': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
     'RUNNING': 'success',
@@ -520,6 +521,7 @@ const getTransportIcon = (transportMode) => {
   const iconMap = {
     'CAR': 'pi pi-car',
     'MOTORCYCLE': 'fas fa-motorcycle',
+    'PUBLIC_TRANSPORT': 'pi pi-directions',
     'WALK': 'fas fa-walking',
     'BICYCLE': 'fas fa-bicycle',
     'RUNNING': 'fas fa-running',

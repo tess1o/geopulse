@@ -12,7 +12,7 @@ This is a display-only feature: raw GPS points, timeline detection, movement cla
 - If no cached match exists, GeoPulse queues high-priority on-demand work, keeps the raw draft visible, and shows a compact `Refining route...` map cue while polling the lightweight target-status endpoint.
 - If Valhalla is unavailable, matching fails, or the trace is skipped, the raw GPS path remains visible.
 - Admins can independently enable automatic matching for stable new trips and a resumable historical backfill for all users.
-- Only road/path modes are matched: walking, running, bicycle, motorcycle, and car. Train, flight, boat, and unknown trips retain raw GPS paths.
+- Only road/path modes are matched: walking, running, bicycle, motorcycle, car, and public transportation. Train, flight, boat, and unknown trips retain raw GPS paths.
 - Raw GPS remains authoritative storage and continues to drive timeline detection, movement classification, exports, cache identity, and terminal fallback. Once the active map source is matched, map hover and replay intentionally follow the matched presentation geometry.
 
 ## GeoPulse configuration

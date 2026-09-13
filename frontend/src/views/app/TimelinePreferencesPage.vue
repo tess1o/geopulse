@@ -296,7 +296,7 @@ import { showDemoModeToast } from '@/utils/demoMode'
 
 const CLASSIFICATION_FIELDS = [
   'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
-  'carEnabled', 'motorcycleEnabled', 'preferredMotorizedType',
+  'carEnabled', 'motorcycleEnabled', 'publicTransportationEnabled', 'preferredMotorizedType',
   'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
   'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
   'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
@@ -334,6 +334,7 @@ const PREFERENCE_VALUE_TYPES = {
   walkingMaxMaxSpeed: 'number',
   carEnabled: 'boolean',
   motorcycleEnabled: 'boolean',
+  publicTransportationEnabled: 'boolean',
   preferredMotorizedType: 'string',
   carMinAvgSpeed: 'number',
   carMinMaxSpeed: 'number',
@@ -1803,11 +1804,6 @@ onUnmounted(() => {
 :deep(.p-dropdown:focus) {
   border-color: var(--gp-primary);
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-:deep(.p-toggleswitch) {
-  width: 3rem;
-  height: 1.75rem;
 }
 
 :deep(.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider) {

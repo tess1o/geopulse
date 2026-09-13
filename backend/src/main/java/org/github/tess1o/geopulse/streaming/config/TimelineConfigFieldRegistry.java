@@ -210,6 +210,13 @@ public class TimelineConfigFieldRegistry {
                         Boolean::valueOf
                 ))
                 .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.public_transportation.enabled",
+                        properties.getPublicTransportationEnabled(),
+                        TimelineConfig::getPublicTransportationEnabled,
+                        TimelineConfig::setPublicTransportationEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.preferred_motorized_type",
                         properties.getPreferredMotorizedType(),
                         TimelineConfig::getPreferredMotorizedType,

@@ -28,6 +28,7 @@ class TimelinePreferencesMapperUnitTest {
                 .mergeMaxDistanceMeters(200)
                 .mergeMaxTimeGapMinutes(30)
                 .carEnabled(false)
+                .publicTransportationEnabled(true)
                 .tripDetectionAlgorithm("claude")
                 .build();
         TimelineConfig config = mapper.preferencesToConfig(preferences);
@@ -42,6 +43,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(200, config.getMergeMaxDistanceMeters());
         assertEquals(30, config.getMergeMaxTimeGapMinutes());
         assertEquals(false, config.getCarEnabled());
+        assertEquals(true, config.getPublicTransportationEnabled());
         assertEquals("claude", config.getTripDetectionAlgorithm());
     }
     @Test
@@ -52,6 +54,7 @@ class TimelinePreferencesMapperUnitTest {
                 .staypointRadiusMeters(75)
                 .isMergeEnabled(false)
                 .carEnabled(false)
+                .publicTransportationEnabled(true)
                 .build();
         TimelineConfig config = mapper.requestToConfig(request);
         assertNotNull(config);
@@ -60,6 +63,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(75, config.getStaypointRadiusMeters());
         assertEquals(false, config.getIsMergeEnabled());
         assertEquals(false, config.getCarEnabled());
+        assertEquals(true, config.getPublicTransportationEnabled());
     }
     @Test
     void testUpdatePreferencesFromConfig() {
@@ -70,6 +74,7 @@ class TimelinePreferencesMapperUnitTest {
                 .isMergeEnabled(true)
                 .mergeMaxDistanceMeters(300)
                 .carEnabled(false)
+                .publicTransportationEnabled(true)
                 .build();
         TimelinePreferences preferences = new TimelinePreferences();
         mapper.updatePreferencesFromConfig(config, preferences);
@@ -79,6 +84,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(true, preferences.getIsMergeEnabled());
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
         assertEquals(false, preferences.getCarEnabled());
+        assertEquals(true, preferences.getPublicTransportationEnabled());
     }
     @Test
     void testConfigToPreferences() {
@@ -90,6 +96,7 @@ class TimelinePreferencesMapperUnitTest {
                 .isMergeEnabled(true)
                 .mergeMaxDistanceMeters(300)
                 .carEnabled(true)
+                .publicTransportationEnabled(true)
                 .build();
         TimelinePreferences preferences = mapper.configToPreferences(config);
         assertNotNull(preferences);
@@ -100,6 +107,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(true, preferences.getIsMergeEnabled());
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
         assertEquals(true, preferences.getCarEnabled());
+        assertEquals(true, preferences.getPublicTransportationEnabled());
     }
     @Test
     void testNullHandling() {

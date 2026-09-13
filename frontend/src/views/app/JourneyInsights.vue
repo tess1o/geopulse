@@ -145,7 +145,7 @@ const achievementGroups = computed(() => {
 })
 const movementModes = computed(() => {
   const total = Number(distanceTraveled.value.total) || 0
-  const definitions = [['byCar', 'Car', '🚗', '#3b82f6'], ['byMotorcycle', 'Motorcycle', '🏍️', '#06b6d4'], ['byWalk', 'Walk', '🚶', '#10b981'], ['byBicycle', 'Bicycle', '🚴', '#f59e0b'], ['byRunning', 'Running', '🏃', '#8b5cf6'], ['byTrain', 'Train', '🚆', '#64748b'], ['byFlight', 'Flight', '✈️', '#ef4444'], ['byBoat', 'Boat', '🚤', '#14b8a6'], ['byUnknown', 'Unclassified', '🧭', '#94a3b8']]
+  const definitions = [['byCar', 'Car', '🚗', '#3b82f6'], ['byMotorcycle', 'Motorcycle', '🏍️', '#06b6d4'], ['byPublicTransport', 'Public Transportation', '🚌', '#ec4899'], ['byWalk', 'Walk', '🚶', '#10b981'], ['byBicycle', 'Bicycle', '🚴', '#f59e0b'], ['byRunning', 'Running', '🏃', '#8b5cf6'], ['byTrain', 'Train', '🚆', '#6366f1'], ['byFlight', 'Flight', '✈️', '#ef4444'], ['byBoat', 'Boat', '🚤', '#14b8a6'], ['byUnknown', 'Unclassified', '🧭', '#94a3b8']]
   return definitions.map(([key, label, icon, color]) => ({ key, label, icon, color, value: Number(distanceTraveled.value[key]) || 0 })).filter((mode) => mode.value > 0).map((mode) => ({ ...mode, distance: formatDistanceRounded(mode.value * 1000), share: Math.max(1, Math.round((mode.value / total) * 100)) }))
 })
 const patternCards = computed(() => [

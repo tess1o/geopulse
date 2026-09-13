@@ -38,6 +38,7 @@ public class DistanceCalculationService {
 
         int car = 0;
         int motorcycle = 0;
+        int publicTransport = 0;
         int walk = 0;
         int bicycle = 0;
         int running = 0;
@@ -57,6 +58,7 @@ public class DistanceCalculationService {
             switch (movementType) {
                 case CAR -> car += distanceKm;
                 case MOTORCYCLE -> motorcycle += distanceKm;
+                case PUBLIC_TRANSPORT -> publicTransport += distanceKm;
                 case WALK -> walk += distanceKm;
                 case BICYCLE -> bicycle += distanceKm;
                 case RUNNING -> running += distanceKm;
@@ -66,6 +68,6 @@ public class DistanceCalculationService {
                 case UNKNOWN -> unknown += distanceKm;
             }
         }
-        return new DistanceTraveled(car, motorcycle, walk, bicycle, running, train, flight, boat, unknown);
+        return new DistanceTraveled(car, motorcycle, publicTransport, walk, bicycle, running, train, flight, boat, unknown);
     }
 }

@@ -2380,8 +2380,10 @@ components:
           type: boolean
         motorcycleEnabled:
           type: boolean
+        publicTransportationEnabled:
+          type: boolean
         preferredMotorizedType:
-          pattern: CAR|MOTORCYCLE
+          pattern: CAR|MOTORCYCLE|PUBLIC_TRANSPORT
           type: string
         carMinAvgSpeed:
           format: double

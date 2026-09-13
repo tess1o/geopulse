@@ -34,6 +34,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         getWalkingMaxMaxSpeed: (state) => state.timelinePreferences?.walkingMaxMaxSpeed ?? 8.0,
         getCarEnabled: (state) => state.timelinePreferences?.carEnabled ?? true,
         getMotorcycleEnabled: (state) => state.timelinePreferences?.motorcycleEnabled ?? false,
+        getPublicTransportationEnabled: (state) => state.timelinePreferences?.publicTransportationEnabled ?? false,
         getPreferredMotorizedType: (state) => state.timelinePreferences?.preferredMotorizedType ?? 'CAR',
         getCarMinAvgSpeed: (state) => state.timelinePreferences?.carMinAvgSpeed ?? 8.0,
         getCarMinMaxSpeed: (state) => state.timelinePreferences?.carMinMaxSpeed ?? 15.0,

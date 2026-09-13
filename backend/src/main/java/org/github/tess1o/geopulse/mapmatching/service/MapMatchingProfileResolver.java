@@ -12,7 +12,7 @@ public class MapMatchingProfileResolver {
         return switch (normalized) {
             case "WALK", "WALKING", "RUN", "RUNNING" -> "pedestrian";
             case "BICYCLE", "CYCLING", "BIKE" -> "bicycle";
-            case "CAR", "MOTORCYCLE", "DRIVING" -> "auto";
+            case "CAR", "MOTORCYCLE", "PUBLIC_TRANSPORT", "DRIVING" -> "auto";
             default -> null;
         };
     }

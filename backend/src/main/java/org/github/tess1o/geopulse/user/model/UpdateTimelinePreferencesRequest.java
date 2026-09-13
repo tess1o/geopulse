@@ -88,7 +88,9 @@ public class UpdateTimelinePreferencesRequest {
 
     private Boolean motorcycleEnabled;
 
-    @Pattern(regexp = "CAR|MOTORCYCLE", message = "Preferred motorized type must be CAR or MOTORCYCLE")
+    private Boolean publicTransportationEnabled;
+
+    @Pattern(regexp = "CAR|MOTORCYCLE|PUBLIC_TRANSPORT", message = "Preferred motorized type must be CAR, MOTORCYCLE, or PUBLIC_TRANSPORT")
     private String preferredMotorizedType;
     
     @DecimalMin(value = "5.0", message = "Motor vehicle min average speed must be at least 5.0 km/h")

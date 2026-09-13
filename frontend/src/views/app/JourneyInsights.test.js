@@ -34,6 +34,7 @@ const insights = {
   distanceTraveled: {
     total: 12.4,
     byCar: 10,
+    byPublicTransport: 1,
     byWalk: 2,
     byUnknown: 0.4
   },
@@ -85,9 +86,12 @@ describe('JourneyInsights', () => {
 
     expect(wrapper.text()).toContain('12 km of movement.')
     expect(wrapper.text()).toContain('Car')
+    expect(wrapper.text()).toContain('Public Transportation')
     expect(wrapper.text()).toContain('Walk')
     expect(wrapper.text()).toContain('Unclassified')
     expect(wrapper.text()).toContain('Unclassified 3%')
+    const movementColors = wrapper.findAll('.movement-legend i').map((element) => element.attributes('style'))
+    expect(new Set(movementColors).size).toBe(movementColors.length)
     expect(wrapper.find('.journey-summary').exists()).toBe(false)
     expect(wrapper.find('.hero-stats').exists()).toBe(false)
     expect(wrapper.find('.movement-mix').exists()).toBe(false)

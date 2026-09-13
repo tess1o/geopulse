@@ -100,6 +100,7 @@ const movementTypeOptions = [
   { label: 'Walk', value: 'WALK' },
   { label: 'Car', value: 'CAR' },
   { label: 'Motorcycle', value: 'MOTORCYCLE' },
+  { label: 'Public Transportation', value: 'PUBLIC_TRANSPORT' },
   { label: 'Bicycle', value: 'BICYCLE' },
   { label: 'Running', value: 'RUNNING' },
   { label: 'Train', value: 'TRAIN' },
@@ -199,6 +200,7 @@ const getTransportSeverity = (transportMode) => {
   const severityMap = {
     CAR: 'info',
     MOTORCYCLE: 'info',
+    PUBLIC_TRANSPORT: 'info',
     WALK: 'success',
     BICYCLE: 'info',
     RUNNING: 'success',

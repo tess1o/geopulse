@@ -18,6 +18,7 @@ class MapMatchingProfileResolverTest {
         assertEquals("bicycle", resolver.resolveProfile("BICYCLE"));
         assertEquals("auto", resolver.resolveProfile("CAR"));
         assertEquals("auto", resolver.resolveProfile("MOTORCYCLE"));
+        assertEquals("auto", resolver.resolveProfile("PUBLIC_TRANSPORT"));
 
         assertNull(resolver.resolveProfile("TRAIN"));
         assertNull(resolver.resolveProfile("FLIGHT"));

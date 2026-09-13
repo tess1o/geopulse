@@ -7,6 +7,7 @@ export const STACK_MOVEMENT_TYPE_MAP = {
   RUNNING: { label: 'Running', icon: '🏃' },
   CAR: { label: 'Car', icon: '🚗' },
   MOTORCYCLE: { label: 'Motorcycle', icon: '🏍️' },
+  PUBLIC_TRANSPORT: { label: 'Public Transportation', icon: '🚌' },
   TRAIN: { label: 'Train', icon: '🚊' },
   FLIGHT: { label: 'Flight', icon: '✈️' },
   BOAT: { label: 'Boat', icon: '⛵' },
