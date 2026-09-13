@@ -49,6 +49,7 @@ function normalizeUser(source) {
         timeFormat: raw.timeFormat || '24h',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
         autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
+        enable3dBuildingsByDefault: raw.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: raw.mapMatchingEnabled ?? false,
         mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
         demoMode: !!raw.demoMode,
@@ -91,6 +92,7 @@ export const useAuthStore = defineStore('auth', {
         timeFormat: (state) => state.user?.timeFormat || '24h',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
+        enable3dBuildingsByDefault: (state) => state.user?.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
         mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
         userRole: (state) => state.user?.role || 'USER',
@@ -263,6 +265,9 @@ export const useAuthStore = defineStore('auth', {
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'autoShowTripReplayControls')) {
                     userPatch.autoShowTripReplayControls = updatedPreferences.autoShowTripReplayControls ?? true
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'enable3dBuildingsByDefault')) {
+                    userPatch.enable3dBuildingsByDefault = updatedPreferences.enable3dBuildingsByDefault ?? false
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingEnabled')) {
                     userPatch.mapMatchingEnabled = updatedPreferences.mapMatchingEnabled ?? false

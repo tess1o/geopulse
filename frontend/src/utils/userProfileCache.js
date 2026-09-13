@@ -30,6 +30,7 @@ export function writeCachedUserProfile(user) {
         timeFormat: user.timeFormat,
         defaultDateRangePreset: user.defaultDateRangePreset,
         autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
+        enable3dBuildingsByDefault: user.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: user.mapMatchingEnabled ?? false,
         mapMatchingAvailable: user.mapMatchingAvailable ?? false,
         demoMode: !!user.demoMode,

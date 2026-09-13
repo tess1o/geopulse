@@ -62,6 +62,7 @@
               :panoramax-endpoint="panoramaxEndpoint"
               :enable-trip-replay="true"
               :auto-show-trip-replay-controls="autoShowTripReplayControls"
+              :enable3d-buildings-by-default="enable3dBuildingsByDefault"
               :read-only="demoReadOnly"
               @timeline-marker-click="handleTimelineMarkerClick"
               @highlighted-path-click="handleHighlightedPathClick"
@@ -257,6 +258,9 @@ const readTimelineDisplayFallback = () => {
     autoShowTripReplayControls: user.autoShowTripReplayControls
       ?? cachedProfile.autoShowTripReplayControls
       ?? true,
+    enable3dBuildingsByDefault: user.enable3dBuildingsByDefault
+      ?? cachedProfile.enable3dBuildingsByDefault
+      ?? false,
     mapMatchingEnabled: mapMatchingAvailable === false
       ? false
       : (user.mapMatchingEnabled ?? cachedProfile.mapMatchingEnabled ?? false),
@@ -282,6 +286,7 @@ const customMapTileUrl = ref(initialTimelineDisplaySettings.customMapTileUrl)
 const customMapStyleUrl = ref(initialTimelineDisplaySettings.customMapStyleUrl)
 const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
+const enable3dBuildingsByDefault = ref(initialTimelineDisplaySettings.enable3dBuildingsByDefault)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
 const panoramaxAvailable = ref(initialTimelineDisplaySettings.panoramaxAvailable)
 const panoramaxEndpoint = ref(initialTimelineDisplaySettings.panoramaxEndpoint)
@@ -779,6 +784,7 @@ const loadTimelineDisplaySettings = async () => {
       : fallback.customMapStyleUrl
     mapRenderMode.value = normalizeTimelineMapRenderMode(data?.mapRenderMode || fallback.mapRenderMode)
     autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
+    enable3dBuildingsByDefault.value = data?.enable3dBuildingsByDefault ?? fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = data?.mapMatchingEnabled ?? fallback.mapMatchingEnabled
     panoramaxAvailable.value = data?.panoramaxAvailable ?? false
     panoramaxEndpoint.value = data?.panoramaxEndpoint || null
@@ -788,6 +794,7 @@ const loadTimelineDisplaySettings = async () => {
     customMapStyleUrl.value = fallback.customMapStyleUrl
     mapRenderMode.value = fallback.mapRenderMode
     autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
+    enable3dBuildingsByDefault.value = fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = fallback.mapMatchingEnabled
     panoramaxAvailable.value = false
     panoramaxEndpoint.value = null

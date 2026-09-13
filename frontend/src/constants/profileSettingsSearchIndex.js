@@ -115,6 +115,13 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['replay', 'trip replay', 'controls', 'trip selection']
   },
   {
+    id: 'enable3dBuildingsByDefault',
+    title: 'Enable 3D Buildings by Default',
+    tab: 'timelineDisplay',
+    subtitle: 'Map display',
+    keywords: ['3d', 'buildings', 'maptiler', 'vector map']
+  },
+  {
     id: 'pathSimplificationEnabled',
     title: 'Enable Path Simplification',
     tab: 'timelineDisplay',

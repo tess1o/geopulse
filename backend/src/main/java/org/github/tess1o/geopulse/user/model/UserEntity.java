@@ -166,6 +166,10 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private Boolean timelineDisplayAutoShowTripReplayControls = true;
 
+    @Column(name = "timeline_display_enable_3d_buildings_by_default", nullable = false)
+    @Builder.Default
+    private Boolean timelineDisplayEnable3dBuildingsByDefault = false;
+
     @Column(name = "timeline_display_map_matching_enabled", nullable = false)
     @Builder.Default
     private Boolean timelineDisplayMapMatchingEnabled = false;

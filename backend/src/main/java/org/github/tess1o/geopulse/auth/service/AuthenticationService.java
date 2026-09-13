@@ -158,6 +158,7 @@ public class AuthenticationService {
                 .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(userService.isTimelineDisplayMapMatchingEnabled(user))
                 .mapMatchingAvailable(userService.isMapMatchingAvailable())
                 .build();

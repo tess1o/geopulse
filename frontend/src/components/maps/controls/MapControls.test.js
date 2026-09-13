@@ -32,8 +32,17 @@ describe('MapControls mobile More menu', () => {
     expect(wrapper.find('[title="Panoramax coverage requires MapLibre vector maps"]').attributes('disabled')).toBeDefined()
   })
 
+  it('toggles 3D buildings from the button and More menu', async () => {
+    const wrapper = mountControls({ show3dBuildingsControl: true })
+
+    await wrapper.find('[title="Show 3D buildings"]').trigger('click')
+    moreItems(wrapper).find((item) => item.label === 'Show 3D buildings').command()
+
+    expect(wrapper.emitted('toggle-3d-buildings')).toEqual([[true], [true]])
+  })
+
   it('highlights More when a hidden control is active', () => {
-    const wrapper = mountControls({ showHeatmap: true, heatmapEnabled: true })
+    const wrapper = mountControls({ show3dBuildingsControl: true, buildings3dEnabled: true })
 
     expect(wrapper.find('.more-controls-trigger').classes()).toContain('active')
   })

@@ -198,6 +198,7 @@ const timelineDisplayPrefs = {
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
   autoShowTripReplayControls: true,
+  enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingAvailable: true
 }
@@ -215,6 +216,20 @@ describe('profile tab dirty state', () => {
     expect(wrapper.text()).not.toContain('Panoramax')
     await wrapper.find('form').trigger('submit')
     expect(wrapper.emitted('save')[0][0]).not.toHaveProperty('panoramaxEnabled')
+  })
+
+  it('persists the 3D buildings default', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: {
+        initialPreferences: { ...timelineDisplayPrefs, enable3dBuildingsByDefault: true }
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.emitted('save')[0][0].enable3dBuildingsByDefault).toBe(true)
   })
 
   it('emits dirty changes from the profile tab and clears after reset', async () => {

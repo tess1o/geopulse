@@ -105,7 +105,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -141,6 +141,7 @@ const timelineDisplayPrefs = ref({
   defaultDateRangePreset: defaultDateRangePreset.value || '',
   showCurrentLocationTelemetry: true,
   autoShowTripReplayControls: autoShowTripReplayControls.value ?? true,
+  enable3dBuildingsByDefault: enable3dBuildingsByDefault.value ?? false,
   mapMatchingEnabled: false,
   mapMatchingAvailable: mapMatchingAvailable.value ?? false
 })
@@ -533,6 +534,7 @@ const loadTimelineDisplayPreferences = async () => {
         defaultDateRangePreset: data.defaultDateRangePreset || '',
         showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true,
         autoShowTripReplayControls: data.autoShowTripReplayControls ?? true,
+        enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: data.mapMatchingEnabled ?? false,
         mapMatchingAvailable: data.mapMatchingAvailable ?? false
       }

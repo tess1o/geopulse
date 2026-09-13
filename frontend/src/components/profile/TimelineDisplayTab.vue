@@ -84,6 +84,28 @@
           </div>
         </details>
 
+        <div class="section">
+          <h3 class="section-title">3D Buildings</h3>
+          <p class="section-description">
+            Choose whether compatible MapTiler vector maps open with 3D buildings enabled
+          </p>
+
+          <SettingCard class="compact-setting"
+            title="Enable 3D Buildings by Default"
+            description="Tilt compatible MapTiler vector maps and show building extrusions when they open"
+            details="Available only for MapTiler styles with building height data."
+            setting-id="enable3dBuildingsByDefault"
+          >
+            <template #control>
+              <div class="control-value">{{ form.enable3dBuildingsByDefault ? 'Enabled' : 'Disabled' }}</div>
+              <ToggleSwitch
+                v-model="form.enable3dBuildingsByDefault"
+                class="toggle-control"
+              />
+            </template>
+          </SettingCard>
+        </div>
+
         <!-- Default Date Range Section -->
         <div class="section">
           <h3 class="section-title">Default Date Range</h3>
@@ -329,6 +351,7 @@ const form = ref({
   pathAdaptiveSimplification: true,
   showCurrentLocationTelemetry: true,
   autoShowTripReplayControls: true,
+  enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingAvailable: false
 })
@@ -360,6 +383,7 @@ const editablePreferenceKeys = [
   'pathAdaptiveSimplification',
   'showCurrentLocationTelemetry',
   'autoShowTripReplayControls',
+  'enable3dBuildingsByDefault',
   'mapMatchingEnabled'
 ]
 
@@ -374,6 +398,7 @@ const normalizePreferences = (preferences = {}) => ({
   pathAdaptiveSimplification: preferences.pathAdaptiveSimplification ?? true,
   showCurrentLocationTelemetry: preferences.showCurrentLocationTelemetry ?? true,
   autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
+  enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
   mapMatchingAvailable: preferences.mapMatchingAvailable ?? false
 })
@@ -509,6 +534,7 @@ const handleSubmit = async () => {
       pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
       autoShowTripReplayControls: form.value.autoShowTripReplayControls,
+      enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
       mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false
     })
   } finally {
@@ -529,6 +555,7 @@ const handleReset = () => {
     pathAdaptiveSimplification: true,
     showCurrentLocationTelemetry: true,
     autoShowTripReplayControls: true,
+    enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingAvailable: mapMatchingAvailable.value
   }

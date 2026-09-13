@@ -885,6 +885,9 @@ public class UserService {
         if (request.getAutoShowTripReplayControls() != null) {
             user.setTimelineDisplayAutoShowTripReplayControls(request.getAutoShowTripReplayControls());
         }
+        if (request.getEnable3dBuildingsByDefault() != null) {
+            user.setTimelineDisplayEnable3dBuildingsByDefault(request.getEnable3dBuildingsByDefault());
+        }
         if (request.getMapMatchingEnabled() != null) {
             if (Boolean.TRUE.equals(request.getMapMatchingEnabled()) && !isMapMatchingAvailable()) {
                 throw new IllegalArgumentException("Map matching is disabled or not configured by an administrator");
@@ -927,6 +930,7 @@ public class UserService {
                         ? user.getTimelineDisplayShowCurrentLocationTelemetry() : true)
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(isTimelineDisplayMapMatchingEnabled(user, mapMatchingAvailable))
                 .mapMatchingAvailable(mapMatchingAvailable)
                 .panoramaxAvailable(panoramaxAvailable)

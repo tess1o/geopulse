@@ -133,6 +133,21 @@ class UserServiceMapMatchingDisplayPreferencesTest {
     }
 
     @Test
+    void persists3dBuildingsDefaultAsADisplayPreference() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        userService.updateTimelineDisplayPreferences(userId, UpdateTimelineDisplayPreferencesRequest.builder()
+                .enable3dBuildingsByDefault(true)
+                .build());
+
+        assertTrue(user.getTimelineDisplayEnable3dBuildingsByDefault());
+        assertTrue(userService.getTimelineDisplayPreferences(userId).getEnable3dBuildingsByDefault());
+    }
+
+    @Test
     void timelineDisplayPreferencesExposePanoramaxConfiguration() {
         UUID userId = UUID.randomUUID();
         UserEntity user = new UserEntity();

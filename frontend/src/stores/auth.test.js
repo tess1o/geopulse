@@ -58,6 +58,7 @@ const user = (overrides = {}) => ({
   timeFormat: '24h',
   defaultDateRangePreset: '',
   autoShowTripReplayControls: true,
+  enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingAvailable: false,
   demoMode: false,

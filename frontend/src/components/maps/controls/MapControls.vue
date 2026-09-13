@@ -156,6 +156,18 @@
       </button>
 
       <button
+        v-if="show3dBuildingsControl"
+        @click="handleToggle3dBuildings"
+        :class="{ active: buildings3dEnabled }"
+        :title="buildings3dEnabled ? 'Hide 3D buildings' : 'Show 3D buildings'"
+        :aria-label="buildings3dEnabled ? 'Hide 3D buildings' : 'Show 3D buildings'"
+        class="control-button mobile-secondary-control"
+        :disabled="!map"
+      >
+        <i class="pi pi-building"></i>
+      </button>
+
+      <button
         v-if="hasMoreControls"
         type="button"
         class="control-button more-controls-trigger"
@@ -311,6 +323,14 @@ const props = defineProps({
   panoramaxSupported: {
     type: Boolean,
     default: true
+  },
+  show3dBuildingsControl: {
+    type: Boolean,
+    default: false
+  },
+  buildings3dEnabled: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -324,6 +344,7 @@ const emit = defineEmits([
   'toggle-notes',
   'toggle-weather',
   'toggle-panoramax',
+  'toggle-3d-buildings',
   'toggle-heatmap',
   'heatmap-layer-change',
   'zoom-to-data'
@@ -363,6 +384,10 @@ const handleToggleWeather = () => {
 
 const handleTogglePanoramax = () => {
   if (props.panoramaxSupported) emit('toggle-panoramax', !props.panoramaxEnabled)
+}
+
+const handleToggle3dBuildings = () => {
+  emit('toggle-3d-buildings', !props.buildings3dEnabled)
 }
 
 const handleZoomToData = () => {
@@ -457,6 +482,7 @@ const hasMoreControls = computed(() => (
   || props.showHeatmap
   || props.showNotesButton
   || props.showWeatherButton
+  || props.show3dBuildingsControl
 ))
 
 const moreControlsActive = computed(() => (
@@ -464,6 +490,7 @@ const moreControlsActive = computed(() => (
   || (props.showHeatmap && props.heatmapEnabled)
   || (props.showNotesButton && props.showNotes)
   || (props.showWeatherButton && props.showWeather)
+  || (props.show3dBuildingsControl && props.buildings3dEnabled)
 ))
 
 const moreMenuItems = computed(() => {
@@ -521,6 +548,16 @@ const moreMenuItems = computed(() => {
       icon: 'pi pi-cloud',
       disabled: !props.map || props.weatherLoading,
       command: handleToggleWeather
+    })
+  }
+
+  if (props.show3dBuildingsControl) {
+    if (items.length) items.push({ separator: true })
+    items.push({
+      label: props.buildings3dEnabled ? 'Hide 3D buildings' : 'Show 3D buildings',
+      icon: 'pi pi-building',
+      disabled: !props.map,
+      command: handleToggle3dBuildings
     })
   }
 

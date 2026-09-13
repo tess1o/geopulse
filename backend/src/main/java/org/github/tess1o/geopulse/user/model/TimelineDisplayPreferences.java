@@ -84,6 +84,12 @@ public class TimelineDisplayPreferences {
     private Boolean autoShowTripReplayControls;
 
     /**
+     * Enable 3D buildings when a compatible MapTiler vector map opens.
+     * Default: false
+     */
+    private Boolean enable3dBuildingsByDefault;
+
+    /**
      * Use cached Valhalla map matching for timeline trip path display.
      * Default: false
      */

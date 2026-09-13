@@ -55,6 +55,7 @@ public class UserMapper {
                 .defaultDateRangePreset(entity.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)
+                .enable3dBuildingsByDefault(Boolean.TRUE.equals(entity.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(mapMatchingAvailable
                         && Boolean.TRUE.equals(entity.getTimelineDisplayMapMatchingEnabled()))
                 .mapMatchingAvailable(mapMatchingAvailable)

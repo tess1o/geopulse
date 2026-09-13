@@ -52,6 +52,8 @@
             :show-panoramax-control="panoramaxControlAvailable"
             :panoramax-enabled="showPanoramax"
             :panoramax-supported="isVectorMapMode"
+            :show3d-buildings-control="show3dBuildingsControl"
+            :buildings3d-enabled="buildings3dEnabled"
             :zoom-control-title="zoomControlTitle"
             :zoom-control-icon="zoomControlIcon"
             @toggle-favorites="toggleFavorites"
@@ -63,6 +65,7 @@
             @toggle-notes="toggleNotes"
             @toggle-weather="toggleWeather"
             @toggle-panoramax="togglePanoramax"
+            @toggle-3d-buildings="handleToggle3dBuildings"
             @toggle-heatmap="handleToggleHeatmap"
             @heatmap-layer-change="handleHeatmapLayerChange"
             @zoom-to-data="handleZoomToData"
@@ -381,6 +384,7 @@ import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 import { usePhotoMapMarkersRuntime } from '@/maps/runtime/usePhotoMapMarkersRuntime'
 import '@/styles/photo-map-markers.css'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+import { setMapTilerBuildings3dEnabled, supportsMapTilerBuildings3d } from '@/maps/vector/utils/maptilerBuildings3d'
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { useMapMatchingComparison } from '@/composables/useMapMatchingComparison'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
@@ -554,6 +558,10 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  enable3dBuildingsByDefault: {
+    type: Boolean,
+    default: false
+  },
   panoramaxAvailable: {
     type: Boolean,
     default: false
@@ -676,6 +684,10 @@ const heatmapLayer = ref('stays')
 const heatmapPoints = ref([])
 const rawGpsPoints = ref([])
 const rawGpsPointsLoading = ref(false)
+const buildings3dEnabled = ref(false)
+const mapTilerBuildings3dSupported = ref(false)
+let mapTilerBuildings3dListenerMap = null
+let mapTilerBuildings3dStyleListener = null
 let heatmapRequestId = 0
 let rawGpsPointsRequestId = 0
 const heatmapPrefetches = new Map()
@@ -941,6 +953,7 @@ const heatmapGradient = {
 
 const mapEngineMode = computed(() => resolveMapEngineModeFromInstance(map.value, MAP_RENDER_MODES.RASTER))
 const isVectorMapMode = computed(() => mapEngineMode.value === MAP_RENDER_MODES.VECTOR)
+const show3dBuildingsControl = computed(() => isVectorMapMode.value && mapTilerBuildings3dSupported.value)
 const panoramaxControlAvailable = computed(() => !props.isPublicView && props.panoramaxAvailable && Boolean(props.panoramaxEndpoint))
 
 const openPanoramaxViewer = (selection) => {
@@ -1175,8 +1188,62 @@ const plannedItemMenuItems = ref([
 ])
 
 // Map event handlers
+const detachMapTilerBuildings3dListener = () => {
+  if (mapTilerBuildings3dListenerMap && mapTilerBuildings3dStyleListener) {
+    mapTilerBuildings3dListenerMap.off?.('style.load', mapTilerBuildings3dStyleListener)
+  }
+  mapTilerBuildings3dListenerMap = null
+  mapTilerBuildings3dStyleListener = null
+}
+
+const syncMapTilerBuildings3dSupport = (mapInstance) => {
+  const supported = supportsMapTilerBuildings3d(mapInstance)
+  mapTilerBuildings3dSupported.value = supported
+  if (!supported) {
+    const wasEnabled = buildings3dEnabled.value
+    buildings3dEnabled.value = false
+    if (wasEnabled) {
+      mapInstance?.easeTo?.({ pitch: 0, duration: 300, essential: true })
+    }
+    return
+  }
+  if (buildings3dEnabled.value) {
+    if (!setMapTilerBuildings3dEnabled(mapInstance, true)) {
+      mapTilerBuildings3dSupported.value = false
+      buildings3dEnabled.value = false
+      return
+    }
+    mapInstance?.easeTo?.({ pitch: 45, duration: 300, essential: true })
+  }
+}
+
+const handleToggle3dBuildings = (enabled) => {
+  if (!map.value || !mapTilerBuildings3dSupported.value) return
+
+  if (!setMapTilerBuildings3dEnabled(map.value, enabled)) {
+    mapTilerBuildings3dSupported.value = false
+    buildings3dEnabled.value = false
+    return
+  }
+
+  buildings3dEnabled.value = enabled
+  map.value.easeTo?.({ pitch: enabled ? 45 : 0, duration: 300, essential: true })
+}
+
 const handleMapReady = (mapInstance) => {
+  detachMapTilerBuildings3dListener()
+  buildings3dEnabled.value = props.enable3dBuildingsByDefault
   map.value = mapInstance ? markRaw(mapInstance) : null
+  syncMapTilerBuildings3dSupport(mapInstance)
+  if (mapInstance?.on) {
+    mapTilerBuildings3dListenerMap = mapInstance
+    mapTilerBuildings3dStyleListener = () => {
+      if (map.value === mapInstance) {
+        syncMapTilerBuildings3dSupport(mapInstance)
+      }
+    }
+    mapInstance.on('style.load', mapTilerBuildings3dStyleListener)
+  }
   
   // Initialize rectangle drawing
   initializeDrawing(mapInstance)
@@ -1189,6 +1256,12 @@ const handleMapReady = (mapInstance) => {
     })
   }
 }
+
+watch(() => props.enable3dBuildingsByDefault, (enabled) => {
+  if (map.value && mapTilerBuildings3dSupported.value) {
+    handleToggle3dBuildings(enabled)
+  }
+})
 
 const syncMobileTripSelectionViewport = () => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -2100,6 +2173,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  detachMapTilerBuildings3dListener()
   window.removeEventListener('resize', syncMobileTripSelectionViewport)
   window.visualViewport?.removeEventListener?.('resize', syncMobileTripSelectionViewport)
 
