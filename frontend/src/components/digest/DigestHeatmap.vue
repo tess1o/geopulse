@@ -64,6 +64,8 @@
       <BaseMap
         ref="baseMapRef"
         :mapId="mapId"
+        :center="heatmapCenter"
+        :zoom="initialMapZoom"
         height="420px"
         width="100%"
         @map-ready="onMapReady"
@@ -126,6 +128,25 @@ let zoomListenerMap = null
 
 const hasError = computed(() => !!heatmapError.value)
 const hasData  = computed(() => heatPoints.value.length > 0)
+const heatBounds = computed(() => heatPoints.value
+  .map((point) => {
+    const lat = Number(point?.lat)
+    const lng = Number(point?.lng)
+    return Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : null
+  })
+  .filter(Boolean))
+const heatmapCenter = computed(() => {
+  if (!heatBounds.value.length) return null
+
+  const [firstLat, firstLng] = heatBounds.value[0]
+  const extent = heatBounds.value.reduce((result, [lat, lng]) => ({
+    minLat: Math.min(result.minLat, lat), maxLat: Math.max(result.maxLat, lat),
+    minLng: Math.min(result.minLng, lng), maxLng: Math.max(result.maxLng, lng)
+  }), { minLat: firstLat, maxLat: firstLat, minLng: firstLng, maxLng: firstLng })
+
+  return [(extent.minLat + extent.maxLat) / 2, (extent.minLng + extent.maxLng) / 2]
+})
+const initialMapZoom = computed(() => heatBounds.value.length === 1 ? 14 : 8)
 const legendHint = computed(() => {
   if (intensityMode.value === 'duration') {
     return layerMode.value === 'trips' ? 'Time moving' : 'Time spent'
@@ -196,28 +217,15 @@ const loadHeatmap = async () => {
 }
 
 const fitMap = () => {
-  if (!heatPoints.value.length) return
-  const bounds = heatPoints.value
-    .map((point) => {
-      const lat = Number(point?.lat)
-      const lng = Number(point?.lng)
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return null
-      }
-      return [lat, lng]
-    })
-    .filter(Boolean)
-
-  if (bounds.length === 0) {
-    return
-  }
+  const bounds = heatBounds.value
+  if (!bounds.length) return
 
   if (baseMapRef.value?.fitBounds) {
-    baseMapRef.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+    baseMapRef.value.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: false, duration: 0 })
     return
   }
 
-  mapInstance.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 14 })
+  mapInstance.value?.fitBounds?.(bounds, { padding: [40, 40], maxZoom: 14, animate: false, duration: 0 })
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────

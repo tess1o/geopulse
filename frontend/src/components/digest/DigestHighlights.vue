@@ -76,14 +76,7 @@ const formatDate = (date) => {
 </script>
 
 <style scoped>
-.digest-highlights {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-highlights { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); border-bottom: 1px solid var(--gp-border-light); }
 
 .highlights-title {
   display: flex;
@@ -105,21 +98,9 @@ const formatDate = (date) => {
   gap: var(--gp-spacing-md);
 }
 
-.highlight-card {
-  display: flex;
-  gap: var(--gp-spacing-md);
-  background: var(--gp-timeline-blue);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  padding: var(--gp-spacing-lg);
-  transition: all 0.3s ease;
-}
+.highlight-card { display: flex; gap: var(--gp-spacing-md); background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); border-radius: 14px; padding: var(--gp-spacing-lg); transition: border-color 0.2s ease, background 0.2s ease; }
 
-.highlight-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-card-hover);
-  border-color: var(--gp-primary);
-}
+.highlight-card:hover { border-color: var(--gp-primary); background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-light)); }
 
 .highlight-icon {
   font-size: 2.5rem;
@@ -180,10 +161,7 @@ const formatDate = (date) => {
 }
 
 /* Dark Mode */
-.p-dark .digest-highlights {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
+.p-dark .digest-highlights { border-color: var(--gp-border-dark); }
 
 .p-dark .highlight-card {
   background: var(--gp-surface-darker);

@@ -46,14 +46,7 @@ const displayedPlaces = computed(() => {
 </script>
 
 <style scoped>
-.digest-places {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-places { background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .places-title {
   display: flex;
@@ -79,7 +72,7 @@ const displayedPlaces = computed(() => {
   display: flex;
   align-items: center;
   gap: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-md);
@@ -96,7 +89,7 @@ const displayedPlaces = computed(() => {
   height: 32px;
   background: var(--gp-primary);
   color: white;
-  border-radius: 50%;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;

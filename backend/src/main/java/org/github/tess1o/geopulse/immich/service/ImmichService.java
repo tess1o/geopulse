@@ -305,20 +305,20 @@ public class ImmichService {
             return CompletableFuture.completedFuture(cachedPhotos);
         }
 
-        return inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
+        CompletableFuture<List<ImmichPhotoDto>> searchFuture = inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
                 immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
                         .thenApply(response -> {
                             List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest, userId);
                             cacheSearchResult(cacheKey, allFilteredPhotos);
                             return allFilteredPhotos;
                         })
-                        .whenComplete((ignoredResult, throwable) -> {
-                            inFlightPhotoSearches.remove(cacheKey);
-                            if (throwable != null) {
-                                log.error("Failed to search photos for user {}: {}", userId, throwable.getMessage(), throwable);
-                            }
-                        })
         );
+        return searchFuture.whenComplete((ignoredResult, throwable) -> {
+            inFlightPhotoSearches.remove(cacheKey, searchFuture);
+            if (throwable != null) {
+                log.error("Failed to search photos for user {}: {}", userId, throwable.getMessage(), throwable);
+            }
+        });
     }
 
     private ImmichSearchRequest createImmichSearchRequest(ImmichPhotoSearchRequest searchRequest) {
@@ -406,17 +406,24 @@ public class ImmichService {
     }
 
     private ImmichPhotoDto mapToPhotoDto(ImmichAsset asset, UUID userId) {
+        ImmichExifInfo exifInfo = asset.getExifInfo();
+        Integer width = asset.getWidth() != null ? asset.getWidth() : exifInfo != null ? exifInfo.getExifImageWidth() : null;
+        Integer height = asset.getHeight() != null ? asset.getHeight() : exifInfo != null ? exifInfo.getExifImageHeight() : null;
         ImmichPhotoDto.ImmichPhotoDtoBuilder builder = ImmichPhotoDto.builder()
                 .id(asset.getId())
                 .originalFileName(asset.getOriginalFileName())
                 .takenAt(asset.getTakenAt())
+                .width(width)
+                .height(height)
+                .isFavorite(asset.getIsFavorite())
+                .rating(exifInfo != null ? exifInfo.getRating() : null)
                 .thumbnailUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/thumbnail")
                 .previewUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/preview")
                 .downloadUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/download");
 
-        if (asset.getExifInfo() != null) {
-            builder.latitude(asset.getExifInfo().getLatitude())
-                    .longitude(asset.getExifInfo().getLongitude());
+        if (exifInfo != null) {
+            builder.latitude(exifInfo.getLatitude())
+                    .longitude(exifInfo.getLongitude());
         }
 
         return builder.build();

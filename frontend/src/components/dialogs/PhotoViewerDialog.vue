@@ -384,6 +384,7 @@ const MOBILE_VIEWER_MEDIA = '(max-width: 768px)'
 const CONTROLS_HIDE_DELAY = 3000
 const SWIPE_THRESHOLD = 48
 const TAP_MOVEMENT_THRESHOLD = 8
+const THUMBNAIL_PRELOAD_RADIUS = 6
 let viewportMediaQuery = null
 let controlsHideTimer = null
 let stageGesture = null
@@ -802,27 +803,14 @@ const preloadThumbnails = () => {
   }
 
   const runId = ++thumbnailPreloadRunId.value
-  const photos = props.photos.slice()
-  const chunkSize = 12
-
-  const preloadChunk = (startIndex = 0) => {
-    if (runId !== thumbnailPreloadRunId.value || !props.visible) {
-      return
+  const firstIndex = Math.max(0, currentIndex.value - THUMBNAIL_PRELOAD_RADIUS)
+  const lastIndex = Math.min(props.photos.length - 1, currentIndex.value + THUMBNAIL_PRELOAD_RADIUS)
+  for (let index = firstIndex; index <= lastIndex; index += 1) {
+    if (runId !== thumbnailPreloadRunId.value || index === currentIndex.value) {
+      continue
     }
-
-    const endIndex = Math.min(startIndex + chunkSize, photos.length)
-    for (let index = startIndex; index < endIndex; index += 1) {
-      if (index !== currentIndex.value) {
-        ensurePhotoLoaded(photos[index])
-      }
-    }
-
-    if (endIndex < photos.length) {
-      window.setTimeout(() => preloadChunk(endIndex), 0)
-    }
+    ensurePhotoLoaded(props.photos[index])
   }
-
-  preloadChunk(0)
 }
 
 const scrollActiveThumbnailIntoView = () => {
@@ -1073,6 +1061,7 @@ watch(() => currentPhoto.value, () => {
   }
 
   loadCurrentPhoto()
+  preloadThumbnails()
   scrollActiveThumbnailIntoView()
 })
 

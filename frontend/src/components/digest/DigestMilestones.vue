@@ -52,14 +52,7 @@ const getTierLabel = (tier) => {
 </script>
 
 <style scoped>
-.digest-milestones {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 00px;
-}
+.digest-milestones { padding: var(--gp-spacing-lg) 0 var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .milestones-title {
   display: flex;
@@ -75,18 +68,14 @@ const getTierLabel = (tier) => {
   color: var(--gp-warning);
 }
 
-.milestones-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--gp-spacing-md);
-}
+.milestones-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--gp-spacing-md); }
 
 .milestone-card {
-  background: var(--gp-surface-white);
-  border: 2px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: 14px;
   padding: var(--gp-spacing-lg);
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease;
   position: relative;
   overflow: hidden;
 }
@@ -101,10 +90,7 @@ const getTierLabel = (tier) => {
   transition: all 0.3s ease;
 }
 
-.milestone-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-card-hover);
-}
+.milestone-card:hover { border-color: var(--gp-primary); }
 
 /* Tier-specific styling */
 .tier-bronze::before {

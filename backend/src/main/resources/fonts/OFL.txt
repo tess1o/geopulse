@@ -1,0 +1,7 @@
+SIL Open Font License 1.1
+
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied from https://openfontlicense.org and accompanies the
+bundled Noto Sans Regular and SemiBold font files.

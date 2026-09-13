@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.immich.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.github.tess1o.geopulse.geocoding.service.GeonamesLocationNormalizationService;
 import org.github.tess1o.geopulse.immich.client.ImmichClient;
 import org.github.tess1o.geopulse.immich.model.ImmichAsset;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
@@ -28,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -96,12 +100,63 @@ class ImmichServiceTest {
         assertThat(singleMarker.getSinglePhoto().getId()).isEqualTo("single-photo");
         assertThat(singleMarker.getSinglePhoto().getThumbnailUrl())
                 .isEqualTo("/api/users/" + userId + "/immich/photos/single-photo/thumbnail");
+        assertThat(singleMarker.getSinglePhoto().getWidth()).isNull();
+        ArgumentCaptor<ImmichSearchRequest> searchCaptor = ArgumentCaptor.forClass(ImmichSearchRequest.class);
+        verify(immichClient).searchAssetsAllPages(any(), any(), searchCaptor.capture());
+        assertThat(searchCaptor.getValue().isWithExif()).isTrue();
 
         ImmichPhotoMapMarkerDto groupedMarker = response.getMarkers().stream()
                 .filter(marker -> marker.getCount() == 2)
                 .findFirst()
                 .orElseThrow();
         assertThat(groupedMarker.getSinglePhoto()).isNull();
+    }
+
+    @Test
+    void searchPhotosMapsCurrentImmichMetadataResponse() throws Exception {
+        UUID userId = UUID.randomUUID();
+        ImmichSearchResponse response = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .readValue("""
+                        {"assets":{"total":1,"count":1,"items":[{
+                          "id":"photo","originalFileName":"photo.jpg","fileCreatedAt":"2026-01-10T12:00:00Z",
+                          "isFavorite":true,"width":3024,"height":4032,"people":[],
+                          "exifInfo":{"latitude":10,"longitude":20,"rating":4,"exifImageWidth":3000,"exifImageHeight":4000}
+                        }]}}
+                        """, ImmichSearchResponse.class);
+
+        when(userRepository.findById(userId)).thenReturn(configuredUser(userId));
+        when(immichClient.searchAssetsAllPages(any(), any(), any(ImmichSearchRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(response));
+
+        var photo = service.searchPhotos(userId, searchRequest()).join().getPhotos().getFirst();
+
+        assertThat(photo.getWidth()).isEqualTo(3024);
+        assertThat(photo.getHeight()).isEqualTo(4032);
+        assertThat(photo.getIsFavorite()).isTrue();
+        assertThat(photo.getRating()).isEqualTo(4);
+
+        ArgumentCaptor<ImmichSearchRequest> searchCaptor = ArgumentCaptor.forClass(ImmichSearchRequest.class);
+        verify(immichClient).searchAssetsAllPages(any(), any(), searchCaptor.capture());
+        assertThat(searchCaptor.getValue().isWithExif()).isTrue();
+    }
+
+    private UserEntity configuredUser(UUID userId) {
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setImmichPreferences(ImmichPreferences.builder()
+                .serverUrl("https://immich.example.test")
+                .apiKey("test-api-key")
+                .enabled(true)
+                .build());
+        return user;
+    }
+
+    private ImmichPhotoSearchRequest searchRequest() {
+        ImmichPhotoSearchRequest request = new ImmichPhotoSearchRequest();
+        request.setStartDate(OffsetDateTime.parse("2026-01-01T00:00:00Z"));
+        request.setEndDate(OffsetDateTime.parse("2026-01-31T23:59:59Z"));
+        return request;
     }
 
     private ImmichSearchResponse searchResponse(List<ImmichAsset> assets) {

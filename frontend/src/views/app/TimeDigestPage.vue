@@ -1,348 +1,140 @@
 <template>
   <AppLayout variant="default">
-    <PageContainer
-      title="Rewind"
-      subtitle="Explore your location story through time"
-      :loading="isLoading"
-    >
-      <!-- Header with Period Selector -->
-      <DigestHeader
-        v-model:viewMode="viewMode"
-        v-model:year="selectedYear"
-        v-model:month="selectedMonth"
-        @period-changed="handlePeriodChange"
-      />
+    <PageContainer title="Rewind" subtitle="Your location story, one period at a time." max-width="large" :loading="isLoading">
+      <template #actions>
+        <Button label="Export PDF" icon="pi pi-file-pdf" outlined :disabled="!currentDigest" @click="exportDialogVisible = true" />
+      </template>
 
-      <!-- Loading State -->
-      <div v-if="isLoading" class="digest-loading">
-        <ProgressSpinner size="large" />
-        <p>Loading your digest...</p>
-      </div>
+      <DigestHeader v-model:viewMode="viewMode" v-model:year="selectedYear" v-model:month="selectedMonth" @period-changed="handlePeriodChange" />
 
-      <!-- Error State -->
+      <div v-if="isLoading" class="digest-loading"><ProgressSpinner size="large" /><p>Building your rewind…</p></div>
+
       <div v-else-if="hasError" class="digest-error">
-        <BaseCard class="error-card">
-          <i class="pi pi-exclamation-triangle error-icon"></i>
-          <h3 class="error-title">Unable to Load Digest</h3>
-          <p class="error-message">{{ errorMessage }}</p>
-          <BaseButton
-            label="Try Again"
-            icon="pi pi-refresh"
-            @click="loadDigest"
-            variant="gp-primary"
-          />
-        </BaseCard>
+        <BaseCard class="error-card"><i class="pi pi-exclamation-triangle error-icon"></i><h3>Unable to load Rewind</h3><p>{{ errorMessage }}</p><BaseButton label="Try again" icon="pi pi-refresh" variant="gp-primary" @click="loadDigest" /></BaseCard>
       </div>
 
-      <!-- Digest Content -->
       <div v-else-if="currentDigest" class="digest-content">
-        <!-- Metrics -->
-        <DigestMetrics
-          :title="`${currentDigest.period?.displayName} at a Glance`"
-          :metrics="currentDigest.metrics"
-          :comparison="currentDigest.comparison"
-          :highlights="currentDigest.highlights"
-        />
-
-        <!-- Highlights -->
-        <DigestHighlights
-          :highlights="currentDigest.highlights"
-        />
-
-        <!-- Two Column Layout -->
-        <div class="digest-two-column">
-          <!-- Places -->
-          <DigestPlaces
-            :places="currentDigest.topPlaces"
-            :limit="10"
-          />
-
-          <!-- Milestones -->
-          <DigestMilestones
-            :milestones="currentDigest.milestones"
-          />
+        <DigestMetrics :title="currentDigest.period?.displayName || displayPeriod" :metrics="currentDigest.metrics" :comparison="currentDigest.comparison" :highlights="currentDigest.highlights" />
+        <DigestMemories :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" @availability="immichAvailable = $event" />
+        <DigestHighlights :highlights="currentDigest.highlights" />
+        <div class="digest-feature-grid">
+          <DigestTrends :chart-data="currentDigest.activityChart" :view-mode="viewMode" />
+          <DigestPlaces :places="currentDigest.topPlaces" :limit="5" />
         </div>
-
-        <!-- Trends -->
-        <DigestTrends
-          :chartData="currentDigest.activityChart"
-          :viewMode="viewMode"
-        />
-
-        <!-- Location Heatmap -->
-        <DigestHeatmap
-          :viewMode="viewMode"
-          :year="selectedYear"
-          :month="selectedMonth"
-        />
+        <DigestMilestones :milestones="currentDigest.milestones" />
+        <DigestHeatmap :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" />
       </div>
 
-      <!-- Empty State -->
-      <div v-else class="digest-empty">
-        <BaseCard class="empty-card">
-          <i class="pi pi-calendar empty-icon"></i>
-          <h3 class="empty-title">No Data Available</h3>
-          <p class="empty-message">
-            No location data found for {{ viewMode === 'monthly' ? monthNames[selectedMonth - 1] : '' }} {{ selectedYear }}.
-          </p>
-          <p class="empty-suggestion">
-            Try selecting a different period or check if you have tracking data for this time.
-          </p>
-        </BaseCard>
-      </div>
+      <div v-else class="digest-empty"><BaseCard class="empty-card"><i class="pi pi-compass empty-icon"></i><h3>No movement for {{ displayPeriod }}</h3><p>Choose another period or start tracking to create your first rewind.</p></BaseCard></div>
     </PageContainer>
+
+    <Dialog v-model:visible="exportDialogVisible" modal header="Export Rewind" :style="{ width: 'min(92vw, 28rem)' }">
+      <p class="export-description">Download a polished report for <b>{{ displayPeriod }}</b>.</p>
+      <label class="export-photos-option" :class="{ disabled: !immichAvailable }">
+        <Checkbox v-model="includePhotos" binary input-id="rewind-include-photos" :disabled="!immichAvailable" />
+        <span><b>Include Immich photos</b><small>{{ immichAvailable ? 'Add up to six recent memories from this period.' : 'Connect Immich to include photos.' }}</small></span>
+      </label>
+      <template #footer>
+        <Button label="Cancel" text @click="exportDialogVisible = false" />
+        <Button label="Download PDF" icon="pi pi-download" :loading="exporting" @click="downloadPdf" />
+      </template>
+    </Dialog>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { storeToRefs } from 'pinia';
-import { useToast } from 'primevue/usetoast';
-import ProgressSpinner from 'primevue/progressspinner';
-
-// Layout Components
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { useToast } from 'primevue/usetoast'
+import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import BaseButton from '@/components/ui/base/BaseButton.vue'
-
-// Digest Components
 import DigestHeader from '@/components/digest/DigestHeader.vue'
 import DigestMetrics from '@/components/digest/DigestMetrics.vue'
+import DigestMemories from '@/components/digest/DigestMemories.vue'
 import DigestHighlights from '@/components/digest/DigestHighlights.vue'
 import DigestPlaces from '@/components/digest/DigestPlaces.vue'
 import DigestTrends from '@/components/digest/DigestTrends.vue'
 import DigestMilestones from '@/components/digest/DigestMilestones.vue'
 import DigestHeatmap from '@/components/digest/DigestHeatmap.vue'
-
-// Store and Composables
 import { useDigestStore } from '@/stores/digest'
 import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
+import apiService from '@/utils/apiService'
 
 const timezone = useTimezone()
-const digestStore = useDigestStore();
-const toast = useToast();
-const { handleError } = useErrorHandler();
-const route = useRoute();
-const router = useRouter();
-
+const digestStore = useDigestStore()
 const { currentDigest, loading: isLoading, error: errorMessage } = storeToRefs(digestStore)
-
-// Local state
+const { handleError } = useErrorHandler()
+const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const viewMode = ref('monthly')
 const selectedYear = ref(timezone.now().year())
 const selectedMonth = ref(timezone.now().month() + 1)
-
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+const exportDialogVisible = ref(false)
+const exporting = ref(false)
+const includePhotos = ref(false)
+const immichAvailable = ref(false)
 
 const hasError = computed(() => digestStore.hasError)
-
-const handlePeriodChange = async (period) => {
-  viewMode.value = period.viewMode;
-  selectedYear.value = period.year;
-  selectedMonth.value = period.month;
-  await loadDigest();
-  updateURL();
-};
+const displayPeriod = computed(() => currentDigest.value?.period?.displayName || (viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value)))
 
 const loadDigest = async () => {
   try {
-    if (viewMode.value === 'monthly') {
-      await digestStore.fetchMonthlyDigest(selectedYear.value, selectedMonth.value)
-    } else {
-      await digestStore.fetchYearlyDigest(selectedYear.value)
-    }
+    if (viewMode.value === 'monthly') await digestStore.fetchMonthlyDigest(selectedYear.value, selectedMonth.value)
+    else await digestStore.fetchYearlyDigest(selectedYear.value)
   } catch (error) {
     console.error('Error loading digest:', error)
     handleError(error)
   }
 }
-
 const updateURL = () => {
-  const query = { viewMode: viewMode.value, year: selectedYear.value };
-  if (viewMode.value === 'monthly') {
-    query.month = selectedMonth.value;
+  const query = { viewMode: viewMode.value, year: selectedYear.value }
+  if (viewMode.value === 'monthly') query.month = selectedMonth.value
+  router.push({ query })
+}
+const handlePeriodChange = async (period) => {
+  viewMode.value = period.viewMode
+  selectedYear.value = period.year
+  selectedMonth.value = period.month || selectedMonth.value
+  immichAvailable.value = false
+  includePhotos.value = false
+  await loadDigest()
+  updateURL()
+}
+const downloadPdf = async () => {
+  exporting.value = true
+  try {
+    const params = { viewMode: viewMode.value, year: selectedYear.value, includePhotos: includePhotos.value }
+    if (viewMode.value === 'monthly') params.month = selectedMonth.value
+    await apiService.download('/digest/pdf', params)
+    exportDialogVisible.value = false
+    toast.add({ severity: 'success', summary: 'Rewind exported', detail: 'Your PDF is downloading.', life: 3500 })
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Export failed', detail: error.userMessage || 'Could not generate the PDF.', life: 5000 })
+  } finally {
+    exporting.value = false
   }
-  router.push({ query });
-};
+}
 
-// Lifecycle
+watch(immichAvailable, (available) => { includePhotos.value = available })
 onMounted(async () => {
-  const { viewMode: mode, year, month } = route.query;
-  if (mode) {
-    viewMode.value = mode;
-  }
-  if (year) {
-    selectedYear.value = parseInt(year, 10);
-    if (month) {
-      selectedMonth.value = parseInt(month, 10);
-    }
-  } else {
-    const now = timezone.now();
-    selectedYear.value = now.year();
-    selectedMonth.value = now.month() + 1;
-  }
-  await loadDigest();
-  updateURL();
-});
+  const { viewMode: mode, year, month } = route.query
+  if (mode === 'monthly' || mode === 'yearly') viewMode.value = mode
+  if (year) selectedYear.value = Number.parseInt(year, 10)
+  if (month) selectedMonth.value = Number.parseInt(month, 10)
+  await loadDigest()
+  updateURL()
+})
 </script>
 
 <style scoped>
-.digest-content {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.digest-two-column {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-}
-
-/* Loading State */
-.digest-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--gp-spacing-xxl);
-  gap: var(--gp-spacing-lg);
-}
-
-.digest-loading p {
-  color: var(--gp-text-secondary);
-  font-size: 1rem;
-  margin: 0;
-}
-
-/* Error State */
-.digest-error {
-  margin-top: var(--gp-spacing-xl);
-}
-
-.error-card {
-  text-align: center;
-  padding: var(--gp-spacing-xl);
-}
-
-.error-icon {
-  font-size: 4rem;
-  color: var(--gp-error);
-  margin-bottom: var(--gp-spacing-lg);
-}
-
-.error-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.error-message {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-lg);
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Empty State */
-.digest-empty {
-  margin-top: var(--gp-spacing-xl);
-}
-
-.empty-card {
-  text-align: center;
-  padding: var(--gp-spacing-xl);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  color: var(--gp-text-muted);
-  opacity: 0.5;
-  margin-bottom: var(--gp-spacing-lg);
-}
-
-.empty-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
-  margin: 0 0 var(--gp-spacing-md);
-}
-
-.empty-message {
-  font-size: 1rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 var(--gp-spacing-sm);
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.empty-suggestion {
-  font-size: 0.875rem;
-  color: var(--gp-text-muted);
-  margin: 0;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-  font-style: italic;
-}
-
-/* Dark Mode */
-.p-dark .error-title,
-.p-dark .empty-title {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .error-message,
-.p-dark .empty-message {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .empty-suggestion {
-  color: var(--gp-text-muted);
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .digest-two-column {
-    grid-template-columns: 1fr;
-    gap: var(--gp-spacing-lg);
-  }
-}
-
-@media (max-width: 768px) {
-  .digest-content {
-    padding: 0 var(--gp-spacing-sm);
-  }
-
-  .digest-two-column {
-    gap: var(--gp-spacing-md);
-  }
-
-  .digest-loading,
-  .error-card,
-  .empty-card {
-    padding: var(--gp-spacing-lg);
-  }
-
-  .error-icon,
-  .empty-icon {
-    font-size: 3rem;
-  }
-
-  .error-title,
-  .empty-title {
-    font-size: 1.25rem;
-  }
-}
+.digest-content { width:100%; margin:0 auto }.digest-feature-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(18rem,.55fr); gap:var(--gp-spacing-xl); align-items:stretch }.digest-loading,.digest-error,.digest-empty { display:grid; place-items:center; min-height:22rem; text-align:center }.digest-loading { gap:var(--gp-spacing-lg); color:var(--gp-text-secondary) }.error-card,.empty-card { max-width:34rem; padding:var(--gp-spacing-xxl) }.error-icon,.empty-icon { font-size:3.25rem; color:var(--gp-primary); margin-bottom:var(--gp-spacing-md) }.error-icon { color:var(--gp-error) }.export-description { margin:0 0 1.25rem; color:var(--gp-text-secondary) }.export-photos-option { display:flex; gap:.75rem; align-items:flex-start; padding:1rem; border:1px solid var(--gp-border-light); border-radius:12px; cursor:pointer }.export-photos-option span { display:grid; gap:.2rem; color:var(--gp-text-primary) }.export-photos-option small { color:var(--gp-text-secondary) }.export-photos-option.disabled { cursor:not-allowed; opacity:.62; background:var(--gp-surface-light) }@media (max-width:960px) { .digest-feature-grid { grid-template-columns:1fr; gap:var(--gp-spacing-lg) } }@media (max-width:640px) { .error-card,.empty-card { padding:var(--gp-spacing-xl) } }
 </style>

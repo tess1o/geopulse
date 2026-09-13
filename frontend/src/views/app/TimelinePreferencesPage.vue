@@ -4,24 +4,21 @@
       <div class="timeline-preferences-page">
         <!-- Page Header -->
         <div class="page-header">
-          <div class="header-text">
-            <h1 class="page-title">Timeline Preferences</h1>
-            <p class="page-description">
-              Fine-tune how your location timeline is generated from GPS data
-            </p>
-          </div>
+          <div class="header-content">
+            <div class="header-text">
+              <h1 class="page-title">Timeline Preferences</h1>
+              <p class="page-description">
+                Fine-tune how your location timeline is generated from GPS data
+              </p>
+            </div>
 
-          <div class="header-toolbar">
-            <div class="toolbar-search-group">
+            <div class="header-actions">
               <SettingsSearchTrigger
-                class="toolbar-search timeline-search-trigger"
+                class="timeline-search-trigger"
                 page-key="timeline"
                 placeholder="Search timeline settings..."
                 @navigate="handleSettingsSearchNavigate"
               />
-            </div>
-
-            <div class="toolbar-action-group">
               <Button
                 label="Regenerate Timeline"
                 icon="pi pi-replay"
@@ -57,91 +54,61 @@
           </div>
         </div>
 
-        <!-- Info Banner -->
-        <Card class="info-banner">
-          <template #content>
-            <div class="banner-content">
-              <div class="banner-icon">
-                <i class="pi pi-info-circle"></i>
-              </div>
-              <div class="banner-text">
-                <h3 class="banner-title">How Timeline Processing Works</h3>
-                <p class="banner-description">
-                  Your GPS data is processed to identify meaningful stays and trips.
-                  These settings control the sensitivity of this detection and apply only to your account.
-                  Some changes (like speed thresholds) will quickly update trip classifications, while others may require full timeline re-generation depending on your GPS data volume.
-                  <a href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">
-                    Learn more in the documentation <i class="pi pi-external-link"></i>
-                  </a>
-                </p>
-              </div>
-            </div>
-          </template>
-        </Card>
+        <div class="timeline-preferences-content">
+          <div class="settings-layout">
+            <label class="mobile-settings-select">
+              <span>Settings section</span>
+              <select :value="activeTab" @change="selectTab($event.target.value)">
+                <optgroup v-for="group in settingsGroups" :key="group.label" :label="group.label">
+                  <option v-for="tab in group.items" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
+                </optgroup>
+              </select>
+            </label>
+            <nav class="settings-nav" aria-label="Timeline preference sections">
+              <section v-for="group in settingsGroups" :key="group.label" class="settings-nav-group">
+                <h2>{{ group.label }}</h2>
+                <button v-for="tab in group.items" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="selectTab(tab.key)">
+                  <i :class="tab.icon" aria-hidden="true" />{{ tab.label }}
+                </button>
+              </section>
+            </nav>
+            <section :class="['settings-content', { 'demo-readonly-content': demoReadOnly }]">
+              <Card class="info-banner">
+                <template #content>
+                  <div class="banner-content">
+                    <div class="banner-icon"><i class="pi pi-info-circle" /></div>
+                    <div class="banner-text">
+                      <h3 class="banner-title">How Timeline Processing Works</h3>
+                      <p class="banner-description">
+                        Your GPS data is processed to identify meaningful stays and trips. These settings control the sensitivity of this detection and apply only to your account. Some changes (like speed thresholds) quickly update trip classifications, while others require full timeline re-generation depending on your GPS data volume.
+                        <a href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">Learn more in the documentation <i class="pi pi-external-link" /></a>
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </Card>
 
-        <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-          Demo mode: all timeline preference settings are read-only. Saving changes, importing config, resetting defaults, and regenerating the timeline are disabled.
-        </Message>
+              <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
+                Demo mode: all timeline preference settings are read-only. Saving changes, importing config, resetting defaults, and regenerating the timeline are disabled.
+              </Message>
 
-        <!-- Unsaved Changes Warning -->
-        <Message v-if="hasUnsavedChanges" severity="warn" class="unsaved-warning">
-          <div class="warning-content">
-            <div class="warning-text">
-              <i class="pi pi-exclamation-triangle mr-2"></i>
-              You have unsaved changes
-            </div>
-            <div class="warning-actions">
-              <Button 
-                label="Discard" 
-                size="small" 
-                severity="secondary" 
-                outlined
-                @click="discardChanges" 
-              />
-              <Button 
-                label="Save Now" 
-                size="small" 
-                @click="confirmSavePreferences"
-                :disabled="timelineRegenerationVisible || demoReadOnly"
-              />
-            </div>
+              <Message v-if="hasUnsavedChanges" severity="warn" class="unsaved-warning">
+                <div class="warning-content">
+                  <div class="warning-text"><i class="pi pi-exclamation-triangle mr-2" />You have unsaved changes</div>
+                  <div class="warning-actions">
+                    <Button label="Discard" size="small" severity="secondary" outlined @click="discardChanges" />
+                    <Button label="Save Now" size="small" @click="confirmSavePreferences" :disabled="timelineRegenerationVisible || demoReadOnly" />
+                  </div>
+                </div>
+              </Message>
+
+              <StayPointDetectionTab v-if="activeTab === 'staypoints'" v-model="prefs" />
+              <TripClassificationTab v-if="activeTab === 'trips'" v-model="prefs" :get-warning-messages-for-type="getWarningMessagesForType" :boat-setup-status="boatSetupStatus" @retry-boat-setup="confirmStartBoatSetup" />
+              <GpsGapsDetectionTab v-if="activeTab === 'gpsgaps'" v-model="prefs" />
+              <StayPointMergingTab v-if="activeTab === 'merging'" v-model="prefs" />
+            </section>
           </div>
-        </Message>
-
-        <!-- Preferences Tabs -->
-          <TabContainer
-            :tabs="tabItems"
-            :activeIndex="activeTabIndex"
-            @tab-change="handleTabChange"
-            :class="['preferences-tabs', { 'demo-readonly-tabs': demoReadOnly }]"
-          >
-          <!-- Stay Point Detection Tab -->
-          <StayPointDetectionTab
-            v-if="activeTab === 'staypoints'"
-            v-model="prefs"
-          />
-
-          <!-- Trip Classification Tab -->
-          <TripClassificationTab
-            v-if="activeTab === 'trips'"
-            v-model="prefs"
-            :get-warning-messages-for-type="getWarningMessagesForType"
-            :boat-setup-status="boatSetupStatus"
-            @retry-boat-setup="confirmStartBoatSetup"
-          />
-
-          <!-- GPS Gaps Detection Tab -->
-          <GpsGapsDetectionTab
-            v-if="activeTab === 'gpsgaps'"
-            v-model="prefs"
-          />
-
-          <!-- Stay Point Merging Tab -->
-          <StayPointMergingTab
-            v-if="activeTab === 'merging'"
-            v-model="prefs"
-          />
-        </TabContainer>
+        </div>
 
         <input
           ref="importFileInput"
@@ -301,7 +268,6 @@ import Message from 'primevue/message'
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
-import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
 // Tab components
 import StayPointDetectionTab from '@/components/timeline-preferences/StayPointDetectionTab.vue'
@@ -483,32 +449,18 @@ const { demoReadOnly } = storeToRefs(authStore)
 const activeTab = ref(route.query.tab || 'staypoints')
 
 // Tab configuration
-const tabItems = ref([
-  {
-    label: 'Stay Point Detection',
-    icon: 'pi pi-map-marker',
-    key: 'staypoints'
-  },
-  {
-    label: 'Trip Classification',
-    icon: 'pi pi-route',
-    key: 'trips'
-  },
-  {
-    label: 'GPS Gaps Detection',
-    icon: 'pi pi-exclamation-circle',
-    key: 'gpsgaps'
-  },
-  {
-    label: 'Stay Point Merging',
-    icon: 'pi pi-sitemap',
-    key: 'merging'
-  }
-])
+const settingsGroups = [
+  { label: 'Timeline', items: [
+    { label: 'Stay Point Detection', icon: 'pi pi-map-marker', key: 'staypoints' },
+    { label: 'Trip Classification', icon: 'pi pi-route', key: 'trips' }
+  ] },
+  { label: 'Data Quality', items: [
+    { label: 'GPS Gaps Detection', icon: 'pi pi-exclamation-circle', key: 'gpsgaps' },
+    { label: 'Stay Point Merging', icon: 'pi pi-sitemap', key: 'merging' }
+  ] }
+]
 
-const activeTabIndex = computed(() => {
-  return tabItems.value.findIndex(tab => tab.key === activeTab.value)
-})
+const validTabs = settingsGroups.flatMap((group) => group.items.map((tab) => tab.key))
 
 const prefs = ref({})
 const importFileInput = ref(null)
@@ -600,15 +552,12 @@ const headerSecondaryActionsMenu = computed(() => {
 })
 
 // Methods
-const handleTabChange = (event) => {
-  const selectedTab = tabItems.value[event.index]
-  if (selectedTab) {
-    activeTab.value = selectedTab.key
-    // Update URL with tab query parameter
-    const nextQuery = { ...route.query, tab: selectedTab.key }
-    delete nextQuery.setting
-    router.push({ query: nextQuery })
-  }
+const selectTab = (tab) => {
+  if (!validTabs.includes(tab)) return
+  activeTab.value = tab
+  const nextQuery = { ...route.query, tab }
+  delete nextQuery.setting
+  router.push({ query: nextQuery })
 }
 
 const getManagedPreferencesFromSource = (source = {}) => {
@@ -1457,7 +1406,6 @@ watch(currentJobId, (newJobId) => {
 
 // Watch for URL changes and validate tab parameter
 watch(() => route.query.tab, (newTab) => {
-  const validTabs = tabItems.value.map(t => t.key)
   if (newTab && validTabs.includes(newTab)) {
     activeTab.value = newTab
   } else if (newTab && !validTabs.includes(newTab)) {
@@ -1544,7 +1492,6 @@ onMounted(() => {
   activeJobPollingTimer = window.setInterval(refreshActiveJob, 15000)
 
   // Validate initial tab from URL
-  const validTabs = tabItems.value.map(t => t.key)
   const initialTab = route.query.tab
   if (initialTab && !validTabs.includes(initialTab)) {
     router.replace({ query: { ...route.query, tab: 'staypoints' } })
@@ -1567,19 +1514,9 @@ onUnmounted(() => {
 
 <style scoped>
 .timeline-preferences-page {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 0 1rem;
   width: 100%;
   box-sizing: border-box;
-}
-
-@media (max-width: 430px) {
-  .timeline-preferences-page {
-    padding: 0 0.75rem;
-    max-width: calc(100vw - 1.5rem);
-    box-sizing: border-box;
-  }
 }
 
 /* Page Header */
@@ -1587,9 +1524,9 @@ onUnmounted(() => {
   margin-bottom: 2rem;
 }
 
-.header-text {
-  margin-bottom: 1rem;
-}
+.header-content { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; }
+.header-text { flex: 1; }
+.header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; flex-shrink: 0; }
 
 .page-title {
   font-size: 2rem;
@@ -1605,46 +1542,14 @@ onUnmounted(() => {
   line-height: 1.5;
 }
 
-.header-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  width: 100%;
-  gap: 0.75rem;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.toolbar-search-group {
-  display: flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
-
-.toolbar-action-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-left: auto;
-  justify-content: flex-end;
-}
-
-.toolbar-search {
-  min-width: 14rem;
-}
-
 .toolbar-secondary-actions {
   display: flex;
   align-items: center;
   flex-shrink: 0;
 }
 
-.toolbar-action-group :deep(.p-button),
-.toolbar-secondary-actions :deep(.p-button),
-.toolbar-search :deep(.settings-search-trigger) {
+.header-actions :deep(.p-button),
+.header-actions :deep(.settings-search-trigger) {
   min-height: 3.1rem;
 }
 
@@ -1671,9 +1576,20 @@ onUnmounted(() => {
   background: rgba(59, 130, 246, 0.08);
 }
 
+.timeline-preferences-content { margin-bottom: 2rem; }
+.settings-layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; }
+.settings-nav { display: grid; align-content: start; gap: 1rem; }
+.settings-nav-group { display: grid; gap: .25rem; }
+.settings-nav h2 { margin: 0 0 .25rem; color: var(--gp-text-muted); font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
+.settings-nav button { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .65rem .75rem; border: 0; border-radius: var(--gp-radius-medium); background: transparent; color: var(--gp-text-secondary); font: inherit; text-align: left; cursor: pointer; }
+.settings-nav button:hover, .settings-nav button.active { background: var(--gp-timeline-blue); color: var(--gp-primary-dark); }
+.settings-nav button.active { font-weight: 600; }
+.settings-content { min-width: 0; }
+.mobile-settings-select { display: none; }
+
 /* Info Banner */
 .info-banner {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border-medium);
   border-left: 4px solid var(--gp-primary);
@@ -1681,7 +1597,7 @@ onUnmounted(() => {
 }
 
 .p-dark .info-banner {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   background: var(--gp-surface-dark) !important;
   border: 1px solid var(--gp-border-dark) !important;
   border-left: 1px solid var(--gp-border-dark) !important;
@@ -1768,11 +1684,7 @@ onUnmounted(() => {
 }
 
 /* Preferences Tabs */
-.preferences-tabs {
-  margin-bottom: 2rem;
-}
-
-.demo-readonly-tabs :deep(.gp-tab-content) {
+.demo-readonly-content :deep(.preferences-section) {
   opacity: 0.78;
   pointer-events: none;
 }
@@ -1936,51 +1848,21 @@ onUnmounted(() => {
 /* Responsive Design */
 @media (max-width: 768px) {
   .timeline-preferences-page {
-    padding: 0 1rem;
-    margin: 0 auto;
-    width: 100%;
-    max-width: 100vw;
-    box-sizing: border-box;
+    padding: 0;
+    max-width: 100%;
   }
-  
+
+  .page-header { padding: 0 1rem; }
   .page-title {
     font-size: 1.5rem;
   }
-  
-  .header-toolbar {
-    width: 100%;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: 0.65rem;
-  }
 
-  .toolbar-search-group {
-    width: 100%;
-  }
-
-  .toolbar-action-group {
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
-
-  .toolbar-search {
-    width: 100%;
-  }
-
-  .toolbar-action-group .p-button {
-    flex: 1;
-    min-width: 12rem;
-    min-height: 44px;
-  }
-
-  .toolbar-secondary-actions {
-    justify-content: flex-start;
-  }
-
-  .toolbar-secondary-actions .p-button {
-    min-height: 44px;
-  }
+  .header-content { flex-direction: column; gap: .75rem; }
+  .header-actions { width: 100%; justify-content: flex-end; }
+  .settings-layout { grid-template-columns: 1fr; gap: 1rem; }
+  .settings-nav { display: none; }
+  .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; padding: 0 1rem; }
+  .mobile-settings-select select { width: 100%; min-height: 2.75rem; padding: 0 .75rem; border: 1px solid var(--gp-border-medium); border-radius: var(--gp-radius-medium); background: var(--gp-surface-white); color: var(--gp-text-primary); font: inherit; }
 
   .import-preview-dialog {
     width: 96vw;
@@ -2049,31 +1931,12 @@ onUnmounted(() => {
     overflow: hidden;
   }
   
-  :deep(.p-tabs-tab) {
-    padding: 1rem 0.75rem;
-    font-size: 0.85rem;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  :deep(.p-tabs-nav) {
-    justify-content: space-around;
-  }
-  
-  :deep(.p-tabs-tab .p-tabs-tab-content) {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
 }
 
 @media (max-width: 480px) {
   .timeline-preferences-page {
-    padding: 0 0.75rem;
-    max-width: calc(100vw - 1.5rem);
+    padding: 0;
+    max-width: 100%;
   }
   
   .page-header {
@@ -2088,12 +1951,9 @@ onUnmounted(() => {
     font-size: 1rem;
   }
   
-  .toolbar-action-group {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .toolbar-action-group .p-button {
+  .header-actions { align-items: stretch; }
+  .header-actions :deep(.p-button),
+  .header-actions :deep(.settings-search-trigger) {
     width: 100%;
     min-height: 48px;
     font-size: 0.95rem;
@@ -2102,13 +1962,6 @@ onUnmounted(() => {
   .toolbar-secondary-actions {
     width: 100%;
     justify-content: stretch;
-    margin-left: 0;
-  }
-
-  .toolbar-secondary-actions .p-button {
-    width: 100%;
-    min-height: 48px;
-    font-size: 0.95rem;
   }
 
   .import-preview-table th,
@@ -2174,15 +2027,6 @@ onUnmounted(() => {
     align-self: center;
   }
   
-  :deep(.p-tabs-tab) {
-    padding: 0.75rem 0.5rem;
-    font-size: 0.8rem;
-    min-height: 48px;
-  }
-  
-  :deep(.p-tabs-tab .pi) {
-    font-size: 0.9rem;
-  }
 }
 
 /* Responsive Design */</style>

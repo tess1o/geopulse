@@ -1,9 +1,13 @@
 <template>
-  <BaseCard v-if="showSection" class="immich-photos-card">
+  <BaseCard v-if="shouldRenderSection" class="immich-photos-card" :class="{ 'immich-photos-card--rewind': isRewind }">
     <div class="immich-photos-header">
-      <h3 class="section-title">{{ title }}</h3>
+      <div>
+        <p v-if="isRewind" class="rewind-eyebrow"><i class="pi pi-images"></i> Photo moments</p>
+        <h3 class="section-title">{{ title }}</h3>
+        <p v-if="isRewind" class="rewind-description">A small selection from this period.</p>
+      </div>
       <div class="immich-photos-header-right">
-        <span v-if="latestPhotos.length > 0" class="immich-photos-count">
+        <span v-if="!isRewind && latestPhotos.length > 0" class="immich-photos-count">
           {{ latestPhotos.length }}
           <template v-if="totalPhotos > latestPhotos.length">/ {{ totalPhotos }}</template>
         </span>
@@ -15,6 +19,15 @@
           text
           :loading="isLoadingMore"
           @click="handleLoadMore"
+        />
+        <Button
+          v-if="isRewind && latestPhotos.length > 0"
+          label="Show random memories"
+          icon="pi pi-refresh"
+          size="small"
+          text
+          :loading="rewindRandomizing"
+          @click="showRandomMemories"
         />
         <Button
           v-if="canLoadAll"
@@ -39,13 +52,44 @@
       <i class="pi pi-camera"></i>
       <span>{{ emptyMessage }}</span>
     </div>
+    <div v-else-if="isRewind" ref="rewindGridElement" class="rewind-justified-grid">
+      <div
+        v-for="(row, rowIndex) in rewindPhotoRows"
+        :key="`rewind-row-${rowIndex}`"
+        class="rewind-justified-row"
+        :style="{ height: `${row.height}px` }"
+      >
+        <button
+          v-for="item in row.items"
+          :key="item.photo.id"
+          class="immich-photo-tile rewind-justified-tile"
+          type="button"
+          :style="{ width: `${item.width}px` }"
+          @click="openPhotoViewer(displayedPhotos, item.index)"
+        >
+          <img
+            v-if="getPhotoBlobUrl(item.photo.id)"
+            :src="getPhotoBlobUrl(item.photo.id)"
+            :alt="item.photo.originalFileName || 'Photo'"
+            @load="captureRewindThumbnailDimensions(item.photo, $event)"
+          />
+          <div v-else class="immich-photo-placeholder">
+            <i class="pi pi-image"></i>
+          </div>
+          <div class="immich-photo-date immich-photo-date--overlay">
+            {{ formatRewindPhotoDate(item.photo.takenAt) }}
+          </div>
+        </button>
+      </div>
+    </div>
     <div v-else class="immich-photos-grid">
       <button
-        v-for="(photo, index) in latestPhotos"
+        v-for="(photo, index) in displayedPhotos"
         :key="photo.id"
         class="immich-photo-tile"
+        :class="{ 'immich-photo-tile--featured': isRewind && index === 0 }"
         type="button"
-        @click="openPhotoViewer(latestPhotos, index)"
+        @click="openPhotoViewer(displayedPhotos, index)"
       >
         <div class="immich-photo-thumb">
           <img
@@ -57,8 +101,8 @@
             <i class="pi pi-image"></i>
           </div>
         </div>
-        <div class="immich-photo-date">
-          {{ formatPhotoDate(photo.takenAt) }}
+        <div class="immich-photo-date" :class="{ 'immich-photo-date--overlay': isRewind }">
+          {{ isRewind ? formatRewindPhotoDate(photo.takenAt) : formatPhotoDate(photo.takenAt) }}
         </div>
       </button>
     </div>
@@ -90,7 +134,8 @@
     :content-style="{ padding: '1rem' }"
   >
     <div class="gallery-meta">
-      <span>{{ galleryPhotos.length }} / {{ totalPhotos }} photos</span>
+      <span v-if="isRewind">{{ galleryPhotos.length }} photos from this period</span>
+      <span v-else>{{ galleryPhotos.length }} / {{ totalPhotos }} photos</span>
     </div>
 
     <div v-if="galleryLoading && galleryPhotos.length === 0" class="immich-photos-loading">
@@ -150,6 +195,8 @@ import { useImmichStore } from '@/stores/immich'
 import apiService from '@/utils/apiService'
 import { imageService } from '@/utils/imageService'
 import { useTimezone } from '@/composables/useTimezone'
+import { buildJustifiedPhotoRows } from '@/utils/justifiedPhotoLayout'
+import { getCuratedPhotoMemories, selectTimeSpreadPhotoMemories, shufflePhotoMemories } from '@/utils/photoMemoryCuration'
 
 const DEFAULT_LIMIT = 20
 const DEFAULT_FILTER_CACHE_TTL_MS = 60000
@@ -172,6 +219,14 @@ const props = defineProps({
     default: 'No Immich photos found.'
   },
   showOnMapEnabled: {
+    type: Boolean,
+    default: true
+  },
+  presentation: {
+    type: String,
+    default: 'default'
+  },
+  loadMapMarkers: {
     type: Boolean,
     default: true
   },
@@ -233,12 +288,22 @@ const galleryRows = ref(60)
 const photoViewerVisible = ref(false)
 const photoViewerIndex = ref(0)
 const photoViewerPhotos = ref([])
+const rewindRandomPhotos = ref([])
+const rewindRandomPhotoDeck = ref([])
+const rewindRandomizing = ref(false)
+const rewindGridElement = ref(null)
+const rewindGridWidth = ref(0)
+const rewindThumbnailDimensions = ref(new Map())
+let rewindGridResizeObserver = null
 
 const immichConfigChecked = ref(false)
 const mapMarkerPhotosCache = new Map()
 const mapMarkerPhotosInFlight = new Map()
 
 const showSection = computed(() => immichConfigChecked.value && immichStore.isConfigured)
+const isRewind = computed(() => props.presentation === 'rewind')
+const shouldRenderSection = computed(() => showSection.value && (!isRewind.value || latestPhotosLoading.value || latestPhotos.value.length > 0))
+const initialLatestLimit = computed(() => isRewind.value ? null : DEFAULT_LIMIT)
 const isLoadingMore = computed(() => latestPhotosLoading.value && latestPhotosLoadingMode.value === 'more')
 const hasInMemoryFilter = computed(() => typeof props.inMemoryFilter === 'function')
 const safeLatestMaxOnPage = computed(() => {
@@ -249,11 +314,13 @@ const safeLatestMaxOnPage = computed(() => {
   return Math.floor(value)
 })
 const canLoadMore = computed(() =>
+  !isRewind.value &&
   totalPhotos.value > latestPhotos.value.length &&
   latestPhotos.value.length < safeLatestMaxOnPage.value &&
   !latestPhotosLoading.value
 )
 const canLoadAll = computed(() =>
+  (isRewind.value && latestPhotos.value.length > 0) ||
   totalPhotos.value > DEFAULT_LIMIT ||
   galleryPhotos.value.length > 0
 )
@@ -263,14 +330,33 @@ const galleryPagedPhotos = computed(() => {
   return galleryPhotos.value.slice(start, end)
 })
 const showLatestCoverageHint = computed(() =>
+  !isRewind.value &&
   latestPhotos.value.length > 0 &&
   totalPhotos.value > latestPhotos.value.length
 )
 const loadAllButtonLabel = computed(() => {
+  if (isRewind.value) {
+    return 'Browse all photos'
+  }
   if (totalPhotos.value <= 0) {
     return 'Open full gallery'
   }
   return `Open full gallery (${totalPhotos.value})`
+})
+const displayedPhotos = computed(() => {
+  if (!isRewind.value) return latestPhotos.value
+  return rewindRandomPhotos.value.length > 0
+    ? rewindRandomPhotos.value
+    : selectTimeSpreadPhotoMemories(latestPhotos.value, formatLocalDay)
+})
+const rewindPhotoRows = computed(() => {
+  const photos = displayedPhotos.value.map((photo) => {
+    const dimensions = rewindThumbnailDimensions.value.get(photo.id)
+    return dimensions ? { ...photo, ...dimensions } : photo
+  })
+  return buildJustifiedPhotoRows(photos, rewindGridWidth.value, {
+    targetRowHeight: rewindGridWidth.value && rewindGridWidth.value < 640 ? 170 : 240
+  })
 })
 const normalizedInMemoryFilterCacheKey = computed(() => {
   return (props.inMemoryFilterCacheKey || '').trim()
@@ -544,9 +630,13 @@ const resetPhotoState = ({ resetLimit = true } = {}) => {
   photoViewerVisible.value = false
   photoViewerPhotos.value = []
   photoViewerIndex.value = 0
+  rewindRandomPhotos.value = []
+  rewindRandomPhotoDeck.value = []
+  rewindRandomizing.value = false
+  rewindThumbnailDimensions.value = new Map()
 
   if (resetLimit) {
-    currentLimit.value = DEFAULT_LIMIT
+    currentLimit.value = initialLatestLimit.value
   }
 
   clearPhotoBlobs()
@@ -569,6 +659,29 @@ const sortPhotosByTakenAtDesc = (photos) => {
   })
 }
 
+const formatLocalDay = (takenAt) => timezone.format(takenAt, 'YYYY-MM-DD')
+
+const refreshRewindGridWidth = () => {
+  rewindGridWidth.value = Math.floor(rewindGridElement.value?.clientWidth || 0)
+}
+
+const observeRewindGrid = () => {
+  if (!rewindGridResizeObserver && window.ResizeObserver && rewindGridElement.value) {
+    rewindGridResizeObserver = new ResizeObserver(refreshRewindGridWidth)
+    rewindGridResizeObserver.observe(rewindGridElement.value)
+  }
+}
+
+const captureRewindThumbnailDimensions = (photo, event) => {
+  if (!isRewind.value || !photo?.id) return
+  const width = event.target?.naturalWidth
+  const height = event.target?.naturalHeight
+  if (!width || !height) return
+  const previous = rewindThumbnailDimensions.value.get(photo.id)
+  if (previous?.width === width && previous?.height === height) return
+  rewindThumbnailDimensions.value = new Map(rewindThumbnailDimensions.value).set(photo.id, { width, height })
+}
+
 const buildSearchParams = (limit = currentLimit.value) => {
   const baseParams = normalizedBaseParams.value
   if (!baseParams) {
@@ -579,7 +692,6 @@ const buildSearchParams = (limit = currentLimit.value) => {
   if (typeof limit === 'number' && Number.isFinite(limit) && limit > 0) {
     params.limit = limit
   }
-
   return params
 }
 
@@ -793,9 +905,11 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       }
 
       totalPhotos.value = filteredDataset.length
-      const visibleLimit = Math.min(currentLimit.value, safeLatestMaxOnPage.value)
+      const visibleLimit = Number.isFinite(currentLimit.value)
+        ? Math.min(currentLimit.value, safeLatestMaxOnPage.value)
+        : filteredDataset.length
       latestPhotos.value = filteredDataset.slice(0, visibleLimit)
-      await loadMissingPhotoBlobs(latestPhotos.value, photoBlobContextToken)
+      await loadMissingPhotoBlobs(displayedPhotos.value, photoBlobContextToken)
       return
     }
 
@@ -813,7 +927,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       latestPhotos.value = photos
     }
 
-    await loadMissingPhotoBlobs(latestPhotos.value, photoBlobContextToken)
+    await loadMissingPhotoBlobs(displayedPhotos.value, photoBlobContextToken)
   } catch (err) {
     if (requestToken !== latestRequestToken) {
       return
@@ -882,6 +996,13 @@ const fetchAllPhotosForGallery = async () => {
   photosError.value = null
 
   try {
+    if (isRewind.value && latestPhotos.value.length === totalPhotos.value) {
+      galleryPhotos.value = latestPhotos.value
+      galleryFirst.value = 0
+      await loadMissingPhotoBlobs(galleryPagedPhotos.value, photoBlobContextToken)
+      return
+    }
+
     if (hasInMemoryFilter.value) {
       const filteredDataset = await getFilteredPhotoDataset()
       if (requestToken !== galleryRequestToken) {
@@ -947,6 +1068,33 @@ const handleLoadMore = async () => {
     safeLatestMaxOnPage.value
   )
   await fetchLatestPhotos({ append: true, mode: 'more' })
+}
+
+const showRandomMemories = async () => {
+  if (!isRewind.value || rewindRandomizing.value || latestPhotos.value.length === 0) {
+    return
+  }
+  rewindRandomizing.value = true
+  const candidates = getCuratedPhotoMemories(latestPhotos.value)
+  const previousIds = new Set(displayedPhotos.value.map((photo) => photo.id))
+  const candidateIds = new Set(candidates.map((photo) => photo.id))
+  let deck = rewindRandomPhotoDeck.value.filter((photo) => candidateIds.has(photo.id))
+  const selectionSize = Math.min(6, candidates.length)
+
+  if (deck.length < selectionSize) {
+    const queuedIds = new Set(deck.map((photo) => photo.id))
+    deck = [...deck, ...shufflePhotoMemories(candidates).filter((photo) => !queuedIds.has(photo.id) && !previousIds.has(photo.id))]
+  }
+  if (deck.length < selectionSize) {
+    const queuedIds = new Set(deck.map((photo) => photo.id))
+    deck = [...deck, ...shufflePhotoMemories(candidates).filter((photo) => !queuedIds.has(photo.id))]
+  }
+
+  rewindRandomPhotos.value = deck.slice(0, selectionSize)
+  rewindRandomPhotoDeck.value = deck.slice(selectionSize)
+  await nextTick()
+  await loadMissingPhotoBlobs(displayedPhotos.value, photoBlobContextToken)
+  rewindRandomizing.value = false
 }
 
 const handleLoadAll = async () => {
@@ -1100,11 +1248,17 @@ const formatPhotoDate = (dateValue) => {
   return `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue)}`
 }
 
+const formatRewindPhotoDate = (dateValue) => dateValue ? timezone.formatDateShort(dateValue) : 'Unknown date'
+
 onMounted(async () => {
   await ensureImmichConfig()
+  await nextTick()
+  refreshRewindGridWidth()
+  observeRewindGrid()
 })
 
 onBeforeUnmount(() => {
+  rewindGridResizeObserver?.disconnect()
   photoBlobContextToken += 1
   clearPhotoBlobs()
 })
@@ -1117,17 +1271,24 @@ watch(mapMarkerGroups, (groups) => {
   emit('map-markers-change', groups)
 }, { immediate: true })
 
+watch(displayedPhotos, async () => {
+  await nextTick()
+  refreshRewindGridWidth()
+  observeRewindGrid()
+})
+
 watch(
-  [showSection, searchSignature, normalizedInMemoryFilterCacheKey],
+  [showSection, searchSignature, normalizedInMemoryFilterCacheKey, isRewind, () => props.loadMapMarkers],
   async ([visible]) => {
     resetPhotoState()
     if (!visible || !hasValidSearchParams.value) {
       return
     }
-    await Promise.all([
-      fetchLatestPhotos({ append: false, mode: 'initial' }),
-      fetchMapMarkerGroups()
-    ])
+    const requests = [fetchLatestPhotos({ append: false, mode: 'initial' })]
+    if (props.loadMapMarkers) {
+      requests.push(fetchMapMarkerGroups())
+    }
+    await Promise.all(requests)
   },
   { immediate: true }
 )
@@ -1169,6 +1330,25 @@ defineExpose({
 
 .immich-photos-header .section-title {
   margin: 0;
+}
+
+.rewind-eyebrow {
+  margin: 0 0 .35rem;
+  color: var(--gp-secondary-dark);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.rewind-eyebrow i {
+  margin-right: .3rem;
+}
+
+.rewind-description {
+  margin: .3rem 0 0;
+  color: var(--gp-text-secondary);
+  font-size: .85rem;
 }
 
 .immich-photos-header-right {
@@ -1255,6 +1435,53 @@ defineExpose({
   text-overflow: ellipsis;
 }
 
+.immich-photos-card--rewind {
+  border-radius: 20px;
+}
+
+.rewind-justified-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.rewind-justified-row {
+  display: flex;
+  gap: .55rem;
+  width: 100%;
+}
+
+.rewind-justified-tile {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--gp-surface-light);
+  padding: 0;
+}
+
+.rewind-justified-tile img,
+.rewind-justified-tile .immich-photo-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.immich-photo-date--overlay {
+  position: absolute;
+  right: .45rem;
+  bottom: .45rem;
+  margin: 0;
+  border-radius: 5px;
+  background: rgba(7, 20, 38, .72);
+  color: #fff;
+  padding: .15rem .35rem;
+  font-size: .7rem;
+  font-weight: 700;
+}
+
 .immich-photos-loading-inline {
   display: flex;
   align-items: center;
@@ -1305,5 +1532,6 @@ defineExpose({
   .gallery-grid {
     max-height: 58vh;
   }
+
 }
 </style>

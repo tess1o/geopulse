@@ -39,6 +39,7 @@
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
         <bouncycastle.version>1.85.2</bouncycastle.version>
         <quarkus-mcp-server.version>2.0.0</quarkus-mcp-server.version>
+        <pdfbox.version>3.0.8</pdfbox.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -211,6 +212,11 @@
             <groupId>io.quarkiverse.mcp</groupId>
             <artifactId>quarkus-mcp-server-http</artifactId>
             <version>${quarkus-mcp-server.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -480,14 +486,8 @@
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,
-                    --initialize-at-run-time=oorg.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModuleFactory,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.future.FutureValidatorForReadablePartial,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.futureorpresent.FutureOrPresentValidatorForReadablePartial,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.past.PastValidatorForReadablePartial,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.future.FutureValidatorForReadableInstant,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.past.PastValidatorForReadableInstant,
-                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.pastorpresent.PastOrPresentValidatorForReadablePartial,
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.logcat,
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.messages,
                     -H:+UnlockExperimentalVMOptions,

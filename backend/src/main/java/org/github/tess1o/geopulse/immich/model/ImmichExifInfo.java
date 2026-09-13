@@ -8,4 +8,7 @@ import lombok.Data;
 public class ImmichExifInfo {
     private Double latitude;
     private Double longitude;
+    private Integer exifImageWidth;
+    private Integer exifImageHeight;
+    private Integer rating;
 }

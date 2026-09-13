@@ -2,13 +2,20 @@
   <div class="digest-header">
     <div class="digest-header-main">
       <!-- Period Type Toggle -->
-      <div class="period-toggle">
+      <div class="period-toggle" role="group" aria-label="Rewind period type">
         <Button
-          :label="viewMode === 'monthly' ? 'Monthly' : 'Yearly'"
-          :icon="viewMode === 'monthly' ? 'pi pi-calendar' : 'pi pi-calendar-clock'"
-          @click="toggleViewMode"
-          outlined
-          class="toggle-btn"
+          label="Monthly"
+          icon="pi pi-calendar"
+          :class="['toggle-btn', { active: viewMode === 'monthly' }]"
+          text
+          @click="setViewMode('monthly')"
+        />
+        <Button
+          label="Yearly"
+          icon="pi pi-calendar-clock"
+          :class="['toggle-btn', { active: viewMode === 'yearly' }]"
+          text
+          @click="setViewMode('yearly')"
         />
       </div>
 
@@ -74,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
 import { useTimezone } from '@/composables/useTimezone'
 
@@ -138,8 +145,8 @@ const isCurrentPeriod = computed(() => {
   }
 })
 
-const toggleViewMode = () => {
-  const newMode = props.viewMode === 'monthly' ? 'yearly' : 'monthly'
+const setViewMode = (newMode) => {
+  if (newMode === props.viewMode) return
   emit('update:viewMode', newMode)
   emit('period-changed', {
     viewMode: newMode,
@@ -214,7 +221,7 @@ watch(() => props.month, (newMonth) => {
 
 <style scoped>
 .digest-header {
-  background: var(--gp-surface-white);
+  background: color-mix(in srgb, var(--gp-surface-white) 90%, var(--gp-primary));
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-lg);
@@ -229,12 +236,21 @@ watch(() => props.month, (newMonth) => {
 }
 
 .period-toggle {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--gp-border-light);
+  border-radius: 10px;
+  background: var(--gp-surface-light);
   flex-shrink: 0;
 }
 
 .toggle-btn {
   font-weight: 600;
+  color: var(--gp-text-secondary);
+  padding: .45rem .65rem;
 }
+
+.toggle-btn.active { color: white; background: var(--gp-primary); }
 
 .period-navigation {
   display: flex;
@@ -336,9 +352,7 @@ watch(() => props.month, (newMonth) => {
     width: 100%;
   }
 
-  .toggle-btn {
-    width: 100%;
-  }
+  .toggle-btn { flex: 1; }
 
   .period-navigation {
     order: 2;

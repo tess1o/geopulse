@@ -5,9 +5,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import io.smallrye.common.annotation.Blocking;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.digest.model.TimeDigest;
+import org.github.tess1o.geopulse.digest.service.DigestPdfService;
 import org.github.tess1o.geopulse.digest.service.DigestService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
@@ -27,6 +29,9 @@ public class DigestResource {
 
     @Inject
     CurrentUserService currentUserService;
+
+    @Inject
+    DigestPdfService digestPdfService;
 
     @GET
     @Path("/monthly")
@@ -88,5 +93,47 @@ public class DigestResource {
                     .entity(ApiResponse.error("Failed to generate digest: " + e.getMessage()))
                     .build();
         }
+    }
+
+    @GET
+    @Path("/pdf")
+    @Produces("application/pdf")
+    @Blocking
+    public Response exportPdf(
+            @QueryParam("viewMode") String viewMode,
+            @QueryParam("year") int year,
+            @QueryParam("month") Integer month,
+            @DefaultValue("false") @QueryParam("includePhotos") boolean includePhotos) {
+        if (!"monthly".equals(viewMode) && !"yearly".equals(viewMode)) {
+            return pdfError(Response.Status.BAD_REQUEST, "viewMode must be monthly or yearly");
+        }
+        if (year < 2000 || year > 2100) {
+            return pdfError(Response.Status.BAD_REQUEST, "Invalid year. Must be between 2000 and 2100");
+        }
+        if ("monthly".equals(viewMode) && (month == null || month < 1 || month > 12)) {
+            return pdfError(Response.Status.BAD_REQUEST, "A month between 1 and 12 is required for monthly exports");
+        }
+
+        var user = currentUserService.getCurrentUser();
+        try {
+            TimeDigest digest = "monthly".equals(viewMode)
+                    ? digestService.getMonthlyDigest(user.getId(), year, month, user.getTimezone())
+                    : digestService.getYearlyDigest(user.getId(), year, user.getTimezone());
+            String suffix = "monthly".equals(viewMode) ? "%d-%02d".formatted(year, month) : String.valueOf(year);
+            byte[] report = digestPdfService.generate(digest, user, includePhotos);
+            return Response.ok(report, "application/pdf")
+                    .header("Content-Disposition", "attachment; filename=\"geopulse-rewind-" + suffix + ".pdf\"")
+                    .build();
+        } catch (Exception exception) {
+            log.error("Failed to export Rewind PDF for user {}", user.getId(), exception);
+            return pdfError(Response.Status.INTERNAL_SERVER_ERROR, "Failed to generate Rewind PDF");
+        }
+    }
+
+    private Response pdfError(Response.Status status, String message) {
+        return Response.status(status)
+                .type(MediaType.APPLICATION_JSON)
+                .entity(ApiResponse.error(message))
+                .build();
     }
 }

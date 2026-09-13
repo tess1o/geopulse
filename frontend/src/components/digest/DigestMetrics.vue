@@ -1,168 +1,28 @@
 <template>
-  <div class="digest-metrics">
-    <h3 class="metrics-title">
-      <i class="pi pi-chart-bar"></i>
-      {{ title }}
-    </h3>
-
-    <div v-if="hasMetrics" class="metrics-grid">
-      <!-- ROW 1: Distance Overview -->
-
-      <!-- Total Distance -->
-      <div class="metric-card">
-        <div class="metric-icon">🚗</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.totalDistance) }}</div>
-        <div class="metric-label">Total Distance</div>
-        <div class="metric-change" v-if="comparison" :class="comparisonClass">
-          {{ comparisonText }}
-        </div>
+  <section class="digest-hero" aria-labelledby="digest-hero-title">
+    <template v-if="hasMetrics">
+      <div class="digest-hero-copy">
+        <p class="digest-eyebrow"><i class="pi pi-sparkles"></i> {{ title }}</p>
+        <h2 id="digest-hero-title">{{ formatDistanceRounded(metrics.totalDistance) }} of movement.</h2>
+        <p class="digest-summary">{{ metrics.tripCount }} trips across {{ metrics.citiesVisited }} {{ metrics.citiesVisited === 1 ? 'city' : 'cities' }}.</p>
+        <span v-if="comparison" class="comparison-pill" :class="comparisonClass"><i :class="comparisonIcon"></i>{{ comparisonText }}</span>
       </div>
 
-      <!-- Car Distance -->
-      <div class="metric-card" v-if="metrics.carDistance > 0">
-        <div class="metric-icon">🚗</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.carDistance) }}</div>
-        <div class="metric-label">Distance by Car</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.carDistance, metrics.totalDistance) }}% of total
-        </div>
+      <dl class="hero-stats">
+        <div><dt>Trips</dt><dd>{{ metrics.tripCount }}</dd></div>
+        <div><dt>Active days</dt><dd>{{ metrics.activeDays }}</dd></div>
+        <div><dt>Moving time</dt><dd>{{ formatDuration(metrics.timeMoving || 0) }}</dd></div>
+        <div><dt>Stays</dt><dd>{{ metrics.stayCount || 0 }}</dd></div>
+      </dl>
+
+      <div v-if="movementModes.length" class="movement-mix">
+        <div class="movement-mix-heading"><span>How you moved</span><span v-if="highlights?.peakHours?.length" class="peak-hours">Most active: {{ highlights.peakHours.join(', ') }}</span></div>
+        <div class="movement-bar" aria-label="Distance split by transport type"><span v-for="mode in movementModes" :key="mode.key" :style="{ width: `${mode.share}%`, background: mode.color }" :title="`${mode.label}: ${mode.share}%`"></span></div>
+        <div class="movement-legend"><span v-for="mode in movementModes" :key="mode.key"><i :style="{ background: mode.color }"></i>{{ mode.label }} <b>{{ mode.share }}%</b></span></div>
       </div>
-
-      <!-- Motorcycle Distance -->
-      <div class="metric-card" v-if="metrics.motorcycleDistance > 0">
-        <div class="metric-icon">🏍️</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.motorcycleDistance) }}</div>
-        <div class="metric-label">Distance by Motorcycle</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.motorcycleDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Walk Distance -->
-      <div class="metric-card" v-if="metrics.walkDistance > 0">
-        <div class="metric-icon">🚶</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.walkDistance) }}</div>
-        <div class="metric-label">Distance Walking</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.walkDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Bicycle Distance -->
-      <div class="metric-card" v-if="metrics.bicycleDistance > 0">
-        <div class="metric-icon">🚴</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.bicycleDistance) }}</div>
-        <div class="metric-label">Distance Cycling</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.bicycleDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Running Distance -->
-      <div class="metric-card" v-if="metrics.runningDistance > 0">
-        <div class="metric-icon">🏃</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.runningDistance) }}</div>
-        <div class="metric-label">Distance Running</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.runningDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Train Distance -->
-      <div class="metric-card" v-if="metrics.trainDistance > 0">
-        <div class="metric-icon">🚆</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.trainDistance) }}</div>
-        <div class="metric-label">Distance by Train</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.trainDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Flight Distance -->
-      <div class="metric-card" v-if="metrics.flightDistance > 0">
-        <div class="metric-icon">✈️</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.flightDistance) }}</div>
-        <div class="metric-label">Distance by Flight</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.flightDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Boat Distance -->
-      <div class="metric-card" v-if="metrics.boatDistance > 0">
-        <div class="metric-icon">⛵</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.boatDistance) }}</div>
-        <div class="metric-label">Distance by Boat</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.boatDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- Unknown Distance -->
-      <div class="metric-card" v-if="metrics.unknownDistance > 0">
-        <div class="metric-icon">❓</div>
-        <div class="metric-value">{{ formatDistanceRounded(metrics.unknownDistance) }}</div>
-        <div class="metric-label">Distance Unknown</div>
-        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
-          {{ getPercentage(metrics.unknownDistance, metrics.totalDistance) }}% of total
-        </div>
-      </div>
-
-      <!-- ROW 2: Time & Activity -->
-
-      <!-- Active Days -->
-      <div class="metric-card">
-        <div class="metric-icon">📅</div>
-        <div class="metric-value">{{ metrics.activeDays }}</div>
-        <div class="metric-label">Active Days</div>
-      </div>
-
-      <!-- Time Moving -->
-      <div class="metric-card" v-if="metrics.timeMoving">
-        <div class="metric-icon">⏱️</div>
-        <div class="metric-value">{{ formatDuration(metrics.timeMoving) }}</div>
-        <div class="metric-label">Time Moving</div>
-      </div>
-
-      <!-- Peak Hours -->
-      <div class="metric-card" v-if="hasPeakHours">
-        <div class="metric-icon">🕐</div>
-        <div class="metric-value peak-hours-value">
-          <div v-for="(hour, index) in highlights.peakHours" :key="index" class="peak-hour-range">
-            {{ hour }}
-          </div>
-        </div>
-        <div class="metric-label">Most Active Times</div>
-      </div>
-
-      <!-- ROW 3: Activity Details -->
-
-      <!-- Trip Count -->
-      <div class="metric-card">
-        <div class="metric-icon">🛣️</div>
-        <div class="metric-value">{{ metrics.tripCount }}</div>
-        <div class="metric-label">Trips Completed</div>
-      </div>
-
-      <!-- Stay Count -->
-      <div class="metric-card">
-        <div class="metric-icon">⏸️</div>
-        <div class="metric-value">{{ metrics.stayCount || 0 }}</div>
-        <div class="metric-label">Stays Recorded</div>
-      </div>
-
-      <!-- Cities Visited -->
-      <div class="metric-card">
-        <div class="metric-icon">🏙️</div>
-        <div class="metric-value">{{ metrics.citiesVisited }}</div>
-        <div class="metric-label">Cities Visited</div>
-      </div>
-    </div>
-    <div v-else class="no-metrics-placeholder">
-      <i class="pi pi-chart-bar"></i>
-      <p>No metrics available for this period.</p>
-    </div>
-  </div>
+    </template>
+    <div v-else class="no-metrics-placeholder"><i class="pi pi-compass"></i><p>No movement recorded for this period yet.</p></div>
+  </section>
 </template>
 
 <script setup>
@@ -170,212 +30,30 @@ import { computed } from 'vue'
 import { formatDistanceRounded, formatDuration } from '@/utils/calculationsHelpers'
 
 const props = defineProps({
-  title: {
-    type: String,
-    default: 'At a Glance'
-  },
-  metrics: {
-    type: Object,
-    default: () => ({})
-  },
-  comparison: {
-    type: Object,
-    default: null
-  },
-  highlights: {
-    type: Object,
-    default: () => ({})
-  }
-});
-
-const hasMetrics = computed(() => {
-  return props.metrics && props.metrics.tripCount > 0;
-});
-
-const comparisonClass = computed(() => {
-  if (!props.comparison) return ''
-  return {
-    'increase': props.comparison.direction === 'increase',
-    'decrease': props.comparison.direction === 'decrease',
-    'same': props.comparison.direction === 'same'
-  }
-});
-
-const comparisonText = computed(() => {
-  if (!props.comparison) return ''
-
-  const percent = Math.abs(props.comparison.percentChange)
-  if (props.comparison.direction === 'increase') {
-    return `↑ ${percent}% more than previous period`
-  } else if (props.comparison.direction === 'decrease') {
-    return `↓ ${percent}% less than previous period`
-  } else {
-    return '→ Same as previous period'
-  }
+  title: { type: String, default: 'Your rewind' },
+  metrics: { type: Object, default: () => ({}) },
+  comparison: { type: Object, default: null },
+  highlights: { type: Object, default: () => ({}) }
 })
 
-const getPercentage = (value, total) => {
-  if (!total || total === 0) return 0
-  return Math.round((value / total) * 100)
-}
-
-const hasPeakHours = computed(() => {
-  return props.highlights?.peakHours && props.highlights.peakHours.length > 0
+const hasMetrics = computed(() => Number(props.metrics?.tripCount) > 0)
+const comparisonClass = computed(() => props.comparison?.direction || 'same')
+const comparisonIcon = computed(() => ({ increase: 'pi pi-arrow-up-right', decrease: 'pi pi-arrow-down-right', same: 'pi pi-minus' })[comparisonClass.value])
+const comparisonText = computed(() => {
+  const comparison = props.comparison
+  if (!comparison) return ''
+  const change = Math.abs(Number(comparison.percentChange) || 0)
+  if (comparison.direction === 'increase') return `${change}% more than the previous period`
+  if (comparison.direction === 'decrease') return `${change}% less than the previous period`
+  return 'About the same as the previous period'
+})
+const movementModes = computed(() => {
+  const definitions = [['carDistance', 'Car', '#3b82f6'], ['walkDistance', 'Walk', '#10b981'], ['bicycleDistance', 'Bicycle', '#f59e0b'], ['runningDistance', 'Running', '#8b5cf6'], ['motorcycleDistance', 'Motorcycle', '#06b6d4'], ['trainDistance', 'Train', '#64748b'], ['flightDistance', 'Flight', '#ef4444'], ['boatDistance', 'Boat', '#14b8a6'], ['unknownDistance', 'Other', '#94a3b8']]
+  const total = Number(props.metrics?.totalDistance) || 0
+  return definitions.map(([key, label, color]) => ({ key, label, color, distance: Number(props.metrics?.[key]) || 0 })).filter((mode) => mode.distance > 0).map((mode) => ({ ...mode, share: Math.max(1, Math.round((mode.distance / total) * 100)) }))
 })
 </script>
 
 <style scoped>
-.digest-metrics {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-  min-height: 300px;
-}
-
-.metrics-title {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-sm);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
-  margin: 0 0 var(--gp-spacing-lg);
-}
-
-.metrics-title i {
-  color: var(--gp-primary);
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--gp-spacing-lg);
-}
-
-.metric-card {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  padding: var(--gp-spacing-lg);
-  text-align: center;
-  transition: all 0.3s ease;
-  min-width: 230px;
-}
-
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--gp-shadow-card-hover);
-  border-color: var(--gp-primary);
-}
-
-.metric-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--gp-spacing-sm);
-  line-height: 1;
-}
-
-.metric-value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--gp-primary);
-  line-height: 1;
-  margin-bottom: var(--gp-spacing-xs);
-}
-
-.metric-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  margin-bottom: var(--gp-spacing-xs);
-}
-
-.metric-change {
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin-top: var(--gp-spacing-sm);
-}
-
-.metric-change.increase {
-  color: var(--gp-success);
-}
-
-.metric-change.decrease {
-  color: var(--gp-error);
-}
-
-.metric-change.same {
-  color: var(--gp-text-muted);
-}
-
-.metric-percentage {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--gp-text-muted);
-  margin-top: var(--gp-spacing-xs);
-}
-
-.peak-hours-value {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.peak-hour-range {
-  line-height: 1.2;
-}
-
-.no-metrics-placeholder {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: var(--gp-spacing-xl);
-  color: var(--gp-text-muted);
-  font-style: italic;
-}
-
-.no-metrics-placeholder i {
-  font-size: 2rem;
-  opacity: 0.5;
-  margin-bottom: var(--gp-spacing-md);
-}
-
-/* Dark Mode */
-.p-dark .digest-metrics {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .metric-card {
-  background: var(--gp-surface-darker);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .metrics-title {
-  color: var(--gp-text-primary);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--gp-spacing-md);
-  }
-
-  .metric-value {
-    font-size: 1.5rem;
-  }
-
-  .metric-icon {
-    font-size: 2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.digest-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr); gap:var(--gp-spacing-xl); padding:clamp(1.5rem,4vw,3rem); margin-bottom:var(--gp-spacing-xl); border:1px solid color-mix(in srgb,var(--gp-primary) 28%,var(--gp-border-light)); border-radius:20px; background:linear-gradient(128deg,color-mix(in srgb,var(--gp-primary) 16%,var(--gp-surface-white)),var(--gp-surface-white) 58%); box-shadow:var(--gp-shadow-card) }.digest-hero::after { content:''; position:absolute; width:18rem; height:18rem; right:-7rem; top:-11rem; border-radius:50%; background:color-mix(in srgb,var(--gp-secondary) 22%,transparent); pointer-events:none }.digest-hero-copy,.hero-stats,.movement-mix { position:relative; z-index:1 }.digest-eyebrow { display:flex; align-items:center; gap:.45rem; margin:0 0 .7rem; font-size:.78rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--gp-primary) }.digest-hero h2 { margin:0; font-size:clamp(2rem,4.6vw,4rem); line-height:.98; letter-spacing:-.055em; color:var(--gp-text-primary) }.digest-summary { margin:.9rem 0 1rem; font-size:1.05rem; color:var(--gp-text-secondary) }.comparison-pill { display:inline-flex; align-items:center; gap:.4rem; padding:.42rem .7rem; border-radius:999px; font-size:.82rem; font-weight:700; background:var(--gp-surface-light); color:var(--gp-text-secondary) }.comparison-pill.increase { color:var(--gp-success-dark); background:var(--gp-success-light) }.comparison-pill.decrease { color:var(--gp-error); background:var(--gp-danger-light) }.hero-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:.65rem; margin:0; align-content:center }.hero-stats div { padding:1rem; border-radius:14px; background:color-mix(in srgb,var(--gp-surface-light) 88%,transparent); border:1px solid var(--gp-border-light) }.hero-stats dt { font-size:.74rem; font-weight:700; color:var(--gp-text-secondary); text-transform:uppercase; letter-spacing:.06em }.hero-stats dd { margin:.28rem 0 0; font-size:1.2rem; font-weight:800; color:var(--gp-text-primary) }.movement-mix { grid-column:1 / -1; padding-top:.25rem }.movement-mix-heading { display:flex; justify-content:space-between; gap:1rem; margin-bottom:.55rem; color:var(--gp-text-secondary); font-size:.84rem; font-weight:700 }.peak-hours { font-weight:500 }.movement-bar { display:flex; overflow:hidden; height:.6rem; border-radius:999px; background:var(--gp-border-subtle) }.movement-bar span { min-width:2px }.movement-legend { display:flex; flex-wrap:wrap; gap:.6rem 1rem; margin-top:.65rem; font-size:.78rem; color:var(--gp-text-secondary) }.movement-legend span { display:inline-flex; align-items:center; gap:.32rem }.movement-legend i { width:.55rem; height:.55rem; border-radius:50% }.movement-legend b { color:var(--gp-text-primary) }.no-metrics-placeholder { display:grid; place-items:center; min-height:14rem; color:var(--gp-text-muted); text-align:center }.no-metrics-placeholder i { font-size:2.5rem }.p-dark .digest-hero { background:linear-gradient(128deg,color-mix(in srgb,var(--gp-primary) 25%,var(--gp-surface-dark)),var(--gp-surface-dark) 64%) }.p-dark .comparison-pill.increase { color:var(--gp-secondary-light); background:color-mix(in srgb,var(--gp-success) 18%,var(--gp-surface-dark)) }.p-dark .comparison-pill.decrease { background:color-mix(in srgb,var(--gp-error) 18%,var(--gp-surface-dark)) }@media (max-width:720px) { .digest-hero { grid-template-columns:1fr; padding:1.35rem }.hero-stats { order:2 }.movement-mix { grid-column:auto; order:3 }.digest-hero h2 { font-size:2.55rem }.movement-mix-heading { flex-direction:column; gap:.25rem } }@media (prefers-reduced-motion:reduce) { * { transition:none!important } }
 </style>

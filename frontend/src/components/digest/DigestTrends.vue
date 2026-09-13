@@ -119,13 +119,7 @@ const chartDatasets = computed(() => {
 </script>
 
 <style scoped>
-.digest-trends {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  padding: var(--gp-spacing-xl);
-  margin-bottom: var(--gp-spacing-xl);
-}
+.digest-trends { background: var(--gp-surface-white); border: 1px solid var(--gp-border-light); border-radius: 18px; padding: var(--gp-spacing-xl); margin-bottom: var(--gp-spacing-xl); }
 
 .trends-title {
   display: flex;
@@ -141,13 +135,7 @@ const chartDatasets = computed(() => {
   color: var(--gp-secondary);
 }
 
-.chart-container {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  padding: var(--gp-spacing-lg);
-  height: 420px;
-}
+.chart-container { background: var(--gp-surface-light); border: 0; border-radius: 12px; padding: var(--gp-spacing-lg); height: 380px; }
 
 .no-trends-placeholder {
   display: flex;
