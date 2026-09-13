@@ -3,6 +3,7 @@
     title="GPS Gaps Detection Settings"
     description="Configure how GPS data gaps are detected and recorded in your timeline"
   >
+    <div class="settings-panel">
     <!-- Data Gap Threshold -->
     <SettingCard
       title="Data Gap Threshold"
@@ -11,7 +12,6 @@
       setting-id="dataGapThresholdSeconds"
     >
       <template #control>
-        <div class="control-value">{{ Math.floor(modelValue.dataGapThresholdSeconds / 60) }} minutes ({{ modelValue.dataGapThresholdSeconds }}s)</div>
         <SliderControl
           v-if="modelValue.dataGapThresholdSeconds !== undefined"
           :model-value="modelValue.dataGapThresholdSeconds"
@@ -36,7 +36,6 @@
       setting-id="dataGapMinDurationSeconds"
     >
       <template #control>
-        <div class="control-value">{{ Math.floor(modelValue.dataGapMinDurationSeconds / 60) }} minutes ({{ modelValue.dataGapMinDurationSeconds }}s)</div>
         <SliderControl
           v-if="modelValue.dataGapMinDurationSeconds !== undefined"
           :model-value="modelValue.dataGapMinDurationSeconds"
@@ -64,7 +63,6 @@
       setting-id="gapStayInferenceEnabled"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.gapStayInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.gapStayInferenceEnabled"
           @update:model-value="updatePref('gapStayInferenceEnabled', $event)"
@@ -85,7 +83,6 @@
       setting-id="gapStayInferenceMaxGapHours"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.gapStayInferenceMaxGapHours }} hours</div>
         <SliderControl
           v-if="modelValue.gapStayInferenceMaxGapHours !== undefined"
           :model-value="modelValue.gapStayInferenceMaxGapHours"
@@ -114,7 +111,6 @@
       setting-id="gapTripInferenceEnabled"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.gapTripInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.gapTripInferenceEnabled"
           @update:model-value="updatePref('gapTripInferenceEnabled', $event)"
@@ -135,7 +131,6 @@
       setting-id="gapTripInferenceMinDistanceMeters"
     >
       <template #control>
-        <div class="control-value">{{ (modelValue.gapTripInferenceMinDistanceMeters / 1000).toFixed(0) }} km</div>
         <SliderControl
           v-if="modelValue.gapTripInferenceMinDistanceMeters !== undefined"
           :model-value="modelValue.gapTripInferenceMinDistanceMeters"
@@ -165,7 +160,6 @@
       setting-id="gapTripInferenceMinGapHours"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.gapTripInferenceMinGapHours }} hour{{ modelValue.gapTripInferenceMinGapHours !== 1 ? 's' : '' }}</div>
         <SliderControl
           v-if="modelValue.gapTripInferenceMinGapHours !== undefined"
           :model-value="modelValue.gapTripInferenceMinGapHours"
@@ -194,7 +188,6 @@
       setting-id="gapTripInferenceMaxGapHours"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.gapTripInferenceMaxGapHours }} hour{{ modelValue.gapTripInferenceMaxGapHours !== 1 ? 's' : '' }}</div>
         <SliderControl
           v-if="modelValue.gapTripInferenceMaxGapHours !== undefined"
           :model-value="modelValue.gapTripInferenceMaxGapHours"
@@ -210,6 +203,7 @@
         />
       </template>
     </SettingCard>
+    </div>
   </PreferencesTabLayout>
 </template>
 

@@ -1,37 +1,38 @@
 <template>
   <div class="slider-control">
-    <Slider
-      :modelValue="modelValue"
-      @update:modelValue="updateValue"
-      :min="min"
-      :max="max"
-      :step="step"
-      class="slider"
-    />
-    
-    <div v-if="labels?.length" class="slider-labels">
-      <span v-for="(label, index) in labels" :key="index" class="label">
-        {{ label }}
-      </span>
+    <div class="slider-track">
+      <Slider
+        :modelValue="modelValue"
+        @update:modelValue="updateValue"
+        :min="min"
+        :max="max"
+        :step="step"
+        class="slider"
+      />
+
+      <div v-if="labels?.length" class="slider-labels">
+        <span v-for="(label, index) in labels" :key="index" class="label">
+          {{ label }}
+        </span>
+      </div>
     </div>
-    
+
     <InputNumber
       :modelValue="modelValue"
       @update:modelValue="updateValue"
-      :min="inputMin || min"
-      :max="inputMax || max"
+      :min="inputMin ?? min"
+      :max="inputMax ?? max"
       :minFractionDigits="decimalPlaces"
       :maxFractionDigits="decimalPlaces"
       :suffix="suffix"
+      fluid
       class="number-input"
     />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
+defineProps({
   modelValue: {
     type: Number,
     required: true
@@ -79,11 +80,17 @@ const updateValue = (value) => {
 
 <style scoped>
 .slider-control {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7.5rem;
+  align-items: center;
+  gap: var(--gp-spacing-md);
   width: 100%;
-  max-width: 300px;
+  min-width: 0;
+}
+
+.slider-track {
+  min-width: 0;
+  padding: 0 0.25rem;
 }
 
 .slider {
@@ -93,14 +100,16 @@ const updateValue = (value) => {
 .slider-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: -0.5rem;
+  gap: 0.25rem;
+  margin-top: 0.6rem;
 }
 
 .label {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--gp-text-secondary);
   text-align: center;
   flex: 1;
+  line-height: 1.2;
 }
 
 .label:first-child {
@@ -113,6 +122,8 @@ const updateValue = (value) => {
 
 .number-input {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Custom slider styling */
@@ -146,12 +157,18 @@ const updateValue = (value) => {
 /* Input number styling */
 :deep(.p-inputnumber) {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 :deep(.p-inputnumber-input) {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: var(--gp-radius-medium);
   border: 1px solid var(--gp-border-medium);
   padding: 0.5rem 0.75rem;
+  min-height: 2.5rem;
   text-align: center;
   font-family: var(--font-mono, monospace);
   font-weight: 600;
@@ -162,18 +179,7 @@ const updateValue = (value) => {
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
-  .slider-control {
-    max-width: none;
-    gap: 0.75rem;
-  }
-  
-  .label {
-    font-size: 0.7rem;
-    line-height: 1.2;
-  }
-  
   :deep(.p-slider .p-slider-handle) {
     width: 24px;
     height: 24px;
@@ -182,28 +188,24 @@ const updateValue = (value) => {
 
 @media (max-width: 480px) {
   .slider-control {
-    gap: 0.6rem;
+    grid-template-columns: 1fr;
+    gap: var(--gp-spacing-sm);
   }
-  
+
   .label {
     font-size: 0.65rem;
   }
-  
-  .slider-labels {
-    margin-top: -0.3rem;
-  }
-  
+
   :deep(.p-slider) {
     height: 8px;
   }
-  
+
   :deep(.p-slider .p-slider-handle) {
     width: 28px;
     height: 28px;
   }
-  
+
   :deep(.p-inputnumber-input) {
-    padding: 0.6rem 0.5rem;
     font-size: 0.9rem;
     min-height: 44px;
   }

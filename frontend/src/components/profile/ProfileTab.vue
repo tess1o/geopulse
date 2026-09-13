@@ -1,197 +1,209 @@
 <template>
-  <Card class="profile-info-card">
+  <Card class="profile-info-card profile-settings-card">
     <template #content>
-      <form @submit.prevent="handleSubmit" class="profile-form">
-        <div class="form-section">
-          <div class="form-field" data-setting-id="fullName">
-            <label for="fullName" class="form-label">Full Name</label>
-            <InputText
-              id="fullName"
-              v-model="form.fullName"
-              placeholder="Enter your full name"
-              :invalid="!!errors.fullName"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small v-if="errors.fullName" class="error-message">
-              {{ errors.fullName }}
-            </small>
+      <form @submit.prevent="handleSubmit" class="profile-form settings-tab">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon"><i class="pi pi-user"></i></div>
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">General</h3>
+            <p class="settings-tab-description">Manage your identity and everyday display preferences.</p>
           </div>
-
-          <div class="form-field" data-setting-id="timezone">
-            <label for="timezone" class="form-label">Timezone</label>
-            <Dropdown
-              id="timezone"
-              v-model="form.timezone"
-              :options="timezoneOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your timezone"
-              filter
-              :filterMatchMode="'contains'"
-              :invalid="!!errors.timezone"
-              :disabled="readOnly"
-              class="w-full"
-              scrollHeight="300px"
-            />
-            <small v-if="errors.timezone" class="error-message">
-              {{ errors.timezone }}
-            </small>
-            <small v-else class="help-text">
-              Your timezone is used for date displays and statistics
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="dateFormat">
-            <label for="dateFormat" class="form-label">
-              Date Format
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose how dates are shown across the app (for example in the timeline date range picker).'"></i>
-            </label>
-            <Dropdown
-              id="dateFormat"
-              v-model="form.dateFormat"
-              :options="dateFormatOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your preferred date format"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small class="help-text">
-              Controls numeric date display order in the UI. URL date parameters use a stable ISO format.
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="timeFormat">
-            <label for="timeFormat" class="form-label">
-              Time Format
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose whether times are shown in 24-hour or 12-hour format.'"></i>
-            </label>
-            <Dropdown
-              id="timeFormat"
-              v-model="form.timeFormat"
-              :options="timeFormatOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select your preferred time format"
-              :disabled="readOnly"
-              class="w-full"
-            />
-            <small class="help-text">
-              Controls time display across user-facing timestamps in the app.
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="distanceUnit">
-            <label for="distanceUnit" class="form-label">
-              Distance Unit
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
-            </label>
-            <Dropdown
-                id="distanceUnit"
-                v-model="form.distanceUnit"
-                :options="distanceUnitOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your distance unit"
-                :disabled="readOnly"
-                class="w-full"
-            />
-            <small class="help-text">
-              Affects how distances and speeds are displayed across the app.
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="temperatureUnit">
-            <label for="temperatureUnit" class="form-label">
-              Temperature Unit
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for temperatures.'"></i>
-            </label>
-            <Dropdown
-                id="temperatureUnit"
-                v-model="form.temperatureUnit"
-                :options="temperatureUnitOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your temperature unit"
-                :disabled="readOnly"
-                class="w-full"
-            />
-            <small class="help-text">
-              Affects how temperatures are displayed across weather views.
-            </small>
-          </div>
-
-          <div class="form-field" data-setting-id="defaultRedirectUrl">
-            <label for="defaultRedirectUrl" class="form-label">
-              Default Home Page
-              <i class="pi pi-info-circle" v-tooltip.right="'Choose where you want to land after login or when you visit the homepage.'"></i>
-            </label>
-            <Dropdown
-                id="defaultRedirectUrl"
-                v-model="form.defaultRedirectUrl"
-                :options="defaultRedirectUrlOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select your default page"
-                :invalid="!!errors.defaultRedirectUrl"
-                :disabled="readOnly"
-                class="w-full"
-                showClear
-            />
-            <small v-if="errors.defaultRedirectUrl" class="error-message">
-              {{ errors.defaultRedirectUrl }}
-            </small>
-            <small v-else class="help-text">
-              Choose your preferred default page. Leave empty to use default behavior.
-            </small>
-
-            <!-- Custom URL input (shown when Custom option is selected) -->
-            <div v-if="form.defaultRedirectUrl === 'custom'" class="custom-url-field" data-setting-id="customRedirectUrl">
-              <label for="customRedirectUrl" class="form-label">Custom URL</label>
-              <InputText
-                id="customRedirectUrl"
-                v-model="form.customRedirectUrl"
-                placeholder="/app/your-custom-page"
-                :invalid="!!errors.customRedirectUrl"
-                :disabled="readOnly"
-                class="w-full"
-              />
-              <small v-if="errors.customRedirectUrl" class="error-message">
-                {{ errors.customRedirectUrl }}
-              </small>
-              <small v-else class="help-text">
-                Enter an internal path starting with / (e.g., /app/dashboard).
-              </small>
-            </div>
-          </div>
-
         </div>
 
-        <section class="avatar-section">
-          <h2 class="avatar-section-title">Profile image <span>Optional</span></h2>
-          <div class="avatar-preview">
-            <Avatar :image="currentAvatarImage" size="xlarge" class="user-avatar" />
-            <div class="avatar-info">
-              <p class="avatar-description">Choose a preset avatar or upload your own for map markers.</p>
-              <div class="avatar-actions">
-                <Button type="button" label="Upload Custom Avatar" icon="pi pi-upload" size="small" outlined :disabled="readOnly" @click="triggerAvatarUpload" />
-                <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden-avatar-input" @change="handleAvatarFileChange" />
-                <small class="help-text">Accepted: PNG, JPEG, WEBP. Automatically resized before upload.</small>
-                <small v-if="selectedAvatarFile" class="help-text">Custom avatar selected: {{ selectedAvatarFile.name }}</small>
-                <small v-if="errors.avatar" class="error-message">{{ errors.avatar }}</small>
-              </div>
-            </div>
+        <section class="settings-group" aria-labelledby="profile-group-heading">
+          <div class="settings-group-header">
+            <h3 id="profile-group-heading">Profile</h3>
+            <p>Choose the name and image shown across GeoPulse.</p>
           </div>
-          <div class="avatar-grid">
-            <div v-for="(avatar, index) in avatarOptions" :key="index" :class="['avatar-option', { active: avatar === localAvatar, disabled: readOnly }]" @click="selectBuiltInAvatar(avatar)">
-              <Avatar :image="avatar" size="large" />
-            </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              title="Full name"
+              description="The name shown on your account."
+              setting-id="fullName"
+            >
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="fullName"
+                    v-model="form.fullName"
+                    placeholder="Enter your full name"
+                    :invalid="!!errors.fullName"
+                    :disabled="readOnly"
+                    class="w-full"
+                    aria-label="Full name"
+                  />
+                  <small v-if="errors.fullName" class="error-message">{{ errors.fullName }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <details class="avatar-setting" data-setting-id="profileImage">
+              <summary class="avatar-setting-summary">
+                <div class="avatar-setting-heading">
+                  <h4>Profile image <span>Optional</span></h4>
+                  <p>Customize the image used for map markers.</p>
+                </div>
+                <div class="avatar-setting-preview">
+                  <Avatar :image="currentAvatarImage" size="large" class="user-avatar" />
+                  <i class="pi pi-chevron-down" aria-hidden="true"></i>
+                </div>
+              </summary>
+
+              <div class="avatar-setting-content">
+                <div class="avatar-actions">
+                  <Button type="button" label="Upload Custom Avatar" icon="pi pi-upload" size="small" outlined :disabled="readOnly" @click="triggerAvatarUpload" />
+                  <input ref="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden-avatar-input" @change="handleAvatarFileChange" />
+                  <small class="help-text">PNG, JPEG, or WEBP; resized automatically before upload.</small>
+                  <small v-if="selectedAvatarFile" class="help-text">Selected: {{ selectedAvatarFile.name }}</small>
+                  <small v-if="errors.avatar" class="error-message">{{ errors.avatar }}</small>
+                </div>
+
+                <div class="avatar-grid">
+                  <button
+                    v-for="(avatar, index) in avatarOptions"
+                    :key="index"
+                    type="button"
+                    :class="['avatar-option', { active: avatar === localAvatar }]"
+                    :disabled="readOnly"
+                    :aria-label="`Choose profile image ${index + 1}`"
+                    :aria-pressed="avatar === localAvatar"
+                    @click="selectBuiltInAvatar(avatar)"
+                  >
+                    <Avatar :image="avatar" size="large" />
+                  </button>
+                </div>
+              </div>
+            </details>
           </div>
         </section>
 
-        <!-- Action Buttons -->
-        <div class="form-actions">
+        <section class="settings-group" aria-labelledby="regional-group-heading">
+          <div class="settings-group-header">
+            <h3 id="regional-group-heading">Regional preferences</h3>
+            <p>Control timezone, formats, and measurement units.</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              title="Timezone"
+              description="Used for dates, times, and statistics."
+              setting-id="timezone"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown
+                    id="timezone"
+                    v-model="form.timezone"
+                    :options="timezoneOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select your timezone"
+                    filter
+                    :filterMatchMode="'contains'"
+                    :invalid="!!errors.timezone"
+                    :disabled="readOnly"
+                    class="w-full"
+                    scrollHeight="300px"
+                    aria-label="Timezone"
+                  />
+                  <small v-if="errors.timezone" class="error-message">{{ errors.timezone }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Date format"
+              description="Choose how numeric dates appear."
+              details="URL date parameters continue to use a stable ISO format."
+              setting-id="dateFormat"
+            >
+              <template #control>
+                <Dropdown id="dateFormat" v-model="form.dateFormat" :options="dateFormatOptions" optionLabel="label" optionValue="value" placeholder="Select your preferred date format" :disabled="readOnly" class="w-full" aria-label="Date format" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Time format"
+              description="Choose whether times use a 12- or 24-hour clock."
+              setting-id="timeFormat"
+            >
+              <template #control>
+                <Dropdown id="timeFormat" v-model="form.timeFormat" :options="timeFormatOptions" optionLabel="label" optionValue="value" placeholder="Select your preferred time format" :disabled="readOnly" class="w-full" aria-label="Time format" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Distance unit"
+              description="Controls displayed distances and speeds."
+              setting-id="distanceUnit"
+            >
+              <template #control>
+                <Dropdown id="distanceUnit" v-model="form.distanceUnit" :options="distanceUnitOptions" optionLabel="label" optionValue="value" placeholder="Select your distance unit" :disabled="readOnly" class="w-full" aria-label="Distance unit" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Temperature unit"
+              description="Controls temperatures shown in weather views."
+              setting-id="temperatureUnit"
+            >
+              <template #control>
+                <Dropdown id="temperatureUnit" v-model="form.temperatureUnit" :options="temperatureUnitOptions" optionLabel="label" optionValue="value" placeholder="Select your temperature unit" :disabled="readOnly" class="w-full" aria-label="Temperature unit" />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-labelledby="navigation-group-heading">
+          <div class="settings-group-header">
+            <h3 id="navigation-group-heading">Navigation</h3>
+            <p>Choose where GeoPulse opens after sign-in.</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              title="Default home page"
+              description="Select the first page shown after sign-in."
+              details="Clear the selection to use GeoPulse's default behavior. Custom destinations must be internal paths beginning with /."
+              setting-id="defaultRedirectUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <Dropdown
+                    id="defaultRedirectUrl"
+                    v-model="form.defaultRedirectUrl"
+                    :options="defaultRedirectUrlOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select your default page"
+                    :invalid="!!errors.defaultRedirectUrl"
+                    :disabled="readOnly"
+                    class="w-full"
+                    showClear
+                    aria-label="Default home page"
+                  />
+                  <small v-if="errors.defaultRedirectUrl" class="error-message">{{ errors.defaultRedirectUrl }}</small>
+
+                  <div v-if="form.defaultRedirectUrl === 'custom'" class="field-control custom-url-field" data-setting-id="customRedirectUrl">
+                    <label for="customRedirectUrl" class="field-sub-label">Custom internal path</label>
+                    <InputText
+                      id="customRedirectUrl"
+                      v-model="form.customRedirectUrl"
+                      placeholder="/app/your-custom-page"
+                      :invalid="!!errors.customRedirectUrl"
+                      :disabled="readOnly"
+                      class="w-full"
+                    />
+                    <small v-if="errors.customRedirectUrl" class="error-message">{{ errors.customRedirectUrl }}</small>
+                  </div>
+                </div>
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
+        <div class="settings-actions is-sticky">
           <Button
             type="button"
             label="Reset"
@@ -213,6 +225,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
 // Props
 const props = defineProps({
@@ -663,68 +676,89 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.profile-info-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  width: 100%;
-  box-sizing: border-box;
+.avatar-setting {
+  color: var(--gp-text-primary);
 }
 
-.profile-info-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 1.5rem;
-}
-
-/* Avatar Section */
-.avatar-section {
-  margin-bottom: 2rem;
-}
-
-.avatar-section-title { margin: 0 0 1rem; color: var(--gp-text-primary); font-size: 1rem; }
-.avatar-section-title span { margin-left: .5rem; color: var(--gp-text-secondary); font-weight: 400; font-size: .85rem; }
-
-.avatar-preview {
+.avatar-setting-summary {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
+  justify-content: space-between;
+  gap: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.avatar-setting-summary::-webkit-details-marker {
+  display: none;
+}
+
+.avatar-setting-summary:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: -2px;
+}
+
+.avatar-setting-heading {
+  min-width: 0;
+}
+
+.avatar-setting-heading h4 {
+  margin: 0;
+  color: var(--gp-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.avatar-setting-heading h4 span {
+  margin-left: var(--gp-spacing-sm);
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.avatar-setting-heading p {
+  margin: var(--gp-spacing-xs) 0 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.avatar-setting-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  flex: 0 0 auto;
+}
+
+.avatar-setting-preview > i {
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.avatar-setting[open] .avatar-setting-preview > i {
+  transform: rotate(180deg);
+}
+
+.avatar-setting-content {
+  padding: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
+  border-top: 1px solid var(--gp-border-light);
 }
 
 .user-avatar {
-  width: 80px !important;
-  height: 80px !important;
-  border: 3px solid var(--gp-primary);
+  width: 44px !important;
+  height: 44px !important;
+  border: 2px solid var(--gp-primary);
   flex-shrink: 0;
-}
-
-.avatar-info {
-  flex: 1;
-}
-
-.avatar-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.avatar-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
 }
 
 .avatar-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  align-items: flex-start;
+  gap: var(--gp-spacing-xs);
+  margin-top: var(--gp-spacing-lg);
 }
 
 .hidden-avatar-input {
@@ -733,10 +767,11 @@ onUnmounted(() => {
 
 .avatar-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 0.75rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: var(--gp-spacing-sm);
+  margin-top: var(--gp-spacing-md);
+  padding: var(--gp-spacing-md);
+  background: color-mix(in srgb, var(--gp-surface-white) 45%, var(--gp-surface-light));
   border-radius: var(--gp-radius-medium);
   max-height: 200px;
   overflow-y: auto;
@@ -746,7 +781,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.5rem;
+  padding: var(--gp-spacing-sm);
   border: 2px solid transparent;
   border-radius: var(--gp-radius-small);
   cursor: pointer;
@@ -756,45 +791,20 @@ onUnmounted(() => {
 
 .avatar-option:hover {
   border-color: var(--gp-border-medium);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-light);
 }
 
 .avatar-option.active {
   border-color: var(--gp-primary);
   background: var(--gp-primary-light);
-  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.1);
 }
 
-.avatar-option.disabled {
+.avatar-option:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
-.avatar-option.disabled:hover {
+.avatar-option:disabled:hover {
   border-color: transparent;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Form Sections */
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
 }
 
 .help-text {
@@ -802,156 +812,26 @@ onUnmounted(() => {
   font-size: 0.8rem;
 }
 
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.85rem;
-}
-
-/* Location Sharing Field */
-.location-sharing-field {
-  position: relative;
-}
-
-.location-sharing-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-light);
-  margin-bottom: 0.5rem;
-}
-
-.location-sharing-row .form-label {
-  margin: 0;
-  flex: 1;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-/* Input Styling */
-:deep(.p-inputtext) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-inputtext:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-:deep(.p-inputtext:disabled) {
-  background: var(--gp-surface-light);
-  color: var(--gp-text-secondary);
-}
-
-/* Custom URL Field */
 .custom-url-field {
-  margin-top: 1rem;
-  padding-top: 1rem;
+  margin-top: var(--gp-spacing-xs);
+  padding-top: var(--gp-spacing-sm);
   border-top: 1px solid var(--gp-border-light);
 }
 
-/* Button Styling */
-:deep(.p-button) {
-  border-radius: var(--gp-radius-medium);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-button:not(.p-button-outlined)) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-:deep(.p-button:not(.p-button-outlined):hover) {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
-:deep(.p-button-outlined) {
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-}
-
-:deep(.p-button-outlined:hover) {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-primary);
-  color: var(--gp-primary);
-}
-
-/* Responsive Design */
 @media (max-width: 768px) {
-  .avatar-preview {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
   .avatar-grid {
     grid-template-columns: repeat(4, 1fr);
     max-height: 150px;
   }
-
-  .form-actions {
-    flex-direction: column;
-  }
 }
 
 @media (max-width: 480px) {
-  .profile-info-card {
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-  }
-
-  .profile-info-card :deep(.p-card-content) {
-    padding: 1rem;
-  }
-
   .avatar-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .form-actions .p-button {
-    width: 100%;
-    min-height: 48px;
-  }
-
-  .form-label {
-    font-size: 0.9rem;
-  }
-
   .help-text {
     font-size: 0.75rem;
-  }
-
-  .error-message {
-    font-size: 0.8rem;
-  }
-
-  .location-sharing-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .location-sharing-row .form-label {
-    width: 100%;
   }
 }
 </style>

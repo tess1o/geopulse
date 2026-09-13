@@ -10,6 +10,8 @@ vi.hoisted(() => {
   })
 })
 
+const testMemosConfig = vi.hoisted(() => vi.fn())
+
 import { flushPromises, mount } from '@vue/test-utils'
 import ProfileTab from './ProfileTab.vue'
 import SecurityTab from './SecurityTab.vue'
@@ -17,6 +19,7 @@ import TimelineDisplayTab from './TimelineDisplayTab.vue'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
 import MemosTab from './MemosTab.vue'
+import apiService from '@/utils/apiService'
 
 vi.mock('@/utils/apiService', () => ({
   default: {
@@ -27,7 +30,7 @@ vi.mock('@/utils/apiService', () => ({
 
 vi.mock('@/stores/notes', () => ({
   useNotesStore: () => ({
-    testMemosConfig: vi.fn()
+    testMemosConfig
   })
 }))
 
@@ -146,7 +149,8 @@ const AutoCompleteStub = {
 }
 
 const SettingCardStub = {
-  template: '<section v-bind="$attrs"><slot name="control" /></section>'
+  props: ['title', 'description', 'settingId'],
+  template: '<section v-bind="$attrs" :data-setting-id="settingId"><h3>{{ title }}</h3><p>{{ description }}</p><slot name="control" /></section>'
 }
 
 const globalOptions = {
@@ -232,6 +236,36 @@ describe('profile tab dirty state', () => {
     expect(wrapper.emitted('save')[0][0].enable3dBuildingsByDefault).toBe(true)
   })
 
+  it('uses controls without duplicate display status values', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: {
+        initialPreferences: timelineDisplayPrefs
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(wrapper.findAll('.control-value')).toHaveLength(0)
+  })
+
+  it('groups timeline behavior, map display, and map processing without collapsed sections', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: {
+        initialPreferences: timelineDisplayPrefs
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(wrapper.findAll('details')).toHaveLength(0)
+    expect(text.match(/3D buildings/g)).toHaveLength(1)
+    expect(text.indexOf('Default date range')).toBeLessThan(text.indexOf('Map display & sources'))
+    expect(text.indexOf('Map render mode')).toBeLessThan(text.indexOf('3D buildings'))
+    expect(text.indexOf('3D buildings')).toBeLessThan(text.indexOf('Map processing'))
+    expect(text.indexOf('Map processing')).toBeLessThan(text.indexOf('Save Changes'))
+  })
+
   it('emits dirty changes from the profile tab and clears after reset', async () => {
     const wrapper = mount(ProfileTab, {
       props: {
@@ -266,10 +300,42 @@ describe('profile tab dirty state', () => {
     const wrapper = mount(ProfileTab, { props, global: globalOptions })
     await flushPromises()
 
+    expect(wrapper.text()).toContain('General')
+    expect(wrapper.text()).toContain('Profile')
+    expect(wrapper.text()).toContain('Regional preferences')
+    expect(wrapper.text()).toContain('Navigation')
+    expect(wrapper.findAll('.settings-panel')).toHaveLength(3)
     expect(wrapper.find('#fullName').exists()).toBe(true)
     expect(wrapper.find('#timezone').exists()).toBe(true)
+    expect(wrapper.findAll('#dateFormat')).toHaveLength(1)
+    expect(wrapper.findAll('#timeFormat')).toHaveLength(1)
+    expect(wrapper.findAll('#distanceUnit')).toHaveLength(1)
+    expect(wrapper.findAll('#temperatureUnit')).toHaveLength(1)
+    expect(wrapper.findAll('#defaultRedirectUrl')).toHaveLength(1)
+    expect(wrapper.get('details[data-setting-id="profileImage"]').attributes('open')).toBeUndefined()
     await wrapper.find('select').setValue('Europe/Kyiv')
     expect(lastDirtyValue(wrapper)).toBe(true)
+  })
+
+  it('reveals a custom home page and saves profile and avatar changes', async () => {
+    const props = {
+      userName: 'Ada Lovelace', userEmail: 'ada@example.com', userAvatar: '/avatars/avatar1.png',
+      userTimezone: 'UTC', userDistanceUnit: 'KILOMETERS', userTemperatureUnit: 'CELSIUS',
+      userDefaultRedirectUrl: '', userDateFormat: 'MDY', userTimeFormat: '24h'
+    }
+    const wrapper = mount(ProfileTab, { props, global: globalOptions })
+    await flushPromises()
+
+    await wrapper.find('#defaultRedirectUrl').setValue('custom')
+    expect(wrapper.find('#customRedirectUrl').exists()).toBe(true)
+    await wrapper.find('#customRedirectUrl').setValue('/app/custom')
+    await wrapper.find('button[aria-label="Choose profile image 2"]').trigger('click')
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.emitted('save')[0][0]).toMatchObject({
+      avatar: '/avatars/avatar2.png',
+      defaultRedirectUrl: '/app/custom'
+    })
   })
 
   it('emits dirty changes from the security tab and clears after reset', async () => {
@@ -286,6 +352,29 @@ describe('profile tab dirty state', () => {
     await findButtonByLabel(wrapper, 'Cancel').trigger('click')
     await flushPromises()
     expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('keeps password, connected-account, and API-token security sections together', async () => {
+    const wrapper = mount(SecurityTab, {
+      props: { hasPassword: true },
+      global: globalOptions
+    })
+
+    expect(wrapper.text()).toContain('Security')
+    expect(wrapper.text()).toContain('Change password')
+    expect(wrapper.findAll('.settings-panel')).toHaveLength(1)
+    expect(wrapper.find('oidc-management-stub').exists()).toBe(true)
+    expect(wrapper.find('api-tokens-management-stub').exists()).toBe(true)
+
+    await wrapper.find('#currentPassword').setValue('current-secret')
+    await wrapper.find('#newPassword').setValue('new-secret')
+    await wrapper.find('#confirmPassword').setValue('new-secret')
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.emitted('save')[0][0]).toEqual({
+      currentPassword: 'current-secret',
+      newPassword: 'new-secret'
+    })
   })
 
   it('emits dirty changes from the display tab and clears when saved preferences become canonical', async () => {
@@ -369,6 +458,8 @@ describe('profile tab dirty state', () => {
 
     await wrapper.find('#openai-api-url').setValue(openaiApiUrl)
     expect(lastDirtyValue(wrapper)).toBe(true)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save').at(-1)[0]).toMatchObject({ openaiApiUrl })
 
     await wrapper.setProps({
       initialSettings: {
@@ -380,7 +471,39 @@ describe('profile tab dirty state', () => {
     expect(lastDirtyValue(wrapper)).toBe(false)
   })
 
+  it('groups AI settings and keeps model refresh and read-only behavior', async () => {
+    apiService.post.mockClear()
+    const initialSettings = {
+      enabled: false,
+      openaiApiKey: '',
+      openaiApiUrl: 'https://api.openai.com/v1',
+      openaiModel: 'gpt-4o-mini',
+      openaiApiKeyConfigured: false,
+      apiKeyRequired: true,
+      customSystemMessage: 'Use concise answers.'
+    }
+    const wrapper = mount(AIAssistantTab, { props: { initialSettings }, global: globalOptions })
+    await flushPromises()
+
+    expect(wrapper.findAll('.settings-panel')).toHaveLength(3)
+    expect(wrapper.findAll('#openai-api-key')).toHaveLength(1)
+    expect(wrapper.findAll('#openai-api-url')).toHaveLength(1)
+    expect(wrapper.findAll('#openai-model')).toHaveLength(1)
+    await wrapper.get('[aria-label="Refresh provider models"]').trigger('click')
+    await flushPromises()
+    expect(apiService.post).toHaveBeenCalledWith('/ai/test-connection', {
+      openaiApiUrl: 'https://api.openai.com/v1',
+      openaiApiKey: '',
+      isApiKeyNeeded: true
+    })
+
+    await wrapper.setProps({ readOnly: true })
+    expect(wrapper.get('#ai-enabled').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[aria-label="Refresh provider models"]').attributes('disabled')).toBeDefined()
+  })
+
   it('emits dirty changes from the Immich tab and clears after reset', async () => {
+    apiService.post.mockReset().mockResolvedValue({ data: { success: true, message: 'Connected' } })
     const wrapper = mount(ImmichTab, {
       props: {
         config: {
@@ -396,13 +519,35 @@ describe('profile tab dirty state', () => {
 
     await wrapper.find('#immichServerUrl').setValue('https://new-photos.example.com')
     expect(lastDirtyValue(wrapper)).toBe(true)
+    expect(wrapper.findAll('.settings-panel')).toHaveLength(2)
+    expect(wrapper.findAll('#immichServerUrl')).toHaveLength(1)
+    expect(wrapper.findAll('#immichApiKey')).toHaveLength(1)
+    await findButtonByLabel(wrapper, 'Test Connection').trigger('click')
+    await flushPromises()
+    expect(apiService.post).toHaveBeenCalledWith('/users/me/immich-config/test', {
+      serverUrl: 'https://new-photos.example.com',
+      apiKey: null
+    })
 
     await findButtonByLabel(wrapper, 'Reset').trigger('click')
     await flushPromises()
     expect(lastDirtyValue(wrapper)).toBe(false)
   })
 
+  it('keeps Immich connection controls visible but disabled while off', async () => {
+    const wrapper = mount(ImmichTab, {
+      props: { config: { serverUrl: 'https://photos.example.com', apiKey: 'configured-key', enabled: false }, loading: false },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(wrapper.get('#immichServerUrl').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('#immichApiKey').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).not.toContain('Test Connection')
+  })
+
   it('emits dirty changes from the Memos cache toggle and clears after reset', async () => {
+    testMemosConfig.mockReset().mockResolvedValue({ success: true, message: 'Connected' })
     const wrapper = mount(MemosTab, {
       props: {
         config: {
@@ -421,12 +566,35 @@ describe('profile tab dirty state', () => {
     })
     await flushPromises()
 
+    expect(wrapper.findAll('.settings-panel')).toHaveLength(4)
+    expect(wrapper.findAll('#memosDefaultDestination')).toHaveLength(1)
+    expect(wrapper.findAll('#memosDefaultVisibility')).toHaveLength(1)
+    await findButtonByLabel(wrapper, 'Test Connection').trigger('click')
+    await flushPromises()
+    expect(testMemosConfig).toHaveBeenCalledWith({ serverUrl: 'https://memos.example.com', apiKey: null })
+
     await wrapper.find('[data-setting-id="memosSearchCacheEnabled"] input').setValue(false)
     expect(lastDirtyValue(wrapper)).toBe(true)
 
     await findButtonByLabel(wrapper, 'Reset').trigger('click')
     await flushPromises()
     expect(lastDirtyValue(wrapper)).toBe(false)
+  })
+
+  it('hides Memos defaults and filtering while the integration is off', async () => {
+    const wrapper = mount(MemosTab, {
+      props: {
+        config: { serverUrl: 'https://memos.example.com', apiKey: 'configured-key', enabled: false },
+        loading: false
+      },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Timeline defaults')
+    expect(wrapper.text()).not.toContain('Filtering & performance')
+    expect(wrapper.get('#memosServerUrl').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('#memosApiKey').attributes('disabled')).toBeDefined()
   })
 
   it('emits dirty changes from the Memos tag filters and clears after reset', async () => {

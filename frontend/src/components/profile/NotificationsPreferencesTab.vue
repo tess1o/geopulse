@@ -1,33 +1,76 @@
 <template>
-  <Card>
+  <Card class="profile-settings-card">
     <template #content>
-      <form class="preferences-form" @submit.prevent="save">
-        <section>
-          <h2>GPS health</h2>
-          <p>Alert only when GeoPulse stops receiving data from every active live GPS source.</p>
-          <div class="row"><label for="gps-health">Monitor GPS arrivals</label><InputSwitch id="gps-health" v-model="form.gpsHealthEnabled" :disabled="readOnly" /></div>
-          <div v-if="form.gpsHealthEnabled" class="field">
-            <label for="silence">Silence threshold (minutes)</label>
-            <InputNumber id="silence" v-model="form.gpsSilenceMinutes" :min="1" :max="10080" :disabled="readOnly" />
-            <small>The first alert waits for this period after monitoring is enabled.</small>
+      <form class="preferences-form settings-tab" @submit.prevent="save">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon"><i class="pi pi-bell"></i></div>
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">Notifications</h3>
+            <p class="settings-tab-description">Choose which events create alerts and how they are delivered.</p>
           </div>
-          <ChannelSettings v-if="form.gpsHealthEnabled" v-model="form.gpsHealth" label="GPS health delivery" :read-only="readOnly" />
+        </div>
+
+        <section class="settings-group" aria-labelledby="gps-health-heading">
+          <div class="settings-group-header">
+            <h3 id="gps-health-heading">GPS health</h3>
+            <p>Get alerted when every active live GPS source stops sending data.</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard title="Monitor GPS arrivals" description="Detect extended gaps across all active live sources." setting-id="gpsHealthEnabled">
+              <template #control>
+                <InputSwitch id="gps-health" v-model="form.gpsHealthEnabled" :disabled="readOnly" aria-label="Monitor GPS arrivals" />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              v-if="form.gpsHealthEnabled"
+              title="Silence threshold"
+              description="Wait this many minutes before creating the first alert."
+              details="Choose a value from 1 minute to 7 days."
+              setting-id="gpsSilenceMinutes"
+            >
+              <template #control>
+                <InputNumber id="silence" v-model="form.gpsSilenceMinutes" :min="1" :max="10080" suffix=" min" :disabled="readOnly" fluid aria-label="GPS silence threshold in minutes" />
+              </template>
+            </SettingCard>
+
+            <ChannelSettings v-if="form.gpsHealthEnabled" v-model="form.gpsHealth" label="GPS health delivery" :read-only="readOnly" />
+          </div>
         </section>
 
-        <section>
-          <h2>Monthly Rewind</h2>
-          <p>On the first day of a month, GeoPulse can remind you to explore the completed month.</p>
-          <div class="row"><label for="rewind">Notify when Rewind is ready</label><InputSwitch id="rewind" v-model="form.rewindEnabled" :disabled="readOnly" /></div>
-          <ChannelSettings v-if="form.rewindEnabled" v-model="form.rewind" label="Rewind delivery" :read-only="readOnly" />
+        <section class="settings-group" aria-labelledby="rewind-heading">
+          <div class="settings-group-header">
+            <h3 id="rewind-heading">Monthly Rewind</h3>
+            <p>Get a reminder when the previous month is ready to explore.</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard title="Notify when Rewind is ready" description="Create an alert on the first day of each month." setting-id="rewindEnabled">
+              <template #control>
+                <InputSwitch id="rewind" v-model="form.rewindEnabled" :disabled="readOnly" aria-label="Notify when Rewind is ready" />
+              </template>
+            </SettingCard>
+            <ChannelSettings v-if="form.rewindEnabled" v-model="form.rewind" label="Rewind delivery" :read-only="readOnly" />
+          </div>
         </section>
 
-        <section class="release-note">
-          <h2>What’s new</h2>
-          <p>Release highlights appear once in GeoPulse after your next upgrade. They are never sent externally.</p>
-          <div class="row"><label for="whats-new">Show release highlights</label><InputSwitch id="whats-new" v-model="form.whatsNewEnabled" :disabled="readOnly" /></div>
+        <section class="settings-group" aria-labelledby="product-updates-heading">
+          <div class="settings-group-header">
+            <h3 id="product-updates-heading">Product updates</h3>
+            <p>Control in-app announcements about new GeoPulse features.</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard title="Show release highlights" description="Show What’s New once after an upgrade." details="Release highlights appear only inside GeoPulse and are never sent externally." setting-id="whatsNewEnabled">
+              <template #control>
+                <InputSwitch id="whats-new" v-model="form.whatsNewEnabled" :disabled="readOnly" aria-label="Show release highlights" />
+              </template>
+            </SettingCard>
+          </div>
         </section>
 
-        <div class="actions"><Button type="submit" label="Save notification preferences" :loading="saving" :disabled="readOnly" /></div>
+        <div class="settings-actions is-sticky"><Button type="submit" label="Save Changes" :loading="saving" :disabled="readOnly" /></div>
       </form>
     </template>
   </Card>
@@ -41,6 +84,7 @@ import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
 import apiService from '@/utils/apiService'
 import ChannelSettings from './NotificationChannelSettings.vue'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
 const props = defineProps({ readOnly: Boolean })
 const emit = defineEmits(['saved'])
@@ -63,6 +107,7 @@ onMounted(async () => {
 })
 
 const save = async () => {
+  if (props.readOnly) return
   saving.value = true
   try {
     const response = await apiService.put('/notifications/preferences', form)
@@ -73,14 +118,3 @@ const save = async () => {
   }
 }
 </script>
-
-<style scoped>
-.preferences-form, section, .field { display: grid; gap: .75rem; }
-.preferences-form { gap: 1.75rem; }
-section h2 { margin: 0; font-size: 1.15rem; }
-section p, small { color: var(--gp-text-secondary); margin: 0; }
-.row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.field label { font-weight: 600; }
-.release-note { border-top: 1px solid var(--gp-border-light); padding-top: 1.25rem; }
-.actions { display: flex; justify-content: flex-end; }
-</style>

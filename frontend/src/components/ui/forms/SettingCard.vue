@@ -1,40 +1,37 @@
 <template>
-  <Card
+  <div
     class="setting-card"
     :id="settingId ? `setting-${settingId}` : undefined"
     :data-setting-id="settingId || undefined"
   >
-    <template #content>
-      <div class="setting-layout">
-        <div class="setting-info">
+    <div class="setting-layout">
+      <div class="setting-info">
+        <div class="setting-title-row">
           <h3 class="setting-title">{{ title }}</h3>
-          <p class="setting-description">{{ description }}</p>
-          
-          <!-- Details Section -->
-          <div v-if="details || $slots.details" class="setting-details">
-            <div v-if="typeof details === 'string'" class="detail-text">
-              {{ details }}
-            </div>
-            <div v-else-if="typeof details === 'object'" class="detail-list">
-              <div v-for="(value, key) in details" :key="key" class="detail-item">
-                <strong>{{ key }}:</strong> {{ value }}
-              </div>
-            </div>
-            <slot name="details" />
-          </div>
-          
+          <button
+            v-if="detailsText"
+            type="button"
+            class="setting-help"
+            :aria-label="`${title}: ${detailsText}`"
+            v-tooltip.top="{ value: detailsText, class: 'setting-help-tooltip', fitContent: false }"
+          >
+            <i class="pi pi-info-circle" aria-hidden="true" />
+          </button>
         </div>
-        
-        <div class="setting-control">
-          <slot name="control" />
-        </div>
+        <p class="setting-description">{{ description }}</p>
       </div>
-    </template>
-  </Card>
+
+      <div class="setting-control">
+        <slot name="control" />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   title: {
     type: String,
     required: true
@@ -52,158 +49,134 @@ defineProps({
     default: ''
   }
 })
+
+const detailsText = computed(() => {
+  if (!props.details) return ''
+  if (typeof props.details === 'string') return props.details
+
+  return Object.entries(props.details)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join('\n')
+})
 </script>
 
 <style scoped>
 .setting-card {
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  transition: all 0.2s ease;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--gp-border-light);
   width: 100%;
   box-sizing: border-box;
 }
 
-.setting-card:hover {
-  box-shadow: var(--gp-shadow-medium);
-  transform: translateY(-1px);
+.setting-card:last-child {
+  border-bottom: 0;
 }
 
 .setting-layout {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 28rem);
+  gap: var(--gp-spacing-lg);
+  align-items: center;
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
 }
 
 .setting-info {
-  flex: 1;
   min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
+}
+
+.setting-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .setting-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
-  margin: 0 0 0.5rem 0;
+  margin: 0;
+  line-height: 1.35;
 }
 
 .setting-description {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--gp-text-secondary);
-  margin: 0 0 1rem 0;
+  margin: 0.3rem 0 0;
   line-height: 1.4;
 }
 
-.setting-details {
-  margin-bottom: 1rem;
-}
-
-.detail-text {
-  font-size: 0.85rem;
+.setting-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   color: var(--gp-text-secondary);
-  font-style: italic;
-  line-height: 1.3;
+  cursor: help;
 }
 
-.detail-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+.setting-help:hover,
+.setting-help:focus-visible {
+  color: var(--gp-primary);
+  background: var(--gp-surface-light);
+  outline: none;
 }
 
-.detail-item {
+.setting-help i {
   font-size: 0.85rem;
-  color: var(--gp-text-secondary);
-  line-height: 1.3;
 }
-
-.detail-item strong {
-  color: var(--gp-text-primary);
-}
-
 
 .setting-control {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  min-width: 200px;
-  flex-shrink: 0;
-  max-width: 100%;
+  width: min(100%, 28rem);
+  min-width: 0;
+  justify-self: end;
   box-sizing: border-box;
 }
 
-/* Responsive Design */
+.setting-control > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:global(.setting-help-tooltip .p-tooltip-text) {
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 2rem));
+  white-space: pre-line;
+  line-height: 1.4;
+}
+
 @media (max-width: 768px) {
-  .setting-card {
-    margin: 0;
-    width: 100%;
-  }
-  
   .setting-layout {
     grid-template-columns: 1fr;
-    gap: 1.25rem;
-    padding: 0;
+    gap: var(--gp-spacing-md);
+    padding: var(--gp-spacing-md);
   }
-  
+
   .setting-control {
-    min-width: 0;
     width: 100%;
-    align-items: stretch;
-    max-width: 100%;
-  }
-  
-  .setting-title {
-    font-size: 1rem;
-  }
-  
-  .setting-description {
-    font-size: 0.85rem;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    justify-content: flex-end;
+    justify-self: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .setting-card {
-    padding: 0;
-  }
-  
-  .setting-layout {
-    gap: 1rem;
-    padding: 0;
-  }
-  
-  .setting-info {
-    padding: 0;
-    width: 100%;
-    overflow: hidden;
-  }
-  
   .setting-title {
     font-size: 0.95rem;
-    margin-bottom: 0.4rem;
   }
-  
+
   .setting-description {
     font-size: 0.8rem;
-    margin-bottom: 0.75rem;
-    word-wrap: break-word;
     overflow-wrap: break-word;
     line-height: 1.3;
   }
-  
-  .setting-control {
-    padding: 0;
-    width: 100%;
-    overflow: hidden;
-  }
-  
-  .detail-item {
-    font-size: 0.8rem;
-  }
-  
 }
 </style>

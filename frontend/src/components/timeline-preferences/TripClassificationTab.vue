@@ -38,6 +38,7 @@
       </template>
     </Card>
 
+    <div class="settings-panel">
     <!-- Trip Detection Algorithm -->
     <SettingCard
       title="Trip Detection Algorithm"
@@ -49,7 +50,6 @@
       setting-id="tripDetectionAlgorithm"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.tripDetectionAlgorithm }}</div>
         <Select
           :model-value="modelValue.tripDetectionAlgorithm"
           @update:model-value="updatePref('tripDetectionAlgorithm', $event)"
@@ -61,6 +61,7 @@
         />
       </template>
     </SettingCard>
+    </div>
 
     <!-- Walking Classification -->
     <TransportTypeCard
@@ -79,7 +80,6 @@
           <p class="parameter-description">
             Trips with average speeds above this will be classified as non-walking
           </p>
-          <div class="control-value">{{ modelValue.walkingMaxAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.walkingMaxAvgSpeed !== undefined"
             :model-value="modelValue.walkingMaxAvgSpeed"
@@ -95,7 +95,6 @@
           <p class="parameter-description">
             Brief speed bursts above this will reclassify the trip
           </p>
-          <div class="control-value">{{ modelValue.walkingMaxMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.walkingMaxMaxSpeed !== undefined"
             :model-value="modelValue.walkingMaxMaxSpeed"
@@ -127,7 +126,6 @@
           <p class="parameter-description">
             Trips slower than this will be classified as running or walking
           </p>
-          <div class="control-value">{{ modelValue.bicycleMinAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.bicycleMinAvgSpeed !== undefined"
             :model-value="modelValue.bicycleMinAvgSpeed"
@@ -143,7 +141,6 @@
           <p class="parameter-description">
             Trips faster than this will be classified as motorized transport
           </p>
-          <div class="control-value">{{ modelValue.bicycleMaxAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.bicycleMaxAvgSpeed !== undefined"
             :model-value="modelValue.bicycleMaxAvgSpeed"
@@ -159,7 +156,6 @@
           <p class="parameter-description">
             Allows for downhill segments, road bikes, or e-bikes
           </p>
-          <div class="control-value">{{ modelValue.bicycleMaxMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.bicycleMaxMaxSpeed !== undefined"
             :model-value="modelValue.bicycleMaxMaxSpeed"
@@ -191,7 +187,6 @@
           <p class="parameter-description">
             Trips slower than this will be classified as walking
           </p>
-          <div class="control-value">{{ modelValue.runningMinAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.runningMinAvgSpeed !== undefined"
             :model-value="modelValue.runningMinAvgSpeed"
@@ -207,7 +202,6 @@
           <p class="parameter-description">
             Trips faster than this will be classified as cycling or motorized transport
           </p>
-          <div class="control-value">{{ modelValue.runningMaxAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.runningMaxAvgSpeed !== undefined"
             :model-value="modelValue.runningMaxAvgSpeed"
@@ -223,7 +217,6 @@
           <p class="parameter-description">
             Allows for sprint segments while staying below cycling speeds
           </p>
-          <div class="control-value">{{ modelValue.runningMaxMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.runningMaxMaxSpeed !== undefined"
             :model-value="modelValue.runningMaxMaxSpeed"
@@ -297,7 +290,6 @@
           <p class="parameter-description">
             When multiple labels are enabled, detected motor vehicle trips use this label by default.
           </p>
-          <div class="control-value">{{ formatPreferredMotorizedType(modelValue.preferredMotorizedType) }}</div>
           <Select
             :model-value="modelValue.preferredMotorizedType || 'CAR'"
             @update:model-value="updatePref('preferredMotorizedType', $event)"
@@ -314,7 +306,6 @@
           <p class="parameter-description">
             Trips with average speeds below this will be classified as walking, running, or bicycle if those match first
           </p>
-          <div class="control-value">{{ modelValue.carMinAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.carMinAvgSpeed !== undefined"
             :model-value="modelValue.carMinAvgSpeed"
@@ -330,7 +321,6 @@
           <p class="parameter-description">
             Trips that never reach this speed will not be classified as a motor vehicle unless average speed matches
           </p>
-          <div class="control-value">{{ modelValue.carMinMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.carMinMaxSpeed !== undefined"
             :model-value="modelValue.carMinMaxSpeed"
@@ -362,7 +352,6 @@
           <p class="parameter-description">
             Separates from cars in heavy traffic
           </p>
-          <div class="control-value">{{ modelValue.trainMinAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.trainMinAvgSpeed !== undefined"
             :model-value="modelValue.trainMinAvgSpeed"
@@ -378,7 +367,6 @@
           <p class="parameter-description">
             Covers regional and intercity trains
           </p>
-          <div class="control-value">{{ modelValue.trainMaxAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.trainMaxAvgSpeed !== undefined"
             :model-value="modelValue.trainMaxAvgSpeed"
@@ -394,7 +382,6 @@
           <p class="parameter-description">
             Filters out trips with only station waiting time (critical!)
           </p>
-          <div class="control-value">{{ modelValue.trainMinMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.trainMinMaxSpeed !== undefined"
             :model-value="modelValue.trainMinMaxSpeed"
@@ -410,7 +397,6 @@
           <p class="parameter-description">
             Upper limit for train speeds
           </p>
-          <div class="control-value">{{ modelValue.trainMaxMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.trainMaxMaxSpeed !== undefined"
             :model-value="modelValue.trainMaxMaxSpeed"
@@ -426,7 +412,6 @@
           <p class="parameter-description">
             Trains have low variance (&lt; 15), cars have high variance (&gt; 25). This is the key to distinguishing trains from cars!
           </p>
-          <div class="control-value">{{ modelValue.trainMaxSpeedVariance }}</div>
           <SliderControl
             v-if="modelValue.trainMaxSpeedVariance !== undefined"
             :model-value="modelValue.trainMaxSpeedVariance"
@@ -458,7 +443,6 @@
           <p class="parameter-description">
             Conservative default for typical flights (including taxi/takeoff/landing time)
           </p>
-          <div class="control-value">{{ modelValue.flightMinAvgSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.flightMinAvgSpeed !== undefined"
             :model-value="modelValue.flightMinAvgSpeed"
@@ -474,7 +458,6 @@
           <p class="parameter-description">
             Catches flights with long taxi/wait time (OR logic with avg speed)
           </p>
-          <div class="control-value">{{ modelValue.flightMinMaxSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.flightMinMaxSpeed !== undefined"
             :model-value="modelValue.flightMinMaxSpeed"
@@ -538,7 +521,6 @@
           <p class="parameter-description">
             Share of usable trip distance that must be over water
           </p>
-          <div class="control-value">{{ Math.round((modelValue.boatMinWaterRatio || 0) * 100) }}%</div>
           <SliderControl
             v-if="modelValue.boatMinWaterRatio !== undefined"
             :model-value="modelValue.boatMinWaterRatio"
@@ -554,7 +536,6 @@
           <p class="parameter-description">
             Total water distance required before a trip can be classified as boat
           </p>
-          <div class="control-value">{{ modelValue.boatMinWaterDistanceMeters }} m</div>
           <SliderControl
             v-if="modelValue.boatMinWaterDistanceMeters !== undefined"
             :model-value="modelValue.boatMinWaterDistanceMeters"
@@ -570,7 +551,6 @@
           <p class="parameter-description">
             Filters out short bridge, tunnel, and shoreline crossings
           </p>
-          <div class="control-value">{{ modelValue.boatMinContinuousWaterDistanceMeters }} m</div>
           <SliderControl
             v-if="modelValue.boatMinContinuousWaterDistanceMeters !== undefined"
             :model-value="modelValue.boatMinContinuousWaterDistanceMeters"
@@ -586,7 +566,6 @@
           <p class="parameter-description">
             Sanity ceiling only; slow movement can still be boat travel
           </p>
-          <div class="control-value">{{ modelValue.boatMaxPlausibleSpeed }} km/h</div>
           <SliderControl
             v-if="modelValue.boatMaxPlausibleSpeed !== undefined"
             :model-value="modelValue.boatMaxPlausibleSpeed"
@@ -600,6 +579,7 @@
     </TransportTypeCard>
 
     <!-- Short Distance Threshold -->
+    <div class="settings-panel">
     <SettingCard
       title="Short Trip Distance Threshold"
       description="Distance threshold for applying relaxed walking speed detection"
@@ -607,7 +587,6 @@
       setting-id="shortDistanceKm"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.shortDistanceKm }} km</div>
         <SliderControl
           v-if="modelValue.shortDistanceKm !== undefined"
           :model-value="modelValue.shortDistanceKm"
@@ -630,7 +609,6 @@
       setting-id="tripArrivalDetectionMinDurationSeconds"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.tripArrivalDetectionMinDurationSeconds }} seconds</div>
         <SliderControl
           v-if="modelValue.tripArrivalDetectionMinDurationSeconds !== undefined"
           :model-value="modelValue.tripArrivalDetectionMinDurationSeconds"
@@ -653,7 +631,6 @@
       setting-id="tripSustainedStopMinDurationSeconds"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.tripSustainedStopMinDurationSeconds }} seconds</div>
         <SliderControl
           v-if="modelValue.tripSustainedStopMinDurationSeconds !== undefined"
           :model-value="modelValue.tripSustainedStopMinDurationSeconds"
@@ -676,7 +653,6 @@
       setting-id="tripArrivalMinPoints"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.tripArrivalMinPoints }} points</div>
         <SliderControl
           v-if="modelValue.tripArrivalMinPoints !== undefined"
           :model-value="modelValue.tripArrivalMinPoints"
@@ -687,6 +663,7 @@
         />
       </template>
     </SettingCard>
+    </div>
   </PreferencesTabLayout>
 </template>
 
@@ -763,10 +740,6 @@ const updateMotorVehicleEnabled = (enabled) => {
     motorcycleEnabled: false,
     publicTransportationEnabled: false
   })
-}
-
-const formatPreferredMotorizedType = (type) => {
-  return motorizedTypeOptions.find((option) => option.value === type)?.label || 'Car'
 }
 
 const boatSetupSeverity = computed(() => {

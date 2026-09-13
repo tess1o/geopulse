@@ -1,158 +1,137 @@
 <template>
-  <Card class="memos-card">
-    <template #content>
-      <form class="memos-form" @submit.prevent="handleSubmit">
-        <div class="memos-header">
-          <div class="memos-icon">
-            <i class="pi pi-file-edit"></i>
-          </div>
-          <div class="memos-info">
-            <h3 class="memos-title">Memos Integration</h3>
-            <p class="memos-description">
-              Connect Memos to display timestamped notes on your timeline.
-            </p>
-          </div>
-        </div>
+  <form class="integration-settings settings-tab" @submit.prevent="handleSubmit">
+    <section class="settings-group" aria-labelledby="memos-availability-heading">
+      <div class="settings-group-header">
+        <h3 id="memos-availability-heading">Notes integration</h3>
+        <p>Control whether timestamped Memos notes appear on your timeline.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="Enable Memos" description="Fetch timeline notes from your Memos server." setting-id="memos-enabled">
+          <template #control>
+            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" aria-label="Enable Memos integration" />
+          </template>
+        </SettingCard>
+      </div>
+    </section>
 
-        <div class="form-section">
-          <div class="form-field" data-setting-id="memos-enabled">
-            <label class="form-label">Enable Memos Integration</label>
-            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" />
-            <small class="help-text">Turn on to fetch notes from your Memos server</small>
-          </div>
+    <section class="settings-group" aria-labelledby="memos-connection-heading">
+      <div class="settings-group-header">
+        <h3 id="memos-connection-heading">Connection</h3>
+        <p>Provide the server address and credentials used to access Memos.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="Server URL" description="Enter the full address of your Memos server." setting-id="memosServerUrl">
+          <template #control>
+            <div class="field-control">
+              <InputText id="memosServerUrl" v-model="form.serverUrl" placeholder="https://memos.example.com" :invalid="!!errors.serverUrl" :disabled="readOnly || !form.enabled || loading || saveLoading" class="w-full" aria-label="Memos server URL" />
+              <small v-if="errors.serverUrl" class="error-message">{{ errors.serverUrl }}</small>
+            </div>
+          </template>
+        </SettingCard>
 
-          <div class="form-field" data-setting-id="memosServerUrl">
-            <label for="memosServerUrl" class="form-label">Server URL</label>
-            <InputText
-              id="memosServerUrl"
-              v-model="form.serverUrl"
-              placeholder="https://memos.example.com"
-              :invalid="!!errors.serverUrl"
-              :disabled="readOnly || !form.enabled || loading || saveLoading"
-              class="w-full"
+        <SettingCard title="API key" description="Create an API token in your Memos settings." setting-id="memosApiKey">
+          <template #control>
+            <div class="field-control">
+              <Password
+                id="memosApiKey"
+                v-model="form.apiKey"
+                :placeholder="apiKeyConfigured ? 'API key is set (enter new key to replace)' : 'Enter your Memos API key'"
+                :feedback="false"
+                toggleMask
+                :invalid="!!errors.apiKey"
+                :disabled="readOnly || !form.enabled || loading || saveLoading"
+                class="w-full"
+                aria-label="Memos API key"
+              />
+              <small v-if="errors.apiKey" class="error-message">{{ errors.apiKey }}</small>
+              <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text configured-key"><i class="pi pi-check-circle"></i> API key is configured. Leave empty to keep it.</small>
+            </div>
+          </template>
+        </SettingCard>
+      </div>
+    </section>
+
+    <section v-if="form.enabled" class="settings-group" aria-labelledby="memos-defaults-heading">
+      <div class="settings-group-header">
+        <h3 id="memos-defaults-heading">Timeline defaults</h3>
+        <p>Choose how notes created from GeoPulse are stored in Memos.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="Default save destination" description="Choose where new notes are saved by default." setting-id="memosDefaultDestination">
+          <template #control>
+            <Select id="memosDefaultDestination" v-model="form.defaultSaveDestination" :options="destinationOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" aria-label="Default save destination" />
+          </template>
+        </SettingCard>
+        <SettingCard title="Default visibility" description="Choose the initial Memos visibility for new notes." setting-id="memosDefaultVisibility">
+          <template #control>
+            <Select id="memosDefaultVisibility" v-model="form.defaultVisibility" :options="visibilityOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" aria-label="Default Memos visibility" />
+          </template>
+        </SettingCard>
+      </div>
+    </section>
+
+    <section v-if="form.enabled" class="settings-group" aria-labelledby="memos-filtering-heading">
+      <div class="settings-group-header">
+        <h3 id="memos-filtering-heading">Filtering & performance</h3>
+        <p>Control cached searches and which tagged notes appear on the timeline.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="Search cache" description="Reuse recent searches for faster timeline note loading." setting-id="memosSearchCacheEnabled">
+          <template #control>
+            <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="readOnly || loading || saveLoading" aria-label="Enable Memos search cache" />
+          </template>
+        </SettingCard>
+
+        <SettingCard class="tag-setting" title="Include tags" description="Only load notes containing at least one of these tags." setting-id="memosIncludeTags">
+          <template #control>
+            <AutoComplete
+              v-model="form.includeTags"
+              inputId="memosIncludeTags"
+              multiple
+              :typeahead="false"
+              :suggestions="[]"
+              placeholder="Add a tag and press Enter"
+              :disabled="readOnly || loading || saveLoading"
+              class="w-full tag-input"
+              @change="normalizeFormTags('includeTags')"
+              @blur="commitPendingTag('includeTags', $event)"
             />
-            <small v-if="errors.serverUrl" class="error-message">{{ errors.serverUrl }}</small>
-            <small v-else class="help-text">Enter the full URL to your Memos server</small>
-          </div>
+          </template>
+        </SettingCard>
 
-          <div class="form-field" data-setting-id="memosApiKey">
-            <label for="memosApiKey" class="form-label">API Key</label>
-            <Password
-              id="memosApiKey"
-              v-model="form.apiKey"
-              :placeholder="apiKeyConfigured ? 'API key is set (enter new key to replace)' : 'Enter your Memos API key'"
-              :feedback="false"
-              toggleMask
-              :invalid="!!errors.apiKey"
-              :disabled="readOnly || !form.enabled || loading || saveLoading"
-              class="w-full"
+        <SettingCard class="tag-setting" title="Exclude tags" description="Hide notes containing any of these tags." setting-id="memosExcludeTags">
+          <template #control>
+            <AutoComplete
+              v-model="form.excludeTags"
+              inputId="memosExcludeTags"
+              multiple
+              :typeahead="false"
+              :suggestions="[]"
+              placeholder="Add a tag and press Enter"
+              :disabled="readOnly || loading || saveLoading"
+              class="w-full tag-input"
+              @change="normalizeFormTags('excludeTags')"
+              @blur="commitPendingTag('excludeTags', $event)"
             />
-            <small v-if="errors.apiKey" class="error-message">{{ errors.apiKey }}</small>
-            <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text">
-              <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
-              API key is configured. Leave empty to keep current key.
-            </small>
-            <small v-else class="help-text">Create an API token in Memos settings</small>
-          </div>
+          </template>
+        </SettingCard>
+      </div>
+    </section>
 
-          <div v-if="form.enabled" class="form-grid">
-            <div class="form-field" data-setting-id="memosDefaultDestination">
-              <label for="memosDefaultDestination" class="form-label">Default save destination</label>
-              <Select
-                id="memosDefaultDestination"
-                v-model="form.defaultSaveDestination"
-                :options="destinationOptions"
-                optionLabel="label"
-                optionValue="value"
-                :disabled="readOnly || loading || saveLoading"
-              />
-            </div>
+    <Message v-if="testStatus" :severity="testStatus === 'success' ? 'success' : 'error'" :closable="false" aria-live="polite">
+      <strong>{{ testMessage }}</strong><span v-if="testDetails"> {{ testDetails }}</span>
+    </Message>
 
-            <div class="form-field" data-setting-id="memosDefaultVisibility">
-              <label for="memosDefaultVisibility" class="form-label">Default Memos visibility</label>
-              <Select
-                id="memosDefaultVisibility"
-                v-model="form.defaultVisibility"
-                :options="visibilityOptions"
-                optionLabel="label"
-                optionValue="value"
-                :disabled="readOnly || loading || saveLoading"
-              />
-            </div>
-
-            <div class="form-field" data-setting-id="memosSearchCacheEnabled">
-              <label class="form-label">Enable Memos search cache</label>
-              <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="readOnly || loading || saveLoading" />
-              <small class="help-text">Reuse recent Memos searches for faster timeline note loading</small>
-            </div>
-
-            <div class="form-field form-field-wide" data-setting-id="memosIncludeTags">
-              <label for="memosIncludeTags" class="form-label">Include tags</label>
-              <AutoComplete
-                v-model="form.includeTags"
-                inputId="memosIncludeTags"
-                multiple
-                :typeahead="false"
-                :suggestions="[]"
-                placeholder="Add a tag and press Enter"
-                :disabled="readOnly || loading || saveLoading"
-                class="w-full tag-input"
-                @change="normalizeFormTags('includeTags')"
-                @blur="commitPendingTag('includeTags', $event)"
-              />
-              <small class="help-text">Only load Memos notes with at least one of these tags</small>
-            </div>
-
-            <div class="form-field form-field-wide" data-setting-id="memosExcludeTags">
-              <label for="memosExcludeTags" class="form-label">Exclude tags</label>
-              <AutoComplete
-                v-model="form.excludeTags"
-                inputId="memosExcludeTags"
-                multiple
-                :typeahead="false"
-                :suggestions="[]"
-                placeholder="Add a tag and press Enter"
-                :disabled="readOnly || loading || saveLoading"
-                class="w-full tag-input"
-                @change="normalizeFormTags('excludeTags')"
-                @blur="commitPendingTag('excludeTags', $event)"
-              />
-              <small class="help-text">Hide returned Memos notes with any of these tags</small>
-            </div>
-          </div>
-
-          <div v-if="form.enabled" class="form-field">
-            <Button
-              type="button"
-              label="Test Connection"
-              icon="pi pi-link"
-              outlined
-              :loading="testLoading"
-              :disabled="readOnly || !canTestConnection || loading || saveLoading"
-              @click="handleTestConnection"
-            />
-          </div>
-
-          <div v-if="testStatus" class="test-results">
-            <Message :severity="testStatus === 'success' ? 'success' : 'error'" :closable="false">
-              <strong>{{ testMessage }}</strong>
-              <span v-if="testDetails"> {{ testDetails }}</span>
-            </Message>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <Button type="button" label="Reset" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
-          <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
-        </div>
-      </form>
-    </template>
-  </Card>
+    <div class="settings-actions is-sticky">
+      <Button v-if="form.enabled" type="button" label="Test Connection" icon="pi pi-link" outlined :loading="testLoading" :disabled="readOnly || !canTestConnection || loading || saveLoading" @click="handleTestConnection" />
+      <Button type="button" label="Reset" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
+      <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
+    </div>
+  </form>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import Card from 'primevue/card'
 import ToggleSwitch from 'primevue/toggleswitch'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -161,20 +140,12 @@ import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useNotesStore } from '@/stores/notes'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
 const props = defineProps({
-  readOnly: {
-    type: Boolean,
-    default: false
-  },
-  config: {
-    type: Object,
-    default: null
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
+  readOnly: { type: Boolean, default: false },
+  config: { type: Object, default: null },
+  loading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['save', 'dirty-change'])
@@ -186,53 +157,29 @@ const testMessage = ref('')
 const testDetails = ref('')
 const apiKeyConfigured = ref(false)
 const errors = ref({})
-
-const destinationOptions = [
-  { label: 'GeoPulse', value: 'GEOPULSE' },
-  { label: 'Memos', value: 'MEMOS' }
-]
-
-const visibilityOptions = [
-  { label: 'Private', value: 'PRIVATE' },
-  { label: 'Protected', value: 'PROTECTED' },
-  { label: 'Public', value: 'PUBLIC' }
-]
-
-const form = ref({
-  serverUrl: '',
-  apiKey: '',
-  enabled: false,
-  defaultSaveDestination: 'GEOPULSE',
-  defaultVisibility: 'PRIVATE',
-  searchCacheEnabled: true,
-  includeTags: [],
-  excludeTags: []
-})
+const destinationOptions = [{ label: 'GeoPulse', value: 'GEOPULSE' }, { label: 'Memos', value: 'MEMOS' }]
+const visibilityOptions = [{ label: 'Private', value: 'PRIVATE' }, { label: 'Protected', value: 'PROTECTED' }, { label: 'Public', value: 'PUBLIC' }]
+const form = ref({ serverUrl: '', apiKey: '', enabled: false, defaultSaveDestination: 'GEOPULSE', defaultVisibility: 'PRIVATE', searchCacheEnabled: true, includeTags: [], excludeTags: [] })
 
 const normalizeTagList = (tags) => {
   if (!Array.isArray(tags)) return []
   const seen = new Set()
   const normalizedTags = []
-
   tags.forEach((tag) => {
     if (tag == null) return
     let normalized = String(tag).trim()
-    while (normalized.startsWith('#')) {
-      normalized = normalized.slice(1).trim()
-    }
+    while (normalized.startsWith('#')) normalized = normalized.slice(1).trim()
     if (!normalized || seen.has(normalized)) return
     seen.add(normalized)
     normalizedTags.push(normalized)
   })
-
   return normalizedTags
 }
 
 const tagListsEqual = (left, right) => {
   const normalizedLeft = normalizeTagList(left)
   const normalizedRight = normalizeTagList(right)
-  return normalizedLeft.length === normalizedRight.length &&
-    normalizedLeft.every((tag, index) => tag === normalizedRight[index])
+  return normalizedLeft.length === normalizedRight.length && normalizedLeft.every((tag, index) => tag === normalizedRight[index])
 }
 
 const hasChanges = computed(() => {
@@ -246,7 +193,6 @@ const hasChanges = computed(() => {
       normalizeTagList(form.value.includeTags).length > 0 ||
       normalizeTagList(form.value.excludeTags).length > 0
   }
-
   return form.value.serverUrl !== (props.config.serverUrl || '') ||
     form.value.enabled !== (props.config.enabled || false) ||
     (form.value.apiKey?.trim() || '') !== '' ||
@@ -257,14 +203,8 @@ const hasChanges = computed(() => {
     !tagListsEqual(form.value.excludeTags, props.config.excludeTags || [])
 })
 
-const canTestConnection = computed(() => (
-  form.value.serverUrl?.trim() &&
-  (form.value.apiKey?.trim() || apiKeyConfigured.value)
-))
-
-watch(hasChanges, (changed) => {
-  emit('dirty-change', Boolean(changed))
-})
+const canTestConnection = computed(() => form.value.serverUrl?.trim() && (form.value.apiKey?.trim() || apiKeyConfigured.value))
+watch(hasChanges, (changed) => emit('dirty-change', Boolean(changed)))
 
 function loadConfig() {
   form.value = {
@@ -281,10 +221,7 @@ function loadConfig() {
   errors.value = {}
 }
 
-watch(() => props.config, () => {
-  loadConfig()
-}, { deep: true, immediate: true })
-
+watch(() => props.config, loadConfig, { deep: true, immediate: true })
 watch(() => [form.value.serverUrl, form.value.apiKey], () => {
   testStatus.value = null
   testMessage.value = ''
@@ -303,18 +240,12 @@ const validate = () => {
         errors.value.serverUrl = 'Please enter a valid URL'
       }
     }
-
-    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) {
-      errors.value.apiKey = 'API key is required when integration is enabled'
-    }
+    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) errors.value.apiKey = 'API key is required when integration is enabled'
   }
   return Object.keys(errors.value).length === 0
 }
 
-const normalizeFormTags = (field) => {
-  form.value[field] = normalizeTagList(form.value[field])
-}
-
+const normalizeFormTags = (field) => { form.value[field] = normalizeTagList(form.value[field]) }
 const commitPendingTag = (field, event) => {
   const pendingTag = event?.target?.value?.trim()
   if (pendingTag) {
@@ -326,15 +257,10 @@ const commitPendingTag = (field, event) => {
 }
 
 const handleTestConnection = async () => {
-  if (props.readOnly) return
-  if (!validate()) return
+  if (props.readOnly || !validate()) return
   testLoading.value = true
   try {
-    const result = await notesStore.testMemosConfig({
-      serverUrl: form.value.serverUrl.trim(),
-      apiKey: form.value.apiKey?.trim() || null
-    })
-    const payload = result
+    const payload = await notesStore.testMemosConfig({ serverUrl: form.value.serverUrl.trim(), apiKey: form.value.apiKey?.trim() || null })
     testStatus.value = payload?.success ? 'success' : 'error'
     testMessage.value = payload?.message || (payload?.success ? 'Successfully connected to Memos server' : 'Connection failed')
     testDetails.value = payload?.details || ''
@@ -348,8 +274,7 @@ const handleTestConnection = async () => {
 }
 
 const handleSubmit = async () => {
-  if (props.readOnly) return
-  if (!validate()) return
+  if (props.readOnly || !validate()) return
   saveLoading.value = true
   try {
     await emit('save', {
@@ -374,144 +299,15 @@ const handleReset = () => {
 </script>
 
 <style scoped>
-.memos-card {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.memos-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.memos-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.memos-title {
-  margin: 0;
-  color: var(--gp-text-primary);
-}
-
-.memos-description {
-  margin: 0.25rem 0 0;
-  color: var(--gp-text-secondary);
-}
-
-.form-section,
-.memos-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-field-wide {
-  grid-column: 1 / -1;
-}
-
-.tag-input {
-  width: 100%;
-}
-
-.tag-input :deep(.p-autocomplete-input-multiple) {
-  width: 100%;
-  min-height: 2.75rem;
-  background: var(--gp-surface-white);
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-  box-shadow: var(--gp-shadow-subtle);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.tag-input :deep(.p-autocomplete-input-multiple:hover) {
-  border-color: var(--gp-border-medium);
-}
-
-.tag-input.p-focus :deep(.p-autocomplete-input-multiple) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.12);
-}
-
-.tag-input :deep(.p-autocomplete-input-chip input) {
-  color: var(--gp-text-primary);
-}
-
-.tag-input :deep(.p-autocomplete-input-chip input::placeholder) {
-  color: var(--gp-text-muted);
-}
-
-.tag-input :deep(.p-autocomplete-chip) {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
-  color: var(--gp-text-primary);
-}
-
-.tag-input :deep(.p-autocomplete-chip .p-chip-label) {
-  color: var(--gp-text-primary);
-}
-
-.tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon) {
-  color: var(--gp-text-secondary);
-}
-
-.tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon:hover) {
-  color: var(--gp-text-primary);
-}
-
-.tag-input.p-disabled :deep(.p-autocomplete-input-multiple) {
-  background: var(--gp-surface-gray);
-  color: var(--gp-text-muted);
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.help-text {
-  color: var(--gp-text-secondary);
-}
-
-.error-message {
-  color: var(--gp-danger);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-}
-
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.integration-settings { width: 100%; }
+.help-text { color: var(--gp-text-secondary); font-size: 0.8rem; }
+.configured-key i { color: var(--gp-success); }
+:deep(.p-password), :deep(.p-password-input) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.tag-input { width: 100%; }
+.tag-input :deep(.p-autocomplete-input-multiple) { width: 100%; min-height: 2.75rem; background: var(--gp-surface-white); border-color: var(--gp-border-medium); color: var(--gp-text-primary); box-shadow: var(--gp-shadow-subtle); }
+.tag-input :deep(.p-autocomplete-input-chip input), .tag-input :deep(.p-autocomplete-chip .p-chip-label) { color: var(--gp-text-primary); }
+.tag-input :deep(.p-autocomplete-input-chip input::placeholder), .tag-input :deep(.p-autocomplete-chip .p-chip-remove-icon) { color: var(--gp-text-muted); }
+.tag-input :deep(.p-autocomplete-chip) { background: var(--gp-surface-light); border: 1px solid var(--gp-border-light); color: var(--gp-text-primary); }
+.tag-setting :deep(.setting-layout) { grid-template-columns: 1fr; }
+.tag-setting :deep(.setting-control) { width: 100%; justify-self: stretch; }
 </style>

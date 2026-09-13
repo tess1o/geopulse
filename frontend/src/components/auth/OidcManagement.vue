@@ -1,13 +1,16 @@
 <template>
   <ConfirmDialog />
-  <Card class="profile-section-card">
-    <template #title>Connected Accounts</template>
-    <template #subtitle>Manage OIDC connections for social or corporate SSO login.</template>
-    <template #content>
+  <section class="settings-group" aria-labelledby="connected-accounts-heading">
+    <div class="settings-group-header">
+      <h3 id="connected-accounts-heading">Connected accounts</h3>
+      <p>Manage social or corporate OIDC sign-in methods.</p>
+    </div>
+
+    <div class="settings-panel">
       <div class="oidc-management">
         <!-- Linked Providers -->
-        <div v-if="linkedProviders.length > 0" class="linked-providers">
-          <h4 class="font-semibold text-lg mb-3">Linked Accounts</h4>
+        <div v-if="linkedProviders.length > 0" class="provider-section">
+          <h4>Linked accounts</h4>
           <div class="provider-list">
             <div
               v-for="connection in linkedProviders"
@@ -39,8 +42,8 @@
         </div>
         
         <!-- Available Providers -->
-        <div v-if="availableProviders.length > 0" class="available-providers mt-6">
-          <h4 class="font-semibold text-lg mb-3">Link Additional Accounts</h4>
+        <div v-if="availableProviders.length > 0" class="provider-section">
+          <h4>Link another account</h4>
           <div class="provider-list">
             <div
               v-for="provider in availableProviders"
@@ -69,8 +72,8 @@
           You have no password set. You must add another login method before unlinking your only connected account.
         </Message>
       </div>
-    </template>
-  </Card>
+    </div>
+  </section>
 </template>
 
 <script setup>
@@ -79,7 +82,6 @@ import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
-import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
 import ProviderIcon from '@/components/common/ProviderIcon.vue';
@@ -190,26 +192,55 @@ onMounted(loadData);
 </script>
 
 <style scoped>
+.oidc-management {
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-section {
+  padding: var(--gp-spacing-lg);
+}
+
+.provider-section + .provider-section,
+.provider-section + :deep(.p-message) {
+  border-top: 1px solid var(--gp-border-light);
+}
+
+.provider-section h4 {
+  margin: 0 0 var(--gp-spacing-md);
+  color: var(--gp-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .provider-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
 }
 
 .provider-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
-  border: 1px solid var(--surface-border);
-  border-radius: var(--border-radius);
-  background: var(--surface-section);
+  gap: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md) 0;
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.provider-item:first-child {
+  padding-top: 0;
+}
+
+.provider-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .provider-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--gp-spacing-md);
+  min-width: 0;
 }
 
 .provider-details {
@@ -225,5 +256,21 @@ onMounted(loadData);
 .provider-email {
   color: var(--text-color-secondary);
   font-size: 0.85rem;
+}
+
+:deep(.p-message) {
+  margin: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 480px) {
+  .provider-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .provider-item :deep(.p-button) {
+    width: 100%;
+  }
 }
 </style>

@@ -1,9 +1,11 @@
 <template>
-  <Card class="profile-section-card api-tokens-card">
-    <template #title>API Tokens</template>
-    <template #subtitle>Create named tokens for bots, MCP clients, and automation.</template>
-    <template #content>
-      <div class="tokens-toolbar">
+  <section class="settings-group api-tokens-section" aria-labelledby="api-tokens-heading">
+    <div class="settings-group-header has-action">
+      <div>
+        <h3 id="api-tokens-heading">API tokens</h3>
+        <p>Create named tokens for bots, MCP clients, and automation.</p>
+      </div>
+      <div>
         <Button
           label="Create Token"
           icon="pi pi-plus"
@@ -12,7 +14,9 @@
           @click="openCreateDialog"
         />
       </div>
+    </div>
 
+    <div class="settings-panel tokens-panel">
       <DataTable
         :value="tokens"
         :loading="loading"
@@ -70,13 +74,14 @@
           <div class="empty-state">No API tokens created.</div>
         </template>
       </DataTable>
+    </div>
 
-      <Dialog
-        v-model:visible="editDialogVisible"
-        :header="editingToken ? 'Edit API Token' : 'Create API Token'"
-        :modal="true"
-        :style="{ width: '440px' }"
-      >
+    <Dialog
+      v-model:visible="editDialogVisible"
+      :header="editingToken ? 'Edit API Token' : 'Create API Token'"
+      :modal="true"
+      :style="{ width: '440px' }"
+    >
         <div class="dialog-form">
           <div class="form-field">
             <label for="api-token-name">Name</label>
@@ -117,15 +122,15 @@
             @click="saveToken"
           />
         </template>
-      </Dialog>
+    </Dialog>
 
-      <Dialog
-        v-model:visible="createdTokenDialogVisible"
-        header="API Token Created"
-        :modal="true"
-        :closable="false"
-        :style="{ width: '560px' }"
-      >
+    <Dialog
+      v-model:visible="createdTokenDialogVisible"
+      header="API Token Created"
+      :modal="true"
+      :closable="false"
+      :style="{ width: '560px' }"
+    >
         <div class="created-token">
           <p>This token is shown once. Store it securely before closing this dialog.</p>
           <div class="token-secret">
@@ -136,14 +141,14 @@
         <template #footer>
           <Button label="I have stored this token" @click="closeCreatedTokenDialog" />
         </template>
-      </Dialog>
+    </Dialog>
 
-      <Dialog
-        v-model:visible="revokeDialogVisible"
-        header="Revoke API Token"
-        :modal="true"
-        :style="{ width: '420px' }"
-      >
+    <Dialog
+      v-model:visible="revokeDialogVisible"
+      header="Revoke API Token"
+      :modal="true"
+      :style="{ width: '420px' }"
+    >
         <p>
           Revoke <strong>{{ tokenToRevoke?.name }}</strong>? Automation using this token will stop immediately.
         </p>
@@ -158,14 +163,12 @@
             @click="revokeToken"
           />
         </template>
-      </Dialog>
-    </template>
-  </Card>
+    </Dialog>
+  </section>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import Card from 'primevue/card'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -346,19 +349,8 @@ onMounted(loadTokens)
 </script>
 
 <style scoped>
-.api-tokens-card {
-  width: 100%;
-}
-
-.api-tokens-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.tokens-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
+.tokens-panel {
+  overflow-x: auto;
 }
 
 .muted {
@@ -413,11 +405,6 @@ onMounted(loadTokens)
 }
 
 @media (max-width: 640px) {
-  .section-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .expiration-field {
     align-items: flex-start;
   }

@@ -3,6 +3,7 @@
     title="Stay Point Merging Settings"
     description="Configure how nearby stay points are consolidated into single locations"
   >
+    <div class="settings-panel">
     <!-- Enable Merging -->
     <SettingCard
       title="Enable Stay Point Merging"
@@ -11,7 +12,6 @@
       setting-id="isMergeEnabled"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.isMergeEnabled ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.isMergeEnabled"
           @update:model-value="updatePref('isMergeEnabled', $event)"
@@ -32,7 +32,6 @@
       setting-id="mergeMaxDistanceMeters"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.mergeMaxDistanceMeters }}m</div>
         <SliderControl
           v-if="modelValue.mergeMaxDistanceMeters !== undefined"
           :model-value="modelValue.mergeMaxDistanceMeters"
@@ -61,7 +60,6 @@
       setting-id="mergeMaxTimeGapMinutes"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.mergeMaxTimeGapMinutes }} minutes</div>
         <SliderControl
           v-if="modelValue.mergeMaxTimeGapMinutes !== undefined"
           :model-value="modelValue.mergeMaxTimeGapMinutes"
@@ -77,6 +75,7 @@
         />
       </template>
     </SettingCard>
+    </div>
   </PreferencesTabLayout>
 </template>
 

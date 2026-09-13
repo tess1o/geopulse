@@ -1,50 +1,34 @@
 <template>
-  <Card class="ai-settings-card">
-    <template #content>
-      <form @submit.prevent="handleSubmit" class="ai-settings-form">
-        <div class="ai-header">
-          <div class="ai-icon">
-            <i class="pi pi-sparkles"></i>
-          </div>
-          <div class="ai-info">
-            <h3 class="ai-title">AI Assistant Configuration</h3>
-            <p class="ai-description">
-              Configure your AI assistant settings to enable AI chat.
-            </p>
-          </div>
-        </div>
+  <form class="integration-settings settings-tab" @submit.prevent="handleSubmit">
+    <section class="settings-group" aria-labelledby="ai-availability-heading">
+      <div class="settings-group-header">
+        <h3 id="ai-availability-heading">Assistant availability</h3>
+        <p>Control whether AI chat is available in GeoPulse.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="Enable AI Assistant" description="Allow AI-powered chat and timeline assistance." setting-id="ai-enabled">
+          <template #control>
+            <ToggleSwitch id="ai-enabled" v-model="form.enabled" :disabled="readOnly" aria-label="Enable AI Assistant" />
+          </template>
+        </SettingCard>
+      </div>
+    </section>
 
-        <div class="ai-form-grid">
-          <!-- Enable/Disable Toggle -->
-          <div class="form-group" data-setting-id="ai-enabled">
-            <label for="ai-enabled" class="form-label">Enable AI Assistant</label>
-              <ToggleSwitch
-                id="ai-enabled"
-                v-model="form.enabled"
-                class="w-full"
-                :disabled="readOnly"
-              />
-            <small class="text-secondary">
-              Enable or disable the AI Assistant functionality
-            </small>
-          </div>
+    <section class="settings-group" aria-labelledby="ai-provider-heading">
+      <div class="settings-group-header">
+        <h3 id="ai-provider-heading">Provider</h3>
+        <p>Configure the OpenAI or OpenAI-compatible service used by the assistant.</p>
+      </div>
+      <div class="settings-panel">
+        <SettingCard title="API key required" description="Turn off only when the provider accepts unauthenticated requests." setting-id="api-key-required">
+          <template #control>
+            <ToggleSwitch id="api-key-required" v-model="form.apiKeyRequired" :disabled="readOnly" aria-label="API key required" />
+          </template>
+        </SettingCard>
 
-          <!-- OpenAI Settings -->
-          <div class="provider-settings">
-            <div class="form-group" data-setting-id="api-key-required">
-              <label for="api-key-required" class="form-label">API Key Required</label>
-              <ToggleSwitch
-                id="api-key-required"
-                v-model="form.apiKeyRequired"
-                class="w-full"
-                :disabled="readOnly"
-              />
-              <small class="text-secondary">
-                Disable if your self-hosted LLM does not require an API key
-              </small>
-            </div>
-            <div class="form-group" data-setting-id="openai-api-key">
-              <label for="openai-api-key" class="form-label">OpenAI API Key</label>
+        <SettingCard title="API key" description="Enter a new key only when adding or replacing credentials." setting-id="openai-api-key">
+          <template #control>
+            <div class="field-control">
               <Password
                 id="openai-api-key"
                 v-model="form.openaiApiKey"
@@ -53,126 +37,67 @@
                 :feedback="false"
                 toggleMask
                 autocomplete="new-password"
-                :inputProps="{
-                  autocomplete: 'new-password',
-                  'data-lpignore': 'true',
-                  'data-form-type': 'other'
-                }"
+                :inputProps="{ autocomplete: 'new-password', 'data-lpignore': 'true', 'data-form-type': 'other' }"
                 :disabled="readOnly || !form.apiKeyRequired"
+                aria-label="OpenAI API key"
               />
-              <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="text-secondary">
-                <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
-                API key is configured. Leave empty to keep current key.
-              </small>
-              <small v-else-if="!apiKeyConfigured && form.apiKeyRequired" class="text-secondary">
-                Enter your OpenAI API key to enable the assistant
-              </small>
+              <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="help-text configured-key"><i class="pi pi-check-circle"></i> API key is configured. Leave empty to keep it.</small>
+              <small v-else-if="!apiKeyConfigured && form.apiKeyRequired" class="help-text">Enter an API key to enable authenticated requests.</small>
             </div>
-            <div class="form-group" data-setting-id="openai-api-url">
-              <label for="openai-api-url" class="form-label">API Base URL</label>
-              <InputText
-                id="openai-api-url"
-                v-model="form.openaiApiUrl"
-                placeholder="https://api.openai.com/v1"
-                class="w-full"
-                :disabled="readOnly"
-              />
-              <small class="text-secondary">
-                Use default OpenAI URL or enter a custom OpenAI-compatible API endpoint
-              </small>
-            </div>
-            <div class="form-group" data-setting-id="openai-model">
-              <label for="openai-model" class="form-label">Model</label>
-              <div class="model-select-row">
-                <Dropdown
-                  id="openai-model"
-                  v-model="form.openaiModel"
-                  :options="openaiModels"
-                  placeholder="Select or enter model name"
-                  class="w-full"
-                  editable
-                  :disabled="readOnly"
-                />
-                <Button
-                  type="button"
-                  icon="pi pi-sync"
-                  @click="fetchModels"
-                  :loading="modelsLoading"
-                  :disabled="readOnly"
-                  v-tooltip.bottom="'Fetch models from server'"
-                />
-              </div>
-              <small class="text-secondary">
-                Choose from common models or enter a custom model name
-              </small>
-            </div>
-            <div class="form-group" data-setting-id="custom-system-message">
-              <label for="custom-system-message" class="form-label">
-                System Message
-                <Button
-                  type="button"
-                  icon="pi pi-info-circle"
-                  class="p-button-text p-button-sm"
-                  v-tooltip.right="'Customize the AI assistant behavior. Clear the field to reset to default.'"
-                  style="padding: 0; margin-left: 0.25rem; vertical-align: middle;"
-                />
-              </label>
-              <Textarea
-                id="custom-system-message"
-                v-model="form.customSystemMessage"
-                placeholder="Loading system message..."
-                rows="8"
-                class="w-full"
-                autoResize
-                :disabled="readOnly"
-              />
-              <small class="text-secondary">
-                Edit the AI system message to customize behavior. Clear the field to reset to default.
-              </small>
-            </div>
-          </div>
-          <div v-if="testConnectionStatus" class="connection-status">
-            <Message v-if="testConnectionStatus === 'success'" severity="success">Connection successful!</Message>
-            <Message v-if="testConnectionStatus === 'error'" severity="error">Connection failed. Check URL and API key.</Message>
-          </div>
-        </div>
+          </template>
+        </SettingCard>
 
-        <!-- Form Actions -->
-        <div class="form-actions">
-          <Button
-            type="button"
-            label="Test Connection"
-            icon="pi pi-plug"
-            :loading="testConnectionLoading"
-            :disabled="readOnly"
-            @click="testConnection"
-            class="p-button-secondary"
-          />
-          <Button
-            type="submit"
-            label="Save AI Settings"
-            icon="pi pi-save"
-            :loading="loading"
-            :disabled="readOnly"
-            class="p-button-primary"
-          />
-        </div>
-      </form>
-    </template>
-  </Card>
+        <SettingCard title="API base URL" description="Use OpenAI’s endpoint or another compatible service." setting-id="openai-api-url">
+          <template #control>
+            <InputText id="openai-api-url" v-model="form.openaiApiUrl" placeholder="https://api.openai.com/v1" class="w-full" :disabled="readOnly" aria-label="API base URL" />
+          </template>
+        </SettingCard>
+
+        <SettingCard title="Model" description="Choose a listed model or enter its identifier." setting-id="openai-model">
+          <template #control>
+            <div class="model-select-row">
+              <Dropdown id="openai-model" v-model="form.openaiModel" :options="openaiModels" placeholder="Select or enter model name" class="w-full" editable :disabled="readOnly" aria-label="AI model" />
+              <Button type="button" icon="pi pi-sync" aria-label="Refresh provider models" @click="fetchModels" :loading="modelsLoading" :disabled="readOnly" v-tooltip.bottom="'Fetch models from server'" />
+            </div>
+          </template>
+        </SettingCard>
+      </div>
+    </section>
+
+    <section class="settings-group" aria-labelledby="ai-behavior-heading">
+      <div class="settings-group-header">
+        <h3 id="ai-behavior-heading">Assistant behavior</h3>
+        <p>Customize the instruction sent with every conversation.</p>
+      </div>
+      <div class="settings-panel behavior-panel">
+        <SettingCard title="System message" description="Clear the message to restore the server default." details="The system message guides the assistant’s tone and behavior." setting-id="custom-system-message">
+          <template #control>
+            <Textarea id="custom-system-message" v-model="form.customSystemMessage" placeholder="Loading system message..." rows="8" class="w-full" autoResize :disabled="readOnly" aria-label="AI system message" />
+          </template>
+        </SettingCard>
+      </div>
+    </section>
+
+    <Message v-if="testConnectionStatus" :severity="testConnectionStatus === 'success' ? 'success' : 'error'" :closable="false" aria-live="polite">
+      {{ testConnectionStatus === 'success' ? 'Connection successful!' : 'Connection failed. Check URL and API key.' }}
+    </Message>
+
+    <div class="settings-actions is-sticky">
+      <Button type="button" label="Test Connection" icon="pi pi-plug" :loading="testConnectionLoading" :disabled="readOnly" @click="testConnection" outlined />
+      <Button type="submit" label="Save AI Settings" icon="pi pi-save" :loading="loading" :disabled="readOnly" />
+    </div>
+  </form>
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from 'vue';
-import Message from 'primevue/message';
-import Textarea from 'primevue/textarea';
+import { computed, ref, watch, onMounted } from 'vue'
+import Message from 'primevue/message'
+import Textarea from 'primevue/textarea'
+import apiService from '@/utils/apiService'
+import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
-// Props
 const props = defineProps({
-  readOnly: {
-    type: Boolean,
-    default: false
-  },
+  readOnly: { type: Boolean, default: false },
   initialSettings: {
     type: Object,
     default: () => ({
@@ -187,34 +112,16 @@ const props = defineProps({
   }
 })
 
-// Emits
 const emit = defineEmits(['save', 'dirty-change'])
-
-// State
 const loading = ref(false)
-const modelsLoading = ref(false);
-const testConnectionLoading = ref(false);
-const testConnectionStatus = ref(null); // null, 'success', or 'error'
+const modelsLoading = ref(false)
+const testConnectionLoading = ref(false)
+const testConnectionStatus = ref(null)
 const apiKeyConfigured = ref(false)
-const form = ref({
-  enabled: false,
-  openaiApiKey: '',
-  openaiApiUrl: 'https://api.openai.com/v1',
-  openaiModel: 'gpt-3.5-turbo',
-  apiKeyRequired: true,
-  customSystemMessage: null
-})
+const form = ref({ enabled: false, openaiApiKey: '', openaiApiUrl: 'https://api.openai.com/v1', openaiModel: 'gpt-3.5-turbo', apiKeyRequired: true, customSystemMessage: null })
 const savedFormSnapshot = ref(null)
 const syncingSettings = ref(false)
-
-import apiService from '@/utils/apiService';
-
-const openaiModels = ref([
-  'gpt-4o',
-  'gpt-4o-mini',
-  'gpt-3.5-turbo',
-  'gpt-4-turbo'
-]);
+const openaiModels = ref(['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'gpt-4-turbo'])
 
 const normalizeSettings = (settings = {}) => ({
   enabled: settings.enabled === true,
@@ -222,74 +129,54 @@ const normalizeSettings = (settings = {}) => ({
   openaiApiUrl: settings.openaiApiUrl || 'https://api.openai.com/v1',
   openaiModel: settings.openaiModel || 'gpt-3.5-turbo',
   apiKeyRequired: settings.apiKeyRequired !== false,
-  customSystemMessage: settings.customSystemMessage && settings.customSystemMessage.trim()
-    ? settings.customSystemMessage.trim()
-    : null
+  customSystemMessage: settings.customSystemMessage?.trim() || null
 })
 
 const hasChanges = computed(() => {
-  if (syncingSettings.value || !savedFormSnapshot.value) {
-    return false
-  }
-
+  if (syncingSettings.value || !savedFormSnapshot.value) return false
   const current = normalizeSettings(form.value)
-  const saved = savedFormSnapshot.value
-
-  return Object.keys(current).some((key) => current[key] !== saved[key])
+  return Object.keys(current).some((key) => current[key] !== savedFormSnapshot.value[key])
 })
 
 const fetchModels = async () => {
   if (props.readOnly) return
-  modelsLoading.value = true;
-  testConnectionStatus.value = null;
+  modelsLoading.value = true
+  testConnectionStatus.value = null
   try {
-    const payload = {
+    openaiModels.value = await apiService.post('/ai/test-connection', {
       openaiApiUrl: form.value.openaiApiUrl,
       openaiApiKey: form.value.openaiApiKey,
       isApiKeyNeeded: form.value.apiKeyRequired
-    };
-    const models = await apiService.post('/ai/test-connection', payload);
-    openaiModels.value = models;
-    testConnectionStatus.value = 'success';
+    })
+    testConnectionStatus.value = 'success'
   } catch (error) {
-    console.error('Failed to fetch models:', error);
-    testConnectionStatus.value = 'error';
+    console.error('Failed to fetch models:', error)
+    testConnectionStatus.value = 'error'
   } finally {
-    modelsLoading.value = false;
+    modelsLoading.value = false
   }
-};
+}
 
 const testConnection = async () => {
   if (props.readOnly) return
-  testConnectionLoading.value = true;
-  await fetchModels();
-  testConnectionLoading.value = false;
-};
+  testConnectionLoading.value = true
+  await fetchModels()
+  testConnectionLoading.value = false
+}
 
-// Methods
 const handleSubmit = async () => {
   if (props.readOnly) return
   loading.value = true
-
   try {
     const payload = {
       enabled: form.value.enabled,
       openaiApiUrl: form.value.openaiApiUrl,
       openaiModel: form.value.openaiModel,
       apiKeyRequired: form.value.apiKeyRequired,
-      customSystemMessage: form.value.customSystemMessage && form.value.customSystemMessage.trim()
-        ? form.value.customSystemMessage.trim()
-        : null
+      customSystemMessage: form.value.customSystemMessage?.trim() || null
     }
-
-    // Only include API key if user entered a new one and it's required
-    if (form.value.apiKeyRequired && form.value.openaiApiKey && form.value.openaiApiKey.trim()) {
-      payload.openaiApiKey = form.value.openaiApiKey.trim()
-    }
-
+    if (form.value.apiKeyRequired && form.value.openaiApiKey?.trim()) payload.openaiApiKey = form.value.openaiApiKey.trim()
     await emit('save', payload)
-
-    // Clear the API key field after successful save
     form.value.openaiApiKey = ''
   } finally {
     loading.value = false
@@ -298,287 +185,39 @@ const handleSubmit = async () => {
 
 const loadSettings = async () => {
   syncingSettings.value = true
-
   form.value = {
     enabled: props.initialSettings.enabled === true,
-    openaiApiKey: '', // Always empty since backend doesn't send actual key
+    openaiApiKey: '',
     openaiApiUrl: props.initialSettings.openaiApiUrl || 'https://api.openai.com/v1',
     openaiModel: props.initialSettings.openaiModel || 'gpt-3.5-turbo',
     apiKeyRequired: props.initialSettings.apiKeyRequired !== false,
     customSystemMessage: props.initialSettings.customSystemMessage || null
   }
   apiKeyConfigured.value = props.initialSettings.openaiApiKeyConfigured === true
-
-  // Load the effective system message (custom or default)
   if (!form.value.customSystemMessage) {
     try {
-      const response = await apiService.get('/ai/default-system-message');
-      form.value.customSystemMessage = response.message;
+      const response = await apiService.get('/ai/default-system-message')
+      form.value.customSystemMessage = response.message
     } catch (error) {
-      console.error('Failed to load default system message:', error);
-      form.value.customSystemMessage = '';
+      console.error('Failed to load default system message:', error)
+      form.value.customSystemMessage = ''
     }
   }
-
   savedFormSnapshot.value = normalizeSettings(form.value)
   syncingSettings.value = false
 }
 
-watch(hasChanges, (changed) => {
-  emit('dirty-change', Boolean(changed))
-})
-
-// Initialize
-onMounted(() => {
-  loadSettings()
-})
-
-// Watch props changes
-watch(() => props.initialSettings, () => {
-  loadSettings()
-}, { deep: true })
+watch(hasChanges, (changed) => emit('dirty-change', Boolean(changed)))
+onMounted(loadSettings)
+watch(() => props.initialSettings, loadSettings, { deep: true })
 </script>
 
 <style scoped>
-.ai-settings-card {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.ai-settings-card :deep(.p-card-content) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.ai-settings-form {
-  width: 100%;
-}
-
-.ai-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.ai-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.ai-info {
-  flex: 1;
-}
-
-.ai-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.ai-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-.ai-form-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.provider-settings {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-}
-
-.text-secondary {
-  color: var(--gp-text-secondary);
-  font-size: 0.8rem;
-}
-
-.model-select-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-/* Toggle Switch Styling */
-:deep(.p-toggleswitch) {
-  width: auto;
-}
-
-:deep(.p-toggleswitch .p-toggleswitch-slider) {
-  background: var(--gp-border-medium);
-  border-radius: 1rem;
-  width: 3rem;
-  height: 1.5rem;
-  transition: background 0.3s;
-}
-
-:deep(.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider) {
-  background: var(--gp-primary);
-}
-
-:deep(.p-toggleswitch .p-toggleswitch-slider:before) {
-  background: white;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 50%;
-  top: 0.125rem;
-  left: 0.125rem;
-  transition: transform 0.3s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-:deep(.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider:before) {
-  transform: translateX(1.5rem);
-}
-
-/* Input Styling */
-:deep(.p-inputtext) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-inputtext:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-:deep(.p-password) {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.p-password-input) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-:deep(.p-password-input:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-/* Textarea Styling */
-:deep(.p-inputtextarea) {
-  border-radius: var(--gp-radius-medium);
-  border: 1px solid var(--gp-border-medium);
-  padding: 1rem;
-  transition: all 0.2s ease;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  min-height: 300px;
-  background: var(--surface-ground);
-  color: var(--text-color);
-}
-
-:deep(.p-inputtextarea:focus) {
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-  background: var(--surface-card);
-}
-
-/* Button Styling */
-:deep(.p-button) {
-  border-radius: var(--gp-radius-medium);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  transition: all 0.2s ease;
-}
-
-:deep(.p-button.p-button-primary) {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-}
-
-:deep(.p-button.p-button-primary:hover) {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .ai-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .form-actions .p-button {
-    width: 100%;
-    min-height: 48px;
-  }
-
-  .form-label {
-    font-size: 0.9rem;
-  }
-
-  .text-secondary {
-    font-size: 0.75rem;
-  }
-}
+.integration-settings { width: 100%; }
+.help-text { color: var(--gp-text-secondary); font-size: 0.8rem; }
+.configured-key i { color: var(--gp-success); }
+.model-select-row { display: flex; gap: var(--gp-spacing-sm); width: 100%; min-width: 0; }
+:deep(.p-password), :deep(.p-password-input) { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.behavior-panel :deep(.setting-layout) { grid-template-columns: 1fr; }
+.behavior-panel :deep(.setting-control) { width: 100%; justify-self: stretch; }
 </style>

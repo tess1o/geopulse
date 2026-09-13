@@ -3,6 +3,7 @@
     title="GPS Path Simplification Settings"
     description="Configure how GPS paths are simplified to reduce data while preserving route accuracy"
   >
+    <div class="settings-panel">
     <!-- Enable Path Simplification -->
     <SettingCard
       title="Enable Path Simplification"
@@ -10,7 +11,6 @@
       details="When enabled, trip paths will be simplified using the Douglas-Peucker algorithm to reduce the number of GPS points while preserving route accuracy"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.pathSimplificationEnabled ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.pathSimplificationEnabled"
           @update:model-value="updatePref('pathSimplificationEnabled', $event)"
@@ -30,7 +30,6 @@
       }"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.pathSimplificationTolerance }}m</div>
         <SliderControl
           v-if="modelValue.pathSimplificationTolerance !== undefined"
           :model-value="modelValue.pathSimplificationTolerance"
@@ -55,7 +54,6 @@
       details="If a simplified path still exceeds this limit, tolerance will be automatically increased until the limit is met. Set to 0 for no limit"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.pathMaxPoints === 0 ? 'No limit' : modelValue.pathMaxPoints + ' points' }}</div>
         <SliderControl
           v-if="modelValue.pathMaxPoints !== undefined"
           :model-value="modelValue.pathMaxPoints"
@@ -80,7 +78,6 @@
       details="When enabled, longer trips use higher tolerance values for better compression while shorter trips maintain higher accuracy with lower tolerance"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.pathAdaptiveSimplification ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.pathAdaptiveSimplification"
           @update:model-value="updatePref('pathAdaptiveSimplification', $event)"
@@ -88,6 +85,7 @@
         />
       </template>
     </SettingCard>
+    </div>
   </PreferencesTabLayout>
 </template>
 

@@ -3,6 +3,7 @@
     title="Stay Point Detection Settings"
     description="Configure how GPS data is analyzed to identify places where you've stayed"
   >
+    <div class="settings-panel">
     <!-- Stay Detection Radius -->
     <SettingCard
       title="Stay Detection Radius"
@@ -14,7 +15,6 @@
       setting-id="staypointRadiusMeters"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.staypointRadiusMeters }}m</div>
         <SliderControl
           v-if="modelValue.staypointRadiusMeters !== undefined"
           :model-value="modelValue.staypointRadiusMeters"
@@ -42,7 +42,6 @@
       setting-id="staypointMinDurationMinutes"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.staypointMinDurationMinutes }} minutes</div>
         <SliderControl
           v-if="modelValue.staypointMinDurationMinutes !== undefined"
           :model-value="modelValue.staypointMinDurationMinutes"
@@ -67,7 +66,6 @@
       setting-id="useVelocityAccuracy"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.useVelocityAccuracy ? 'Enabled' : 'Disabled' }}</div>
         <ToggleSwitch
           :model-value="modelValue.useVelocityAccuracy"
           @update:model-value="updatePref('useVelocityAccuracy', $event)"
@@ -88,7 +86,6 @@
       setting-id="staypointVelocityThreshold"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.staypointVelocityThreshold }} km/h</div>
         <SliderControl
           v-if="modelValue.staypointVelocityThreshold !== undefined"
           :model-value="modelValue.staypointVelocityThreshold"
@@ -117,7 +114,6 @@
       setting-id="staypointMaxAccuracyThreshold"
     >
       <template #control>
-        <div class="control-value">{{ modelValue.staypointMaxAccuracyThreshold }}m</div>
         <SliderControl
           v-if="modelValue.staypointMaxAccuracyThreshold !== undefined"
           :model-value="modelValue.staypointMaxAccuracyThreshold"
@@ -143,7 +139,6 @@
       setting-id="staypointMinAccuracyRatio"
     >
       <template #control>
-        <div class="control-value">{{ Math.round(modelValue.staypointMinAccuracyRatio * 100) }}%</div>
         <SliderControl
           v-if="modelValue.staypointMinAccuracyRatio !== undefined"
           :model-value="modelValue.staypointMinAccuracyRatio"
@@ -158,6 +153,7 @@
         />
       </template>
     </SettingCard>
+    </div>
   </PreferencesTabLayout>
 </template>
 

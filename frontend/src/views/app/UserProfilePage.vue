@@ -730,6 +730,140 @@ onUnmounted(() => {
 .settings-content { min-width: 0; }
 .mobile-settings-select { display: none; }
 
+:deep(.profile-settings-card.p-card) {
+  width: 100%;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  box-shadow: var(--gp-shadow-light);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+:deep(.profile-settings-card .p-card-body) {
+  width: 100%;
+  padding: var(--gp-spacing-lg);
+  box-sizing: border-box;
+}
+
+:deep(.profile-settings-card .p-card-content) {
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:deep(.settings-tab) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xl);
+}
+
+:deep(.settings-tab-header) {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+:deep(.settings-tab-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--gp-primary);
+  color: white;
+  font-size: 1.25rem;
+}
+
+:deep(.settings-tab-info) {
+  min-width: 0;
+  flex: 1;
+}
+
+:deep(.settings-tab-title),
+:deep(.settings-group-header h3) {
+  margin: 0;
+  color: var(--gp-text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+:deep(.settings-tab-description),
+:deep(.settings-group-header p) {
+  margin: var(--gp-spacing-xs) 0 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+:deep(.settings-group) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+:deep(.settings-group-header) {
+  padding: 0 var(--gp-spacing-xs);
+}
+
+:deep(.settings-group-header.has-action) {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gp-spacing-lg);
+}
+
+:deep(.settings-panel) {
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--gp-surface-white) 65%, var(--gp-surface-light));
+  border: 1px solid var(--gp-border-medium);
+  border-radius: var(--gp-radius-large);
+  box-shadow: var(--gp-shadow-subtle);
+}
+
+:deep(.field-control) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+  width: 100%;
+  min-width: 0;
+}
+
+:deep(.field-sub-label) {
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+:deep(.error-message) {
+  color: var(--gp-danger);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+:deep(.settings-actions) {
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-sm);
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  box-shadow: var(--gp-shadow-light);
+}
+
+:deep(.settings-actions.is-sticky) {
+  position: sticky;
+  bottom: 1rem;
+}
+
 :deep(.profile-section-card.p-card) {
   width: 100%;
   background: var(--gp-surface-white);
@@ -783,6 +917,29 @@ onUnmounted(() => {
   .settings-nav { display: none; }
   .mobile-settings-select { display: grid; gap: .35rem; color: var(--gp-text-secondary); font-size: .85rem; font-weight: 600; padding: 0 1rem; }
   .mobile-settings-select select { width: 100%; min-height: 2.75rem; padding: 0 .75rem; border: 1px solid var(--gp-border-medium); border-radius: var(--gp-radius-medium); background: var(--gp-surface-white); color: var(--gp-text-primary); font: inherit; }
+
+  :deep(.settings-tab-header) {
+    align-items: flex-start;
+  }
+
+  :deep(.settings-group-header.has-action),
+  :deep(.settings-actions) {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  :deep(.settings-group-header.has-action) {
+    flex-direction: column;
+  }
+
+  :deep(.settings-actions.is-sticky) {
+    bottom: .5rem;
+  }
+
+  :deep(.settings-actions button),
+  :deep(.settings-group-header.has-action button) {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
@@ -807,6 +964,10 @@ onUnmounted(() => {
 
   :deep(.profile-section-card .p-card-body) {
     padding: 1rem;
+  }
+
+  :deep(.profile-settings-card .p-card-body) {
+    padding: var(--gp-spacing-md);
   }
 }
 

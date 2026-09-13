@@ -21,7 +21,6 @@
           <div class="transport-actions">
             <!-- Enable Toggle (only for optional types) -->
             <div v-if="!mandatory" class="enable-toggle-wrapper" @click.stop>
-              <span class="enable-label">{{ isEnabled ? 'Enabled' : 'Disabled' }}</span>
               <ToggleSwitch
                 :model-value="isEnabled"
                 @update:model-value="handleEnableToggle"
@@ -168,15 +167,26 @@ watch(() => props.enabled, (newVal) => {
 <style scoped>
 .transport-type-card {
   background: var(--gp-surface-white);
-  border: 2px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  transition: all 0.3s ease;
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  box-shadow: none;
+  transition: border-color 0.2s ease;
   width: 100%;
   box-sizing: border-box;
 }
 
 .transport-type-card:hover {
-  box-shadow: var(--gp-shadow-medium);
+  border-color: var(--gp-border-medium);
+}
+
+.transport-type-card :deep(.p-card-body) {
+  padding: var(--gp-spacing-lg);
+  min-width: 0;
+}
+
+.transport-type-card :deep(.p-card-content),
+.transport-card-content {
+  min-width: 0;
 }
 
 .transport-type-card.has-warnings {
@@ -194,7 +204,6 @@ watch(() => props.enabled, (newVal) => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  padding-bottom: 0.5rem;
   cursor: pointer;
   user-select: none;
 }
@@ -210,15 +219,15 @@ watch(() => props.enabled, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--gp-primary-light);
   flex-shrink: 0;
 }
 
 .transport-icon {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--gp-primary);
 }
 
@@ -263,7 +272,7 @@ watch(() => props.enabled, (newVal) => {
 }
 
 .transport-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
   margin: 0;
@@ -286,13 +295,6 @@ watch(() => props.enabled, (newVal) => {
 .enable-toggle-wrapper {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.enable-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--gp-text-secondary);
 }
 
 .mandatory-badge {
@@ -334,12 +336,12 @@ watch(() => props.enabled, (newVal) => {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: var(--gp-spacing-md);
   background: var(--gp-surface-light);
   border-left: 3px solid var(--gp-primary);
   border-radius: var(--gp-radius-small);
-  margin-top: 1rem;
-  font-size: 0.9rem;
+  margin-top: var(--gp-spacing-md);
+  font-size: 0.85rem;
   color: var(--gp-text-secondary);
   line-height: 1.5;
 }
@@ -377,9 +379,9 @@ watch(() => props.enabled, (newVal) => {
 .transport-parameters {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
+  gap: var(--gp-spacing-lg);
+  margin-top: var(--gp-spacing-lg);
+  padding-top: var(--gp-spacing-lg);
   border-top: 1px solid var(--gp-border-light);
 }
 
@@ -466,12 +468,6 @@ watch(() => props.enabled, (newVal) => {
 
   .transport-title {
     font-size: 1rem;
-  }
-
-  .enable-toggle-wrapper {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
   }
 
   .mandatory-badge {

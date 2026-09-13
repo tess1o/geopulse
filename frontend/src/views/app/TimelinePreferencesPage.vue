@@ -1590,7 +1590,7 @@ onUnmounted(() => {
 
 /* Info Banner */
 .info-banner {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--gp-spacing-md);
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border-medium);
   border-left: 4px solid var(--gp-primary);
@@ -1598,7 +1598,7 @@ onUnmounted(() => {
 }
 
 .p-dark .info-banner {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--gp-spacing-md);
   background: var(--gp-surface-dark) !important;
   border: 1px solid var(--gp-border-dark) !important;
   border-left: 1px solid var(--gp-border-dark) !important;
@@ -1894,39 +1894,6 @@ onUnmounted(() => {
     min-height: 44px;
   }
   
-  .section-header {
-    text-align: left;
-    margin-bottom: 1.5rem;
-  }
-  
-  .section-title {
-    font-size: 1.3rem;
-  }
-  
-  .section-description {
-    font-size: 0.9rem;
-    max-width: 100%;
-    padding: 0 0.5rem;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-  
-  .preferences-section {
-    padding: 1.5rem 0;
-  }
-  
-  .settings-grid {
-    gap: 1.25rem;
-    padding: 0;
-    margin: 0;
-  }
-  
-  .preferences-section {
-    padding: 1.5rem 0;
-    width: 100%;
-    overflow: hidden;
-  }
-  
 }
 
 @media (max-width: 480px) {
@@ -1983,29 +1950,6 @@ onUnmounted(() => {
   
   .banner-description {
     font-size: 0.85rem;
-  }
-  
-  .section-title {
-    font-size: 1.2rem;
-  }
-  
-  .section-description {
-    font-size: 0.85rem;
-    max-width: 100%;
-    padding: 0;
-    margin: 0;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    line-height: 1.4;
-  }
-  
-  .control-value {
-    min-width: 0;
-    font-size: 0.85rem;
-    padding: 0.4rem 0.8rem;
-    width: 100%;
-    max-width: 100%;
-    margin-bottom: 0.75rem;
   }
   
   :deep(.p-dropdown) {

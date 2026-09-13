@@ -1,300 +1,263 @@
 <template>
-  <Card class="timeline-display-card">
+  <Card class="timeline-display-card profile-settings-card">
     <template #content>
-      <form @submit.prevent="handleSubmit" class="timeline-display-form">
+      <form @submit.prevent="handleSubmit" class="timeline-display-form settings-tab">
         <!-- Section Header -->
-        <div class="display-header">
-          <div class="display-icon">
+        <div class="settings-tab-header">
+          <div class="settings-tab-icon">
             <i class="pi pi-eye"></i>
           </div>
-          <div class="display-info">
-            <h3 class="display-title">Timeline &amp; Map</h3>
-            <p class="display-description">
-              These settings affect only how your timeline is displayed in the UI.
-              Changes take effect immediately and do not require timeline regeneration.
+          <div class="settings-tab-info">
+            <h3 class="settings-tab-title">Timeline &amp; Map</h3>
+            <p class="settings-tab-description">
+              Customize timeline and map presentation without regenerating timeline data.
             </p>
           </div>
         </div>
 
-        <!-- Map Tile Provider Section -->
-        <details class="section advanced-section map-source-section">
-          <summary>Map source</summary>
-          <div class="advanced-section-content">
-          <h3 class="section-title">Map Tile Provider</h3>
-          <p class="section-description">
-            Choose rendering mode and configure both raster and vector map sources
-          </p>
-
-          <div class="form-field" data-setting-id="mapRenderMode">
-            <label for="mapRenderMode" class="form-label">
-              Map Render Mode
-            </label>
-            <Dropdown
-              id="mapRenderMode"
-              v-model="form.mapRenderMode"
-              :options="mapRenderModeOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="w-full"
-            />
-            <small class="help-text">
-              Switching modes keeps both custom URLs so you can toggle anytime.
-            </small>
+        <section class="settings-group" aria-labelledby="timeline-behavior-heading">
+          <div class="settings-group-header">
+            <h3 id="timeline-behavior-heading">Timeline behavior</h3>
+            <p>Choose what appears when you open and interact with the timeline.</p>
           </div>
 
-          <div class="form-field" data-setting-id="customMapTileUrl">
-            <label for="customMapTileUrl" class="form-label">
-              Custom Raster Tile URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Raster tile template. Must include {z}, {x}, and {y} placeholders.'"></i>
-            </label>
-            <InputText
-              id="customMapTileUrl"
-              v-model="form.customMapTileUrl"
-              placeholder="https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=YOUR_KEY"
-              :invalid="!!errors.customMapTileUrl"
-              class="w-full"
-            />
-            <small v-if="errors.customMapTileUrl" class="error-message">
-              {{ errors.customMapTileUrl }}
-            </small>
-            <small v-else class="help-text">
-              Used when render mode is Raster. Leave empty to use default OSM raster tiles.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              title="Default date range"
+              description="Choose the initial range for Timeline, Dashboard, and Timeline Reports."
+              details="Clear the selection to use the app default: Today."
+              setting-id="defaultDateRangePreset"
+            >
+              <template #control>
+                <Dropdown
+                  id="defaultDateRangePreset"
+                  v-model="form.defaultDateRangePreset"
+                  :options="defaultDateRangePresetOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Use app default (Today)"
+                  class="w-full"
+                  showClear
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Current-location telemetry"
+              description="Show telemetry values in the current-location map popup."
+              details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
+              setting-id="showCurrentLocationTelemetry"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.showCurrentLocationTelemetry"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Auto-show replay controls"
+              description="Open the replay control bar when a trip is selected."
+              details="When disabled, trip replay remains available from a compact Replay button."
+              setting-id="autoShowTripReplayControls"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.autoShowTripReplayControls"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-labelledby="map-display-heading">
+          <div class="settings-group-header">
+            <h3 id="map-display-heading">Map display &amp; sources</h3>
+            <p>Choose how maps are rendered and where their visual data comes from.</p>
           </div>
 
-          <div class="form-field" data-setting-id="customMapStyleUrl">
-            <label for="customMapStyleUrl" class="form-label">
-              Custom Vector Style URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Vector style URL (style.json). Must use HTTP or HTTPS.'"></i>
-            </label>
-            <InputText
-              id="customMapStyleUrl"
-              v-model="form.customMapStyleUrl"
-              placeholder="https://tiles.openfreemap.org/styles/liberty"
-              :invalid="!!errors.customMapStyleUrl"
-              class="w-full"
-            />
-            <small v-if="errors.customMapStyleUrl" class="error-message">
-              {{ errors.customMapStyleUrl }}
-            </small>
-            <small v-else class="help-text">
-              Used when render mode is Vector. Leave empty to use default OpenFreeMap style.
-            </small>
+          <div class="settings-panel">
+            <SettingCard
+              title="Map render mode"
+              description="Choose the renderer used throughout the map views."
+              details="Switching modes keeps both custom source URLs."
+              setting-id="mapRenderMode"
+            >
+              <template #control>
+                <Dropdown
+                  id="mapRenderMode"
+                  v-model="form.mapRenderMode"
+                  :options="mapRenderModeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="w-full"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="3D buildings"
+              description="Show building shapes on compatible vector maps."
+              details="Available only for MapTiler styles with building height data."
+              setting-id="enable3dBuildingsByDefault"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.enable3dBuildingsByDefault"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Custom raster tiles"
+              description="Optional source used when Raster mode is selected."
+              details="The URL template must use HTTP or HTTPS and include {z}, {x}, and {y}. Leave empty to use OpenStreetMap."
+              setting-id="customMapTileUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="customMapTileUrl"
+                    v-model="form.customMapTileUrl"
+                    placeholder="https://tiles.example.com/{z}/{x}/{y}.png"
+                    :invalid="!!errors.customMapTileUrl"
+                    class="w-full"
+                    aria-label="Custom raster tile URL"
+                  />
+                  <small v-if="errors.customMapTileUrl" class="error-message">{{ errors.customMapTileUrl }}</small>
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              title="Custom vector style"
+              description="Optional style used when Vector mode is selected."
+              details="Enter an HTTP or HTTPS style JSON URL. Leave empty to use OpenFreeMap."
+              setting-id="customMapStyleUrl"
+            >
+              <template #control>
+                <div class="field-control">
+                  <InputText
+                    id="customMapStyleUrl"
+                    v-model="form.customMapStyleUrl"
+                    placeholder="https://tiles.openfreemap.org/styles/liberty"
+                    :invalid="!!errors.customMapStyleUrl"
+                    class="w-full"
+                    aria-label="Custom vector style URL"
+                  />
+                  <small v-if="errors.customMapStyleUrl" class="error-message">{{ errors.customMapStyleUrl }}</small>
+                </div>
+              </template>
+            </SettingCard>
           </div>
+        </section>
+
+        <section class="settings-group" aria-labelledby="map-processing-heading">
+          <div class="settings-group-header">
+            <h3 id="map-processing-heading">Map processing</h3>
+            <p>Control optional route matching and display performance.</p>
           </div>
-        </details>
 
-        <div class="section">
-          <h3 class="section-title">3D Buildings</h3>
-          <p class="section-description">
-            Choose whether compatible MapTiler vector maps open with 3D buildings enabled
-          </p>
+          <div class="settings-panel">
+            <SettingCard
+              title="Map matching"
+              :description="mapMatchingDescription"
+              :details="mapMatchingDetails"
+              setting-id="mapMatchingEnabled"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.mapMatchingEnabled"
+                  class="toggle-control"
+                  aria-label="Enable map matching"
+                  :disabled="readOnly || !mapMatchingAvailable"
+                />
+              </template>
+            </SettingCard>
 
-          <SettingCard class="compact-setting"
-            title="Enable 3D Buildings by Default"
-            description="Tilt compatible MapTiler vector maps and show building extrusions when they open"
-            details="Available only for MapTiler styles with building height data."
-            setting-id="enable3dBuildingsByDefault"
-          >
-            <template #control>
-              <div class="control-value">{{ form.enable3dBuildingsByDefault ? 'Enabled' : 'Disabled' }}</div>
-              <ToggleSwitch
-                v-model="form.enable3dBuildingsByDefault"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-        </div>
+            <SettingCard
+              title="Path simplification"
+              description="Reduce the number of points drawn for a trip."
+              details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data."
+              setting-id="pathSimplificationEnabled"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.pathSimplificationEnabled"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
 
-        <!-- Default Date Range Section -->
-        <div class="section">
-          <h3 class="section-title">Default Date Range</h3>
-          <p class="section-description">
-            Choose the preset used by default on Timeline, Dashboard, and Timeline Reports
-          </p>
-
-          <div class="form-field" data-setting-id="defaultDateRangePreset">
-            <label for="defaultDateRangePreset" class="form-label">
-              Default Date Range Preset
-              <i class="pi pi-info-circle" v-tooltip.right="'If not set, GeoPulse keeps the current default behavior (Today).'"></i>
-            </label>
-            <Dropdown
-              id="defaultDateRangePreset"
-              v-model="form.defaultDateRangePreset"
-              :options="defaultDateRangePresetOptions"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Use app default (Today)"
-              class="w-full"
-              showClear
-            />
-          </div>
-        </div>
-
-        <div class="section">
-          <h3 class="section-title">Current Location Popup</h3>
-          <p class="section-description">
-            Control whether telemetry from the latest point is shown in the current-location popup
-          </p>
-
-          <SettingCard class="compact-setting"
-            title="Show Telemetry In Current Location Popup"
-            description="Display mapped telemetry values in the map popup for your current location"
-            details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
-            setting-id="showCurrentLocationTelemetry"
-          >
-            <template #control>
-              <div class="control-value">{{ form.showCurrentLocationTelemetry ? 'Enabled' : 'Hidden' }}</div>
-              <ToggleSwitch
-                v-model="form.showCurrentLocationTelemetry"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-
-        </div>
-
-        <div class="section">
-          <h3 class="section-title">Trip Selection</h3>
-          <p class="section-description">
-            Control what appears when a trip is selected on the map
-          </p>
-
-          <SettingCard class="compact-setting"
-            title="Auto-show Replay Controls"
-            description="Show the replay control bar automatically when a trip is selected"
-            details="When disabled, trip replay remains available from a compact Replay button."
-            setting-id="autoShowTripReplayControls"
-          >
-            <template #control>
-              <div class="control-value">{{ form.autoShowTripReplayControls ? 'Enabled' : 'Collapsed' }}</div>
-              <ToggleSwitch
-                v-model="form.autoShowTripReplayControls"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-        </div>
-
-        <details class="section advanced-section">
-          <summary>Advanced map &amp; performance</summary>
-          <div class="advanced-section-content">
-          <h3 class="section-title">Map Matching</h3>
-          <p class="section-description">
-            Use a configured Valhalla service to fit displayed trip paths to roads and paths
-          </p>
-
-          <SettingCard class="compact-setting"
-            title="Enable Map Matching"
-            description="Display cached matched trip geometry when available"
-            :details="mapMatchingDetails"
-            setting-id="mapMatchingEnabled"
-          >
-            <template #control>
-              <div class="control-value">{{ mapMatchingStatusLabel }}</div>
-              <ToggleSwitch
-                v-model="form.mapMatchingEnabled"
-                class="toggle-control"
-                aria-label="Enable map matching"
-                :disabled="readOnly || !mapMatchingAvailable"
-              />
-            </template>
-          </SettingCard>
-
-          <!-- GPS Path Simplification Section -->
-          <h3 class="section-title">GPS Path Simplification</h3>
-          <p class="section-description">
-            Configure how GPS paths are simplified when displayed on the map
-          </p>
-
-          <!-- Enable Path Simplification -->
-          <SettingCard
-            title="Enable Path Simplification"
-            description="Reduce the number of GPS points displayed while preserving route accuracy"
-            details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data"
-            setting-id="pathSimplificationEnabled"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathSimplificationEnabled ? 'Enabled' : 'Disabled' }}</div>
-              <ToggleSwitch
-                v-model="form.pathSimplificationEnabled"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
-
-          <!-- Simplification Tolerance -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Simplification Tolerance"
-            description="Distance threshold in meters for simplifying paths"
-            :details="{
-              'Lower values (1-10m)': 'Preserve more detail, show more points',
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              title="Simplification tolerance"
+              description="Set the distance threshold used to simplify paths."
+              :details="{
+                'Lower values (1-10m)': 'Preserve more detail, show more points',
                 'Higher values (20-100m)': 'More compression, show fewer points'
-            }"
-            setting-id="pathSimplificationTolerance"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathSimplificationTolerance }}m</div>
-              <SliderControl
-                v-model="form.pathSimplificationTolerance"
-                :min="1"
-                :max="50"
-                :step="1"
-                :labels="['1m (High detail)', '15m (Balanced)', '50m (High compression)']"
-                suffix=" m"
-                :input-min="1"
-                :input-max="100"
-                :decimal-places="0"
-              />
-            </template>
-          </SettingCard>
+              }"
+              setting-id="pathSimplificationTolerance"
+            >
+              <template #control>
+                <SliderControl
+                  v-model="form.pathSimplificationTolerance"
+                  :min="1"
+                  :max="50"
+                  :step="1"
+                  :labels="['1m (High detail)', '15m (Balanced)', '50m (High compression)']"
+                  suffix=" m"
+                  :input-min="1"
+                  :input-max="100"
+                  :decimal-places="0"
+                />
+              </template>
+            </SettingCard>
 
-          <!-- Maximum Points -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Maximum Points"
-            description="Maximum number of GPS points to display in a path"
-            details="If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit"
-            setting-id="pathMaxPoints"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathMaxPoints === 0 ? 'No limit' : form.pathMaxPoints + ' points' }}</div>
-              <SliderControl
-                v-model="form.pathMaxPoints"
-                :min="0"
-                :max="500"
-                :step="10"
-                :labels="['0 (No limit)', '100 (Balanced)', '500 (High limit)']"
-                :suffix="form.pathMaxPoints === 0 ? '' : ' points'"
-                :input-min="0"
-                :input-max="1000"
-                :decimal-places="0"
-              />
-            </template>
-          </SettingCard>
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              title="Maximum points"
+              description="Limit how many GPS points are displayed in a path."
+              details="If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit."
+              setting-id="pathMaxPoints"
+            >
+              <template #control>
+                <SliderControl
+                  v-model="form.pathMaxPoints"
+                  :min="0"
+                  :max="500"
+                  :step="10"
+                  :labels="['0 (No limit)', '100 (Balanced)', '500 (High limit)']"
+                  :suffix="form.pathMaxPoints === 0 ? '' : ' points'"
+                  :input-min="0"
+                  :input-max="1000"
+                  :decimal-places="0"
+                />
+              </template>
+            </SettingCard>
 
-          <!-- Adaptive Simplification -->
-          <SettingCard
-            v-if="form.pathSimplificationEnabled"
-            title="Adaptive Simplification"
-            description="Automatically adjust simplification based on trip length"
-            details="Longer trips use higher tolerance for better performance, shorter trips maintain higher detail"
-            setting-id="pathAdaptiveSimplification"
-          >
-            <template #control>
-              <div class="control-value">{{ form.pathAdaptiveSimplification ? 'Enabled' : 'Disabled' }}</div>
-              <ToggleSwitch
-                v-model="form.pathAdaptiveSimplification"
-                class="toggle-control"
-              />
-            </template>
-          </SettingCard>
+            <SettingCard
+              v-if="form.pathSimplificationEnabled"
+              title="Adaptive simplification"
+              description="Adjust simplification automatically based on trip length."
+              details="Longer trips use higher tolerance for better performance; shorter trips retain more detail."
+              setting-id="pathAdaptiveSimplification"
+            >
+              <template #control>
+                <ToggleSwitch
+                  v-model="form.pathAdaptiveSimplification"
+                  class="toggle-control"
+                />
+              </template>
+            </SettingCard>
           </div>
-        </details>
+        </section>
 
         <!-- Action Buttons -->
-        <div class="form-actions">
+        <div class="settings-actions is-sticky">
           <Button
             type="button"
             label="Reset to Defaults"
@@ -404,12 +367,11 @@ const normalizePreferences = (preferences = {}) => ({
 })
 
 const mapMatchingAvailable = computed(() => form.value.mapMatchingAvailable === true)
-const mapMatchingStatusLabel = computed(() => {
-  if (!mapMatchingAvailable.value) {
-    return 'Unavailable'
-  }
-  return form.value.mapMatchingEnabled ? 'Enabled' : 'Disabled'
-})
+const mapMatchingDescription = computed(() => (
+  mapMatchingAvailable.value
+    ? 'Display cached matched trip geometry when available'
+    : 'Unavailable until an administrator configures a Valhalla service.'
+))
 const mapMatchingDetails = computed(() => (
   mapMatchingAvailable.value
     ? 'Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged.'
@@ -566,164 +528,3 @@ const handleReset = () => {
 }
 
 </script>
-
-<style scoped>
-.timeline-display-card {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.timeline-display-form {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* Section Header — matches Security / Immich / AI tab header pattern */
-.display-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.display-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3rem;
-  height: 3rem;
-  background: var(--gp-primary);
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.display-info {
-  flex: 1;
-}
-
-.display-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.display-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* Section */
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin: 0 0 0.25rem 0;
-}
-
-.section-description {
-  font-size: 0.9rem;
-  color: var(--gp-text-secondary);
-  margin: 0 0 0.5rem 0;
-}
-
-/* Form Field */
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.form-label .pi-info-circle {
-  color: var(--gp-text-secondary);
-  cursor: help;
-}
-
-.help-text {
-  color: var(--gp-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.875rem;
-}
-
-/* Control Styles */
-.control-value {
-  font-weight: 500;
-  color: var(--gp-text-primary);
-  min-width: 80px;
-  text-align: right;
-}
-
-.toggle-control {
-  margin-left: auto;
-}
-
-.advanced-section { order: 5; border: 1px solid var(--gp-border-light); border-radius: var(--gp-radius-medium); background: var(--gp-surface-light); }
-.map-source-section { order: 4; }
-.advanced-section summary { padding: 1rem; color: var(--gp-text-primary); font-weight: 600; cursor: pointer; }
-.advanced-section-content { display: flex; flex-direction: column; gap: 1rem; padding: 0 1rem 1rem; }
-:deep(.compact-setting.p-card) { box-shadow: none; }
-:deep(.compact-setting .p-card-body) { padding: .85rem 1rem; }
-:deep(.compact-setting .setting-layout) { align-items: center; gap: 1rem; }
-:deep(.compact-setting .setting-description), :deep(.compact-setting .setting-details) { display: none; }
-:deep(.compact-setting .setting-title) { margin: 0; font-size: 1rem; }
-:deep(.compact-setting .setting-control) { min-width: auto; flex-direction: row; gap: .75rem; }
-
-
-/* Form Actions */
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .display-header {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .form-actions button {
-    width: 100%;
-  }
-
-  :deep(.compact-setting .setting-layout) { grid-template-columns: 1fr auto; }
-  :deep(.compact-setting .setting-control) { width: auto; align-items: center; }
-
-}
-</style>
