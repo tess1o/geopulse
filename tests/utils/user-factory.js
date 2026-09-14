@@ -2,6 +2,12 @@ import {expect} from '@playwright/test';
 import {TestConfig} from '../config/test-config.js';
 
 export class UserFactory {
+    static dbManager = null;
+
+    static setDatabaseManager(dbManager) {
+        this.dbManager = dbManager;
+    }
+
     /**
      * Create a user via API for testing purposes
      * @param {import('@playwright/test').Page} page
@@ -32,6 +38,9 @@ export class UserFactory {
         });
 
         expect(response.ok()).toBeTruthy();
+        if (userData.whatsNewEnabled !== true) {
+            await this.dbManager?.disableWhatsNewForUser(userData.email);
+        }
         return response;
     }
 }

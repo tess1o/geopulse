@@ -71,6 +71,27 @@ export class DatabaseManager {
         return result.rows[0] || null;
     }
 
+    async disableWhatsNewForUser(email) {
+        if (!this.client) {
+            throw new Error('Database not connected');
+        }
+
+        const result = await this.client.query(
+            `UPDATE users
+             SET notification_preferences = jsonb_set(
+                 COALESCE(notification_preferences, '{}'::jsonb),
+                 '{whatsNewEnabled}',
+                 'false'::jsonb
+             )
+             WHERE email = $1`,
+            [email]
+        );
+
+        if (result.rowCount !== 1) {
+            throw new Error(`Could not disable What's New for ${email}`);
+        }
+    }
+
     async deleteUsersByEmails(emails) {
         if (!this.client) {
             throw new Error('Database not connected');

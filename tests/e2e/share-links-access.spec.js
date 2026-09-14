@@ -327,7 +327,7 @@ test.describe('Shared Links Public Access', () => {
 
       const zoomIconClasses = await sharedTimelinePage.getZoomToDataIconClasses();
       const viewerIconClasses = await sharedTimelinePage.getViewerLocationIconClasses();
-      expect(zoomIconClasses).toContain('pi-crosshairs');
+      expect(zoomIconClasses).toContain('pi-compass');
       expect(zoomIconClasses).not.toContain('pi-map-marker');
       expect(viewerIconClasses).toContain('pi-map-marker');
 

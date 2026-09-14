@@ -3,29 +3,30 @@ export class UserProfilePage {
     this.page = page;
     
     this.selectors = {
-      // Tab navigation - using PrimeVue TabMenu structure
-      profileTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Profile"))',
-      securityTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Security"))',
-      aiAssistantTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("AI Assistant"))',
-      immichTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Immich"))',
-      displayTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Display"))',
+      // Section navigation and Connected Apps subtabs
+      profileTab: '.settings-nav button:has-text("General")',
+      securityTab: '.settings-nav button:has-text("Security")',
+      connectedAppsTab: '.settings-nav button:has-text("Connected Apps")',
+      aiAssistantTab: '[role="tab"]:has-text("AI Assistant")',
+      immichTab: '[role="tab"]:has-text("Immich")',
+      displayTab: '.settings-nav button:has-text("Timeline & Map")',
       
       // Profile Information tab selectors
       profile: {
         fullNameInput: '#fullName',
         emailInput: '#email',
         timezoneDropdown: '#timezone',
-        timezoneDropdownTrigger: '#timezone .p-select-dropdown, #timezone .p-select-label',
+        timezoneDropdownTrigger: '#timezone [role="combobox"]',
         timezoneOptions: '[role="option"], .p-select-option',
-        timezoneLabel: '#timezone .p-select-label',
+        timezoneLabel: '#timezone [role="combobox"]',
         dateFormatDropdown: '#dateFormat',
-        dateFormatLabel: '#dateFormat .p-select-label',
+        dateFormatLabel: '#dateFormat [role="combobox"]',
         dateFormatOptions: '[role="option"], .p-select-option',
         timeFormatDropdown: '#timeFormat',
-        timeFormatLabel: '#timeFormat .p-select-label',
+        timeFormatLabel: '#timeFormat [role="combobox"]',
         timeFormatOptions: '[role="option"], .p-select-option',
         defaultRedirectUrlDropdown: '#defaultRedirectUrl',
-        defaultRedirectUrlLabel: '#defaultRedirectUrl .p-select-label',
+        defaultRedirectUrlLabel: '#defaultRedirectUrl [role="combobox"]',
         defaultRedirectUrlOptions: '[role="option"], .p-select-option',
         customRedirectUrlInput: '#customRedirectUrl',
         saveButton: 'button[type="submit"]:has-text("Save Changes")',
@@ -39,7 +40,7 @@ export class UserProfilePage {
       // Display tab selectors
       display: {
         customMapTileUrlInput: '#customMapTileUrl',
-        pathSimplificationToggle: '.setting-card:has-text("Enable Path Simplification") .p-toggleswitch',
+        pathSimplificationToggle: '#setting-pathSimplificationEnabled .p-toggleswitch',
         saveButton: 'button[type="submit"]:has-text("Save Changes")',
         resetButton: 'button:has-text("Reset to Defaults")',
         errorMessage: '.error-message'
@@ -69,7 +70,7 @@ export class UserProfilePage {
       
       // Immich Integration tab selectors
       immich: {
-        enableToggle: '.p-toggleswitch',
+        enableToggle: '#setting-immich-enabled .p-toggleswitch',
         serverUrlInput: '#immichServerUrl',
         apiKeyInput: '#immichApiKey input',
         saveButton: 'button[type="submit"]:has-text("Save Settings")',
@@ -124,7 +125,7 @@ export class UserProfilePage {
    */
   async switchToProfileTab() {
     await this.page.locator(this.selectors.profileTab).click();
-    await this.page.waitForTimeout(500); // Wait for tab content to load
+    await this.page.locator(this.selectors.profile.fullNameInput).waitFor();
   }
 
   /**
@@ -132,23 +133,25 @@ export class UserProfilePage {
    */
   async switchToSecurityTab() {
     await this.page.locator(this.selectors.securityTab).click();
-    await this.page.waitForTimeout(500);
+    await this.page.locator(this.selectors.security.newPasswordInput).waitFor();
   }
 
   /**
    * Switch to AI Assistant tab
    */
   async switchToAiAssistantTab() {
+    await this.page.locator(this.selectors.connectedAppsTab).click();
     await this.page.locator(this.selectors.aiAssistantTab).click();
-    await this.page.waitForTimeout(500);
+    await this.page.locator(this.selectors.ai.enableToggle).waitFor();
   }
 
   /**
    * Switch to Immich Integration tab
    */
   async switchToImmichTab() {
+    await this.page.locator(this.selectors.connectedAppsTab).click();
     await this.page.locator(this.selectors.immichTab).click();
-    await this.page.waitForTimeout(500);
+    await this.page.locator(this.selectors.immich.enableToggle).waitFor();
   }
 
   /**
@@ -156,52 +159,44 @@ export class UserProfilePage {
    */
   async switchToDisplayTab() {
     await this.page.locator(this.selectors.displayTab).click();
-    await this.page.waitForTimeout(500);
+    await this.page.locator(this.selectors.display.customMapTileUrlInput).waitFor();
   }
 
   /**
    * Check if Profile Information tab is active
    */
   async isProfileTabActive() {
-    const tabItem = this.page.locator(this.selectors.profileTab);
-    const classes = await tabItem.getAttribute('class');
-    return classes && classes.includes('p-tabmenu-item-active');
+    return await this.page.locator(this.selectors.profileTab).evaluate((element) => element.classList.contains('active'));
   }
 
   /**
    * Check if Security tab is active
    */
   async isSecurityTabActive() {
-    const tabItem = this.page.locator(this.selectors.securityTab);
-    const classes = await tabItem.getAttribute('class');
-    return classes && classes.includes('p-tabmenu-item-active');
+    return await this.page.locator(this.selectors.securityTab).evaluate((element) => element.classList.contains('active'));
   }
 
   /**
    * Check if AI Assistant tab is active
    */
   async isAiAssistantTabActive() {
-    const tabItem = this.page.locator(this.selectors.aiAssistantTab);
-    const classes = await tabItem.getAttribute('class');
-    return classes && classes.includes('p-tabmenu-item-active');
+    const tab = this.page.locator(this.selectors.aiAssistantTab);
+    return await tab.count() > 0 && await tab.getAttribute('aria-selected') === 'true';
   }
 
   /**
    * Check if Immich Integration tab is active
    */
   async isImmichTabActive() {
-    const tabItem = this.page.locator(this.selectors.immichTab);
-    const classes = await tabItem.getAttribute('class');
-    return classes && classes.includes('p-tabmenu-item-active');
+    const tab = this.page.locator(this.selectors.immichTab);
+    return await tab.count() > 0 && await tab.getAttribute('aria-selected') === 'true';
   }
 
   /**
    * Check if Display tab is active
    */
   async isDisplayTabActive() {
-    const tabItem = this.page.locator(this.selectors.displayTab);
-    const classes = await tabItem.getAttribute('class');
-    return classes && classes.includes('p-tabmenu-item-active');
+    return await this.page.locator(this.selectors.displayTab).evaluate((element) => element.classList.contains('active'));
   }
 
   // =============================================================================
@@ -219,6 +214,10 @@ export class UserProfilePage {
    * Select avatar by index
    */
   async selectAvatar(index) {
+    const avatarSetting = this.page.locator('.avatar-setting');
+    if (!await avatarSetting.getAttribute('open')) {
+      await avatarSetting.locator('summary').click();
+    }
     const avatarOptions = this.page.locator(this.selectors.profile.avatarOptions);
     await avatarOptions.nth(index).click();
   }
@@ -234,14 +233,7 @@ export class UserProfilePage {
    * Get current email value
    */
   async getEmailValue() {
-    return await this.page.inputValue(this.selectors.profile.emailInput);
-  }
-
-  /**
-   * Check if email field is disabled
-   */
-  async isEmailFieldDisabled() {
-    return await this.page.isDisabled(this.selectors.profile.emailInput);
+    return await this.page.locator('.account-context').textContent();
   }
 
   /**

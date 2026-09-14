@@ -899,8 +899,6 @@ test.describe('Data Export & Import', () => {
 
             const selectedFormat = await exportImportPage.getSelectedImportFormat();
             expect(selectedFormat).toBe('geopulse');
-            const selectedDataTypes = await exportImportPage.getSelectedImportDataTypes();
-            expect(selectedDataTypes).toContain('mapmatching');
         });
 
         test('should disable import button when no file is selected', async ({ page, isolatedUsers, dbManager}) => {

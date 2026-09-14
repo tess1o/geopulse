@@ -251,10 +251,7 @@ test.describe('Journey Insights', () => {
       
       // Check that the component is using computed properties correctly
       // We can verify this by checking the DOM elements have the expected classes and content
-      const timePatternCard = page.locator('.insight-stat-pattern:has-text("Most Active Time of Day")');
-      await expect(timePatternCard).toBeVisible();
-      
-      const timeValue = await timePatternCard.locator('.pattern-value').textContent();
+      const timeValue = await journeyInsightsPage.getMostActiveTime();
 
       // Verify the time is in the correct format (12-hour with AM/PM)
       const timeFormatRegex = /\d{1,2}:\d{2}\s*(AM|PM)/i;

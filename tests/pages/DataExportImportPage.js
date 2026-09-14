@@ -70,7 +70,9 @@ export class DataExportImportPage {
           geofencing: '#geofencing',
           notes: '#notes',
           weathersamples: '#weathersamples',
-          mapmatching: '#mapmatching'
+          mapmatching: '#mapmatching',
+          friends: '#friends',
+          friendpermissions: '#friendpermissions'
         },
 
         // Date range

@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -156,6 +157,7 @@ public class GeocodingProviderFactory {
             default -> callCustomProvider(providerName, requestCoordinates);
         };
         return request
+                .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, providerName))
                 .onFailure().invoke(failure -> integrationHealthService.recordFailure(
                         ExternalIntegrationType.GEOCODING,

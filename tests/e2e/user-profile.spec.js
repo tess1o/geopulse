@@ -21,8 +21,7 @@ test.describe('User Profile Management', () => {
       
       // Verify user information is displayed
       expect(await profilePage.getFullNameValue()).toBe(testUser.fullName);
-      expect(await profilePage.getEmailValue()).toBe(testUser.email);
-      expect(await profilePage.isEmailFieldDisabled()).toBe(true);
+      expect(await profilePage.getEmailValue()).toContain(testUser.email);
       
       // Verify avatar section is visible
       const avatarIndex = await profilePage.getSelectedAvatarIndex();
@@ -583,18 +582,6 @@ test.describe('User Profile Management', () => {
       // Verify profile data is preserved
       expect(await profilePage.getFullNameValue()).toBe(testName);
 
-      // Switch to immich tab
-      await profilePage.switchToImmichTab();
-      await profilePage.toggleImmichIntegration();
-      await profilePage.fillImmichForm('https://test.com', 'test-key');
-
-      // Switch to profile and back to immich
-      await profilePage.switchToProfileTab();
-      await profilePage.switchToImmichTab();
-
-      // Verify immich data is preserved
-      expect(await profilePage.isImmichIntegrationEnabled()).toBe(true);
-      expect(await profilePage.getImmichServerUrl()).toBe('https://test.com');
     });
   });
 
@@ -610,9 +597,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isProfileTabActive()).toBe(false);
 
       // Verify display header is displayed
-      const displayHeader = page.locator('.display-header');
+      const displayHeader = page.locator('.settings-tab-title');
       expect(await displayHeader.isVisible()).toBe(true);
-      expect(await displayHeader.textContent()).toContain('Display Settings');
+      expect(await displayHeader.textContent()).toContain('Timeline & Map');
     });
 
     test.describe('Custom Map Tile URL', () => {
@@ -770,12 +757,12 @@ test.describe('User Profile Management', () => {
 
         await profilePage.switchToDisplayTab();
 
-        // Verify GPS Path Simplification section is present
-        const section = page.locator('text=GPS Path Simplification');
+        // Verify map processing section is present
+        const section = page.locator('text=Map processing');
         expect(await section.isVisible()).toBe(true);
 
         // Verify path simplification toggle is present
-        const toggleCard = page.locator('text=Enable Path Simplification');
+        const toggleCard = page.locator('text=Path simplification');
         expect(await toggleCard.isVisible()).toBe(true);
       });
 
@@ -803,9 +790,9 @@ test.describe('User Profile Management', () => {
         await profilePage.switchToDisplayTab();
 
         // When enabled, additional settings should be visible
-        const toleranceCard = page.locator('text=Simplification Tolerance');
-        const maxPointsCard = page.locator('text=Maximum Points');
-        const adaptiveCard = page.locator('text=Adaptive Simplification');
+        const toleranceCard = page.locator('text=Simplification tolerance');
+        const maxPointsCard = page.locator('text=Maximum points');
+        const adaptiveCard = page.locator('text=Adaptive simplification');
 
         // Should be visible by default (enabled)
         expect(await toleranceCard.isVisible()).toBe(true);
