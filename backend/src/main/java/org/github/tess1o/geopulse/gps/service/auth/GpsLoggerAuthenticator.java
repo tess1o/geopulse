@@ -7,7 +7,6 @@ import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
-import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 import java.util.Optional;
 
@@ -19,13 +18,13 @@ import java.util.Optional;
 public class GpsLoggerAuthenticator extends AbstractGpsIntegrationAuthenticator {
 
     private final AuthenticationService authenticationService;
-    private final SecurePasswordUtils passwordUtils;
+    private final GpsBasicCredentialsValidator credentialsValidator;
 
     @Inject
     public GpsLoggerAuthenticator(AuthenticationService authenticationService,
-                                  SecurePasswordUtils passwordUtils) {
+                                  GpsBasicCredentialsValidator credentialsValidator) {
         this.authenticationService = authenticationService;
-        this.passwordUtils = passwordUtils;
+        this.credentialsValidator = credentialsValidator;
     }
 
     @Override
@@ -45,7 +44,7 @@ public class GpsLoggerAuthenticator extends AbstractGpsIntegrationAuthenticator 
         String[] authArray = authenticationService.extractUsernameAndPassword(authHeader);
         String password = authArray[1];
 
-        boolean isPasswordValid = passwordUtils.isPasswordValid(password, config.getPasswordHash());
+        boolean isPasswordValid = credentialsValidator.isValid(password, config.getPasswordHash());
         if (!isPasswordValid) {
             throw new InvalidPasswordException("Invalid password for GPSLogger");
         }
