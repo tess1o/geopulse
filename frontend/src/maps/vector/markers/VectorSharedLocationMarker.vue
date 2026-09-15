@@ -91,6 +91,7 @@ const createMarker = () => {
     return
   }
 
+  const shouldOpenPopup = props.openPopup && (popup ? popup.isOpen() : true)
   removeMarker()
 
   const markerConfig = createMarkerElement()
@@ -109,7 +110,7 @@ const createMarker = () => {
     .setPopup(popup)
     .addTo(props.map)
 
-  if (props.openPopup) {
+  if (shouldOpenPopup) {
     marker.togglePopup()
   }
 }

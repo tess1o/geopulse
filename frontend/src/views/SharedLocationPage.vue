@@ -110,16 +110,39 @@
             <template v-if="!isMapEmbed" #header>
               <div class="map-header">
                 <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
-                <Button
-                    icon="pi pi-refresh"
-                    @click="refreshLocationData"
-                    :loading="refreshing"
-                    severity="secondary"
-                    outlined
-                    size="small"
-                    class="refresh-btn"
-                    v-tooltip.bottom="'Refresh location data'"
-                />
+                <div class="map-actions">
+                  <Select
+                      v-model="autoRefreshIntervalMs"
+                      :options="autoRefreshOptions"
+                      option-label="label"
+                      option-value="value"
+                      size="small"
+                      aria-label="Auto-refresh interval"
+                      class="auto-refresh-select"
+                  />
+                  <Button
+                      icon="pi pi-compass"
+                      @click="toggleAutoFollow"
+                      :severity="autoFollow ? 'primary' : 'secondary'"
+                      :outlined="!autoFollow"
+                      size="small"
+                      class="refresh-btn"
+                      :aria-label="autoFollow ? 'Disable auto-follow' : 'Enable auto-follow'"
+                      :aria-pressed="autoFollow"
+                      v-tooltip.bottom="autoFollow ? 'Auto-following live location' : 'Auto-follow disabled'"
+                  />
+                  <Button
+                      icon="pi pi-refresh"
+                      @click="refreshLocationData"
+                      :loading="refreshing"
+                      severity="secondary"
+                      outlined
+                      size="small"
+                      class="refresh-btn"
+                      aria-label="Refresh location data"
+                      v-tooltip.bottom="'Refresh location data'"
+                  />
+                </div>
               </div>
             </template>
             <template #content>
@@ -127,7 +150,7 @@
                 <MapContainer
                     ref="mapContainerRef"
                     map-id="shared-location-map"
-                    :center="[shareData.latitude, shareData.longitude]"
+                    :center="initialMapCenter"
                     :zoom="15"
                     height="100%"
                     width="100%"
@@ -219,9 +242,10 @@
 </template>
 
 <script setup>
-import {computed, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRoute} from 'vue-router'
 import {Button, Card, Password, ProgressSpinner} from 'primevue'
+import Select from 'primevue/select'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import {MapContainer} from '@/components/maps'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
@@ -250,6 +274,16 @@ const password = ref('')
 const refreshing = ref(false)
 const pathData = ref([])
 const shouldFitViewerLocation = ref(false)
+const initialMapCenter = ref(null)
+const autoFollow = ref(true)
+const autoRefreshIntervalMs = ref(15_000)
+const autoRefreshOptions = [
+  {label: 'Auto: Off', value: 0},
+  {label: 'Auto: 5 sec', value: 5_000},
+  {label: 'Auto: 15 sec', value: 15_000},
+  {label: 'Auto: 30 sec', value: 30_000}
+]
+let autoRefreshTimer = null
 
 // Template refs
 const mapContainerRef = ref(null)
@@ -398,6 +432,30 @@ const storeAccessToken = (tokenResponse) => {
   }
 }
 
+const applyLocationData = (locationData, preserveMeta = false) => {
+  if (!locationData) return
+
+  const currentLocation = locationData.current || locationData
+  if (!initialMapCenter.value && hasValidCoordinate(currentLocation.latitude) && hasValidCoordinate(currentLocation.longitude)) {
+    initialMapCenter.value = [Number(currentLocation.latitude), Number(currentLocation.longitude)]
+  }
+
+  shareData.value = {
+    ...(preserveMeta ? shareData.value : {
+      sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
+      shareName: shareLinksStore.getSharedLocationInfo?.name || 'Shared Location',
+      description: shareLinksStore.getSharedLocationInfo?.description || ''
+    }),
+    latitude: currentLocation.latitude,
+    longitude: currentLocation.longitude,
+    sharedAt: currentLocation.timestamp || timezone.now().toISOString()
+  }
+
+  pathData.value = shareLinksStore.getSharedLocationInfo?.show_history && locationData.history?.length
+      ? [locationData.history.map(({latitude, longitude, timestamp}) => ({latitude, longitude, timestamp}))]
+      : []
+}
+
 // Verify password for protected links
 const verifyPassword = async () => {
   try {
@@ -428,35 +486,10 @@ const loadLocationData = async () => {
     loading.value = true
 
     await shareLinksStore.fetchSharedLocation(linkId)
-    const locationData = shareLinksStore.getSharedLocationData
-
-    // Convert to expected format
-    if (locationData) {
-      // Handle both current-only and current+history response formats
-      const currentLocation = locationData.current || locationData
-
-      shareData.value = {
-        sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
-        shareName: shareLinksStore.getSharedLocationInfo?.name || 'Shared Location',
-        description: shareLinksStore.getSharedLocationInfo?.description || '',
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp
-      }
-
-      // Process history data if available
-      if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
-        pathData.value = [locationData.history.map(point => ({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          timestamp: point.timestamp
-        }))]
-      } else {
-        pathData.value = []
-      }
-    }
+    applyLocationData(shareLinksStore.getSharedLocationData)
 
     loading.value = false
+    ensureAutoRefresh()
   } catch (err) {
     // Clean up stored token if it's no longer valid for location access
     if (err.message?.includes('No access token') ||
@@ -481,35 +514,14 @@ const loadLocationData = async () => {
 
 // Refresh location data without re-authentication
 const refreshLocationData = async () => {
+  if (refreshing.value) return
+
   try {
     refreshing.value = true
 
     await shareLinksStore.fetchSharedLocation(linkId)
-    const locationData = shareLinksStore.getSharedLocationData
-
-    // Update shareData with new location info
-    if (locationData) {
-      // Handle both current-only and current+history response formats
-      const currentLocation = locationData.current || locationData
-
-      shareData.value = {
-        ...shareData.value, // Keep existing name, description
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp || timezone.now().toISOString()
-      }
-
-      // Update history data if available
-      if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
-        pathData.value = [locationData.history.map(point => ({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          timestamp: point.timestamp
-        }))]
-      } else {
-        pathData.value = []
-      }
-    }
+    applyLocationData(shareLinksStore.getSharedLocationData, true)
+    followLiveLocation()
   } catch (err) {
     // Clean up stored token if refresh fails due to invalid token
     if (err.message?.includes('No access token') ||
@@ -518,15 +530,77 @@ const refreshLocationData = async () => {
         err.status === 403) {
       localStorage.removeItem(`shareLink_${linkId}`)
 
-      // If token was invalid, redirect back to password entry for protected links
       if (shareLinksStore.getSharedLocationInfo?.has_password) {
         needsPassword.value = true
-        error.value = 'Session expired. Please enter password again.'
+        error.value = null
         loading.value = false
+        stopAutoRefresh()
+      } else {
+        try {
+          const tokenResponse = await shareLinksStore.verifySharedLink(linkId)
+          storeAccessToken(tokenResponse)
+          await refreshLocationDataAfterRenewal()
+        } catch (renewalError) {
+          console.error('Failed to renew shared location access:', renewalError)
+        }
       }
+    } else {
+      console.error('Failed to refresh shared location:', err)
     }
   } finally {
     refreshing.value = false
+  }
+}
+
+const refreshLocationDataAfterRenewal = async () => {
+  await shareLinksStore.fetchSharedLocation(linkId)
+  applyLocationData(shareLinksStore.getSharedLocationData, true)
+  followLiveLocation()
+}
+
+const followLiveLocation = () => {
+  if (!autoFollow.value || !shareData.value ||
+      !hasValidCoordinate(shareData.value.latitude) || !hasValidCoordinate(shareData.value.longitude)) return
+
+  nextTick(() => {
+    const zoom = mapContainerRef.value?.getMap?.()?.getZoom?.() ?? 15
+    mapContainerRef.value?.setView?.(
+        [Number(shareData.value.latitude), Number(shareData.value.longitude)],
+        zoom,
+        {animate: true}
+    )
+  })
+}
+
+const toggleAutoFollow = () => {
+  autoFollow.value = !autoFollow.value
+  followLiveLocation()
+}
+
+const stopAutoRefresh = () => {
+  if (autoRefreshTimer) {
+    window.clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+const canAutoRefresh = () => autoRefreshIntervalMs.value > 0 &&
+    shareData.value && !loading.value && !needsPassword.value && !error.value &&
+    (typeof document === 'undefined' || document.visibilityState === 'visible')
+
+const ensureAutoRefresh = () => {
+  stopAutoRefresh()
+  if (!canAutoRefresh()) return
+
+  autoRefreshTimer = window.setInterval(refreshLocationData, autoRefreshIntervalMs.value)
+}
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    ensureAutoRefresh()
+    refreshLocationData()
+  } else {
+    stopAutoRefresh()
   }
 }
 
@@ -599,8 +673,17 @@ const visitGeoPulse = () => {
 
 
 // Lifecycle
-onMounted(() => {
-  initializeSharedView()
+onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  await initializeSharedView()
+  ensureAutoRefresh()
+})
+
+watch(autoRefreshIntervalMs, ensureAutoRefresh)
+
+onUnmounted(() => {
+  stopAutoRefresh()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // Note: Not clearing store data on unmount to allow page refresh persistence
@@ -915,6 +998,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--p-surface-border);
 }
@@ -924,6 +1008,16 @@ onMounted(() => {
   font-weight: 600;
   margin: 0;
   color: var(--p-text-color);
+}
+
+.map-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auto-refresh-select {
+  width: 9rem;
 }
 
 .refresh-btn {
@@ -1037,6 +1131,10 @@ onMounted(() => {
 
   .shared-content--map-embed {
     padding: 0;
+  }
+
+  .map-header {
+    flex-wrap: wrap;
   }
 
   .location-display {

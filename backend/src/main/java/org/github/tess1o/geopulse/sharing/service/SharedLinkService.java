@@ -270,12 +270,14 @@ public class SharedLinkService {
         log.info("Share link deleted successfully: {}", linkId);
     }
 
+    @Transactional
     public SharedLocationInfo getSharedLocationInfo(UUID linkId) {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
             throw new NotFoundException("Link not found or expired");
         }
 
+        sharedLinkRepository.incrementViewCount(linkId);
         return mapper.toLocationInfo(entityOpt.get());
     }
 
@@ -318,7 +320,6 @@ public class SharedLinkService {
 
         SharedLinkEntity entity = entityOpt.get();
 
-        sharedLinkRepository.incrementViewCount(linkId);
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
@@ -442,9 +443,6 @@ public class SharedLinkService {
         }
 
         TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
-
-        // Increment view count on first timeline access
-        sharedLinkRepository.incrementViewCount(linkId);
 
         // Get timeline data for the effective date range
         // This automatically includes overnight stays via boundary expansion

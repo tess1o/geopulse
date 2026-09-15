@@ -426,6 +426,10 @@ const props = defineProps({
     type: Object,
     default: () => null
   },
+  preserveViewportOnDataRefresh: {
+    type: Boolean,
+    default: false
+  },
   rawPathData: {
     type: Object,
     default: () => null
@@ -1251,6 +1255,7 @@ const handleMapReady = (mapInstance) => {
   
   // Fit map to data if available
   if (hasAnyData.value && dataBounds.value) {
+    lastBoundsString = JSON.stringify(dataBounds.value)
     nextTick(() => {
       applyTimelineDataViewport(dataBounds.value)
     })
@@ -2108,7 +2113,9 @@ watch(dataBounds, (newBounds) => {
   if (map.value && newBounds && hasAnyData.value) {
     const boundsString = JSON.stringify(newBounds)
     if (boundsString !== lastBoundsString) {
+      const shouldFitBounds = !lastBoundsString || !props.preserveViewportOnDataRefresh
       lastBoundsString = boundsString
+      if (!shouldFitBounds) return
       nextTick(() => {
         // Delay fitBounds to let initial tiles load
         setTimeout(() => {
@@ -2189,7 +2196,7 @@ const invalidateSize = () => {
   mapContainerRef.value?.invalidateSize?.()
 }
 
-const setView = (center, zoom, options = {}) => {
+const setView = (center, zoom = map.value?.getZoom?.(), options = {}) => {
   mapContainerRef.value?.setView?.(center, zoom, options)
 }
 

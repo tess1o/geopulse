@@ -93,6 +93,38 @@ test.describe('Shared Links Public Access', () => {
       expect(mapBox.height).toBeGreaterThanOrEqual(viewport.height - 2);
     });
 
+    test('should auto-refresh live location at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedLocationPage = new SharedLocationPage(page);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL, createManagedUser(isolatedUsers)
+      );
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000004',
+        name: 'Live Location Auto Refresh'
+      });
+      let locationRequests = 0;
+
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith(`/api/shared/${link.id}/location`)) locationRequests++;
+      });
+
+      await sharedLocationPage.navigateToSharedLink(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForLocationToLoad();
+      expect(await sharedLocationPage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      expect(await sharedLocationPage.isAutoFollowEnabled()).toBe(true);
+
+      const requestsBeforePolling = locationRequests;
+      await sharedLocationPage.selectAutoRefresh('Auto: 5 sec');
+      await expect.poll(() => locationRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
+
+      await sharedLocationPage.selectAutoRefresh('Auto: Off');
+      await page.waitForTimeout(1000);
+      const requestsAfterStopping = locationRequests;
+      await page.waitForTimeout(5500);
+      expect(locationRequests).toBe(requestsAfterStopping);
+    });
+
     test('should access public live location share with history', async ({page, isolatedUsers, dbManager, context}) => {
       const sharedLocationPage = new SharedLocationPage(page);
 
@@ -299,6 +331,38 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedTimelinePage.isHeaderVisible()).toBe(false);
       expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
       expect(await sharedTimelinePage.isTimelineSidebarVisible()).toBe(true);
+    });
+
+    test('should auto-refresh an active timeline at the selected interval and stop when disabled', async ({page, isolatedUsers, dbManager, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM, createManagedUser(isolatedUsers)
+      );
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: 'a1000000-0000-0000-0000-000000000005',
+        name: 'Timeline Auto Refresh'
+      });
+      let timelineRequests = 0;
+
+      page.on('request', request => {
+        if (new URL(request.url()).pathname.endsWith(`/api/shared/${link.id}/timeline`)) timelineRequests++;
+      });
+
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      expect(await sharedTimelinePage.getAutoRefreshLabel()).toContain('Auto: 15 sec');
+      expect(await sharedTimelinePage.isAutoFollowEnabled()).toBe(false);
+
+      const requestsBeforePolling = timelineRequests;
+      await sharedTimelinePage.selectAutoRefresh('Auto: 5 sec');
+      await expect.poll(() => timelineRequests, {timeout: 8000}).toBeGreaterThan(requestsBeforePolling);
+
+      await sharedTimelinePage.selectAutoRefresh('Auto: Off');
+      await page.waitForTimeout(1000);
+      const requestsAfterStopping = timelineRequests;
+      await page.waitForTimeout(5500);
+      expect(timelineRequests).toBe(requestsAfterStopping);
     });
 
     test('should keep timeline map controls and viewer location control distinct', async ({page, isolatedUsers, dbManager, context}) => {
@@ -632,6 +696,10 @@ test.describe('Shared Links Public Access', () => {
       let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
 
+      await page.locator(sharedLocationPage.selectors.refreshButton).click();
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
+
       // Second access (reload)
       await page.reload();
       await sharedLocationPage.waitForLocationToLoad();
@@ -662,6 +730,10 @@ test.describe('Shared Links Public Access', () => {
 
       let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
+
+      await page.locator(sharedTimelinePage.selectors.refreshButton).click();
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+      expect(await ShareLinkFactory.getViewCount(dbManager, link.id)).toBe(1);
 
       // Second access
       await page.reload();

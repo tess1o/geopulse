@@ -55,8 +55,23 @@
                  v-if="filterStartDate || filterEndDate"
                  v-tooltip.bottom="'Clear filter'"
                  aria-label="Clear date filter" />
+          <Select v-if="shareInfo.timeline_status === 'active'"
+                  v-model="autoRefreshIntervalMs"
+                  :options="autoRefreshOptions"
+                  option-label="label"
+                  option-value="value"
+                  size="small"
+                  aria-label="Auto-refresh interval"
+                  class="auto-refresh-select" />
+          <Button v-if="shareInfo.timeline_status === 'active' && shareInfo.show_current_location"
+                 icon="pi pi-compass" text rounded @click="toggleAutoFollow"
+                 :severity="autoFollow ? 'primary' : 'secondary'"
+                 :aria-label="autoFollow ? 'Disable auto-follow' : 'Enable auto-follow'"
+                 :aria-pressed="autoFollow"
+                 v-tooltip.bottom="autoFollow ? 'Auto-following current location' : 'Auto-follow disabled'" />
           <Button v-if="shareInfo.timeline_status === 'active'"
                  icon="pi pi-refresh" text rounded @click="refreshData"
+                 :loading="refreshing"
                  v-tooltip.bottom="'Refresh'"
                  aria-label="Refresh data" />
         </div>
@@ -215,6 +230,7 @@
                 :custom-style-url="shareInfo.custom_map_style_url"
                 :map-render-mode="shareInfo.map_render_mode"
                 :is-shared-view="true"
+                :preserve-viewport-on-data-refresh="true"
                 @timeline-marker-click="handleTimelineItemClick"
                 @viewer-location-request="handleViewerLocationRequest"
                 @viewer-location-stop="viewerLocation.disable"
@@ -244,7 +260,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useNotesStore } from '@/stores/notes'
@@ -260,6 +276,7 @@ import Password from 'primevue/password'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import DatePicker from 'primevue/datepicker'
+import Select from 'primevue/select'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
@@ -282,6 +299,16 @@ const authenticated = ref(false)
 const password = ref('')
 const passwordError = ref(null)
 const verifying = ref(false)
+const refreshing = ref(false)
+const autoFollow = ref(false)
+const autoRefreshIntervalMs = ref(15_000)
+const autoRefreshOptions = [
+  {label: 'Auto: Off', value: 0},
+  {label: 'Auto: 5 sec', value: 5_000},
+  {label: 'Auto: 15 sec', value: 15_000},
+  {label: 'Auto: 30 sec', value: 30_000}
+]
+let autoRefreshTimer = null
 
 const shareInfo = ref(null)
 const timelineData = ref(null)
@@ -419,7 +446,9 @@ watch([shareInfo, timelineData], ([info, data]) => {
 })
 
 onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   await loadShareInfo()
+  ensureAutoRefresh()
 })
 
 async function loadShareInfo() {
@@ -498,6 +527,7 @@ async function handlePasswordSubmit() {
 
     authenticated.value = true
     await loadTimelineData()
+    ensureAutoRefresh()
   } catch (err) {
     console.error('Password verification failed:', err)
     passwordError.value = err.userMessage || 'Invalid password'
@@ -506,13 +536,16 @@ async function handlePasswordSubmit() {
   }
 }
 
-async function loadTimelineData() {
+async function loadTimelineData({silent = false} = {}) {
   if (shareInfo.value.timeline_status === 'upcoming') {
     // Don't load timeline for upcoming trips
     return
   }
+  if (refreshing.value) return
 
+  let retryAfterRenewal = false
   try {
+    refreshing.value = true
     // Determine date range to fetch
     let startTime = null
     let endTime = null
@@ -547,15 +580,90 @@ async function loadTimelineData() {
     if (shareInfo.value.show_current_location &&
         shareInfo.value.timeline_status === 'active') {
       currentLocation.value = await shareLinksStore.fetchSharedCurrentLocation(linkId)
+      followCurrentLocation()
     }
+    error.value = null
   } catch (err) {
     console.error('Failed to load timeline data:', err)
-    error.value = 'Failed to load timeline data'
+    if (isAccessError(err)) {
+      localStorage.removeItem(`shareLink_${linkId}`)
+      if (shareInfo.value.has_password) {
+        authenticated.value = false
+        needsPassword.value = true
+        error.value = null
+        stopAutoRefresh()
+      } else {
+        try {
+          const response = await shareLinksStore.verifySharedLink(linkId)
+          storeToken(response)
+          retryAfterRenewal = true
+        } catch (renewalError) {
+          console.error('Failed to renew shared timeline access:', renewalError)
+          if (!silent) error.value = 'Failed to load timeline data'
+        }
+      }
+    } else if (!silent) {
+      error.value = 'Failed to load timeline data'
+    }
+  } finally {
+    refreshing.value = false
   }
+
+  if (retryAfterRenewal) await loadTimelineData({silent})
 }
 
 async function refreshData() {
   await loadTimelineData()
+}
+
+function followCurrentLocation() {
+  if (!autoFollow.value || !currentLocation.value ||
+      !hasValidCoordinate(currentLocation.value.latitude) || !hasValidCoordinate(currentLocation.value.longitude)) return
+
+  timelineMapRef.value?.setView?.(
+      [Number(currentLocation.value.latitude), Number(currentLocation.value.longitude)],
+      undefined,
+      {animate: true}
+  )
+}
+
+function toggleAutoFollow() {
+  autoFollow.value = !autoFollow.value
+  followCurrentLocation()
+}
+
+function isAccessError(err) {
+  return err?.status === 401 || err?.status === 403 ||
+      err?.message?.includes('No access token') || err?.message?.includes('Access denied')
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshTimer) {
+    window.clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+}
+
+function canAutoRefresh() {
+  return autoRefreshIntervalMs.value > 0 && authenticated.value && timelineData.value &&
+      shareInfo.value?.timeline_status === 'active' && !loading.value && !needsPassword.value && !error.value &&
+      (typeof document === 'undefined' || document.visibilityState === 'visible')
+}
+
+function ensureAutoRefresh() {
+  stopAutoRefresh()
+  if (!canAutoRefresh()) return
+
+  autoRefreshTimer = window.setInterval(() => loadTimelineData({silent: true}), autoRefreshIntervalMs.value)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    ensureAutoRefresh()
+    loadTimelineData({silent: true})
+  } else {
+    stopAutoRefresh()
+  }
 }
 
 function getStoredToken() {
@@ -581,6 +689,13 @@ function storeToken(response) {
   }
   localStorage.setItem(`shareLink_${linkId}`, JSON.stringify(tokenData))
 }
+
+watch(autoRefreshIntervalMs, ensureAutoRefresh)
+
+onUnmounted(() => {
+  stopAutoRefresh()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
 
 function formatDate(dateStr) {
   if (!dateStr) return 'N/A'
@@ -788,6 +903,11 @@ function handleTimelineItemClick(item) {
 
 .header-datepicker {
   width: 240px;
+  flex-shrink: 0;
+}
+
+.auto-refresh-select {
+  width: 9rem;
   flex-shrink: 0;
 }
 
