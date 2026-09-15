@@ -168,7 +168,7 @@
             <p class="priority-banner-description">
               Trips are classified in priority order from left to right. Once a match is found, classification stops.
               <a
-                href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"
+                href="https://geopulse.cc/docs/user-guide/timeline/travel_classification"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="doc-link"

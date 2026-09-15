@@ -81,7 +81,7 @@
                       <h3 class="banner-title">How Timeline Processing Works</h3>
                       <p class="banner-description">
                         Your GPS data is processed to identify meaningful stays and trips. These settings control the sensitivity of this detection and apply only to your account. Some changes (like speed thresholds) quickly update trip classifications, while others require full timeline re-generation depending on your GPS data volume.
-                        <a href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">Learn more in the documentation <i class="pi pi-external-link" /></a>
+                        <a href="https://geopulse.cc/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">Learn more in the documentation <i class="pi pi-external-link" /></a>
                       </p>
                     </div>
                   </div>

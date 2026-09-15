@@ -243,31 +243,31 @@ const docLinks = ref([
     title: 'Getting Started',
     description: 'Quick start guide and initial setup',
     icon: 'pi pi-play',
-    url: 'https://tess1o.github.io/geopulse/docs/getting-started/quick-start'
+    url: 'https://geopulse.cc/docs/getting-started/quick-start'
   },
   {
     title: 'Timeline Features',
     description: 'How timeline generation and processing works',
     icon: 'pi pi-calendar',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline'
+    url: 'https://geopulse.cc/docs/user-guide/core-features/timeline'
   },
   {
     title: 'Trip Classification',
     description: 'Understanding how trips are classified',
     icon: 'pi pi-car',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification'
+    url: 'https://geopulse.cc/docs/user-guide/timeline/travel_classification'
   },
   {
     title: 'Location Sources',
     description: 'Supported GPS tracking sources and setup',
     icon: 'pi pi-map-marker',
-    url: 'https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview'
+    url: 'https://geopulse.cc/docs/user-guide/gps-sources/overview'
   },
   {
     title: 'FAQ',
     description: 'Frequently asked questions',
     icon: 'pi pi-question-circle',
-    url: 'https://tess1o.github.io/geopulse/docs/faq'
+    url: 'https://geopulse.cc/docs/faq'
   },
   {
     title: 'Full Documentation',

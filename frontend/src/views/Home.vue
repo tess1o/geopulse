@@ -9,7 +9,7 @@
         <div class="nav-actions">
           <div class="nav-resource-links" aria-label="Project resources">
             <a
-                href="https://tess1o.github.io/geopulse/docs/getting-started/introduction"
+                href="https://geopulse.cc/docs/getting-started/introduction"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="nav-link-pill">

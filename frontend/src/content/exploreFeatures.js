@@ -11,7 +11,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-send',
     colorClass: 'chip-1-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview',
+    learnMoreUrl: 'https://geopulse.cc/docs/user-guide/gps-sources/overview',
     learnMoreType: 'docs',
   },
   {
@@ -26,7 +26,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-download',
     colorClass: 'chip-2-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/user-guide/interacting-with-data/import-export',
+    learnMoreUrl: 'https://geopulse.cc/docs/user-guide/interacting-with-data/import-export',
     learnMoreType: 'docs',
   },
   {
@@ -42,7 +42,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-calendar',
     colorClass: 'chip-3-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline',
+    learnMoreUrl: 'https://geopulse.cc/docs/user-guide/core-features/timeline',
     learnMoreType: 'docs',
   },
   {
@@ -85,7 +85,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-map-marker',
     colorClass: 'chip-7-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/user-guide/core-features/geofences',
+    learnMoreUrl: 'https://geopulse.cc/docs/user-guide/core-features/geofences',
     learnMoreType: 'docs',
   },
   {
@@ -100,7 +100,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-images',
     colorClass: 'chip-5-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/user-guide/personalization/immich-integration',
+    learnMoreUrl: 'https://geopulse.cc/docs/user-guide/personalization/immich-integration',
     learnMoreType: 'docs',
   },
   {
@@ -115,7 +115,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-cloud',
     colorClass: 'chip-1-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/system-administration/configuration/weather',
+    learnMoreUrl: 'https://geopulse.cc/docs/system-administration/configuration/weather',
     learnMoreType: 'docs',
   },
   {
@@ -130,7 +130,7 @@ export const EXPLORE_FEATURES = [
     ],
     icon: 'pi pi-sparkles',
     colorClass: 'chip-8-color',
-    learnMoreUrl: 'https://tess1o.github.io/geopulse/docs/api/mcp',
+    learnMoreUrl: 'https://geopulse.cc/docs/api/mcp',
     learnMoreType: 'docs',
   },
 ]

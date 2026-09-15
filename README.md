@@ -59,8 +59,8 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Smart Detection:** Automatically converts GPS points into stays, trips, and data gaps.
 - **Custom Logic:** Fully configurable detection sensitivity and travel mode classification.
 - **Deep Insights:** Analytics for distance, visit frequency, and movement patterns over time.
-- **[Map Matching](https://tess1o.github.io/geopulse/docs/user-guide/timeline/map-matching):** Valhalla-backed route refinement makes noisy trip paths follow roads and paths while raw GPS remains authoritative.
-- **[Panoramax](https://tess1o.github.io/geopulse/docs/system-administration/configuration/panoramax):** Optional public street-level imagery coverage and photo viewing on Timeline maps.
+- **[Map Matching](https://geopulse.cc/docs/user-guide/timeline/map-matching):** Valhalla-backed route refinement makes noisy trip paths follow roads and paths while raw GPS remains authoritative.
+- **[Panoramax](https://geopulse.cc/docs/system-administration/configuration/panoramax):** Optional public street-level imagery coverage and photo viewing on Timeline maps.
 - **Immich Integration:** Photos from your library appear directly on your map timeline.
 - **Memos Integration:** Timestamped notes from Memos can appear alongside your timeline.
 - **Weather Integration:** Current weather enrichment is enabled by default for trips, stays, map layers, and journey insights; historical backfill is admin opt-in. See [Weather processing architecture](docs/WEATHER_PROCESSING.md).
@@ -73,7 +73,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 **AI Chat & MCP**
 
 - **AI Chat:** Bring your own OpenAI-compatible key for AI-assisted insights.
-- **[MCP Server](https://tess1o.github.io/geopulse/docs/api/mcp):** Read-only, API-token-authenticated tools for AI clients to query their timeline and permitted friend data.
+- **[MCP Server](https://geopulse.cc/docs/api/mcp):** Read-only, API-token-authenticated tools for AI clients to query their timeline and permitted friend data.
 
 **Sharing & Privacy**
 
@@ -87,7 +87,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Lightweight:** Typically under 100MB RAM and 1% CPU usage.
 - **Self-Sovereign:** No telemetry, no analytics beacons, and no third-party tracking.
 - **Data Freedom:** Full data export and per-account deletion support.
-- **[Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore):** Encrypted, password-protected full backups with manual restore and scheduled automatic backups.
+- **[Backup & Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore):** Encrypted, password-protected full backups with manual restore and scheduled automatic backups.
 
 ---
 
@@ -133,13 +133,13 @@ Choose the installation path that matches your environment:
 
 | Installation type | Best for | Guide |
 |-------------------|----------|-------|
-| Docker Compose | Fastest path for local and single-server use | [Docker Compose Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) |
-| Unraid | Unraid NAS and homelab servers using Docker Compose | [Unraid Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/unraid) |
-| Proxmox VE LXC | Proxmox homelabs and VM hosts that prefer LXC containers | [Proxmox VE LXC Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) |
-| Kubernetes / Helm | Managed clusters and production Kubernetes environments | [Kubernetes Quick Install](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) |
-| Helm values reference | Advanced Helm customization | [Helm Values Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm-deployment) |
-| Manual installation | Bare metal servers or VMs without Docker/Kubernetes | [Manual Installation Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) |
-| Environment configuration | Reviewing all runtime settings | [Environment Variables Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables) |
+| Docker Compose | Fastest path for local and single-server use | [Docker Compose Guide](https://geopulse.cc/docs/getting-started/deployment/docker-compose) |
+| Unraid | Unraid NAS and homelab servers using Docker Compose | [Unraid Guide](https://geopulse.cc/docs/getting-started/deployment/unraid) |
+| Proxmox VE LXC | Proxmox homelabs and VM hosts that prefer LXC containers | [Proxmox VE LXC Guide](https://geopulse.cc/docs/getting-started/deployment/proxmox-lxc) |
+| Kubernetes / Helm | Managed clusters and production Kubernetes environments | [Kubernetes Quick Install](https://geopulse.cc/docs/getting-started/deployment/kubernetes-helm) |
+| Helm values reference | Advanced Helm customization | [Helm Values Reference](https://geopulse.cc/docs/getting-started/deployment/helm-deployment) |
+| Manual installation | Bare metal servers or VMs without Docker/Kubernetes | [Manual Installation Guide](https://geopulse.cc/docs/getting-started/deployment/manual-installation) |
+| Environment configuration | Reviewing all runtime settings | [Environment Variables Reference](https://geopulse.cc/docs/getting-started/deployment/environment-variables) |
 
 ### Kubernetes / Helm Quick Install
 
@@ -153,17 +153,17 @@ helm install my-geopulse geopulse/geopulse
 
 1. Create the first account to become admin automatically, or set `GEOPULSE_ADMIN_EMAIL` for an explicit admin email.
 2. Finish setup in the Admin Panel.
-3. See [Initial Setup Guide](https://tess1o.github.io/geopulse/docs/system-administration/initial-setup) for more.
+3. See [Initial Setup Guide](https://geopulse.cc/docs/system-administration/initial-setup) for more.
 
 ---
 
 ## 📖 Docs & Next Steps
 
-* **New users:** [Quick Start Guide](https://tess1o.github.io/geopulse/docs/getting-started/quick-start)
-* **GPS setup:** [GPS Sources Overview](https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview)
-* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Unraid](https://tess1o.github.io/geopulse/docs/getting-started/deployment/unraid) | [Proxmox](https://tess1o.github.io/geopulse/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://tess1o.github.io/geopulse/docs/getting-started/deployment/manual-installation) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
-* **Administration:** [Admin Panel](https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://tess1o.github.io/geopulse/docs/system-administration/configuration/oidc-sso)
-* **Maintenance:** [Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore) | [Updating](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/updating)
+* **New users:** [Quick Start Guide](https://geopulse.cc/docs/getting-started/quick-start)
+* **GPS setup:** [GPS Sources Overview](https://geopulse.cc/docs/user-guide/gps-sources/overview)
+* **Deployment:** [Docker](https://geopulse.cc/docs/getting-started/deployment/docker-compose) | [Unraid](https://geopulse.cc/docs/getting-started/deployment/unraid) | [Proxmox](https://geopulse.cc/docs/getting-started/deployment/proxmox-lxc) | [Kubernetes](https://geopulse.cc/docs/getting-started/deployment/kubernetes-helm) | [Manual](https://geopulse.cc/docs/getting-started/deployment/manual-installation) | [Env Variables](https://geopulse.cc/docs/getting-started/deployment/environment-variables)
+* **Administration:** [Admin Panel](https://geopulse.cc/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://geopulse.cc/docs/system-administration/configuration/oidc-sso)
+* **Maintenance:** [Backup & Restore](https://geopulse.cc/docs/system-administration/maintenance/backup-restore) | [Updating](https://geopulse.cc/docs/system-administration/maintenance/updating)
 * **Full documentation:** [Documentation Portal](https://tess1o.github.io/geopulse/)
 
 ---

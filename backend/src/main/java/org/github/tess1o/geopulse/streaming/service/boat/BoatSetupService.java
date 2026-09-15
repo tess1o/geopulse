@@ -50,7 +50,7 @@ public class BoatSetupService {
 
     public static final String DATASET_KEY = "water_surfaces_v1";
     public static final String DATASET_VERSION = "water_surfaces_v1";
-    public static final String DOCS_URL = "https://tess1o.github.io/geopulse/docs/user-guide/timeline/boat-setup";
+    public static final String DOCS_URL = "https://geopulse.cc/docs/user-guide/timeline/boat-setup";
     private static final int ENRICH_BATCH_SIZE = 25_000;
     private static final long DATASET_LOCK_KEY = 0x600A7L;
     private static final long USER_LOCK_NAMESPACE = 0x600A7000L;
