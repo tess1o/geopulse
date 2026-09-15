@@ -55,7 +55,7 @@ public class BackupHealthMonitoringService {
 
     void checkHealthAt(Instant now) {
         AdminBackupConfigDto config = backupService.getConfig();
-        if (config.getHealthMaxAgeDays() == 0) return;
+        if (!config.isScheduledEnabled() || config.getHealthMaxAgeDays() == 0) return;
 
         Instant latestBackupAt;
         try {

@@ -87,11 +87,20 @@ class BackupHealthMonitoringServiceTest {
         verifyNoInteractions(users, publisher, apprise);
     }
 
+    @Test
+    void doesNotCheckBackupHealthWhenScheduledBackupsAreDisabled() throws IOException {
+        when(backups.getConfig()).thenReturn(AdminBackupConfigDto.builder().healthMaxAgeDays(2).scheduledEnabled(false).build());
+
+        service().checkHealthAt(Instant.parse("2026-09-08T10:00:00Z"));
+
+        verifyNoInteractions(incidents, users, publisher, apprise);
+    }
+
     private BackupHealthMonitoringService service() {
         return new BackupHealthMonitoringService(backups, incidents, users, publisher, apprise);
     }
 
     private AdminBackupConfigDto config() {
-        return AdminBackupConfigDto.builder().healthMaxAgeDays(2).build();
+        return AdminBackupConfigDto.builder().scheduledEnabled(true).healthMaxAgeDays(2).build();
     }
 }
