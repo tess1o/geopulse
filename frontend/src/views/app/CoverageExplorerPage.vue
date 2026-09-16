@@ -1,25 +1,26 @@
 <template>
   <AppLayout variant="default">
+    <ConfirmDialog />
     <PageContainer
         title="Coverage Explorer"
         subtitle="Lifetime map coverage from your GPS history. Zoom in to see which streets and blocks you have already explored."
         maxWidth="none"
         padding="large"
     >
-      <template #actions>
-        <div class="action-controls">
-          <div class="grid-control">
-            <label for="coverage-grid" class="control-label">Grid</label>
-            <Dropdown
-                input-id="coverage-grid"
-                v-model="selectedGrid"
-                :options="gridOptions"
-                optionLabel="label"
-                optionValue="value"
-                class="grid-dropdown"
-                aria-label="Coverage grid resolution"
-            />
-          </div>
+      <div class="coverage-toolbar" aria-label="Coverage controls">
+        <div class="grid-control">
+          <label for="coverage-grid" class="control-label">Grid</label>
+          <Dropdown
+              input-id="coverage-grid"
+              v-model="selectedGrid"
+              :options="gridOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="grid-dropdown"
+              aria-label="Coverage grid resolution"
+          />
+        </div>
+        <div class="coverage-actions">
           <div class="coverage-toggle">
             <label for="coverage-toggle" class="control-label">Coverage</label>
             <div class="toggle-row">
@@ -34,19 +35,27 @@
               <span class="toggle-text">{{ coverageToggleLabel }}</span>
             </div>
           </div>
-          <div v-if="userEnabled" class="coverage-recalculate">
-            <label class="control-label">Refresh</label>
-            <Button
-              label="Recalculate Coverage"
-              icon="pi pi-refresh"
-              :disabled="!canRecalculateCoverage"
-              :loading="settingsUpdating && !statusLoading"
-              v-tooltip.bottom="demoReadOnly ? 'Coverage recalculation is disabled in demo mode' : 'Recalculate coverage from GPS history'"
-              @click="handleCoverageRecalculation"
-            />
+          <Button
+            v-if="userEnabled"
+            label="Recalculate Coverage"
+            icon="pi pi-refresh"
+            severity="secondary"
+            outlined
+            class="coverage-recalculate"
+            :disabled="!canRecalculateCoverage"
+            :loading="settingsUpdating && !statusLoading"
+            v-tooltip.bottom="demoReadOnly ? 'Coverage recalculation is disabled in demo mode' : 'Recalculate coverage from GPS history'"
+            @click="confirmCoverageRecalculation"
+          />
+        </div>
+        <div class="seen-area-summary" aria-live="polite">
+          <i class="pi pi-map" aria-hidden="true"></i>
+          <div>
+            <span class="control-label">Seen area</span>
+            <strong>{{ summaryLoading ? 'Loading…' : formattedArea }}</strong>
           </div>
         </div>
-      </template>
+      </div>
 
       <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
         Demo mode: coverage settings are read-only. Enabling, disabling, and recalculating coverage are disabled.
@@ -57,29 +66,6 @@
       </Message>
 
       <div class="coverage-page">
-
-      <div class="coverage-stats">
-        <BaseCard title="Seen Area" class="coverage-stat-card">
-          <div class="stat-value">
-            <span v-if="summaryLoading">Loading...</span>
-            <span v-else>{{ formattedArea }}</span>
-          </div>
-          <div class="stat-subtext">
-            <span v-if="summaryLoading">Calculating from covered cells</span>
-            <span v-else-if="!coverageAllowed">Enable coverage to calculate</span>
-            <span v-else>{{ formattedCells }} ({{ summaryGrid }} m grid)</span>
-          </div>
-        </BaseCard>
-        <BaseCard title="Resolution" class="coverage-stat-card">
-          <div class="stat-value">{{ effectiveGrid }} m</div>
-          <div class="stat-subtext">{{ gridModeLabel }}</div>
-        </BaseCard>
-        <BaseCard title="Coverage Style" class="coverage-stat-card">
-          <div class="stat-value">{{ radiusLabel }}</div>
-          <div class="stat-subtext">Road corridor radius</div>
-        </BaseCard>
-      </div>
-
         <div class="coverage-map-card">
         <div class="map-header">
           <div class="map-title">Coverage Map</div>
@@ -188,12 +174,13 @@
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {storeToRefs} from 'pinia'
 import Button from 'primevue/button'
+import ConfirmDialog from 'primevue/confirmdialog'
 import Dropdown from 'primevue/dropdown'
 import InputSwitch from 'primevue/inputswitch'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import {useConfirm} from 'primevue/useconfirm'
 import {useToast} from 'primevue/usetoast'
-import BaseCard from '@/components/ui/base/BaseCard.vue'
 import {MapContainer, CoverageLayer} from '@/components/maps'
 import {useAuthStore} from '@/stores/auth'
 import {useCoverageStore} from '@/stores/coverage'
@@ -206,6 +193,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 const coverageStore = useCoverageStore()
 const authStore = useAuthStore()
 const locationStore = useLocationStore()
+const confirm = useConfirm()
 const toast = useToast()
 
 const mapContainerRef = ref(null)
@@ -253,10 +241,6 @@ const summary = ref(null)
 const summaryLoading = ref(false)
 const summaryGrid = 20
 
-const radiusLabel = computed(() => '20 m')
-const gridModeLabel = computed(() => selectedGrid.value === 'auto'
-    ? `Auto (zoom ${mapZoom.value})`
-    : 'Manual selection')
 const coverageToggleLabel = computed(() => {
   if (statusLoading.value) return 'Loading...'
   if (settingsUpdating.value) return 'Updating...'
@@ -338,14 +322,8 @@ const formatNumber = (value, digits = 1) => {
 
 const formattedArea = computed(() => {
   if (!coverageAllowed.value) return '—'
-  if (!summary.value) return '0 km^2'
-  return `${formatNumber(summary.value.areaSquareKm)} km^2`
-})
-
-const formattedCells = computed(() => {
-  if (!coverageAllowed.value) return '—'
-  if (!summary.value) return '0 cells'
-  return `${summary.value.totalCells.toLocaleString()} cells`
+  if (!summary.value) return '0 km²'
+  return `${formatNumber(summary.value.areaSquareKm)} km²`
 })
 
 const getBboxFromMap = () => {
@@ -557,6 +535,31 @@ const handleCoverageRecalculation = async () => {
   }
 }
 
+const confirmCoverageRecalculation = () => {
+  if (demoReadOnly.value) {
+    showDemoCoverageReadOnlyToast()
+    return
+  }
+
+  if (!canRecalculateCoverage.value) return
+
+  confirm.require({
+    message: 'This rebuilds coverage from your entire GPS history and may take some time. Coverage may be temporarily unavailable while processing.',
+    header: 'Recalculate coverage?',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: 'Recalculate',
+      severity: 'primary'
+    },
+    accept: handleCoverageRecalculation
+  })
+}
+
 const loadSummary = async () => {
   if (!coverageAllowed.value) {
     summary.value = null
@@ -714,11 +717,22 @@ onBeforeUnmount(() => {
   gap: 1.5rem;
 }
 
-.action-controls {
+.demo-read-only-message,
+.coverage-action-error {
+  margin-bottom: var(--gp-spacing-md);
+}
+
+.coverage-toolbar {
   display: flex;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: end;
   flex-wrap: wrap;
+  margin-bottom: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  background: var(--gp-surface-white);
+  box-shadow: var(--gp-shadow-subtle);
 }
 
 .grid-control {
@@ -734,10 +748,36 @@ onBeforeUnmount(() => {
   min-width: 160px;
 }
 
-.coverage-recalculate {
+.coverage-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  align-items: flex-end;
+  gap: var(--gp-spacing-md);
+}
+
+.seen-area-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  min-height: 2.5rem;
+  padding-left: var(--gp-spacing-md);
+  border-left: 1px solid var(--gp-border-light);
+  color: var(--gp-primary);
+}
+
+.seen-area-summary > i {
+  font-size: 1.1rem;
+}
+
+.seen-area-summary .control-label {
+  display: block;
+  margin-bottom: .15rem;
+}
+
+.seen-area-summary strong {
+  display: block;
+  color: var(--gp-text-primary);
+  font-size: 1.05rem;
+  line-height: 1.1;
 }
 
 .toggle-row {
@@ -763,22 +803,13 @@ onBeforeUnmount(() => {
   min-width: 220px;
 }
 
-.coverage-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+.p-dark .coverage-toolbar {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
 }
 
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
-}
-
-.stat-subtext {
-  margin-top: 0.35rem;
-  color: var(--gp-text-secondary);
-  font-size: 0.85rem;
+.p-dark .seen-area-summary {
+  border-color: var(--gp-border-dark);
 }
 
 .coverage-map-card {
@@ -917,7 +948,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-  .action-controls {
+  .coverage-toolbar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
@@ -930,51 +961,22 @@ onBeforeUnmount(() => {
   }
 
   .grid-control,
-  .coverage-toggle,
-  .coverage-recalculate {
+  .coverage-actions,
+  .coverage-toggle {
     width: 100%;
     min-width: 0;
+  }
+
+  .seen-area-summary {
+    grid-column: 1 / -1;
+    padding-left: 0;
+    border-left: 0;
   }
 }
 
 @media (max-width: 600px) {
   .coverage-page {
     gap: 1rem;
-  }
-
-  .coverage-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
-    margin: 0;
-  }
-
-  .coverage-stat-card {
-    min-width: 0;
-  }
-
-  .coverage-stat-card :deep(.gp-card-header) {
-    padding: 0.4rem 0.55rem;
-  }
-
-  .coverage-stat-card :deep(.gp-card-content) {
-    padding: 0.55rem;
-  }
-
-  .coverage-stat-card :deep(.gp-card-title) {
-    font-size: 0.62rem;
-    letter-spacing: 0.04em;
-  }
-
-  .stat-value {
-    font-size: clamp(0.95rem, 4.2vw, 1.1rem);
-    line-height: 1.1;
-  }
-
-  .stat-subtext {
-    margin-top: 0.2rem;
-    font-size: 0.68rem;
-    line-height: 1.25;
   }
 
   .map-header {
@@ -1000,8 +1002,19 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 420px) {
-  .action-controls {
-    gap: 0.6rem;
+  .coverage-toolbar {
+    grid-template-columns: 1fr;
+    gap: var(--gp-spacing-sm);
+  }
+
+  .coverage-recalculate {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .coverage-actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .toggle-text {

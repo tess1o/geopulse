@@ -4,7 +4,7 @@
       title="Timeline Labels"
       :subtitle="pageSubtitle"
       :loading="isLoading"
-      variant="fullwidth"
+      max-width="xlarge"
     >
       <template #actions>
         <Button
@@ -19,28 +19,25 @@
         v-if="showLabelsHelpMessage"
         severity="info"
         :closable="true"
-        style="margin-bottom: var(--gp-spacing-md)"
+        class="labels-help"
         @close="dismissLabelsHelpMessage"
       >
         Timeline Labels mark time ranges on your timeline (vacation, trip, event).
         Optionally link a label to a Trip Plan for places, progress, and visit tracking.
       </Message>
 
-      <!-- Active Tag Banner (Compact) -->
-      <Message v-if="activeTag" severity="info" :closable="false" style="margin-bottom: var(--gp-spacing-md)">
+      <div v-if="activeTag" class="active-label-card" role="status">
+        <span class="active-label-icon"><i class="pi pi-tag" aria-hidden="true" /></span>
         <div class="active-tag-banner">
-          <i class="pi pi-tag"></i>
-          <strong>Active Label:</strong>
-          <span>{{ activeTag.tagName }}</span>
-          <Tag severity="success" value="OwnTracks" style="margin-left: var(--gp-spacing-xs)" />
-          <span class="gp-text-secondary active-tag-date">
-            Since {{ formatDate(activeTag.startTime) }}
-          </span>
+          <span class="active-label-kicker">Active label</span>
+          <strong>{{ activeTag.tagName }}</strong>
+          <span class="active-tag-date">Since {{ formatDate(activeTag.startTime) }}</span>
         </div>
-      </Message>
+        <Tag severity="success" value="OwnTracks" />
+      </div>
 
       <!-- Data Table with Integrated Toolbar -->
-      <BaseCard>
+      <BaseCard class="labels-table-card">
         <!-- Filters Toolbar -->
         <div class="filters-toolbar">
           <div class="filters-row">
@@ -98,116 +95,84 @@
           @row-unselect="onRowUnselect"
           class="desktop-table"
         >
-          <Column selectionMode="multiple" headerStyle="width: 3rem" />
+          <Column selectionMode="multiple" class="selection-column" />
 
           <Column field="tagName" header="Label" sortable>
             <template #body="{ data }">
-              <div style="display: flex; align-items: center; gap: var(--gp-spacing-xs)">
-                <span class="gp-text-primary" style="font-weight: 600">{{ data.tagName }}</span>
-                <Tag v-if="data.isActive" severity="success" value="Active" style="font-size: 0.7rem" />
+              <div class="label-cell">
+                <span class="label-color" :style="{ backgroundColor: data.color || 'var(--gp-primary)' }" />
+                <div>
+                  <strong>{{ data.tagName }}</strong>
+                  <div class="label-badges">
+                    <Tag v-if="data.isActive" severity="success" value="Active" />
+                    <Tag :severity="data.source === 'owntracks' ? 'info' : 'secondary'">
+                      {{ data.source === 'owntracks' ? 'OwnTracks' : 'Manual' }}
+                    </Tag>
+                  </div>
+                </div>
               </div>
             </template>
           </Column>
 
-          <Column field="source" header="Source" sortable style="width: 8rem">
+          <Column field="startTime" header="Period" sortable>
             <template #body="{ data }">
-              <Tag :severity="data.source === 'owntracks' ? 'info' : 'secondary'">
-                {{ data.source === 'owntracks' ? 'OwnTracks' : 'Manual' }}
-              </Tag>
+              <div class="period-cell">
+                <span>{{ formatDate(data.startTime) }} – {{ data.endTime ? formatDate(data.endTime) : 'Now' }}</span>
+                <small>{{ calculateDuration(data.startTime, data.endTime) }}</small>
+              </div>
             </template>
           </Column>
 
-          <Column field="showAsPreset" header="Date Preset" sortable style="width: 10rem">
-            <template #body="{ data }">
-              <Tag
-                :severity="data.showAsPreset === false ? 'secondary' : 'success'"
-                :value="data.showAsPreset === false ? 'Hidden' : 'Preset'"
-              />
-            </template>
-          </Column>
-
-          <Column field="startTime" header="Start Date" sortable>
-            <template #body="{ data }">
-              {{ formatDate(data.startTime) }}
-            </template>
-          </Column>
-
-          <Column field="endTime" header="End Date" sortable>
-            <template #body="{ data }">
-              <span v-if="data.endTime">{{ formatDate(data.endTime) }}</span>
-              <Tag v-else severity="success" value="Active" />
-            </template>
-          </Column>
-
-          <Column header="Duration" sortable>
-            <template #body="{ data }">
-              {{ calculateDuration(data.startTime, data.endTime) }}
-            </template>
-          </Column>
-
-          <Column header="Trip Plan" style="width: 12rem">
+          <Column header="Trip Plan" class="trip-plan-column">
             <template #body="{ data }">
               <Button
                 v-if="isLinkedToTrip(data)"
+                :label="getLinkedTrip(data)?.name"
                 icon="pi pi-briefcase"
-                class="p-button-text p-button-sm"
+                text
+                size="small"
+                class="trip-plan-link"
                 @click="openLinkedWorkspace(data)"
-                v-tooltip.top="'Open linked trip planner'"
-                style="color: var(--gp-primary)"
               />
-              <span v-else class="gp-text-secondary">—</span>
+              <span v-else class="not-linked">Not linked</span>
             </template>
           </Column>
 
-          <Column header="Actions" style="width: 14rem">
+          <Column field="showAsPreset" header="Preset" sortable class="preset-column">
+            <template #body="{ data }">
+              <Tag
+                :severity="data.showAsPreset === false ? 'secondary' : 'success'"
+                :value="data.showAsPreset === false ? 'Hidden' : 'Visible'"
+              />
+            </template>
+          </Column>
+
+          <Column header="Actions" class="actions-column">
             <template #body="{ data }">
               <div class="actions-inline-row">
                 <Button
+                  label="Timeline"
                   icon="pi pi-calendar"
-                  class="p-button-text p-button-sm"
+                  text
+                  size="small"
                   @click="viewTimeline(data)"
-                  v-tooltip.top="'View timeline'"
-                  style="color: var(--gp-primary)"
                 />
                 <Button
-                  icon="pi pi-briefcase"
-                  class="p-button-text p-button-sm"
-                  @click="createTripWorkspace(data)"
-                  v-tooltip.top="'Create trip plan'"
-                  :disabled="!canCreateTripWorkspace(data)"
-                  style="color: var(--gp-text-secondary)"
-                />
-                <Button
-                  v-if="isLinkedToTrip(data)"
-                  icon="pi pi-link"
-                  class="p-button-text p-button-sm"
-                  @click="unlinkTagFromTrip(data)"
-                  v-tooltip.top="'Unlink from trip plan'"
-                  style="color: var(--gp-text-primary)"
-                />
-                <Button
-                  icon="pi pi-pencil"
-                  class="p-button-text p-button-sm"
-                  @click="editTag(data)"
-                  v-tooltip.top="getEditTooltip(data)"
-                  :disabled="!canEditFromLabelsPage(data)"
-                  style="color: var(--gp-secondary)"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  class="p-button-text p-button-sm"
-                  @click="deleteTag(data)"
-                  v-tooltip.top="getDeleteTooltip(data)"
-                  :disabled="!canDeleteFromLabelsPage(data)"
-                  style="color: var(--gp-danger)"
+                  icon="pi pi-ellipsis-v"
+                  text
+                  rounded
+                  size="small"
+                  :aria-label="`More actions for ${data.tagName}`"
+                  aria-haspopup="menu"
+                  @click="openActionsMenu($event, data)"
                 />
               </div>
             </template>
           </Column>
 
           <template #empty>
-            <div style="text-align: center; padding: var(--gp-spacing-xl); color: var(--gp-text-secondary)">
-              <i class="pi pi-calendar" style="font-size: 3rem; margin-bottom: var(--gp-spacing-md)"></i>
+            <div class="empty-state">
+              <i class="pi pi-calendar" />
               <p>No timeline labels found. Create your first one to get started!</p>
             </div>
           </template>
@@ -229,6 +194,7 @@
                   :checked="selectedTags.includes(tag)"
                   @change="toggleTagSelection(tag)"
                   class="tag-checkbox"
+                  :aria-label="`Select ${tag.tagName}`"
                 />
                 <div
                   class="color-indicator"
@@ -237,10 +203,9 @@
                 <div class="card-title-section">
                   <div class="card-title">{{ tag.tagName }}</div>
                   <div class="card-badges">
-                    <Tag v-if="tag.isActive" severity="success" value="Active" style="font-size: 0.65rem" />
+                    <Tag v-if="tag.isActive" severity="success" value="Active" />
                     <Tag
                       :severity="tag.source === 'owntracks' ? 'info' : 'secondary'"
-                      style="font-size: 0.65rem"
                     >
                       {{ tag.source === 'owntracks' ? 'OwnTracks' : 'Manual' }}
                     </Tag>
@@ -254,17 +219,8 @@
               <div class="card-info-row">
                 <div class="info-item">
                   <i class="pi pi-calendar"></i>
-                  <span class="info-label">Start:</span>
-                  <span class="info-value">{{ formatDate(tag.startTime) }}</span>
-                </div>
-              </div>
-
-              <div class="card-info-row">
-                <div class="info-item">
-                  <i class="pi pi-calendar"></i>
-                  <span class="info-label">End:</span>
-                  <span class="info-value" v-if="tag.endTime">{{ formatDate(tag.endTime) }}</span>
-                  <Tag v-else severity="success" value="Active" style="font-size: 0.65rem" />
+                  <span class="info-label">Period:</span>
+                  <span class="info-value">{{ formatDate(tag.startTime) }} – {{ tag.endTime ? formatDate(tag.endTime) : 'Now' }}</span>
                 </div>
               </div>
 
@@ -282,8 +238,7 @@
                   <span class="info-label">Date Preset:</span>
                   <Tag
                     :severity="tag.showAsPreset === false ? 'secondary' : 'success'"
-                    :value="tag.showAsPreset === false ? 'Hidden' : 'Preset'"
-                    style="font-size: 0.65rem"
+                    :value="tag.showAsPreset === false ? 'Hidden' : 'Visible'"
                   />
                 </div>
               </div>
@@ -304,51 +259,30 @@
                 icon="pi pi-calendar"
                 size="small"
                 @click="viewTimeline(tag)"
-                outlined
+                text
               />
               <Button
-                :label="isLinkedToTrip(tag) ? 'Open Plan' : 'Create Plan'"
-                icon="pi pi-briefcase"
+                label="More"
+                icon="pi pi-ellipsis-v"
+                icon-pos="right"
                 size="small"
-                @click="isLinkedToTrip(tag) ? openLinkedWorkspace(tag) : createTripWorkspace(tag)"
-                :disabled="!isLinkedToTrip(tag) && !canCreateTripWorkspace(tag)"
                 outlined
-              />
-              <Button
-                v-if="isLinkedToTrip(tag)"
-                label="Unlink"
-                icon="pi pi-link"
-                size="small"
-                @click="unlinkTagFromTrip(tag)"
-                outlined
-              />
-              <Button
-                label="Edit"
-                icon="pi pi-pencil"
-                size="small"
-                @click="editTag(tag)"
-                :disabled="!canEditFromLabelsPage(tag)"
-                outlined
-              />
-              <Button
-                icon="pi pi-trash"
-                size="small"
-                @click="deleteTag(tag)"
-                :disabled="!canDeleteFromLabelsPage(tag)"
-                severity="danger"
-                outlined
+                :aria-label="`More actions for ${tag.tagName}`"
+                aria-haspopup="menu"
+                @click="openActionsMenu($event, tag)"
               />
             </div>
           </div>
 
           <!-- Mobile Pagination (if needed) -->
           <div v-if="filteredPeriodTags.length > 10" class="mobile-pagination">
-            <p class="gp-text-secondary" style="text-align: center; margin: var(--gp-spacing-md) 0">
+            <p class="mobile-count">
               Showing {{ filteredPeriodTags.length }} labels
             </p>
           </div>
         </div>
       </BaseCard>
+      <Menu ref="labelActionsMenuRef" :model="labelActionItems" popup />
     </PageContainer>
 
     <!-- Dialogs -->
@@ -428,6 +362,7 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
+import Menu from 'primevue/menu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 
@@ -453,6 +388,8 @@ const showLabelsHelpMessage = ref(true)
 const showLinkedDeleteDialog = ref(false)
 const linkedDeleteTarget = ref(null)
 const isDeletingLinkedTag = ref(false)
+const labelActionsMenuRef = ref(null)
+const actionTarget = ref(null)
 
 // Source options for filter
 const sourceOptions = [
@@ -503,6 +440,25 @@ const linkedDeleteTargetTripName = computed(() => {
   return getLinkedTrip(linkedDeleteTarget.value)?.name || 'Trip Plan'
 })
 
+const labelActionItems = computed(() => {
+  const tag = actionTarget.value
+  if (!tag) return []
+
+  const linked = isLinkedToTrip(tag)
+  return [
+    {
+      label: linked ? 'Open Trip Plan' : 'Create Trip Plan',
+      icon: 'pi pi-briefcase',
+      disabled: !linked && !canCreateTripWorkspace(tag),
+      command: () => linked ? openLinkedWorkspace(tag) : createTripWorkspace(tag)
+    },
+    ...(linked ? [{ label: 'Unlink Trip Plan', icon: 'pi pi-link', command: () => unlinkTagFromTrip(tag) }] : []),
+    { label: 'Edit Label', icon: 'pi pi-pencil', disabled: !canEditFromLabelsPage(tag), command: () => editTag(tag) },
+    { separator: true },
+    { label: 'Delete Label', icon: 'pi pi-trash', disabled: !canDeleteFromLabelsPage(tag), command: () => deleteTag(tag) }
+  ]
+})
+
 const canEditFromLabelsPage = (tag) => {
   return store.isTagEditable(tag)
 }
@@ -512,6 +468,11 @@ const canDeleteFromLabelsPage = (tag) => {
 }
 
 // Methods
+const openActionsMenu = (event, tag) => {
+  actionTarget.value = tag
+  labelActionsMenuRef.value?.toggle(event)
+}
+
 const toggleTagSelection = (tag) => {
   const index = selectedTags.value.findIndex(t => t.id === tag.id)
   if (index > -1) {
@@ -576,18 +537,6 @@ const openLinkedWorkspace = (tag) => {
 
 const canCreateTripWorkspace = (tag) => {
   return !!tag?.endTime && !isLinkedToTrip(tag)
-}
-
-const getEditTooltip = (tag) => {
-  if (isLinkedToTrip(tag)) return `Edit timeline label (syncs linked trip plan: ${getLinkedTrip(tag)?.name || 'Trip Plan'})`
-  if (tag.source === 'owntracks' && tag.isActive) return 'Active OwnTracks tag cannot be edited'
-  return 'Edit'
-}
-
-const getDeleteTooltip = (tag) => {
-  if (isLinkedToTrip(tag)) return `Delete timeline label (trip plan will be unlinked)`
-  if (tag.source === 'owntracks' && tag.isActive) return 'Active OwnTracks tag cannot be deleted'
-  return 'Delete'
 }
 
 const unlinkTagFromTrip = (tag) => {
@@ -858,19 +807,68 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Active Tag Banner */
-.active-tag-banner {
+.labels-help {
+  margin-bottom: var(--gp-spacing-md);
+}
+
+.active-label-card {
   display: flex;
   align-items: center;
-  gap: var(--gp-spacing-sm);
-  flex-wrap: wrap;
+  gap: var(--gp-spacing-md);
+  margin-bottom: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  border: 1px solid color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
+  border-radius: var(--gp-radius-large);
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+}
+
+.active-label-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  border-radius: 50%;
+  background: var(--gp-primary);
+  color: white;
+}
+
+.active-tag-banner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.active-label-kicker {
+  color: var(--gp-primary);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.active-tag-banner strong {
+  color: var(--gp-text-primary);
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.active-tag-date {
+  color: var(--gp-text-secondary);
+  font-size: .85rem;
+}
+
+.p-dark .active-label-card {
+  background: color-mix(in srgb, var(--gp-primary) 15%, var(--gp-surface-dark));
+  border-color: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-dark));
 }
 
 @media (max-width: 768px) {
-  .active-tag-date {
-    flex-basis: 100%;
-    margin-left: 0 !important;
-    margin-top: var(--gp-spacing-xs);
+  .active-label-card {
+    padding: var(--gp-spacing-md);
   }
 }
 
@@ -924,6 +922,74 @@ onMounted(() => {
   white-space: nowrap;
 }
 
+.desktop-table :deep(.selection-column) {
+  width: 3rem;
+}
+
+.desktop-table :deep(.trip-plan-column) {
+  width: 13rem;
+}
+
+.desktop-table :deep(.preset-column) {
+  width: 8rem;
+}
+
+.desktop-table :deep(.actions-column) {
+  width: 11rem;
+}
+
+.label-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gp-spacing-sm);
+  min-width: 12rem;
+}
+
+.label-color {
+  width: .3rem;
+  min-height: 2.5rem;
+  flex: 0 0 .3rem;
+  border-radius: 999px;
+}
+
+.label-cell strong {
+  display: block;
+  margin-bottom: .3rem;
+  color: var(--gp-text-primary);
+}
+
+.label-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gp-spacing-xs);
+}
+
+.label-badges :deep(.p-tag),
+.card-badges :deep(.p-tag) {
+  font-size: .65rem;
+}
+
+.period-cell {
+  display: grid;
+  gap: .25rem;
+  min-width: 13rem;
+  color: var(--gp-text-primary);
+}
+
+.period-cell small,
+.not-linked {
+  color: var(--gp-text-secondary);
+}
+
+.trip-plan-link {
+  max-width: 100%;
+}
+
+.trip-plan-link :deep(.p-button-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 768px) {
   .filters-row {
     margin-bottom: 0;
@@ -942,13 +1008,23 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .filters-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-input {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .source-select {
-    width: 130px;
+    width: 100%;
   }
 
   .link-select {
-    width: 130px;
+    width: 100%;
   }
 }
 
@@ -1069,7 +1145,7 @@ onMounted(() => {
 
 .info-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--gp-spacing-xs);
   font-size: 0.875rem;
 }
@@ -1086,6 +1162,7 @@ onMounted(() => {
 
 .info-value {
   color: var(--gp-text-primary);
+  overflow-wrap: anywhere;
 }
 
 /* Card Actions */
@@ -1115,5 +1192,11 @@ onMounted(() => {
 /* Mobile Pagination */
 .mobile-pagination {
   margin-top: var(--gp-spacing-md);
+}
+
+.mobile-count {
+  margin: var(--gp-spacing-md) 0;
+  color: var(--gp-text-secondary);
+  text-align: center;
 }
 </style>

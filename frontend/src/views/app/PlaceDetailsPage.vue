@@ -1,21 +1,9 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      :title="pageTitle"
-      subtitle="Detailed information about this place and your visit history"
       :loading="isLoading"
-      variant="fullwidth"
+      max-width="xlarge"
     >
-    <!-- Breadcrumb Navigation -->
-    <div class="breadcrumb-nav">
-      <Button
-        label="Back"
-        icon="pi pi-arrow-left"
-        class="p-button-text"
-        @click="goBack"
-      />
-    </div>
-
     <!-- Loading State -->
     <template v-if="isLoading && !placeDetails">
       <div class="loading-container">
@@ -42,13 +30,43 @@
 
     <!-- Place Details Content -->
     <template v-else-if="placeDetails">
-      <!-- Place Header -->
-      <PlaceHeader
-        :place-details="placeDetails"
-        @update-name="handleUpdateName"
-        @edit-details="handleOpenEditDialog"
-        @create-favorite="handleCreateFavorite"
-      />
+      <LocationDetailsHeader
+        :title="pageTitle"
+        :subtitle="placeSubtitle"
+        :icon="placeIcon"
+        back-label="Back"
+        @back="goBack"
+      >
+        <template #metadata>
+          <Tag :value="placeTypeLabel" :severity="placeType === 'favorite' ? 'success' : 'info'" />
+          <span v-if="displayCoordinates" class="place-coordinates">
+            <i class="pi pi-map-marker" aria-hidden="true" />
+            {{ displayCoordinates }}
+          </span>
+        </template>
+        <template #actions>
+          <Button
+            v-if="placeType === 'favorite' && placeDetails.canEdit"
+            label="Edit"
+            icon="pi pi-pencil"
+            outlined
+            @click="handleOpenEditDialog"
+          />
+          <Button
+            v-if="placeType === 'geocoding'"
+            label="Edit Details"
+            icon="pi pi-cog"
+            outlined
+            @click="handleOpenEditDialog"
+          />
+          <Button
+            v-if="placeType === 'geocoding'"
+            label="Create Favorite"
+            icon="pi pi-heart"
+            @click="handleCreateFavorite"
+          />
+        </template>
+      </LocationDetailsHeader>
 
       <!-- Related Favorite Notice (for geocoding with no visits) - Show FIRST -->
       <BaseCard v-if="placeDetails.relatedFavorite" class="related-favorite-notice">
@@ -227,6 +245,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+import Tag from 'primevue/tag'
 
 // Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -234,12 +253,12 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 
 // Place Components
-import PlaceHeader from '@/components/place/PlaceHeader.vue'
 import PlaceStatsCard from '@/components/place/PlaceStatsCard.vue'
 import PlaceMap from '@/components/place/PlaceMap.vue'
 import PlaceNotesSection from '@/components/place/PlaceNotesSection.vue'
 import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
+import LocationDetailsHeader from '@/components/location-analytics/LocationDetailsHeader.vue'
 
 // Dialogs
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
@@ -334,6 +353,22 @@ const pageTitle = computed(() => {
     return placeDetails.value.locationName
   }
   return 'Place Details'
+})
+
+const placeSubtitle = computed(() => (
+  [placeDetails.value?.city, placeDetails.value?.country].filter(Boolean).join(', ')
+  || 'Detailed information and visit history'
+))
+
+const placeTypeLabel = computed(() => placeType.value === 'favorite' ? 'Favorite' : 'Geocoded Location')
+const placeIcon = computed(() => placeDetails.value?.geometry?.type === 'area' ? 'pi pi-th-large' : 'pi pi-map-marker')
+const displayCoordinates = computed(() => {
+  const geometry = placeDetails.value?.geometry
+  const latitude = Number(geometry?.latitude)
+  const longitude = Number(geometry?.longitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return ''
+  const coordinates = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+  return geometry.type === 'area' ? `Center: ${coordinates}` : coordinates
 })
 
 const isLoading = computed(() => loading.value)
@@ -675,29 +710,6 @@ const handleSortChange = async ({ sortBy, sortDirection }) => {
   await loadVisits(pagination.value.currentPage, pagination.value.pageSize, sortBy, sortDirection)
 }
 
-const handleUpdateName = async (newName) => {
-  try {
-    await placeStore.updatePlaceName(placeType.value, placeId.value, newName)
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Place name updated successfully',
-      life: 3000
-    })
-  } catch (err) {
-    console.error('Error updating place name:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to update place name'
-
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: errorMessage,
-      life: 5000
-    })
-  }
-}
-
 const handleExportVisits = async () => {
   try {
     if (!placeDetails.value) {
@@ -877,27 +889,10 @@ watch(
 </script>
 
 <style scoped>
-/* Ensure all elements respect parent width */
-* {
-  box-sizing: border-box;
-}
-
-.breadcrumb-nav {
-  margin-bottom: var(--gp-spacing-lg);
-  padding: 0 var(--gp-spacing-lg);
-  padding-top: env(safe-area-inset-top);
-  max-width: 100%;
-}
-
-:deep(.gp-page-content) {
-  padding: 0 var(--gp-spacing-lg);
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.gp-page-content > *) {
-  max-width: 100%;
-  box-sizing: border-box;
+.place-coordinates {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
 }
 
 .loading-container {
@@ -1125,34 +1120,6 @@ watch(
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .breadcrumb-nav {
-    margin-bottom: var(--gp-spacing-sm);
-    padding: var(--gp-spacing-sm);
-    padding-top: calc(env(safe-area-inset-top) + var(--gp-spacing-sm));
-  }
-
-  :deep(.gp-page-content) {
-    padding: 0 var(--gp-spacing-sm);
-    gap: var(--gp-spacing-md);
-  }
-
-  /* Reduce padding on cards */
-  :deep(.gp-base-card) {
-    padding: var(--gp-spacing-md);
-  }
-
-  :deep(.gp-page-header) {
-    margin-bottom: var(--gp-spacing-md);
-  }
-
-  :deep(.gp-page-title) {
-    font-size: 1.25rem;
-  }
-
-  :deep(.gp-page-subtitle) {
-    font-size: 0.875rem;
-  }
-
   .loading-container,
   .error-container {
     padding: var(--gp-spacing-lg);
@@ -1198,19 +1165,6 @@ watch(
 }
 
 @media (max-width: 480px) {
-  .breadcrumb-nav {
-    padding: var(--gp-spacing-xs);
-    padding-top: calc(env(safe-area-inset-top) + var(--gp-spacing-xs));
-  }
-
-  :deep(.gp-page-content) {
-    padding: 0 var(--gp-spacing-xs);
-  }
-
-  :deep(.gp-base-card) {
-    padding: var(--gp-spacing-sm);
-  }
-
   .notice-content {
     padding: var(--gp-spacing-sm);
   }

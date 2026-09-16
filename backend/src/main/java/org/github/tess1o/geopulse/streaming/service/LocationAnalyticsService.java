@@ -15,8 +15,10 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service for location analytics operations.
@@ -292,13 +294,21 @@ public class LocationAnalyticsService {
 
         // Get cities in country
         List<Object[]> citiesData = stayRepository.getCitiesInCountry(userId, countryName);
+        Map<String, Object[]> cityCentroids = stayRepository.getCityCentroidsInCountry(userId, countryName).stream()
+                .collect(Collectors.toMap(row -> (String) row[0], row -> row));
         List<CityInCountryDTO> cities = citiesData.stream()
-                .map(row -> CityInCountryDTO.builder()
-                        .cityName((String) row[0])
-                        .visitCount(((Number) row[1]).longValue())
-                        .totalDuration(((Number) row[2]).longValue())
-                        .uniquePlaces(((Number) row[3]).intValue())
-                        .build())
+                .map(row -> {
+                    String cityName = (String) row[0];
+                    Object[] centroid = cityCentroids.get(cityName);
+                    return CityInCountryDTO.builder()
+                            .cityName(cityName)
+                            .visitCount(((Number) row[1]).longValue())
+                            .totalDuration(((Number) row[2]).longValue())
+                            .uniquePlaces(((Number) row[3]).intValue())
+                            .latitude(centroid == null ? null : ((Number) centroid[1]).doubleValue())
+                            .longitude(centroid == null ? null : ((Number) centroid[2]).doubleValue())
+                            .build();
+                })
                 .toList();
 
         // Get top places in country (limit to 5)

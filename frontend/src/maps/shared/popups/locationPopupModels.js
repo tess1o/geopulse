@@ -70,25 +70,25 @@ export const buildSharedLocationPopupModel = (shareData, { timezone } = {}) => {
 }
 
 export const buildLocationAnalyticsPlacePopupModel = (place, { timezone, onOpenPlaceDetails } = {}) => {
+  const isCity = place?.type === 'city'
   const cityCountry = [place?.city, place?.country].filter(Boolean).join(', ')
 
   return {
     title: place?.locationName || 'Unknown location',
     subtitle: cityCountry,
-    rows: [
-      {
-        label: 'Visits',
-        value: String(place?.visitCount ?? 0)
-      },
-      {
-        label: 'Last visit',
-        value: formatDateTime(timezone, place?.lastVisit)
-      }
-    ],
+    rows: isCity
+      ? [
+          { label: 'Visits', value: String(place?.visitCount ?? 0) },
+          { label: 'Places', value: String(place?.uniquePlaces ?? 0) }
+        ]
+      : [
+          { label: 'Visits', value: String(place?.visitCount ?? 0) },
+          { label: 'Last visit', value: formatDateTime(timezone, place?.lastVisit) }
+        ],
     actions: [
       {
         key: 'open-place-details',
-        label: 'Open place details',
+        label: isCity ? 'Open city details' : 'Open place details',
         iconClass: 'pi pi-external-link',
         onClick: onOpenPlaceDetails
       }

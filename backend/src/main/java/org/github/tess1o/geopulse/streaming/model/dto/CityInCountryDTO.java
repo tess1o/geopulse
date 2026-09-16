@@ -18,4 +18,6 @@ public class CityInCountryDTO {
     private long visitCount;
     private long totalDuration;         // Total duration in seconds
     private int uniquePlaces;           // Number of distinct places in this city
+    private Double latitude;
+    private Double longitude;
 }

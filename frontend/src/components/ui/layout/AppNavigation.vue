@@ -19,17 +19,11 @@
 
           <!-- Navigation Sections -->
           <nav class="gp-nav-content">
-            <!-- Main Features -->
-            <NavigationSection 
-              title="Main Features" 
-              :items="mainItems"
-              @item-click="handleItemClick"
-            />
-
-            <!-- Account & Settings -->
             <NavigationSection
-              title="Account & Settings"
-              :items="accountItems"
+              v-for="section in navigationSections"
+              :key="section.title"
+              :title="section.title"
+              :items="section.items"
               @item-click="handleItemClick"
             />
 
@@ -180,145 +174,61 @@ const themeModeLabel = computed(() => {
   return 'System'
 })
 
-const mainItems = computed(() => [
+const navigationSections = computed(() => [
   {
-    label: 'Home',
-    icon: 'pi pi-home',
-    to: '/',
-    key: 'home'
+    title: 'Timeline',
+    items: [
+      { label: 'Timeline', icon: 'pi pi-calendar', to: '/app/timeline', key: 'timeline' },
+      { label: 'Dashboard', icon: 'pi pi-chart-bar', to: '/app/dashboard', key: 'dashboard' },
+      { label: 'Timeline Labels', icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'period-tags' },
+      { label: 'Trip Plans', icon: 'pi pi-briefcase', to: '/app/trips', key: 'trips' }
+    ]
   },
   {
-    label: 'Timeline',
-    icon: 'pi pi-calendar',
-    to: '/app/timeline',
-    key: 'timeline'
+    title: 'Explore',
+    items: [
+      { label: 'Location Analytics', icon: 'pi pi-map', to: '/app/location-analytics', key: 'location-analytics' },
+      { label: 'Journey Insights', icon: 'pi pi-compass', to: '/app/journey-insights', key: 'journey-insights' },
+      { label: 'Rewind', icon: 'pi pi-calendar-clock', to: '/app/rewind', key: 'rewind' },
+      { label: 'Coverage Explorer', icon: 'pi pi-globe', to: '/app/coverage', key: 'coverage-explorer' },
+      { label: 'AI Assistant', icon: 'pi pi-sparkles', to: '/app/ai/chat', key: 'ai-chat' }
+    ]
   },
   {
-    label: 'Timeline Labels',
-    icon: 'pi pi-calendar-times',
-    to: '/app/timeline-labels',
-    key: 'period-tags'
+    title: 'Organize & Share',
+    items: [
+      { label: 'Favorites', icon: 'pi pi-heart', to: '/app/favorites-management', key: 'favorites-management' },
+      { label: 'Geofences', icon: 'pi pi-map-marker', to: '/app/geofences', key: 'geofences' },
+      {
+        label: 'Friends',
+        icon: 'pi pi-users',
+        to: '/app/friends',
+        key: 'friends',
+        badge: receivedInvitesCount.value > 0 ? receivedInvitesCount.value : null,
+        badgeType: 'danger'
+      },
+      { label: 'Share Links', icon: 'pi pi-share-alt', to: '/app/share-links', key: 'share-links' }
+    ]
   },
   {
-    label: 'Trip Plans',
-    icon: 'pi pi-briefcase',
-    to: '/app/trips',
-    key: 'trips'
-  },
-  {
-    label: 'Dashboard',
-    icon: 'pi pi-chart-bar',
-    to: '/app/dashboard',
-    key: 'dashboard'
-  },
-  {
-    label: 'Journey Insights',
-    icon: 'pi pi-compass',
-    to: '/app/journey-insights',
-    key: 'journey-insights'
-  },
-  {
-    label: 'Location Analytics',
-    icon: 'pi pi-map',
-    to: '/app/location-analytics',
-    key: 'location-analytics'
-  },
-  {
-    label: 'Coverage Explorer',
-    icon: 'pi pi-globe',
-    to: '/app/coverage',
-    key: 'coverage-explorer'
-  },
-  {
-    label: 'Rewind',
-    icon: 'pi pi-calendar-clock',
-    to: '/app/rewind',
-    key: 'rewind'
-  },
-  {
-    label: 'AI Chat',
-    icon: 'pi pi-sparkles',
-    to: '/app/ai/chat',
-    key: 'ai-chat'
-  },
-  {
-    label: 'Friends',
-    icon: 'pi pi-users',
-    to: '/app/friends',
-    key: 'friends',
-    badge: receivedInvitesCount.value > 0 ? receivedInvitesCount.value : null,
-    badgeType: 'danger'
-  }
-])
-
-const accountItems = computed(() => [
-  {
-    label: 'Profile',
-    icon: 'pi pi-user',
-    to: '/app/profile',
-    key: 'profile'
-  },
-  {
-    label: 'Location Sources',
-    icon: 'pi pi-mobile',
-    to: '/app/location-sources',
-    key: 'location-sources'
-  },
-  {
-    label: 'Share Links',
-    icon: 'pi pi-share-alt',
-    to: '/app/share-links',
-    key: 'share-links'
-  },
-  {
-    label: 'Export / Import',
-    icon: 'pi pi-download',
-    to: '/app/data-export-import',
-    key: 'export'
-  },
-  {
-    label: 'GPS Data',
-    icon: 'pi pi-database',
-    to: '/app/gps-data',
-    key: 'gps-data'
-  },
-  {
-    label: 'Geocoding Management',
-    icon: 'pi pi-map-marker',
-    to: '/app/geocoding-management',
-    key: 'geocoding-management'
-  },
-  {
-    label: 'Favorites Management',
-    icon: 'pi pi-heart',
-    to: '/app/favorites-management',
-    key: 'favorites-management'
-  },
-  {
-    label: 'Notifications',
-    icon: 'pi pi-bell',
-    to: '/app/notifications',
-    key: 'notifications',
-    badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
-    badgeType: 'danger'
-  },
-  {
-    label: 'Geofences',
-    icon: 'pi pi-bell',
-    to: '/app/geofences',
-    key: 'geofences'
-  },
-  {
-    label: 'Timeline Preferences',
-    icon: 'pi pi-cog',
-    to: '/app/timeline/preferences',
-    key: 'preferences'
-  },
-  {
-    label: 'Help & Support',
-    icon: 'pi pi-question-circle',
-    to: '/app/help',
-    key: 'help'
+    title: 'Settings & Data',
+    items: [
+      { label: 'Profile', icon: 'pi pi-user', to: '/app/profile', key: 'profile' },
+      {
+        label: 'Notifications',
+        icon: 'pi pi-bell',
+        to: '/app/notifications',
+        key: 'notifications',
+        badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
+        badgeType: 'danger'
+      },
+      { label: 'Location Sources', icon: 'pi pi-mobile', to: '/app/location-sources', key: 'location-sources' },
+      { label: 'Timeline Preferences', icon: 'pi pi-cog', to: '/app/timeline/preferences', key: 'preferences' },
+      { label: 'GPS Data', icon: 'pi pi-database', to: '/app/gps-data', key: 'gps-data' },
+      { label: 'Geocoding', icon: 'pi pi-map-marker', to: '/app/geocoding-management', key: 'geocoding-management' },
+      { label: 'Export / Import', icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' },
+      { label: 'Help & Support', icon: 'pi pi-question-circle', to: '/app/help', key: 'help' }
+    ]
   }
 ])
 

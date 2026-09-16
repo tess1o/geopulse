@@ -378,6 +378,7 @@ const handleLayerReady = () => {
     removeOutsideVisibleBounds: true,
     iconCreateFunction: (cluster) => {
       const count = cluster.getChildCount()
+      const itemLabel = props.places.some((place) => place.type === 'city') ? 'cities' : 'places'
       const zoom = props.map?.getZoom?.() ?? 0
       const showLabel = zoom >= CLUSTER_LABEL_MIN_ZOOM && count <= CLUSTER_LABEL_MAX_COUNT
       const size =
@@ -391,8 +392,8 @@ const handleLayerReady = () => {
           <div
             class="location-analytics-cluster ${showLabel ? 'is-labeled' : 'is-compact'}"
             style="--cluster-size:${size}px"
-            title="${count} places"
-            aria-label="${count} places"
+            title="${count} ${itemLabel}"
+            aria-label="${count} ${itemLabel}"
           >
             ${showLabel ? `<span>${count}</span>` : ''}
           </div>

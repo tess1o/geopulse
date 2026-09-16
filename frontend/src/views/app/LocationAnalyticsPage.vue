@@ -186,17 +186,19 @@
         </div>
 
         <div v-else class="location-grid">
-          <BaseCard
+          <RouterLink
             v-for="city in cities"
             :key="`${city.cityName}-${city.country}`"
+            :to="`/app/location-analytics/city/${encodeURIComponent(city.cityName)}`"
             class="location-card"
-            @click="navigateToCity(city.cityName)"
           >
             <div class="location-icon">
               <i class="pi pi-building"></i>
             </div>
-            <h3 class="location-name">{{ city.cityName }}</h3>
-            <p class="location-country">{{ city.country }}</p>
+            <div class="location-copy">
+              <h3 class="location-name">{{ city.cityName }}</h3>
+              <p class="location-country">{{ city.country }}</p>
+            </div>
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ city.visitCount }}</span>
@@ -207,7 +209,8 @@
                 <span class="stat-label">places</span>
               </div>
             </div>
-          </BaseCard>
+            <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
+          </RouterLink>
         </div>
       </div>
 
@@ -223,16 +226,18 @@
         </div>
 
         <div v-else class="location-grid">
-          <BaseCard
+          <RouterLink
             v-for="country in countries"
             :key="country.countryName"
+            :to="`/app/location-analytics/country/${encodeURIComponent(country.countryName)}`"
             class="location-card"
-            @click="navigateToCountry(country.countryName)"
           >
             <div class="location-icon">
               <i class="pi pi-globe"></i>
             </div>
-            <h3 class="location-name">{{ country.countryName }}</h3>
+            <div class="location-copy">
+              <h3 class="location-name">{{ country.countryName }}</h3>
+            </div>
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ country.visitCount }}</span>
@@ -247,7 +252,8 @@
                 <span class="stat-label">places</span>
               </div>
             </div>
-          </BaseCard>
+            <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
+          </RouterLink>
         </div>
       </div>
     </PageContainer>
@@ -648,14 +654,6 @@ const openMapPlaceDetails = (place) => {
   // Prevent opener access without relying on noopener return semantics,
   // which can report null even when the tab opened.
   newWindow.opener = null
-}
-
-const navigateToCity = (cityName) => {
-  router.push(`/app/location-analytics/city/${encodeURIComponent(cityName)}`)
-}
-
-const navigateToCountry = (countryName) => {
-  router.push(`/app/location-analytics/country/${encodeURIComponent(countryName)}`)
 }
 
 watch(activeTab, async (newTab) => {
@@ -1075,69 +1073,111 @@ onBeforeUnmount(() => {
 
 .location-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--gp-spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: var(--gp-spacing-md);
   padding: 0 var(--gp-spacing-lg);
 }
 
 .location-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: center;
-  padding: var(--gp-spacing-xl);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  min-height: 5rem;
+  padding: var(--gp-spacing-md);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  background: var(--gp-surface-white);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: var(--gp-shadow-subtle);
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
 .location-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--gp-shadow-medium);
+  transform: translateY(-2px);
   border-color: var(--gp-primary);
+  background: var(--gp-surface-light);
+}
+
+.location-card:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
 }
 
 .location-icon {
-  font-size: 3rem;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--gp-radius-medium);
+  background: color-mix(in srgb, var(--gp-primary) 12%, var(--gp-surface-white));
   color: var(--gp-primary);
-  margin-bottom: var(--gp-spacing-md);
+  font-size: 1rem;
+}
+
+.location-copy {
+  min-width: 0;
 }
 
 .location-name {
-  margin: 0 0 var(--gp-spacing-xs);
-  font-size: 1.25rem;
+  margin: 0;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .location-country {
-  margin: 0 0 var(--gp-spacing-lg);
-  font-size: 0.875rem;
+  margin: .15rem 0 0;
+  font-size: 0.8rem;
   color: var(--gp-text-secondary);
 }
 
 .location-stats {
   display: flex;
-  justify-content: center;
-  gap: var(--gp-spacing-lg);
-  padding-top: var(--gp-spacing-md);
-  border-top: 1px solid var(--gp-border-light);
+  gap: var(--gp-spacing-md);
+  padding-left: var(--gp-spacing-md);
+  border-left: 1px solid var(--gp-border-light);
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--gp-spacing-xs);
+  gap: .1rem;
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--gp-primary);
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   color: var(--gp-text-secondary);
-  letter-spacing: 0.5px;
+  letter-spacing: .04em;
+}
+
+.location-chevron {
+  color: var(--gp-text-muted);
+  font-size: .8rem;
+}
+
+.p-dark .location-card {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .location-card:hover {
+  background: var(--gp-surface-darker);
+  border-color: var(--gp-primary);
+}
+
+.p-dark .location-icon {
+  background: color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark));
 }
 
 @media (max-width: 768px) {
@@ -1184,40 +1224,27 @@ onBeforeUnmount(() => {
   }
 
   .location-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
     gap: var(--gp-spacing-sm);
+    padding: 0 var(--gp-spacing-sm);
   }
 
   .location-card {
-    padding: var(--gp-spacing-sm);
-  }
-
-  .location-icon {
-    font-size: 1.75rem;
-    margin-bottom: var(--gp-spacing-xs);
-  }
-
-  .location-name {
-    font-size: 0.95rem;
-    margin: 0 0 var(--gp-spacing-xxs);
-  }
-
-  .location-country {
-    font-size: 0.75rem;
-    margin: 0 0 var(--gp-spacing-xs);
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 0;
   }
 
   .location-stats {
-    gap: var(--gp-spacing-sm);
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    border-left: 0;
+    border-top: 1px solid var(--gp-border-light);
+    padding-left: 0;
     padding-top: var(--gp-spacing-xs);
   }
 
-  .stat-value {
-    font-size: 1rem;
-  }
-
-  .stat-label {
-    font-size: 0.65rem;
+  .location-chevron {
+    display: none;
   }
 }
 </style>

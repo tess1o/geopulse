@@ -1,124 +1,38 @@
 <template>
-  <BaseCard title="Place Statistics">
-    <div class="stats-grid">
-      <!-- Visit Counts -->
-      <div class="stat-section">
-        <h3 class="section-title">Visit Counts</h3>
-        <div class="stat-items">
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-chart-line"></i>
-              <span>Total Visits</span>
-            </div>
-            <div class="stat-value">{{ statistics.totalVisits || 0 }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar"></i>
-              <span>This Week</span>
-            </div>
-            <div class="stat-value">{{ statistics.visitsThisWeek || 0 }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar"></i>
-              <span>This Month</span>
-            </div>
-            <div class="stat-value">{{ statistics.visitsThisMonth || 0 }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar"></i>
-              <span>This Year</span>
-            </div>
-            <div class="stat-value">{{ statistics.visitsThisYear || 0 }}</div>
-          </div>
-        </div>
-      </div>
+  <BaseCard title="Visit overview" class="place-statistics">
+    <div class="summary-grid">
+      <MetricItem icon="pi pi-chart-line" label="Total visits" :value="statistics.totalVisits || 0" variant="card" />
+      <MetricItem icon="pi pi-clock" label="Total time" :value="formatDuration(statistics.totalDuration)" variant="card" />
+      <MetricItem icon="pi pi-chart-bar" label="Average visit" :value="formatDuration(statistics.averageDuration)" variant="card" />
+      <MetricItem v-if="hasUniquePlaces" icon="pi pi-map-marker" label="Places visited" :value="statistics.uniquePlaces" variant="card" />
+    </div>
 
-      <!-- Duration Statistics -->
-      <div class="stat-section">
-        <h3 class="section-title">Duration Statistics</h3>
-        <div class="stat-items">
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-clock"></i>
-              <span>Total Time</span>
-            </div>
-            <div class="stat-value">{{ formatDuration(statistics.totalDuration) }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-chart-bar"></i>
-              <span>Average Duration</span>
-            </div>
-            <div class="stat-value">{{ formatDuration(statistics.averageDuration) }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-arrow-down"></i>
-              <span>Shortest Visit</span>
-            </div>
-            <div class="stat-value">{{ formatDuration(statistics.minDuration) }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-arrow-up"></i>
-              <span>Longest Visit</span>
-            </div>
-            <div class="stat-value">{{ formatDuration(statistics.maxDuration) }}</div>
-          </div>
-        </div>
-      </div>
+    <div class="details-grid">
+      <section class="stats-group">
+        <h3>Activity</h3>
+        <MetricItem icon="pi pi-calendar" label="This week" :value="statistics.visitsThisWeek || 0" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar" label="This month" :value="statistics.visitsThisMonth || 0" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar" label="This year" :value="statistics.visitsThisYear || 0" size="small" variant="minimal" />
+      </section>
 
-      <!-- Temporal Information -->
-      <div class="stat-section">
-        <h3 class="section-title">Visit History</h3>
-        <div class="stat-items">
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar-plus"></i>
-              <span>First Visit</span>
-            </div>
-            <div class="stat-value">{{ formatDate(statistics.firstVisit) }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar-times"></i>
-              <span>Last Visit</span>
-            </div>
-            <div class="stat-value">{{ formatDate(statistics.lastVisit) }}</div>
-          </div>
-        </div>
-      </div>
+      <section class="stats-group">
+        <h3>Visit span</h3>
+        <MetricItem icon="pi pi-calendar-plus" label="First visit" :value="formatDate(statistics.firstVisit)" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar-times" label="Last visit" :value="formatDate(statistics.lastVisit)" size="small" variant="minimal" />
+      </section>
 
-      <!-- Visit Patterns -->
-      <div v-if="hasVisitPatterns" class="stat-section">
-        <h3 class="section-title">Visit Patterns</h3>
-        <div class="stat-items">
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-calendar"></i>
-              <span>Typical Day</span>
-            </div>
-            <div class="stat-value">{{ visitPatterns.mostCommonDayOfWeek }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-clock"></i>
-              <span>Arrival Period</span>
-            </div>
-            <div class="stat-value">{{ visitPatterns.mostCommonArrivalPeriod }}</div>
-          </div>
-          <div class="stat-item-full">
-            <div class="stat-label">
-              <i class="pi pi-refresh"></i>
-              <span>Visit Cadence</span>
-            </div>
-            <div class="stat-value">{{ formatCadence(visitPatterns.averageDaysBetweenVisits) }}</div>
-          </div>
-        </div>
-      </div>
+      <section class="stats-group">
+        <h3>Duration range</h3>
+        <MetricItem icon="pi pi-arrow-down" label="Shortest visit" :value="formatDuration(statistics.minDuration)" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-arrow-up" label="Longest visit" :value="formatDuration(statistics.maxDuration)" size="small" variant="minimal" />
+      </section>
+
+      <section v-if="hasVisitPatterns" class="stats-group">
+        <h3>Visit patterns</h3>
+        <MetricItem icon="pi pi-calendar" label="Typical day" :value="visitPatterns.mostCommonDayOfWeek" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-clock" label="Arrival period" :value="visitPatterns.mostCommonArrivalPeriod" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-refresh" label="Visit cadence" :value="formatCadence(visitPatterns.averageDaysBetweenVisits)" size="small" variant="minimal" />
+      </section>
     </div>
   </BaseCard>
 </template>
@@ -126,20 +40,18 @@
 <script setup>
 import { computed } from 'vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
+import MetricItem from '@/components/ui/data/MetricItem.vue'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()
-
 const props = defineProps({
-  statistics: {
-    type: Object,
-    required: true
-  }
+  statistics: { type: Object, required: true }
 })
 
 const visitPatterns = computed(() => props.statistics?.visitPatterns || null)
 const hasVisitPatterns = computed(() => Boolean(visitPatterns.value))
+const hasUniquePlaces = computed(() => props.statistics?.uniquePlaces !== null && props.statistics?.uniquePlaces !== undefined)
 
 const formatDuration = (seconds) => {
   if (seconds === null || seconds === undefined) return 'N/A'
@@ -147,146 +59,94 @@ const formatDuration = (seconds) => {
   return formatDurationSmart(seconds)
 }
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return 'N/A'
-  return timezone.format(timestamp, 'MMMM DD, YYYY')
-}
+const formatDate = (timestamp) => timestamp ? timezone.format(timestamp, 'MMMM DD, YYYY') : 'N/A'
 
 const formatCadence = (days) => {
-  if (days === null || days === undefined || Number.isNaN(Number(days))) {
-    return 'N/A'
-  }
-
-  const numericDays = Number(days)
-  if (numericDays < 1) {
-    return 'Less than daily'
-  }
-
-  const roundedDays = Math.round(numericDays)
-  if (roundedDays === 1) {
-    return 'Every day'
-  }
-
-  return `Every ${roundedDays} days`
+  if (days === null || days === undefined || Number.isNaN(Number(days))) return 'N/A'
+  const roundedDays = Math.round(Number(days))
+  if (roundedDays < 1) return 'Less than daily'
+  return roundedDays === 1 ? 'Every day' : `Every ${roundedDays} days`
 }
 </script>
 
 <style scoped>
-.stats-grid {
+.place-statistics {
+  margin-bottom: var(--gp-spacing-xl);
+}
+
+.summary-grid,
+.details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--gp-spacing-xl);
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.stat-section {
-  display: flex;
-  flex-direction: column;
   gap: var(--gp-spacing-md);
 }
 
-.section-title {
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  margin-bottom: var(--gp-spacing-lg);
+}
+
+.summary-grid :deep(.gp-metric-item) {
+  min-height: 4.75rem;
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gp-text-secondary);
-  padding-bottom: var(--gp-spacing-sm);
-  border-bottom: 2px solid var(--gp-border-light);
 }
 
-.stat-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-md);
+.details-grid {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
 }
 
-.stat-item-full {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--gp-spacing-lg);
+.stats-group {
   padding: var(--gp-spacing-md);
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
   border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
 }
 
-.stat-label {
+.stats-group h3 {
+  margin: 0 0 var(--gp-spacing-xs);
+  color: var(--gp-text-primary);
+  font-size: .9rem;
+}
+
+.stats-group :deep(.gp-metric-item) {
+  margin: 0;
+}
+
+.stats-group :deep(.gp-metric-content) {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--gp-spacing-sm);
-  color: var(--gp-text-secondary);
-  font-weight: 500;
-  font-size: 0.9rem;
-  flex-shrink: 1;
-  min-width: 0;
 }
 
-.stat-label i {
-  color: var(--gp-primary);
-  flex-shrink: 0;
-}
-
-.stat-value {
+.stats-group :deep(.gp-metric-value) {
+  order: 2;
+  margin: 0;
   color: var(--gp-text-primary);
-  font-weight: 600;
-  font-size: 1rem;
+  font-size: .9rem;
   text-align: right;
+}
+
+.stats-group :deep(.gp-metric-label) {
+  order: 1;
+  margin: 0;
+  font-size: .8rem;
   white-space: nowrap;
-  flex-shrink: 0;
 }
 
-/* Dark mode */
-.p-dark .section-title {
-  color: var(--gp-text-primary);
-  border-bottom-color: var(--gp-border-dark);
-}
-
-.p-dark .stat-item-full {
-  background: var(--gp-surface-darker);
+.p-dark .stats-group {
   border-color: var(--gp-border-dark);
 }
 
-.p-dark .stat-label {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .stat-value {
-  color: var(--gp-text-primary);
-}
-
-/* Responsive design */
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 1100px) {
+  .summary-grid,
+  .details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 768px) {
-  .stats-grid {
+@media (max-width: 640px) {
+  .summary-grid,
+  .details-grid {
     grid-template-columns: 1fr;
-    gap: var(--gp-spacing-md);
-  }
-
-  .stat-section {
-    gap: var(--gp-spacing-sm);
-  }
-
-  .section-title {
-    font-size: 0.9rem;
-  }
-
-  .stat-item-full {
-    padding: var(--gp-spacing-sm);
-  }
-
-  .stat-label {
-    font-size: 0.85rem;
-  }
-
-  .stat-value {
-    font-size: 0.9rem;
   }
 }
 </style>

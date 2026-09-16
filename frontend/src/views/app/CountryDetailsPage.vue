@@ -1,21 +1,9 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      :title="countryName"
-      :subtitle="`Statistics and visit history for ${countryName}`"
       :loading="isLoading"
-      variant="fullwidth"
+      max-width="xlarge"
     >
-      <!-- Breadcrumb -->
-      <div class="breadcrumb-nav">
-        <Button
-          label="Back to Location Analytics"
-          icon="pi pi-arrow-left"
-          class="p-button-text"
-          @click="goToLocationAnalytics"
-        />
-      </div>
-
       <!-- Loading State -->
       <template v-if="isLoading && !countryDetails">
         <div class="loading-container">
@@ -38,18 +26,20 @@
 
       <!-- Country Details Content -->
       <template v-else-if="countryDetails">
-        <!-- Country Header -->
-        <BaseCard class="country-header-card">
-          <div class="country-header">
-            <div class="country-header-icon">
-              <i class="pi pi-globe"></i>
-            </div>
-            <div class="country-header-content">
-              <h1 class="country-title">{{ countryDetails.countryName }}</h1>
-              <p class="country-meta">{{ countryDetails.cities.length }} cities visited</p>
-            </div>
-          </div>
-        </BaseCard>
+        <LocationDetailsHeader
+          :title="countryDetails.countryName"
+          subtitle="Country insights and visit history"
+          icon="pi pi-globe"
+          back-label="Back"
+          @back="goToLocationAnalytics"
+        >
+          <template #metadata>
+            <span>{{ countryDetails.cities.length }} cities visited</span>
+            <span v-if="countryDetails.statistics">
+              {{ countryDetails.statistics.totalVisits || 0 }} visits
+            </span>
+          </template>
+        </LocationDetailsHeader>
 
         <!-- Statistics Card -->
         <PlaceStatsCard
@@ -57,62 +47,91 @@
           :statistics="countryDetails.statistics"
         />
 
-        <!-- Cities Breakdown -->
-        <BaseCard v-if="countryDetails.cities && countryDetails.cities.length > 0" class="cities-card">
-          <h3 class="section-title">Cities in {{ countryDetails.countryName }}</h3>
-          <div class="cities-list">
-            <div
-              v-for="city in countryDetails.cities"
-              :key="city.cityName"
-              class="city-item"
-              @click="navigateToCity(city.cityName)"
-            >
-              <div class="city-info">
-                <i class="pi pi-building city-icon"></i>
-                <div class="city-details">
-                  <div class="city-name">{{ city.cityName }}</div>
-                  <div class="city-stats">
-                    {{ city.visitCount }} visits • {{ formatDuration(city.totalDuration) }} • {{ city.uniquePlaces }} places
+        <div
+          v-if="countryDetails.cities?.length || countryDetails.topPlaces?.length"
+          class="country-lists-grid"
+        >
+          <!-- Cities Breakdown -->
+          <BaseCard
+            v-if="countryDetails.cities?.length"
+            :title="`Cities in ${countryDetails.countryName}`"
+            class="cities-card"
+          >
+            <div id="country-cities-list" class="cities-list">
+              <RouterLink
+                v-for="city in visibleCities"
+                :key="city.cityName"
+                :to="`/app/location-analytics/city/${encodeURIComponent(city.cityName)}`"
+                class="city-item"
+              >
+                <div class="city-info">
+                  <i class="pi pi-building city-icon"></i>
+                  <div class="city-details">
+                    <div class="city-name">{{ city.cityName }}</div>
+                    <div class="city-stats">
+                      {{ city.visitCount }} visits • {{ formatDuration(city.totalDuration) }} • {{ city.uniquePlaces }} places
+                    </div>
                   </div>
                 </div>
-              </div>
-              <i class="pi pi-chevron-right"></i>
+                <i class="pi pi-chevron-right"></i>
+              </RouterLink>
             </div>
-          </div>
-        </BaseCard>
+            <template v-if="countryDetails.cities.length > 5" #footer>
+              <Button
+                :label="showAllCities ? 'Show top 5' : `Show all ${countryDetails.cities.length} cities`"
+                :icon="showAllCities ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                :aria-expanded="showAllCities"
+                aria-controls="country-cities-list"
+                size="small"
+                text
+                @click="showAllCities = !showAllCities"
+              />
+            </template>
+          </BaseCard>
 
-        <!-- Top Places in Country -->
-        <BaseCard v-if="countryDetails.topPlaces && countryDetails.topPlaces.length > 0" class="top-places-card">
-          <h3 class="section-title">Top Places in {{ countryDetails.countryName }}</h3>
-          <div class="top-places-list">
-            <div
-              v-for="place in countryDetails.topPlaces"
-              :key="`${place.type}-${place.id}`"
-              class="top-place-item"
-              @click="navigateToPlace(place)"
-            >
-              <div class="place-info">
-                <i :class="place.type === 'favorite' ? 'pi pi-heart' : 'pi pi-map-marker'" class="place-icon"></i>
-                <div class="place-details">
-                  <div class="place-name">{{ place.name }}</div>
-                  <div class="place-stats">
-                    {{ place.visitCount }} visits • {{ formatDuration(place.totalDuration) }}
+          <!-- Top Places in Country -->
+          <BaseCard
+            v-if="countryDetails.topPlaces?.length"
+            :title="`Top Places in ${countryDetails.countryName}`"
+            class="top-places-card"
+          >
+            <div class="top-places-list">
+              <RouterLink
+                v-for="place in countryDetails.topPlaces"
+                :key="`${place.type}-${place.id}`"
+                :to="`/app/place-details/${place.type}/${place.id}`"
+                class="top-place-item"
+              >
+                <div class="place-info">
+                  <i :class="place.type === 'favorite' ? 'pi pi-heart' : 'pi pi-map-marker'" class="place-icon"></i>
+                  <div class="place-details">
+                    <div class="place-name">{{ place.name }}</div>
+                    <div class="place-stats">
+                      {{ place.visitCount }} visits • {{ formatDuration(place.totalDuration) }}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <i class="pi pi-chevron-right"></i>
+                <i class="pi pi-chevron-right"></i>
+              </RouterLink>
             </div>
-          </div>
-        </BaseCard>
+          </BaseCard>
+        </div>
 
         <ImmichPhotosMapCard
-          v-if="countryPhotosForMap.length > 0 || countryMarkerGroupsForMap.length > 0"
+          v-if="hasPhotoMap"
           ref="countryPhotosMapRef"
           :key="`country-photos-map-${countryName}`"
           :title="`Photo locations in ${countryDetails.countryName}`"
           :photos="countryPhotosForMap"
           :photo-marker-groups="countryMarkerGroupsForMap"
           @photo-click="handleCountryMapPhotoClick"
+        />
+
+        <CountryCitiesMap
+          v-else-if="showCityFallbackMap"
+          :cities="countryDetails.cities"
+          :country-name="countryDetails.countryName"
+          @city-select="handleCitySelect"
         />
 
         <ImmichLatestPhotosSection
@@ -156,23 +175,29 @@ import ProgressSpinner from 'primevue/progressspinner'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
+import LocationDetailsHeader from '@/components/location-analytics/LocationDetailsHeader.vue'
 import PlaceStatsCard from '@/components/place/PlaceStatsCard.vue'
 import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import ImmichPhotosMapCard from '@/components/location-analytics/ImmichPhotosMapCard.vue'
+import CountryCitiesMap from '@/components/location-analytics/CountryCitiesMap.vue'
 import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
+import { useImmichStore } from '@/stores/immich'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const store = useLocationAnalyticsStore()
+const immichStore = useImmichStore()
 
 const { countryDetails, countryVisits, countryPagination, loading } = storeToRefs(store)
 
 const error = ref(null)
 const visitsLoading = ref(false)
+const showAllCities = ref(false)
+const immichAvailabilityResolved = ref(false)
 const currentSortBy = ref('timestamp')
 const currentSortDirection = ref('desc')
 const countryPhotosSectionRef = ref(null)
@@ -194,6 +219,16 @@ const {
 const countryName = computed(() => route.params.name)
 const isLoading = computed(() => loading.value)
 const pagination = computed(() => countryPagination.value)
+const visibleCities = computed(() => {
+  const cities = countryDetails.value?.cities || []
+  return showAllCities.value ? cities : cities.slice(0, 5)
+})
+const hasPhotoMap = computed(() => countryPhotosForMap.value.length > 0 || countryMarkerGroupsForMap.value.length > 0)
+const showCityFallbackMap = computed(() =>
+  immichAvailabilityResolved.value &&
+  !immichStore.isConfigured &&
+  (countryDetails.value?.cities || []).some((city) => Number.isFinite(city?.latitude) && Number.isFinite(city?.longitude))
+)
 const countryImmichSearchParams = computed(() => {
   const firstVisit = countryDetails.value?.statistics?.firstVisit
   const lastVisit = countryDetails.value?.statistics?.lastVisit
@@ -235,6 +270,7 @@ const formatDuration = (seconds) => {
 
 const loadCountryData = async () => {
   error.value = null
+  showAllCities.value = false
   resetCountryPhotosForMap()
 
   try {
@@ -249,6 +285,16 @@ const loadCountryData = async () => {
       detail: error.value,
       life: 5000
     })
+  }
+}
+
+const resolveImmichAvailability = async () => {
+  try {
+    await immichStore.fetchConfig()
+  } catch {
+    // An unavailable configuration uses the city map fallback.
+  } finally {
+    immichAvailabilityResolved.value = true
   }
 }
 
@@ -320,21 +366,19 @@ const handleExportVisits = async () => {
   }
 }
 
-const navigateToPlace = (place) => {
-  router.push(`/app/place-details/${place.type}/${place.id}`)
-}
-
-const navigateToCity = (cityName) => {
-  router.push(`/app/location-analytics/city/${encodeURIComponent(cityName)}`)
-}
-
 const goToLocationAnalytics = () => {
   router.push('/app/location-analytics')
 }
 
+const handleCitySelect = (city) => {
+  if (city?.cityName) {
+    router.push(`/app/location-analytics/city/${encodeURIComponent(city.cityName)}`)
+  }
+}
+
 onMounted(async () => {
   store.clearCountryData()
-  await loadCountryData()
+  await Promise.all([loadCountryData(), resolveImmichAvailability()])
 })
 
 watch(
@@ -350,11 +394,6 @@ watch(
 </script>
 
 <style scoped>
-.breadcrumb-nav {
-  margin-bottom: var(--gp-spacing-lg);
-  padding: 0 var(--gp-spacing-lg);
-}
-
 .loading-container,
 .error-container {
   display: flex;
@@ -372,44 +411,21 @@ watch(
   opacity: 0.7;
 }
 
-.country-header-card {
+.country-lists-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--gp-spacing-lg);
   margin-bottom: var(--gp-spacing-xl);
 }
 
-.country-header {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-lg);
-}
-
-.country-header-icon {
-  font-size: 3rem;
-  color: var(--gp-primary);
-}
-
-.country-title {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.country-meta {
-  margin: var(--gp-spacing-xs) 0 0;
-  font-size: 1.125rem;
-  color: var(--gp-text-secondary);
+.country-lists-grid > :only-child {
+  grid-column: 1 / -1;
 }
 
 .cities-card,
 .top-places-card {
-  margin-bottom: var(--gp-spacing-xl);
-}
-
-.section-title {
-  margin: 0 0 var(--gp-spacing-lg);
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
+  width: 100%;
 }
 
 .cities-list,
@@ -424,10 +440,11 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--gp-spacing-md);
+  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
-  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
   transition: all 0.2s ease;
 }
 
@@ -437,18 +454,30 @@ watch(
   background: var(--gp-primary-50);
 }
 
+.city-item:focus-visible,
+.top-place-item:focus-visible {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
+}
+
 .city-info,
 .place-info {
   display: flex;
   align-items: center;
-  gap: var(--gp-spacing-md);
+  gap: var(--gp-spacing-sm);
   flex: 1;
+  min-width: 0;
 }
 
 .city-icon,
 .place-icon {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   color: var(--gp-primary);
+}
+
+.city-details,
+.place-details {
+  min-width: 0;
 }
 
 .city-name,
@@ -456,6 +485,8 @@ watch(
   font-weight: 600;
   color: var(--gp-text-primary);
   margin-bottom: var(--gp-spacing-xs);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .city-stats,
@@ -464,13 +495,16 @@ watch(
   color: var(--gp-text-secondary);
 }
 
-@media (max-width: 768px) {
-  .country-title {
-    font-size: 1.5rem;
-  }
+.city-item > .pi-chevron-right,
+.top-place-item > .pi-chevron-right {
+  flex-shrink: 0;
+  margin-left: var(--gp-spacing-sm);
+}
 
-  .country-header-icon {
-    font-size: 2rem;
+@media (max-width: 1024px) {
+  .country-lists-grid {
+    grid-template-columns: 1fr;
   }
 }
+
 </style>

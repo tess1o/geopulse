@@ -223,7 +223,7 @@ const contentClasses = computed(() => ({
   flex-direction: column;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .gp-page-content > * {
