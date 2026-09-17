@@ -196,7 +196,7 @@
               class="boat-setup-progress-bar"
             />
             <div class="boat-setup-modal-details">
-              <span>{{ boatSetupStatus?.phase || 'Preparing Boat setup...' }}</span>
+              <span>{{ formatBoatSetupPhase(boatSetupStatus?.phase) }}</span>
               <strong>{{ boatSetupStatus?.progressPercentage || 0 }}%</strong>
             </div>
             <div
@@ -216,7 +216,7 @@
             <Message v-if="boatSetupStatus?.status === 'FAILED'" severity="error">
               <div>
                 <strong>{{ boatSetupStatus.errorCode || 'Boat setup failed' }}</strong>
-                <div>{{ boatSetupStatus.errorMessage }}</div>
+                <div>{{ formatBoatSetupError(boatSetupStatus.error) }}</div>
                 <a
                   v-if="boatSetupStatus.docsUrl"
                   :href="boatSetupStatus.docsUrl"
@@ -293,6 +293,8 @@ import {
 } from '@/constants/timelinePreferencesMetadata'
 import { jumpToSetting } from '@/utils/settingJump'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { formatBoatSetupError, formatBoatSetupPhase } from '@/utils/boatSetupDisplay'
 
 const CLASSIFICATION_FIELDS = [
   'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
@@ -474,7 +476,6 @@ const detectedActiveJobId = ref(null)
 const checkingActiveJob = ref(false)
 const actionsMenuRef = ref(null)
 const boatSetupVisible = ref(false)
-const boatSetupPollingTimer = ref(null)
 let activeJobPollingTimer = null
 const timelinePreferencesUnsavedConfirmGroup = 'timeline-preferences-unsaved-changes'
 
@@ -853,16 +854,9 @@ const refreshBoatSetupStatus = async () => {
 }
 
 const startBoatSetupPolling = () => {
-  stopBoatSetupPolling()
-  boatSetupPollingTimer.value = window.setInterval(async () => {
-    try {
-      const jobId = boatSetupStore.currentJobId
-      const status = jobId
-        ? await boatSetupStore.fetchJob(jobId)
-        : await boatSetupStore.fetchStatus()
-
-      if (status?.status === 'READY') {
-        stopBoatSetupPolling()
+  boatSetupStore.startPolling({
+    onSettled: async (status) => {
+      if (status.status === 'READY') {
         await loadPreferences()
         toast.add({
           severity: 'success',
@@ -872,32 +866,28 @@ const startBoatSetupPolling = () => {
         })
       } else if (status?.status === 'FAILED') {
         boatSetupVisible.value = true
-        stopBoatSetupPolling()
         toast.add({
           severity: 'error',
           summary: 'Boat Setup Failed',
-          detail: status.errorMessage || 'Water dataset setup failed. Check offline setup instructions.',
+          detail: formatBoatSetupError(status.error),
           life: 9000
         })
       }
-    } catch (error) {
-      stopBoatSetupPolling()
+    },
+    onError: (error) => {
       boatSetupVisible.value = true
       toast.add({
         severity: 'error',
         summary: 'Boat Setup Status Failed',
-        detail: error.message || 'Could not refresh Boat setup status.',
+        detail: formatApiErrorDetail(error, 'Could not refresh Boat setup status.'),
         life: 7000
       })
     }
-  }, 2000)
+  })
 }
 
 const stopBoatSetupPolling = () => {
-  if (boatSetupPollingTimer.value) {
-    window.clearInterval(boatSetupPollingTimer.value)
-    boatSetupPollingTimer.value = null
-  }
+  boatSetupStore.stopPolling()
 }
 
 const formatBytes = (bytes) => {
@@ -992,7 +982,7 @@ const startBoatSetup = async () => {
     toast.add({
       severity: 'error',
       summary: 'Boat Setup Failed',
-      detail: error.message || 'Failed to start Boat setup.',
+      detail: formatApiErrorDetail(error, 'Failed to start Boat setup.'),
       life: 7000
     })
   }

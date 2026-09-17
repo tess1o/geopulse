@@ -12,6 +12,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.BulkUpdateRequest;
+import org.github.tess1o.geopulse.admin.dto.MapMatchingProviderTestResponse;
+import org.github.tess1o.geopulse.admin.dto.MapMatchingQueueRebuildResponse;
+import org.github.tess1o.geopulse.admin.dto.PanoramaxTestResponse;
+import org.github.tess1o.geopulse.admin.dto.SettingResetResponse;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.SettingInfo;
@@ -27,13 +31,14 @@ import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
 import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.weather.dto.WeatherTestResponse;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
+import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestResponse;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -47,6 +52,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for admin settings management.
@@ -99,9 +107,8 @@ public class AdminSettingsResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getAllSettings() {
-        Map<String, List<SettingInfo>> settings = settingsService.getAllSettings();
-        return Response.ok(settings).build();
+    public Map<String, List<SettingInfo>> getAllSettings() {
+        return settingsService.getAllSettings();
     }
 
     /**
@@ -110,9 +117,8 @@ public class AdminSettingsResource {
     @GET
     @Path("/{category}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getSettingsByCategory(@PathParam("category") String category) {
-        List<SettingInfo> settings = settingsService.getSettingsByCategory(category);
-        return Response.ok(settings).build();
+    public List<SettingInfo> getSettingsByCategory(@PathParam("category") String category) {
+        return settingsService.getSettingsByCategory(category);
     }
 
     /**
@@ -125,7 +131,7 @@ public class AdminSettingsResource {
     @PUT
     @Path("/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response updateSetting(
+    public void updateSetting(
             @PathParam("key") String key,
             UpdateSettingRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -140,7 +146,6 @@ public class AdminSettingsResource {
         String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logSettingChange(adminId, key, oldValue, request.getValue(), ipAddress);
 
-        return Response.ok(Map.of("success", true)).build();
     }
 
     /**
@@ -149,7 +154,7 @@ public class AdminSettingsResource {
     @DELETE
     @Path("/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response resetSetting(
+    public SettingResetResponse resetSetting(
             @PathParam("key") String key,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -163,7 +168,7 @@ public class AdminSettingsResource {
         String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logSettingReset(adminId, key, oldValue, ipAddress);
 
-        return Response.ok(Map.of("success", true, "defaultValue", settingsService.getDefaultValue(key))).build();
+        return new SettingResetResponse(settingsService.getDefaultValue(key));
     }
 
     /**
@@ -179,7 +184,7 @@ public class AdminSettingsResource {
     @Path("/bulk")
     @Transactional
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response bulkUpdateSettings(
+    public void bulkUpdateSettings(
             BulkUpdateRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -195,9 +200,7 @@ public class AdminSettingsResource {
         if (!geocodingSettings.isEmpty()) {
             String validationError = geocodingValidationService.validateGeocodingChanges(geocodingSettings);
             if (validationError != null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("message", validationError))
-                        .build();
+                throw problem(INVALID_ADMIN_SETTINGS, validationError);
             }
         }
 
@@ -208,9 +211,7 @@ public class AdminSettingsResource {
         if (!weatherSettings.isEmpty()) {
             String validationError = weatherValidationService.validateWeatherChanges(weatherSettings);
             if (validationError != null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("message", validationError))
-                        .build();
+                throw problem(INVALID_ADMIN_SETTINGS, validationError);
             }
         }
 
@@ -261,8 +262,7 @@ public class AdminSettingsResource {
             );
         }
 
-        // 4. If we reach here, all saves succeeded (transaction commits)
-        return Response.ok(Map.of("success", true, "updated", orderedSettings.size())).build();
+        // Transaction commits when this method returns.
     }
 
     /**
@@ -271,63 +271,30 @@ public class AdminSettingsResource {
     @POST
     @Path("/system/notifications/apprise/test")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response testAppriseConnection(AppriseTestRequest request) {
+    public AppriseTestResponse testAppriseConnection(AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of(
-                            "success", false,
-                            "statusCode", 0,
-                            "message", "Apprise test failed: no response from client"
-                    ))
-                    .build();
+            return new AppriseTestResponse(false, 0, "Apprise test failed: no response from client");
         }
 
         String message = result.getMessage() != null && !result.getMessage().isBlank()
                 ? result.getMessage()
                 : (result.isSuccess() ? "Apprise endpoint is reachable" : "Apprise test failed");
 
-        Map<String, Object> responsePayload = new LinkedHashMap<>();
-        responsePayload.put("success", result.isSuccess());
-        responsePayload.put("statusCode", result.getStatusCode());
-        responsePayload.put("message", message);
-
-        if (result.isSuccess()) {
-            return Response.ok(responsePayload).build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(responsePayload)
-                .build();
+        return new AppriseTestResponse(result.isSuccess(), result.getStatusCode(), message);
     }
 
     @POST
     @Path("/weather/test")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response testWeatherConnection() {
-        WeatherTestResponse result = weatherService.testProviderConnection();
-        Map<String, Object> responsePayload = new LinkedHashMap<>();
-        responsePayload.put("success", result.isSuccess());
-        responsePayload.put("statusCode", result.getStatusCode());
-        responsePayload.put("message", result.getMessage());
-        responsePayload.put("provider", result.getProvider());
-        responsePayload.put("url", result.getUrl());
-        responsePayload.put("forecast", result.getForecast());
-        responsePayload.put("archive", result.getArchive());
-
-        if (result.isSuccess()) {
-            return Response.ok(responsePayload).build();
-        }
-
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(responsePayload)
-                .build();
+    public WeatherTestResponse testWeatherConnection() {
+        return weatherService.testProviderConnection();
     }
 
     @POST
     @Path("/panoramax/test")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response testPanoramaxConnection() {
+    public PanoramaxTestResponse testPanoramaxConnection() {
         String endpoint = settingsService.getString("panoramax.endpoint").trim();
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
@@ -337,16 +304,11 @@ public class AdminSettingsResource {
             HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
             boolean hasVectorTiles = response.statusCode() >= 200 && response.statusCode() < 300
                     && hasVectorTiles(objectMapper.readTree(response.body()));
-            Map<String, Object> payload = Map.of(
-                    "success", hasVectorTiles,
-                    "endpoint", endpoint,
-                    "message", hasVectorTiles ? "Panoramax STAC vector tiles found" : "No Panoramax vector-tile link found");
-            return Response.status(hasVectorTiles ? Response.Status.OK : Response.Status.BAD_REQUEST).entity(payload).build();
+            return new PanoramaxTestResponse(hasVectorTiles, endpoint,
+                    hasVectorTiles ? null : "No Panoramax vector-tile link found");
         } catch (Exception exception) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(Map.of(
-                    "success", false,
-                    "endpoint", endpoint,
-                    "message", "Could not reach Panoramax endpoint: " + exception.getMessage())).build();
+            return new PanoramaxTestResponse(false, endpoint,
+                    "Could not reach Panoramax endpoint: " + exception.getMessage());
         }
     }
 
@@ -366,21 +328,14 @@ public class AdminSettingsResource {
     @POST
     @Path("/map-matching/valhalla/test")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response testValhallaConnection() {
-        Map<String, Object> responsePayload = new LinkedHashMap<>();
-        responsePayload.put("provider", "valhalla");
-
+    public MapMatchingProviderTestResponse testValhallaConnection() {
         if (!mapMatchingConfiguration.valhallaConfigured()) {
-            responsePayload.put("success", false);
-            responsePayload.put("statusCode", 0);
-            responsePayload.put("message", "Valhalla base URL is not configured");
-            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+            return new MapMatchingProviderTestResponse(
+                    false, 0, "valhalla", null, "Valhalla base URL is not configured");
         }
 
         String baseUrl = mapMatchingConfiguration.valhallaBaseUrl();
         URI statusUri = URI.create(baseUrl.endsWith("/") ? baseUrl + "status" : baseUrl + "/status");
-        responsePayload.put("url", statusUri.toString());
-
         try (HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(Math.max(1, mapMatchingConfiguration.getConnectTimeoutSeconds())))
                 .build()) {
@@ -389,58 +344,51 @@ public class AdminSettingsResource {
                     .GET()
                     .build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            responsePayload.put("statusCode", response.statusCode());
-            responsePayload.put("message", response.statusCode() >= 200 && response.statusCode() < 300
+            String detail = response.statusCode() >= 200 && response.statusCode() < 300
                     ? "Valhalla endpoint is reachable"
-                    : limitErrorBody(response.body()));
-            responsePayload.put("success", response.statusCode() >= 200 && response.statusCode() < 300);
+                    : limitErrorBody(response.body());
+            boolean success = response.statusCode() >= 200 && response.statusCode() < 300;
 
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            if (success) {
                 integrationHealthService.recordSuccess(ExternalIntegrationType.MAP_MATCHING, "valhalla");
-                return Response.ok(responsePayload).build();
+                return new MapMatchingProviderTestResponse(
+                        true, response.statusCode(), "valhalla", statusUri.toString(), null);
             }
             integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, "valhalla",
                     ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE, "HTTP_" + response.statusCode(),
-                    String.valueOf(responsePayload.get("message")), null, null);
-            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+                    detail, null, null);
+            return new MapMatchingProviderTestResponse(
+                    false, response.statusCode(), "valhalla", statusUri.toString(), detail);
         } catch (Exception e) {
-            responsePayload.put("success", false);
-            responsePayload.put("statusCode", 0);
-            responsePayload.put("message", e.getMessage() == null ? "Valhalla connection failed" : e.getMessage());
+            String detail = e.getMessage() == null ? "Valhalla connection failed" : e.getMessage();
             integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, "valhalla",
                     ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE, e.getClass().getSimpleName(),
                     e.getMessage(), null, null);
-            return Response.status(Response.Status.BAD_REQUEST).entity(responsePayload).build();
+            return new MapMatchingProviderTestResponse(false, 0, "valhalla", statusUri.toString(), detail);
         }
     }
 
     @GET
     @Path("/map-matching/status")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response mapMatchingStatus() {
-        return Response.ok(ApiResponse.success(mapMatchingWorker.status())).build();
+    public MapMatchingAdminStatusDTO mapMatchingStatus() {
+        return mapMatchingWorker.status();
     }
 
     @POST
     @Path("/map-matching/historical/rebuild")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response rebuildMapMatchingHistoricalQueue(
+    public MapMatchingQueueRebuildResponse rebuildMapMatchingHistoricalQueue(
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
         if (!mapMatchingConfiguration.isEnabled()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Map matching is disabled"))
-                    .build();
+            throw problem(MAP_MATCHING_DISABLED, "Map matching is disabled");
         }
         if (!mapMatchingConfiguration.backfillEnabled()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Historical backfill is disabled"))
-                    .build();
+            throw problem(MAP_MATCHING_BACKFILL_DISABLED, "Historical backfill is disabled");
         }
         if (!"valhalla".equals(mapMatchingConfiguration.provider()) || !mapMatchingConfiguration.valhallaConfigured()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Valhalla is not configured"))
-                    .build();
+            throw problem(MAP_MATCHING_PROVIDER_NOT_CONFIGURED, "Valhalla is not configured");
         }
 
         long queuedUsers = mapMatchingWorker.rebuildHistoricalQueue();
@@ -455,12 +403,7 @@ public class AdminSettingsResource {
                 ipAddress
         );
 
-        return Response.ok(ApiResponse.success(Map.of(
-                "queuedUsers", queuedUsers,
-                "message", queuedUsers == 0
-                        ? "No timeline trips found to rebuild"
-                        : "Historical map matching queue rebuilt"
-        ))).build();
+        return new MapMatchingQueueRebuildResponse(queuedUsers);
     }
 
     private String limitErrorBody(String body) {

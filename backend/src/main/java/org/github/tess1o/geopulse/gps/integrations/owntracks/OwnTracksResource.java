@@ -21,6 +21,10 @@ import org.jboss.resteasy.reactive.RestHeader;
 import java.time.Instant;
 import java.util.*;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/owntracks")
@@ -61,6 +65,9 @@ public class OwnTracksResource {
     @POST
     @Operation(summary = "Ingest OwnTracks location",
             description = "Receives an OwnTracks location update and stores it as a GPS point for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {

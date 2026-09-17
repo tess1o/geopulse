@@ -889,7 +889,7 @@ test.describe('Friends Page', () => {
 
         try {
           const payload = JSON.parse(body);
-          const friendsData = Array.isArray(payload?.data) ? payload.data : [];
+          const friendsData = Array.isArray(payload) ? payload : [];
 
           if (trackedFriendId) {
             const trackedFriendIdNormalized = String(trackedFriendId).toLowerCase();

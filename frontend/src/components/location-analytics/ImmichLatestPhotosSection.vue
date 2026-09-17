@@ -192,7 +192,7 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 
 import { useImmichStore } from '@/stores/immich'
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { imageService } from '@/utils/imageService'
 import { useTimezone } from '@/composables/useTimezone'
 import { buildJustifiedPhotoRows } from '@/utils/justifiedPhotoLayout'
@@ -722,8 +722,7 @@ const searchPhotos = async (limit = currentLimit.value) => {
     return { photos: [], totalCount: 0 }
   }
 
-  const response = await apiService.get('/users/me/immich/photos/search', params)
-  const payload = response?.data || {}
+  const payload = await immichStore.searchPhotos(params)
   const photos = (Array.isArray(payload.photos) ? payload.photos : []).map(normalizePhoto)
   const totalCount = Number(payload.totalCount || photos.length)
   return { photos, totalCount }
@@ -757,8 +756,7 @@ const searchPhotoMapMarkers = async () => {
   }
 
   params.coordinatePrecision = MAP_COORDINATE_PRECISION
-  const response = await apiService.get('/users/me/immich/photos/map-markers', params)
-  const payload = response?.data || {}
+  const payload = await immichStore.fetchPhotoMapMarkers(params)
   const markers = Array.isArray(payload.markers) ? payload.markers : []
   const totalPhotosCount = Number(payload.totalPhotos || 0)
   const geotaggedPhotos = Number(payload.geotaggedPhotos || markers.reduce((acc, marker) => acc + Number(marker?.count || 0), 0))
@@ -828,8 +826,7 @@ const searchPhotosForMarker = async ({ markerLatitude, markerLongitude, limit = 
     params.limit = limit
   }
 
-  const response = await apiService.get('/users/me/immich/photos/map-marker/photos', params)
-  const payload = response?.data || {}
+  const payload = await immichStore.fetchPhotosForMapMarker(params)
   const photos = (Array.isArray(payload.photos) ? payload.photos : []).map(normalizePhoto)
   const totalCount = Number(payload.totalCount || photos.length)
   return { photos, totalCount }
@@ -938,7 +935,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       totalPhotos.value = 0
       clearPhotoBlobs()
     }
-    photosError.value = err.response?.data?.message || 'Failed to load photos from Immich'
+    photosError.value = formatApiErrorDetail(err, 'Failed to load photos from Immich')
   } finally {
     if (requestToken === latestRequestToken) {
       latestPhotosLoading.value = false
@@ -1030,7 +1027,7 @@ const fetchAllPhotosForGallery = async () => {
       return
     }
 
-    photosError.value = err.response?.data?.message || 'Failed to load full photo gallery'
+    photosError.value = formatApiErrorDetail(err, 'Failed to load full photo gallery')
     toast.add({
       severity: 'error',
       summary: 'Gallery Load Failed',
@@ -1197,7 +1194,7 @@ const loadPhotosForMarkerGroup = async (markerGroup) => {
     toast.add({
       severity: 'error',
       summary: 'Map Preview Failed',
-      detail: err.response?.data?.message || 'Failed to load photos for this map marker',
+      detail: formatApiErrorDetail(err, 'Failed to load photos for this map marker'),
       life: 4000
     })
     return []

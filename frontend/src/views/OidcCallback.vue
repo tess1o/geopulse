@@ -32,6 +32,7 @@ import {useRoute, useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
 import {useToast} from 'primevue/usetoast'
 import {useTimezone} from '@/composables/useTimezone'
+import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -83,14 +84,13 @@ onMounted(async () => {
     console.error('OIDC callback error:', err)
 
     // Check if this is an account linking requirement
-    if (err.response?.status === 409 &&
-        err.response?.data?.data?.error === 'ACCOUNT_LINKING_REQUIRED') {
+    if (err.code === 'OIDC_ACCOUNT_LINKING_REQUIRED' && authStore.accountLinking) {
 
-      linkingData.value = err.response.data.data
+      linkingData.value = authStore.accountLinking
       showLinkingModal.value = true
 
     } else {
-      error.value = err.response?.data?.message || err.message || 'An unknown authentication error occurred.'
+      error.value = formatApiErrorDetail(err, 'An unknown authentication error occurred.')
       toast.add({
         severity: 'error',
         summary: 'Authentication Failed',

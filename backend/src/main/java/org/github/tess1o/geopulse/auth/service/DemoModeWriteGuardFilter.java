@@ -6,10 +6,12 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import io.quarkiverse.httpproblem.HttpProblem;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 import java.util.Locale;
 
@@ -34,10 +36,9 @@ public class DemoModeWriteGuardFilter implements ContainerRequestFilter {
         String path = normalizePath(requestContext.getUriInfo().getPath());
 
         if (isBlocked(method, path, securityIdentity)) {
-            requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
-                    .type(MediaType.APPLICATION_JSON)
+            HttpProblem problem = problem(ACCESS_DENIED, "This action is disabled in demo mode.");
+            requestContext.abortWith(Response.fromResponse(problem.toResponse())
                     .header(DEMO_BLOCK_HEADER, "true")
-                    .entity(ApiResponse.error("This action is disabled in demo mode."))
                     .build());
         }
     }

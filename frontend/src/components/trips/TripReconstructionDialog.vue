@@ -114,6 +114,7 @@ import TripReconstructionSegmentsPanel from '@/components/trips/reconstruction/T
 import TripReconstructionMapPanel from '@/components/trips/reconstruction/TripReconstructionMapPanel.vue'
 import TripReconstructionPreviewSummary from '@/components/trips/reconstruction/TripReconstructionPreviewSummary.vue'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   visible: {
@@ -431,7 +432,7 @@ const previewReconstruction = async () => {
     toast.add({
       severity: 'error',
       summary: 'Validation Failed',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      detail: formatApiErrorDetail(error, 'Request failed.'),
       life: 5000
     })
   } finally {
@@ -483,7 +484,7 @@ const commitReconstruction = async () => {
     toast.add({
       severity: 'error',
       summary: 'Commit Failed',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      detail: formatApiErrorDetail(error, 'Request failed.'),
       life: 5000
     })
   } finally {

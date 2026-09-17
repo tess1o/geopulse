@@ -242,6 +242,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
 import { getWeatherSamplesForTimelineItem } from '@/utils/weatherDisplay'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -579,7 +580,7 @@ const handleExportTripAsGpx = async (tripItem) => {
     toast.add({
       severity: 'error',
       summary: 'Export Failed',
-      detail: error.message || 'Failed to export trip',
+      detail: formatApiErrorDetail(error, 'Failed to export trip'),
       life: 5000
     })
   }
@@ -599,7 +600,7 @@ const handleExportStayAsGpx = async (stayItem) => {
     toast.add({
       severity: 'error',
       summary: 'Export Failed',
-      detail: error.message || 'Failed to export stay',
+      detail: formatApiErrorDetail(error, 'Failed to export stay'),
       life: 5000
     })
   }

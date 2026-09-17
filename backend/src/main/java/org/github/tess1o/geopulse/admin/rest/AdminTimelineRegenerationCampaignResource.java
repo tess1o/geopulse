@@ -25,6 +25,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INTERNAL_ERROR;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_INVALID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
@@ -48,25 +54,21 @@ public class AdminTimelineRegenerationCampaignResource {
     @POST
     @Path("/preview")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response previewCampaign(TimelineRegenerationCampaignPreviewRequest request) {
+    public TimelineRegenerationCampaignPreviewDTO previewCampaign(TimelineRegenerationCampaignPreviewRequest request) {
         try {
             TimelineRegenerationCampaignPreviewDTO preview = campaignService.previewAdminCampaign(request);
-            return Response.ok(preview).build();
+            return preview;
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Failed to preview timeline regeneration campaign", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to preview timeline regeneration campaign"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to preview timeline regeneration campaign");
         }
     }
 
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response createCampaign(CreateTimelineRegenerationCampaignRequest request) {
+    public RestResponse<TimelineRegenerationCampaignSummaryDTO> createCampaign(CreateTimelineRegenerationCampaignRequest request) {
         UUID adminId = currentUserService.getCurrentUserId();
 
         try {
@@ -83,44 +85,37 @@ public class AdminTimelineRegenerationCampaignResource {
                     ),
                     UserIpAddress.resolve(httpRequest)
             );
-            return Response.status(Response.Status.CREATED).entity(created).build();
+            return RestResponse.status(Response.Status.CREATED, created);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Failed to create timeline regeneration campaign", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to create timeline regeneration campaign"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to create timeline regeneration campaign");
         }
     }
 
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response listCampaigns() {
-        List<TimelineRegenerationCampaignSummaryDTO> campaigns = campaignService.listCampaigns();
-        return Response.ok(campaigns).build();
+    public List<TimelineRegenerationCampaignSummaryDTO> listCampaigns() {
+        return campaignService.listCampaigns();
     }
 
     @GET
     @Path("/{campaignId}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getCampaign(@PathParam("campaignId") UUID campaignId) {
+    public TimelineRegenerationCampaignDetailDTO getCampaign(@PathParam("campaignId") UUID campaignId) {
         try {
             TimelineRegenerationCampaignDetailDTO details = campaignService.getCampaignDetails(campaignId);
-            return Response.ok(details).build();
+            return details;
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, e.getMessage());
         }
     }
 
     @POST
     @Path("/{campaignId}/retry-failed")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response retryFailed(@PathParam("campaignId") UUID campaignId) {
+    public TimelineRegenerationCampaignSummaryDTO retryFailed(@PathParam("campaignId") UUID campaignId) {
         UUID adminId = currentUserService.getCurrentUserId();
 
         try {
@@ -133,20 +128,14 @@ public class AdminTimelineRegenerationCampaignResource {
                     Map.of("campaignKey", campaign.getCampaignKey()),
                     UserIpAddress.resolve(httpRequest)
             );
-            return Response.ok(campaign).build();
+            return campaign;
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, e.getMessage());
         } catch (IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
         } catch (Exception e) {
             log.error("Failed to retry timeline regeneration campaign {}", campaignId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to retry timeline regeneration campaign"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to retry timeline regeneration campaign");
         }
     }
 }

@@ -43,8 +43,6 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         RawGpsPointLocationDTO.class,
         GpsPointsRetentionRequest.class,
         GpsTelemetryDisplayDTO.class,
-        GpsPointPageDTO.class,
-        GpsPointPaginationDTO.class,
         GpxFile.class,
         GpxMetadata.class,
         GpxTrack.class,

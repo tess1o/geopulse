@@ -24,9 +24,8 @@ class DemoAuthenticationDisabledIntegrationTest {
                 .get("/api/auth/status")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.demoModeEnabled", equalTo(false))
-                .body("data.demoPersonas", empty());
+                .body("demoModeEnabled", equalTo(false))
+                .body("demoPersonas", empty());
     }
 
     @Test
@@ -42,7 +41,6 @@ class DemoAuthenticationDisabledIntegrationTest {
                 .post("/api/auth/demo-login")
                 .then()
                 .statusCode(404)
-                .body("status", equalTo("error"))
                 .extract()
                 .response();
 
@@ -67,8 +65,7 @@ class DemoAuthenticationDisabledIntegrationTest {
                 .post("/api/users/register")
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.email", equalTo(email))
-                .body("data.demoMode", equalTo(false));
+                .body("email", equalTo(email))
+                .body("demoMode", equalTo(false));
     }
 }

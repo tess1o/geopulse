@@ -12,6 +12,7 @@ public class ImportJob {
     private UUID jobId;
     private UUID userId;
     private ImportStatus status;
+    private ImportPhase phase;
     private String uploadedFileName;
     private long fileSizeBytes;
     private List<String> detectedDataTypes;
@@ -61,6 +62,7 @@ public class ImportJob {
         this.fileData = fileData;
         this.fileSizeBytes = fileData.length;
         this.status = ImportStatus.VALIDATING;
+        this.phase = ImportPhase.VALIDATING;
         this.progress = 0;
         this.progressMessage = "Validating file format...";
         this.createdAt = Instant.now();

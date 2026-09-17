@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -49,6 +50,7 @@ public class TimelineImportHelper {
         // CRITICAL: Set timeline job ID on import job IMMEDIATELY before triggering generation
         // This ensures frontend can see the timeline job ID even during the retry loop
         job.setTimelineJobId(timelineJobId);
+        job.setPhase(ImportPhase.TIMELINE_GENERATION);
 
         // Update import progress immediately so frontend sees the change
         job.updateProgress(75, "Timeline generation in progress...");

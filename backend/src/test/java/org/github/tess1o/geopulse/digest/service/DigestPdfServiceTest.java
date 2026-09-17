@@ -40,7 +40,7 @@ class DigestPdfServiceTest {
     @Test
     void generatesReadableUnicodeReport() throws Exception {
         TimeDigest digest = TimeDigest.builder()
-                .period(PeriodInfo.builder().year(2026).month(8).displayName("August 2026").type("monthly").build())
+                .period(PeriodInfo.builder().year(2026).month(8).build())
                 .metrics(DigestMetrics.builder().totalDistance(617_000).tripCount(123).activeDays(30).citiesVisited(4).carDistance(574_000).walkDistance(42_000).build())
                 .topPlaces(List.of(TopPlace.builder().name("Парк Шевченка").visits(7).build()))
                 .activityChart(ActivityChartData.builder().chartsByTripType(Map.of(
@@ -64,7 +64,7 @@ class DigestPdfServiceTest {
         UUID userId = UUID.randomUUID();
         UserEntity user = UserEntity.builder().id(userId).timezone("Europe/Kyiv").distanceUnit(DistanceUnit.KILOMETERS).build();
         TimeDigest digest = TimeDigest.builder()
-                .period(PeriodInfo.builder().year(2025).month(7).displayName("July 2025").type("monthly").build())
+                .period(PeriodInfo.builder().year(2025).month(7).build())
                 .metrics(DigestMetrics.builder().totalDistance(1_000).build())
                 .build();
         ImmichService immich = mock(ImmichService.class);

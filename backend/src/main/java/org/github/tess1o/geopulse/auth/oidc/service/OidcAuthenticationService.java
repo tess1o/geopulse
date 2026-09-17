@@ -22,8 +22,7 @@ import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
-import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
-import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
+import org.github.tess1o.geopulse.auth.exceptions.*;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
@@ -36,7 +35,6 @@ import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
 
 import java.net.URI;
 import java.security.SecureRandom;
@@ -338,7 +336,7 @@ public class OidcAuthenticationService {
             throw e;
         } catch (Exception e) {
             log.error("OIDC callback failed: {}", e.getMessage());
-            throw new RuntimeException("OIDC authentication failed.", e);
+            throw new OIDCAuthFailedException("OIDC authentication failed.", e);
         } finally {
             // Clean up session state in all cases (success or failure)
             // Single cleanup path eliminates redundant database queries
@@ -581,7 +579,7 @@ public class OidcAuthenticationService {
                 String errorBody = response.readEntity(String.class);
                 log.error("Failed to exchange code for token. Provider: {}, Status: {}, Body: {}",
                         provider.getName(), response.getStatus(), errorBody);
-                throw new RuntimeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
+                throw new OidcExchangeCodeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
             }
 
             return response.readEntity(OidcTokenResponse.class);

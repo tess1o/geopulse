@@ -288,8 +288,9 @@ import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 
+const adminService = useAdminStore()
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
@@ -378,7 +379,7 @@ const loadAuditLogs = async () => {
     const response = await adminService.getAuditLogs(params)
 
     // Filter by admin email on frontend if needed
-    let logs = response.content
+    let logs = response.items
     if (adminEmailFilter.value) {
       logs = logs.filter(log =>
         log.adminEmail.toLowerCase().includes(adminEmailFilter.value.toLowerCase())

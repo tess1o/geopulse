@@ -6,24 +6,27 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/shared")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
 @Tag(name = "User: Sharing", description = "Read public shared location data and verify shared-link passwords.")
 public class PublicSharedLinkResource {
 
@@ -32,306 +35,130 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/info")
-    public Response getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
+    public SharedLocationInfo getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
         try {
-            SharedLocationInfo result = sharedLinkService.getSharedLocationInfo(linkId);
-            return Response.ok(result).build();
+            return sharedLinkService.getSharedLocationInfo(linkId);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared location info for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve link information"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
     }
 
     @POST
     @Path("/{linkId}/verify")
-    public Response verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
+    public AccessTokenResponse verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
         try {
-            AccessTokenResponse result = sharedLinkService.verifyPassword(linkId, request.getPassword());
-            return Response.ok(result).build();
+            return sharedLinkService.verifyPassword(linkId, request.getPassword());
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Invalid password"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error verifying password for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Verification failed"))
-                    .build();
+            throw problem(SHARED_LINK_PASSWORD_INVALID, "Invalid password");
         }
     }
 
     @GET
     @Path("/{linkId}/location")
-    public Response getSharedLocation(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    public LocationHistoryResponse getSharedLocation(@PathParam("linkId") UUID linkId,
+                                                     @HeaderParam("Authorization") String authHeader) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-            LocationHistoryResponse result = sharedLinkService.getSharedLocation(linkId, token);
-            return Response.ok(result).build();
+            return sharedLinkService.getSharedLocation(linkId, bearerToken(authHeader));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared location for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve location"))
-                    .build();
+            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
         }
     }
 
     @GET
     @Path("/{linkId}/timeline")
-    public Response getSharedTimeline(
+    public MovementTimelineDTO getSharedTimeline(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-
-            // Parse optional date parameters
-            Instant startInstant = null;
-            Instant endInstant = null;
-
-            if (startTime != null && !startTime.isEmpty()) {
-                try {
-                    startInstant = Instant.parse(startTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            if (endTime != null && !endTime.isEmpty()) {
-                try {
-                    endInstant = Instant.parse(endTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            // Validate start < end if both provided
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("startTime must be before endTime"))
-                        .build();
-            }
-
-            MovementTimelineDTO result = sharedLinkService.getSharedTimeline(linkId, token, startInstant, endInstant);
-            return Response.ok(result).build();
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedTimeline(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared timeline for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve timeline"))
-                    .build();
+            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
         }
     }
 
     @GET
     @Path("/{linkId}/notes")
     @Blocking
-    public java.util.concurrent.CompletableFuture<Response> getSharedNotes(
+    public CompletionStage<NoteSearchResponse> getSharedNotes(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return java.util.concurrent.CompletableFuture.completedFuture(
-                        Response.status(Response.Status.UNAUTHORIZED)
-                                .entity(ApiResponse.error("Authorization token required"))
-                                .build());
-            }
-
-            String token = authHeader.substring("Bearer ".length());
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
             Instant endInstant = parseOptionalInstant(endTime, "endTime");
-
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return java.util.concurrent.CompletableFuture.completedFuture(
-                        Response.status(Response.Status.BAD_REQUEST)
-                                .entity(ApiResponse.error("startTime must be before endTime"))
-                                .build());
-            }
-
-            return sharedLinkService.getSharedNotes(linkId, token, startInstant, endInstant)
-                    .thenApply(Response::ok)
-                    .thenApply(Response.ResponseBuilder::build)
-                    .exceptionally(throwable -> {
-                        log.error("Error getting shared notes for linkId: {}", linkId, throwable);
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(ApiResponse.error("Failed to retrieve notes"))
-                                .build();
-                    });
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedNotes(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build());
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         } catch (ForbiddenException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build());
+            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
         } catch (IllegalArgumentException e) {
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build());
-        } catch (Exception e) {
-            log.error("Error getting shared notes for linkId: {}", linkId, e);
-            return java.util.concurrent.CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve notes"))
-                    .build());
+            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
         }
     }
 
     @GET
     @Path("/{linkId}/path")
-    public Response getSharedPath(
+    public GpsPointPathDTO getSharedPath(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
-
-            // Parse optional date parameters
-            Instant startInstant = null;
-            Instant endInstant = null;
-
-            if (startTime != null && !startTime.isEmpty()) {
-                try {
-                    startInstant = Instant.parse(startTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            if (endTime != null && !endTime.isEmpty()) {
-                try {
-                    endInstant = Instant.parse(endTime);
-                } catch (Exception e) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
-                            .build();
-                }
-            }
-
-            // Validate start < end if both provided
-            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("startTime must be before endTime"))
-                        .build();
-            }
-
-            GpsPointPathDTO result = sharedLinkService.getSharedPath(linkId, token, startInstant, endInstant);
-            return Response.ok(result).build();
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedPath(
+                    linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found or expired"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared path for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve path"))
-                    .build();
+            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
         }
     }
 
     @GET
     @Path("/{linkId}/current")
-    public Response getSharedCurrentLocation(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    public LocationHistoryResponse.CurrentLocationData getSharedCurrentLocation(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader) {
         try {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("Authorization token required"))
-                        .build();
-            }
-
-            String token = authHeader.substring("Bearer ".length());
             Optional<LocationHistoryResponse.CurrentLocationData> result =
-                    sharedLinkService.getSharedCurrentLocation(linkId, token);
-
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Current location not available"))
-                        .build();
-            }
-
-            return Response.ok(result.get()).build();
+                    sharedLinkService.getSharedCurrentLocation(linkId, bearerToken(authHeader));
+            return result.orElseThrow(() -> problem(
+                    SHARED_LOCATION_NOT_FOUND, "Current location not available"));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Current location not available"))
-                    .build();
+            throw problem(SHARED_LOCATION_NOT_FOUND, "Current location not available");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting current location for linkId: {}", linkId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve current location"))
-                    .build();
+            throw problem(INVALID_SHARE_LINK, e.getMessage());
         }
+    }
+
+    private String bearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw problem(SHARED_LINK_TOKEN_REQUIRED, "Authorization token required");
+        }
+        return authHeader.substring("Bearer ".length());
     }
 
     private Instant parseOptionalInstant(String value, String fieldName) {
@@ -340,8 +167,16 @@ public class PublicSharedLinkResource {
         }
         try {
             return Instant.parse(value);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid " + fieldName + " format. Expected ISO-8601");
+        } catch (DateTimeParseException e) {
+            throw problem(INVALID_SHARED_TIME_RANGE,
+                    "Invalid " + fieldName + " format. Expected ISO-8601",
+                    Map.of("field", fieldName));
+        }
+    }
+
+    private void validateRange(Instant start, Instant end) {
+        if (start != null && end != null && start.isAfter(end)) {
+            throw problem(INVALID_SHARED_TIME_RANGE, "startTime must be before endTime");
         }
     }
 }

@@ -73,7 +73,6 @@ import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
-import apiService from '@/utils/apiService'
 
 const props = defineProps({
   variant: {
@@ -152,8 +151,7 @@ const notificationToastHint = (message) => {
 
 const loadReleaseAnnouncement = async () => {
   try {
-    const response = await apiService.post('/notifications/release/current')
-    const data = response?.data || response
+    const data = await notificationsStore.fetchCurrentReleaseAnnouncement()
     if (data?.show && data?.release && data?.notification?.id) {
       releaseAnnouncement.value = data.release
       releaseNotificationId.value = data.notification.id

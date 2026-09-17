@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
@@ -42,7 +43,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
 
 @ApplicationScoped
 @Slf4j
@@ -738,7 +738,7 @@ public class GpsPointService {
      * @param sortOrder Sort order (asc or desc)
      * @return Paginated GPS points
      */
-    public GpsPointPageDTO getGpsPointsPageWithFilters(UUID userId, GpsPointFilterDTO filters,
+    public PageResponse<GpsPointDTO> getGpsPointsPageWithFilters(UUID userId, GpsPointFilterDTO filters,
                                                         int page, int limit, String sortBy, String sortOrder) {
         int pageIndex = page - 1; // Convert to 0-based for repository
 
@@ -749,10 +749,7 @@ public class GpsPointService {
         List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
         applyTelemetryToGpsPoints(userId, points, pointDTOs);
 
-        long totalPages = (total + limit - 1) / limit; // Ceiling division
-        GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
-
-        return new GpsPointPageDTO(pointDTOs, pagination);
+        return new PageResponse<>(pointDTOs, page, limit, total, (int) ((total + limit - 1) / limit));
     }
 
     /**
@@ -789,20 +786,6 @@ public class GpsPointService {
         }
 
         return summary;
-    }
-
-    /**
-     * Stream GPS points for export with filters.
-     * Uses batching to avoid OOM with large datasets.
-     *
-     * @param userId       The ID of the user
-     * @param filters      Filter criteria
-     * @param batchSize    Number of records to process at a time
-     * @param consumer     Consumer to process each batch
-     */
-    public void streamGpsPointsForExport(UUID userId, GpsPointFilterDTO filters,
-                                         int batchSize, Consumer<List<GpsPointEntity>> consumer) {
-        gpsPointRepository.streamByUserAndFilters(userId, filters, batchSize, consumer);
     }
 
     /**

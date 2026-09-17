@@ -7,9 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.sharing.exceptions.TooManyLinksException;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
@@ -17,12 +15,15 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/share-links")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
 @Tag(name = "User: Sharing", description = "Manage shared location links.")
 public class SharedLinkResource {
 
@@ -34,99 +35,55 @@ public class SharedLinkResource {
 
     @GET
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getSharedLinks() {
+    public SharedLinksDto getSharedLinks() {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            SharedLinksDto result = sharedLinkService.getSharedLinks(userId);
-            return Response.ok(ApiResponse.success(result)).build();
+            return sharedLinkService.getSharedLinks(currentUserService.getCurrentUserId());
         } catch (SecurityException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Unauthorized"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error getting shared links", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve shared links"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
         }
     }
 
     @POST
     @RolesAllowed({"USER", "ADMIN"})
-    public Response createShareLink(@Valid CreateShareLinkRequest request) {
+    public RestResponse<CreateShareLinkResponse> createShareLink(@Valid CreateShareLinkRequest request) {
         try {
             UserEntity currentUser = currentUserService.getCurrentUser();
-            CreateShareLinkResponse result = sharedLinkService.createShareLink(request, currentUser);
-            return Response.status(Response.Status.CREATED).entity(result).build();
+            return RestResponse.status(Response.Status.CREATED,
+                    sharedLinkService.createShareLink(request, currentUser));
         } catch (TooManyLinksException e) {
-            return Response.status(Response.Status.TOO_MANY_REQUESTS)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(SHARED_LINK_LIMIT_EXCEEDED, e.getMessage());
         } catch (SecurityException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Unauthorized"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error creating share link", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create share link"))
-                    .build();
+            throw problem(INVALID_SHARE_LINK, e.getMessage());
         }
     }
 
     @PUT
     @Path("/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response updateShareLink(@PathParam("id") UUID id, @Valid UpdateShareLinkDto updateDto) {
+    public SharedLinkDto updateShareLink(@PathParam("id") UUID id, @Valid UpdateShareLinkDto updateDto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            SharedLinkDto result = sharedLinkService.updateShareLink(id, updateDto, userId);
-            return Response.ok(result).build();
+            return sharedLinkService.updateShareLink(id, updateDto, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found");
         } catch (SecurityException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Unauthorized"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error updating share link", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update share link"))
-                    .build();
+            throw problem(INVALID_SHARE_LINK, e.getMessage());
         }
     }
 
     @DELETE
     @Path("/{id}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response deleteShareLink(@PathParam("id") UUID id) {
+    public void deleteShareLink(@PathParam("id") UUID id) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            sharedLinkService.deleteShareLink(id, userId);
-            return Response.noContent().build();
+            sharedLinkService.deleteShareLink(id, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Link not found"))
-                    .build();
+            throw problem(SHARED_LINK_NOT_FOUND, "Link not found");
         } catch (SecurityException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Unauthorized"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error deleting share link", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete share link"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
         }
     }
 }

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useTechnicalDataStore = defineStore('technicalData', {
     state: () => ({
@@ -12,7 +13,8 @@ export const useTechnicalDataStore = defineStore('technicalData', {
         },
         gpsPoints: [],
         totalRecords: 0,
-        loading: false
+        loading: false,
+        error: null
     }),
 
     getters: {
@@ -37,6 +39,11 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             this.loading = loading
         },
 
+        fail(error, fallback) {
+            this.error = normalizeApiError(error, fallback)
+            return this.error
+        },
+
         clearData() {
             this.summaryStats = {
                 totalPoints: 0,
@@ -55,15 +62,11 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             try {
                 this.setLoading(true)
 
-                const response = await apiService.get('/gps/summary', params)
-                // Extract data from wrapper response
-                const summaryData = response.data || response
-                this.setSummaryStats(summaryData)
-
-                return summaryData
+                const summary = await apiService.get('/gps/summary', params)
+                this.setSummaryStats(summary)
+                return summary
             } catch (error) {
-                console.error('Error fetching summary stats:', error)
-                throw error
+                throw this.fail(error, 'Failed to load GPS summary')
             } finally {
                 this.setLoading(false)
             }
@@ -75,29 +78,20 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
                 const response = await apiService.get('/gps', params)
 
-                // Extract data from wrapper response
-                const responseData = response.data || response
-                const gpsPoints = responseData.data || []
-
-                // Use pagination total if available (including 0), otherwise fallback to summary total
-                const totalRecords = responseData.pagination?.total !== undefined
-                    ? responseData.pagination.total
-                    : (this.summaryStats.totalPoints || 0)
+                const gpsPoints = response.items || []
+                const totalRecords = response.totalElements ?? this.summaryStats.totalPoints ?? 0
 
                 this.setGpsPoints(gpsPoints, totalRecords)
                 
                 return {
-                    data: gpsPoints,
-                    pagination: responseData.pagination || {
-                        page: params.page || 1,
-                        limit: params.limit || 50,
-                        total: totalRecords,
-                        totalPages: Math.ceil(totalRecords / (params.limit || 50))
-                    }
+                    items: gpsPoints,
+                    page: response.page ?? params.page ?? 1,
+                    size: response.size ?? params.limit ?? 50,
+                    totalElements: totalRecords,
+                    totalPages: response.totalPages ?? Math.ceil(totalRecords / (params.limit || 50))
                 }
             } catch (error) {
-                console.error('Error fetching GPS points:', error)
-                throw error
+                throw this.fail(error, 'Failed to load GPS points')
             } finally {
                 this.setLoading(false)
             }
@@ -112,43 +106,33 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 await apiService.download('/gps/export', params)
                 return true
             } catch (error) {
-                console.error('Error exporting GPS points:', error)
-                throw error
+                throw this.fail(error, 'Failed to export GPS points')
             }
         },
 
         async updateGpsPoint(pointId, data) {
             try {
-                const response = await apiService.put(`/gps/${pointId}`, data)
-                const responseData = response.data || response
-                return responseData
+                return await apiService.put(`/gps/${pointId}`, data)
             } catch (error) {
-                console.error('Error updating GPS point:', error)
-                throw error
+                throw this.fail(error, 'Failed to update GPS point')
             }
         },
 
         async deleteGpsPoint(pointId) {
             try {
-                const response = await apiService.delete(`/gps/${pointId}`)
-                const responseData = response.data || response
-                return responseData
+                return await apiService.delete(`/gps/${pointId}`)
             } catch (error) {
-                console.error('Error deleting GPS point:', error)
-                throw error
+                throw this.fail(error, 'Failed to delete GPS point')
             }
         },
 
         async deleteGpsPoints(pointIds) {
             try {
-                const response = await apiService.post('/gps/bulk', {
+                return await apiService.post('/gps/bulk', {
                     gpsPointIds: pointIds
                 })
-                const responseData = response.data || response
-                return responseData
             } catch (error) {
-                console.error('Error deleting GPS points:', error)
-                throw error
+                throw this.fail(error, 'Failed to delete GPS points')
             }
         },
 
@@ -158,8 +142,23 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 this.clearData()
                 return true
             } catch (error) {
-                console.error('Error deleting all GPS data:', error)
-                throw error
+                throw this.fail(error, 'Failed to delete all GPS data')
+            }
+        },
+
+        async fetchRawMapPoints(params) {
+            try {
+                return await apiService.get('/gps/map-points', params)
+            } catch (error) {
+                throw this.fail(error, 'Failed to load raw GPS points')
+            }
+        },
+
+        async resolveRawPointLocation(pointId) {
+            try {
+                return await apiService.get(`/gps/points/${pointId}/location`)
+            } catch (error) {
+                throw this.fail(error, 'Failed to resolve GPS point location')
             }
         }
     }

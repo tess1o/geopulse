@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 let inFlightConfigRequest = null
 let inFlightNotesRequest = null
@@ -60,13 +61,12 @@ export const useNotesStore = defineStore('notes', {
 
       inFlightConfigRequest = (async () => {
         try {
-          const response = await apiService.get('/users/me/memos-config')
-          this.memosConfig = unwrapApiData(response)
+          this.memosConfig = await apiService.get('/users/me/memos-config') || null
           return this.memosConfig
         } catch (error) {
-          this.configError = error.userMessage || error.message || 'Failed to load Memos configuration'
+          this.configError = normalizeApiError(error, 'Failed to load Memos configuration')
           this.memosConfig = null
-          throw error
+          throw this.configError
         } finally {
           this.configLoading = false
           inFlightConfigRequest = null
@@ -77,15 +77,24 @@ export const useNotesStore = defineStore('notes', {
     },
 
     async updateMemosConfig(configData) {
-      const response = await apiService.put('/users/me/memos-config', configData)
-      await this.fetchMemosConfig(true)
-      this.clearNotes()
-      return unwrapApiData(response)
+      this.configError = null
+      try {
+        await apiService.put('/users/me/memos-config', configData)
+        await this.fetchMemosConfig(true)
+        this.clearNotes()
+      } catch (error) {
+        this.configError = normalizeApiError(error, 'Failed to update Memos configuration')
+        throw this.configError
+      }
     },
 
     async testMemosConfig(configData) {
-      const response = await apiService.post('/users/me/memos-config/test', configData)
-      return unwrapApiData(response)
+      try {
+        return await apiService.post('/users/me/memos-config/test', configData)
+      } catch (error) {
+        this.configError = normalizeApiError(error, 'Failed to test Memos connection')
+        throw this.configError
+      }
     },
 
     async fetchNotes(startTime = null, endTime = null, { includeExternal = true, forceRefresh = false } = {}) {
@@ -128,14 +137,14 @@ export const useNotesStore = defineStore('notes', {
             endTime: normalizedEnd,
             includeExternal
           })
-          const payload = unwrapApiData(response)
+          const payload = response
           this.notes = payload?.notes || []
           this.lastFetchedRange = [normalizedStart, normalizedEnd, includeExternal]
           return this.notes
         } catch (error) {
-          this.notesError = error.userMessage || error.message || 'Failed to load notes'
+          this.notesError = normalizeApiError(error, 'Failed to load notes')
           this.notes = []
-          throw error
+          throw this.notesError
         } finally {
           this.notesLoading = false
           inFlightNotesRequest = null
@@ -162,21 +171,44 @@ export const useNotesStore = defineStore('notes', {
     },
 
     async createNote(payload) {
-      const response = await apiService.post('/notes', payload)
-      this.clearNotes()
-      return unwrapApiData(response)
+      try {
+        const response = await apiService.post('/notes', payload)
+        this.clearNotes()
+        return response
+      } catch (error) {
+        this.notesError = normalizeApiError(error, 'Failed to create note')
+        throw this.notesError
+      }
     },
 
     async updateNote(noteId, payload) {
-      const response = await apiService.patch(`/notes/${noteId}`, payload)
-      this.clearNotes()
-      return unwrapApiData(response)
+      try {
+        const response = await apiService.patch(`/notes/${noteId}`, payload)
+        this.clearNotes()
+        return response
+      } catch (error) {
+        this.notesError = normalizeApiError(error, 'Failed to update note')
+        throw this.notesError
+      }
     },
 
     async deleteNote(noteId) {
-      const response = await apiService.delete(`/notes/${noteId}`)
-      this.clearNotes()
-      return response
+      try {
+        await apiService.delete(`/notes/${noteId}`)
+        this.clearNotes()
+      } catch (error) {
+        this.notesError = normalizeApiError(error, 'Failed to delete note')
+        throw this.notesError
+      }
+    },
+
+    async searchNotes(params) {
+      try {
+        return await apiService.get('/notes/search', params)
+      } catch (error) {
+        this.notesError = normalizeApiError(error, 'Failed to load notes')
+        throw this.notesError
+      }
     },
 
     clearNotes() {

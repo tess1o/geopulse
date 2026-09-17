@@ -4,1325 +4,1481 @@ import {buildManagedUser as createManagedUser} from '../utils/isolated-user-help
 
 test.describe('Favorites Management Page', () => {
 
-  test.describe('Page Load and Initial State', () => {
-    test('should display favorites management page correctly', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Page Load and Initial State', () => {
+        test('should display favorites management page correctly', async ({
+                                                                              page,
+                                                                              isolatedUsers,
+                                                                              dbManager,
+                                                                              mapMode
+                                                                          }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Verify we're on the favorites page
-      expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
+            // Verify we're on the favorites page
+            expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
 
-      // Verify bulk mode is off by default
-      expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            // Verify bulk mode is off by default
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
 
-      // Verify no pending favorites initially
-      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            // Verify no pending favorites initially
+            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
 
-      // Verify table is empty initially
-      expect(await favoritesPage.isTableEmpty()).toBe(true);
-    });
-
-    test('should display existing favorites on page load', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create test favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
-
-      // Reload page to see favorites
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Verify favorites appear in table
-      await expect.poll(
-        () => favoritesPage.getTableRowCount(),
-        { timeout: 20000 }
-      ).toBe(3); // 2 points + 1 area
-
-      // Verify favorite point markers appear on map (should be 2)
-      await expect.poll(
-        () => favoritesPage.countFavoriteMarkers(),
-        { timeout: 20000 }
-      ).toBe(2);
-
-      // Verify favorite area markers appear on map (should be 1)
-      await expect.poll(
-        () => favoritesPage.countFavoriteAreas(),
-        { timeout: 20000 }
-      ).toBe(1);
-    });
-
-    test('should display favorites on map', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create test favorites
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Map Test Point',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Verify marker appears on map
-      await expect.poll(
-        () => favoritesPage.countFavoriteMarkers(),
-        { timeout: 20000 }
-      ).toBe(1);
-
-      // Verify marker is visible
-      const marker = page.locator('.favorite-marker-icon').first();
-      expect(await marker.isVisible()).toBe(true);
-    });
-  });
-
-  test.describe('Add Favorite Point - Immediate Save Mode', () => {
-    test('should add favorite point via map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-
-      // Add favorite point
-      await favoritesPage.addFavoritePointWorkflow(300, 300, 'Test Favorite Point');
-
-      // Wait for timeline regeneration
-      await favoritesPage.waitForTimelineRegenerationCycle({ optional: true });
-
-      // Verify success toast
-      await favoritesPage.waitForSuccessToast(null, { required: false, timeout: 20000 });
-
-      // Verify database
-      await expect.poll(
-        () => TestSetupHelper.countFavorites(dbManager, user.id),
-        { timeout: 30000 }
-      ).toBe(initialCount + 1);
-
-      // Verify favorite appears in table
-      await expect.poll(
-        () => favoritesPage.getTableRowCount(),
-        { timeout: 20000 }
-      ).toBe(1);
-    });
-
-    test('should cancel add favorite dialog', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-
-      // Start add favorite workflow
-      await favoritesPage.rightClickOnMap(300, 300);
-      await favoritesPage.waitForMapContextMenu();
-      await favoritesPage.clickContextMenuItem('Add to Favorites');
-
-      // Cancel dialog
-      await favoritesPage.closeAddDialog();
-
-      // Verify no favorite was added
-      const finalCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-      expect(finalCount).toBe(initialCount);
-    });
-  });
-
-  test.describe('Add Favorite Point - Place Search', () => {
-    const mockPlanSearch = async (page) => {
-      await page.route('**/api/trips/plan-search**', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            status: 'success',
-            data: [
-              {
-                sourceType: 'favorite-point',
-                title: 'Existing Saved Favorite',
-                subtitle: 'Already saved',
-                latitude: 50.44,
-                longitude: 30.52,
-                favoriteId: 123,
-                favoriteType: 'point'
-              },
-              {
-                sourceType: 'external-search',
-                title: 'Central Library',
-                subtitle: 'Kyiv, Ukraine, Photon',
-                latitude: 50.4501,
-                longitude: 30.5234,
-                providerName: 'Photon'
-              }
-            ]
-          })
+            // Verify table is empty initially
+            expect(await favoritesPage.isTableEmpty()).toBe(true);
         });
-      });
-    };
 
-    test('should add favorite point from place search', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      await mockPlanSearch(page);
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+        test('should display existing favorites on page load', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      await favoritesPage.searchPlaceToAdd('Central');
+            // Create test favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
 
-      expect(await favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
-      await favoritesPage.waitForPlaceSearchResult('Central Library');
+            // Reload page to see favorites
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      await favoritesPage.selectPlaceSearchResult('Central Library');
-      expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+            // Verify favorites appear in table
+            await expect.poll(
+                () => favoritesPage.getTableRowCount(),
+                {timeout: 20000}
+            ).toBe(3); // 2 points + 1 area
 
-      await favoritesPage.submitAddDialog();
-      await favoritesPage.waitForTimelineRegenerationCycle({ optional: true });
+            // Verify favorite point markers appear on map (should be 2)
+            await expect.poll(
+                () => favoritesPage.countFavoriteMarkers(),
+                {timeout: 20000}
+            ).toBe(2);
 
-      await expect.poll(
-        () => TestSetupHelper.countFavorites(dbManager, user.id),
-        { timeout: 30000 }
-      ).toBe(initialCount + 1);
+            // Verify favorite area markers appear on map (should be 1)
+            await expect.poll(
+                () => favoritesPage.countFavoriteAreas(),
+                {timeout: 20000}
+            ).toBe(1);
+        });
 
-      await expect(page.locator('.favorites-table')).toContainText('Central Library', { timeout: 20000 });
+        test('should display favorites on map', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create test favorites
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Map Test Point',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Verify marker appears on map
+            await expect.poll(
+                () => favoritesPage.countFavoriteMarkers(),
+                {timeout: 20000}
+            ).toBe(1);
+
+            // Verify marker is visible
+            const marker = page.locator('.favorite-marker-icon').first();
+            expect(await marker.isVisible()).toBe(true);
+        });
     });
 
-    test('should add searched favorite to pending list in bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      await mockPlanSearch(page);
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+    test.describe('Add Favorite Point - Immediate Save Mode', () => {
+        test('should add favorite point via map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      await favoritesPage.toggleBulkMode();
-      await favoritesPage.searchPlaceToAdd('Central');
-      await favoritesPage.selectPlaceSearchResult('Central Library');
-      expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
-      await favoritesPage.submitAddDialog();
+            // Add favorite point
+            await favoritesPage.addFavoritePointWorkflow(300, 300, 'Test Favorite Point');
 
-      expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(initialCount);
-      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
-      expect(await favoritesPage.getPendingCount()).toBe(1);
-      expect(await favoritesPage.getPendingItemName(0)).toContain('Central Library');
-    });
-  });
+            // Wait for timeline regeneration
+            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
 
-  test.describe('Add Favorite Area - Immediate Save Mode', () => {
-    test('should add favorite area via rectangle drawing', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            // Verify success toast
+            await favoritesPage.waitForSuccessToast(null, {required: false, timeout: 20000});
 
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id, 'AREA');
+            // Verify database
+            await expect.poll(
+                () => TestSetupHelper.countFavorites(dbManager, user.id),
+                {timeout: 30000}
+            ).toBe(initialCount + 1);
 
-      // Add favorite area
-      await favoritesPage.addFavoriteAreaWorkflow(200, 200, 400, 350, 'Test Favorite Area');
+            // Verify favorite appears in table
+            await expect.poll(
+                () => favoritesPage.getTableRowCount(),
+                {timeout: 20000}
+            ).toBe(1);
+        });
 
-      // Wait for timeline regeneration
-      await favoritesPage.waitForTimelineRegenerationCycle({ optional: true });
+        test('should cancel add favorite dialog', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Verify success toast
-      await favoritesPage.waitForSuccessToast(null, { required: false, timeout: 20000 });
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
-      // Verify database
-      await expect.poll(
-        () => TestSetupHelper.countFavorites(dbManager, user.id, 'AREA'),
-        { timeout: 30000 }
-      ).toBe(initialCount + 1);
+            // Start add favorite workflow
+            await favoritesPage.rightClickOnMap(300, 300);
+            await favoritesPage.waitForMapContextMenu();
+            await favoritesPage.clickContextMenuItem('Add to Favorites');
 
-      // Verify area appears on map
-      await expect.poll(
-        () => favoritesPage.countFavoriteAreas(),
-        { timeout: 20000 }
-      ).toBeGreaterThan(0);
-    });
+            // Cancel dialog
+            await favoritesPage.closeAddDialog();
 
-    test('should cancel rectangle drawing with Escape key', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Start drawing mode
-      await favoritesPage.rightClickOnMap(300, 300);
-      await favoritesPage.waitForMapContextMenu();
-      await favoritesPage.clickContextMenuItem('Add an area to Favorites');
-
-      await page.waitForTimeout(1000);
-
-      // Cancel with Escape
-      await favoritesPage.cancelDrawing();
-
-      // Verify no dialog appears
-      const dialogVisible = await page.locator('.p-dialog').isVisible().catch(() => false);
-      expect(dialogVisible).toBe(false);
-    });
-  });
-
-  test.describe('Bulk Add Mode', () => {
-    test('should enable and disable bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Verify bulk mode is off
-      expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
-
-      // Enable bulk mode
-      await favoritesPage.toggleBulkMode();
-
-      // Verify bulk mode is on
-      expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
-
-      // Verify toast message
-      await favoritesPage.waitForSuccessToast();
-
-      // Disable bulk mode
-      await favoritesPage.toggleBulkMode();
-
-      // Verify bulk mode is off again
-      expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+            // Verify no favorite was added
+            const finalCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+            expect(finalCount).toBe(initialCount);
+        });
     });
 
-    test('should add favorites to pending list in bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Add Favorite Point - Place Search', () => {
+        const mockPlanSearch = async (page) => {
+            await page.route('**/api/trips/plan-search**', async (route) => {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'application/json',
+                    body: JSON.stringify([
+                            {
+                                sourceType: 'favorite-point',
+                                title: 'Existing Saved Favorite',
+                                subtitle: 'Already saved',
+                                latitude: 50.44,
+                                longitude: 30.52,
+                                favoriteId: 123,
+                                favoriteType: 'point'
+                            },
+                            {
+                                sourceType: 'external-search',
+                                title: 'Central Library',
+                                subtitle: 'Kyiv, Ukraine, Photon',
+                                latitude: 50.4501,
+                                longitude: 30.5234,
+                                providerName: 'Photon'
+                            }
+                        ]
+                    )
+                });
+            });
+        };
 
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+        test('should add favorite point from place search', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            await mockPlanSearch(page);
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
-      // Enable bulk mode
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            await favoritesPage.searchPlaceToAdd('Central');
 
-      // Add first favorite to pending
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Favorite 1');
+            expect(await favoritesPage.isPlaceSearchResultVisible('Existing Saved Favorite')).toBe(false);
+            await favoritesPage.waitForPlaceSearchResult('Central Library');
 
-      // Verify it was added to pending (not saved immediately)
-      const dbCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-      expect(dbCount).toBe(initialCount); // No database change yet
+            await favoritesPage.selectPlaceSearchResult('Central Library');
+            expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
 
-      // Verify pending count
-      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
-      const pendingCount = await favoritesPage.getPendingCount();
-      expect(pendingCount).toBe(1);
+            await favoritesPage.submitAddDialog();
+            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
 
-      // Add second favorite to pending
-      await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending Favorite 2');
+            await expect.poll(
+                () => TestSetupHelper.countFavorites(dbManager, user.id),
+                {timeout: 30000}
+            ).toBe(initialCount + 1);
 
-      // Verify pending count increased
-      const newPendingCount = await favoritesPage.getPendingCount();
-      expect(newPendingCount).toBe(2);
+            await expect(page.locator('.favorites-table')).toContainText('Central Library', {timeout: 20000});
+        });
 
-      // Verify still no database change
-      const dbCountAfter = await TestSetupHelper.countFavorites(dbManager, user.id);
-      expect(dbCountAfter).toBe(initialCount);
+        test('should add searched favorite to pending list in bulk mode', async ({
+                                                                                     page,
+                                                                                     isolatedUsers,
+                                                                                     dbManager,
+                                                                                     mapMode
+                                                                                 }) => {
+            await mockPlanSearch(page);
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+            await favoritesPage.toggleBulkMode();
+            await favoritesPage.searchPlaceToAdd('Central');
+            await favoritesPage.selectPlaceSearchResult('Central Library');
+            expect(await favoritesPage.getAddDialogNameValue()).toBe('Central Library');
+
+            await favoritesPage.submitAddDialog();
+
+            expect(await TestSetupHelper.countFavorites(dbManager, user.id)).toBe(initialCount);
+            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
+            expect(await favoritesPage.getPendingCount()).toBe(1);
+            expect(await favoritesPage.getPendingItemName(0)).toContain('Central Library');
+        });
     });
 
-    test('should display pending favorites on map', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Add Favorite Area - Immediate Save Mode', () => {
+        test('should add favorite area via rectangle drawing', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Enable bulk mode
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id, 'AREA');
 
-      // Add pending favorites
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-      await page.waitForTimeout(1000);
+            // Add favorite area
+            await favoritesPage.addFavoriteAreaWorkflow(200, 200, 400, 350, 'Test Favorite Area');
 
-      // Verify pending marker appears on map
-      const pendingMarkerCount = await favoritesPage.countPendingMarkers();
-      expect(pendingMarkerCount).toBe(1);
+            // Wait for timeline regeneration
+            await favoritesPage.waitForTimelineRegenerationCycle({optional: true});
+
+            // Verify success toast
+            await favoritesPage.waitForSuccessToast(null, {required: false, timeout: 20000});
+
+            // Verify database
+            await expect.poll(
+                () => TestSetupHelper.countFavorites(dbManager, user.id, 'AREA'),
+                {timeout: 30000}
+            ).toBe(initialCount + 1);
+
+            // Verify area appears on map
+            await expect.poll(
+                () => favoritesPage.countFavoriteAreas(),
+                {timeout: 20000}
+            ).toBeGreaterThan(0);
+        });
+
+        test('should cancel rectangle drawing with Escape key', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Start drawing mode
+            await favoritesPage.rightClickOnMap(300, 300);
+            await favoritesPage.waitForMapContextMenu();
+            await favoritesPage.clickContextMenuItem('Add an area to Favorites');
+
+            await page.waitForTimeout(1000);
+
+            // Cancel with Escape
+            await favoritesPage.cancelDrawing();
+
+            // Verify no dialog appears
+            const dialogVisible = await page.locator('.p-dialog').isVisible().catch(() => false);
+            expect(dialogVisible).toBe(false);
+        });
     });
 
-    test('should save all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Bulk Add Mode', () => {
+        test('should enable and disable bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+            // Verify bulk mode is off
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
 
-      // Enable bulk mode and add pending favorites
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            // Enable bulk mode
+            await favoritesPage.toggleBulkMode();
 
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-      await page.waitForTimeout(500);
-      await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
-      await page.waitForTimeout(500);
+            // Verify bulk mode is on
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(true);
 
-      // Save all pending
-      await favoritesPage.bulkSaveWorkflow();
+            // Verify toast message
+            await favoritesPage.waitForSuccessToast();
 
-      // Verify database
-      await expect.poll(
-        () => TestSetupHelper.countFavorites(dbManager, user.id),
-        { timeout: 30000 }
-      ).toBe(initialCount + 2);
+            // Disable bulk mode
+            await favoritesPage.toggleBulkMode();
 
-      // Verify pending list is cleared
-      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            // Verify bulk mode is off again
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+        });
 
-      // Verify bulk mode is disabled after save
-      expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+        test('should add favorites to pending list in bulk mode', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+            // Enable bulk mode
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            // Add first favorite to pending
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Favorite 1');
+
+            // Verify it was added to pending (not saved immediately)
+            const dbCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+            expect(dbCount).toBe(initialCount); // No database change yet
+
+            // Verify pending count
+            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(true);
+            const pendingCount = await favoritesPage.getPendingCount();
+            expect(pendingCount).toBe(1);
+
+            // Add second favorite to pending
+            await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending Favorite 2');
+
+            // Verify pending count increased
+            const newPendingCount = await favoritesPage.getPendingCount();
+            expect(newPendingCount).toBe(2);
+
+            // Verify still no database change
+            const dbCountAfter = await TestSetupHelper.countFavorites(dbManager, user.id);
+            expect(dbCountAfter).toBe(initialCount);
+        });
+
+        test('should display pending favorites on map', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Enable bulk mode
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            // Add pending favorites
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
+            await page.waitForTimeout(1000);
+
+            // Verify pending marker appears on map
+            const pendingMarkerCount = await favoritesPage.countPendingMarkers();
+            expect(pendingMarkerCount).toBe(1);
+        });
+
+        test('should save all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+            // Enable bulk mode and add pending favorites
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
+            await page.waitForTimeout(500);
+            await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
+            await page.waitForTimeout(500);
+
+            // Save all pending
+            await favoritesPage.bulkSaveWorkflow();
+
+            // Verify database
+            await expect.poll(
+                () => TestSetupHelper.countFavorites(dbManager, user.id),
+                {timeout: 30000}
+            ).toBe(initialCount + 2);
+
+            // Verify pending list is cleared
+            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+
+            // Verify bulk mode is disabled after save
+            expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
+        });
+
+        test('should show bulk save confirmation dialog with counts', async ({
+                                                                                 page,
+                                                                                 isolatedUsers,
+                                                                                 dbManager,
+                                                                                 mapMode
+                                                                             }) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Enable bulk mode
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            // Add 2 points and 1 area
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Point 1');
+            await page.waitForTimeout(500);
+            await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Point 2');
+            await page.waitForTimeout(500);
+
+            // Start area drawing
+            await favoritesPage.rightClickOnMap(200, 200);
+            await favoritesPage.waitForMapContextMenu();
+            await favoritesPage.clickContextMenuItem('Add an area to Favorites');
+            await favoritesPage.drawRectangle(200, 200, 400, 350);
+            await favoritesPage.fillAddDialog('Area 1');
+            await favoritesPage.submitAddDialog();
+            await favoritesPage.waitForPendingCount(3);
+
+            // Click save pending
+            await favoritesPage.clickSavePending();
+            await favoritesPage.waitForBulkSaveDialog();
+
+            // Verify counts in dialog
+            const counts = await favoritesPage.getBulkSaveDialogCounts();
+            expect(counts.points).toBe(2);
+            expect(counts.areas).toBe(1);
+
+            // Cancel dialog
+            await favoritesPage.cancelBulkSave();
+        });
+
+        test('should remove individual pending favorite', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Enable bulk mode and add pending favorites
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Keep This');
+            await page.waitForTimeout(500);
+            await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Remove This');
+            await page.waitForTimeout(500);
+
+            // Verify 2 pending
+            expect(await favoritesPage.getPendingCount()).toBe(2);
+
+            // Remove second pending item
+            await favoritesPage.removePendingItem(1);
+            await page.waitForTimeout(500);
+
+            // Verify count decreased
+            expect(await favoritesPage.getPendingCount()).toBe(1);
+        });
+
+        test('should clear all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Enable bulk mode and add pending favorites
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
+            await page.waitForTimeout(500);
+            await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
+            await page.waitForTimeout(500);
+
+            // Clear all pending
+            await favoritesPage.clickClearPending();
+            await favoritesPage.confirmDialog();
+
+            // Verify pending list is cleared
+            expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+
+            // Verify toast message
+            await favoritesPage.waitForInfoToast();
+        });
+
+        test('should warn when leaving page with unsaved pending favorites', async ({
+                                                                                        page,
+                                                                                        isolatedUsers,
+                                                                                        dbManager,
+                                                                                        mapMode
+                                                                                    }) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Enable bulk mode and add pending favorite
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
+
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending');
+            await page.waitForTimeout(1000);
+
+            // Try to navigate away by clicking Timeline in navigation menu
+            // This triggers Vue Router navigation which will show the guard confirmation
+            await favoritesPage.clickNavigationLink('Timeline');
+
+            // Wait for confirmation dialog
+            await favoritesPage.waitForConfirmDialog();
+
+            // Verify confirmation dialog shows correct message
+            const dialogText = await page.locator('.p-confirmdialog').textContent();
+            expect(dialogText).toContain('unsaved pending favorite');
+
+            // Reject navigation
+            await favoritesPage.rejectDialog();
+
+            // Wait a bit for navigation to be cancelled
+            await page.waitForTimeout(500);
+
+            // Verify still on favorites page
+            expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
+        });
     });
 
-    test('should show bulk save confirmation dialog with counts', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Edit Favorite', () => {
+        test('should edit favorite point metadata without timeline regeneration', async ({
+                                                                                             page,
+                                                                                             isolatedUsers,
+                                                                                             dbManager,
+                                                                                             mapMode
+                                                                                         }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Enable bulk mode
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            // Create a favorite point
+            const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Original Name',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      // Add 2 points and 1 area
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Point 1');
-      await page.waitForTimeout(500);
-      await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Point 2');
-      await page.waitForTimeout(500);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Start area drawing
-      await favoritesPage.rightClickOnMap(200, 200);
-      await favoritesPage.waitForMapContextMenu();
-      await favoritesPage.clickContextMenuItem('Add an area to Favorites');
-      await favoritesPage.drawRectangle(200, 200, 400, 350);
-      await favoritesPage.fillAddDialog('Area 1');
-      await favoritesPage.submitAddDialog();
-      await favoritesPage.waitForPendingCount(3);
+            // Edit only the name (metadata change, no geometry change)
+            const newName = 'Updated Name';
+            await favoritesPage.editFavoriteWorkflow(0, newName);
 
-      // Click save pending
-      await favoritesPage.clickSavePending();
-      await favoritesPage.waitForBulkSaveDialog();
+            // Verify database - name should be updated
+            const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
+            expect(favorite.name).toBe(newName);
+            expect(favorite.latitude).toBeCloseTo(40.7128, 4);
+            expect(favorite.longitude).toBeCloseTo(-74.0060, 4);
 
-      // Verify counts in dialog
-      const counts = await favoritesPage.getBulkSaveDialogCounts();
-      expect(counts.points).toBe(2);
-      expect(counts.areas).toBe(1);
+            // Reload page to verify persistence
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Cancel dialog
-      await favoritesPage.cancelBulkSave();
+            // Verify table shows updated name
+            const rowData = await favoritesPage.getTableRowData(0);
+            expect(rowData.name).toContain(newName);
+        });
+
+        test('should edit favorite area metadata without timeline regeneration', async ({
+                                                                                            page,
+                                                                                            isolatedUsers,
+                                                                                            dbManager,
+                                                                                            mapMode
+                                                                                        }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create a favorite area
+            const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
+                name: 'Original Area',
+                city: 'Boston',
+                country: 'USA',
+                southWestLat: 42.0,
+                southWestLon: -71.5,
+                northEastLat: 42.5,
+                northEastLon: -71.0
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Edit only the name (metadata change, no geometry change)
+            await favoritesPage.clickEditInTable(0);
+            await favoritesPage.waitForEditDialog();
+
+            const input = page.locator('.p-dialog input[placeholder*="name"]');
+            await input.clear();
+            await input.fill('Updated Area Name');
+
+            await favoritesPage.submitEditDialog();
+
+            // Should NOT show timeline regeneration modal for metadata-only changes
+            await favoritesPage.waitForSuccessToast();
+            await page.waitForTimeout(2000);
+
+            // Verify database - name should be updated, geometry unchanged
+            const result = await dbManager.client.query(`
+                SELECT id,
+                       name,
+                       ST_YMin(geometry) as south_lat,
+                       ST_XMin(geometry) as west_lon,
+                       ST_YMax(geometry) as north_lat,
+                       ST_XMax(geometry) as east_lon
+                FROM favorite_locations
+                WHERE id = $1
+            `, [favoriteId]);
+
+            const favorite = result.rows[0];
+            expect(favorite.name).toBe('Updated Area Name');
+            expect(parseFloat(favorite.south_lat)).toBeCloseTo(42.0, 4);
+            expect(parseFloat(favorite.west_lon)).toBeCloseTo(-71.5, 4);
+            expect(parseFloat(favorite.north_lat)).toBeCloseTo(42.5, 4);
+            expect(parseFloat(favorite.east_lon)).toBeCloseTo(-71.0, 4);
+        });
+
+        test('should edit favorite area with redraw and trigger timeline regeneration', async ({
+                                                                                                   page,
+                                                                                                   isolatedUsers,
+                                                                                                   dbManager,
+                                                                                                   mapMode
+                                                                                               }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create a favorite area
+            const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
+                name: 'Area to Redraw',
+                city: 'Boston',
+                country: 'USA',
+                southWestLat: 42.0,
+                southWestLon: -71.5,
+                northEastLat: 42.5,
+                northEastLon: -71.0
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Open edit dialog
+            await favoritesPage.clickEditInTable(0);
+            await favoritesPage.waitForEditDialog();
+
+            // Wait for edit map to appear and be ready
+            await page.waitForSelector('#edit-area-map[data-testid="map-host-raster"], #edit-area-map[data-testid="map-host-vector"]', {
+                state: 'attached',
+                timeout: 5000
+            });
+            await favoritesPage.waitForEditAreaMapReady();
+            const originalBoundsText = await favoritesPage.getEditAreaBoundsText();
+
+            // Click "Redraw area" button after the map is ready; earlier clicks are intentionally ignored.
+            const redrawButton = page.locator('.p-dialog button:has-text("Redraw")');
+            await expect(redrawButton).toBeEnabled({timeout: 10000});
+            await redrawButton.click();
+            await favoritesPage.waitForEditAreaDrawingMode();
+
+            // Draw new rectangle on the edit dialog map with smaller coordinates
+            // Dialog map is smaller, so use coordinates closer to top-left
+            await favoritesPage.drawRectangle(50, 50, 200, 150, 'edit-area-map');
+            await favoritesPage.waitForEditAreaBoundsToChange(originalBoundsText);
+
+            // Submit the edit
+            await favoritesPage.submitEditDialog();
+
+            // Timeline regeneration should occur for geometry changes
+            try {
+                await favoritesPage.waitForTimelineRegenerationModal();
+                await favoritesPage.waitForTimelineRegenerationToComplete();
+            } catch (error) {
+                // If modal doesn't appear or completes too quickly, just wait for success
+                await favoritesPage.waitForSuccessToast();
+                await page.waitForTimeout(2000);
+            }
+
+            await expect.poll(async () => {
+                const result = await dbManager.client.query(`
+                    SELECT id,
+                           name,
+                           ST_YMin(geometry) as south_lat,
+                           ST_XMin(geometry) as west_lon,
+                           ST_YMax(geometry) as north_lat,
+                           ST_XMax(geometry) as east_lon
+                    FROM favorite_locations
+                    WHERE id = $1
+                `, [favoriteId]);
+
+                const favorite = result.rows[0];
+                const southLat = parseFloat(favorite.south_lat);
+                const westLon = parseFloat(favorite.west_lon);
+                const northLat = parseFloat(favorite.north_lat);
+                const eastLon = parseFloat(favorite.east_lon);
+
+                if (favorite.name !== 'Area to Redraw') {
+                    return false;
+                }
+
+                return (
+                    southLat !== 42.0 ||
+                    westLon !== -71.5 ||
+                    northLat !== 42.5 ||
+                    eastLon !== -71.0
+                );
+            }, {timeout: 30000}).toBe(true);
+
+            const finalAreaResult = await dbManager.client.query(`
+                SELECT ST_YMin(geometry) as south_lat,
+                       ST_YMax(geometry) as north_lat
+                FROM favorite_locations
+                WHERE id = $1
+            `, [favoriteId]);
+
+            const southLat = parseFloat(finalAreaResult.rows[0].south_lat);
+            const northLat = parseFloat(finalAreaResult.rows[0].north_lat);
+            expect(southLat).toBeGreaterThan(40);
+            expect(southLat).toBeLessThan(45);
+            expect(northLat).toBeGreaterThan(southLat); // North should be greater than south
+        });
+
+        test('should edit favorite from map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create a favorite
+            const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Map Edit Test',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await page.waitForTimeout(2000);
+
+            // Right-click on marker
+            await favoritesPage.rightClickFavoriteMarker(0);
+            await favoritesPage.waitForMapContextMenu();
+
+            // Click Edit
+            await favoritesPage.clickContextMenuItem('Edit');
+
+            // Fill and submit edit dialog
+            const newName = 'Edited via Map';
+            await favoritesPage.fillEditDialog(newName);
+            await favoritesPage.submitEditDialog();
+
+            // Wait for success toast
+            await favoritesPage.waitForSuccessToast();
+            await page.waitForTimeout(2000);
+
+            // Verify database - name should be updated
+            const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
+            expect(favorite.name).toBe(newName);
+        });
     });
 
-    test('should remove individual pending favorite', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Delete Favorite', () => {
+        test('should delete favorite from table', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Enable bulk mode and add pending favorites
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            // Create a favorite
+            const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'To Delete',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Keep This');
-      await page.waitForTimeout(500);
-      await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Remove This');
-      await page.waitForTimeout(500);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Verify 2 pending
-      expect(await favoritesPage.getPendingCount()).toBe(2);
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
-      // Remove second pending item
-      await favoritesPage.removePendingItem(1);
-      await page.waitForTimeout(500);
+            // Delete the favorite
+            await favoritesPage.deleteFavoriteWorkflow(0);
 
-      // Verify count decreased
-      expect(await favoritesPage.getPendingCount()).toBe(1);
+            // Verify database
+            await expect.poll(
+                () => TestSetupHelper.countFavorites(dbManager, user.id),
+                {timeout: 30000}
+            ).toBe(initialCount - 1);
+
+            await expect.poll(
+                () => TestSetupHelper.getFavoriteById(dbManager, favoriteId),
+                {timeout: 30000}
+            ).toBeNull();
+
+            // Verify table is empty
+            await expect.poll(
+                () => favoritesPage.isTableEmpty(),
+                {timeout: 20000}
+            ).toBe(true);
+        });
+
+        test('should cancel delete confirmation', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create a favorite
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Do Not Delete',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+
+            // Try to delete but cancel
+            await favoritesPage.clickDeleteInTable(0);
+            await favoritesPage.rejectDialog();
+
+            // Verify not deleted
+            const finalCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+            expect(finalCount).toBe(initialCount);
+        });
+
+        test('should delete favorite from map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create a favorite
+            const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Delete via Map',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+            await page.waitForTimeout(2000);
+
+            // Right-click on marker and delete
+            await favoritesPage.rightClickFavoriteMarker(0);
+            await favoritesPage.waitForMapContextMenu();
+            await favoritesPage.clickContextMenuItem('Delete');
+
+            // Confirm deletion
+            await favoritesPage.confirmDialog();
+
+            // Wait for timeline regeneration
+            await favoritesPage.waitForTimelineRegenerationModal();
+            await favoritesPage.waitForTimelineRegenerationToComplete();
+
+            // Verify database
+            const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
+            expect(favorite).toBeNull();
+        });
     });
 
-    test('should clear all pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Filters', () => {
+        test('should filter by type', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Enable bulk mode and add pending favorites
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            // Create mixed favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
 
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending 1');
-      await page.waitForTimeout(500);
-      await favoritesPage.addFavoritePointInBulkMode(350, 350, 'Pending 2');
-      await page.waitForTimeout(500);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Clear all pending
-      await favoritesPage.clickClearPending();
-      await favoritesPage.confirmDialog();
+            // Filter by POINT
+            await favoritesPage.selectTypeFilter('POINT');
 
-      // Verify pending list is cleared
-      expect(await favoritesPage.isSavePendingButtonVisible()).toBe(false);
+            // Verify only points are shown
+            const pointRowCount = await favoritesPage.getTableRowCount();
+            expect(pointRowCount).toBe(2);
 
-      // Verify toast message
-      await favoritesPage.waitForInfoToast();
+            // Filter by AREA
+            await favoritesPage.selectTypeFilter('AREA');
+
+            // Verify only areas are shown
+            const areaRowCount = await favoritesPage.getTableRowCount();
+            expect(areaRowCount).toBe(1);
+
+            // Show all
+            await favoritesPage.selectTypeFilter(null);
+
+            // Verify all are shown
+            const allRowCount = await favoritesPage.getTableRowCount();
+            expect(allRowCount).toBe(3);
+        });
+
+        test('should search by name', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create favorites with unique names
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Coffee Shop',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Home Sweet Home',
+                city: 'Boston',
+                country: 'USA',
+                latitude: 42.3601,
+                longitude: -71.0589
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Search for "Coffee"
+            await favoritesPage.fillSearchInput('Coffee');
+
+            // Verify only matching favorite is shown
+            const searchRowCount = await favoritesPage.getTableRowCount();
+            expect(searchRowCount).toBe(1);
+
+            const rowData = await favoritesPage.getTableRowData(0);
+            expect(rowData.name).toContain('Coffee');
+        });
+
+        test('should search by city', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create favorites with different cities
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite 1',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
+
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite 2',
+                city: 'Boston',
+                country: 'USA',
+                latitude: 42.3601,
+                longitude: -71.0589
+            });
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Search for "Boston"
+            await favoritesPage.fillSearchInput('Boston');
+
+            // Verify only Boston favorite is shown
+            const searchRowCount = await favoritesPage.getTableRowCount();
+            expect(searchRowCount).toBe(1);
+        });
+
+        test('should clear filters', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Apply filters
+            await favoritesPage.selectTypeFilter('POINT');
+            await favoritesPage.fillSearchInput('Test');
+
+            // Verify clear button is enabled
+            expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(true);
+
+            // Clear filters
+            await favoritesPage.clearFilters();
+
+            // Verify all favorites are shown
+            const allRowCount = await favoritesPage.getTableRowCount();
+            expect(allRowCount).toBe(3);
+
+            // Verify clear button is disabled
+            expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(false);
+        });
     });
 
-    test('should warn when leaving page with unsaved pending favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Bulk Operations', () => {
+        test('should select multiple rows', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Enable bulk mode and add pending favorite
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
+            // Create multiple favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
 
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending');
-      await page.waitForTimeout(1000);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Try to navigate away by clicking Timeline in navigation menu
-      // This triggers Vue Router navigation which will show the guard confirmation
-      await favoritesPage.clickNavigationLink('Timeline');
+            // Select first two rows
+            await favoritesPage.selectTableRow(0);
+            await favoritesPage.selectTableRow(1);
 
-      // Wait for confirmation dialog
-      await favoritesPage.waitForConfirmDialog();
+            // Verify selection count
+            const selectedCount = await favoritesPage.getSelectedRowCount();
+            expect(selectedCount).toBe(2);
+        });
 
-      // Verify confirmation dialog shows correct message
-      const dialogText = await page.locator('.p-confirmdialog').textContent();
-      expect(dialogText).toContain('unsaved pending favorite');
+        test('should show bulk action buttons when rows selected', async ({
+                                                                              page,
+                                                                              isolatedUsers,
+                                                                              dbManager,
+                                                                              mapMode
+                                                                          }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Reject navigation
-      await favoritesPage.rejectDialog();
+            // Create favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
 
-      // Wait a bit for navigation to be cancelled
-      await page.waitForTimeout(500);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Verify still on favorites page
-      expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
-    });
-  });
+            // Initially bulk buttons should not be visible
+            const bulkEditButton = page.locator(favoritesPage.selectors.bulkEditButton);
+            const reconcileSelectedButton = page.locator(favoritesPage.selectors.reconcileSelectedButton);
 
-  test.describe('Edit Favorite', () => {
-    test('should edit favorite point metadata without timeline regeneration', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            expect(await bulkEditButton.isVisible()).toBe(false);
+            expect(await reconcileSelectedButton.isVisible()).toBe(false);
 
-      // Create a favorite point
-      const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Original Name',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Select a row
+            await favoritesPage.selectTableRow(0);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Now buttons should be visible
+            expect(await bulkEditButton.isVisible()).toBe(true);
+            expect(await reconcileSelectedButton.isVisible()).toBe(true);
+        });
 
-      // Edit only the name (metadata change, no geometry change)
-      const newName = 'Updated Name';
-      await favoritesPage.editFavoriteWorkflow(0, newName);
+        test('should perform bulk edit of city and country', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Verify database - name should be updated
-      const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
-      expect(favorite.name).toBe(newName);
-      expect(favorite.latitude).toBeCloseTo(40.7128, 4);
-      expect(favorite.longitude).toBeCloseTo(-74.0060, 4);
+            // Create favorites with different cities
+            const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite 1',
+                city: 'Old City 1',
+                country: 'Old Country 1',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      // Reload page to verify persistence
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            const fav2Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite 2',
+                city: 'Old City 2',
+                country: 'Old Country 2',
+                latitude: 42.3601,
+                longitude: -71.0589
+            });
 
-      // Verify table shows updated name
-      const rowData = await favoritesPage.getTableRowData(0);
-      expect(rowData.name).toContain(newName);
-    });
+            const fav3Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite 3',
+                city: 'Old City 3',
+                country: 'Old Country 3',
+                latitude: 34.0522,
+                longitude: -118.2437
+            });
 
-    test('should edit favorite area metadata without timeline regeneration', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Create a favorite area
-      const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
-        name: 'Original Area',
-        city: 'Boston',
-        country: 'USA',
-        southWestLat: 42.0,
-        southWestLon: -71.5,
-        northEastLat: 42.5,
-        northEastLon: -71.0
-      });
+            // Select first two rows (will update fav1 and fav2, leave fav3 unchanged)
+            await favoritesPage.selectTableRow(0);
+            await favoritesPage.selectTableRow(1);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Click bulk edit
+            await favoritesPage.clickBulkEdit();
+            await favoritesPage.waitForBulkEditDialog();
 
-      // Edit only the name (metadata change, no geometry change)
-      await favoritesPage.clickEditInTable(0);
-      await favoritesPage.waitForEditDialog();
+            // Fill in new city and country
+            const dialog = page.locator(favoritesPage.selectors.bulkEditDialog);
 
-      const input = page.locator('.p-dialog input[placeholder*="name"]');
-      await input.clear();
-      await input.fill('Updated Area Name');
+            // Enable and fill city field (autocomplete input)
+            const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
+            await cityCheckbox.check();
+            await page.waitForTimeout(300);
 
-      await favoritesPage.submitEditDialog();
+            const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
+            await cityInput.click();
+            await cityInput.fill('New York');
+            await page.waitForTimeout(500);
 
-      // Should NOT show timeline regeneration modal for metadata-only changes
-      await favoritesPage.waitForSuccessToast();
-      await page.waitForTimeout(2000);
+            // Click on dialog header to close autocomplete dropdown
+            const dialogHeader = dialog.locator('.p-dialog-header');
+            await dialogHeader.click();
+            await page.waitForTimeout(300);
 
-      // Verify database - name should be updated, geometry unchanged
-      const result = await dbManager.client.query(`
-        SELECT id, name,
-               ST_YMin(geometry) as south_lat,
-               ST_XMin(geometry) as west_lon,
-               ST_YMax(geometry) as north_lat,
-               ST_XMax(geometry) as east_lon
-        FROM favorite_locations
-        WHERE id = $1
-      `, [favoriteId]);
+            // Enable and fill country field (autocomplete input)
+            const countryCheckbox = dialog.locator('label:has-text("Country")').locator('..').locator('input[type="checkbox"]');
+            await countryCheckbox.check();
+            await page.waitForTimeout(300);
 
-      const favorite = result.rows[0];
-      expect(favorite.name).toBe('Updated Area Name');
-      expect(parseFloat(favorite.south_lat)).toBeCloseTo(42.0, 4);
-      expect(parseFloat(favorite.west_lon)).toBeCloseTo(-71.5, 4);
-      expect(parseFloat(favorite.north_lat)).toBeCloseTo(42.5, 4);
-      expect(parseFloat(favorite.east_lon)).toBeCloseTo(-71.0, 4);
-    });
+            const countryInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="country"]');
+            await countryInput.click();
+            await countryInput.fill('USA');
+            await page.waitForTimeout(500);
 
-    test('should edit favorite area with redraw and trigger timeline regeneration', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            // Click on dialog header again to close autocomplete dropdown
+            await dialogHeader.click();
+            await page.waitForTimeout(300);
 
-      // Create a favorite area
-      const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
-        name: 'Area to Redraw',
-        city: 'Boston',
-        country: 'USA',
-        southWestLat: 42.0,
-        southWestLon: -71.5,
-        northEastLat: 42.5,
-        northEastLon: -71.0
-      });
+            // Submit bulk edit
+            const saveButton = dialog.locator('button:has-text("Update")');
+            await saveButton.click();
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            await page.waitForTimeout(1000);
 
-      // Open edit dialog
-      await favoritesPage.clickEditInTable(0);
-      await favoritesPage.waitForEditDialog();
+            // Handle possible typo detection dialog
+            const continueButton = page.locator('button:has-text("Continue Anyway")');
+            if (await continueButton.isVisible({timeout: 2000}).catch(() => false)) {
+                await continueButton.click();
+                await page.waitForTimeout(300);
+            }
 
-      // Wait for edit map to appear and be ready
-      await page.waitForSelector('#edit-area-map[data-testid="map-host-raster"], #edit-area-map[data-testid="map-host-vector"]', {
-        state: 'attached',
-        timeout: 5000
-      });
-      await favoritesPage.waitForEditAreaMapReady();
-      const originalBoundsText = await favoritesPage.getEditAreaBoundsText();
+            // Wait for success
+            await favoritesPage.waitForSuccessToast();
+            await page.waitForTimeout(2000);
 
-      // Click "Redraw area" button after the map is ready; earlier clicks are intentionally ignored.
-      const redrawButton = page.locator('.p-dialog button:has-text("Redraw")');
-      await expect(redrawButton).toBeEnabled({ timeout: 10000 });
-      await redrawButton.click();
-      await favoritesPage.waitForEditAreaDrawingMode();
+            // Verify database - first two favorites should be updated
+            const result1 = await dbManager.client.query(
+                'SELECT city, country FROM favorite_locations WHERE id = $1',
+                [fav1Id]
+            );
+            expect(result1.rows[0].city).toBe('New York');
+            expect(result1.rows[0].country).toBe('USA');
 
-      // Draw new rectangle on the edit dialog map with smaller coordinates
-      // Dialog map is smaller, so use coordinates closer to top-left
-      await favoritesPage.drawRectangle(50, 50, 200, 150, 'edit-area-map');
-      await favoritesPage.waitForEditAreaBoundsToChange(originalBoundsText);
+            const result2 = await dbManager.client.query(
+                'SELECT city, country FROM favorite_locations WHERE id = $1',
+                [fav2Id]
+            );
+            expect(result2.rows[0].city).toBe('New York');
+            expect(result2.rows[0].country).toBe('USA');
 
-      // Submit the edit
-      await favoritesPage.submitEditDialog();
+            // Third favorite should remain unchanged
+            const result3 = await dbManager.client.query(
+                'SELECT city, country FROM favorite_locations WHERE id = $1',
+                [fav3Id]
+            );
+            expect(result3.rows[0].city).toBe('Old City 3');
+            expect(result3.rows[0].country).toBe('Old Country 3');
 
-      // Timeline regeneration should occur for geometry changes
-      try {
-        await favoritesPage.waitForTimelineRegenerationModal();
-        await favoritesPage.waitForTimelineRegenerationToComplete();
-      } catch (error) {
-        // If modal doesn't appear or completes too quickly, just wait for success
-        await favoritesPage.waitForSuccessToast();
-        await page.waitForTimeout(2000);
-      }
+            // Reload and verify in table
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      await expect.poll(async () => {
-        const result = await dbManager.client.query(`
-          SELECT id, name,
-                 ST_YMin(geometry) as south_lat,
-                 ST_XMin(geometry) as west_lon,
-                 ST_YMax(geometry) as north_lat,
-                 ST_XMax(geometry) as east_lon
-          FROM favorite_locations
-          WHERE id = $1
-        `, [favoriteId]);
+            // Verify updated values appear in table
+            const tableText = await page.locator('.favorites-table').textContent();
+            expect(tableText).toContain('New York');
+            expect(tableText).toContain('USA');
+        });
 
-        const favorite = result.rows[0];
-        const southLat = parseFloat(favorite.south_lat);
-        const westLon = parseFloat(favorite.west_lon);
-        const northLat = parseFloat(favorite.north_lat);
-        const eastLon = parseFloat(favorite.east_lon);
+        test('should perform bulk edit of only city', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-        if (favorite.name !== 'Area to Redraw') {
-          return false;
-        }
+            // Create favorites
+            const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite A',
+                city: 'Boston',
+                country: 'USA',
+                latitude: 42.3601,
+                longitude: -71.0589
+            });
 
-        return (
-          southLat !== 42.0 ||
-          westLon !== -71.5 ||
-          northLat !== 42.5 ||
-          eastLon !== -71.0
-        );
-      }, { timeout: 30000 }).toBe(true);
+            const fav2Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Favorite B',
+                city: 'Cambridge',
+                country: 'USA',
+                latitude: 42.3736,
+                longitude: -71.1097
+            });
 
-      const finalAreaResult = await dbManager.client.query(`
-        SELECT ST_YMin(geometry) as south_lat,
-               ST_YMax(geometry) as north_lat
-        FROM favorite_locations
-        WHERE id = $1
-      `, [favoriteId]);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      const southLat = parseFloat(finalAreaResult.rows[0].south_lat);
-      const northLat = parseFloat(finalAreaResult.rows[0].north_lat);
-      expect(southLat).toBeGreaterThan(40);
-      expect(southLat).toBeLessThan(45);
-      expect(northLat).toBeGreaterThan(southLat); // North should be greater than south
-    });
+            // Select both rows
+            await favoritesPage.selectTableRow(0);
+            await favoritesPage.selectTableRow(1);
 
-    test('should edit favorite from map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            // Click bulk edit
+            await favoritesPage.clickBulkEdit();
+            await favoritesPage.waitForBulkEditDialog();
 
-      // Create a favorite
-      const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Map Edit Test',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Enable and fill only city field (leave country unchecked)
+            const dialog = page.locator(favoritesPage.selectors.bulkEditDialog);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
+            // Enable city field (autocomplete input)
+            const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
+            await cityCheckbox.check();
+            await page.waitForTimeout(300);
 
-      // Right-click on marker
-      await favoritesPage.rightClickFavoriteMarker(0);
-      await favoritesPage.waitForMapContextMenu();
+            const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
+            await cityInput.click();
+            await cityInput.fill('San Francisco');
+            await page.waitForTimeout(500);
 
-      // Click Edit
-      await favoritesPage.clickContextMenuItem('Edit');
+            // Click on dialog header to close autocomplete dropdown
+            const dialogHeader = dialog.locator('.p-dialog-header');
+            await dialogHeader.click();
+            await page.waitForTimeout(300);
 
-      // Fill and submit edit dialog
-      const newName = 'Edited via Map';
-      await favoritesPage.fillEditDialog(newName);
-      await favoritesPage.submitEditDialog();
+            // Do NOT enable country field - leave it unchecked so it won't be updated
 
-      // Wait for success toast
-      await favoritesPage.waitForSuccessToast();
-      await page.waitForTimeout(2000);
+            // Submit
+            const saveButton = dialog.locator('button:has-text("Update")');
+            await saveButton.click();
 
-      // Verify database - name should be updated
-      const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
-      expect(favorite.name).toBe(newName);
-    });
-  });
+            await page.waitForTimeout(1000);
 
-  test.describe('Delete Favorite', () => {
-    test('should delete favorite from table', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+            // Handle possible typo detection dialog
+            const continueButton = page.locator('button:has-text("Continue Anyway")');
+            if (await continueButton.isVisible({timeout: 2000}).catch(() => false)) {
+                await continueButton.click();
+                await page.waitForTimeout(300);
+            }
 
-      // Create a favorite
-      const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'To Delete',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            await favoritesPage.waitForSuccessToast();
+            await page.waitForTimeout(2000);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Verify database - city updated, country unchanged
+            const result1 = await dbManager.client.query(
+                'SELECT city, country FROM favorite_locations WHERE id = $1',
+                [fav1Id]
+            );
+            expect(result1.rows[0].city).toBe('San Francisco');
+            expect(result1.rows[0].country).toBe('USA'); // Should remain unchanged
 
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-
-      // Delete the favorite
-      await favoritesPage.deleteFavoriteWorkflow(0);
-
-      // Verify database
-      await expect.poll(
-        () => TestSetupHelper.countFavorites(dbManager, user.id),
-        { timeout: 30000 }
-      ).toBe(initialCount - 1);
-
-      await expect.poll(
-        () => TestSetupHelper.getFavoriteById(dbManager, favoriteId),
-        { timeout: 30000 }
-      ).toBeNull();
-
-      // Verify table is empty
-      await expect.poll(
-        () => favoritesPage.isTableEmpty(),
-        { timeout: 20000 }
-      ).toBe(true);
+            const result2 = await dbManager.client.query(
+                'SELECT city, country FROM favorite_locations WHERE id = $1',
+                [fav2Id]
+            );
+            expect(result2.rows[0].city).toBe('San Francisco');
+            expect(result2.rows[0].country).toBe('USA'); // Should remain unchanged
+        });
     });
 
-    test('should cancel delete confirmation', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Reconcile Favorites', () => {
+        test('should show reconcile all button', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Create a favorite
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Do Not Delete',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Initially button should be disabled (no favorites)
+            expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(true);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Create a favorite
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Test',
+                city: null,
+                country: null,
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Try to delete but cancel
-      await favoritesPage.clickDeleteInTable(0);
-      await favoritesPage.rejectDialog();
+            // Button should now be enabled
+            expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(false);
+        });
 
-      // Verify not deleted
-      const finalCount = await TestSetupHelper.countFavorites(dbManager, user.id);
-      expect(finalCount).toBe(initialCount);
+        test('should open reconcile dialog for all favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Click reconcile all
+            await favoritesPage.clickReconcileAll();
+
+            // Verify reconcile dialog opens
+            await favoritesPage.waitForReconcileDialog();
+
+            const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
+            expect(await dialog.isVisible()).toBe(true);
+        });
+
+        test('should open reconcile dialog for selected favorites', async ({
+                                                                               page,
+                                                                               isolatedUsers,
+                                                                               dbManager,
+                                                                               mapMode
+                                                                           }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
+
+            // Create favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
+
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
+
+            // Select rows
+            await favoritesPage.selectTableRow(0);
+            await favoritesPage.selectTableRow(1);
+
+            // Click reconcile selected
+            await favoritesPage.clickReconcileSelected();
+
+            // Verify reconcile dialog opens
+            await favoritesPage.waitForReconcileDialog();
+
+            const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
+            expect(await dialog.isVisible()).toBe(true);
+        });
     });
 
-    test('should delete favorite from map context menu', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('View Details', () => {
+        test('should navigate to place details when clicking view button', async ({
+                                                                                      page,
+                                                                                      isolatedUsers,
+                                                                                      dbManager,
+                                                                                      mapMode
+                                                                                  }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Create a favorite
-      const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Delete via Map',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Create a favorite
+            const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'View Test',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      // Right-click on marker and delete
-      await favoritesPage.rightClickFavoriteMarker(0);
-      await favoritesPage.waitForMapContextMenu();
-      await favoritesPage.clickContextMenuItem('Delete');
+            // Click view details
+            await favoritesPage.clickViewDetails(0);
 
-      // Confirm deletion
-      await favoritesPage.confirmDialog();
-
-      // Wait for timeline regeneration
-      await favoritesPage.waitForTimelineRegenerationModal();
-      await favoritesPage.waitForTimelineRegenerationToComplete();
-
-      // Verify database
-      const favorite = await TestSetupHelper.getFavoriteById(dbManager, favoriteId);
-      expect(favorite).toBeNull();
-    });
-  });
-
-  test.describe('Filters', () => {
-    test('should filter by type', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create mixed favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Filter by POINT
-      await favoritesPage.selectTypeFilter('POINT');
-
-      // Verify only points are shown
-      const pointRowCount = await favoritesPage.getTableRowCount();
-      expect(pointRowCount).toBe(2);
-
-      // Filter by AREA
-      await favoritesPage.selectTypeFilter('AREA');
-
-      // Verify only areas are shown
-      const areaRowCount = await favoritesPage.getTableRowCount();
-      expect(areaRowCount).toBe(1);
-
-      // Show all
-      await favoritesPage.selectTypeFilter(null);
-
-      // Verify all are shown
-      const allRowCount = await favoritesPage.getTableRowCount();
-      expect(allRowCount).toBe(3);
+            // Verify navigation to place details page
+            await page.waitForURL(`**/app/place-details/favorite/${favoriteId}`, {timeout: 10000});
+            expect(page.url()).toContain(`/app/place-details/favorite/${favoriteId}`);
+        });
     });
 
-    test('should search by name', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Show on Map', () => {
+        test('should focus on map when clicking show on map button', async ({
+                                                                                page,
+                                                                                isolatedUsers,
+                                                                                dbManager,
+                                                                                mapMode
+                                                                            }) => {
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Create favorites with unique names
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Coffee Shop',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Create a favorite
+            await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
+                name: 'Map Focus Test',
+                city: 'New York',
+                country: 'USA',
+                latitude: 40.7128,
+                longitude: -74.0060
+            });
 
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Home Sweet Home',
-        city: 'Boston',
-        country: 'USA',
-        latitude: 42.3601,
-        longitude: -71.0589
-      });
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Click show on map
+            await favoritesPage.clickShowOnMap(0);
 
-      // Search for "Coffee"
-      await favoritesPage.fillSearchInput('Coffee');
-
-      // Verify only matching favorite is shown
-      const searchRowCount = await favoritesPage.getTableRowCount();
-      expect(searchRowCount).toBe(1);
-
-      const rowData = await favoritesPage.getTableRowData(0);
-      expect(rowData.name).toContain('Coffee');
+            // Verify map is focused (this would require map zoom level check)
+            // For now just verify no errors occurred
+            await page.waitForTimeout(1000);
+        });
     });
 
-    test('should search by city', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Empty State', () => {
+        test('should show empty state when no favorites exist', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Create favorites with different cities
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite 1',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
+            // Verify empty state
+            expect(await favoritesPage.isTableEmpty()).toBe(true);
 
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite 2',
-        city: 'Boston',
-        country: 'USA',
-        latitude: 42.3601,
-        longitude: -71.0589
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Search for "Boston"
-      await favoritesPage.fillSearchInput('Boston');
-
-      // Verify only Boston favorite is shown
-      const searchRowCount = await favoritesPage.getTableRowCount();
-      expect(searchRowCount).toBe(1);
+            // Verify empty message text
+            const emptyState = page.locator('.empty-state');
+            const text = await emptyState.textContent();
+            expect(text).toContain('No Favorite Locations Found');
+        });
     });
 
-    test('should clear filters', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Context Menu on Pending Favorites', () => {
+        test('should show context menu on pending favorite marker', async ({
+                                                                               page,
+                                                                               isolatedUsers,
+                                                                               dbManager,
+                                                                               mapMode
+                                                                           }) => {
+            const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      // Create favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
+            // Enable bulk mode and add pending
+            await favoritesPage.toggleBulkMode();
+            await page.waitForTimeout(1000);
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Test');
+            await page.waitForTimeout(1500);
 
-      // Apply filters
-      await favoritesPage.selectTypeFilter('POINT');
-      await favoritesPage.fillSearchInput('Test');
+            // Right-click on pending marker
+            await favoritesPage.rightClickPendingMarker(0);
+            await favoritesPage.waitForMapContextMenu();
 
-      // Verify clear button is enabled
-      expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(true);
-
-      // Clear filters
-      await favoritesPage.clearFilters();
-
-      // Verify all favorites are shown
-      const allRowCount = await favoritesPage.getTableRowCount();
-      expect(allRowCount).toBe(3);
-
-      // Verify clear button is disabled
-      expect(await favoritesPage.isClearFiltersButtonEnabled()).toBe(false);
-    });
-  });
-
-  test.describe('Bulk Operations', () => {
-    test('should select multiple rows', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create multiple favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Select first two rows
-      await favoritesPage.selectTableRow(0);
-      await favoritesPage.selectTableRow(1);
-
-      // Verify selection count
-      const selectedCount = await favoritesPage.getSelectedRowCount();
-      expect(selectedCount).toBe(2);
+            // Verify context menu has "Remove from Pending" option
+            const removeItem = page.locator('.p-contextmenu-item-label:has-text("Remove from Pending")');
+            expect(await removeItem.isVisible()).toBe(true);
+        });
     });
 
-    test('should show bulk action buttons when rows selected', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
+    test.describe('Responsive Behavior', () => {
+        test('should handle mobile viewport', async ({page, isolatedUsers, dbManager, mapMode}) => {
+            // Set mobile viewport
+            await page.setViewportSize({width: 375, height: 667});
 
-      // Create favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
+            const {
+                favoritesPage,
+                user
+            } = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), {mapMode});
 
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
+            // Create favorites
+            await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
 
-      // Initially bulk buttons should not be visible
-      const bulkEditButton = page.locator(favoritesPage.selectors.bulkEditButton);
-      const reconcileSelectedButton = page.locator(favoritesPage.selectors.reconcileSelectedButton);
+            await page.reload();
+            await favoritesPage.waitForPageLoad();
 
-      expect(await bulkEditButton.isVisible()).toBe(false);
-      expect(await reconcileSelectedButton.isVisible()).toBe(false);
+            // Verify page still works on mobile
+            const rowCount = await favoritesPage.getTableRowCount();
+            expect(rowCount).toBe(2);
 
-      // Select a row
-      await favoritesPage.selectTableRow(0);
-
-      // Now buttons should be visible
-      expect(await bulkEditButton.isVisible()).toBe(true);
-      expect(await reconcileSelectedButton.isVisible()).toBe(true);
+            // Verify map is still visible
+            const map = page.locator(favoritesPage.selectors.leafletMap);
+            expect(await map.isVisible()).toBe(true);
+        });
     });
-
-    test('should perform bulk edit of city and country', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create favorites with different cities
-      const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite 1',
-        city: 'Old City 1',
-        country: 'Old Country 1',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
-
-      const fav2Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite 2',
-        city: 'Old City 2',
-        country: 'Old Country 2',
-        latitude: 42.3601,
-        longitude: -71.0589
-      });
-
-      const fav3Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite 3',
-        city: 'Old City 3',
-        country: 'Old Country 3',
-        latitude: 34.0522,
-        longitude: -118.2437
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Select first two rows (will update fav1 and fav2, leave fav3 unchanged)
-      await favoritesPage.selectTableRow(0);
-      await favoritesPage.selectTableRow(1);
-
-      // Click bulk edit
-      await favoritesPage.clickBulkEdit();
-      await favoritesPage.waitForBulkEditDialog();
-
-      // Fill in new city and country
-      const dialog = page.locator(favoritesPage.selectors.bulkEditDialog);
-
-      // Enable and fill city field (autocomplete input)
-      const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
-      await cityCheckbox.check();
-      await page.waitForTimeout(300);
-
-      const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
-      await cityInput.click();
-      await cityInput.fill('New York');
-      await page.waitForTimeout(500);
-
-      // Click on dialog header to close autocomplete dropdown
-      const dialogHeader = dialog.locator('.p-dialog-header');
-      await dialogHeader.click();
-      await page.waitForTimeout(300);
-
-      // Enable and fill country field (autocomplete input)
-      const countryCheckbox = dialog.locator('label:has-text("Country")').locator('..').locator('input[type="checkbox"]');
-      await countryCheckbox.check();
-      await page.waitForTimeout(300);
-
-      const countryInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="country"]');
-      await countryInput.click();
-      await countryInput.fill('USA');
-      await page.waitForTimeout(500);
-
-      // Click on dialog header again to close autocomplete dropdown
-      await dialogHeader.click();
-      await page.waitForTimeout(300);
-
-      // Submit bulk edit
-      const saveButton = dialog.locator('button:has-text("Update")');
-      await saveButton.click();
-
-      await page.waitForTimeout(1000);
-
-      // Handle possible typo detection dialog
-      const continueButton = page.locator('button:has-text("Continue Anyway")');
-      if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await continueButton.click();
-        await page.waitForTimeout(300);
-      }
-
-      // Wait for success
-      await favoritesPage.waitForSuccessToast();
-      await page.waitForTimeout(2000);
-
-      // Verify database - first two favorites should be updated
-      const result1 = await dbManager.client.query(
-        'SELECT city, country FROM favorite_locations WHERE id = $1',
-        [fav1Id]
-      );
-      expect(result1.rows[0].city).toBe('New York');
-      expect(result1.rows[0].country).toBe('USA');
-
-      const result2 = await dbManager.client.query(
-        'SELECT city, country FROM favorite_locations WHERE id = $1',
-        [fav2Id]
-      );
-      expect(result2.rows[0].city).toBe('New York');
-      expect(result2.rows[0].country).toBe('USA');
-
-      // Third favorite should remain unchanged
-      const result3 = await dbManager.client.query(
-        'SELECT city, country FROM favorite_locations WHERE id = $1',
-        [fav3Id]
-      );
-      expect(result3.rows[0].city).toBe('Old City 3');
-      expect(result3.rows[0].country).toBe('Old Country 3');
-
-      // Reload and verify in table
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Verify updated values appear in table
-      const tableText = await page.locator('.favorites-table').textContent();
-      expect(tableText).toContain('New York');
-      expect(tableText).toContain('USA');
-    });
-
-    test('should perform bulk edit of only city', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create favorites
-      const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite A',
-        city: 'Boston',
-        country: 'USA',
-        latitude: 42.3601,
-        longitude: -71.0589
-      });
-
-      const fav2Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Favorite B',
-        city: 'Cambridge',
-        country: 'USA',
-        latitude: 42.3736,
-        longitude: -71.1097
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Select both rows
-      await favoritesPage.selectTableRow(0);
-      await favoritesPage.selectTableRow(1);
-
-      // Click bulk edit
-      await favoritesPage.clickBulkEdit();
-      await favoritesPage.waitForBulkEditDialog();
-
-      // Enable and fill only city field (leave country unchecked)
-      const dialog = page.locator(favoritesPage.selectors.bulkEditDialog);
-
-      // Enable city field (autocomplete input)
-      const cityCheckbox = dialog.locator('label:has-text("City")').locator('..').locator('input[type="checkbox"]');
-      await cityCheckbox.check();
-      await page.waitForTimeout(300);
-
-      const cityInput = dialog.locator('.p-autocomplete input.p-autocomplete-input[placeholder*="city"]');
-      await cityInput.click();
-      await cityInput.fill('San Francisco');
-      await page.waitForTimeout(500);
-
-      // Click on dialog header to close autocomplete dropdown
-      const dialogHeader = dialog.locator('.p-dialog-header');
-      await dialogHeader.click();
-      await page.waitForTimeout(300);
-
-      // Do NOT enable country field - leave it unchecked so it won't be updated
-
-      // Submit
-      const saveButton = dialog.locator('button:has-text("Update")');
-      await saveButton.click();
-
-      await page.waitForTimeout(1000);
-
-      // Handle possible typo detection dialog
-      const continueButton = page.locator('button:has-text("Continue Anyway")');
-      if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await continueButton.click();
-        await page.waitForTimeout(300);
-      }
-
-      await favoritesPage.waitForSuccessToast();
-      await page.waitForTimeout(2000);
-
-      // Verify database - city updated, country unchanged
-      const result1 = await dbManager.client.query(
-        'SELECT city, country FROM favorite_locations WHERE id = $1',
-        [fav1Id]
-      );
-      expect(result1.rows[0].city).toBe('San Francisco');
-      expect(result1.rows[0].country).toBe('USA'); // Should remain unchanged
-
-      const result2 = await dbManager.client.query(
-        'SELECT city, country FROM favorite_locations WHERE id = $1',
-        [fav2Id]
-      );
-      expect(result2.rows[0].city).toBe('San Francisco');
-      expect(result2.rows[0].country).toBe('USA'); // Should remain unchanged
-    });
-  });
-
-  test.describe('Reconcile Favorites', () => {
-    test('should show reconcile all button', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Initially button should be disabled (no favorites)
-      expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(true);
-
-      // Create a favorite
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Test',
-        city: null,
-        country: null,
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Button should now be enabled
-      expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(false);
-    });
-
-    test('should open reconcile dialog for all favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Click reconcile all
-      await favoritesPage.clickReconcileAll();
-
-      // Verify reconcile dialog opens
-      await favoritesPage.waitForReconcileDialog();
-
-      const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
-      expect(await dialog.isVisible()).toBe(true);
-    });
-
-    test('should open reconcile dialog for selected favorites', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Select rows
-      await favoritesPage.selectTableRow(0);
-      await favoritesPage.selectTableRow(1);
-
-      // Click reconcile selected
-      await favoritesPage.clickReconcileSelected();
-
-      // Verify reconcile dialog opens
-      await favoritesPage.waitForReconcileDialog();
-
-      const dialog = page.locator(favoritesPage.selectors.reconcileDialog);
-      expect(await dialog.isVisible()).toBe(true);
-    });
-  });
-
-  test.describe('View Details', () => {
-    test('should navigate to place details when clicking view button', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create a favorite
-      const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'View Test',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Click view details
-      await favoritesPage.clickViewDetails(0);
-
-      // Verify navigation to place details page
-      await page.waitForURL(`**/app/place-details/favorite/${favoriteId}`, { timeout: 10000 });
-      expect(page.url()).toContain(`/app/place-details/favorite/${favoriteId}`);
-    });
-  });
-
-  test.describe('Show on Map', () => {
-    test('should focus on map when clicking show on map button', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create a favorite
-      await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
-        name: 'Map Focus Test',
-        city: 'New York',
-        country: 'USA',
-        latitude: 40.7128,
-        longitude: -74.0060
-      });
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Click show on map
-      await favoritesPage.clickShowOnMap(0);
-
-      // Verify map is focused (this would require map zoom level check)
-      // For now just verify no errors occurred
-      await page.waitForTimeout(1000);
-    });
-  });
-
-  test.describe('Empty State', () => {
-    test('should show empty state when no favorites exist', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Verify empty state
-      expect(await favoritesPage.isTableEmpty()).toBe(true);
-
-      // Verify empty message text
-      const emptyState = page.locator('.empty-state');
-      const text = await emptyState.textContent();
-      expect(text).toContain('No Favorite Locations Found');
-    });
-  });
-
-  test.describe('Context Menu on Pending Favorites', () => {
-    test('should show context menu on pending favorite marker', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Enable bulk mode and add pending
-      await favoritesPage.toggleBulkMode();
-      await page.waitForTimeout(1000);
-
-      await favoritesPage.addFavoritePointInBulkMode(300, 300, 'Pending Test');
-      await page.waitForTimeout(1500);
-
-      // Right-click on pending marker
-      await favoritesPage.rightClickPendingMarker(0);
-      await favoritesPage.waitForMapContextMenu();
-
-      // Verify context menu has "Remove from Pending" option
-      const removeItem = page.locator('.p-contextmenu-item-label:has-text("Remove from Pending")');
-      expect(await removeItem.isVisible()).toBe(true);
-    });
-  });
-
-  test.describe('Responsive Behavior', () => {
-    test('should handle mobile viewport', async ({page, isolatedUsers, dbManager, mapMode}) => {
-      // Set mobile viewport
-      await page.setViewportSize({ width: 375, height: 667 });
-
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers), { mapMode });
-
-      // Create favorites
-      await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
-
-      await page.reload();
-      await favoritesPage.waitForPageLoad();
-
-      // Verify page still works on mobile
-      const rowCount = await favoritesPage.getTableRowCount();
-      expect(rowCount).toBe(2);
-
-      // Verify map is still visible
-      const map = page.locator(favoritesPage.selectors.leafletMap);
-      expect(await map.isVisible()).toBe(true);
-    });
-  });
 });

@@ -96,6 +96,7 @@ import AutoComplete from 'primevue/autocomplete'
 import Message from 'primevue/message'
 import {useTimezone} from '@/composables/useTimezone'
 import {showDemoModeToast} from '@/utils/demoMode'
+import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -110,7 +111,6 @@ import InvitationsTab from '@/components/friends/InvitationsTab.vue'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
-import friendsService from '@/services/friendsService'
 import {
   FRIEND_TRAIL_RANGE_OPTIONS,
   filterFriendTrailPointsForRange,
@@ -592,11 +592,10 @@ const sendInvite = async () => {
 
     closeInviteDialog()
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to send invitation'
     toast.add({
       severity: 'error',
       summary: 'Invitation Failed',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to send invitation'),
       life: 5000
     })
   } finally {
@@ -651,7 +650,7 @@ const deleteFriend = async (friendId) => {
     toast.add({
       severity: 'error',
       summary: 'Remove Failed',
-      detail: 'Failed to remove friend',
+      detail: formatApiErrorDetail(error, 'Failed to remove friend'),
       life: 5000
     })
   }
@@ -707,7 +706,7 @@ const handleAcceptInvite = async (inviteId) => {
     toast.add({
       severity: 'error',
       summary: 'Accept Failed',
-      detail: 'Failed to accept invitation',
+      detail: formatApiErrorDetail(error, 'Failed to accept invitation'),
       life: 5000
     })
   } finally {
@@ -735,7 +734,7 @@ const handleRejectInvite = async (inviteId) => {
     toast.add({
       severity: 'error',
       summary: 'Reject Failed',
-      detail: 'Failed to reject invitation',
+      detail: formatApiErrorDetail(error, 'Failed to reject invitation'),
       life: 5000
     })
   } finally {
@@ -763,7 +762,7 @@ const handleCancelInvite = async (inviteId) => {
     toast.add({
       severity: 'error',
       summary: 'Cancel Failed',
-      detail: 'Failed to cancel invitation',
+      detail: formatApiErrorDetail(error, 'Failed to cancel invitation'),
       life: 5000
     })
   } finally {
@@ -792,7 +791,7 @@ const handleAcceptAllInvites = async () => {
     toast.add({
       severity: 'error',
       summary: 'Bulk Accept Failed',
-      detail: 'Failed to accept all invitations',
+      detail: formatApiErrorDetail(error, 'Failed to accept all invitations'),
       life: 5000
     })
   } finally {
@@ -821,7 +820,7 @@ const handleRejectAllInvites = async () => {
     toast.add({
       severity: 'error',
       summary: 'Bulk Reject Failed',
-      detail: 'Failed to reject all invitations',
+      detail: formatApiErrorDetail(error, 'Failed to reject all invitations'),
       life: 5000
     })
   } finally {
@@ -851,7 +850,7 @@ const handleCancelAllInvites = async () => {
     toast.add({
       severity: 'error',
       summary: 'Bulk Cancel Failed',
-      detail: 'Failed to cancel all invitations',
+      detail: formatApiErrorDetail(error, 'Failed to cancel all invitations'),
       life: 5000
     })
   } finally {
@@ -937,25 +936,9 @@ const getFriendLocationKey = (friend) => {
   return friend?.friendId || friend?.userId || friend?.id
 }
 
-const extractTrailsByFriend = (response) => {
-  if (!response) return {}
-
-  const nestedData = response?.data?.data
-  if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData)) {
-    return nestedData
-  }
-
-  const directData = response?.data
-  if (directData && typeof directData === 'object' && !Array.isArray(directData)) {
-    return directData
-  }
-
-  if (typeof response === 'object' && !Array.isArray(response)) {
-    return response
-  }
-
-  return {}
-}
+const extractTrailsByFriend = (trails) => Object.fromEntries(
+  (Array.isArray(trails) ? trails : []).map(trail => [String(trail.friendId), trail.points || []])
+)
 
 const shouldShowFriendTrailToast = (toastType) => {
   const now = Date.now()
@@ -1007,11 +990,10 @@ const showFriendTrailErrorToast = (error) => {
     return
   }
 
-  const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load friend location trails'
   toast.add({
     severity: 'error',
     summary: 'Trail Loading Failed',
-    detail: errorMessage,
+    detail: formatApiErrorDetail(error, 'Failed to load friend location trails'),
     life: 5000
   })
 }
@@ -1042,7 +1024,7 @@ const refreshFriendLocationTrails = async ({ notifyOnError = false } = {}) => {
       }
     })
 
-    const response = await friendsService.getFriendsLocationTrails(trailRequest.minutes, trailRequest.endTime)
+    const response = await friendsStore.getFriendsLocationTrails(trailRequest.minutes, trailRequest.endTime)
     const trailsByFriend = extractTrailsByFriend(response)
     Object.entries(trailsByFriend).forEach(([friendId, points]) => {
       trails[String(friendId)] = filterFriendTrailPointsForRange({

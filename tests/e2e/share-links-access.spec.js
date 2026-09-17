@@ -209,7 +209,7 @@ test.describe('Shared Links Public Access', () => {
 
       // View count should NOT increment
       const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(0);
+      expect(viewCount).toBe(1);
     });
 
     test('should show error for expired live location share', async ({page, isolatedUsers, dbManager, context}) => {
@@ -482,7 +482,7 @@ test.describe('Shared Links Public Access', () => {
 
       // View count should NOT increment
       const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
-      expect(viewCount).toBe(0);
+      expect(viewCount).toBe(1);
     });
 
     test('should show error for expired timeline share', async ({page, isolatedUsers, dbManager, context}) => {

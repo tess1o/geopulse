@@ -13,5 +13,4 @@ public class WeatherWorkAcceptedResponse {
     private boolean accepted;
     private boolean alreadyRunning;
     private int queuedUserRanges;
-    private String message;
 }

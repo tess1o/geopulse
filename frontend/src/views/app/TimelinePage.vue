@@ -148,7 +148,6 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -159,6 +158,7 @@ import { useTimelineLocationEditing } from '@/composables/useTimelineLocationEdi
 import { useTimelineMapMatching } from '@/composables/useTimelineMapMatching'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
@@ -441,11 +441,10 @@ const fetchLocationData = async (startDate, endDate) => {
   } catch (error) {
     console.error('Error fetching location data:', error)
     mapNoData.value = true
-    const errorMessage = error.response?.data?.message || error.message || error.toString()
     toast.add({
       severity: 'error',
       summary: 'Failed to fetch location data',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to fetch location data'),
       life: 3000
     })
   } finally {
@@ -455,12 +454,7 @@ const fetchLocationData = async (startDate, endDate) => {
 
 const checkDatasetSize = async (startDate, endDate) => {
   try {
-    const response = await apiService.get('/streaming-timeline/count', {
-      startTime: startDate,
-      endTime: endDate
-    })
-
-    const counts = response.data
+    const counts = await timelineStore.fetchTimelineCount(startDate, endDate)
     datasetCounts.value = {
       totalItems: counts.totalItems || 0,
       stays: counts.stays || 0,
@@ -501,11 +495,10 @@ const fetchTimelineData = async (startDate, endDate) => {
     }
   } catch (error) {
     console.error('Error fetching timeline data:', error)
-    const errorMessage = error.response?.data?.message || error.message || error.toString()
     toast.add({
       severity: 'error',
       summary: 'Failed to fetch timeline',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to load timeline'),
       life: 3000
     })
     timelineNoData.value = true
@@ -659,11 +652,10 @@ const handleResetDataGapOverride = (stayItem) => {
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
         toast.add({
           severity: 'error',
           summary: 'Reset Failed',
-          detail: errorMessage,
+          detail: formatApiErrorDetail(error, 'Failed to reset manual override'),
           life: 5000
         })
       }
@@ -692,11 +684,10 @@ const handleResetTripSplitOverride = (stayItem) => {
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual trip split'
         toast.add({
           severity: 'error',
           summary: 'Reset Failed',
-          detail: errorMessage,
+          detail: formatApiErrorDetail(error, 'Failed to reset manual trip split'),
           life: 5000
         })
       }
@@ -773,8 +764,7 @@ const loadTimelineDisplaySettings = async () => {
   const fallback = readTimelineDisplayFallback()
 
   try {
-    const response = await apiService.get('/users/preferences/timeline/display')
-    const data = response?.data || response
+    const data = await authStore.fetchTimelineDisplayPreferences()
     showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? fallback.showCurrentLocationTelemetry
     customMapTileUrl.value = hasOwnPreference(data, 'customMapTileUrl')
       ? data.customMapTileUrl || null

@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.geofencing.service;
 
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventDto;
-import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,7 +55,7 @@ class GeofenceEventServiceTest {
         when(eventRepository.findPageByOwner(eq(ownerId), any(GeofenceEventQueryDto.class)))
                 .thenReturn(new GeofenceEventRepository.GeofenceEventPageResult(List.of(entity), 12L));
 
-        GeofenceEventPageDto result = service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
+        PageResponse<GeofenceEventDto> result = service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
                 .page(-4)
                 .pageSize(999)
                 .sortBy("subject")
@@ -70,10 +71,10 @@ class GeofenceEventServiceTest {
         assertThat(normalized.getSortBy()).isEqualTo("subjectDisplayName");
         assertThat(normalized.getSortDir()).isEqualTo("asc");
 
-        assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getTotalCount()).isEqualTo(12L);
-        assertThat(result.getPage()).isEqualTo(0);
-        assertThat(result.getPageSize()).isEqualTo(200);
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.totalElements()).isEqualTo(12L);
+        assertThat(result.page()).isEqualTo(0);
+        assertThat(result.size()).isEqualTo(200);
     }
 
     @Test
@@ -118,7 +119,7 @@ class GeofenceEventServiceTest {
         when(eventRepository.findByIdAndOwner(10L, ownerId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.markSeen(ownerId, 10L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("not found");
     }
 

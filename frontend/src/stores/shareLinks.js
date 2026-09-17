@@ -2,6 +2,7 @@ import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import dayjs from 'dayjs';
 import {useTimezone} from "@/composables/useTimezone";
+import {normalizeApiError} from '@/utils/apiErrorDetail'
 
 export const useShareLinksStore = defineStore('shareLinks', {
     state: () => ({
@@ -78,9 +79,9 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.clearError()
             try {
                 const response = await apiService.get('/share-links');
-                this.links = response.data.links;
-                this.maxLinks = response.data.max_links;
-                this.baseUrl = response.data.base_url || window.location.origin;
+                this.links = response.links;
+                this.maxLinks = response.max_links;
+                this.baseUrl = response.base_url || window.location.origin;
                 console.log('Base URL: ', this.baseUrl);
                 // Calculate active count client-side to ensure consistency
                 const timezone = useTimezone();
@@ -88,7 +89,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length;
             } catch (error) {
                 console.error('Failed to fetch share links:', error);
-                this.setError(error.userMessage || error.message || 'Failed to fetch share links');
+                this.setError(normalizeApiError(error, 'Failed to fetch share links'));
                 throw error;
             } finally {
                 this.setLoading(false);
@@ -135,7 +136,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 }
                 return createdLink
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Failed to create share link')
+                this.setError(normalizeApiError(error, 'Failed to create share link'))
                 throw error
             } finally {
                 this.setLoading(false)
@@ -155,7 +156,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 }
                 return response
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Failed to update share link')
+                this.setError(normalizeApiError(error, 'Failed to update share link'))
                 throw error
             } finally {
                 this.setLoading(false)
@@ -178,7 +179,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                     }
                 }
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Failed to delete share link')
+                this.setError(normalizeApiError(error, 'Failed to delete share link'))
                 throw error
             } finally {
                 this.setLoading(false)
@@ -194,7 +195,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedLocationInfo = response
                 return response
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Link not found or expired')
+                this.setError(normalizeApiError(error, 'Link not found or expired'))
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -211,7 +212,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 return response
             } catch (error) {
                 console.error('Failed to verify shared link:', error)
-                this.setError(error.userMessage || error.message || 'Access denied')
+                this.setError(normalizeApiError(error, 'Access denied'))
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -232,7 +233,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedLocationData = response
                 return response
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Failed to fetch location data')
+                this.setError(normalizeApiError(error, 'Failed to fetch location data'))
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -333,7 +334,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedTimelineData = timelineArray
                 return timelineArray
             } catch (error) {
-                this.setError(error.userMessage || error.message || 'Failed to fetch timeline data')
+                this.setError(normalizeApiError(error, 'Failed to fetch timeline data'))
                 throw error
             } finally {
                 this.sharedLocationLoading = false

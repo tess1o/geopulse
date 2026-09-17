@@ -106,12 +106,14 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useLocationStore } from '@/stores/location'
-import apiService from '@/utils/apiService'
+import { useFriendsStore } from '@/stores/friends'
+import { useGeofencesStore } from '@/stores/geofences'
 import { useRectangleDrawingRuntime } from '@/composables/useRectangleDrawingRuntime'
 import { useTimezone } from '@/composables/useTimezone'
 import { createGeofenceRulesMapAdapter } from '@/maps/geofences/runtime/createGeofenceRulesMapAdapter'
@@ -126,6 +128,7 @@ import GeofenceTemplatesTab from '@/components/geofences/tabs/GeofenceTemplatesT
 import GeofenceEventsTab from '@/components/geofences/tabs/GeofenceEventsTab.vue'
 import Message from 'primevue/message'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -133,6 +136,16 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const locationStore = useLocationStore()
+const friendsStore = useFriendsStore()
+const geofencesStore = useGeofencesStore()
+const {
+  rules,
+  templates,
+  capabilities: templateDeliveryCapabilities,
+  events: geofenceEvents,
+  eventsTotal: geofenceEventsTotal,
+  unreadCount: geofenceUnreadCount
+} = storeToRefs(geofencesStore)
 const timezone = useTimezone()
 const FALLBACK_GEOFENCE_CENTER = [50.4501, 30.5234]
 const LAST_KNOWN_MAP_ZOOM = 12
@@ -152,22 +165,13 @@ const tabs = computed(() => [
 const activeTab = ref('rules')
 const activeTabIndex = computed(() => tabs.value.findIndex(t => t.key === activeTab.value))
 
-const rules = ref([])
-const templates = ref([])
 const friends = ref([])
-const templateDeliveryCapabilities = ref({
-  appriseEnabled: false,
-  appriseConfigured: false
-})
 
 const savingRule = ref(false)
 const savingTemplate = ref(false)
 const testingTemplateConnection = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
-const geofenceEvents = ref([])
-const geofenceEventsTotal = ref(0)
-const geofenceUnreadCount = ref(0)
 const refreshingEvents = ref(false)
 const geofenceEventsQuery = ref(defaultGeofenceEventsQuery())
 const ruleFormErrors = ref({
@@ -821,15 +825,6 @@ function insertMacro(macroKey) {
   }
 }
 
-function extractApiErrorMessage(error, fallback) {
-  return error?.response?.data?.message
-    || error?.response?.data?.error
-    || error?.response?.data?.data?.message
-    || error?.userMessage
-    || error?.message
-    || fallback
-}
-
 function showDemoGeofenceReadOnlyToast(detail = 'Geofence changes are disabled in demo mode.') {
   showDemoModeToast(toast, detail)
 }
@@ -1017,8 +1012,7 @@ function syncInitialRulesMapViewport() {
 }
 
 async function loadRules() {
-  const response = await apiService.get('/geofences/rules')
-  const rawRules = response?.data || []
+  const rawRules = await geofencesStore.loadRules()
   rules.value = rawRules.map(normalizeRule)
   initialRulesLoaded.value = true
   syncAllRuleAreasOnMap()
@@ -1026,18 +1020,12 @@ async function loadRules() {
 }
 
 async function loadTemplates() {
-  const response = await apiService.get('/geofences/templates')
-  templates.value = response?.data || []
+  await geofencesStore.loadTemplates()
   syncAllRuleAreasOnMap()
 }
 
 async function loadTemplateDeliveryCapabilities() {
-  const response = await apiService.get('/geofences/templates/capabilities')
-  const data = response?.data || {}
-  templateDeliveryCapabilities.value = {
-    appriseEnabled: !!data.appriseEnabled,
-    appriseConfigured: !!data.appriseConfigured
-  }
+  await geofencesStore.loadCapabilities()
 }
 
 async function testTemplateConnection() {
@@ -1114,31 +1102,31 @@ async function testTemplateConnection() {
       body: enterPreview?.body?.trim() ? enterPreview.body.trim() : null
     }
 
-    const response = await apiService.post('/geofences/templates/test-connection', payload)
-    const detail = response?.message || response?.data?.message || 'Connection test succeeded'
-    const statusCode = response?.data?.statusCode ?? null
+    const response = await geofencesStore.testTemplateConnection(payload)
+    const succeeded = !!response?.success
+    const detail = response?.detail || (succeeded ? 'Connection test succeeded' : 'Connection test failed')
+    const statusCode = response?.statusCode ?? null
 
     templateConnectionTestResult.value = {
-      severity: 'success',
-      summary: 'Connection test succeeded',
+      severity: succeeded ? 'success' : 'error',
+      summary: succeeded ? 'Connection test succeeded' : 'Connection test failed',
       detail,
       statusCode
     }
 
     toast.add({
-      severity: 'success',
-      summary: 'Connection OK',
+      severity: succeeded ? 'success' : 'error',
+      summary: succeeded ? 'Connection OK' : 'Connection Failed',
       detail,
-      life: 4000
+      life: succeeded ? 4000 : 5000
     })
   } catch (error) {
-    const detail = extractApiErrorMessage(error, 'Connection test failed')
-    const statusCode = error?.response?.data?.data?.statusCode ?? null
+    const detail = formatApiErrorDetail(error, 'Connection test failed')
     templateConnectionTestResult.value = {
       severity: 'error',
       summary: 'Connection test failed',
       detail,
-      statusCode
+      statusCode: null
     }
     toast.add({
       severity: 'error',
@@ -1178,21 +1166,12 @@ async function refreshEvents() {
       params.eventTypes = geofenceEventsQuery.value.eventTypes.join(',')
     }
 
-    const [eventsPageResponse, unreadResponse] = await Promise.all([
-      apiService.get('/geofences/events', params),
-      apiService.get('/geofences/events/unread-count')
-    ])
-
-    geofenceEvents.value = Array.isArray(eventsPageResponse?.data?.items)
-      ? eventsPageResponse.data.items
-      : []
-    geofenceEventsTotal.value = Number(eventsPageResponse?.data?.totalCount || 0)
-    geofenceUnreadCount.value = Number(unreadResponse?.data?.count || 0)
+    await geofencesStore.loadEvents(params)
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Events Error',
-      detail: extractApiErrorMessage(error, 'Failed to load geofence events'),
+      detail: formatApiErrorDetail(error, 'Failed to load geofence events'),
       life: 5000
     })
   } finally {
@@ -1201,9 +1180,8 @@ async function refreshEvents() {
 }
 
 async function loadFriends() {
-  const response = await apiService.get('/friends')
-  const all = response?.data || []
-  friends.value = all.filter(friend => friend.friendSharesLiveLocation)
+  await friendsStore.fetchFriends()
+  friends.value = friendsStore.friends.filter(friend => friend.friendSharesLiveLocation)
 }
 
 async function saveRule() {
@@ -1234,10 +1212,10 @@ async function saveRule() {
     }
 
     if (editingRuleId.value) {
-      await apiService.patch(`/geofences/rules/${editingRuleId.value}`, payload)
+      await geofencesStore.updateRule(editingRuleId.value, payload)
       toast.add({ severity: 'success', summary: 'Updated', detail: 'Rule updated', life: 3000 })
     } else {
-      await apiService.post('/geofences/rules', payload)
+      await geofencesStore.createRule(payload)
       toast.add({ severity: 'success', summary: 'Created', detail: 'Rule created', life: 3000 })
     }
 
@@ -1248,7 +1226,7 @@ async function saveRule() {
     toast.add({
       severity: 'error',
       summary: 'Rule Error',
-      detail: extractApiErrorMessage(error, 'Failed to save rule'),
+      detail: formatApiErrorDetail(error, 'Failed to save rule'),
       life: 5000
     })
   } finally {
@@ -1302,14 +1280,14 @@ async function deleteRule(rule) {
   }
 
   try {
-    await apiService.delete(`/geofences/rules/${rule.id}`)
+    await geofencesStore.deleteRule(rule.id)
     toast.add({ severity: 'success', summary: 'Deleted', detail: 'Rule deleted', life: 3000 })
     await loadRules()
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Delete Error',
-      detail: extractApiErrorMessage(error, 'Failed to delete rule'),
+      detail: formatApiErrorDetail(error, 'Failed to delete rule'),
       life: 5000
     })
   }
@@ -1394,10 +1372,10 @@ async function saveTemplate() {
     delete payload.sendExternal
 
     if (editingTemplateId.value) {
-      await apiService.patch(`/geofences/templates/${editingTemplateId.value}`, payload)
+      await geofencesStore.updateTemplate(editingTemplateId.value, payload)
       toast.add({ severity: 'success', summary: 'Updated', detail: 'Template updated', life: 3000 })
     } else {
-      await apiService.post('/geofences/templates', payload)
+      await geofencesStore.createTemplate(payload)
       toast.add({ severity: 'success', summary: 'Created', detail: 'Template created', life: 3000 })
     }
 
@@ -1405,7 +1383,7 @@ async function saveTemplate() {
     await Promise.all([loadTemplates(), loadTemplateDeliveryCapabilities()])
     await loadRules()
   } catch (error) {
-    templateFormErrors.value.general = extractApiErrorMessage(error, 'Failed to save template')
+    templateFormErrors.value.general = formatApiErrorDetail(error, 'Failed to save template')
     toast.add({
       severity: 'error',
       summary: 'Template Error',
@@ -1476,7 +1454,7 @@ async function deleteTemplate(template) {
   }
 
   try {
-    await apiService.delete(`/geofences/templates/${template.id}`)
+    await geofencesStore.deleteTemplate(template.id)
     toast.add({ severity: 'success', summary: 'Deleted', detail: 'Template deleted', life: 3000 })
     await loadTemplates()
     await loadRules()
@@ -1484,7 +1462,7 @@ async function deleteTemplate(template) {
     toast.add({
       severity: 'error',
       summary: 'Delete Error',
-      detail: extractApiErrorMessage(error, 'Failed to delete template'),
+      detail: formatApiErrorDetail(error, 'Failed to delete template'),
       life: 5000
     })
   }
@@ -1510,13 +1488,13 @@ async function markEventSeen(event) {
 
   markingEventId.value = event.id
   try {
-    await apiService.post(`/geofences/events/${event.id}/seen`, {})
+    await geofencesStore.markEventSeen(event.id)
     await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Event Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark event as seen'),
+      detail: formatApiErrorDetail(error, 'Failed to mark event as seen'),
       life: 5000
     })
   } finally {
@@ -1532,13 +1510,13 @@ async function markAllEventsSeen() {
 
   markingAllSeen.value = true
   try {
-    await apiService.post('/geofences/events/seen-all', {})
+    await geofencesStore.markAllEventsSeen()
     await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Event Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark events as seen'),
+      detail: formatApiErrorDetail(error, 'Failed to mark events as seen'),
       life: 5000
     })
   } finally {
@@ -1743,7 +1721,7 @@ onMounted(async () => {
     toast.add({
       severity: 'error',
       summary: 'Load Error',
-      detail: extractApiErrorMessage(error, 'Failed to load geofence data'),
+      detail: formatApiErrorDetail(error, 'Failed to load geofence data'),
       life: 5000
     })
   }

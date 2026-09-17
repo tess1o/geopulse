@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 import {
   applyStayFavoriteUpdateToTimelineItems,
   applyStayGeocodingUpdateToTimelineItems,
@@ -59,6 +60,11 @@ const normalizePathData = (pathPayload) => {
 
 const normalizeLongitude = (longitude) => ((longitude + 180) % 360 + 360) % 360 - 180
 
+const fail = (store, error, fallback) => {
+  store.error = normalizeApiError(error, fallback)
+  throw store.error
+}
+
 export const useTripsStore = defineStore('trips', {
   state: () => ({
     trips: [],
@@ -109,11 +115,11 @@ export const useTripsStore = defineStore('trips', {
           params.status = status
         }
         const response = await apiService.get('/trips', params)
-        this.trips = Array.isArray(response.data) ? response.data : []
+        this.trips = Array.isArray(response) ? response : []
         return this.trips
       } catch (error) {
-        this.error = error.message || 'Failed to load trips'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trips')
+        throw this.error
       } finally {
         this.loading.trips = false
       }
@@ -123,12 +129,11 @@ export const useTripsStore = defineStore('trips', {
       this.loading.trip = true
       this.error = null
       try {
-        const response = await apiService.get(`/trips/${tripId}`)
-        this.currentTrip = response.data || null
+        this.currentTrip = await apiService.get(`/trips/${tripId}`)
         return this.currentTrip
       } catch (error) {
-        this.error = error.message || 'Failed to load trip'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trip')
+        throw this.error
       } finally {
         this.loading.trip = false
       }
@@ -136,86 +141,104 @@ export const useTripsStore = defineStore('trips', {
 
     async createTrip(payload) {
       this.error = null
-      const response = await apiService.post('/trips', payload)
-      const created = response.data
-      if (created) {
-        this.trips = [created, ...this.trips.filter((trip) => trip.id !== created.id)]
+      try {
+        const created = await apiService.post('/trips', payload)
+        if (created) {
+          this.trips = [created, ...this.trips.filter((trip) => trip.id !== created.id)]
+        }
+        return created
+      } catch (error) {
+        fail(this, error, 'Failed to create trip')
       }
-      return created
     },
 
     async updateTrip(tripId, payload) {
       this.error = null
-      const response = await apiService.put(`/trips/${tripId}`, payload)
-      const updated = response.data
-      if (updated) {
-        this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
-        if (this.currentTrip?.id === updated.id) {
-          this.currentTrip = updated
+      try {
+        const updated = await apiService.put(`/trips/${tripId}`, payload)
+        if (updated) {
+          this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
+          if (this.currentTrip?.id === updated.id) this.currentTrip = updated
         }
+        return updated
+      } catch (error) {
+        fail(this, error, 'Failed to update trip')
       }
-      return updated
     },
 
     async deleteTrip(tripId, mode = 'unlink_only') {
       this.error = null
-      await apiService.delete(`/trips/${tripId}?mode=${encodeURIComponent(mode)}`)
-      this.trips = this.trips.filter((trip) => Number(trip.id) !== Number(tripId))
-      if (this.currentTrip?.id === Number(tripId)) {
-        this.clearWorkspaceState()
+      try {
+        await apiService.delete(`/trips/${tripId}?mode=${encodeURIComponent(mode)}`)
+        this.trips = this.trips.filter((trip) => Number(trip.id) !== Number(tripId))
+        if (this.currentTrip?.id === Number(tripId)) this.clearWorkspaceState()
+      } catch (error) {
+        fail(this, error, 'Failed to delete trip')
       }
     },
 
     async unlinkTripFromPeriodTag(tripId) {
       this.error = null
-      const response = await apiService.post(`/trips/${tripId}/unlink`)
-      const updated = response.data
-      if (updated) {
-        this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
-        if (this.currentTrip?.id === updated.id) {
-          this.currentTrip = updated
+      try {
+        const updated = await apiService.post(`/trips/${tripId}/unlink`)
+        if (updated) {
+          this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
+          if (this.currentTrip?.id === updated.id) this.currentTrip = updated
         }
+        return updated
+      } catch (error) {
+        fail(this, error, 'Failed to unlink trip')
       }
-      return updated
     },
 
     async createTripFromPeriodTag(periodTagId) {
       this.error = null
-      const response = await apiService.post(`/trips/from-period-tag/${periodTagId}`)
-      const created = response.data
-      if (created) {
-        this.trips = [created, ...this.trips.filter((trip) => trip.id !== created.id)]
+      try {
+        const created = await apiService.post(`/trips/from-period-tag/${periodTagId}`)
+        if (created) this.trips = [created, ...this.trips.filter((trip) => trip.id !== created.id)]
+        return created
+      } catch (error) {
+        fail(this, error, 'Failed to create trip from timeline label')
       }
-      return created
     },
 
     async fetchTripCollaborators(tripId) {
       this.error = null
-      const response = await apiService.get(`/trips/${tripId}/collaborators`)
-      return Array.isArray(response.data) ? response.data : []
+      try {
+        const response = await apiService.get(`/trips/${tripId}/collaborators`)
+        return Array.isArray(response) ? response : []
+      } catch (error) {
+        fail(this, error, 'Failed to load trip collaborators')
+      }
     },
 
     async setTripCollaborator(tripId, friendId, accessRole) {
       this.error = null
-      const response = await apiService.put(`/trips/${tripId}/collaborators/${friendId}`, { accessRole })
-      return response.data || null
+      try {
+        return await apiService.put(`/trips/${tripId}/collaborators/${friendId}`, { accessRole })
+      } catch (error) {
+        fail(this, error, 'Failed to update trip collaborator')
+      }
     },
 
     async removeTripCollaborator(tripId, friendId) {
       this.error = null
-      await apiService.delete(`/trips/${tripId}/collaborators/${friendId}`)
+      try {
+        await apiService.delete(`/trips/${tripId}/collaborators/${friendId}`)
+      } catch (error) {
+        fail(this, error, 'Failed to remove trip collaborator')
+      }
     },
 
     async fetchTripSummary(tripId) {
       this.loading.summary = true
       this.error = null
       try {
-        const response = await apiService.get(`/trips/${tripId}/summary`)
-        this.tripSummary = response.data || null
+        this.tripSummary = await apiService.get(`/trips/${tripId}/summary`)
         return this.tripSummary
       } catch (error) {
-        this.error = error.message || 'Failed to load trip summary'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trip summary')
+        throw this.error
       } finally {
         this.loading.summary = false
       }
@@ -226,11 +249,11 @@ export const useTripsStore = defineStore('trips', {
       this.error = null
       try {
         const response = await apiService.get(`/trips/${tripId}/plan-items`)
-        this.tripPlanItems = Array.isArray(response.data) ? response.data : []
+        this.tripPlanItems = Array.isArray(response) ? response : []
         return this.tripPlanItems
       } catch (error) {
-        this.error = error.message || 'Failed to load trip plan items'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trip plan items')
+        throw this.error
       } finally {
         this.loading.planItems = false
       }
@@ -238,67 +261,72 @@ export const useTripsStore = defineStore('trips', {
 
     async createTripPlanItem(tripId, payload) {
       this.error = null
-      const response = await apiService.post(`/trips/${tripId}/plan-items`, payload)
-      const created = response.data
-      if (created) {
-        this.tripPlanItems = [...this.tripPlanItems, created].sort((a, b) => {
-          if (a.orderIndex !== b.orderIndex) {
-            return (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
-          }
-          return Number(a.id) - Number(b.id)
-        })
+      try {
+        const created = await apiService.post(`/trips/${tripId}/plan-items`, payload)
+        if (created) {
+          this.tripPlanItems = [...this.tripPlanItems, created].sort((a, b) => {
+            if (a.orderIndex !== b.orderIndex) return (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+            return Number(a.id) - Number(b.id)
+          })
+        }
+        return created
+      } catch (error) {
+        fail(this, error, 'Failed to create trip plan item')
       }
-      return created
     },
 
     async updateTripPlanItem(tripId, itemId, payload) {
       this.error = null
-      const response = await apiService.put(`/trips/${tripId}/plan-items/${itemId}`, payload)
-      const updated = response.data
-      if (updated) {
-        this.tripPlanItems = this.tripPlanItems.map((item) => (item.id === updated.id ? updated : item))
+      try {
+        const updated = await apiService.put(`/trips/${tripId}/plan-items/${itemId}`, payload)
+        if (updated) this.tripPlanItems = this.tripPlanItems.map((item) => (item.id === updated.id ? updated : item))
+        return updated
+      } catch (error) {
+        fail(this, error, 'Failed to update trip plan item')
       }
-      return updated
     },
 
     async deleteTripPlanItem(tripId, itemId) {
       this.error = null
-      await apiService.delete(`/trips/${tripId}/plan-items/${itemId}`)
-      this.tripPlanItems = this.tripPlanItems.filter((item) => Number(item.id) !== Number(itemId))
+      try {
+        await apiService.delete(`/trips/${tripId}/plan-items/${itemId}`)
+        this.tripPlanItems = this.tripPlanItems.filter((item) => Number(item.id) !== Number(itemId))
+      } catch (error) {
+        fail(this, error, 'Failed to delete trip plan item')
+      }
     },
 
     async applyVisitOverride(tripId, itemId, action, visitedAt = null) {
       this.error = null
-      const response = await apiService.post(`/trips/${tripId}/plan-items/${itemId}/visit-override`, {
-        action,
-        visitedAt
-      })
-      const updated = response.data
-      if (updated) {
-        this.tripPlanItems = this.tripPlanItems.map((item) => (item.id === updated.id ? updated : item))
+      try {
+        const updated = await apiService.post(`/trips/${tripId}/plan-items/${itemId}/visit-override`, {
+          action,
+          visitedAt
+        })
+        if (updated) this.tripPlanItems = this.tripPlanItems.map((item) => (item.id === updated.id ? updated : item))
+        return updated
+      } catch (error) {
+        fail(this, error, 'Failed to update trip visit')
       }
-      return updated
     },
 
     async previewReconstruction(payload) {
       this.error = null
       try {
-        const response = await apiService.post('/reconstruction/preview', payload)
-        return response.data || null
+        return await apiService.post('/reconstruction/preview', payload)
       } catch (error) {
-        this.error = error.message || 'Failed to preview reconstruction'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to preview reconstruction')
+        throw this.error
       }
     },
 
     async commitReconstruction(payload) {
       this.error = null
       try {
-        const response = await apiService.post('/reconstruction/commit', payload)
-        return response.data || null
+        return await apiService.post('/reconstruction/commit', payload)
       } catch (error) {
-        this.error = error.message || 'Failed to commit reconstruction'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to commit reconstruction')
+        throw this.error
       }
     },
 
@@ -313,11 +341,11 @@ export const useTripsStore = defineStore('trips', {
           params.endTime = endTime
         }
         const response = await apiService.get(`/trips/${tripId}/timeline`, params)
-        this.workspaceTimeline = normalizeTimelineData(response.data)
+        this.workspaceTimeline = normalizeTimelineData(response)
         return this.workspaceTimeline
       } catch (error) {
-        this.error = error.message || 'Failed to load trip timeline'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trip timeline')
+        throw this.error
       }
     },
 
@@ -332,11 +360,11 @@ export const useTripsStore = defineStore('trips', {
           params.endTime = endTime
         }
         const response = await apiService.get(`/trips/${tripId}/path`, params)
-        this.workspacePath = normalizePathData(response.data)
+        this.workspacePath = normalizePathData(response)
         return this.workspacePath
       } catch (error) {
-        this.error = error.message || 'Failed to load trip path'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load trip path')
+        throw this.error
       }
     },
 
@@ -356,11 +384,11 @@ export const useTripsStore = defineStore('trips', {
       this.error = null
       try {
         const response = await apiService.get(`/trips/${tripId}/visit-suggestions`)
-        this.visitSuggestions = Array.isArray(response.data) ? response.data : []
+        this.visitSuggestions = Array.isArray(response) ? response : []
         return this.visitSuggestions
       } catch (error) {
-        this.error = error.message || 'Failed to load visit suggestions'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to load visit suggestions')
+        throw this.error
       }
     },
 
@@ -368,14 +396,13 @@ export const useTripsStore = defineStore('trips', {
       this.error = null
       try {
         const normalizedLon = Number.isFinite(lon) ? normalizeLongitude(lon) : lon
-        const response = await apiService.get('/trips/plan-suggestion', {
+        return await apiService.get('/trips/plan-suggestion', {
           lat,
           lon: normalizedLon
         })
-        return response.data || null
       } catch (error) {
-        this.error = error.message || 'Failed to resolve plan suggestion'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to resolve plan suggestion')
+        throw this.error
       }
     },
 
@@ -396,10 +423,10 @@ export const useTripsStore = defineStore('trips', {
         }
 
         const response = await apiService.get('/trips/plan-search', params)
-        return Array.isArray(response?.data) ? response.data : []
+        return Array.isArray(response) ? response : []
       } catch (error) {
-        this.error = error.message || 'Failed to search locations'
-        throw error
+        this.error = normalizeApiError(error, 'Failed to search locations')
+        throw this.error
       }
     }
   }

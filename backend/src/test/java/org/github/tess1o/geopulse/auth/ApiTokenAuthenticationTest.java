@@ -75,9 +75,8 @@ class ApiTokenAuthenticationTest {
                 .get("/api/users/me")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.userId", equalTo(userId.toString()))
-                .body("data.email", containsString("api-token-user"));
+                .body("userId", equalTo(userId.toString()))
+                .body("email", containsString("api-token-user"));
     }
 
     @Test
@@ -89,7 +88,7 @@ class ApiTokenAuthenticationTest {
                 .get("/api/friends")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"));
+                .body("$", notNullValue());
     }
 
     @Test
@@ -104,7 +103,6 @@ class ApiTokenAuthenticationTest {
                 .then()
                 .statusCode(401)
                 .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
                 .body("message", equalTo("Invalid service account token"))
                 .body("data", nullValue());
     }
@@ -121,7 +119,6 @@ class ApiTokenAuthenticationTest {
                 .then()
                 .statusCode(401)
                 .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
                 .body("message", equalTo("Invalid service account token"))
                 .body("data", nullValue());
     }
@@ -136,7 +133,6 @@ class ApiTokenAuthenticationTest {
                 .then()
                 .statusCode(401)
                 .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
                 .body("message", equalTo("Invalid service account token"))
                 .body("data", nullValue());
     }
@@ -151,7 +147,6 @@ class ApiTokenAuthenticationTest {
                 .then()
                 .statusCode(401)
                 .contentType(ContentType.JSON)
-                .body("status", equalTo("error"))
                 .body("message", equalTo("Invalid service account token"))
                 .body("data", nullValue());
     }
@@ -178,7 +173,7 @@ class ApiTokenAuthenticationTest {
                 .get("/api/admin/users")
                 .then()
                 .statusCode(200)
-                .body("content", notNullValue());
+                .body("items", notNullValue());
     }
 
     @Test
@@ -196,12 +191,12 @@ class ApiTokenAuthenticationTest {
                 .post("/api/api-tokens")
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.token", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
-                .body("data.apiToken.name", equalTo("Created through API"))
-                .body("data.apiToken.preview", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
+                .log().body(true)
+                .body("token", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
+                .body("apiToken.name", equalTo("Created through API"))
+                .body("apiToken.preview", startsWith(ApiTokenSecretService.TOKEN_PREFIX))
                 .extract()
-                .path("data.apiToken.id");
+                .path("apiToken.id");
 
         given()
                 .contentType(ContentType.JSON)
@@ -210,7 +205,7 @@ class ApiTokenAuthenticationTest {
                 .get("/api/api-tokens")
                 .then()
                 .statusCode(200)
-                .body("data.id", hasItem(tokenId));
+                .body("id", hasItem(tokenId));
     }
 
     @Transactional

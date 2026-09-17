@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
+import {normalizeApiError} from '@/utils/apiErrorDetail'
 
 export const useFavoritesStore = defineStore('favorites', {
     state: () => ({
@@ -10,7 +11,9 @@ export const useFavoritesStore = defineStore('favorites', {
         pendingFavorites: {
             points: [],  // Array of { name, lat, lon, tempId }
             areas: []    // Array of { name, northEastLat, northEastLon, southWestLat, southWestLon, tempId }
-        }
+        },
+        loading: false,
+        error: null
     }),
 
     getters: {
@@ -108,6 +111,11 @@ export const useFavoritesStore = defineStore('favorites', {
     },
 
     actions: {
+        fail(error, fallback) {
+            this.error = normalizeApiError(error, fallback)
+            return this.error
+        },
+
         // Set favorites data (replaces mutations)
         setFavoritePlaces(places) {
             // Ensure the structure is correct
@@ -119,16 +127,21 @@ export const useFavoritesStore = defineStore('favorites', {
 
         // API Actions
         async fetchFavoritePlaces() {
+            this.loading = true
+            this.error = null
             try {
-                const response = await apiService.get(`/favorites`)
-                this.setFavoritePlaces(response.data)
-                return response.data
+                const favorites = await apiService.get('/favorites')
+                this.setFavoritePlaces(favorites)
+                return favorites
             } catch (error) {
-                throw error
+                throw this.fail(error, 'Failed to load favorites')
+            } finally {
+                this.loading = false
             }
         },
 
         async addPointToFavorites(name, lat, lon) {
+            this.error = null
             try {
                 const response = await apiService.post(`/favorites/point`, {
                     name,
@@ -139,15 +152,14 @@ export const useFavoritesStore = defineStore('favorites', {
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                throw this.fail(error, 'Failed to add favorite point')
             }
         },
 
         async addAreaToFavorites(name, northEastLat, northEastLon, southWestLat, southWestLon) {
+            this.error = null
             try {
                 const response = await apiService.post(`/favorites/area`, {
                     name,
@@ -160,15 +172,14 @@ export const useFavoritesStore = defineStore('favorites', {
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                throw this.fail(error, 'Failed to add favorite area')
             }
         },
 
         async editFavorite(id, name, city, country, bounds = null) {
+            this.error = null
             try {
                 const payload = {
                     name,
@@ -189,46 +200,43 @@ export const useFavoritesStore = defineStore('favorites', {
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
 
-                // Return job ID if available (for async timeline regeneration when bounds change)
-                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                throw this.fail(error, 'Failed to update favorite')
             }
         },
 
         async deleteFavorite(id) {
+            this.error = null
             try {
                 const response = await apiService.delete(`/favorites/${id}`, {})
 
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                throw this.fail(error, 'Failed to delete favorite')
             }
         },
 
         async startBulkReconciliation(request) {
+            this.error = null
             try {
                 const response = await apiService.post('/favorites/reconcile/bulk', request)
-                return response.data // { jobId: "uuid" }
+                return response
             } catch (error) {
                 console.error('Error starting bulk favorite reconciliation:', error)
-                throw error
+                throw this.fail(error, 'Failed to start favorite reconciliation')
             }
         },
 
         async getReconciliationJobProgress(jobId) {
             try {
-                const response = await apiService.get(`/favorites/reconcile/jobs/${jobId}`)
-                return response.data
+                return await apiService.get(`/favorites/reconcile/jobs/${jobId}`)
             } catch (error) {
                 console.error('Error fetching favorite reconciliation job progress:', error)
-                throw error
+                throw this.fail(error, 'Failed to fetch reconciliation progress')
             }
         },
 
@@ -266,6 +274,7 @@ export const useFavoritesStore = defineStore('favorites', {
         },
 
         async bulkCreateFavorites() {
+            this.error = null
             try {
                 // Prepare the bulk request - remove tempId from each item
                 const points = this.pendingFavorites.points.map(({ tempId, ...point }) => point)
@@ -283,14 +292,15 @@ export const useFavoritesStore = defineStore('favorites', {
                 await this.fetchFavoritePlaces()
 
                 // Return the result which includes jobId, successCount, failedCount, etc.
-                return response.data
+                return response
             } catch (error) {
                 console.error('Error bulk creating favorites:', error)
-                throw error
+                throw this.fail(error, 'Failed to create favorites')
             }
         },
 
         async bulkUpdateFavorites(favoriteIds, updateCity, city, updateCountry, country) {
+            this.error = null
             try {
                 const response = await apiService.put('/favorites/bulk-update', {
                     favoriteIds,
@@ -304,20 +314,19 @@ export const useFavoritesStore = defineStore('favorites', {
                 await this.fetchFavoritePlaces()
 
                 // Return the result with success/failure counts
-                return response.data
+                return response
             } catch (error) {
                 console.error('Error bulk updating favorites:', error)
-                throw error
+                throw this.fail(error, 'Failed to update favorites')
             }
         },
 
         async fetchDistinctValues() {
             try {
-                const response = await apiService.get('/favorites/distinct-values')
-                return response.data // { cities: [...], countries: [...] }
+                return await apiService.get('/favorites/distinct-values')
             } catch (error) {
                 console.error('Error fetching distinct values:', error)
-                throw error
+                throw this.fail(error, 'Failed to load favorite values')
             }
         }
     }

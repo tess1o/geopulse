@@ -4,27 +4,43 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.periods.model.dto.*;
+import org.github.tess1o.geopulse.periods.model.dto.CreatePeriodTagDto;
+import org.github.tess1o.geopulse.periods.model.dto.PeriodTagDto;
+import org.github.tess1o.geopulse.periods.model.dto.UpdatePeriodTagDto;
 import org.github.tess1o.geopulse.periods.service.PeriodTagService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_DELETE_MODE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_RANGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_TAG;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/period-tags")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Period Tags", description = "Manage period tags and overlap checks.")
 public class PeriodTagResource {
 
@@ -37,170 +53,98 @@ public class PeriodTagResource {
         this.currentUserService = currentUserService;
     }
 
+    //TODO: use normal dates, not long values.
     @GET
-    @Path("")
-    public Response getPeriodTags(@QueryParam("startDate") Long startDateEpochMillis,
-                                  @QueryParam("endDate") Long endDateEpochMillis) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} retrieving period tags", userId);
-            List<PeriodTagDto> periodTags;
-            if (startDateEpochMillis != null && endDateEpochMillis != null) {
-                Instant startDate = Instant.ofEpochMilli(startDateEpochMillis);
-                Instant endDate = Instant.ofEpochMilli(endDateEpochMillis);
-                periodTags = service.getPeriodTagsForTimeRange(userId, startDate, endDate);
-            } else {
-                periodTags = service.getPeriodTags(userId);
-            }
-
-            return Response.ok(ApiResponse.success(periodTags)).build();
-        } catch (Exception e) {
-            log.error("Failed to retrieve period tags", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve period tags: " + e.getMessage()))
-                    .build();
+    public List<PeriodTagDto> getPeriodTags(@QueryParam("startDate") Long startDateEpochMillis,
+                                            @QueryParam("endDate") Long endDateEpochMillis) {
+        UUID userId = currentUserService.getCurrentUserId();
+        if (startDateEpochMillis == null && endDateEpochMillis == null) {
+            return service.getPeriodTags(userId);
         }
+        if (startDateEpochMillis == null || endDateEpochMillis == null
+                || startDateEpochMillis > endDateEpochMillis) {
+            throw problem(INVALID_PERIOD_RANGE, "A valid startDate and endDate are required");
+        }
+        return service.getPeriodTagsForTimeRange(
+                userId, Instant.ofEpochMilli(startDateEpochMillis), Instant.ofEpochMilli(endDateEpochMillis));
     }
 
     @GET
     @Path("/active")
-    public Response getActiveTag() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} retrieving active period tag", userId);
-            Optional<PeriodTagDto> activeTag = service.getActiveTag(userId);
-            return Response.ok(ApiResponse.success(activeTag.orElse(null))).build();
-        } catch (Exception e) {
-            log.error("Failed to retrieve active period tag", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve active period tag: " + e.getMessage()))
-                    .build();
-        }
+    @APIResponse(responseCode = "204", description = "No active period tag")
+    public RestResponse<PeriodTagDto> getActiveTag() {
+        return service.getActiveTag(currentUserService.getCurrentUserId())
+                .map(RestResponse::ok)
+                .orElseGet(RestResponse::noContent);
     }
-
 
     @GET
     @Path("/check-overlaps")
-    public Response checkOverlaps(@QueryParam("startTime") String startTimeStr,
-                                  @QueryParam("endTime") String endTimeStr,
-                                  @QueryParam("excludeId") Long excludeId) {
+    public List<PeriodTagDto> checkOverlaps(@QueryParam("startTime") String startTime,
+                                            @QueryParam("endTime") String endTime,
+                                            @QueryParam("excludeId") Long excludeId) {
+        if (startTime == null || endTime == null) {
+            throw problem(INVALID_PERIOD_RANGE, "startTime and endTime are required");
+        }
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} checking for overlapping period tags", userId);
-
-            if (startTimeStr == null || endTimeStr == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("startTime and endTime are required"))
-                        .build();
+            Instant start = Instant.parse(startTime);
+            Instant end = Instant.parse(endTime);
+            if (!end.isAfter(start)) {
+                throw problem(INVALID_PERIOD_RANGE, "endTime must be after startTime");
             }
-
-            Instant startTime = Instant.parse(startTimeStr);
-            Instant endTime = Instant.parse(endTimeStr);
-
-            List<PeriodTagDto> overlapping = service.checkOverlaps(userId, startTime, endTime, excludeId);
-            return Response.ok(ApiResponse.success(overlapping)).build();
-        } catch (Exception e) {
-            log.error("Failed to check overlaps", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to check overlaps: " + e.getMessage()))
-                    .build();
+            return service.checkOverlaps(currentUserService.getCurrentUserId(), start, end, excludeId);
+        } catch (DateTimeException exception) {
+            throw problem(INVALID_PERIOD_RANGE, "startTime and endTime must be valid ISO-8601 timestamps");
         }
     }
 
     @POST
-    @Path("")
-    public Response createPeriodTag(@Valid CreatePeriodTagDto dto) {
+    @APIResponse(responseCode = "201", description = "Period tag created")
+    public RestResponse<PeriodTagDto> createPeriodTag(@NotNull @Valid CreatePeriodTagDto request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} creating period tag '{}'", userId, dto.getTagName());
-
-            PeriodTagDto response = service.createPeriodTag(userId, dto);
-
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(response))
-                    .build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request to create period tag: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create period tag", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create period tag: " + e.getMessage()))
-                    .build();
+            PeriodTagDto created = service.createPeriodTag(currentUserService.getCurrentUserId(), request);
+            return RestResponse.status(Response.Status.CREATED, created);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
         }
     }
 
     @PUT
     @Path("/{id}")
-    public Response updatePeriodTag(@PathParam("id") Long id, @Valid UpdatePeriodTagDto dto) {
+    public PeriodTagDto updatePeriodTag(@PathParam("id") Long id,
+                                        @NotNull @Valid UpdatePeriodTagDto request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} updating period tag {}", userId, id);
-
-            PeriodTagDto updated = service.updatePeriodTag(userId, id, dto);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request to update period tag {}: {}", id, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update period tag {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update period tag: " + e.getMessage()))
-                    .build();
+            return service.updatePeriodTag(currentUserService.getCurrentUserId(), id, request);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
         }
     }
 
     @DELETE
     @Path("/{id}")
-    public Response deletePeriodTag(@PathParam("id") Long id,
-                                    @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
+    @APIResponse(responseCode = "204", description = "Period tag deleted")
+    public RestResponse<Void> deletePeriodTag(@PathParam("id") Long id,
+                                              @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
+        if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
+            throw problem(INVALID_PERIOD_DELETE_MODE,
+                    "Invalid delete mode. Supported values: unlink_only, delete_both");
+        }
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} deleting period tag {}", userId, id);
-
-            if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Invalid delete mode. Supported values: unlink_only, delete_both"))
-                        .build();
-            }
-
-            service.deletePeriodTag(userId, id, "delete_both".equalsIgnoreCase(mode));
-            return Response.ok(ApiResponse.success("Period tag deleted successfully")).build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request to delete period tag {}: {}", id, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete period tag {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete period tag: " + e.getMessage()))
-                    .build();
+            service.deletePeriodTag(currentUserService.getCurrentUserId(), id,
+                    "delete_both".equalsIgnoreCase(mode));
+            return RestResponse.noContent();
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
         }
     }
 
     @POST
     @Path("/{id}/unlink")
-    public Response unlinkPeriodTag(@PathParam("id") Long id) {
+    public PeriodTagDto unlinkPeriodTag(@PathParam("id") Long id) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            log.info("User {} unlinking period tag {}", userId, id);
-            PeriodTagDto updated = service.unlinkPeriodTagFromTrip(userId, id);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request to unlink period tag {}: {}", id, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to unlink period tag {}", id, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to unlink period tag: " + e.getMessage()))
-                    .build();
+            return service.unlinkPeriodTagFromTrip(currentUserService.getCurrentUserId(), id);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
         }
     }
 }

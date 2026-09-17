@@ -1,13 +1,22 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import ImmichLatestPhotosSection from './ImmichLatestPhotosSection.vue'
-import apiService from '@/utils/apiService'
 import { imageService } from '@/utils/imageService'
 
 const fetchConfig = vi.fn().mockResolvedValue()
+const searchPhotos = vi.fn()
+const fetchPhotoMapMarkers = vi.fn()
+const fetchPhotosForMapMarker = vi.fn()
 let configured = true
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }))
-vi.mock('@/stores/immich', () => ({ useImmichStore: () => ({ fetchConfig, get isConfigured () { return configured } }) }))
-vi.mock('@/utils/apiService', () => ({ default: { get: vi.fn() } }))
+vi.mock('@/stores/immich', () => ({
+  useImmichStore: () => ({
+    fetchConfig,
+    searchPhotos,
+    fetchPhotoMapMarkers,
+    fetchPhotosForMapMarker,
+    get isConfigured () { return configured }
+  })
+}))
 vi.mock('@/utils/imageService', () => ({ imageService: { loadAuthenticatedImage: vi.fn(), revokeBlobUrl: vi.fn() } }))
 vi.mock('@/composables/useTimezone', () => ({
   useTimezone: () => ({
@@ -50,14 +59,14 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     vi.clearAllMocks()
     configured = true
     imageService.loadAuthenticatedImage.mockImplementation((url) => Promise.resolve(`blob:${url}`))
-    apiService.get.mockResolvedValue({ data: { totalCount: 90, photos } })
+    searchPhotos.mockResolvedValue({ totalCount: 90, photos })
   })
 
   it('renders six time-spread moments without a mapped-count headline', async () => {
     const wrapper = mountSection()
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledWith('/users/me/immich/photos/search', {
+    expect(searchPhotos).toHaveBeenCalledWith({
       startDate: 'start', endDate: 'end'
     })
     expect(wrapper.findAll('.rewind-justified-grid .immich-photo-tile')).toHaveLength(6)
@@ -74,7 +83,7 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     await findButton(wrapper, 'Browse all photos').trigger('click')
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledTimes(1)
+    expect(searchPhotos).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('90 photos from this period')
     expect(imageService.loadAuthenticatedImage.mock.calls.length).toBeLessThanOrEqual(momentThumbnailCount + 60)
 
@@ -99,7 +108,7 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     await flushPromises()
     const secondSelection = wrapper.findAll('.rewind-justified-tile img').map((image) => image.attributes('src'))
 
-    expect(apiService.get).toHaveBeenCalledTimes(1)
+    expect(searchPhotos).toHaveBeenCalledTimes(1)
     expect(imageService.loadAuthenticatedImage.mock.calls.length).toBeGreaterThan(initialThumbnailCount)
     expect(secondSelection.some((src) => firstSelection.includes(src))).toBe(false)
     random.mockRestore()
@@ -112,12 +121,12 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     expect(disabled.find('.immich-photos-card').exists()).toBe(false)
 
     configured = true
-    apiService.get.mockResolvedValueOnce({ data: { totalCount: 0, photos: [] } })
+    searchPhotos.mockResolvedValueOnce({ totalCount: 0, photos: [] })
     const empty = mountSection()
     await flushPromises()
     expect(empty.find('.immich-photos-card').exists()).toBe(false)
 
-    apiService.get.mockRejectedValueOnce(new Error('Immich unavailable'))
+    searchPhotos.mockRejectedValueOnce(new Error('Immich unavailable'))
     const unavailable = mountSection()
     await flushPromises()
     expect(unavailable.find('.immich-photos-card').exists()).toBe(false)
@@ -127,7 +136,7 @@ describe('ImmichLatestPhotosSection Rewind presentation', () => {
     const wrapper = mountSection('default')
     await flushPromises()
 
-    expect(apiService.get).toHaveBeenCalledWith('/users/me/immich/photos/search', { startDate: 'start', endDate: 'end', limit: 20 })
+    expect(searchPhotos).toHaveBeenCalledWith({ startDate: 'start', endDate: 'end', limit: 20 })
     wrapper.unmount()
   })
 })

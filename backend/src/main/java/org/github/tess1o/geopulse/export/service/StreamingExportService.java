@@ -273,6 +273,6 @@ public class StreamingExportService {
         return firstBatch[0].size();
     }
 
-    private static class BatchPeekCompleteException extends RuntimeException {
+    private final static class BatchPeekCompleteException extends RuntimeException {
     }
 }

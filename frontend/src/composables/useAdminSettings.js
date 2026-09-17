@@ -5,15 +5,17 @@
 
 import { ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { useAuthStore } from '@/stores/auth'
 import { getSettingMetadata } from '@/constants/adminSettingsMetadata'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { transformSettingValue, parseSettingValue, shouldSkipEncryptedUpdate } from '@/utils/settingHelpers'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 export function useAdminSettings() {
   const toast = useToast()
   const authStore = useAuthStore()
+  const adminStore = useAdminStore()
   const loading = ref(false)
 
   /**
@@ -24,7 +26,7 @@ export function useAdminSettings() {
   const loadSettings = async (category) => {
     loading.value = true
     try {
-      const response = await apiService.get(`/admin/settings/${category}`)
+      const response = await adminStore.getSettingsByCategory(category)
       return response.map(setting => {
         const metadata = getSettingMetadata(setting.key)
         return {
@@ -87,7 +89,7 @@ export function useAdminSettings() {
       }
 
       const value = parseSettingValue(setting)
-      await apiService.put(`/admin/settings/${setting.key}`, { value })
+      await adminStore.updateSetting(setting.key, value)
 
       setting.isDefault = false
 
@@ -104,7 +106,7 @@ export function useAdminSettings() {
       }
     } catch (error) {
       console.error('Failed to update setting:', error)
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update setting'
+      const errorMessage = formatApiErrorDetail(error, 'Failed to update setting')
       toast.add({
         severity: 'error',
         summary: 'Error',
@@ -130,7 +132,7 @@ export function useAdminSettings() {
         return
       }
 
-      const response = await apiService.delete(`/admin/settings/${setting.key}`)
+      const response = await adminStore.resetSetting(setting.key)
 
       setting.isDefault = true
       setting.currentValue = transformSettingValue({

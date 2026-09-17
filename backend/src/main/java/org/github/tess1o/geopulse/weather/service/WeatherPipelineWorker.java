@@ -140,7 +140,6 @@ public class WeatherPipelineWorker {
                     .accepted(false)
                     .alreadyRunning(false)
                     .queuedUserRanges((int) Math.min(Integer.MAX_VALUE, reconciliationRepository.countPendingUserRanges()))
-                    .message("Weather processing is paused while full backup restore is running")
                     .build();
         }
         rerunRequested.set(true);
@@ -152,7 +151,6 @@ public class WeatherPipelineWorker {
                 .accepted(true)
                 .alreadyRunning(!submitted)
                 .queuedUserRanges((int) Math.min(Integer.MAX_VALUE, reconciliationRepository.countPendingUserRanges()))
-                .message(submitted ? "The weather worker was notified" : "Weather processing is already running; work was coalesced")
                 .build();
     }
 

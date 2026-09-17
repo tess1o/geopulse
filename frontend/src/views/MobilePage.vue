@@ -10,8 +10,9 @@
 
 <script setup>
 import {onBeforeUnmount, onMounted, ref} from 'vue'
-import apiService from '@/utils/apiService'
+import {useAuthStore} from '@/stores/auth'
 
+const authStore = useAuthStore()
 const message = ref('Preparing mobile authentication...')
 const isLoading = ref(true)
 const APP_OPEN_TIMEOUT_MS = 4000
@@ -45,9 +46,9 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
   try {
-    const response = await apiService.get('/auth/mobile')
-    const code = response?.data?.code
-    const deeplinkUrl = response?.data?.deeplinkUrl
+    const response = await authStore.generateMobileAuth()
+    const code = response?.code
+    const deeplinkUrl = response?.deeplinkUrl
 
     if (!code || !deeplinkUrl) {
       isLoading.value = false
@@ -55,7 +56,7 @@ onMounted(async () => {
       return
     }
 
-    await apiService.logoutStrict()
+    await authStore.logoutStrict()
 
     message.value = 'Opening the app...'
     window.location.assign(`${deeplinkUrl}?code=${encodeURIComponent(code)}`)

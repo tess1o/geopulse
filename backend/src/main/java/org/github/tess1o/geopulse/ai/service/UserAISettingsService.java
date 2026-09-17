@@ -9,6 +9,8 @@ import jakarta.ws.rs.WebApplicationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.github.tess1o.geopulse.ai.client.exception.AISettingsException;
+import org.github.tess1o.geopulse.ai.client.exception.OpenAiApiException;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -88,7 +90,7 @@ public class UserAISettingsService {
 
             log.info("Successfully saved AI settings for user {}", userId);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to save AI settings", e);
+            throw new AISettingsException("Failed to save AI settings", e);
         }
     }
 
@@ -132,7 +134,8 @@ public class UserAISettingsService {
                     .stream().map(GeoPulseOpenAIClient.Model::id)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("Failed to fetch models: {}", e.getMessage());
+            throw new OpenAiApiException(e);
         }
     }
 
@@ -220,7 +223,7 @@ public class UserAISettingsService {
 
             return settings;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to retrieve AI settings with API key", e);
+            throw new AISettingsException("Failed to retrieve AI settings with API key", e);
         }
     }
 }

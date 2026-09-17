@@ -2,6 +2,8 @@
  * Error handling utilities for GeoPulse frontend
  */
 
+import { formatApiErrorDetail, normalizeApiError } from './apiErrorDetail'
+
 function getErrorText(value) {
   if (!value) return ''
   if (typeof value === 'string') return value
@@ -17,43 +19,32 @@ function getErrorText(value) {
   return String(value)
 }
 
-function getConstraintViolationMessage(data) {
-  if (!data || !Array.isArray(data.violations)) {
-    return null
-  }
-
-  const violationMessages = data.violations
-    .map((violation) => violation?.message)
-    .filter((message) => typeof message === 'string' && message.trim().length > 0)
-
-  if (violationMessages.length === 0) {
-    return null
-  }
-
-  return [...new Set(violationMessages)].join(' ')
-}
-
 /**
  * Convert API/Network errors into user-friendly messages
  * @param {Error} error - The original error object
  * @returns {Object} - Formatted error object with user-friendly message
  */
 export function formatError(error) {
+  const problem = normalizeApiError(error)
   // Default error object
   const formattedError = {
     title: 'Something went wrong',
     message: 'An unexpected error occurred. Please try again.',
     severity: 'error',
-    technical: error.message || 'Unknown error',
+    technical: error?.message || problem.detail || 'Unknown error',
     canRetry: true,
-    isConnectionError: false
+    isConnectionError: false,
+    status: problem.status,
+    code: problem.code,
+    parameters: problem.parameters,
+    violations: problem.violations
   }
 
   // Handle network/connection errors
-  if (error.code === 'NETWORK_ERROR' || 
-      error.message === 'Network Error' || 
-      error.message?.includes('ERR_NETWORK') ||
-      error.message?.includes('Failed to fetch') ||
+  if (error?.code === 'NETWORK_ERROR' ||
+      error?.message === 'Network Error' ||
+      error?.message?.includes('ERR_NETWORK') ||
+      error?.message?.includes('Failed to fetch') ||
       !navigator.onLine) {
     
     formattedError.title = 'Connection Problem'
@@ -64,8 +55,8 @@ export function formatError(error) {
   }
 
   // Handle timeout errors
-  if (error.code === 'ECONNABORTED' || 
-      error.message?.includes('timeout')) {
+  if (error?.code === 'ECONNABORTED' ||
+      error?.message?.includes('timeout')) {
     
     formattedError.title = 'Request Timeout'
     formattedError.message = 'The request is taking longer than expected. Please try again.'
@@ -74,17 +65,16 @@ export function formatError(error) {
   }
 
   // Handle HTTP response errors
-  if (error.response) {
-    const status = error.response.status
-    const data = error.response.data
+  if (problem.status) {
+    const status = problem.status
+    const data = error?.response?.data || problem
+    const problemDetail = formatApiErrorDetail(problem, null)
 
     switch (status) {
       case 400:
         {
-          const constraintViolationMessage = getConstraintViolationMessage(data)
           formattedError.title = 'Invalid Request'
-          formattedError.message = constraintViolationMessage ||
-            data?.message ||
+          formattedError.message = problemDetail ||
             'The request could not be processed. Please check your input and try again.'
           formattedError.canRetry = true
           break
@@ -98,19 +88,19 @@ export function formatError(error) {
 
       case 403:
         formattedError.title = 'Access Denied'
-        formattedError.message = data?.message || 'You don\'t have permission to perform this action.'
+        formattedError.message = problemDetail || 'You don\'t have permission to perform this action.'
         formattedError.canRetry = false
         break
 
       case 404:
         formattedError.title = 'Not Found'
-        formattedError.message = data?.message || 'The requested resource could not be found.'
+        formattedError.message = problemDetail || 'The requested resource could not be found.'
         formattedError.canRetry = false
         break
 
       case 409:
         formattedError.title = 'Conflict'
-        formattedError.message = data?.message || 'This action conflicts with the current state. Please refresh and try again.'
+        formattedError.message = problemDetail || 'This action conflicts with the current state. Please refresh and try again.'
         formattedError.canRetry = true
         break
 
@@ -137,7 +127,7 @@ export function formatError(error) {
 
       default:
         formattedError.title = `Error ${status}`
-        formattedError.message = data?.message || `An error occurred (${status}). Please try again.`
+        formattedError.message = problemDetail || `An error occurred (${status}). Please try again.`
         formattedError.canRetry = true
     }
 
@@ -169,11 +159,7 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
     return userMessage
   }
 
-  const data = error.response?.data
-  const apiMessage = getErrorText(data?.message)
-    || getErrorText(data?.error)
-    || getErrorText(data?.userMessage)
-    || getErrorText(data)
+  const apiMessage = getErrorText(formatApiErrorDetail(error, null))
   if (apiMessage) {
     return apiMessage
   }

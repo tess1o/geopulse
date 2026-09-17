@@ -93,7 +93,8 @@ import ProgressSpinner from 'primevue/progressspinner'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import NotesViewerDialog from '@/components/timeline/NotesViewerDialog.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
+import { useNotesStore } from '@/stores/notes'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 
 const props = defineProps({
@@ -121,19 +122,13 @@ const props = defineProps({
 
 const emit = defineEmits(['notes-change'])
 const timezone = useTimezone()
+const notesStore = useNotesStore()
 
 const notes = ref([])
 const notesLoading = ref(false)
 const notesError = ref(null)
 const viewerVisible = ref(false)
 let requestSequence = 0
-
-const unwrapApiData = (response) => {
-  if (response && typeof response === 'object' && Object.prototype.hasOwnProperty.call(response, 'data')) {
-    return response.data
-  }
-  return response
-}
 
 const toFiniteNumber = (value) => {
   const numberValue = Number(value)
@@ -263,12 +258,11 @@ const refreshNotes = async () => {
   notesError.value = null
 
   try {
-    const response = await apiService.get('/notes/search', params)
+    const payload = await notesStore.searchNotes(params)
     if (requestId !== requestSequence) {
       return notes.value
     }
 
-    const payload = unwrapApiData(response)
     const fetchedNotes = Array.isArray(payload?.notes) ? payload.notes : []
     setNotes(applyLocalFilters(fetchedNotes))
     return notes.value
@@ -278,7 +272,7 @@ const refreshNotes = async () => {
     }
 
     setNotes([])
-    notesError.value = error.userMessage || error.message || 'Failed to load notes'
+    notesError.value = formatApiErrorDetail(error, 'Failed to load notes')
     return []
   } finally {
     if (requestId === requestSequence) {

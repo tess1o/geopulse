@@ -196,7 +196,7 @@ public class ImmichService {
         if (user == null) {
             return CompletableFuture.completedFuture(TestImmichConnectionResponse.builder()
                     .success(false)
-                    .message("User not found")
+                    .status(ImmichConnectionStatus.USER_NOT_FOUND)
                     .build());
         }
 
@@ -212,7 +212,7 @@ public class ImmichService {
             } else {
                 return CompletableFuture.completedFuture(TestImmichConnectionResponse.builder()
                         .success(false)
-                        .message("API key is required")
+                        .status(ImmichConnectionStatus.API_KEY_REQUIRED)
                         .details("No API key provided and no saved API key found in database")
                         .build());
             }
@@ -234,33 +234,33 @@ public class ImmichService {
                             : 0;
                     return TestImmichConnectionResponse.builder()
                             .success(true)
-                            .message("Successfully connected to Immich server")
-                            .details(String.format("Server responded with %d total assets", totalAssets))
+                            .status(ImmichConnectionStatus.CONNECTED)
+                            .totalAssets(totalAssets)
                             .build();
                 })
                 .exceptionally(throwable -> {
                     log.error("Failed to connect to Immich server at {} for user {}: {}",
                             serverUrl, userId, throwable.getMessage());
 
-                    String errorMessage = "Failed to connect to Immich server";
+                    ImmichConnectionStatus status = ImmichConnectionStatus.CONNECTION_FAILED;
                     String details = throwable.getMessage();
 
                     if (throwable.getMessage() != null) {
                         if (throwable.getMessage().contains("401") || throwable.getMessage().contains("Unauthorized")) {
-                            errorMessage = "Authentication failed";
+                            status = ImmichConnectionStatus.AUTHENTICATION_FAILED;
                             details = "Invalid API key or unauthorized access";
                         } else if (throwable.getMessage().contains("404") || throwable.getMessage().contains("Not Found")) {
-                            errorMessage = "Server not found";
+                            status = ImmichConnectionStatus.SERVER_NOT_FOUND;
                             details = "Could not reach the Immich server at the provided URL";
                         } else if (throwable.getMessage().contains("timeout") || throwable.getMessage().contains("Connection refused")) {
-                            errorMessage = "Connection timeout";
+                            status = ImmichConnectionStatus.CONNECTION_TIMEOUT;
                             details = "Unable to connect to the server. Please check the URL and network connection";
                         }
                     }
 
                     return TestImmichConnectionResponse.builder()
                             .success(false)
-                            .message(errorMessage)
+                            .status(status)
                             .details(details)
                             .build();
                 });

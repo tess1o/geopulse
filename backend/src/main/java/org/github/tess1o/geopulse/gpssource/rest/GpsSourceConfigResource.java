@@ -2,28 +2,49 @@ package org.github.tess1o.geopulse.gpssource.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
-import jakarta.ws.rs.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt.MqttConfiguration;
-import org.github.tess1o.geopulse.gpssource.model.*;
+import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
+import org.github.tess1o.geopulse.gpssource.model.GpsFilteringDefaultsDTO;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigDTO;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceTypeTelemetryConfigDTO;
+import org.github.tess1o.geopulse.gpssource.model.GpsTelemetryMappingEntry;
+import org.github.tess1o.geopulse.gpssource.model.OwnTracksMqttConfigDTO;
+import org.github.tess1o.geopulse.gpssource.model.UpdateGpsSourceConfigDto;
+import org.github.tess1o.geopulse.gpssource.model.UpdateGpsSourceConfigStatusDto;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_SOURCE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GPS_SOURCE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TELEMETRY_MAPPING;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/gps/source")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
-@Slf4j
 @Tag(name = "User: GPS Sources", description = "Manage GPS source configuration, telemetry mappings, and status.")
 public class GpsSourceConfigResource {
 
@@ -42,163 +63,135 @@ public class GpsSourceConfigResource {
         this.mqttConfiguration = mqttConfiguration;
     }
 
-    @Path("/")
     @GET
-    public Response getGpsSourceConfigs() {
-        UUID userId = currentUserService.getCurrentUserId();
-        List<GpsSourceConfigDTO> configs = gpsSourceService.findGpsSourceConfigs(userId);
-        return Response.ok(configs).build();
+    public List<GpsSourceConfigDTO> getGpsSourceConfigs() {
+        return gpsSourceService.findGpsSourceConfigs(currentUserService.getCurrentUserId());
     }
 
+    @GET
     @Path("/defaults")
-    @GET
-    public Response getDefaultFilteringValues() {
-        var defaults = java.util.Map.of(
-            "filterInaccurateData", gpsSourceService.isDefaultFilterInaccurateDataEnabled(),
-            "maxAllowedAccuracy", gpsSourceService.getDefaultMaxAllowedAccuracy(),
-            "maxAllowedSpeed", gpsSourceService.getDefaultMaxAllowedSpeed(),
-            "enableDuplicateDetection", gpsSourceService.isDefaultDuplicateDetectionEnabled(),
-            "duplicateDetectionThresholdMinutes", gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()
-        );
-        return Response.ok(defaults).build();
+    public GpsFilteringDefaultsDTO getDefaultFilteringValues() {
+        return new GpsFilteringDefaultsDTO(
+                gpsSourceService.isDefaultFilterInaccurateDataEnabled(),
+                gpsSourceService.getDefaultMaxAllowedAccuracy(),
+                gpsSourceService.getDefaultMaxAllowedSpeed(),
+                gpsSourceService.isDefaultDuplicateDetectionEnabled(),
+                gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes());
     }
 
-    @Path("/owntracks/mqtt-config")
     @GET
-    public Response getOwnTracksMqttConfig() {
-        OwnTracksMqttConfigDTO config = OwnTracksMqttConfigDTO.builder()
+    @Path("/owntracks/mqtt-config")
+    public OwnTracksMqttConfigDTO getOwnTracksMqttConfig() {
+        return OwnTracksMqttConfigDTO.builder()
                 .mqttEnabled(mqttConfiguration.isMqttEnabled())
                 .brokerHost(mqttConfiguration.getBrokerHost())
                 .brokerPort(mqttConfiguration.getBrokerPort())
                 .tlsEnabled(mqttConfiguration.isTlsEnabled())
                 .build();
-        return Response.ok(config).build();
     }
 
-    @Path("/telemetry/{sourceType}")
     @GET
-    public Response getTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+    @Path("/telemetry/{sourceType}")
+    public GpsSourceTypeTelemetryConfigDTO getTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
-            return Response.ok(telemetryConfigService.getResolvedConfig(userId, sourceType)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            return telemetryConfigService.getResolvedConfig(
+                    currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
         }
     }
 
-    @Path("/telemetry/{sourceType}")
     @PUT
-    public Response upsertTelemetryMapping(@PathParam("sourceType") String sourceTypeValue,
-                                           List<GpsTelemetryMappingEntry> mapping) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
-            GpsSourceTypeTelemetryConfigDTO result = telemetryConfigService.upsertConfig(userId, sourceType, mapping);
-            return Response.ok(result).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        }
-    }
-
     @Path("/telemetry/{sourceType}")
-    @DELETE
-    public Response resetTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+    public GpsSourceTypeTelemetryConfigDTO upsertTelemetryMapping(
+            @PathParam("sourceType") String sourceTypeValue,
+            @NotNull List<@Valid GpsTelemetryMappingEntry> mapping) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
-            telemetryConfigService.resetConfig(userId, sourceType);
-            return Response.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            return telemetryConfigService.upsertConfig(
+                    currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue), mapping);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
         }
     }
 
-    @Path("/")
+    @DELETE
+    @Path("/telemetry/{sourceType}")
+    @APIResponse(responseCode = "204", description = "Telemetry mapping reset")
+    public RestResponse<Void> resetTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+        try {
+            telemetryConfigService.resetConfig(
+                    currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
+            return RestResponse.noContent();
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
+        }
+    }
+
     @POST
-    //TODO: duplication check!!!
-    public Response addGpsSourceCnfig(CreateGpsSourceConfigDto config) {
+    @APIResponse(responseCode = "201", description = "GPS source created")
+    public RestResponse<GpsSourceConfigDTO> addGpsSourceConfig(
+            @NotNull @Valid CreateGpsSourceConfigDto config) {
+        config.setUserId(currentUserService.getCurrentUserId());
         try {
-            config.setUserId(currentUserService.getCurrentUserId());
-            GpsSourceConfigDTO dto = gpsSourceService.addGpsSourceConfig(config);
-            return Response.ok(dto).build();
-        } catch (IllegalArgumentException e) {
-            log.error("Unable to add config", e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED, gpsSourceService.addGpsSourceConfig(config));
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_GPS_SOURCE, exception.getMessage());
         }
     }
 
-    @Path("/{id}")
     @DELETE
-    public Response deleteGpsSourceConfig(@PathParam("id") UUID configId) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            boolean isDeleted = gpsSourceService.deleteGpsSourceConfig(configId, userId);
-            if (!isDeleted) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-        } catch (Exception e) {
-            log.error("Unable to delete config", e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid config id"))
-                    .build();
+    @Path("/{id}")
+    @APIResponse(responseCode = "204", description = "GPS source deleted")
+    public RestResponse<Void> deleteGpsSourceConfig(@PathParam("id") UUID configId) {
+        boolean deleted = gpsSourceService.deleteGpsSourceConfig(
+                configId, currentUserService.getCurrentUserId());
+        if (!deleted) {
+            throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found",
+                    Map.of("sourceId", configId.toString()));
         }
-        return Response.ok().build();
+        return RestResponse.noContent();
     }
 
+    @PUT
     @Path("/{id}/status")
-    @PUT
-    public Response updateStatus(@PathParam("id") UUID configId, UpdateGpsSourceConfigStatusDto newStatus) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            boolean isDeleted = gpsSourceService.updateGpsConfigSourceStatus(configId, userId, newStatus.isStatus());
-            if (!isDeleted) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-        } catch (Exception e) {
-            log.error("Unable to update status", e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Unable to change the status"))
-                    .build();
+    @APIResponse(responseCode = "204", description = "GPS source status updated")
+    public RestResponse<Void> updateStatus(
+            @PathParam("id") UUID configId,
+            @NotNull @Valid UpdateGpsSourceConfigStatusDto newStatus) {
+        boolean updated = gpsSourceService.updateGpsConfigSourceStatus(
+                configId, currentUserService.getCurrentUserId(), newStatus.isStatus());
+        if (!updated) {
+            throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found",
+                    Map.of("sourceId", configId.toString()));
         }
-        return Response.ok().build();
+        return RestResponse.noContent();
     }
 
-    @Path("/")
     @PUT
-    public Response updateGpsConfigSource(UpdateGpsSourceConfigDto config) {
-        log.info("Updating config {}", config);
+    @APIResponse(responseCode = "204", description = "GPS source updated")
+    public RestResponse<Void> updateGpsConfigSource(@NotNull @Valid UpdateGpsSourceConfigDto config) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            boolean updated = gpsSourceService.updateGpsConfigSource(config, userId);
+            boolean updated = gpsSourceService.updateGpsConfigSource(
+                    config, currentUserService.getCurrentUserId());
             if (!updated) {
-                return Response.status(Response.Status.NOT_FOUND).build();
+                throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found");
             }
-        } catch (Exception e) {
-            log.error("Unable to update config", e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid config id"))
-                    .build();
+            return RestResponse.noContent();
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_GPS_SOURCE, exception.getMessage());
         }
-        return Response.ok().build();
     }
 
     private GpsSourceType parseSourceType(String sourceTypeValue) {
         if (sourceTypeValue == null || sourceTypeValue.isBlank()) {
             throw new IllegalArgumentException("Source type is required");
         }
-
         try {
             return GpsSourceType.valueOf(sourceTypeValue.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Unsupported source type: " + sourceTypeValue);
         }
     }

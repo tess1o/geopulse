@@ -239,9 +239,9 @@ const loadNotifications = async () => {
       source: sourceFilter.value === 'ALL' ? null : sourceFilter.value
     })
     notifications.value = Array.isArray(response.items) ? response.items : []
-    totalCount.value = Number(response.totalCount || 0)
+    totalCount.value = Number(response.totalElements || 0)
     page.value = Number(response.page || 0)
-    pageSize.value = Number(response.pageSize || pageSize.value)
+    pageSize.value = Number(response.size || pageSize.value)
   } catch (error) {
     toast.add({
       severity: 'error',

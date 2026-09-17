@@ -10,7 +10,12 @@ vi.hoisted(() => {
   })
 })
 
-const testMemosConfig = vi.hoisted(() => vi.fn())
+const { testMemosConfig, testImmichConnection, testAIConnection, fetchDefaultSystemMessage } = vi.hoisted(() => ({
+  testMemosConfig: vi.fn(),
+  testImmichConnection: vi.fn(),
+  testAIConnection: vi.fn(),
+  fetchDefaultSystemMessage: vi.fn().mockResolvedValue({ message: 'Default AI system message' })
+}))
 
 import { flushPromises, mount } from '@vue/test-utils'
 import ProfileTab from './ProfileTab.vue'
@@ -31,6 +36,17 @@ vi.mock('@/utils/apiService', () => ({
 vi.mock('@/stores/notes', () => ({
   useNotesStore: () => ({
     testMemosConfig
+  })
+}))
+
+vi.mock('@/stores/immich', () => ({
+  useImmichStore: () => ({ testConnection: testImmichConnection })
+}))
+
+vi.mock('@/stores/ai', () => ({
+  useAIStore: () => ({
+    testConnection: testAIConnection,
+    fetchDefaultSystemMessage
   })
 }))
 
@@ -472,7 +488,7 @@ describe('profile tab dirty state', () => {
   })
 
   it('groups AI settings and keeps model refresh and read-only behavior', async () => {
-    apiService.post.mockClear()
+    testAIConnection.mockReset().mockResolvedValue(['gpt-4o-mini'])
     const initialSettings = {
       enabled: false,
       openaiApiKey: '',
@@ -491,7 +507,7 @@ describe('profile tab dirty state', () => {
     expect(wrapper.findAll('#openai-model')).toHaveLength(1)
     await wrapper.get('[aria-label="Refresh provider models"]').trigger('click')
     await flushPromises()
-    expect(apiService.post).toHaveBeenCalledWith('/ai/test-connection', {
+    expect(testAIConnection).toHaveBeenCalledWith({
       openaiApiUrl: 'https://api.openai.com/v1',
       openaiApiKey: '',
       isApiKeyNeeded: true
@@ -503,7 +519,7 @@ describe('profile tab dirty state', () => {
   })
 
   it('emits dirty changes from the Immich tab and clears after reset', async () => {
-    apiService.post.mockReset().mockResolvedValue({ data: { success: true, message: 'Connected' } })
+    testImmichConnection.mockReset().mockResolvedValue({ success: true, status: 'CONNECTED' })
     const wrapper = mount(ImmichTab, {
       props: {
         config: {
@@ -524,7 +540,7 @@ describe('profile tab dirty state', () => {
     expect(wrapper.findAll('#immichApiKey')).toHaveLength(1)
     await findButtonByLabel(wrapper, 'Test Connection').trigger('click')
     await flushPromises()
-    expect(apiService.post).toHaveBeenCalledWith('/users/me/immich-config/test', {
+    expect(testImmichConnection).toHaveBeenCalledWith({
       serverUrl: 'https://new-photos.example.com',
       apiKey: null
     })

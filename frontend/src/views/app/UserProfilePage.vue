@@ -90,10 +90,11 @@ import SettingsSearchTrigger from '@/components/search/SettingsSearchTrigger.vue
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import { useNotesStore } from '@/stores/notes'
-import apiService from "@/utils/apiService"
+import { useAIStore } from '@/stores/ai'
 import { PROFILE_SETTINGS_SEARCH_INDEX } from '@/constants/profileSettingsSearchIndex'
 import { jumpToSetting } from '@/utils/settingJump'
 import { showDemoModeToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Composables
 const toast = useToast()
@@ -103,6 +104,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const immichStore = useImmichStore()
 const notesStore = useNotesStore()
+const aiStore = useAIStore()
 
 // Store refs
 const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
@@ -119,14 +121,17 @@ const settingHintsById = Object.fromEntries(
     .map((item) => [item.id, item.visibilityHint])
 )
 
-// AI Settings state
-const aiSettings = ref({
-  enabled: false,
-  openaiApiKey: '',
-  openaiApiUrl: 'https://api.openai.com/v1',
-  openaiModel: 'gpt-3.5-turbo',
-  openaiApiKeyConfigured: false,
-  customSystemMessage: null,
+const aiSettings = computed(() => {
+  const settings = aiStore.settings || {}
+  return {
+    enabled: settings.enabled === true,
+    openaiApiKey: '',
+    openaiApiUrl: settings.openaiApiUrl || 'https://api.openai.com/v1',
+    openaiModel: settings.openaiModel || 'gpt-3.5-turbo',
+    openaiApiKeyConfigured: settings.openaiApiKeyConfigured === true,
+    customSystemMessage: settings.customSystemMessage || null,
+    apiKeyRequired: settings.apiKeyRequired !== false
+  }
 })
 
 // Timeline Display Preferences state
@@ -235,6 +240,10 @@ const selectTab = (tab) => {
 }
 
 const getErrorMessage = (error) => {
+  if (error?.isApiError) {
+    return formatApiErrorDetail(error)
+  }
+
   if (error.response?.data?.message) {
     return error.response.data.message
   }
@@ -407,10 +416,7 @@ const handleAISave = async (payload) => {
   }
 
   try {
-    await apiService.post('/ai/settings', payload)
-
-    // Reload settings to get updated configuration status
-    await loadAISettings()
+    await aiStore.saveSettings(payload)
 
     toast.add({
       severity: 'success',
@@ -496,21 +502,7 @@ const handleMemosSave = async (configData) => {
 // Load AI Settings
 const loadAISettings = async () => {
   try {
-    const response = await apiService.get('/ai/settings')
-
-    // Update AI settings with loaded data
-    const data = response.data || response
-    if (data) {
-      aiSettings.value = {
-        enabled: data.enabled === true,
-        openaiApiKey: '', // Always empty since backend doesn't send actual key
-        openaiApiUrl: data.openaiApiUrl || 'https://api.openai.com/v1',
-        openaiModel: data.openaiModel || 'gpt-3.5-turbo',
-        openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
-        customSystemMessage: data.customSystemMessage,
-        apiKeyRequired: data.apiKeyRequired,
-      }
-    }
+    await aiStore.fetchSettings()
   } catch (error) {
     console.warn('Failed to load AI settings:', error)
   }
@@ -519,8 +511,7 @@ const loadAISettings = async () => {
 // Load Timeline Display Preferences
 const loadTimelineDisplayPreferences = async () => {
   try {
-    const response = await apiService.get('/users/preferences/timeline/display')
-    const data = response.data || response
+    const data = await authStore.fetchTimelineDisplayPreferences()
 
     if (data) {
       timelineDisplayPrefs.value = {

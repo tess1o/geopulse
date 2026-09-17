@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -85,7 +86,7 @@ public class NotificationTemplateService {
     @Transactional
     public NotificationTemplateDto updateTemplate(UUID userId, Long templateId, UpdateNotificationTemplateRequest request) {
         NotificationTemplateEntity entity = templateRepository.findByIdAndUser(templateId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification template not found"));
+                .orElseThrow(() -> new NoSuchElementException("Notification template not found"));
 
         TemplateWriteInput writeInput = buildUpdateWriteInput(entity, request);
         validateTemplateRequest(
@@ -105,7 +106,7 @@ public class NotificationTemplateService {
     @Transactional
     public void deleteTemplate(UUID userId, Long templateId) {
         NotificationTemplateEntity entity = templateRepository.findByIdAndUser(templateId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification template not found"));
+                .orElseThrow(() -> new NoSuchElementException("Notification template not found"));
 
         // Defensive detach before delete: prevents accidental cascades if DB constraints differ across environments.
         ruleRepository.clearEnterTemplate(userId, templateId);

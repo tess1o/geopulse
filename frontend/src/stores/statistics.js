@@ -1,47 +1,23 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
-import dayjs from 'dayjs';
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useStatisticsStore = defineStore('statistics', {
     state: () => ({
         weeklyStatistics: null,
         monthlyStatistics: null,
-        selectedRangeStatistics: null
+        selectedRangeStatistics: null,
+        loading: false,
+        error: null
     }),
 
     getters: {
-        // Direct access getters (you can remove these if you prefer direct state access)
-        getWeeklyStatistics: (state) => state.weeklyStatistics,
-        getMonthlyStatistics: (state) => state.monthlyStatistics,
-        getSelectedRangeStatistics: (state) => state.selectedRangeStatistics,
-
-        // Computed getters for additional functionality
         hasWeeklyData: (state) => !!state.weeklyStatistics,
         hasMonthlyData: (state) => !!state.monthlyStatistics,
-        hasSelectedRangeData: (state) => !!state.selectedRangeStatistics,
-
-        // Example: Get total distance from any statistics
-        getTotalDistance: (state) => (type) => {
-            const stats = type === 'weekly' ? state.weeklyStatistics
-                : type === 'monthly' ? state.monthlyStatistics
-                    : state.selectedRangeStatistics
-            return stats?.totalDistance || 0
-        }
+        hasSelectedRangeData: (state) => !!state.selectedRangeStatistics
     },
 
     actions: {
-        setWeeklyStatistics(stats) {
-            this.weeklyStatistics = stats
-        },
-
-        setMonthlyStatistics(stats) {
-            this.monthlyStatistics = stats
-        },
-
-        setSelectedRangeStatistics(stats) {
-            this.selectedRangeStatistics = stats
-        },
-
         clearAllStatistics() {
             this.weeklyStatistics = null
             this.monthlyStatistics = null
@@ -50,48 +26,56 @@ export const useStatisticsStore = defineStore('statistics', {
 
         // API Actions
         async fetchWeeklyStatistics() {
+            this.error = null
             try {
                 const response = await apiService.get(`/statistics/weekly`)
-                this.setWeeklyStatistics(response)
+                this.weeklyStatistics = response
                 return response
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load weekly statistics')
+                throw this.error
             }
         },
 
         async fetchMonthlyStatistics() {
+            this.error = null
             try {
                 const response = await apiService.get(`/statistics/monthly`)
-                this.setMonthlyStatistics(response)
+                this.monthlyStatistics = response
                 return response
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load monthly statistics')
+                throw this.error
             }
         },
 
         async fetchSelectedRangeStatistics(startTime, endTime) {
+            this.error = null
             try {
                 const response = await apiService.get(`/statistics`, {
                     startTime: startTime,
                     endTime: endTime
                 })
-                this.setSelectedRangeStatistics(response)
+                this.selectedRangeStatistics = response
                 return response
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load statistics')
+                throw this.error
             }
         },
 
         // Convenience method to fetch all statistics
         async fetchAllStatistics() {
+            this.loading = true
             try {
                 await Promise.all([
                     this.fetchWeeklyStatistics(),
                     this.fetchMonthlyStatistics()
                 ])
             } catch (error) {
-                console.error('Error fetching all statistics:', error)
                 throw error
+            } finally {
+                this.loading = false
             }
         }
     }

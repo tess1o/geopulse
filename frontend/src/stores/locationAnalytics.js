@@ -1,348 +1,185 @@
 import { defineStore } from 'pinia'
-import apiService from '../utils/apiService'
+import apiService from '@/utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
+
+const emptyPage = () => ({ currentPage: 0, pageSize: 50, totalCount: 0, totalPages: 0 })
 
 export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
-    state: () => ({
-        // Search
-        searchResults: [],
-        searchLoading: false,
-        
-        // Map places
-        mapPlaces: [],
-        mapPlacesLoading: false,
+  state: () => ({
+    searchResults: [],
+    searchLoading: false,
+    mapPlaces: [],
+    mapPlacesLoading: false,
+    cities: [],
+    citiesLoading: false,
+    cityDetails: null,
+    cityVisits: [],
+    cityPagination: emptyPage(),
+    countries: [],
+    countriesLoading: false,
+    countryDetails: null,
+    countryVisits: [],
+    countryPagination: emptyPage(),
+    loading: false,
+    error: null
+  }),
 
-        // Cities
-        cities: [],
-        citiesLoading: false,
-        cityDetails: null,
-        cityVisits: [],
-        cityPagination: {
-            currentPage: 0,
-            pageSize: 50,
-            totalCount: 0,
-            totalPages: 0
-        },
-
-        // Countries
-        countries: [],
-        countriesLoading: false,
-        countryDetails: null,
-        countryVisits: [],
-        countryPagination: {
-            currentPage: 0,
-            pageSize: 50,
-            totalCount: 0,
-            totalPages: 0
-        },
-
-        // General
-        loading: false,
-        error: null
-    }),
-
-    getters: {
-        // Search getters
-        getSearchResults: (state) => state.searchResults,
-        isSearching: (state) => state.searchLoading,
-        
-        // Map getters
-        getMapPlaces: (state) => state.mapPlaces,
-        isMapPlacesLoading: (state) => state.mapPlacesLoading,
-
-        // City getters
-        getAllCities: (state) => state.cities,
-        getCityDetails: (state) => state.cityDetails,
-        getCityVisits: (state) => state.cityVisits,
-        getCityPagination: (state) => state.cityPagination,
-        hasCities: (state) => state.cities && state.cities.length > 0,
-        hasCityDetails: (state) => state.cityDetails !== null,
-
-        // Country getters
-        getAllCountries: (state) => state.countries,
-        getCountryDetails: (state) => state.countryDetails,
-        getCountryVisits: (state) => state.countryVisits,
-        getCountryPagination: (state) => state.countryPagination,
-        hasCountries: (state) => state.countries && state.countries.length > 0,
-        hasCountryDetails: (state) => state.countryDetails !== null,
-
-        // General getters
-        isLoading: (state) => state.loading,
-        getError: (state) => state.error
+  actions: {
+    fail(error, fallback) {
+      this.error = normalizeApiError(error, fallback)
+      return this.error
     },
 
-    actions: {
-        /**
-         * Search across places, cities, and countries
-         * @param {string} query - Search query (minimum 2 characters)
-         * @param {string|null} typeFilter - Optional filter by type: "place", "city", "country"
-         */
-        async searchLocations(query, typeFilter = null) {
-            this.searchLoading = true
-            this.error = null
+    async searchLocations(query, type = null) {
+      this.searchLoading = true
+      this.error = null
+      try {
+        this.searchResults = await apiService.get('/location-analytics/search', {
+          q: query,
+          ...(type ? { type } : {})
+        })
+        return this.searchResults
+      } catch (error) {
+        throw this.fail(error, 'Search failed')
+      } finally {
+        this.searchLoading = false
+      }
+    },
 
-            try {
-                const params = { q: query }
-                if (typeFilter) {
-                    params.type = typeFilter
-                }
+    async fetchMapPlaces(options = {}) {
+      this.mapPlacesLoading = true
+      this.error = null
+      try {
+        const params = { minVisits: options.minVisits ?? 1, limit: options.limit ?? 3000 }
+        ;['from', 'to', 'minLat', 'maxLat', 'minLon', 'maxLon'].forEach((key) => {
+          if (options[key] != null) params[key] = options[key]
+        })
+        this.mapPlaces = await apiService.get('/location-analytics/map/places', params)
+        return this.mapPlaces
+      } catch (error) {
+        throw this.fail(error, 'Failed to fetch map places')
+      } finally {
+        this.mapPlacesLoading = false
+      }
+    },
 
-                const response = await apiService.get('/location-analytics/search', params)
-                this.searchResults = response.data
-                return response
-            } catch (error) {
-                console.error('Search failed:', error)
-                this.error = error.message || 'Search failed'
-                throw error
-            } finally {
-                this.searchLoading = false
-            }
-        },
-        
-        /**
-         * Fetch map-ready aggregated places.
-         * @param {Object} options
-         * @param {string|null} options.from - ISO-8601 start timestamp
-         * @param {string|null} options.to - ISO-8601 end timestamp
-         * @param {number|null} options.minLat
-         * @param {number|null} options.maxLat
-         * @param {number|null} options.minLon
-         * @param {number|null} options.maxLon
-         * @param {number} options.minVisits
-         * @param {number} options.limit
-         */
-        async fetchMapPlaces(options = {}) {
-            this.mapPlacesLoading = true
-            this.error = null
+    clearSearchResults() {
+      this.searchResults = []
+    },
 
-            try {
-                const params = {
-                    minVisits: options.minVisits ?? 1,
-                    limit: options.limit ?? 3000
-                }
+    async fetchAllCities() {
+      this.citiesLoading = true
+      this.error = null
+      try {
+        this.cities = await apiService.get('/location-analytics/cities')
+        return this.cities
+      } catch (error) {
+        throw this.fail(error, 'Failed to fetch cities')
+      } finally {
+        this.citiesLoading = false
+      }
+    },
 
-                if (options.from) params.from = options.from
-                if (options.to) params.to = options.to
-                if (typeof options.minLat === 'number') params.minLat = options.minLat
-                if (typeof options.maxLat === 'number') params.maxLat = options.maxLat
-                if (typeof options.minLon === 'number') params.minLon = options.minLon
-                if (typeof options.maxLon === 'number') params.maxLon = options.maxLon
+    async fetchCityDetails(cityName) {
+      this.loading = true
+      this.error = null
+      try {
+        this.cityDetails = await apiService.get(`/location-analytics/city/${encodeURIComponent(cityName)}`)
+        return this.cityDetails
+      } catch (error) {
+        throw this.fail(error, 'Failed to fetch city details')
+      } finally {
+        this.loading = false
+      }
+    },
 
-                const response = await apiService.get('/location-analytics/map/places', params)
-                this.mapPlaces = response.data || []
-                return response
-            } catch (error) {
-                console.error('Failed to fetch map places:', error)
-                this.error = error.message || 'Failed to fetch map places'
-                throw error
-            } finally {
-                this.mapPlacesLoading = false
-            }
-        },
+    async fetchCityVisits(cityName, page = 0, pageSize = 50, sortBy = 'timestamp', sortDirection = 'desc') {
+      return this.fetchVisits('city', cityName, page, pageSize, sortBy, sortDirection)
+    },
 
-        /**
-         * Clear search results
-         */
-        clearSearchResults() {
-            this.searchResults = []
-        },
+    async fetchAllCountries() {
+      this.countriesLoading = true
+      this.error = null
+      try {
+        this.countries = await apiService.get('/location-analytics/countries')
+        return this.countries
+      } catch (error) {
+        throw this.fail(error, 'Failed to fetch countries')
+      } finally {
+        this.countriesLoading = false
+      }
+    },
 
-        /**
-         * Fetch all cities with visit counts
-         */
-        async fetchAllCities() {
-            this.citiesLoading = true
-            this.error = null
+    async fetchCountryDetails(countryName) {
+      this.loading = true
+      this.error = null
+      try {
+        this.countryDetails = await apiService.get(`/location-analytics/country/${encodeURIComponent(countryName)}`)
+        return this.countryDetails
+      } catch (error) {
+        throw this.fail(error, 'Failed to fetch country details')
+      } finally {
+        this.loading = false
+      }
+    },
 
-            try {
-                const response = await apiService.get('/location-analytics/cities')
-                this.cities = response.data
-                return response
-            } catch (error) {
-                console.error('Failed to fetch cities:', error)
-                this.error = error.message || 'Failed to fetch cities'
-                throw error
-            } finally {
-                this.citiesLoading = false
-            }
-        },
+    async fetchCountryVisits(countryName, page = 0, pageSize = 50, sortBy = 'timestamp', sortDirection = 'desc') {
+      return this.fetchVisits('country', countryName, page, pageSize, sortBy, sortDirection)
+    },
 
-        /**
-         * Fetch detailed statistics for a specific city
-         * @param {string} cityName - City name
-         */
-        async fetchCityDetails(cityName) {
-            this.loading = true
-            this.error = null
-
-            try {
-                const response = await apiService.get(`/location-analytics/city/${encodeURIComponent(cityName)}`)
-                this.cityDetails = response.data
-                return response
-            } catch (error) {
-                console.error('Failed to fetch city details:', error)
-                this.error = error.message || 'Failed to fetch city details'
-                throw error
-            } finally {
-                this.loading = false
-            }
-        },
-
-        /**
-         * Fetch paginated visits for a city
-         * @param {string} cityName - City name
-         * @param {number} page - Zero-based page number
-         * @param {number} pageSize - Number of items per page
-         * @param {string} sortBy - Sort field (default: "timestamp")
-         * @param {string} sortDirection - Sort direction ("asc" or "desc", default: "desc")
-         */
-        async fetchCityVisits(cityName, page = 0, pageSize = 50, sortBy = 'timestamp', sortDirection = 'desc') {
-            this.loading = true
-            this.error = null
-
-            try {
-                const response = await apiService.get(`/location-analytics/city/${encodeURIComponent(cityName)}/visits`, {
-                    page,
-                    size: pageSize,
-                    sortBy,
-                    sortDirection
-                })
-
-                this.cityVisits = response.data.visits || []
-                this.cityPagination = {
-                    currentPage: response.data.currentPage || 0,
-                    pageSize: response.data.pageSize || 50,
-                    totalCount: response.data.totalCount || 0,
-                    totalPages: response.data.totalPages || 0
-                }
-
-                return response
-            } catch (error) {
-                console.error('Failed to fetch city visits:', error)
-                this.error = error.message || 'Failed to fetch city visits'
-                throw error
-            } finally {
-                this.loading = false
-            }
-        },
-
-        /**
-         * Clear city data
-         */
-        clearCityData() {
-            this.cityDetails = null
-            this.cityVisits = []
-            this.cityPagination = {
-                currentPage: 0,
-                pageSize: 50,
-                totalCount: 0,
-                totalPages: 0
-            }
-        },
-
-        /**
-         * Fetch all countries with visit counts
-         */
-        async fetchAllCountries() {
-            this.countriesLoading = true
-            this.error = null
-
-            try {
-                const response = await apiService.get('/location-analytics/countries')
-                this.countries = response.data
-                return response
-            } catch (error) {
-                console.error('Failed to fetch countries:', error)
-                this.error = error.message || 'Failed to fetch countries'
-                throw error
-            } finally {
-                this.countriesLoading = false
-            }
-        },
-
-        /**
-         * Fetch detailed statistics for a specific country
-         * @param {string} countryName - Country name
-         */
-        async fetchCountryDetails(countryName) {
-            this.loading = true
-            this.error = null
-
-            try {
-                const response = await apiService.get(`/location-analytics/country/${encodeURIComponent(countryName)}`)
-                this.countryDetails = response.data
-                return response
-            } catch (error) {
-                console.error('Failed to fetch country details:', error)
-                this.error = error.message || 'Failed to fetch country details'
-                throw error
-            } finally {
-                this.loading = false
-            }
-        },
-
-        /**
-         * Fetch paginated visits for a country
-         * @param {string} countryName - Country name
-         * @param {number} page - Zero-based page number
-         * @param {number} pageSize - Number of items per page
-         * @param {string} sortBy - Sort field (default: "timestamp")
-         * @param {string} sortDirection - Sort direction ("asc" or "desc", default: "desc")
-         */
-        async fetchCountryVisits(countryName, page = 0, pageSize = 50, sortBy = 'timestamp', sortDirection = 'desc') {
-            this.loading = true
-            this.error = null
-
-            try {
-                const response = await apiService.get(`/location-analytics/country/${encodeURIComponent(countryName)}/visits`, {
-                    page,
-                    size: pageSize,
-                    sortBy,
-                    sortDirection
-                })
-
-                this.countryVisits = response.data.visits || []
-                this.countryPagination = {
-                    currentPage: response.data.currentPage || 0,
-                    pageSize: response.data.pageSize || 50,
-                    totalCount: response.data.totalCount || 0,
-                    totalPages: response.data.totalPages || 0
-                }
-
-                return response
-            } catch (error) {
-                console.error('Failed to fetch country visits:', error)
-                this.error = error.message || 'Failed to fetch country visits'
-                throw error
-            } finally {
-                this.loading = false
-            }
-        },
-
-        /**
-         * Clear country data
-         */
-        clearCountryData() {
-            this.countryDetails = null
-            this.countryVisits = []
-            this.countryPagination = {
-                currentPage: 0,
-                pageSize: 50,
-                totalCount: 0,
-                totalPages: 0
-            }
-        },
-
-        /**
-         * Clear all data
-         */
-        clearAllData() {
-            this.searchResults = []
-            this.mapPlaces = []
-            this.cities = []
-            this.countries = []
-            this.clearCityData()
-            this.clearCountryData()
-            this.error = null
+    async fetchVisits(kind, name, page, pageSize, sortBy, sortDirection) {
+      this.loading = true
+      this.error = null
+      try {
+        const data = await apiService.get(`/location-analytics/${kind}/${encodeURIComponent(name)}/visits`, {
+          page, size: pageSize, sortBy, sortDirection
+        })
+        this[`${kind}Visits`] = data.items || []
+        this[`${kind}Pagination`] = {
+          currentPage: data.page ?? 0,
+          pageSize: data.size ?? 50,
+          totalCount: data.totalElements ?? 0,
+          totalPages: data.totalPages ?? 0
         }
+        return data
+      } catch (error) {
+        throw this.fail(error, `Failed to fetch ${kind} visits`)
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async exportVisits(kind, name, sortBy = 'timestamp', sortDirection = 'desc') {
+      try {
+        return await apiService.download(
+          `/location-analytics/${kind}/${encodeURIComponent(name)}/visits/export`,
+          { sortBy, sortDirection }
+        )
+      } catch (error) {
+        throw this.fail(error, 'Failed to export visits')
+      }
+    },
+
+    clearCityData() {
+      this.cityDetails = null
+      this.cityVisits = []
+      this.cityPagination = emptyPage()
+    },
+
+    clearCountryData() {
+      this.countryDetails = null
+      this.countryVisits = []
+      this.countryPagination = emptyPage()
+    },
+
+    clearAllData() {
+      this.searchResults = []
+      this.mapPlaces = []
+      this.cities = []
+      this.countries = []
+      this.clearCityData()
+      this.clearCountryData()
+      this.error = null
     }
+  }
 })

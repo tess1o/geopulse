@@ -26,7 +26,6 @@ import org.github.tess1o.geopulse.admin.model.*;
                 TestOidcProviderResponse.class,
                 UpdateOidcProviderRequest.class,
                 UserDetailsResponse.class,
-                PagedResponse.class,
                 ResetPasswordResponse.class,
                 UpdateSettingRequest.class,
                 UpdateUserStatusRequest.class,

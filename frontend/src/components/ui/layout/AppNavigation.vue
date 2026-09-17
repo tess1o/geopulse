@@ -124,8 +124,8 @@ import { useThemeMode } from '@/composables/useThemeMode'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useVersionStore } from '@/stores/version'
 import { useErrorHandler } from '@/composables/useErrorHandler'
-import apiService from '@/utils/apiService'
 import { isMaintenanceInterruption } from '@/stores/maintenance'
 
 const props = defineProps({
@@ -143,6 +143,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const friendsStore = useFriendsStore()
 const notificationsStore = useNotificationsStore()
+const versionStore = useVersionStore()
 const { handleError } = useErrorHandler()
 const { themeMode, themeModes } = useThemeMode()
 
@@ -313,7 +314,7 @@ const handleLogout = async () => {
 // Version fetching
 const fetchVersionStatus = async () => {
   try {
-    const response = await apiService.get('/version/status')
+    const response = await versionStore.fetchStatus()
     appVersion.value = response.currentVersion || response.version || 'Unknown'
     latestVersion.value = response.latestVersion || ''
     updateAvailable.value = response.updateAvailable === true
@@ -325,7 +326,7 @@ const fetchVersionStatus = async () => {
     releaseUrl.value = DEFAULT_RELEASE_URL
 
     try {
-      const response = await apiService.get('/version')
+      const response = await versionStore.fetchVersion()
       appVersion.value = response.version || 'Unknown'
     } catch (fallbackError) {
       console.warn('Failed to fetch app version fallback:', fallbackError)

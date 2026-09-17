@@ -35,8 +35,8 @@ test.describe('Health Check', () => {
     
     // Should contain health status
     const body = await response.json();
-    expect(body.status).toBe('success');
-    expect(body.data.status).toBe('UP');
+    expect(body.status).toBe('UP');
+    expect(body.database).toBe('UP');
   });
 
   test('should show login form', async ({ page }) => {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingTripResolutionDTO;
+import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionStatus;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
@@ -87,7 +88,7 @@ class MapMatchingServiceFailureHandlingTest {
 
         MapMatchingTripResolutionDTO result = service.status(userId, List.of(2306L)).getFirst();
 
-        assertThat(result.getStatus()).isEqualTo("FAILED");
+        assertThat(result.getStatus()).isEqualTo(MapMatchingResolutionStatus.FAILED);
         assertThat(result.getRetryAt()).isNull();
         assertThat(result.getPollAfterMs()).isZero();
         assertThat(result.getSegments()).isNull();
@@ -136,7 +137,7 @@ class MapMatchingServiceFailureHandlingTest {
 
         assertThat(result.getTripId()).isEqualTo(9001L);
         assertThat(result.getTargetId()).isEqualTo(4400L);
-        assertThat(result.getStatus()).isEqualTo("COMPLETED");
+        assertThat(result.getStatus()).isEqualTo(MapMatchingResolutionStatus.COMPLETED);
         verify(matchRepository).attachToTrip(existing, regeneratedTrip, org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource.ON_DEMAND);
         verify(matchRepository, never()).enqueueIfMissing(any(), any(), anyString(), anyString(), anyString(), anyString(), any());
         verifyNoInteractions(valhallaProvider);

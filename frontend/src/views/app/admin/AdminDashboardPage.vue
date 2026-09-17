@@ -251,8 +251,9 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 
+const adminService = useAdminStore()
 const router = useRouter()
 
 const breadcrumbHome = ref({
@@ -350,7 +351,11 @@ const weatherNextAction = computed(() => {
 })
 
 const health = computed(() => stats.value.health || {})
-const securityWarnings = computed(() => health.value.security?.warnings || [])
+const SECURITY_WARNING_MESSAGES = {
+  SCHEDULED_BACKUPS_DISABLED: 'Scheduled backups are disabled'
+}
+const securityWarnings = computed(() => (health.value.security?.warnings || [])
+  .map(code => SECURITY_WARNING_MESSAGES[code] || code))
 const geocodingHealth = computed(() => health.value.geocoding || { status: 'UNKNOWN', providers: [] })
 const mapMatchingHealth = computed(() => health.value.mapMatching || {})
 const mapMatchingProviderHealth = computed(() => mapMatchingHealth.value.providerHealth || null)

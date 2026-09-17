@@ -39,6 +39,7 @@
         <oauth2-oidc-sdk.version>11.37</oauth2-oidc-sdk.version>
         <bouncycastle.version>1.85.2</bouncycastle.version>
         <quarkus-mcp-server.version>2.0.0</quarkus-mcp-server.version>
+        <quarkus-http-problem.version>3.33.1</quarkus-http-problem.version>
         <pdfbox.version>3.0.8</pdfbox.version>
     </properties>
     <dependencyManagement>
@@ -91,6 +92,11 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.httpproblem</groupId>
+            <artifactId>quarkus-http-problem</artifactId>
+            <version>${quarkus-http-problem.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>

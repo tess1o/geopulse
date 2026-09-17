@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import timelineService from '@/services/timelineService'
+import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 
@@ -146,15 +147,17 @@ export const useFriendsTimelineStore = defineStore('friendsTimeline', {
             this.error = null
 
             try {
-                const response = await timelineService.getMultiUserTimeline(startTime, endTime, userIds)
+                const params = { startTime, endTime }
+                if (userIds?.length) params.userIds = userIds.join(',')
+                const timeline = await apiService.get('/streaming-timeline/multi-user', params)
 
-                this.multiUserTimeline = response.data
+                this.multiUserTimeline = timeline
                 this.dateRange = { start: startTime, end: endTime }
 
                 // Initialize color map
                 this.userColorMap.clear()
-                if (response.data.timelines) {
-                    response.data.timelines.forEach(userTimeline => {
+                if (timeline.timelines) {
+                    timeline.timelines.forEach(userTimeline => {
                         this.userColorMap.set(userTimeline.userId, userTimeline.assignedColor)
                     })
                 }
@@ -162,12 +165,11 @@ export const useFriendsTimelineStore = defineStore('friendsTimeline', {
                 // Auto-select all available users by default
                 this.selectAllUsers()
 
-                return response.data
+                return timeline
 
             } catch (error) {
-                this.error = error.message || 'Failed to fetch multi-user timeline'
-                console.error('Error fetching multi-user timeline:', error)
-                throw error
+                this.error = normalizeApiError(error, 'Failed to fetch multi-user timeline')
+                throw this.error
             } finally {
                 this.isLoading = false
             }

@@ -132,7 +132,8 @@ import Toast from 'primevue/toast'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
 const router = useRouter()
 const route = useRoute()
@@ -229,9 +230,9 @@ const timezones = ref([
 const validateInvitation = async () => {
   validating.value = true
   try {
-    const response = await apiService.get(`/auth/invitation/${token.value}/validate`)
+    const response = await authStore.validateInvitation(token.value)
     invitationValid.value = response.valid
-    validationMessage.value = response.message || 'This invitation is not valid'
+    validationMessage.value = formatMessageDescriptor(response.message) || 'This invitation is not valid'
   } catch (error) {
     console.error('Failed to validate invitation:', error)
     invitationValid.value = false
@@ -293,7 +294,7 @@ const handleSubmit = async () => {
     }
 
     // Register user via invitation
-    await apiService.post('/auth/invitation/register', payload)
+    await authStore.registerInvitation(payload)
 
     // Log in the user automatically after successful registration
     await authStore.login(form.value.email, form.value.password)
@@ -310,7 +311,7 @@ const handleSubmit = async () => {
 
   } catch (error) {
     console.error('Registration failed:', error)
-    errorMessage.value = error.response?.data?.error || 'Registration failed. Please try again.'
+    errorMessage.value = formatApiErrorDetail(error, 'Registration failed. Please try again.')
   } finally {
     submitting.value = false
   }

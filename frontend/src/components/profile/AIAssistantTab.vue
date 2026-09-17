@@ -93,8 +93,8 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
-import apiService from '@/utils/apiService'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
+import { useAIStore } from '@/stores/ai'
 
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
@@ -113,6 +113,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save', 'dirty-change'])
+const aiStore = useAIStore()
 const loading = ref(false)
 const modelsLoading = ref(false)
 const testConnectionLoading = ref(false)
@@ -143,7 +144,7 @@ const fetchModels = async () => {
   modelsLoading.value = true
   testConnectionStatus.value = null
   try {
-    openaiModels.value = await apiService.post('/ai/test-connection', {
+    openaiModels.value = await aiStore.testConnection({
       openaiApiUrl: form.value.openaiApiUrl,
       openaiApiKey: form.value.openaiApiKey,
       isApiKeyNeeded: form.value.apiKeyRequired
@@ -196,7 +197,7 @@ const loadSettings = async () => {
   apiKeyConfigured.value = props.initialSettings.openaiApiKeyConfigured === true
   if (!form.value.customSystemMessage) {
     try {
-      const response = await apiService.get('/ai/default-system-message')
+      const response = await aiStore.fetchDefaultSystemMessage()
       form.value.customSystemMessage = response.message
     } catch (error) {
       console.error('Failed to load default system message:', error)

@@ -3,703 +3,337 @@ package org.github.tess1o.geopulse.streaming.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.api.JobResponse;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayConversionPreviewDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideRequest;
-import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
-import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
+import org.github.tess1o.geopulse.streaming.model.dto.DataGapStayOverrideResponseDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.LocationLookupResponseDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
+import org.github.tess1o.geopulse.streaming.model.dto.TripClassificationDetailsDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
+import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateResponseDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
+import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
-import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
-import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
+import org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService;
 import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
 import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
-import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-/**
- * REST API resource for the new streaming timeline algorithm.
- * Provides parallel endpoints to the existing timeline API for easy frontend switching
- * while maintaining identical request/response formats.
- */
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DATA_GAP_OVERRIDE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_LOCATION_LOOKUP;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_JOB_ID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ALREADY_ACTIVE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
+
 @Path("/api/streaming-timeline")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Slf4j
+@RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
 @Tag(name = "User: Timeline", description = "Read timelines and manage timeline generation, jobs, and overrides.")
 public class StreamingTimelineResource {
 
-    @Inject
-    StreamingTimelineAggregator streamingTimelineAggregator;
-
-    @Inject
-    CurrentUserService currentUserService;
-
-    @Inject
-    TimelineConfigurationProvider configurationProvider;
-
-    @Inject
-    TimelineJobProgressService jobProgressService;
-
-    @Inject
-    AsyncTimelineGenerationService asyncTimelineGenerationService;
-
-    @Inject
-    org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
-
-    @Inject
-    org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService tripClassificationDetailsService;
-
-    @Inject
-    TripMovementTypeOverrideService tripMovementTypeOverrideService;
-
-    @Inject
-    DataGapStayOverrideService dataGapStayOverrideService;
-
-    @Inject
-    TripStaySplitOverrideService tripStaySplitOverrideService;
-
-    @Inject
-    StreamingTimelineGenerationService timelineGenerationService;
-
-    @Inject
-    MultiUserTimelineService multiUserTimelineService;
-
-    @Inject
-    TimelineLocationLookupService timelineLocationLookupService;
+    @Inject StreamingTimelineAggregator streamingTimelineAggregator;
+    @Inject CurrentUserService currentUserService;
+    @Inject TimelineConfigurationProvider configurationProvider;
+    @Inject TimelineJobProgressService jobProgressService;
+    @Inject AsyncTimelineGenerationService asyncTimelineGenerationService;
+    @Inject org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
+    @Inject TripClassificationDetailsService tripClassificationDetailsService;
+    @Inject TripMovementTypeOverrideService tripMovementTypeOverrideService;
+    @Inject DataGapStayOverrideService dataGapStayOverrideService;
+    @Inject TripStaySplitOverrideService tripStaySplitOverrideService;
+    @Inject StreamingTimelineGenerationService timelineGenerationService;
+    @Inject MultiUserTimelineService multiUserTimelineService;
+    @Inject TimelineLocationLookupService timelineLocationLookupService;
 
     @GET
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getTimeline(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Streaming timeline request from user {} for period {} to {}", userId, startTime, endTime);
-
-        try {
-            // Parse the time parameters
-            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
-            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
-
-            // Validate time range
-            if (start.isAfter(end)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Start time must be before end time"))
-                        .build();
-            }
-
-            MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, start, end);
-
-            log.info("Streaming timeline generated for user {}: {} stays, {} trips, {} gaps",
-                    userId, timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
-
-            return Response.ok(ApiResponse.success(timeline)).build();
-
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid time format in request from user {}: {}", userId, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to generate streaming timeline for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate timeline: " + e.getMessage()))
-                    .build();
-        }
+    public MovementTimelineDTO getTimeline(@QueryParam("startTime") String startTime,
+                                           @QueryParam("endTime") String endTime) {
+        TimeRange range = parseTimeRange(startTime, endTime);
+        return streamingTimelineAggregator.getTimelineFromDb(
+                currentUserService.getCurrentUserId(), range.start(), range.end());
     }
 
-    /**
-     * Check whether the current user has recorded stays at a map-selected
-     * coordinate. The matching radius is intentionally fixed by the backend
-     * so all clients get the same recall behavior.
-     */
     @GET
     @Path("/location-lookup")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response lookupLocation(@QueryParam("latitude") Double latitude,
-                                   @QueryParam("longitude") Double longitude) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public LocationLookupResponseDTO lookupLocation(@QueryParam("latitude") Double latitude,
+                                                    @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("latitude and longitude are required"))
-                    .build();
+            throw problem(INVALID_LOCATION_LOOKUP, "latitude and longitude are required");
         }
-
         try {
-            return Response.ok(ApiResponse.success(
-                    timelineLocationLookupService.lookup(userId, latitude, longitude)
-            )).build();
+            return timelineLocationLookupService.lookup(
+                    currentUserService.getCurrentUserId(), latitude, longitude);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to lookup timeline stays near {},{} for user {}", latitude, longitude, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to lookup visits near this location"))
-                    .build();
+            throw problem(INVALID_LOCATION_LOOKUP, detail(e, "Invalid location"),
+                    Map.of("latitude", latitude, "longitude", longitude));
         }
     }
 
-    /**
-     * Get timeline item counts for a given time range without fetching full data.
-     * This endpoint is used by the frontend to check if the dataset is too large for Timeline page
-     * and guide users to Timeline Reports for large datasets.
-     *
-     * @param startTime Start time in ISO-8601 format
-     * @param endTime End time in ISO-8601 format
-     * @return Count of stays, trips, data gaps, total items, and the configured limit
-     */
     @GET
     @Path("/count")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getTimelineCount(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.debug("Timeline count request from user {} for period {} to {}", userId, startTime, endTime);
-
-        try {
-            // Parse the time parameters
-            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
-            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
-
-            // Validate time range
-            if (start.isAfter(end)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Start time must be before end time"))
-                        .build();
-            }
-
-            // Get counts from aggregator
-            Map<String, Long> counts = streamingTimelineAggregator.getTimelineItemCounts(userId, start, end);
-
-            // Add the configured limit to the response
-            counts.put("limit", timelineConfigurationProperties.getViewItemLimit().longValue());
-
-            log.debug("Timeline counts for user {}: {}", userId, counts);
-
-            return Response.ok(ApiResponse.success(counts)).build();
-
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid time format in count request from user {}: {}", userId, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to get timeline counts for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get timeline counts: " + e.getMessage()))
-                    .build();
-        }
+    public TimelineCountResponse getTimelineCount(@QueryParam("startTime") String startTime,
+                                                  @QueryParam("endTime") String endTime) {
+        TimeRange range = parseTimeRange(startTime, endTime);
+        Map<String, Long> counts = streamingTimelineAggregator.getTimelineItemCounts(
+                currentUserService.getCurrentUserId(), range.start(), range.end());
+        return new TimelineCountResponse(
+                counts.getOrDefault("stays", 0L),
+                counts.getOrDefault("trips", 0L),
+                counts.getOrDefault("dataGaps", 0L),
+                counts.getOrDefault("totalItems", 0L),
+                timelineConfigurationProperties.getViewItemLimit().longValue());
     }
 
-    /**
-     * Get the user's current timeline preferences/configuration.
-     * This mirrors the existing preferences endpoint for consistency.
-     *
-     * @return The user's effective timeline configuration
-     */
     @GET
     @Path("/user/preferences")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getUserPreferences() {
-        UUID userId = currentUserService.getCurrentUserId();
-
-        try {
-            TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
-            return Response.ok(config).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get timeline preferences for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get preferences: " + e.getMessage()))
-                    .build();
-        }
+    public TimelineConfig getUserPreferences() {
+        return configurationProvider.getConfigurationForUser(currentUserService.getCurrentUserId());
     }
 
-    /**
-     * Get detailed classification information for a specific trip.
-     * Provides comprehensive explanation of why a trip was classified as a specific transport type,
-     * including GPS statistics, configuration thresholds, and step-by-step decision trace.
-     *
-     * @param tripId ID of the trip to explain
-     * @return Trip classification details with explanation
-     */
     @GET
     @Path("/trips/{tripId}/classification")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getTripClassificationDetails(@PathParam("tripId") Long tripId) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.debug("Trip classification details requested for trip {} by user {}", tripId, userId);
-
-        try {
-            var details = tripClassificationDetailsService.getTripClassificationDetails(tripId, userId);
-
-            if (details.isEmpty()) {
-                log.warn("Trip {} not found or access denied for user {}", tripId, userId);
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip not found or access denied"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(details.get())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get classification details for trip {} and user {}", tripId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get classification details: " + e.getMessage()))
-                    .build();
-        }
+    public TripClassificationDetailsDTO getTripClassificationDetails(@PathParam("tripId") Long tripId) {
+        return tripClassificationDetailsService
+                .getTripClassificationDetails(tripId, currentUserService.getCurrentUserId())
+                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                        Map.of("tripId", tripId)));
     }
 
     @PUT
     @Path("/trips/{tripId}/movement-type")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response updateTripMovementType(@PathParam("tripId") Long tripId, TripMovementTypeUpdateRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public TripMovementTypeUpdateResponseDTO updateTripMovementType(
+            @PathParam("tripId") Long tripId, TripMovementTypeUpdateRequest request) {
         if (request == null || request.getMovementType() == null || request.getMovementType().isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("movementType is required"))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, "movementType is required");
         }
-
-        final TripType movementType;
+        TripType movementType;
         try {
             movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid movementType. Allowed values: " +
-                            Arrays.stream(TripType.values()).map(Enum::name).collect(Collectors.joining(", "))))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, "Invalid movementType",
+                    Map.of("movementType", request.getMovementType(), "allowedValues",
+                            String.join(",", Arrays.stream(TripType.values()).map(Enum::name).toList())));
         }
-
-        try {
-            var result = tripMovementTypeOverrideService.setManualMovementType(userId, tripId, movementType);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
-        } catch (Exception e) {
-            log.error("Failed to set manual movement type for trip {} and user {}", tripId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update movement type: " + e.getMessage()))
-                    .build();
-        }
+        return tripMovementTypeOverrideService
+                .setManualMovementType(currentUserService.getCurrentUserId(), tripId, movementType)
+                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                        Map.of("tripId", tripId)));
     }
 
     @DELETE
     @Path("/trips/{tripId}/movement-type")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response resetTripMovementType(@PathParam("tripId") Long tripId) {
-        UUID userId = currentUserService.getCurrentUserId();
-
-        try {
-            var result = tripMovementTypeOverrideService.resetToAutomaticMovementType(userId, tripId);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
-        } catch (Exception e) {
-            log.error("Failed to reset movement type for trip {} and user {}", tripId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to reset movement type: " + e.getMessage()))
-                    .build();
-        }
+    public TripMovementTypeUpdateResponseDTO resetTripMovementType(@PathParam("tripId") Long tripId) {
+        return tripMovementTypeOverrideService
+                .resetToAutomaticMovementType(currentUserService.getCurrentUserId(), tripId)
+                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                        Map.of("tripId", tripId)));
     }
 
     @POST
     @Path("/trips/{tripId}/stay-split/preview")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response previewTripStaySplit(@PathParam("tripId") Long tripId, TripStaySplitRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public TripStaySplitResponse previewTripStaySplit(
+            @PathParam("tripId") Long tripId, TripStaySplitRequest request) {
         try {
-            var result = tripStaySplitOverrideService.previewSplit(userId, tripId, request);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
+            return tripStaySplitOverrideService
+                    .previewSplit(currentUserService.getCurrentUserId(), tripId, request)
+                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                            Map.of("tripId", tripId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to preview Trip -> Stay -> Trip split for trip {} and user {}", tripId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to preview trip split: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
         }
     }
 
     @PUT
     @Path("/trips/{tripId}/stay-split")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response splitTripWithStay(@PathParam("tripId") Long tripId, TripStaySplitRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public TripStaySplitResponse splitTripWithStay(
+            @PathParam("tripId") Long tripId, TripStaySplitRequest request) {
         try {
-            var result = tripStaySplitOverrideService.splitTrip(userId, tripId, request);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
+            return tripStaySplitOverrideService
+                    .splitTrip(currentUserService.getCurrentUserId(), tripId, request)
+                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                            Map.of("tripId", tripId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to split trip {} with stay for user {}", tripId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to split trip: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
         }
     }
 
     @DELETE
     @Path("/trip-stay-split-overrides/{overrideId}")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
-        UUID userId = currentUserService.getCurrentUserId();
-
-        try {
-            var result = timelineGenerationService.resetTripStaySplitOverride(userId, overrideId);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Trip split override not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
-        } catch (Exception e) {
-            log.error("Failed to reset Trip -> Stay -> Trip override {} for user {}", overrideId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to reset trip split override: " + e.getMessage()))
-                    .build();
-        }
+    public TripStaySplitResponse resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
+        return timelineGenerationService
+                .resetTripStaySplitOverride(currentUserService.getCurrentUserId(), overrideId)
+                .orElseThrow(() -> problem(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
+                        "Trip split override not found or access denied", Map.of("overrideId", overrideId)));
     }
 
     @GET
     @Path("/data-gaps/{gapId}/stay-conversion-preview")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getDataGapStayConversionPreview(@PathParam("gapId") Long gapId) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public DataGapStayConversionPreviewDTO getDataGapStayConversionPreview(@PathParam("gapId") Long gapId) {
         try {
-            Optional<DataGapStayConversionPreviewDTO> preview =
-                    dataGapStayOverrideService.previewLatestPointConversion(userId, gapId);
-            if (preview.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Data gap not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(preview.get())).build();
+            return dataGapStayOverrideService
+                    .previewLatestPointConversion(currentUserService.getCurrentUserId(), gapId)
+                    .orElseThrow(() -> problem(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
+                            Map.of("gapId", gapId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to build Data Gap -> Stay conversion preview for gap {} and user {}", gapId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to build conversion preview: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid data gap conversion request"));
         }
     }
 
     @PUT
     @Path("/data-gaps/{gapId}/stay-conversion")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response convertDataGapToStay(@PathParam("gapId") Long gapId, DataGapStayOverrideRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public DataGapStayOverrideResponseDTO convertDataGapToStay(
+            @PathParam("gapId") Long gapId, DataGapStayOverrideRequest request) {
         try {
-            var result = dataGapStayOverrideService.convertGapToStay(userId, gapId, request);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Data gap not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
+            return dataGapStayOverrideService
+                    .convertGapToStay(currentUserService.getCurrentUserId(), gapId, request)
+                    .orElseThrow(() -> problem(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
+                            Map.of("gapId", gapId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to convert data gap {} to stay for user {}", gapId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to convert data gap to stay: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid data gap conversion request"));
         }
     }
 
     @DELETE
     @Path("/data-gap-overrides/{overrideId}/stay-conversion")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response resetDataGapStayOverride(@PathParam("overrideId") Long overrideId) {
-        UUID userId = currentUserService.getCurrentUserId();
-
-        try {
-            var result = timelineGenerationService.resetDataGapStayOverride(userId, overrideId);
-            if (result.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Data gap override not found or access denied"))
-                        .build();
-            }
-            return Response.ok(ApiResponse.success(result.get())).build();
-        } catch (Exception e) {
-            log.error("Failed to reset Data Gap -> Stay override {} for user {}", overrideId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to reset data gap stay override: " + e.getMessage()))
-                    .build();
-        }
+    public DataGapStayOverrideResponseDTO resetDataGapStayOverride(@PathParam("overrideId") Long overrideId) {
+        return timelineGenerationService
+                .resetDataGapStayOverride(currentUserService.getCurrentUserId(), overrideId)
+                .orElseThrow(() -> problem(DATA_GAP_OVERRIDE_NOT_FOUND,
+                        "Data gap override not found or access denied", Map.of("overrideId", overrideId)));
     }
 
-    /**
-     * Get timelines for multiple users (friends) with color assignments.
-     * Returns timeline data for the requesting user and all friends who have granted timeline permission.
-     *
-     * @param startTime Start time in ISO-8601 format
-     * @param endTime End time in ISO-8601 format
-     * @param userIds Optional comma-separated list of user IDs to fetch (if not provided, fetches all friends with permission)
-     * @return Multi-user timeline with color-coded data
-     */
     @GET
     @Path("/multi-user")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getMultiUserTimeline(
+    public MultiUserTimelineDTO getMultiUserTimeline(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
-            @QueryParam("userIds") String userIds
-    ) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Multi-user timeline request from user {} for period {} to {}", userId, startTime, endTime);
-
+            @QueryParam("userIds") String userIds) {
+        TimeRange range = parseTimeRange(startTime, endTime);
         try {
-            // Parse the time parameters
-            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
-            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
-
-            // Validate time range
-            if (start.isAfter(end)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Start time must be before end time"))
-                        .build();
-            }
-
-            // Parse optional user IDs
-            List<UUID> userIdList = null;
-            if (userIds != null && !userIds.trim().isEmpty()) {
-                try {
-                    userIdList = Arrays.stream(userIds.split(","))
-                            .map(String::trim)
-                            .map(UUID::fromString)
-                            .collect(Collectors.toList());
-                } catch (IllegalArgumentException e) {
-                    log.warn("Invalid user ID format in multi-user request: {}", userIds, e);
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid user ID format"))
-                            .build();
-                }
-            }
-
-            // Fetch multi-user timeline
-            MultiUserTimelineDTO multiTimeline = multiUserTimelineService.getMultiUserTimeline(
-                    userId,
-                    start,
-                    end,
-                    userIdList
-            );
-
-            log.info("Multi-user timeline generated for user {}: {} users included",
-                    userId, multiTimeline.getTimelines().size());
-
-            return Response.ok(ApiResponse.success(multiTimeline)).build();
-
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid time format in multi-user request from user {}: {}", userId, e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
-
+            return multiUserTimelineService.getMultiUserTimeline(
+                    currentUserService.getCurrentUserId(), range.start(), range.end(), parseUserIds(userIds));
         } catch (jakarta.ws.rs.ForbiddenException e) {
-            log.warn("Forbidden access in multi-user timeline request: {}", e.getMessage());
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to generate multi-user timeline for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate multi-user timeline: " + e.getMessage()))
-                    .build();
+            throw problem(ACCESS_DENIED, detail(e, "Access denied"));
         }
     }
 
-    /**
-     * Regenerate the complete timeline for the current user using streaming algorithm.
-     * This operation will clear all existing timeline data and regenerate it from scratch
-     * based on all available GPS data and current timeline preferences.
-     * <p>
-     * The regeneration runs asynchronously, returning a job ID immediately for progress tracking.
-     *
-     * @return Job ID for tracking progress
-     */
     @POST
     @Path("/regenerate-all")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response regenerateAllTimeline() {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Full streaming timeline regeneration requested by user {}", userId);
-
+    public JobResponse regenerateAllTimeline() {
         try {
-            // Start the regeneration asynchronously and get job ID immediately
-            UUID jobId = asyncTimelineGenerationService.regenerateTimelineAsync(userId);
-
-            log.info("Timeline regeneration job {} created for user {}", jobId, userId);
-
-            return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
-
+            return new JobResponse(asyncTimelineGenerationService
+                    .regenerateTimelineAsync(currentUserService.getCurrentUserId()));
         } catch (IllegalStateException e) {
-            // User already has an active job
-            log.warn("Timeline regeneration rejected for user {}: {}", userId, e.getMessage());
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to start timeline regeneration for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to start timeline regeneration: " + e.getMessage()))
-                    .build();
+            throw problem(TIMELINE_JOB_ALREADY_ACTIVE, detail(e, "A timeline job is already active"));
         }
     }
 
-    /**
-     * Get the progress of a specific timeline generation job
-     *
-     * @param jobId The job ID
-     * @return Job progress information
-     */
     @GET
     @Path("/jobs/{jobId}")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getJobProgress(@PathParam("jobId") String jobId) {
-        UUID userId = currentUserService.getCurrentUserId();
-
+    public TimelineJobProgress getJobProgress(@PathParam("jobId") String jobId) {
+        UUID jobUuid;
         try {
-            UUID jobUuid = UUID.fromString(jobId);
-            var jobProgress = jobProgressService.getJobProgress(jobUuid);
-
-            if (jobProgress.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Job not found"))
-                        .build();
-            }
-
-            // Verify the job belongs to the current user
-            if (!jobProgress.get().getUserId().equals(userId)) {
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity(ApiResponse.error("Access denied"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(jobProgress.get())).build();
-
+            jobUuid = UUID.fromString(jobId);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid job ID format"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get job progress for job {}", jobId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get job progress: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_TIMELINE_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId));
         }
+        TimelineJobProgress progress = jobProgressService.getJobProgress(jobUuid)
+                .orElseThrow(() -> problem(TIMELINE_JOB_NOT_FOUND, "Timeline job not found",
+                        Map.of("jobId", jobId)));
+        if (!progress.getUserId().equals(currentUserService.getCurrentUserId())) {
+            throw problem(TIMELINE_JOB_ACCESS_DENIED, "Access denied");
+        }
+        return progress;
     }
 
-    /**
-     * Get the active timeline generation job for the current user, if any
-     *
-     * @return Active job information or empty if no active job
-     */
     @GET
     @Path("/jobs/active")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getActiveJob() {
-        UUID userId = currentUserService.getCurrentUserId();
+    public RestResponse<TimelineJobProgress> getActiveJob() {
+        return jobProgressService.getUserActiveJob(currentUserService.getCurrentUserId())
+                .map(RestResponse::ok)
+                .orElseGet(RestResponse::noContent);
+    }
 
+    @GET
+    @Path("/jobs/history")
+    public List<TimelineJobProgress> getJobHistory() {
+        return jobProgressService.getUserHistoryJobs(currentUserService.getCurrentUserId());
+    }
+
+    private static TimeRange parseTimeRange(String startTime, String endTime) {
         try {
-            var activeJob = jobProgressService.getUserActiveJob(userId);
-
-            if (activeJob.isEmpty()) {
-                return Response.ok(ApiResponse.success(null)).build();
+            Instant start = startTime == null ? Instant.EPOCH : Instant.parse(startTime);
+            Instant end = endTime == null ? Instant.now() : Instant.parse(endTime);
+            if (start.isAfter(end)) {
+                throw problem(INVALID_TIMELINE_REQUEST, "Start time must be before end time");
             }
-
-            return Response.ok(ApiResponse.success(activeJob.get())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get active job for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get active job: " + e.getMessage()))
-                    .build();
+            return new TimeRange(start, end);
+        } catch (DateTimeParseException e) {
+            throw problem(INVALID_TIMELINE_REQUEST, "Invalid time format. Use ISO-8601 format");
         }
     }
 
-    /**
-     * Get the active timeline generation job for the current user, if any
-     *
-     * @return Active job information or empty if no active job
-     */
-    @GET
-    @Path("/jobs/history")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getJobHistory() {
-        UUID userId = currentUserService.getCurrentUserId();
-
-        try {
-            List<TimelineJobProgress> historyJobs = jobProgressService.getUserHistoryJobs(userId);
-
-            if (historyJobs == null || historyJobs.isEmpty()) {
-                return Response.ok(ApiResponse.success(null)).build();
-            }
-
-            return Response.ok(ApiResponse.success(historyJobs)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get history jobs for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get history jobs: " + e.getMessage()))
-                    .build();
+    private static List<UUID> parseUserIds(String userIds) {
+        if (userIds == null || userIds.isBlank()) {
+            return null;
         }
+        try {
+            return Arrays.stream(userIds.split(","))
+                    .map(String::trim)
+                    .map(UUID::fromString)
+                    .toList();
+        } catch (IllegalArgumentException e) {
+            throw problem(INVALID_TIMELINE_REQUEST, "Invalid user ID format");
+        }
+    }
+
+    private static String detail(Exception exception, String fallback) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? fallback
+                : exception.getMessage();
+    }
+
+    private record TimeRange(Instant start, Instant end) {
     }
 }

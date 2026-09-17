@@ -250,6 +250,8 @@
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useHomeStore } from '@/stores/home'
+import { storeToRefs } from 'pinia'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import TipOfDayCard from '@/components/common/TipOfDayCard.vue'
 import ExploreGeoPulsePanel from '@/components/home/ExploreGeoPulsePanel.vue'
@@ -265,6 +267,8 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const homeStore = useHomeStore()
+const { content: homeContent } = storeToRefs(homeStore)
 const DEFAULT_GITHUB_STARS_LABEL = '700+'
 const DEFAULT_GITHUB_FORKS_LABEL = '28+'
 const GITHUB_STATS_TIMEOUT_MS = 5000
@@ -294,7 +298,6 @@ const releaseUrl = ref(defaultReleaseNotesUrl)
 const mobileShowcaseTab = ref('features')
 const githubStars = ref(null)
 const githubForks = ref(null)
-const homeContent = ref({ tips: [], whatsNew: [] })
 const activeTipIndex = ref(0)
 
 const filteredTips = computed(() => filterTipsByAudience(homeContent.value?.tips || [], authStore.isAdmin))
@@ -443,18 +446,9 @@ const fetchVersionStatus = async () => {
 
 const fetchHomeContent = async () => {
   try {
-    const response = await fetch('/api/home/content')
-    if (!response.ok) {
-      throw new Error('Failed to fetch home content')
-    }
-
-    const payload = await response.json()
-    homeContent.value = {
-      tips: Array.isArray(payload?.tips) ? payload.tips : [],
-      whatsNew: Array.isArray(payload?.whatsNew) ? payload.whatsNew : [],
-    }
-  } catch (error) {
-    homeContent.value = { tips: [], whatsNew: [] }
+    await homeStore.fetchContent()
+  } catch {
+    // The store keeps the safe empty-content fallback.
   }
 }
 

@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
@@ -220,29 +221,33 @@ public class MapMatchingService {
                                                      MapMatchingSource source, boolean requireDisplayPreference,
                                                      Double maxAccuracy) {
         if (!configuration.isEnabled()) {
-            return status(trip.getId(), "UNAVAILABLE", null, null, null);
+            return status(trip.getId(), MapMatchingResolutionStatus.UNAVAILABLE, null, null, null);
         }
         if (!"valhalla".equals(configuration.provider()) || !configuration.valhallaConfigured()) {
-            return status(trip.getId(), "UNAVAILABLE", null, "Valhalla is not configured", null);
+            return status(trip.getId(), MapMatchingResolutionStatus.UNAVAILABLE, null,
+                    message("mapMatching.unavailable.providerNotConfigured", "Valhalla is not configured"), null);
         }
 
         if (requireDisplayPreference && (user == null
                 || !Boolean.TRUE.equals(user.getTimelineDisplayMapMatchingEnabled()))) {
-            return status(trip.getId(), "UNAVAILABLE", null, null, null);
+            return status(trip.getId(), MapMatchingResolutionStatus.UNAVAILABLE, null, null, null);
         }
         if (trip.getTripDuration() > Math.max(1, configuration.getMaxTripDurationHours()) * 3600L) {
-            return status(trip.getId(), "SKIPPED", null, "Trip exceeds configured map-matching duration limit", null);
+            return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
+                    message("mapMatching.skipped.durationLimit", "Trip exceeds configured map-matching duration limit"), null);
         }
 
         List<GpsPointEntity> points = loadEligiblePoints(userId, trip, maxAccuracy);
         if (points.size() < 2) {
-            return status(trip.getId(), "SKIPPED", null, "Trip has fewer than two eligible GPS points", null);
+            return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
+                    message("mapMatching.skipped.insufficientPoints", "Trip has fewer than two eligible GPS points"), null);
         }
 
         String profile = profileResolver.resolveProfile(trip.getMovementType());
         if (profile == null) {
-            return status(trip.getId(), "SKIPPED", null,
-                    "Movement type is not supported by road/path map matching", null);
+            return status(trip.getId(), MapMatchingResolutionStatus.SKIPPED, null,
+                    message("mapMatching.skipped.unsupportedMovementType",
+                            "Movement type is not supported by road/path map matching"), null);
         }
         String configHash = hashService.configHash(configuration.configHashSource() + "|" + profile);
         String inputHash = hashService.inputHash(points, maxAccuracy);
@@ -257,7 +262,7 @@ public class MapMatchingService {
 
         TimelineTripPathMatchEntity target = matchRepository.enqueueIfMissing(
                 user, trip, configuration.provider(), profile, configHash, inputHash, source);
-        return status(trip.getId(), "QUEUED", target.getId(), null, null);
+        return status(trip.getId(), MapMatchingResolutionStatus.QUEUED, target.getId(), null, null);
     }
 
     private boolean isDisplayEnabled(UUID userId) {
@@ -452,9 +457,9 @@ public class MapMatchingService {
     }
 
     private MapMatchingTripResolutionDTO status(Long tripId,
-                                                String status,
+                                                MapMatchingResolutionStatus status,
                                                 Long targetId,
-                                                String error,
+                                                MessageDescriptor error,
                                                 List<List<MapMatchedPointDTO>> segments) {
         return MapMatchingTripResolutionDTO.builder()
                 .tripId(tripId)
@@ -472,7 +477,9 @@ public class MapMatchingService {
                 .tripId(tripId)
                 .status(toExternalStatus(target.getStatus()))
                 .targetId(target.getId())
-                .error(target.getLastError())
+                .error(target.getLastError() == null
+                        ? null
+                        : message("mapMatching.error.failed", target.getLastError()))
                 .source(target.getSource())
                 .retryAt(target.getStatus() == MapMatchingStatus.PENDING ? target.getNextAttemptAt() : null)
                 .pollAfterMs(recommendedPollDelay(target))
@@ -487,14 +494,20 @@ public class MapMatchingService {
         return (int) Math.min(60_000L, Math.max(5_000L, untilRetryMs));
     }
 
-    private String toExternalStatus(MapMatchingStatus status) {
+    private MapMatchingResolutionStatus toExternalStatus(MapMatchingStatus status) {
         if (status == MapMatchingStatus.PENDING) {
-            return "QUEUED";
+            return MapMatchingResolutionStatus.QUEUED;
         }
         if (status == MapMatchingStatus.MATCHED) {
-            return "COMPLETED";
+            return MapMatchingResolutionStatus.COMPLETED;
         }
-        return status == null ? "UNAVAILABLE" : status.name();
+        return status == null
+                ? MapMatchingResolutionStatus.UNAVAILABLE
+                : MapMatchingResolutionStatus.valueOf(status.name());
+    }
+
+    private MessageDescriptor message(String key, String fallback) {
+        return new MessageDescriptor(key, Map.of(), fallback);
     }
 
     private void recordOutcome(TimelineTripPathMatchEntity target, String result) {

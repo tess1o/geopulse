@@ -8,13 +8,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 /**
  * Service responsible for generating CSV format exports using streaming
@@ -26,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class CsvExportService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final int API_EXPORT_BATCH_SIZE = 1000;
 
     @Inject
     GpsPointRepository gpsPointRepository;
@@ -35,6 +40,43 @@ public class CsvExportService {
 
     @Inject
     ExportTempFileService tempFileService;
+
+    public void generateCsvExport(OutputStream output, UUID userId, GpsPointFilterDTO filters,
+                                  DistanceUnit distanceUnit) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
+            String velocityUnit = distanceUnit == DistanceUnit.KILOMETERS ? "km/h" : "mph";
+            writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(" + velocityUnit
+                    + "),altitude,sourceType,telemetry\n");
+
+            try {
+                gpsPointRepository.streamByUserAndFilters(userId, filters, API_EXPORT_BATCH_SIZE, batch -> {
+                    try {
+                        for (GpsPointEntity point : batch) {
+                            double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
+                            if (distanceUnit == DistanceUnit.MILES) {
+                                velocity *= 0.621371;
+                            }
+                            writer.write(formatCsvRow(
+                                    point.getTimestamp(),
+                                    point.getLatitude(),
+                                    point.getLongitude(),
+                                    point.getAccuracy(),
+                                    point.getBattery(),
+                                    velocity,
+                                    point.getAltitude(),
+                                    point.getSourceType() != null ? point.getSourceType().name() : "",
+                                    telemetryToJson(point.getTelemetry())));
+                        }
+                        writer.flush();
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+            } catch (UncheckedIOException e) {
+                throw e.getCause();
+            }
+        }
+    }
 
     /**
      * Generates a CSV export for the given export job using STREAMING approach.
@@ -72,7 +114,17 @@ public class CsvExportService {
                         batch -> {
                             try {
                                 for (GpsPointEntity point : batch) {
-                                    writer.write(formatCsvRow(point));
+                                    writer.write(formatCsvRow(
+                                            point.getTimestamp(),
+                                            point.getLatitude(),
+                                            point.getLongitude(),
+                                            point.getAccuracy(),
+                                            point.getVelocity(),
+                                            point.getAltitude(),
+                                            point.getBattery(),
+                                            point.getDeviceId(),
+                                            point.getSourceType() != null ? point.getSourceType().name() : "",
+                                            telemetryToJson(point.getTelemetry())));
                                     totalWritten[0]++;
                                 }
                                 writer.flush();
@@ -107,29 +159,12 @@ public class CsvExportService {
         job.updateProgress(100, "Export completed");
     }
 
-    /**
-     * Format a single GPS point as a CSV row.
-     * Format:
-     * timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type,telemetry
-     *
-     * @param point GPS point entity
-     * @return CSV row string with newline
-     */
-    private String formatCsvRow(GpsPointEntity point) {
+    private String formatCsvRow(Object... values) {
         StringBuilder row = new StringBuilder();
-
-        appendCsvValue(row, point.getTimestamp().toString());
-        appendCsvValue(row, point.getLatitude());
-        appendCsvValue(row, point.getLongitude());
-        appendCsvValue(row, point.getAccuracy());
-        appendCsvValue(row, point.getVelocity());
-        appendCsvValue(row, point.getAltitude());
-        appendCsvValue(row, point.getBattery());
-        appendCsvValue(row, point.getDeviceId());
-        appendCsvValue(row, point.getSourceType() != null ? point.getSourceType().name() : "");
-        appendCsvValue(row, telemetryToJson(point.getTelemetry()));
+        for (Object value : values) {
+            appendCsvValue(row, value);
+        }
         row.append("\n");
-
         return row.toString();
     }
 

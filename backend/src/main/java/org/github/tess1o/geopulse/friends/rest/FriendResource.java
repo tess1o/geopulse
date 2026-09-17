@@ -4,37 +4,53 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.friends.exceptions.FriendsException;
 import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
+import org.github.tess1o.geopulse.friends.model.FriendLocationTrailDTO;
+import org.github.tess1o.geopulse.friends.model.UpdateLiveLocationPermissionRequest;
+import org.github.tess1o.geopulse.friends.model.UpdateTimelinePermissionRequest;
 import org.github.tess1o.geopulse.friends.model.UserFriendPermissionDTO;
 import org.github.tess1o.geopulse.friends.service.FriendService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
 import org.github.tess1o.geopulse.user.model.UserSearchDTO;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_LOCATION_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_LOCATION_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_RELATIONSHIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_ID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_TRAIL_RANGE;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/friends")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Friends", description = "Manage friends, location sharing, permissions, and friend discovery.")
 public class FriendResource {
 
@@ -51,362 +67,127 @@ public class FriendResource {
         this.currentUserService = currentUserService;
     }
 
-    /**
-     * Get the list of friends for the current user.
-     *
-     * @return A list of friend IDs
-     */
     @GET
-    public Response getFriends() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<FriendInfoDTO> allFriends = friendService.getAllFriends(userId);
-            return Response.ok(ApiResponse.success(allFriends)).build();
-        } catch (Exception e) {
-            log.error("Failed to get friends for user", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve friends"))
-                    .build();
-        }
+    public List<FriendInfoDTO> getFriends() {
+        return friendService.getAllFriends(currentUserService.getCurrentUserId());
     }
 
-    /**
-     * Remove a friend.
-     *
-     * @param friendId The ID of the friend to remove
-     * @return 204 No Content if successful
-     */
     @DELETE
     @Path("/{friendId}")
     @Transactional
-    public Response removeFriend(@PathParam("friendId") @NotNull String friendId) {
+    @APIResponse(responseCode = "204", description = "Friend removed")
+    public RestResponse<Void> removeFriend(@PathParam("friendId") @NotNull String friendId) {
+        UUID parsedFriendId = parseFriendId(friendId);
         try {
-            if (friendId == null || friendId.trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Friend ID cannot be empty"))
-                        .build();
-            }
-            
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendIdUUID = UUID.fromString(friendId);
-            friendService.removeFriend(userId, friendIdUUID);
-            return Response.ok(ApiResponse.success("Friend removed successfully")).build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid friend ID format: {}", friendId, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid friend ID format"))
-                    .build();
-        } catch (FriendsException e) {
-            log.warn("Failed to remove friend: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to remove friend {} for user", friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to remove friend"))
-                    .build();
+            friendService.removeFriend(currentUserService.getCurrentUserId(), parsedFriendId);
+            return RestResponse.noContent();
+        } catch (FriendsException exception) {
+            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
         }
     }
 
-    /**
-     * Get a friend's current location.
-     *
-     * @param friendId The ID of the friend
-     * @return The friend's current location
-     */
     @GET
     @Path("/{friendId}/location")
-    public Response getFriendLocation(
-            @PathParam("friendId") @NotNull String friendId) {
+    public GpsPointPathPointDTO getFriendLocation(@PathParam("friendId") @NotNull String friendId) {
+        UUID parsedFriendId = parseFriendId(friendId);
         try {
-            if (friendId == null || friendId.trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Friend ID cannot be empty"))
-                        .build();
-            }
-            
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendIdUUID = UUID.fromString(friendId);
-            GpsPointEntity location = friendService.getFriendLocation(userId, friendIdUUID);
-            
+            GpsPointEntity location = friendService.getFriendLocation(
+                    currentUserService.getCurrentUserId(), parsedFriendId);
             if (location == null) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Friend location not found"))
-                        .build();
+                throw problem(FRIEND_LOCATION_NOT_FOUND, "Friend location not found",
+                        Map.of("friendId", parsedFriendId.toString()));
             }
-            
-            GpsPointPathPointDTO locationDTO = gpsPointMapper.toPathPoint(location);
-            return Response.ok(ApiResponse.success(locationDTO)).build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid friend ID format: {}", friendId, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid friend ID format"))
-                    .build();
-        } catch (NotAuthorizedUserException e) {
-            log.warn("Unauthorized access to friend location: {}", e.getMessage());
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get friend location {} for user", friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve friend location"))
-                    .build();
+            return gpsPointMapper.toPathPoint(location);
+        } catch (NotAuthorizedUserException exception) {
+            throw problem(FRIEND_LOCATION_ACCESS_DENIED, exception.getMessage(),
+                    Map.of("friendId", parsedFriendId.toString()));
         }
     }
 
-    /**
-     * Get recent location trails for all friends who shared live location.
-     *
-     * @param minutes Optional number of minutes to look back from end time (default 60)
-     * @param endTime Optional end time for the trail window (ISO-8601). Defaults to now.
-     * @return Map of friend ID to list of GPS points in the requested window
-     */
     @GET
     @Path("/location/trails")
-    public Response getFriendsLocationTrails(
+    public List<FriendLocationTrailDTO> getFriendsLocationTrails(
             @QueryParam("minutes") @DefaultValue("60") Integer minutes,
             @QueryParam("endTime") String endTime) {
-        try {
-            if (minutes == null || minutes <= 0 || minutes > 1440) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("minutes must be between 1 and 1440"))
-                        .build();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            Instant requestedEndTime = endTime != null && !endTime.isBlank()
-                    ? Instant.parse(endTime)
-                    : Instant.now();
-
-            Map<UUID, List<GpsPointEntity>> trails = friendService.getFriendsLocationHistory(userId, minutes, requestedEndTime);
-            Map<String, List<GpsPointPathPointDTO>> response = new LinkedHashMap<>();
-
-            trails.forEach((friendId, points) -> {
-                List<GpsPointPathPointDTO> dtoPoints = points.stream()
-                        .map(gpsPointMapper::toPathPoint)
-                        .toList();
-                response.put(friendId.toString(), dtoPoints);
-            });
-
-            return Response.ok(ApiResponse.success(response)).build();
-        } catch (DateTimeParseException e) {
-            log.warn("Invalid endTime format: {}", endTime, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid endTime format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get friends location trails", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve friends location trails"))
-                    .build();
+        if (minutes == null || minutes <= 0 || minutes > 1440) {
+            throw problem(INVALID_FRIEND_TRAIL_RANGE, "minutes must be between 1 and 1440",
+                    Map.of("min", 1, "max", 1440));
         }
+
+        Instant requestedEndTime;
+        try {
+            requestedEndTime = endTime != null && !endTime.isBlank() ? Instant.parse(endTime) : Instant.now();
+        } catch (DateTimeParseException exception) {
+            throw problem(INVALID_FRIEND_TRAIL_RANGE, "endTime must use ISO-8601 format");
+        }
+
+        return friendService.getFriendsLocationHistory(
+                        currentUserService.getCurrentUserId(), minutes, requestedEndTime)
+                .entrySet().stream()
+                .map(entry -> new FriendLocationTrailDTO(
+                        entry.getKey(),
+                        entry.getValue().stream().map(gpsPointMapper::toPathPoint).toList()))
+                .toList();
     }
 
-    /**
-     * Search for users to invite as friends.
-     *
-     * @param query The search query string (email or full name).
-     * @return A list of UserSearchDTOs.
-     */
     @GET
     @Path("/search-users-to-invite")
-    public Response searchUsersToInvite(@QueryParam("query") @NotNull String query) {
-        try {
-            UUID currentUserId = currentUserService.getCurrentUserId();
-            List<UserSearchDTO> users = friendService.searchUsersToInvite(currentUserId, query);
-            return Response.ok(ApiResponse.success(users)).build();
-        } catch (Exception e) {
-            log.error("Failed to search users to invite for user {}", currentUserService.getCurrentUserId(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to search users"))
-                    .build();
-        }
+    public List<UserSearchDTO> searchUsersToInvite(@QueryParam("query") @NotNull String query) {
+        return friendService.searchUsersToInvite(currentUserService.getCurrentUserId(), query);
     }
 
-    /**
-     * Get timeline sharing permissions for a specific friend.
-     *
-     * @param friendId The friend ID
-     * @return Permission DTO
-     */
     @GET
     @Path("/{friendId}/permissions")
-    public Response getFriendPermissions(@PathParam("friendId") @NotNull String friendId) {
+    public UserFriendPermissionDTO getFriendPermissions(@PathParam("friendId") @NotNull String friendId) {
+        UUID parsedFriendId = parseFriendId(friendId);
         try {
-            if (friendId == null || friendId.trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Friend ID cannot be empty"))
-                        .build();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendIdUUID = UUID.fromString(friendId);
-
-            UserFriendPermissionDTO permissions = friendService.getFriendPermissions(userId, friendIdUUID);
-            return Response.ok(ApiResponse.success(permissions)).build();
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid friend ID format: {}", friendId, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid friend ID format"))
-                    .build();
-        } catch (FriendsException e) {
-            log.warn("Failed to get friend permissions: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get friend permissions for friend {}", friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve permissions"))
-                    .build();
+            return friendService.getFriendPermissions(currentUserService.getCurrentUserId(), parsedFriendId);
+        } catch (FriendsException exception) {
+            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
         }
     }
 
-    /**
-     * Update timeline sharing permission for a friend.
-     *
-     * @param friendId The friend ID
-     * @param request  Request containing shareTimeline flag
-     * @return Updated permission DTO
-     */
     @PUT
     @Path("/{friendId}/permissions")
     @Transactional
-    public Response updateFriendPermissions(
+    public UserFriendPermissionDTO updateFriendPermissions(
             @PathParam("friendId") @NotNull String friendId,
-            UpdatePermissionRequest request) {
+            @NotNull @Valid UpdateTimelinePermissionRequest request) {
+        UUID parsedFriendId = parseFriendId(friendId);
         try {
-            if (friendId == null || friendId.trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Friend ID cannot be empty"))
-                        .build();
-            }
-
-            if (request == null || request.shareTimeline == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("shareTimeline field is required"))
-                        .build();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendIdUUID = UUID.fromString(friendId);
-
-            UserFriendPermissionDTO permissions = friendService.updateFriendPermissions(
-                    userId,
-                    friendIdUUID,
-                    request.shareTimeline
-            );
-
-            return Response.ok(ApiResponse.success(permissions)).build();
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid friend ID format: {}", friendId, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid friend ID format"))
-                    .build();
-        } catch (FriendsException e) {
-            log.warn("Failed to update friend permissions: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update friend permissions for friend {}", friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update permissions"))
-                    .build();
+            return friendService.updateFriendPermissions(
+                    currentUserService.getCurrentUserId(), parsedFriendId, request.shareTimeline());
+        } catch (FriendsException exception) {
+            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
         }
     }
 
-    /**
-     * Get all friend permissions for the current user.
-     *
-     * @return List of permission DTOs
-     */
     @GET
     @Path("/permissions")
-    public Response getAllFriendPermissions() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<UserFriendPermissionDTO> permissions = friendService.getAllFriendPermissions(userId);
-            return Response.ok(ApiResponse.success(permissions)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get all friend permissions for user", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve permissions"))
-                    .build();
-        }
+    public List<UserFriendPermissionDTO> getAllFriendPermissions() {
+        return friendService.getAllFriendPermissions(currentUserService.getCurrentUserId());
     }
 
-    /**
-     * Update live location sharing permission for a friend.
-     *
-     * @param friendId The friend ID
-     * @param request  Request containing shareLiveLocation flag
-     * @return Updated permission DTO
-     */
     @PUT
     @Path("/{friendId}/permissions/live")
     @Transactional
-    public Response updateLiveLocationPermission(
+    public UserFriendPermissionDTO updateLiveLocationPermission(
             @PathParam("friendId") @NotNull String friendId,
-            UpdateLiveLocationRequest request) {
+            @NotNull @Valid UpdateLiveLocationPermissionRequest request) {
+        UUID parsedFriendId = parseFriendId(friendId);
         try {
-            if (friendId == null || friendId.trim().isEmpty()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Friend ID cannot be empty"))
-                        .build();
-            }
-
-            if (request == null || request.shareLiveLocation == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("shareLiveLocation field is required"))
-                        .build();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            UUID friendIdUUID = UUID.fromString(friendId);
-
-            UserFriendPermissionDTO permissions = friendService.updateLiveLocationPermission(
-                    userId,
-                    friendIdUUID,
-                    request.shareLiveLocation
-            );
-
-            return Response.ok(ApiResponse.success(permissions)).build();
-
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid friend ID format: {}", friendId, e);
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid friend ID format"))
-                    .build();
-        } catch (FriendsException e) {
-            log.warn("Failed to update live location permission: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update live location permission for friend {}", friendId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update permission"))
-                    .build();
+            return friendService.updateLiveLocationPermission(
+                    currentUserService.getCurrentUserId(), parsedFriendId, request.shareLiveLocation());
+        } catch (FriendsException exception) {
+            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
         }
     }
 
-    /**
-     * Request DTO for updating timeline permissions.
-     */
-    public static class UpdatePermissionRequest {
-        public Boolean shareTimeline;
-    }
-
-    /**
-     * Request DTO for updating live location permissions.
-     */
-    public static class UpdateLiveLocationRequest {
-        public Boolean shareLiveLocation;
+    private UUID parseFriendId(String friendId) {
+        try {
+            return UUID.fromString(friendId);
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw problem(INVALID_FRIEND_ID, "Friend ID must be a UUID");
+        }
     }
 }

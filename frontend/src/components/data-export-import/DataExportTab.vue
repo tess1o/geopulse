@@ -371,7 +371,7 @@
                 <div class="progress-info">
                   <span class="progress-text">{{ currentExportJob.progress }}%</span>
                   <span v-if="currentExportJob.progressMessage" class="progress-message">
-                    {{ currentExportJob.progressMessage }}
+                    {{ formatMessageDescriptor(currentExportJob.progressMessage) }}
                   </span>
                 </div>
               </div>
@@ -487,6 +487,8 @@ import {useConfirm} from 'primevue/useconfirm'
 import {useTimezone} from '@/composables/useTimezone'
 import {useExportImportStore} from '@/stores/exportImport'
 import {showDemoModeToast} from '@/utils/demoMode'
+import {formatMessageDescriptor} from '@/utils/messageDescriptor'
+import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -723,7 +725,7 @@ const startExport = async () => {
     toast.add({
       severity: 'error',
       summary: 'Export Failed',
-      detail: error.message || 'Failed to start export job',
+      detail: formatApiErrorDetail(error, 'Failed to start export job'),
       life: 5000
     })
   }
@@ -749,7 +751,7 @@ const downloadExport = async (exportJobId) => {
     toast.add({
       severity: 'error',
       summary: 'Download Failed',
-      detail: error.message || 'Failed to download export file',
+      detail: formatApiErrorDetail(error, 'Failed to download export file'),
       life: 5000
     })
   }
@@ -798,7 +800,7 @@ const deleteExport = async (exportJobId) => {
     toast.add({
       severity: 'error',
       summary: 'Delete Failed',
-      detail: error.message || 'Failed to delete export job',
+      detail: formatApiErrorDetail(error, 'Failed to delete export job'),
       life: 5000
     })
   }
@@ -812,7 +814,7 @@ const refreshExportJobs = async () => {
     toast.add({
       severity: 'error',
       summary: 'Refresh Failed',
-      detail: 'Failed to refresh export jobs',
+      detail: formatApiErrorDetail(error, 'Failed to refresh export jobs'),
       life: 5000
     })
   }

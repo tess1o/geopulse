@@ -346,13 +346,15 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 
 const breadcrumbHome = ref({
@@ -409,8 +411,8 @@ const loadInvitations = async () => {
       params.append('status', statusFilter.value)
     }
 
-    const response = await apiService.get(`/admin/invitations?${params.toString()}`)
-    invitations.value = response.content
+    const response = await adminStore.getInvitations(Object.fromEntries(params))
+    invitations.value = response.items
     totalRecords.value = response.totalElements
   } catch (error) {
     console.error('Failed to load invitations:', error)
@@ -427,7 +429,7 @@ const loadInvitations = async () => {
 
 const loadBaseUrl = async () => {
   try {
-    const response = await apiService.get('/admin/invitations/base-url')
+    const response = await adminStore.getInvitationBaseUrl()
     baseUrl.value = response.baseUrl || ''
   } catch (error) {
     console.error('Failed to load base URL:', error)
@@ -460,7 +462,7 @@ const createInvitation = async () => {
       payload.expiresAt = newInvitation.value.expiresAt.toISOString()
     }
 
-    const response = await apiService.post('/admin/invitations', payload)
+    const response = await adminStore.createInvitation(payload)
 
     // Build the full URL
     const effectiveBaseUrl = baseUrl.value || window.location.origin
@@ -483,7 +485,7 @@ const createInvitation = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to create invitation',
+      detail: formatApiErrorDetail(error, 'Failed to create invitation'),
       life: 3000
     })
   } finally {
@@ -527,7 +529,7 @@ const revokeInvitation = async () => {
 
   revoking.value = true
   try {
-    await apiService.delete(`/admin/invitations/${invitationToRevoke.value.id}`)
+    await adminStore.revokeInvitation(invitationToRevoke.value.id)
 
     toast.add({
       severity: 'success',
@@ -544,7 +546,7 @@ const revokeInvitation = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to revoke invitation',
+      detail: formatApiErrorDetail(error, 'Failed to revoke invitation'),
       life: 3000
     })
   } finally {

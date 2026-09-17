@@ -1,5 +1,5 @@
 import { computed, getCurrentInstance, onBeforeUnmount, ref, unref } from 'vue'
-import mapMatchingService from '@/services/mapMatchingService'
+import { useMapMatchingStore } from '@/stores/mapMatching'
 import {
   areVisibleMapMatchingTripsSettled,
   buildActiveMapMatchingPathData,
@@ -13,8 +13,9 @@ export function useTimelineMapMatching({
   enabled,
   visibleTrips,
   rawPathData,
-  service = mapMatchingService
+  store = null
 } = {}) {
+  const mapMatchingStore = store || useMapMatchingStore()
   const resolving = ref(false)
   const resolution = ref(null)
   let pollTimer = null
@@ -124,9 +125,9 @@ export function useTimelineMapMatching({
 
     try {
       const batches = chunkMapMatchingIds(pendingTargets.map(trip => trip.targetId))
-      const responses = await Promise.all(batches.map(targetIds => service.status(targetIds)))
+      const responses = await Promise.all(batches.map(targetIds => mapMatchingStore.status(targetIds)))
       if (token !== requestToken) return
-      responses.forEach((response) => mergeTrips(response?.data || response || []))
+      responses.forEach((trips) => mergeTrips(trips || []))
     } catch (error) {
       if (token === requestToken) {
         console.warn('Failed to poll map matching status:', error)
@@ -155,15 +156,14 @@ export function useTimelineMapMatching({
     pollAttempt = 0
 
     try {
-      const responses = await Promise.all(chunkMapMatchingIds(tripIds).map(batch => service.resolve(batch)))
+      const responses = await Promise.all(chunkMapMatchingIds(tripIds).map(batch => mapMatchingStore.resolve(batch)))
       if (token !== requestToken) {
         return
       }
       const trips = []
       let enabledResult = false
       let provider = null
-      responses.forEach((response) => {
-        const result = response?.data || response || {}
+      responses.forEach((result = {}) => {
         enabledResult = enabledResult || result.enabled === true
         provider = provider || result.provider
         trips.push(...(Array.isArray(result.trips) ? result.trips : []))

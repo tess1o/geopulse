@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/homeassistant")
@@ -32,6 +33,7 @@ public class HomeAssistantResource {
     @POST
     @Operation(summary = "Ingest Home Assistant location",
             description = "Receives a Home Assistant location update and stores it for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted")
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
         log.info("Received payload for home assistant: {}", data);
 

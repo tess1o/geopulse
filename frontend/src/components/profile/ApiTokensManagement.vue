@@ -177,10 +177,12 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
+import { useAuthStore } from '@/stores/auth'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
 const toast = useToast()
+const authStore = useAuthStore()
 
 const props = defineProps({
   readOnly: {
@@ -208,8 +210,7 @@ const form = ref({
 const loadTokens = async () => {
   loading.value = true
   try {
-    const response = await apiService.get('/api-tokens')
-    tokens.value = response?.data || []
+    tokens.value = await authStore.listApiTokens()
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load API tokens', life: 3000 })
   } finally {
@@ -258,11 +259,11 @@ const saveToken = async () => {
     }
 
     if (editingToken.value) {
-      await apiService.put(`/api-tokens/${editingToken.value.id}`, payload)
+      await authStore.saveApiToken(editingToken.value.id, payload)
       toast.add({ severity: 'success', summary: 'Saved', detail: 'API token updated', life: 2500 })
     } else {
-      const response = await apiService.post('/api-tokens', payload)
-      createdToken.value = response?.data?.token || ''
+      const response = await authStore.saveApiToken(null, payload)
+      createdToken.value = response?.token || ''
       createdTokenDialogVisible.value = !!createdToken.value
       toast.add({ severity: 'success', summary: 'Created', detail: 'API token created', life: 2500 })
     }
@@ -273,7 +274,7 @@ const saveToken = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.message || error.response?.data?.error || 'Failed to save API token',
+      detail: formatApiErrorDetail(error, 'Failed to save API token'),
       life: 3500
     })
   } finally {
@@ -293,7 +294,7 @@ const revokeToken = async () => {
 
   revoking.value = true
   try {
-    await apiService.delete(`/api-tokens/${tokenToRevoke.value.id}`)
+    await authStore.revokeApiToken(tokenToRevoke.value.id)
     toast.add({ severity: 'success', summary: 'Revoked', detail: 'API token revoked', life: 2500 })
     revokeDialogVisible.value = false
     tokenToRevoke.value = null

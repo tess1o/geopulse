@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.admin.dto.AdminSettingsBackupDto;
 import org.github.tess1o.geopulse.admin.dto.AdminSettingsImportResult;
@@ -22,7 +23,6 @@ import org.github.tess1o.geopulse.admin.service.AdminSettingsBackupService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -32,6 +32,8 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/admin/settings-backup")
 @Produces(MediaType.APPLICATION_JSON)
@@ -58,6 +60,8 @@ public class AdminSettingsBackupResource {
     @Path("/export")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
+    @APIResponseSchema(value = AdminSettingsBackupDto.class, responseCode = "200",
+            responseDescription = "Admin settings backup")
     public Response exportSettingsBackup(
             @jakarta.ws.rs.HeaderParam("X-Forwarded-For") String forwardedFor,
             @jakarta.ws.rs.HeaderParam("X-Real-IP") String realIp) {
@@ -85,9 +89,7 @@ public class AdminSettingsBackupResource {
                     .build();
         } catch (Exception e) {
             log.error("Failed to export admin settings backup", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to export admin settings backup"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to export admin settings backup");
         }
     }
 
@@ -95,14 +97,12 @@ public class AdminSettingsBackupResource {
     @Path("/import")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response importSettingsBackup(
+    public AdminSettingsImportResult importSettingsBackup(
             @RestForm("file") FileUpload file,
             @jakarta.ws.rs.HeaderParam("X-Forwarded-For") String forwardedFor,
             @jakarta.ws.rs.HeaderParam("X-Real-IP") String realIp) {
         if (file == null || file.uploadedFile() == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Admin settings backup file is required"))
-                    .build();
+            throw problem(INVALID_ADMIN_SETTINGS_BACKUP, "Admin settings backup file is required");
         }
 
         try {
@@ -119,16 +119,12 @@ public class AdminSettingsBackupResource {
                     auditDetails(result),
                     UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
             );
-            return Response.ok(ApiResponse.success(result)).build();
+            return result;
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(INVALID_ADMIN_SETTINGS_BACKUP, e.getMessage());
         } catch (Exception e) {
             log.error("Failed to import admin settings backup", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to import admin settings backup"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to import admin settings backup");
         }
     }
 

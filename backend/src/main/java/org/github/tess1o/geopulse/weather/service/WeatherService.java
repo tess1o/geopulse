@@ -95,6 +95,9 @@ public class WeatherService {
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
 
+    @Inject
+    WeatherMapper mapper;
+
     @ConfigProperty(name = "geopulse.weather.targets.in-progress-timeout-minutes", defaultValue = "60")
     int inProgressTimeoutMinutes;
 
@@ -105,7 +108,7 @@ public class WeatherService {
                                               Double minLat, Double minLon, Double maxLat, Double maxLon) {
         List<WeatherSampleDTO> samples = List.of();
         if (configurationService.isEnabled() && startTime != null && endTime != null) {
-            samples = sampleRepository.toDtos(sampleRepository.findByUserAndRange(
+            samples = mapper.toDtos(sampleRepository.findByUserAndRange(
                     userId, startTime, endTime, minLat, minLon, maxLat, maxLon));
         }
 

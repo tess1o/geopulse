@@ -175,12 +175,14 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const toast = useToast()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 
 const systemSettings = ref([])
@@ -244,23 +246,23 @@ const testAppriseConnection = async () => {
       body: testBody.value?.trim() || null
     }
 
-    const response = await apiService.post('/admin/settings/system/notifications/apprise/test', payload)
+    const response = await adminStore.testAppriseConnection(payload)
     lastTestResult.value = {
-      severity: 'success',
-      summary: 'Apprise test succeeded',
-      detail: response?.message || 'Connection test succeeded',
+      severity: response.success ? 'success' : 'error',
+      summary: response.success ? 'Apprise test succeeded' : 'Apprise test failed',
+      detail: response?.detail || (response.success ? 'Connection test succeeded' : 'Connection test failed'),
       statusCode: response?.statusCode || null
     }
 
     toast.add({
-      severity: 'success',
-      summary: 'Apprise Test Succeeded',
-      detail: response?.message || 'Connection test succeeded',
+      severity: response.success ? 'success' : 'error',
+      summary: response.success ? 'Apprise Test Succeeded' : 'Apprise Test Failed',
+      detail: response?.detail || (response.success ? 'Connection test succeeded' : 'Connection test failed'),
       life: 4000
     })
   } catch (error) {
-    const statusCode = error?.response?.data?.statusCode || null
-    const detail = error?.response?.data?.message || error?.message || 'Apprise test failed'
+    const statusCode = error?.status || null
+    const detail = formatApiErrorDetail(error, 'Apprise test failed')
     lastTestResult.value = {
       severity: 'error',
       summary: 'Apprise test failed',

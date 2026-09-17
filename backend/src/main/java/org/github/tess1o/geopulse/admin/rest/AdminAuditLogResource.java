@@ -2,22 +2,26 @@ package org.github.tess1o.geopulse.admin.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.AuditLogResponse;
-import org.github.tess1o.geopulse.admin.dto.PagedResponse;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.AuditLogEntity;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.repository.AuditLogRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for admin audit log viewing.
@@ -40,14 +44,14 @@ public class AdminAuditLogResource {
      * Get paginated list of audit logs with filters.
      */
     @GET
-    public Response getAuditLogs(
+    public PageResponse<AuditLogResponse> getAuditLogs(
             @QueryParam("actionType") String actionTypeStr,
             @QueryParam("targetType") String targetTypeStr,
             @QueryParam("adminUserId") UUID adminUserId,
             @QueryParam("from") Long fromTimestamp,
             @QueryParam("to") Long toTimestamp,
-            @QueryParam("page") @DefaultValue("0") int page,
-            @QueryParam("size") @DefaultValue("20") int size) {
+            @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @QueryParam("size") @DefaultValue("20") @Min(1) @Max(200) int size) {
 
         // Parse enum parameters
         ActionType actionType = null;
@@ -55,9 +59,7 @@ public class AdminAuditLogResource {
             try {
                 actionType = ActionType.valueOf(actionTypeStr);
             } catch (IllegalArgumentException e) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Invalid action type"))
-                        .build();
+                throw problem(BAD_REQUEST, "Invalid action type", Map.of("actionType", actionTypeStr));
             }
         }
 
@@ -66,9 +68,7 @@ public class AdminAuditLogResource {
             try {
                 targetType = TargetType.valueOf(targetTypeStr);
             } catch (IllegalArgumentException e) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Invalid target type"))
-                        .build();
+                throw problem(BAD_REQUEST, "Invalid target type", Map.of("targetType", targetTypeStr));
             }
         }
 
@@ -99,15 +99,7 @@ public class AdminAuditLogResource {
                 .map(log -> toAuditLogResponse(log, adminEmails.get(log.getAdminUserId())))
                 .collect(Collectors.toList());
 
-        PagedResponse<AuditLogResponse> response = PagedResponse.<AuditLogResponse>builder()
-                .content(responses)
-                .totalElements(total)
-                .totalPages((int) Math.ceil((double) total / size))
-                .page(page)
-                .size(size)
-                .build();
-
-        return Response.ok(response).build();
+        return new PageResponse<>(responses, page, size, total, (int) Math.ceil((double) total / size));
     }
 
     private AuditLogResponse toAuditLogResponse(AuditLogEntity entity, String adminEmail) {

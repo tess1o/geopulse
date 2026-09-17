@@ -470,6 +470,8 @@ import {useTimezone} from '@/composables/useTimezone'
 import {useExportImportStore} from '@/stores/exportImport'
 import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
 import {showDemoModeToast} from '@/utils/demoMode'
+import {formatApiErrorDetail, normalizeApiError} from '@/utils/apiErrorDetail'
+import {formatMessageDescriptor} from '@/utils/messageDescriptor'
 
 const router = useRouter()
 const timezone = useTimezone()
@@ -763,9 +765,10 @@ const startImport = async () => {
   } catch (error) {
     console.error('Import error:', error)
 
-    const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to start import job'
+    const problem = normalizeApiError(error, 'Failed to start import job')
+    const errorMessage = formatApiErrorDetail(problem)
 
-    if (error.response?.data?.error?.code === 'ACTIVE_JOB_EXISTS') {
+    if (problem.code === 'IMPORT_ACTIVE_JOB_CONFLICT') {
       toast.add({
         severity: 'warn',
         summary: 'Import in Progress',
@@ -891,7 +894,7 @@ const getProgressPhaseDescription = (job) => {
 
   // Use backend-provided progress message if available
   if (job.progressMessage) {
-    return job.progressMessage
+    return formatMessageDescriptor(job.progressMessage)
   }
 
   // Fallback to client-side logic for backwards compatibility
@@ -926,10 +929,9 @@ const openTimelineJobDetails = (timelineJobId) => {
 // Extract timeline job ID as computed to avoid watch triggering on every poll update
 const currentTimelineJobId = computed(() => currentImportJob.value?.timelineJobId)
 const currentImportStatus = computed(() => currentImportJob.value?.status)
-const isCoverageRecalculationPhase = computed(() => {
-  const message = currentImportJob.value?.progressMessage || ''
-  return currentImportJob.value?.status === 'processing' && message.toLowerCase().includes('coverage')
-})
+const isCoverageRecalculationPhase = computed(() =>
+  currentImportJob.value?.phase === 'coverage_recalculation'
+)
 const showTimelineSubProgress = computed(() =>
   Boolean(timelineJobProgress.value && timelineJobProgress.value.status !== 'COMPLETED' && !isCoverageRecalculationPhase.value)
 )

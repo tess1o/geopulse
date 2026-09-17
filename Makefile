@@ -205,6 +205,12 @@ backend-test-integration:
 	@echo "Running backend integration tests"
 	./mvnw -pl backend -DskipITs=false clean test-compile failsafe:integration-test failsafe:verify
 
+.PHONY: backend-test-integration-one
+backend-test-integration-one:
+	@if [ -z "$(TEST)" ]; then echo "Usage: make backend-test-integration-one TEST=ApiTokenAuthenticationTest"; exit 1; fi
+	@echo "Running integration test: $(TEST)"
+	./mvnw -pl backend -DskipITs=false -Dit.test=$(TEST) clean test-compile failsafe:integration-test failsafe:verify
+
 # Full backend test suite (unit + integration)
 .PHONY: backend-test-all
 backend-test-all:

@@ -223,12 +223,14 @@ import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import { useAuthStore } from '@/stores/auth'
-import apiService from "@/utils/apiService";
+import { useExportImportStore } from '@/stores/exportImport'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 const toast = useToast()
 const timezone = useTimezone()
 const authStore = useAuthStore()
+const exportImportStore = useExportImportStore()
 const { demoModeEnabled } = storeToRefs(authStore)
 
 // Form state
@@ -329,28 +331,7 @@ const exportDebugData = async () => {
       includeConfiguration: includeConfiguration.value
     }
 
-    const response = await apiService.post('/export/debug/create', requestData, {
-      responseType: 'blob'
-    })
-
-    // Ensure we have valid blob data
-    if (!response.data || !(response.data instanceof Blob)) {
-      throw new Error('Invalid response data received')
-    }
-
-    // Create download link (response.data is already a Blob)
-    const url = window.URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = url
-
-    // Generate filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
-    link.download = `geopulse-debug-${timestamp}.zip`
-
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    await exportImportStore.downloadDebugExport(requestData)
 
     toast.add({
       severity: 'success',
@@ -361,29 +342,7 @@ const exportDebugData = async () => {
   } catch (error) {
     console.error('Failed to export debug data:', error)
 
-    let errorMessage = 'Failed to export debug data'
-
-    // Handle different error response formats
-    if (error.response?.data) {
-      // Check if error.response.data is a Blob (from responseType: 'blob')
-      if (error.response.data instanceof Blob) {
-        // If we got a Blob error response, it's actually JSON
-        try {
-          const text = await error.response.data.text()
-          const errorData = JSON.parse(text)
-          if (errorData.error?.message) {
-            errorMessage = errorData.error.message
-          }
-        } catch (e) {
-          console.error('Failed to parse blob error:', e)
-        }
-      } else if (error.response.data.error?.message) {
-        // Regular JSON error response
-        errorMessage = error.response.data.error.message
-      }
-    } else if (error.message) {
-      errorMessage = error.message
-    }
+    const errorMessage = formatApiErrorDetail(error, 'Failed to export debug data')
 
     // Set the export error for persistent display
     exportError.value = errorMessage

@@ -96,7 +96,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -137,20 +137,18 @@ const linkWithPassword = async () => {
   isLinking.value = true
   
   try {
-    const response = await apiService.post('/auth/oidc/link-with-password', {
+    const authResult = await authStore.linkAccountWithPassword({
       email: props.linkingData.email,
       password: passwordForm.value.password,
       provider: props.linkingData.newProvider,
       linkingToken: props.linkingData.linkingToken
     })
     
-    // Set user data from successful authentication (cookie-based browser auth response)
-    const authResult = authStore.consumeBrowserAuthResponse(response.data)
     emit('success', authResult)
     
   } catch (error) {
     console.error('Password linking failed:', error)
-    passwordError.value = error.response?.data?.message || 'Password verification failed'
+    passwordError.value = formatApiErrorDetail(error, 'Password verification failed')
   } finally {
     isLinking.value = false
   }
@@ -160,14 +158,14 @@ const linkWithOidc = async (verificationProvider) => {
   isLinking.value = true
   
   try {
-    const response = await apiService.post('/auth/oidc/link-with-oidc', {
+    const response = await authStore.initiateOidcAccountVerification({
       verificationProvider,
       newProvider: props.linkingData.newProvider,
       linkingToken: props.linkingData.linkingToken
     })
     
     // Redirect to OIDC provider for verification
-    window.location.href = response.data.authorizationUrl
+    window.location.href = response.authorizationUrl
     
   } catch (error) {
     console.error('OIDC linking initiation failed:', error)

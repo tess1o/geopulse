@@ -9,24 +9,23 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
-import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RECONSTRUCTION;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/reconstruction")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Trips and Planning", description = "Preview and commit timeline reconstruction changes.")
 public class ReconstructionResource {
 
@@ -41,47 +40,32 @@ public class ReconstructionResource {
 
     @POST
     @Path("/preview")
-    public Response preview(@Valid TripReconstructionRequestDto request) {
+    public TripReconstructionPreviewDto preview(@Valid TripReconstructionRequestDto request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripReconstructionPreviewDto preview = tripReconstructionService.preview(userId, request);
-            return Response.ok(ApiResponse.success(preview)).build();
+            return tripReconstructionService.preview(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw problem(TRIP_NOT_FOUND, "Trip not found");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to preview reconstruction", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to preview reconstruction"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @POST
     @Path("/commit")
-    public Response commit(@Valid TripReconstructionRequestDto request) {
+    public TripReconstructionCommitResponseDto commit(@Valid TripReconstructionRequestDto request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripReconstructionCommitResponseDto result = tripReconstructionService.commit(userId, request);
-            return Response.ok(ApiResponse.success(result)).build();
+            return tripReconstructionService.commit(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw problem(TRIP_NOT_FOUND, "Trip not found");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to commit reconstruction", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to commit reconstruction"))
-                    .build();
+            throw invalid(e);
         }
+    }
+
+    private static io.quarkiverse.httpproblem.HttpProblem invalid(IllegalArgumentException exception) {
+        String detail = exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "Invalid reconstruction request"
+                : exception.getMessage();
+        return problem(INVALID_TRIP_RECONSTRUCTION, detail);
     }
 }

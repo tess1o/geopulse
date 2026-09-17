@@ -125,9 +125,10 @@ import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
 import { useTimelineStore } from '@/stores/timeline'
+import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   visible: {
@@ -144,6 +145,7 @@ const emit = defineEmits(['close', 'converted'])
 
 const toast = useToast()
 const timelineStore = useTimelineStore()
+const locationAnalyticsStore = useLocationAnalyticsStore()
 const timezone = useTimezone()
 
 const strategy = ref('LATEST_POINT')
@@ -230,7 +232,7 @@ const loadPreview = async () => {
   try {
     preview.value = await timelineStore.getDataGapStayConversionPreview(props.dataGap.id)
   } catch (error) {
-    previewError.value = error.response?.data?.message || error.message || 'Failed to resolve latest point preview'
+    previewError.value = formatApiErrorDetail(error, 'Failed to resolve latest point preview')
   } finally {
     previewLoading.value = false
   }
@@ -247,12 +249,7 @@ const searchPlaces = async (event) => {
 
   searchLoading.value = true
   try {
-    const response = await apiService.get('/location-analytics/search', {
-      q: query,
-      type: 'place'
-    })
-
-    const results = Array.isArray(response?.data) ? response.data : []
+    const results = await locationAnalyticsStore.searchLocations(query, 'place')
     placeSuggestions.value = results
       .filter((result) => result?.category === 'favorite' || result?.category === 'geocoding')
       .map((result) => ({
@@ -261,7 +258,7 @@ const searchPlaces = async (event) => {
         displayName: result.displayName || result.name
       }))
   } catch (error) {
-    searchError.value = error.response?.data?.message || error.message || 'Failed to search places'
+    searchError.value = formatApiErrorDetail(error, 'Failed to search places')
   } finally {
     searchLoading.value = false
   }
@@ -305,7 +302,7 @@ const convert = async () => {
     toast.add({
       severity: 'error',
       summary: 'Conversion Failed',
-      detail: error.response?.data?.message || error.message || 'Could not convert data gap',
+      detail: formatApiErrorDetail(error, 'Could not convert data gap'),
       life: 5000
     })
   } finally {

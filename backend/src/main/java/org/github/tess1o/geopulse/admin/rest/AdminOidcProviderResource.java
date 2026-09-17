@@ -28,6 +28,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for OIDC provider management.
@@ -56,14 +60,12 @@ public class AdminOidcProviderResource {
      */
     @GET
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getAllProviders() {
+    public List<OidcProviderResponse> getAllProviders() {
         List<OidcProviderConfiguration> providers = configurationService.loadAllProviders();
 
-        List<OidcProviderResponse> response = providers.stream()
+        return providers.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
-
-        return Response.ok(response).build();
     }
 
     /**
@@ -72,13 +74,10 @@ public class AdminOidcProviderResource {
     @GET
     @Path("/{name}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
-    public Response getProvider(@PathParam("name") String name) {
+    public OidcProviderResponse getProvider(@PathParam("name") String name) {
         return configurationService.getProviderByName(name)
                 .map(this::mapToResponse)
-                .map(response -> Response.ok(response).build())
-                .orElse(Response.status(Response.Status.NOT_FOUND)
-                        .entity(Map.of("error", "Provider not found"))
-                        .build());
+                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found"));
     }
 
     /**
@@ -86,7 +85,7 @@ public class AdminOidcProviderResource {
      */
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response createProvider(
+    public RestResponse<OidcProviderResponse> createProvider(
             @Valid CreateOidcProviderRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -95,14 +94,11 @@ public class AdminOidcProviderResource {
 
         // Check if provider already exists
         if (configurationService.getProviderByName(request.getName()).isPresent()) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(Map.of("error", "Provider with this name already exists"))
-                    .build();
+            throw problem(OIDC_PROVIDER_CONFLICT, "Provider with this name already exists",
+                    Map.of("name", request.getName()));
         }
 
-        try {
-            // Build provider configuration
-            OidcProviderConfiguration provider = OidcProviderConfiguration.builder()
+        OidcProviderConfiguration provider = OidcProviderConfiguration.builder()
                     .name(request.getName())
                     .displayName(request.getDisplayName())
                     .enabled(request.isEnabled())
@@ -112,14 +108,13 @@ public class AdminOidcProviderResource {
                     .icon(request.getIcon())
                     .scopes(request.getScopes())
                     .metadataValid(false)
-                    .build();
+                .build();
 
-            // Save to database
-            OidcProviderConfiguration saved = configurationService.saveProvider(provider, adminId);
+        OidcProviderConfiguration saved = configurationService.saveProvider(provider, adminId);
 
             // Audit log
-            String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
-            auditLogService.logAction(
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        auditLogService.logAction(
                     adminId,
                     ActionType.OIDC_PROVIDER_CREATED,
                     TargetType.OIDC_PROVIDER,
@@ -130,18 +125,9 @@ public class AdminOidcProviderResource {
                             "discoveryUrl", saved.getDiscoveryUrl()
                     ),
                     ipAddress
-            );
+        );
 
-            return Response.status(Response.Status.CREATED)
-                    .entity(mapToResponse(saved))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to create OIDC provider: {}", e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to create provider: " + e.getMessage()))
-                    .build();
-        }
+        return RestResponse.status(Response.Status.CREATED, mapToResponse(saved));
     }
 
     /**
@@ -150,7 +136,7 @@ public class AdminOidcProviderResource {
     @PUT
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response updateProvider(
+    public OidcProviderResponse updateProvider(
             @PathParam("name") String name,
             @Valid UpdateOidcProviderRequest request,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -158,10 +144,9 @@ public class AdminOidcProviderResource {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
-        try {
-            // Get existing provider (from DB or env)
-            OidcProviderConfiguration existing = configurationService.getProviderByName(name)
-                    .orElseThrow(() -> new NotFoundException("Provider not found: " + name));
+        OidcProviderConfiguration existing = configurationService.getProviderByName(name)
+                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                        Map.of("name", name)));
 
             // Capture old state for audit
             Map<String, Object> oldState = new HashMap<>();
@@ -208,18 +193,7 @@ public class AdminOidcProviderResource {
                     ipAddress
             );
 
-            return Response.ok(mapToResponse(saved)).build();
-
-        } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update OIDC provider: {}", e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to update provider: " + e.getMessage()))
-                    .build();
-        }
+        return mapToResponse(saved);
     }
 
     /**
@@ -229,7 +203,7 @@ public class AdminOidcProviderResource {
     @DELETE
     @Path("/{name}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response deleteProvider(
+    public void deleteProvider(
             @PathParam("name") String name,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -238,19 +212,14 @@ public class AdminOidcProviderResource {
 
         // Check if provider exists in database
         if (!configurationService.existsInDatabase(name)) {
-            // Provider is from environment only, cannot delete
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of(
-                            "error", "Cannot delete environment-based provider. " +
-                                    "Provider must be removed from environment variables."
-                    ))
-                    .build();
+            throw problem(OIDC_PROVIDER_ENVIRONMENT_ONLY,
+                    "Cannot delete environment-based provider; remove it from environment variables",
+                    Map.of("name", name));
         }
 
-        try {
-            // Capture provider details for audit before deletion
-            OidcProviderConfiguration provider = configurationService.getProviderByName(name)
-                    .orElseThrow(() -> new NotFoundException("Provider not found: " + name));
+        OidcProviderConfiguration provider = configurationService.getProviderByName(name)
+                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                        Map.of("name", name)));
 
             Map<String, Object> providerDetails = new HashMap<>();
             providerDetails.put("displayName", provider.getDisplayName());
@@ -272,26 +241,6 @@ public class AdminOidcProviderResource {
                     ipAddress
             );
 
-            // Check if provider still exists in environment
-            boolean stillExists = configurationService.isFromEnvironment(name);
-
-            return Response.ok(Map.of(
-                    "success", true,
-                    "message", stillExists
-                            ? "Provider deleted from database and reverted to environment configuration"
-                            : "Provider deleted successfully"
-            )).build();
-
-        } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete OIDC provider: {}", e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to delete provider: " + e.getMessage()))
-                    .build();
-        }
     }
 
     /**
@@ -300,7 +249,7 @@ public class AdminOidcProviderResource {
     @POST
     @Path("/{name}/reset")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response resetProvider(
+    public OidcProviderResponse resetProvider(
             @PathParam("name") String name,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -309,14 +258,11 @@ public class AdminOidcProviderResource {
 
         // Check if provider exists in environment
         if (!configurationService.isFromEnvironment(name)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Provider does not exist in environment variables"))
-                    .build();
+            throw problem(OIDC_PROVIDER_ENVIRONMENT_MISSING,
+                    "Provider does not exist in environment variables", Map.of("name", name));
         }
 
-        try {
-            // Delete from database to revert to env
-            configurationService.deleteProvider(name);
+        configurationService.deleteProvider(name);
 
             // Audit log
             String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
@@ -330,17 +276,11 @@ public class AdminOidcProviderResource {
             );
 
             // Return the environment provider configuration
-            OidcProviderConfiguration envProvider = configurationService.getProviderByName(name)
-                    .orElseThrow(() -> new RuntimeException("Failed to load environment provider after reset"));
+        OidcProviderConfiguration envProvider = configurationService.getProviderByName(name)
+                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND,
+                        "Failed to load environment provider after reset", Map.of("name", name)));
 
-            return Response.ok(mapToResponse(envProvider)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to reset OIDC provider: {}", e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to reset provider: " + e.getMessage()))
-                    .build();
-        }
+        return mapToResponse(envProvider);
     }
 
     /**
@@ -349,11 +289,12 @@ public class AdminOidcProviderResource {
     @POST
     @Path("/{name}/test")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public Response testProvider(@PathParam("name") String name) {
+    public TestOidcProviderResponse testProvider(@PathParam("name") String name) {
         try {
             // Get provider configuration
             OidcProviderConfiguration provider = configurationService.getProviderByName(name)
-                    .orElseThrow(() -> new NotFoundException("Provider not found: " + name));
+                    .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                            Map.of("name", name)));
 
             // Attempt to fetch discovery document
             OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
@@ -371,20 +312,13 @@ public class AdminOidcProviderResource {
                     discovery.getIssuer()
             );
 
-            return Response.ok(response).build();
+            return response;
 
-        } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(TestOidcProviderResponse.failure("NOT_FOUND", e.getMessage()))
-                    .build();
+        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to test OIDC provider connection: {}", e.getMessage(), e);
-            return Response.ok(
-                    TestOidcProviderResponse.failure(
-                            e.getClass().getSimpleName(),
-                            e.getMessage()
-                    )
-            ).build();
+            return TestOidcProviderResponse.failure(e.getClass().getSimpleName(), e.getMessage());
         }
     }
 

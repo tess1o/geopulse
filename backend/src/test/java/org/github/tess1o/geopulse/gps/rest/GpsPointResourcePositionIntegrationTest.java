@@ -76,11 +76,10 @@ class GpsPointResourcePositionIntegrationTest {
                 .get("/api/gps/status")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.hasGpsData", equalTo(false))
-                .body("data.totalGpsPoints", equalTo(0))
-                .body("data.latestGpsPointTimestamp", nullValue())
-                .body("data.coordinates", nullValue());
+                .body("hasGpsData", equalTo(false))
+                .body("totalGpsPoints", equalTo(0))
+                .body("latestGpsPointTimestamp", nullValue())
+                .body("coordinates", nullValue());
     }
 
     @Test
@@ -114,7 +113,7 @@ class GpsPointResourcePositionIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("success"))
-                .body("message", equalTo("OK"));
+                .body("data", equalTo("OK"));
 
         List<GpsPointEntity> savedPoints = gpsPointRepository.findByUserId(userId);
         assertThat(savedPoints).hasSize(1);
@@ -159,9 +158,10 @@ class GpsPointResourcePositionIntegrationTest {
                 .when()
                 .post("/api/gps/points")
                 .then()
+                .log().body(true)
                 .statusCode(200)
                 .body("status", equalTo("success"))
-                .body("message", equalTo("OK"));
+                .body("data", equalTo("OK"));
 
         List<GpsPointEntity> savedPoints = gpsPointRepository.findByUserId(userId);
         assertThat(savedPoints).hasSize(1);
@@ -204,7 +204,7 @@ class GpsPointResourcePositionIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("success"))
-                .body("message", equalTo("OK"));
+                .body("data", equalTo("OK"));
 
         List<GpsPointEntity> savedPoints = gpsPointRepository.findByUserId(userId);
         assertThat(savedPoints).isEmpty();

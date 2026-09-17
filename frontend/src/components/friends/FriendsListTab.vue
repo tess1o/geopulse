@@ -152,13 +152,15 @@ import { ref, onMounted, watch } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import friendsService from '@/services/friendsService'
+import { useFriendsStore } from '@/stores/friends'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import InputSwitch from 'primevue/inputswitch'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 const timezone = useTimezone()
 const toast = useToast()
 const confirm = useConfirm()
+const friendsStore = useFriendsStore()
 
 const props = defineProps({
   friends: {
@@ -192,9 +194,9 @@ async function loadAllPermissions() {
     // Load permissions for each friend
     const permissionPromises = props.friends.map(async (friend) => {
       try {
-        const response = await friendsService.getFriendPermissions(friend.friendId)
-        friend.shareTimelinePermission = response.data?.shareTimeline || false
-        friend.shareLiveLocationPermission = response.data?.shareLiveLocation || false
+        const response = await friendsStore.getFriendPermissions(friend.friendId)
+        friend.shareTimelinePermission = response?.shareTimeline || false
+        friend.shareLiveLocationPermission = response?.shareLiveLocation || false
       } catch (error) {
         console.error(`Failed to load permissions for friend ${friend.friendId}:`, error)
         friend.shareTimelinePermission = false
@@ -225,11 +227,11 @@ async function handleTimelinePermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        const response = await friendsService.updateFriendPermissions(friend.friendId, newValue)
+        const response = await friendsStore.updateFriendPermissions(friend.friendId, newValue)
 
         // Update state from API response to ensure consistency
-        friend.shareTimelinePermission = response.data?.shareTimeline ?? newValue
-        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? friend.shareLiveLocationPermission
+        friend.shareTimelinePermission = response?.shareTimeline ?? newValue
+        friend.shareLiveLocationPermission = response?.shareLiveLocation ?? friend.shareLiveLocationPermission
 
         toast.add({
           severity: 'success',
@@ -248,7 +250,7 @@ async function handleTimelinePermissionChange(friend) {
         toast.add({
           severity: 'error',
           summary: 'Failed to Update Permission',
-          detail: error.message || 'Could not update friend permissions',
+          detail: formatApiErrorDetail(error, 'Could not update friend permissions'),
           life: 5000
         })
       }
@@ -277,11 +279,11 @@ async function handleLiveLocationPermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        const response = await friendsService.updateLiveLocationPermission(friend.friendId, newValue)
+        const response = await friendsStore.updateLiveLocationPermission(friend.friendId, newValue)
 
         // Update state from API response to ensure consistency
-        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? newValue
-        friend.shareTimelinePermission = response.data?.shareTimeline ?? friend.shareTimelinePermission
+        friend.shareLiveLocationPermission = response?.shareLiveLocation ?? newValue
+        friend.shareTimelinePermission = response?.shareTimeline ?? friend.shareTimelinePermission
 
         toast.add({
           severity: 'success',
@@ -300,7 +302,7 @@ async function handleLiveLocationPermissionChange(friend) {
         toast.add({
           severity: 'error',
           summary: 'Failed to Update Permission',
-          detail: error.message || 'Could not update live location permission',
+          detail: formatApiErrorDetail(error, 'Could not update live location permission'),
           life: 5000
         })
       }

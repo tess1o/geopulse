@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import java.util.List;
 import java.util.Locale;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/traccar")
@@ -40,6 +41,7 @@ public class TraccarResource {
     @POST
     @Operation(summary = "Ingest Traccar position",
             description = "Receives a Traccar position update and routes it to matching active Traccar source configurations.")
+    @APIResponse(responseCode = "200", description = "Position accepted or ignored")
     public Response handleTraccar(TraccarPositionData payload,
                                   @HeaderParam("Authorization") String authHeader) {
         log.info("Received Traccar payload: {}", payload);

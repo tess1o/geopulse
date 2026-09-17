@@ -401,8 +401,7 @@ import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDial
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
 import ViewerLocationControl from '@/components/maps/ViewerLocationControl.vue'
 import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
-import apiService from '@/utils/apiService'
-import timelineService from '@/services/timelineService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import LocationLookupDialog from '@/components/dialogs/LocationLookupDialog.vue'
@@ -419,6 +418,7 @@ import {useImmichStore} from '@/stores/immich'
 import {useNotesStore} from '@/stores/notes'
 import {useDigestStore} from '@/stores/digest'
 import {useDateRangeStore} from '@/stores/dateRange'
+import {useTechnicalDataStore} from '@/stores/technicalData'
 
 // Props
 const props = defineProps({
@@ -637,6 +637,7 @@ const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 const digestStore = useDigestStore()
 const dateRangeStore = useDateRangeStore()
+const technicalDataStore = useTechnicalDataStore()
 
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
@@ -1292,14 +1293,15 @@ const openLocationLookup = async (point) => {
   dialogState.value.locationLookupVisible = true
 
   try {
-    const response = await timelineService.lookupLocation(latitude, longitude)
+    const response = await timelineStore.lookupLocation(latitude, longitude)
     if (requestId !== locationLookupRequestId) return
-    dialogState.value.locationLookupResult = response?.data || null
+    dialogState.value.locationLookupResult = response || null
   } catch (error) {
     if (requestId !== locationLookupRequestId) return
-    dialogState.value.locationLookupError = error?.response?.data?.message
-      || error?.message
-      || 'Could not check visits at this location.'
+    dialogState.value.locationLookupError = formatApiErrorDetail(
+      error,
+      'Could not check visits at this location.'
+    )
   } finally {
     if (requestId === locationLookupRequestId) {
       dialogState.value.locationLookupLoading = false
@@ -1902,14 +1904,13 @@ const loadRawGpsPoints = async () => {
   rawGpsPointsLoading.value = true
 
   try {
-    const response = await apiService.get('/gps/map-points', {
+    const data = await technicalDataStore.fetchRawMapPoints({
       startTime,
       endTime,
       limit: 10000
     })
     if (requestId !== rawGpsPointsRequestId) return
 
-    const data = response?.data || {}
     const points = Array.isArray(data.points) ? data.points : []
     const meta = {
       totalCount: Number(data.totalCount || 0),
@@ -1964,9 +1965,7 @@ const resolveRawGpsPointLocation = async (point) => {
     return rawGpsLocationCache.get(key)
   }
 
-  const promise = apiService
-    .get(`/gps/points/${point.id}/location`)
-    .then((response) => response?.data)
+  const promise = technicalDataStore.resolveRawPointLocation(point.id)
 
   rawGpsLocationCache.set(key, promise)
   try {

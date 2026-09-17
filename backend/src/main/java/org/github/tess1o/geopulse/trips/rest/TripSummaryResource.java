@@ -8,21 +8,20 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.service.TripSummaryService;
 
-import java.util.UUID;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/trips/{tripId}/summary")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Trips", description = "Read trip summaries.")
 public class TripSummaryResource {
 
@@ -35,21 +34,11 @@ public class TripSummaryResource {
     }
 
     @GET
-    public Response getTripSummary(@PathParam("tripId") Long tripId) {
+    public TripSummaryDto getTripSummary(@PathParam("tripId") Long tripId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripSummaryDto summary = tripSummaryService.getSummary(userId, tripId);
-            return Response.ok(ApiResponse.success(summary)).build();
+            return tripSummaryService.getSummary(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trip summary for trip {}", tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip summary"))
-                    .build();
+            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
         }
     }
 }
-

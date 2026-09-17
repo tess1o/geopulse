@@ -352,6 +352,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
 import { usePeriodTag } from '@/composables/usePeriodTag'
 import { formatTripRangeDuration } from '@/utils/tripHelpers'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { useTripsStore } from '@/stores/trips'
 import { usePeriodTagsStore } from '@/stores/periodTags'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -536,7 +537,7 @@ const refreshTrips = async () => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Load Trips',
-      detail: error.message || 'Could not load trips',
+      detail: formatApiErrorDetail(error, 'Could not load trips'),
       life: 4000
     })
   }
@@ -598,7 +599,7 @@ const unlinkTripFromLabel = (trip) => {
         toast.add({
           severity: 'error',
           summary: 'Failed to Unlink',
-          detail: error.response?.data?.message || error.message || 'Unlink failed',
+          detail: formatApiErrorDetail(error, 'Unlink failed'),
           life: 4000
         })
       }
@@ -706,7 +707,7 @@ const submitTrip = async () => {
     toast.add({
       severity: 'error',
       summary: isEditMode.value ? 'Failed to Update Trip Plan' : 'Failed to Create Trip Plan',
-      detail: error.response?.data?.message || error.message || 'Request failed',
+      detail: formatApiErrorDetail(error, 'Request failed'),
       life: 5000
     })
   } finally {
@@ -731,7 +732,7 @@ const performDeleteTrip = async (trip, mode) => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Delete Trip Plan',
-      detail: error.response?.data?.message || error.message || 'Delete failed',
+      detail: formatApiErrorDetail(error, 'Delete failed'),
       life: 5000
     })
   }
@@ -806,7 +807,7 @@ const createFromPeriodTag = async () => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Create from Timeline Label',
-      detail: error.response?.data?.message || error.message || 'Conversion failed',
+      detail: formatApiErrorDetail(error, 'Conversion failed'),
       life: 5000
     })
   } finally {

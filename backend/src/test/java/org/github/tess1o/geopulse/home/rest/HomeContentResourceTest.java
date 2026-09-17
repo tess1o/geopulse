@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.home.rest;
 
-import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.home.model.HomeContentResponse;
 import org.github.tess1o.geopulse.home.service.HomeContentService;
 import org.junit.jupiter.api.Tag;
@@ -48,10 +47,7 @@ class HomeContentResourceTest {
 
         when(homeContentService.getContent()).thenReturn(payload);
 
-        Response response = homeContentResource.getHomeContent();
-
-        assertEquals(200, response.getStatus());
-        assertEquals(payload, response.getEntity());
+        assertEquals(payload, homeContentResource.getHomeContent());
         verify(homeContentService).getContent();
     }
 }

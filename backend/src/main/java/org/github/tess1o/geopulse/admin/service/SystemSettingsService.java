@@ -7,10 +7,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.github.tess1o.geopulse.admin.model.SettingDefinition;
-import org.github.tess1o.geopulse.admin.model.SettingInfo;
-import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
-import org.github.tess1o.geopulse.admin.model.ValueType;
+import org.github.tess1o.geopulse.admin.model.*;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
@@ -502,7 +499,7 @@ public class SystemSettingsService {
                     return decrypted;
                 } catch (Exception e) {
                     log.error("Failed to decrypt setting {}: {}", key, e.getMessage());
-                    throw new RuntimeException("Decryption failed for setting: " + key, e);
+                    throw new SettingDecryptionFailedException("Decryption failed for setting: " + key, e);
                 }
             }
 

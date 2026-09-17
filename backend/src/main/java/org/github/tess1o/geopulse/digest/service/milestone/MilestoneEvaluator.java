@@ -7,11 +7,13 @@ import org.github.tess1o.geopulse.digest.service.calculation.ActiveDaysCalculato
 import org.github.tess1o.geopulse.digest.service.repository.DigestDataRepository;
 import org.github.tess1o.geopulse.statistics.model.UserStatistics;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -132,8 +134,14 @@ public class MilestoneEvaluator {
 
                 return Milestone.builder()
                         .id(threshold.id())
-                        .title(threshold.title())
-                        .description(description)
+                        .title(new MessageDescriptor(
+                                "digest.milestone." + threshold.id() + ".title",
+                                Map.of(),
+                                threshold.title()))
+                        .description(new MessageDescriptor(
+                                "digest.milestone." + threshold.id() + ".description",
+                                Map.of("value", value, "periodType", isMonthly ? "monthly" : "yearly"),
+                                description))
                         .icon(threshold.icon())
                         .tier(threshold.tier())
                         .category(categoryName)

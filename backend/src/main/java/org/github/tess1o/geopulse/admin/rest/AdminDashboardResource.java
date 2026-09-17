@@ -6,14 +6,13 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.dto.AdminDashboardResponse;
 import org.github.tess1o.geopulse.prometheus.UserMetrics;
 import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.weather.service.WeatherStatusService;
 import org.github.tess1o.geopulse.admin.service.AdminFullBackupService;
-import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
@@ -24,8 +23,8 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Instant;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 /**
@@ -48,7 +47,6 @@ public class AdminDashboardResource {
     WeatherStatusService weatherStatusService;
 
     @Inject AdminFullBackupService backupService;
-    @Inject BackupMaintenanceService backupMaintenanceService;
     @Inject GpsPointRepository gpsPointRepository;
     @Inject TimelineJobProgressService timelineJobProgressService;
     @Inject ReverseGeocodingManagementService reverseGeocodingManagementService;
@@ -63,83 +61,53 @@ public class AdminDashboardResource {
      */
     @GET
     @Path("/stats")
-    public Response getDashboardStats() {
-        try {
-            Map<String, Object> stats = new HashMap<>();
-
-            // Log metrics status for debugging
-            log.debug("Metrics status - User: {}, GPS: {}",
-                    userMetrics.isEnabled(),
-                    gpsPointsMetrics.isEnabled());
-
-            // User metrics (queries DB directly if metrics disabled)
-            stats.put("totalUsers", userMetrics.getTotalUsersCount());
-            stats.put("activeUsers24h", userMetrics.getActiveUsersLast24h());
-
-            // GPS metrics (queries DB directly if metrics disabled)
-            stats.put("totalGpsPoints", gpsPointsMetrics.getTotalGpsPoints());
-            stats.put("gpsActivity24h", gpsPointsMetrics.getGpsPointsLast24h());
-            stats.put("weatherStatus", weatherStatusService.status());
-            stats.put("health", health());
-
-            // Add metadata about metrics status
-            stats.put("metricsEnabled", Map.of(
-                    "user", userMetrics.isEnabled(),
-                    "gps", gpsPointsMetrics.isEnabled()
-            ));
-
-            log.debug("Dashboard stats retrieved: {}", stats);
-
-            return Response.ok(stats).build();
-        } catch (Exception e) {
-            log.error("Failed to retrieve dashboard stats", e);
-            return Response.serverError()
-                    .entity(Map.of("error", "Failed to retrieve dashboard statistics"))
-                    .build();
+    public AdminDashboardResponse getDashboardStats() {
+        log.debug("Metrics status - User: {}, GPS: {}", userMetrics.isEnabled(), gpsPointsMetrics.isEnabled());
+        AdminDashboardResponse.BackupHealth backup = backupHealth();
+        Instant latestReceived = gpsPointRepository.findLatestReceived()
+                .map(point -> point.getCreatedAt()).orElse(null);
+        List<AdminDashboardResponse.SecurityWarningCode> warnings = new ArrayList<>();
+        if (!backup.scheduled()) {
+            warnings.add(AdminDashboardResponse.SecurityWarningCode.SCHEDULED_BACKUPS_DISABLED);
         }
+
+        return new AdminDashboardResponse(
+                userMetrics.getTotalUsersCount(),
+                userMetrics.getActiveUsersLast24h(),
+                gpsPointsMetrics.getTotalGpsPoints(),
+                gpsPointsMetrics.getGpsPointsLast24h(),
+                weatherStatusService.status(),
+                new AdminDashboardResponse.Health(
+                        backup,
+                        new AdminDashboardResponse.IngestionHealth(latestReceived, gpsPointsMetrics.getGpsPointsLast24h()),
+                        reverseGeocodingManagementService.getProviderHealth(),
+                        mapMatchingHealth(),
+                        timelineJobProgressService.getStatistics(),
+                        new AdminDashboardResponse.SecurityHealth(warnings)),
+                new AdminDashboardResponse.MetricsEnabled(userMetrics.isEnabled(), gpsPointsMetrics.isEnabled()));
     }
 
-    private Map<String, Object> health() {
-        Map<String, Object> health = new HashMap<>();
+    private AdminDashboardResponse.BackupHealth backupHealth() {
         try {
             var config = backupService.getConfig();
             Instant latestBackup = backupService.getLatestLocalBackupAt();
             boolean stale = config.getHealthMaxAgeDays() > 0 && latestBackup != null
                     && latestBackup.isBefore(Instant.now().minus(Duration.ofDays(config.getHealthMaxAgeDays())));
-            Map<String, Object> backup = new HashMap<>();
-            backup.put("scheduled", config.isScheduledEnabled());
-            backup.put("latestBackupAt", latestBackup == null ? "" : latestBackup.toString());
-            backup.put("status", backupMaintenanceService.getStatus().getStatus());
-            backup.put("healthMaxAgeDays", config.getHealthMaxAgeDays());
-            backup.put("stale", stale);
-            health.put("backup", backup);
+            return new AdminDashboardResponse.BackupHealth(
+                    config.isScheduledEnabled(), latestBackup, config.getHealthMaxAgeDays(), stale);
         } catch (Exception e) {
-            health.put("backup", Map.of("scheduled", false, "latestBackupAt", "", "status", "unavailable", "healthMaxAgeDays", 0, "stale", false));
+            log.warn("Backup health is unavailable", e);
+            return new AdminDashboardResponse.BackupHealth(false, null, 0, false);
         }
-
-        Instant latestReceived = gpsPointRepository.findLatestReceived()
-                .map(point -> point.getCreatedAt()).orElse(null);
-        health.put("ingestion", Map.of(
-                "latestReceivedAt", latestReceived == null ? "" : latestReceived.toString(),
-                "pointsLast24h", gpsPointsMetrics.getGpsPointsLast24h()));
-        health.put("geocoding", reverseGeocodingManagementService.getProviderHealth());
-        health.put("mapMatching", mapMatchingHealth());
-        health.put("timeline", timelineJobProgressService.getStatistics());
-
-        java.util.List<String> warnings = new java.util.ArrayList<>();
-        if (!backupService.getConfig().isScheduledEnabled()) warnings.add("Scheduled backups are disabled");
-        health.put("security", Map.of("warnings", warnings));
-        return health;
     }
 
-    private Map<String, Object> mapMatchingHealth() {
-        Map<String, Object> health = new HashMap<>();
+    private AdminDashboardResponse.MapMatchingHealth mapMatchingHealth() {
         String provider = mapMatchingConfiguration.provider();
-        health.put("enabled", mapMatchingConfiguration.isEnabled());
-        health.put("configured", mapMatchingConfiguration.valhallaConfigured());
-        health.put("provider", provider);
-        health.put("providerHealth", integrationHealthService.findCurrentHealth(ExternalIntegrationType.MAP_MATCHING, provider));
-        health.put("status", mapMatchingWorker.status());
-        return health;
+        return new AdminDashboardResponse.MapMatchingHealth(
+                mapMatchingConfiguration.isEnabled(),
+                mapMatchingConfiguration.valhallaConfigured(),
+                provider,
+                integrationHealthService.findCurrentHealth(ExternalIntegrationType.MAP_MATCHING, provider),
+                mapMatchingWorker.status());
     }
 }

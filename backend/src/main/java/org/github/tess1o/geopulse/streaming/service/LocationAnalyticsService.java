@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -339,7 +340,7 @@ public class LocationAnalyticsService {
      * @param sortDirection "asc" or "desc"
      * @return paginated visits
      */
-    public PagedPlaceVisitsDTO getCityVisits(
+    public PageResponse<PlaceVisitDTO> getCityVisits(
             UUID userId, String cityName,
             int page, int pageSize, String sortBy, String sortDirection) {
 
@@ -358,13 +359,7 @@ public class LocationAnalyticsService {
 
         int totalPages = (int) Math.ceil((double) totalCount / validPageSize);
 
-        return PagedPlaceVisitsDTO.builder()
-                .visits(visits)
-                .currentPage(page)
-                .pageSize(validPageSize)
-                .totalCount(totalCount)
-                .totalPages(totalPages)
-                .build();
+        return new PageResponse<>(visits, page, validPageSize, totalCount, totalPages);
     }
 
     /**
@@ -378,7 +373,7 @@ public class LocationAnalyticsService {
      * @param sortDirection "asc" or "desc"
      * @return paginated visits
      */
-    public PagedPlaceVisitsDTO getCountryVisits(
+    public PageResponse<PlaceVisitDTO> getCountryVisits(
             UUID userId, String countryName,
             int page, int pageSize, String sortBy, String sortDirection) {
 
@@ -397,13 +392,7 @@ public class LocationAnalyticsService {
 
         int totalPages = (int) Math.ceil((double) totalCount / validPageSize);
 
-        return PagedPlaceVisitsDTO.builder()
-                .visits(visits)
-                .currentPage(page)
-                .pageSize(validPageSize)
-                .totalCount(totalCount)
-                .totalPages(totalPages)
-                .build();
+        return new PageResponse<>(visits, page, validPageSize, totalCount, totalPages);
     }
 
     /**

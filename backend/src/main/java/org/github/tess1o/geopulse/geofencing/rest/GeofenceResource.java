@@ -4,36 +4,67 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
-import org.github.tess1o.geopulse.geofencing.model.dto.*;
+import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
+import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestResponse;
+import org.github.tess1o.geopulse.geofencing.model.dto.CreateGeofenceRuleRequest;
+import org.github.tess1o.geopulse.geofencing.model.dto.CreateNotificationTemplateRequest;
+import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
+import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceRuleDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.TemplateDeliveryCapabilitiesDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.UpdateGeofenceRuleRequest;
+import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEventService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceRuleService;
 import org.github.tess1o.geopulse.geofencing.service.NotificationTemplateService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.api.CountResponse;
+import org.github.tess1o.geopulse.shared.api.UpdatedCountResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.APPRISE_TEST_FAILED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOFENCE_EVENT_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOFENCE_RULE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_QUERY;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_RULE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFICATION_TEMPLATE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/geofences")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Geofences", description = "Manage geofence rules, events, templates, and notification tests.")
 public class GeofenceResource {
 
@@ -58,91 +89,59 @@ public class GeofenceResource {
 
     @GET
     @Path("/rules")
-    public Response getRules() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<GeofenceRuleDto> rules = ruleService.listRules(userId);
-            return Response.ok(ApiResponse.success(rules)).build();
-        } catch (Exception e) {
-            log.error("Failed to load geofence rules", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load geofence rules"))
-                    .build();
-        }
+    public List<GeofenceRuleDto> getRules() {
+        return ruleService.listRules(currentUserService.getCurrentUserId());
     }
 
     @POST
     @Path("/rules")
-    public Response createRule(@Valid CreateGeofenceRuleRequest request) {
+    @APIResponse(responseCode = "201", description = "Geofence rule created")
+    public RestResponse<GeofenceRuleDto> createRule(@NotNull @Valid CreateGeofenceRuleRequest request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GeofenceRuleDto created = ruleService.createRule(userId, request);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(created))
-                    .build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create geofence rule", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create geofence rule"))
-                    .build();
+            GeofenceRuleDto created = ruleService.createRule(currentUserService.getCurrentUserId(), request);
+            return RestResponse.status(Response.Status.CREATED, created);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_GEOFENCE_RULE, exception.getMessage());
         }
     }
 
     @PATCH
     @Path("/rules/{ruleId}")
-    public Response updateRule(@PathParam("ruleId") Long ruleId, @Valid UpdateGeofenceRuleRequest request) {
+    public GeofenceRuleDto updateRule(@PathParam("ruleId") Long ruleId,
+                                      @NotNull @Valid UpdateGeofenceRuleRequest request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GeofenceRuleDto updated = ruleService.updateRule(userId, ruleId, request);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update geofence rule {}", ruleId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update geofence rule"))
-                    .build();
+            return ruleService.updateRule(currentUserService.getCurrentUserId(), ruleId, request);
+        } catch (NoSuchElementException exception) {
+            throw problem(GEOFENCE_RULE_NOT_FOUND, exception.getMessage(), Map.of("ruleId", ruleId));
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_GEOFENCE_RULE, exception.getMessage(), Map.of("ruleId", ruleId));
         }
     }
 
     @DELETE
     @Path("/rules/{ruleId}")
-    public Response deleteRule(@PathParam("ruleId") Long ruleId) {
+    @APIResponse(responseCode = "204", description = "Geofence rule deleted")
+    public RestResponse<Void> deleteRule(@PathParam("ruleId") Long ruleId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            ruleService.deleteRule(userId, ruleId);
-            return Response.ok(ApiResponse.success("Geofence rule deleted")).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete geofence rule {}", ruleId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete geofence rule"))
-                    .build();
+            ruleService.deleteRule(currentUserService.getCurrentUserId(), ruleId);
+            return RestResponse.noContent();
+        } catch (NoSuchElementException exception) {
+            throw problem(GEOFENCE_RULE_NOT_FOUND, exception.getMessage(), Map.of("ruleId", ruleId));
         }
     }
 
     @GET
     @Path("/events")
-    public Response getEvents(@QueryParam("page") @DefaultValue("0") int page,
-                              @QueryParam("pageSize") @DefaultValue("25") int pageSize,
-                              @QueryParam("sortBy") @DefaultValue("occurredAt") String sortBy,
-                              @QueryParam("sortDir") @DefaultValue("desc") String sortDir,
-                              @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly,
-                              @QueryParam("dateFrom") String dateFromValue,
-                              @QueryParam("dateTo") String dateToValue,
-                              @QueryParam("subjectUserIds") String subjectUserIdsValue,
-                              @QueryParam("eventTypes") String eventTypesValue) {
+    public PageResponse<GeofenceEventDto> getEvents(@QueryParam("page") @DefaultValue("0") int page,
+                                          @QueryParam("pageSize") @DefaultValue("25") int pageSize,
+                                          @QueryParam("sortBy") @DefaultValue("occurredAt") String sortBy,
+                                          @QueryParam("sortDir") @DefaultValue("desc") String sortDir,
+                                          @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly,
+                                          @QueryParam("dateFrom") String dateFromValue,
+                                          @QueryParam("dateTo") String dateToValue,
+                                          @QueryParam("subjectUserIds") String subjectUserIdsValue,
+                                          @QueryParam("eventTypes") String eventTypesValue) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
             GeofenceEventQueryDto query = GeofenceEventQueryDto.builder()
                     .page(page)
                     .pageSize(pageSize)
@@ -154,191 +153,94 @@ public class GeofenceResource {
                     .subjectUserIds(parseUuidList(subjectUserIdsValue, "subjectUserIds"))
                     .eventTypes(parseEventTypes(eventTypesValue))
                     .build();
-            GeofenceEventPageDto events = eventService.listEventsPage(userId, query);
-            return Response.ok(ApiResponse.success(events)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to load geofence events", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load geofence events"))
-                    .build();
+            return eventService.listEventsPage(currentUserService.getCurrentUserId(), query);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_GEOFENCE_QUERY, exception.getMessage());
         }
     }
 
     @GET
     @Path("/events/unread-count")
-    public Response getUnreadEventCount() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            return Response.ok(ApiResponse.success(Map.of("count", eventService.countUnread(userId)))).build();
-        } catch (Exception e) {
-            log.error("Failed to load geofence unread event count", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load geofence unread event count"))
-                    .build();
-        }
+    public CountResponse getUnreadEventCount() {
+        return new CountResponse(eventService.countUnread(currentUserService.getCurrentUserId()));
     }
 
     @POST
     @Path("/events/{eventId}/seen")
-    public Response markEventSeen(@PathParam("eventId") Long eventId) {
+    public GeofenceEventDto markEventSeen(@PathParam("eventId") Long eventId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GeofenceEventDto updated = eventService.markSeen(userId, eventId);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to mark geofence event {} as seen", eventId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark geofence event as seen"))
-                    .build();
+            return eventService.markSeen(currentUserService.getCurrentUserId(), eventId);
+        } catch (NoSuchElementException exception) {
+            throw problem(GEOFENCE_EVENT_NOT_FOUND, exception.getMessage(), Map.of("eventId", eventId));
         }
     }
 
     @POST
     @Path("/events/seen-all")
-    public Response markAllEventsSeen() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            long updatedCount = eventService.markAllSeen(userId);
-            return Response.ok(ApiResponse.success(Map.of("updatedCount", updatedCount))).build();
-        } catch (Exception e) {
-            log.error("Failed to mark geofence events as seen", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark geofence events as seen"))
-                    .build();
-        }
+    public UpdatedCountResponse markAllEventsSeen() {
+        return new UpdatedCountResponse(eventService.markAllSeen(currentUserService.getCurrentUserId()));
     }
 
     @GET
     @Path("/templates")
-    public Response getTemplates() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<NotificationTemplateDto> templates = templateService.listTemplates(userId);
-            return Response.ok(ApiResponse.success(templates)).build();
-        } catch (Exception e) {
-            log.error("Failed to load notification templates", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load notification templates"))
-                    .build();
-        }
+    public List<NotificationTemplateDto> getTemplates() {
+        return templateService.listTemplates(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/templates/capabilities")
-    public Response getTemplateCapabilities() {
-        try {
-            TemplateDeliveryCapabilitiesDto capabilities = TemplateDeliveryCapabilitiesDto.builder()
-                    .appriseEnabled(appriseNotificationService.isEnabled())
-                    .appriseConfigured(appriseNotificationService.isConfigured())
-                    .build();
-            return Response.ok(ApiResponse.success(capabilities)).build();
-        } catch (Exception e) {
-            log.error("Failed to load template delivery capabilities", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load template delivery capabilities"))
-                    .build();
-        }
+    public TemplateDeliveryCapabilitiesDto getTemplateCapabilities() {
+        return TemplateDeliveryCapabilitiesDto.builder()
+                .appriseEnabled(appriseNotificationService.isEnabled())
+                .appriseConfigured(appriseNotificationService.isConfigured())
+                .build();
     }
 
     @POST
     @Path("/templates/test-connection")
-    public Response testTemplateConnection(AppriseTestRequest request) {
-        try {
-            AppriseClientResult result = appriseNotificationService.testConnection(request);
-            if (result == null) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(ApiResponse.error("Apprise test failed: no response from client"))
-                        .build();
-            }
-
-            String message = result.getMessage() != null && !result.getMessage().isBlank()
-                    ? result.getMessage()
-                    : (result.isSuccess() ? "Apprise endpoint is reachable" : "Apprise test failed");
-
-            Map<String, Object> details = new LinkedHashMap<>();
-            details.put("statusCode", result.getStatusCode());
-            details.put("success", result.isSuccess());
-            details.put("message", message);
-
-            if (result.isSuccess()) {
-                return Response.ok(ApiResponse.success(details)).build();
-            }
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(message, details))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to test template connection", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to test template connection"))
-                    .build();
+    public AppriseTestResponse testTemplateConnection(@NotNull @Valid AppriseTestRequest request) {
+        AppriseClientResult result = appriseNotificationService.testConnection(request);
+        if (result == null) {
+            throw problem(APPRISE_TEST_FAILED, "Apprise test returned no response");
         }
+        return new AppriseTestResponse(result.isSuccess(), result.getStatusCode(), result.getMessage());
     }
 
     @POST
     @Path("/templates")
-    public Response createTemplate(@Valid CreateNotificationTemplateRequest request) {
+    @APIResponse(responseCode = "201", description = "Notification template created")
+    public RestResponse<NotificationTemplateDto> createTemplate(
+            @NotNull @Valid CreateNotificationTemplateRequest request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            NotificationTemplateDto created = templateService.createTemplate(userId, request);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(created))
-                    .build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create notification template", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create notification template"))
-                    .build();
+            NotificationTemplateDto created = templateService.createTemplate(currentUserService.getCurrentUserId(), request);
+            return RestResponse.status(Response.Status.CREATED, created);
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_NOTIFICATION_TEMPLATE, exception.getMessage());
         }
     }
 
     @PATCH
     @Path("/templates/{templateId}")
-    public Response updateTemplate(@PathParam("templateId") Long templateId,
-                                   @Valid UpdateNotificationTemplateRequest request) {
+    public NotificationTemplateDto updateTemplate(@PathParam("templateId") Long templateId,
+                                                   @NotNull @Valid UpdateNotificationTemplateRequest request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            NotificationTemplateDto updated = templateService.updateTemplate(userId, templateId, request);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update notification template {}", templateId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update notification template"))
-                    .build();
+            return templateService.updateTemplate(currentUserService.getCurrentUserId(), templateId, request);
+        } catch (NoSuchElementException exception) {
+            throw problem(NOTIFICATION_TEMPLATE_NOT_FOUND, exception.getMessage(), Map.of("templateId", templateId));
+        } catch (IllegalArgumentException exception) {
+            throw problem(INVALID_NOTIFICATION_TEMPLATE, exception.getMessage(), Map.of("templateId", templateId));
         }
     }
 
     @DELETE
     @Path("/templates/{templateId}")
-    public Response deleteTemplate(@PathParam("templateId") Long templateId) {
+    @APIResponse(responseCode = "204", description = "Notification template deleted")
+    public RestResponse<Void> deleteTemplate(@PathParam("templateId") Long templateId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            templateService.deleteTemplate(userId, templateId);
-            return Response.ok(ApiResponse.success("Notification template deleted")).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete notification template {}", templateId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete notification template"))
-                    .build();
+            templateService.deleteTemplate(currentUserService.getCurrentUserId(), templateId);
+            return RestResponse.noContent();
+        } catch (NoSuchElementException exception) {
+            throw problem(NOTIFICATION_TEMPLATE_NOT_FOUND, exception.getMessage(), Map.of("templateId", templateId));
         }
     }
 
@@ -348,7 +250,7 @@ public class GeofenceResource {
         }
         try {
             return Instant.parse(value.trim());
-        } catch (DateTimeParseException e) {
+        } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException("Invalid " + paramName + " value. Expected ISO-8601 instant.");
         }
     }
@@ -369,10 +271,9 @@ public class GeofenceResource {
         if (rawValues.isEmpty()) {
             return List.of();
         }
-
         try {
             return rawValues.stream().map(UUID::fromString).distinct().toList();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Invalid UUID in " + paramName + " filter.");
         }
     }
@@ -382,15 +283,13 @@ public class GeofenceResource {
         if (rawValues.isEmpty()) {
             return List.of();
         }
-
         try {
             return rawValues.stream()
                     .map(item -> GeofenceEventType.valueOf(item.toUpperCase(Locale.ROOT)))
                     .distinct()
                     .toList();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException exception) {
             throw new IllegalArgumentException("Invalid eventTypes filter. Supported values: ENTER, LEAVE.");
         }
     }
-
 }

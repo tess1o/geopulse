@@ -1,14 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
-
-const extractCoverageErrorMessage = (error, fallback) => (
-  error?.response?.data?.message
-  || error?.response?.data?.error?.message
-  || error?.response?.data?.error
-  || error?.userMessage
-  || error?.message
-  || fallback
-)
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useCoverageStore = defineStore('coverage', {
   state: () => ({
@@ -57,15 +49,14 @@ export const useCoverageStore = defineStore('coverage', {
           this.statusError = null
         }
 
-        const response = await apiService.get('/coverage/status')
-        const data = response?.data ?? response ?? null
+        const data = await apiService.get('/coverage/status')
         this.status = data
         this.statusError = null
         return data
       } catch (error) {
         console.error('Error fetching coverage status:', error)
         if (!silent) {
-          this.statusError = extractCoverageErrorMessage(error, 'Failed to fetch coverage status')
+          this.statusError = normalizeApiError(error, 'Failed to fetch coverage status')
         }
         return silent ? this.status : null
       } finally {
@@ -79,16 +70,15 @@ export const useCoverageStore = defineStore('coverage', {
       this.settingsUpdating = true
       this.statusError = null
       try {
-        const response = await apiService.put('/coverage/settings', { enabled })
-        const data = response?.data ?? response ?? null
+        const data = await apiService.put('/coverage/settings', { enabled })
         if (data) {
           this.status = data
         }
         return data
       } catch (error) {
         console.error('Error updating coverage settings:', error)
-        this.statusError = extractCoverageErrorMessage(error, 'Failed to update coverage settings')
-        throw error
+        this.statusError = normalizeApiError(error, 'Failed to update coverage settings')
+        throw this.statusError
       } finally {
         this.settingsUpdating = false
       }
@@ -98,16 +88,15 @@ export const useCoverageStore = defineStore('coverage', {
       this.settingsUpdating = true
       this.statusError = null
       try {
-        const response = await apiService.post('/coverage/recalculate', {})
-        const data = response?.data ?? response ?? null
+        const data = await apiService.post('/coverage/recalculate', {})
         if (data) {
           this.status = data
         }
         return data
       } catch (error) {
         console.error('Error recalculating coverage:', error)
-        this.statusError = extractCoverageErrorMessage(error, 'Failed to recalculate coverage')
-        throw error
+        this.statusError = normalizeApiError(error, 'Failed to recalculate coverage')
+        throw this.statusError
       } finally {
         this.settingsUpdating = false
       }
@@ -123,12 +112,10 @@ export const useCoverageStore = defineStore('coverage', {
           this.cellsError = null
         }
 
-        const response = await apiService.get('/coverage/cells', {
+        const data = await apiService.get('/coverage/cells', {
           bbox,
           grid
         })
-
-        const data = response?.data ?? response ?? []
         if (requestSeq !== this.cellsRequestSeq) {
           return null
         }
@@ -138,7 +125,7 @@ export const useCoverageStore = defineStore('coverage', {
       } catch (error) {
         console.error('Error fetching coverage cells:', error)
         if (!silent && requestSeq === this.cellsRequestSeq) {
-          this.cellsError = extractCoverageErrorMessage(error, 'Failed to fetch coverage cells')
+          this.cellsError = normalizeApiError(error, 'Failed to fetch coverage cells')
         }
         return null
       } finally {
@@ -161,8 +148,7 @@ export const useCoverageStore = defineStore('coverage', {
           this.summaryError = null
         }
 
-        const response = await apiService.get('/coverage/summary', { grid })
-        const data = response?.data ?? response ?? null
+        const data = await apiService.get('/coverage/summary', { grid })
         if (data) {
           this.summaryByGrid[grid] = data
         }
@@ -170,7 +156,7 @@ export const useCoverageStore = defineStore('coverage', {
       } catch (error) {
         console.error('Error fetching coverage summary:', error)
         if (!silent) {
-          this.summaryError = extractCoverageErrorMessage(error, 'Failed to fetch coverage summary')
+          this.summaryError = normalizeApiError(error, 'Failed to fetch coverage summary')
         }
         return null
       } finally {

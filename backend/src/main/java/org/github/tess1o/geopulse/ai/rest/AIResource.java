@@ -1,25 +1,33 @@
 package org.github.tess1o.geopulse.ai.rest;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.ai.service.AIChatService;
 import org.github.tess1o.geopulse.ai.service.UserAISettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_CONNECTION_FAILED;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/ai")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
+@RolesAllowed({"USER", "ADMIN"})
 @Tag(name = "User: AI Assistant", description = "Manage AI assistant settings and chat with the configured AI provider.")
 public class AIResource {
 
@@ -37,41 +45,41 @@ public class AIResource {
 
     @GET
     @Path("/settings")
-    public Response getAISettings() {
+    public UserAISettings getAISettings() {
         UUID userId = currentUserService.getCurrentUserId();
-        UserAISettings settings = aiSettingsService.getAISettings(userId);
-        return Response.ok(settings).build();
+        return aiSettingsService.getAISettings(userId);
     }
 
     @GET
     @Path("/default-system-message")
-    public Response getDefaultSystemMessage() {
+    public DefaultSystemMessageResponse getDefaultSystemMessage() {
         // Return the effective default (global setting > built-in default)
         String globalDefault = systemSettingsService.getString("ai.default-system-message");
         String effectiveDefault = (globalDefault != null && !globalDefault.isBlank())
                 ? globalDefault
                 : AIChatService.SYSTEM_MESSAGE;
-        return Response.ok(new DefaultSystemMessageResponse(effectiveDefault)).build();
+        return new DefaultSystemMessageResponse(effectiveDefault);
     }
 
     @GET
     @Path("/builtin-system-message")
-    public Response getBuiltinSystemMessage() {
+    public DefaultSystemMessageResponse getBuiltinSystemMessage() {
         // Return the actual built-in default (ignores global setting)
-        return Response.ok(new DefaultSystemMessageResponse(AIChatService.SYSTEM_MESSAGE)).build();
+        return new DefaultSystemMessageResponse(AIChatService.SYSTEM_MESSAGE);
     }
 
     @POST
     @Path("/settings")
-    public Response saveAISettings(UserAISettings settings) {
+    @APIResponse(responseCode = "204", description = "AI settings saved")
+    public RestResponse<Void> saveAISettings(@NotNull @Valid UserAISettings settings) {
         UUID userId = currentUserService.getCurrentUserId();
         aiSettingsService.saveAISettings(userId, settings);
-        return Response.ok().build();
+        return RestResponse.noContent();
     }
 
     @POST
     @Path("/test-connection")
-    public Response testConnection(TestConnectionRequest request) {
+    public List<String> testConnection(@NotNull @Valid TestConnectionRequest request) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             UserAISettings settings = UserAISettings.builder()
@@ -80,27 +88,26 @@ public class AIResource {
                     .apiKeyRequired(request.isApiKeyNeeded())
                     .build();
             List<String> models = aiSettingsService.testConnectionAndFetchModels(userId, settings);
-            return Response.ok(models).build();
+            return models;
         } catch (Exception e) {
             log.error("Failed to test connection", e);
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            throw problem(AI_CONNECTION_FAILED,
+                    e.getMessage() == null ? "Failed to connect to the AI provider" : e.getMessage());
         }
     }
 
     @POST
     @Path("/chat")
-    public ApiResponse<?> chat(ChatRequest request) {
-        try {
-            String response = aiChatService.chat(request.message());
-            return ApiResponse.success(new ChatResponse(response));
-        } catch (Exception e) {
-            return ApiResponse.error(e.getMessage());
-        }
+    public ChatResponse chat(@NotNull @Valid ChatRequest request) {
+        return new ChatResponse(aiChatService.chat(request.message()));
     }
 
-    public record TestConnectionRequest(String openaiApiUrl, String openaiApiKey, boolean isApiKeyNeeded) { }
+    public record TestConnectionRequest(
+            @NotBlank String openaiApiUrl,
+            String openaiApiKey,
+            boolean isApiKeyNeeded) { }
 
-    public record ChatRequest(String message) {
+    public record ChatRequest(@NotBlank String message) {
     }
 
     public record ChatResponse(String response) {

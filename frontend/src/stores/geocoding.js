@@ -1,245 +1,170 @@
 import { defineStore } from 'pinia'
-import apiService from '../utils/apiService'
+import apiService from '@/utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
+
+const fail = (store, error, fallback) => {
+  store.error = normalizeApiError(error, fallback)
+  throw store.error
+}
 
 export const useGeocodingStore = defineStore('geocoding', {
-    state: () => ({
-        geocodingResults: [],
-        totalRecords: 0,
-        enabledProviders: [],
-        availableProviders: [],
-        normalizationRules: [],
-        loading: false
-    }),
+  state: () => ({
+    geocodingResults: [],
+    totalRecords: 0,
+    enabledProviders: [],
+    availableProviders: [],
+    normalizationRules: [],
+    loading: false,
+    error: null
+  }),
 
-    getters: {
-        getGeocodingResults: (state) => state.geocodingResults,
-        getTotalRecords: (state) => state.totalRecords,
-        getEnabledProviders: (state) => state.enabledProviders,
-        getAvailableProviders: (state) => state.availableProviders,
-        getNormalizationRules: (state) => state.normalizationRules,
-        isLoading: (state) => state.loading,
-        hasData: (state) => state.geocodingResults.length > 0
+  getters: {
+    hasData: (state) => state.geocodingResults.length > 0
+  },
+
+  actions: {
+    clearData() {
+      this.geocodingResults = []
+      this.totalRecords = 0
+      this.availableProviders = []
+      this.normalizationRules = []
     },
 
-    actions: {
-        setGeocodingResults(results, totalRecords) {
-            this.geocodingResults = results
-            this.totalRecords = totalRecords
-        },
+    async fetchGeocodingResults(params = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        const page = await apiService.get('/geocoding', params)
+        this.geocodingResults = Array.isArray(page?.items) ? page.items : []
+        this.totalRecords = page?.totalElements || 0
+        return page
+      } catch (error) {
+        fail(this, error, 'Failed to load geocoding results')
+      } finally {
+        this.loading = false
+      }
+    },
 
-        setEnabledProviders(providers) {
-            this.enabledProviders = providers
-        },
+    async fetchEnabledProviders() {
+      try {
+        this.enabledProviders = await apiService.get('/geocoding/providers')
+        return this.enabledProviders
+      } catch (error) {
+        fail(this, error, 'Failed to load geocoding providers')
+      }
+    },
 
-        setAvailableProviders(providers) {
-            this.availableProviders = providers
-        },
+    async fetchAvailableProviders() {
+      try {
+        this.availableProviders = await apiService.get('/geocoding/providers/available')
+        return this.availableProviders
+      } catch (error) {
+        fail(this, error, 'Failed to load available geocoding providers')
+      }
+    },
 
-        setNormalizationRules(rules) {
-            this.normalizationRules = rules || []
-        },
+    async getGeocodingResult(id) {
+      try {
+        return await apiService.get(`/geocoding/${id}`)
+      } catch (error) {
+        fail(this, error, 'Failed to load geocoding result')
+      }
+    },
 
-        setLoading(loading) {
-            this.loading = loading
-        },
+    async updateGeocodingResult(id, data) {
+      try {
+        return await apiService.put(`/geocoding/${id}`, data)
+      } catch (error) {
+        fail(this, error, 'Failed to update geocoding result')
+      }
+    },
 
-        clearData() {
-            this.geocodingResults = []
-            this.totalRecords = 0
-            this.availableProviders = []
-            this.normalizationRules = []
-        },
+    async startBulkReconciliation(request) {
+      try {
+        return await apiService.post('/geocoding/reconcile/bulk', request)
+      } catch (error) {
+        fail(this, error, 'Failed to start reconciliation')
+      }
+    },
 
-        // API Actions
-        async fetchGeocodingResults(params = {}) {
-            try {
-                this.setLoading(true)
+    async getReconciliationJobProgress(jobId) {
+      try {
+        return await apiService.get(`/geocoding/reconcile/jobs/${jobId}`)
+      } catch (error) {
+        fail(this, error, 'Failed to load reconciliation progress')
+      }
+    },
 
-                const response = await apiService.get('/geocoding', params)
+    async bulkUpdateGeocoding(geocodingIds, updateCity, city, updateCountry, country) {
+      try {
+        return await apiService.put('/geocoding/bulk-update', {
+          geocodingIds,
+          updateCity,
+          city,
+          updateCountry,
+          country
+        })
+      } catch (error) {
+        fail(this, error, 'Failed to update geocoding results')
+      }
+    },
 
-                // Response is {data: [...], pagination: {...}}
-                const results = response.data || []
-                const totalRecords = response.pagination?.total || 0
+    async fetchDistinctValues() {
+      try {
+        return await apiService.get('/geocoding/distinct-values')
+      } catch (error) {
+        fail(this, error, 'Failed to load distinct location values')
+      }
+    },
 
-                this.setGeocodingResults(results, totalRecords)
+    async fetchNormalizationRules() {
+      try {
+        const rules = await apiService.get('/geocoding/normalization-rules')
+        this.normalizationRules = Array.isArray(rules) ? rules : []
+        return this.normalizationRules
+      } catch (error) {
+        fail(this, error, 'Failed to load normalization rules')
+      }
+    },
 
-                return {
-                    data: results,
-                    pagination: response.pagination || {
-                        page: params.page || 1,
-                        limit: params.limit || 50,
-                        total: totalRecords,
-                        totalPages: Math.ceil(totalRecords / (params.limit || 50))
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching geocoding results:', error)
-                throw error
-            } finally {
-                this.setLoading(false)
-            }
-        },
+    async createNormalizationRule(payload) {
+      try {
+        return await apiService.post('/geocoding/normalization-rules', payload)
+      } catch (error) {
+        fail(this, error, 'Failed to create normalization rule')
+      }
+    },
 
-        async fetchEnabledProviders() {
-            try {
-                const response = await apiService.get('/geocoding/providers')
-                // Response is the array of providers directly
-                this.setEnabledProviders(response)
+    async updateNormalizationRule(ruleId, payload) {
+      try {
+        return await apiService.put(`/geocoding/normalization-rules/${ruleId}`, payload)
+      } catch (error) {
+        fail(this, error, 'Failed to update normalization rule')
+      }
+    },
 
-                return response
-            } catch (error) {
-                console.error('Error fetching enabled providers:', error)
-                throw error
-            }
-        },
+    async deleteNormalizationRule(ruleId) {
+      try {
+        await apiService.delete(`/geocoding/normalization-rules/${ruleId}`)
+      } catch (error) {
+        fail(this, error, 'Failed to delete normalization rule')
+      }
+    },
 
-        async fetchAvailableProviders() {
-            try {
-                const response = await apiService.get('/geocoding/providers/available')
-                // Response is the array of provider names directly
-                this.setAvailableProviders(response)
+    async applyNormalizationRules(payload) {
+      try {
+        return await apiService.post('/geocoding/normalization-rules/apply', payload)
+      } catch (error) {
+        fail(this, error, 'Failed to apply normalization rules')
+      }
+    },
 
-                return response
-            } catch (error) {
-                console.error('Error fetching available providers:', error)
-                throw error
-            }
-        },
-
-        async getGeocodingResult(id) {
-            try {
-                const response = await apiService.get(`/geocoding/${id}`)
-                return response
-            } catch (error) {
-                console.error('Error fetching geocoding result:', error)
-                throw error
-            }
-        },
-
-        async updateGeocodingResult(id, data) {
-            try {
-                const response = await apiService.put(`/geocoding/${id}`, data)
-                return response
-            } catch (error) {
-                console.error('Error updating geocoding result:', error)
-                throw error
-            }
-        },
-
-        async reconcileWithProvider(request) {
-            try {
-                const response = await apiService.post('/geocoding/reconcile', request)
-                return response
-            } catch (error) {
-                console.error('Error reconciling geocoding results:', error)
-                throw error
-            }
-        },
-
-        async startBulkReconciliation(request) {
-            try {
-                const response = await apiService.post('/geocoding/reconcile/bulk', request)
-                return response // { jobId: "uuid" }
-            } catch (error) {
-                console.error('Error starting bulk reconciliation:', error)
-                throw error
-            }
-        },
-
-        async getReconciliationJobProgress(jobId) {
-            try {
-                const response = await apiService.get(`/geocoding/reconcile/jobs/${jobId}`)
-                return response
-            } catch (error) {
-                console.error('Error fetching reconciliation job progress:', error)
-                throw error
-            }
-        },
-
-        async bulkUpdateGeocoding(geocodingIds, updateCity, city, updateCountry, country) {
-            try {
-                const response = await apiService.put('/geocoding/bulk-update', {
-                    geocodingIds,
-                    updateCity,
-                    city,
-                    updateCountry,
-                    country
-                })
-                return response // { totalRequested, successCount, failedCount, failures }
-            } catch (error) {
-                console.error('Error bulk updating geocoding results:', error)
-                throw error
-            }
-        },
-
-        async fetchDistinctValues() {
-            try {
-                const response = await apiService.get('/geocoding/distinct-values')
-                return response // { cities: [...], countries: [...] }
-            } catch (error) {
-                console.error('Error fetching distinct values:', error)
-                throw error
-            }
-        },
-
-        async fetchNormalizationRules() {
-            try {
-                const response = await apiService.get('/geocoding/normalization-rules')
-                this.setNormalizationRules(response || [])
-                return response || []
-            } catch (error) {
-                console.error('Error fetching normalization rules:', error)
-                throw error
-            }
-        },
-
-        async createNormalizationRule(payload) {
-            try {
-                const response = await apiService.post('/geocoding/normalization-rules', payload)
-                return response
-            } catch (error) {
-                console.error('Error creating normalization rule:', error)
-                throw error
-            }
-        },
-
-        async updateNormalizationRule(ruleId, payload) {
-            try {
-                const response = await apiService.put(`/geocoding/normalization-rules/${ruleId}`, payload)
-                return response
-            } catch (error) {
-                console.error('Error updating normalization rule:', error)
-                throw error
-            }
-        },
-
-        async deleteNormalizationRule(ruleId) {
-            try {
-                await apiService.delete(`/geocoding/normalization-rules/${ruleId}`, {})
-            } catch (error) {
-                console.error('Error deleting normalization rule:', error)
-                throw error
-            }
-        },
-
-        async applyNormalizationRules(payload) {
-            try {
-                const response = await apiService.post('/geocoding/normalization-rules/apply', payload)
-                return response // { jobId }
-            } catch (error) {
-                console.error('Error applying normalization rules:', error)
-                throw error
-            }
-        },
-
-        async applySingleNormalizationRule(ruleId, payload) {
-            try {
-                const response = await apiService.post(`/geocoding/normalization-rules/${ruleId}/apply`, payload)
-                return response // { jobId }
-            } catch (error) {
-                console.error('Error applying single normalization rule:', error)
-                throw error
-            }
-        }
+    async applySingleNormalizationRule(ruleId, payload) {
+      try {
+        return await apiService.post(`/geocoding/normalization-rules/${ruleId}/apply`, payload)
+      } catch (error) {
+        fail(this, error, 'Failed to apply normalization rule')
+      }
     }
+  }
 })

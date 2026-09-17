@@ -62,7 +62,8 @@ class BackupMaintenanceServiceLockTest {
 
         service.finishSuccess("backup.gpb", 42L);
 
-        assertThat(service.getStatus().getMessage()).isEqualTo("Backup completed successfully.");
+        assertThat(service.getStatus().getMessage().key()).isEqualTo("backup.completed");
+        assertThat(service.getStatus().getMessage().fallback()).isEqualTo("Backup completed successfully.");
     }
 
     private BackupMaintenanceService serviceWithLockResults(Boolean... results) throws Exception {

@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 /**
  * Composable for polling timeline job progress
@@ -53,7 +54,7 @@ export function useTimelineJobProgress() {
       error.value = null
     } catch (err) {
       console.error('Failed to fetch job progress:', err)
-      error.value = err.message || 'Failed to fetch job progress'
+      error.value = formatApiErrorDetail(err, 'Failed to fetch job progress')
 
       // Stop polling on error
       stopPolling()

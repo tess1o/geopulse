@@ -2,12 +2,12 @@ import { flushPromises, mount } from '@vue/test-utils'
 import NotificationChannelSettings from './NotificationChannelSettings.vue'
 import NotificationsPreferencesTab from './NotificationsPreferencesTab.vue'
 
-const api = vi.hoisted(() => ({
-  get: vi.fn(),
-  put: vi.fn()
+const notificationsStore = vi.hoisted(() => ({
+  fetchPreferences: vi.fn(),
+  updatePreferences: vi.fn()
 }))
 
-vi.mock('@/utils/apiService', () => ({ default: api }))
+vi.mock('@/stores/notifications', () => ({ useNotificationsStore: () => notificationsStore }))
 
 const CardStub = { template: '<section><slot name="content" /></section>' }
 const ButtonStub = {
@@ -72,15 +72,15 @@ const mountPreferences = (props = {}) => mount(NotificationsPreferencesTab, {
 
 describe('NotificationsPreferencesTab', () => {
   beforeEach(() => {
-    api.get.mockReset().mockResolvedValue({ data: structuredClone(preferences) })
-    api.put.mockReset().mockImplementation(async (_url, value) => ({ data: JSON.parse(JSON.stringify(value)) }))
+    notificationsStore.fetchPreferences.mockReset().mockResolvedValue(structuredClone(preferences))
+    notificationsStore.updatePreferences.mockReset().mockImplementation(async (value) => JSON.parse(JSON.stringify(value)))
   })
 
   it('loads grouped settings, reveals dependent rows, and saves the existing payload', async () => {
     const wrapper = mountPreferences()
     await flushPromises()
 
-    expect(api.get).toHaveBeenCalledWith('/notifications/preferences')
+    expect(notificationsStore.fetchPreferences).toHaveBeenCalled()
     expect(wrapper.text()).toContain('GPS health')
     expect(wrapper.text()).toContain('Monthly Rewind')
     expect(wrapper.text()).toContain('Product updates')
@@ -95,7 +95,7 @@ describe('NotificationsPreferencesTab', () => {
     expect(wrapper.find('[aria-label="Rewind delivery"]').exists()).toBe(true)
 
     await wrapper.find('form').trigger('submit')
-    expect(api.put).toHaveBeenCalledWith('/notifications/preferences', expect.objectContaining({
+    expect(notificationsStore.updatePreferences).toHaveBeenCalledWith(expect.objectContaining({
       gpsHealthEnabled: true,
       rewindEnabled: true,
       whatsNewEnabled: true
@@ -110,7 +110,7 @@ describe('NotificationsPreferencesTab', () => {
     expect(wrapper.findAll('input[type="checkbox"]').every((input) => input.attributes('disabled') !== undefined)).toBe(true)
     expect(wrapper.get('button').attributes('disabled')).toBeDefined()
     await wrapper.find('form').trigger('submit')
-    expect(api.put).not.toHaveBeenCalled()
+    expect(notificationsStore.updatePreferences).not.toHaveBeenCalled()
   })
 })
 

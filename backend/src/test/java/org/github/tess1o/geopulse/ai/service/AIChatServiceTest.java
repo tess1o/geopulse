@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.ai.service;
 
+import io.quarkiverse.httpproblem.HttpProblem;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.ai.orchestration.AIChatOrchestrator;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -12,10 +14,10 @@ import org.mockito.Mockito;
 import java.lang.reflect.Field;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+
 /**
  * Test for AIChatService focusing on API key validation logic.
  * <p>
@@ -26,12 +28,15 @@ import static org.mockito.Mockito.when;
  */
 @Tag("unit")
 public class AIChatServiceTest {
+
     AIChatService aiChatService;
     UserAISettingsService mockAISettingsService;
     CurrentUserService mockCurrentUserService;
     AIChatOrchestrator mockOrchestrator;
     SystemSettingsService mockSystemSettingsService;
+
     private final UUID TEST_USER_ID = UUID.randomUUID();
+
     @BeforeEach
     public void setup() {
         this.aiChatService = new AIChatService();
@@ -58,6 +63,7 @@ public class AIChatServiceTest {
             throw new IllegalStateException("Failed to inject field '" + fieldName + "'", e);
         }
     }
+
     /**
      * Test Case 1: OpenAI with API key (apiKeyRequired = true, key provided)
      * Expected: Should validate and require API key
@@ -80,6 +86,7 @@ public class AIChatServiceTest {
         assertNotEquals("API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.",
                 result);
     }
+
     /**
      * Test Case 2: OpenAI WITHOUT API key (apiKeyRequired = true, key missing)
      * Expected: Should return error message about missing API key
@@ -95,15 +102,13 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(openAISettings);
-        String result = aiChatService.chat("Hello");
-        // Should return error message about missing API key
-        assertEquals("API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.",
-                result);
+        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
     }
+
     /**
      * Test Case 3: Ollama WITHOUT API key (apiKeyRequired = false, key missing)
      * Expected: Should NOT fail validation (should pass API key validation check)
-     *
      */
     @Test
     public void testOllamaWithoutApiKey_ShouldNotFailValidation() {
@@ -122,6 +127,7 @@ public class AIChatServiceTest {
                 result,
                 "CRITICAL BUG: Ollama (apiKeyRequired=false) should not fail validation!");
     }
+
     /**
      * Test Case 4: Ollama with empty string API key (apiKeyRequired = false)
      * Expected: Should NOT fail validation
@@ -143,6 +149,7 @@ public class AIChatServiceTest {
                 result,
                 "CRITICAL BUG: Ollama with empty API key (apiKeyRequired=false) should not fail validation!");
     }
+
     /**
      * Test Case 5: Custom LLM provider without API key (apiKeyRequired = false)
      * Expected: Should NOT fail validation
@@ -164,6 +171,7 @@ public class AIChatServiceTest {
                 result,
                 "Custom LLM provider (apiKeyRequired=false) should not fail API key validation!");
     }
+
     /**
      * Test Case 6: AI disabled
      * Expected: Should return disabled message
@@ -179,10 +187,10 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(disabledSettings);
-        String result = aiChatService.chat("Hello");
-        assertEquals("AI Assistant is currently disabled. Please enable it in your profile settings.",
-                result);
+        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
     }
+
     /**
      * Test Case 7: OpenAI with whitespace-only API key
      * Expected: Should fail validation
@@ -198,9 +206,7 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(openAISettings);
-        String result = aiChatService.chat("Hello");
-        // Should return error message (whitespace should be treated as blank)
-        assertEquals("API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.",
-                result);
+        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
     }
 }

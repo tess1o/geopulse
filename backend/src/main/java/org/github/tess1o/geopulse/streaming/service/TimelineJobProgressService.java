@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.streaming.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineJobStatistics;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -217,22 +218,14 @@ public class TimelineJobProgressService {
      *
      * @return Map with statistics
      */
-    public Map<String, Object> getStatistics() {
+    public TimelineJobStatistics getStatistics() {
         long total = jobStore.size();
         long queued = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.QUEUED).count();
         long running = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.RUNNING).count();
         long completed = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.COMPLETED).count();
         long failed = jobStore.values().stream().filter(j -> j.getStatus() == TimelineJobProgress.JobStatus.FAILED).count();
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalJobs", total);
-        stats.put("queuedJobs", queued);
-        stats.put("runningJobs", running);
-        stats.put("completedJobs", completed);
-        stats.put("failedJobs", failed);
-        stats.put("activeUserJobs", userActiveJobIndex.size());
-
-        return stats;
+        return new TimelineJobStatistics(total, queued, running, completed, failed, userActiveJobIndex.size());
     }
 
     /**

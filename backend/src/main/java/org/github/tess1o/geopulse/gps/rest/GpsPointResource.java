@@ -1,7 +1,5 @@
 package org.github.tess1o.geopulse.gps.rest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -9,7 +7,13 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.export.service.CsvExportService;
 import org.github.tess1o.geopulse.gps.exceptions.GpsCoordinateDuplicateException;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
@@ -21,20 +25,16 @@ import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
-import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.jboss.resteasy.reactive.RestHeader;
 
-import java.io.BufferedWriter;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
@@ -43,7 +43,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for GPS point data.
@@ -54,8 +58,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Slf4j
 @Tag(name = "User: GPS Data", description = "Ingest, query, update, export, and delete GPS points.")
 public class GpsPointResource {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String OK_RESPONSE = "OK";
     private static final int DEFAULT_RAW_MAP_POINTS_LIMIT = 10000;
     private static final int MAX_RAW_MAP_POINTS_LIMIT = 25000;
 
@@ -70,6 +72,9 @@ public class GpsPointResource {
 
     @Inject
     GeoPulseWorkloadMetrics workloadMetrics;
+
+    @Inject
+    CsvExportService csvExportService;
 
     @Inject
     public GpsPointResource(GpsPointService gpsPointService,
@@ -101,8 +106,8 @@ public class GpsPointResource {
     @Path("/points")
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
-                                             @RestHeader("X-Device-Id") String xDeviceId) {
+    public GpsIngestionResponse ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
+                                                      @RestHeader("X-Device-Id") String xDeviceId) {
         var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
         var points = request.getPoints() == null ? Collections.<GpsPointDTO>emptyList() : request.getPoints();
 
@@ -111,17 +116,12 @@ public class GpsPointResource {
             GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
 
             gpsPointService.saveMobileAppGpsPoints(points, deviceId, userId, GpsSourceType.MOBILE_APP, config);
-            return Response.ok(ApiResponse.success(OK_RESPONSE))
-                    .build();
+            return GpsIngestionResponse.success();
         } catch (GpsCoordinateDuplicateException ex) {
-          return Response.status(Response.Status.CONFLICT)
-                  .entity(ApiResponse.error("Duplicate point"))
-                  .build();
+            throw problem(GPS_POINT_DUPLICATE, "Duplicate point");
         } catch (Exception e) {
             log.error("Failed to ingest mobile app GPS point", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to ingest GPS point"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to ingest GPS point");
         }
     }
 
@@ -149,7 +149,7 @@ public class GpsPointResource {
     @Path("/path")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getGpsPointPath(
+    public GpsPointPathDTO getGpsPointPath(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
             @QueryParam("simplify") @DefaultValue("true") boolean simplify) {
@@ -171,15 +171,12 @@ public class GpsPointResource {
                     : 10800;
             path.setSegments(segmentPath(path.getPoints(), gapThreshold));
 
-            return Response.ok(ApiResponse.success(path)).build();
+            return path;
         } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
+            throw problem(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)");
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve GPS point path: " + e.getMessage()))
-                    .build();
+            log.error("Failed to retrieve GPS point path for user {}", user.getId(), e);
+            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS point path");
         }
     }
 
@@ -187,7 +184,7 @@ public class GpsPointResource {
     @Path("/map-points")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getRawGpsMapPoints(
+    public RawGpsPointMapResponseDTO getRawGpsMapPoints(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
             @QueryParam("limit") @DefaultValue("" + DEFAULT_RAW_MAP_POINTS_LIMIT) int limit) {
@@ -195,24 +192,21 @@ public class GpsPointResource {
 
         try {
             if (limit < 1 || limit > MAX_RAW_MAP_POINTS_LIMIT) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Limit must be between 1 and " + MAX_RAW_MAP_POINTS_LIMIT))
-                        .build();
+                throw problem(INVALID_LIMIT, "Limit must be between 1 and " + MAX_RAW_MAP_POINTS_LIMIT,
+                        Map.of("min", 1, "max", MAX_RAW_MAP_POINTS_LIMIT));
             }
 
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
             RawGpsPointMapResponseDTO result = gpsPointService.getRawGpsMapPoints(userId, start, end, limit);
-            return Response.ok(ApiResponse.success(result)).build();
+            return result;
+        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+            throw e;
         } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
-                    .build();
+            throw problem(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)");
         } catch (Exception e) {
             log.error("Failed to retrieve raw GPS map points for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve raw GPS map points: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to retrieve raw GPS map points");
         }
     }
 
@@ -220,25 +214,19 @@ public class GpsPointResource {
     @Path("/points/{pointId}/location")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response resolveRawGpsPointLocation(@PathParam("pointId") Long pointId) {
+    public RawGpsPointLocationDTO resolveRawGpsPointLocation(@PathParam("pointId") Long pointId) {
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
             RawGpsPointLocationDTO result = gpsPointService.resolveRawGpsPointLocation(userId, pointId);
-            return Response.ok(ApiResponse.success(result)).build();
+            return result;
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(GPS_POINT_NOT_FOUND, e.getMessage());
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
         } catch (Exception e) {
             log.error("Failed to resolve raw GPS point location {} for user {}", pointId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to resolve GPS point location: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to resolve GPS point location");
         }
     }
 
@@ -299,7 +287,7 @@ public class GpsPointResource {
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getGpsPointSummary(
+    public GpsPointSummaryDTO getGpsPointSummary(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
             @QueryParam("accuracyMin") Double accuracyMin,
@@ -325,12 +313,10 @@ public class GpsPointResource {
                 summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), ZoneId.of("UTC"), filters);
             }
 
-            return Response.ok(ApiResponse.success(summary)).build();
+            return summary;
         } catch (Exception e) {
             log.error("Failed to retrieve GPS point summary for user {}", user.getId(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve GPS point summary: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS point summary");
         }
     }
 
@@ -349,7 +335,7 @@ public class GpsPointResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getGpsPoints(
+    public PageResponse<GpsPointDTO> getGpsPoints(
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("startDate") String startDate,
@@ -370,21 +356,16 @@ public class GpsPointResource {
         try {
             // Validate pagination parameters
             if (page < 1) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Page number must be greater than 0"))
-                        .build();
+                throw problem(INVALID_PAGE, "Page number must be greater than 0", Map.of("min", 1));
             }
             if (limit < 1 || limit > 1000) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Limit must be between 1 and 1000"))
-                        .build();
+                throw problem(INVALID_LIMIT, "Limit must be between 1 and 1000", Map.of("min", 1, "max", 1000));
             }
 
             // Validate sort order
             if (!sortOrder.equalsIgnoreCase("asc") && !sortOrder.equalsIgnoreCase("desc")) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Sort order must be 'asc' or 'desc'"))
-                        .build();
+                throw problem(INVALID_GPS_QUERY, "Sort order must be 'asc' or 'desc'",
+                        Map.of("sortOrder", sortOrder));
             }
 
             // Build filters
@@ -392,17 +373,14 @@ public class GpsPointResource {
                     endTime != null ? endTime : endDate,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
-            GpsPointPageDTO result = gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
-            return Response.ok(ApiResponse.success(result)).build();
+            return gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
+        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+            throw e;
         } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid date/time format"))
-                    .build();
+            throw problem(INVALID_GPS_QUERY, "Invalid date/time format");
         } catch (Exception e) {
             log.error("Failed to retrieve GPS points for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to retrieve GPS points: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS points");
         }
     }
 
@@ -418,6 +396,8 @@ public class GpsPointResource {
     @Path("/export")
     @Produces("text/csv")
     @RolesAllowed({"USER", "ADMIN"})
+    @APIResponse(responseCode = "200", description = "GPS points CSV export",
+            content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
     public Response exportGpsPoints(
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate,
@@ -451,35 +431,12 @@ public class GpsPointResource {
                     log.info("Exporting {} specific GPS points by IDs", gpsPointIds.size());
                 } catch (NumberFormatException e) {
                     log.warn("Invalid GPS point IDs format: {}", ids, e);
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid GPS point IDs format"))
-                            .build();
+                    throw problem(INVALID_GPS_QUERY, "Invalid GPS point IDs format");
                 }
             }
 
-            // Create streaming output to avoid loading all data into memory
-            StreamingOutput stream = output -> {
-                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
-                    // Write CSV header
-                    if (user.getDistanceUnit() == DistanceUnit.KILOMETERS) {
-                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType,telemetry\n");
-                    } else {
-                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType,telemetry\n");
-                    }
-
-                    // Stream GPS points in batches of 1000
-                    gpsPointService.streamGpsPointsForExport(user.getId(), filters, 1000, batch -> {
-                        try {
-                            for (GpsPointEntity point : batch) {
-                                writer.write(formatCsvRow(point, user.getDistanceUnit()));
-                            }
-                            writer.flush(); // Flush after each batch
-                        } catch (Exception e) {
-                            throw new RuntimeException("Error writing CSV batch", e);
-                        }
-                    });
-                }
-            };
+            StreamingOutput stream = output -> csvExportService.generateCsvExport(
+                    output, user.getId(), filters, user.getDistanceUnit());
 
             String filename = String.format("gps-points-export-%s.csv",
                     startDate != null && endDate != null ? startDate + "_" + endDate : "all");
@@ -488,109 +445,14 @@ public class GpsPointResource {
                     .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                     .header("Content-Type", "text/csv; charset=utf-8")
                     .build();
+        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+            throw e;
         } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid date/time format"))
-                    .build();
+            throw problem(INVALID_GPS_QUERY, "Invalid date/time format");
         } catch (Exception e) {
             log.error("Failed to export GPS points for user {}", user.getId(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to export GPS points: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to export GPS points");
         }
-    }
-
-    /**
-     * Parse date/time parameters with fallback support.
-     * Prioritizes ISO-8601 timestamps over date-only strings.
-     */
-    private Instant parseDateTime(String timeStr, String dateStr, boolean isStartDate) {
-        // First try to parse as ISO-8601 timestamp (e.g., 2025-08-10T00:00:00.000Z)
-        if (timeStr != null && !timeStr.trim().isEmpty()) {
-            try {
-                return Instant.parse(timeStr.trim());
-            } catch (DateTimeParseException e) {
-                throw new DateTimeParseException("Invalid timestamp format. Use ISO-8601 format (e.g., 2025-08-10T00:00:00.000Z)", timeStr, 0);
-            }
-        }
-
-        // Fallback to date-only parsing (e.g., 2025-08-10)
-        return parseDate(dateStr, isStartDate);
-    }
-
-    /**
-     * Parse date string to Instant.
-     *
-     * @param dateStr     Date string in YYYY-MM-DD format
-     * @param isStartDate True if this is a start date (start of day), false for end date (end of day)
-     * @return Parsed Instant or null if dateStr is null
-     */
-    private Instant parseDate(String dateStr, boolean isStartDate) {
-        if (dateStr == null || dateStr.trim().isEmpty()) {
-            return isStartDate ? Instant.EPOCH : Instant.now();
-        }
-
-        LocalDate date = LocalDate.parse(dateStr.trim());
-        return isStartDate ? date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
-                : date.atTime(23, 59, 59).toInstant(java.time.ZoneOffset.UTC);
-    }
-
-    /**
-     * Format a single GPS point as a CSV row.
-     *
-     * @param point       GPS point entity
-     * @param distanceUnit User's distance unit preference
-     * @return CSV row string
-     */
-    private String formatCsvRow(GpsPointEntity point, DistanceUnit distanceUnit) {
-        StringBuilder row = new StringBuilder();
-
-        double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
-        if (distanceUnit == DistanceUnit.MILES) {
-            velocity = velocity * 0.621371; // Convert km/h to mph
-        }
-
-        appendCsvValue(row, point.getTimestamp().toString());
-        appendCsvValue(row, point.getLatitude());
-        appendCsvValue(row, point.getLongitude());
-        appendCsvValue(row, point.getAccuracy());
-        appendCsvValue(row, point.getBattery());
-        appendCsvValue(row, velocity);
-        appendCsvValue(row, point.getAltitude());
-        appendCsvValue(row, point.getSourceType() != null ? point.getSourceType().name() : "");
-        appendCsvValue(row, telemetryToJson(point.getTelemetry()));
-        row.append("\n");
-
-        return row.toString();
-    }
-
-    private String telemetryToJson(Map<String, Object> telemetry) {
-        if (telemetry == null || telemetry.isEmpty()) {
-            return "";
-        }
-
-        try {
-            return OBJECT_MAPPER.writeValueAsString(telemetry);
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize telemetry to JSON for CSV export", e);
-            return "";
-        }
-    }
-
-    private void appendCsvValue(StringBuilder row, Object value) {
-        if (!row.isEmpty()) {
-            row.append(",");
-        }
-        String raw = value != null ? value.toString() : "";
-        row.append(escapeCsv(raw));
-    }
-
-    private String escapeCsv(String value) {
-        boolean shouldQuote = value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r");
-        if (!shouldQuote) {
-            return value;
-        }
-        return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
     /**
@@ -662,13 +524,13 @@ public class GpsPointResource {
     @Path("/status")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response getGpsStatus() {
+    public GpsStatusDTO getGpsStatus() {
         UUID userId = currentUserService.getCurrentUserId();
         long startedAtNanos = workloadMetrics == null ? System.nanoTime() : workloadMetrics.start();
         String result = "success";
         log.info("Received request to get GPS status for user {}", userId);
         try {
-            return Response.ok(ApiResponse.success(gpsPointService.getGpsStatus(userId))).build();
+            return gpsPointService.getGpsStatus(userId);
         } catch (Exception e) {
             result = "error";
             throw e;
@@ -696,26 +558,20 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response updateGpsPoint(@PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
+    public GpsPointDTO updateGpsPoint(@PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to update GPS point {} for user {}", pointId, userId);
 
         try {
             GpsPointDTO updatedPoint = gpsPointService.updateGpsPoint(pointId, editDto, userId);
-            return Response.ok(ApiResponse.success(updatedPoint)).build();
+            return updatedPoint;
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("GPS point not found"))
-                    .build();
+            throw problem(GPS_POINT_NOT_FOUND, "GPS point not found");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
         } catch (Exception e) {
             log.error("Failed to update GPS point {} for user {}", pointId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update GPS point: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to update GPS point");
         }
     }
 
@@ -730,18 +586,15 @@ public class GpsPointResource {
     @Path("/all")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response deleteAllGpsData() {
+    public void deleteAllGpsData() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete ALL GPS data for user {}", userId);
 
         try {
             gpsPointService.deleteAllGpsData(userId);
-            return Response.ok(ApiResponse.success(Map.of("message", "All GPS data deleted successfully"))).build();
         } catch (Exception e) {
             log.error("Failed to delete all GPS data for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete all GPS data: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to delete all GPS data");
         }
     }
 
@@ -755,26 +608,20 @@ public class GpsPointResource {
     @DELETE
     @Path("/{pointId}")
     @RolesAllowed({"USER", "ADMIN"})
-    public Response deleteGpsPoint(@PathParam("pointId") Long pointId) {
+    public GpsPointDeleteResponse deleteGpsPoint(@PathParam("pointId") Long pointId) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete GPS point {} for user {}", pointId, userId);
 
         try {
             GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoint(pointId, userId);
-            return Response.ok(ApiResponse.success(buildDeleteResponse(userId, deleteResult))).build();
+            return buildDeleteResponse(userId, deleteResult);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("GPS point not found"))
-                    .build();
+            throw problem(GPS_POINT_NOT_FOUND, "GPS point not found");
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
         } catch (Exception e) {
             log.error("Failed to delete GPS point {} for user {}", pointId, userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete GPS point: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to delete GPS point");
         }
     }
 
@@ -790,34 +637,25 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
-    public Response deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
+    public GpsPointDeleteResponse deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete {} GPS points for user {}",
                 bulkDeleteDto.getGpsPointIds().size(), userId);
 
         try {
             GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
-            return Response.ok(ApiResponse.success(buildDeleteResponse(userId, deleteResult))).build();
+            return buildDeleteResponse(userId, deleteResult);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error("Access denied"))
-                    .build();
+            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
         } catch (Exception e) {
             log.error("Failed to delete GPS points for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete GPS points: " + e.getMessage()))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to delete GPS points");
         }
     }
 
-    private Map<String, Object> buildDeleteResponse(UUID userId, GpsPointDeleteResult deleteResult) {
+    private GpsPointDeleteResponse buildDeleteResponse(UUID userId, GpsPointDeleteResult deleteResult) {
         if (deleteResult.deletedCount() == 0) {
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("deletedCount", 0);
-            response.put("timelineJobId", null);
-            response.put("timelineRegenerationScheduled", false);
-            response.put("coverageRebuildScheduled", false);
-            return response;
+            return new GpsPointDeleteResponse(0, null, false, false);
         }
 
         AsyncTimelineGenerationService.TimelineSchedulingResult timelineResult =
@@ -827,12 +665,11 @@ public class GpsPointResource {
 
         boolean coverageRebuildScheduled = scheduleCoverageRebuildIfEnabled(userId);
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("deletedCount", deleteResult.deletedCount());
-        response.put("timelineJobId", timelineResult.jobId());
-        response.put("timelineRegenerationScheduled", timelineResult.scheduled());
-        response.put("coverageRebuildScheduled", coverageRebuildScheduled);
-        return response;
+        return new GpsPointDeleteResponse(
+                deleteResult.deletedCount(),
+                timelineResult.jobId(),
+                timelineResult.scheduled(),
+                coverageRebuildScheduled);
     }
 
     private boolean scheduleCoverageRebuildIfEnabled(UUID userId) {
@@ -856,10 +693,12 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
+    @APIResponseSchema(value = GpsPointDTO.class, responseCode = "200",
+            responseDescription = "Last known GPS position")
     public Response getLastKnownPosition() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get last known position for user {}", userId);
         Optional<GpsPointDTO> lastPosition = gpsPointService.getLastKnownPosition(userId);
-        return Response.ok(ApiResponse.success(lastPosition.orElse(null))).build();
+        return Response.ok(lastPosition.orElse(null)).build();
     }
 }

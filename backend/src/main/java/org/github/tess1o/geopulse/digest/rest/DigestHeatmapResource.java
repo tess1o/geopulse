@@ -4,19 +4,22 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.digest.model.HeatmapDataPoint;
 import org.github.tess1o.geopulse.digest.model.HeatmapLayer;
 import org.github.tess1o.geopulse.digest.service.DigestService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource exposing heatmap location data for the Rewind (TimeDigest)
@@ -27,7 +30,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Path("/api/digest/heatmap")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed({ "USER", "ADMIN" })
+@RolesAllowed({"USER", "ADMIN"})
 @Slf4j
 @Tag(name = "User: Digests", description = "Read digest heatmap data for monthly, yearly, and custom ranges.")
 public class DigestHeatmapResource {
@@ -45,7 +48,9 @@ public class DigestHeatmapResource {
      */
     @GET
     @Path("/monthly")
-    public Response getMonthlyHeatmap(
+    @APIResponse(responseCode = "200", description = "Monthly heatmap retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid heatmap period or layer")
+    public List<HeatmapDataPoint> getMonthlyHeatmap(
             @QueryParam("year") int year,
             @QueryParam("month") int month,
             @QueryParam("layer") String layer) {
@@ -55,34 +60,24 @@ public class DigestHeatmapResource {
         String timezone = user.getTimezone();
 
         if (year < 2000 || year > 2100) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid year. Must be between 2000 and 2100"))
-                    .build();
+            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+                    Map.of("year", year, "min", 2000, "max", 2100));
         }
+
         if (month < 1 || month > 12) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid month. Must be between 1 and 12"))
-                    .build();
+            throw problem(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
+                    Map.of("month", month, "min", 1, "max", 12));
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid layer. Must be one of: stays, trips, combined"))
-                    .build();
+            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+                    Map.of("layer", String.valueOf(layer)));
         }
 
         log.info("Received request for monthly heatmap: user={}, year={}, month={}", userId, year, month);
 
-        try {
-            List<HeatmapDataPoint> points = digestService.getMonthlyHeatmap(userId, year, month, timezone, heatmapLayer);
-            return Response.ok(ApiResponse.success(points)).build();
-        } catch (Exception e) {
-            log.error("Failed to generate monthly heatmap for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate heatmap: " + e.getMessage()))
-                    .build();
-        }
+        return digestService.getMonthlyHeatmap(userId, year, month, timezone, heatmapLayer);
     }
 
     /**
@@ -92,37 +87,29 @@ public class DigestHeatmapResource {
      */
     @GET
     @Path("/yearly")
-    public Response getYearlyHeatmap(@QueryParam("year") int year,
-                                     @QueryParam("layer") String layer) {
+    @APIResponse(responseCode = "200", description = "Yearly heatmap retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid heatmap year or layer")
+    public List<HeatmapDataPoint> getYearlyHeatmap(@QueryParam("year") int year,
+                                                    @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
         String timezone = user.getTimezone();
 
         if (year < 2000 || year > 2100) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid year. Must be between 2000 and 2100"))
-                    .build();
+            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+                    Map.of("year", year, "min", 2000, "max", 2100));
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid layer. Must be one of: stays, trips, combined"))
-                    .build();
+            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+                    Map.of("layer", String.valueOf(layer)));
         }
 
         log.info("Received request for yearly heatmap: user={}, year={}", userId, year);
 
-        try {
-            List<HeatmapDataPoint> points = digestService.getYearlyHeatmap(userId, year, timezone, heatmapLayer);
-            return Response.ok(ApiResponse.success(points)).build();
-        } catch (Exception e) {
-            log.error("Failed to generate yearly heatmap for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate heatmap: " + e.getMessage()))
-                    .build();
-        }
+        return digestService.getYearlyHeatmap(userId, year, timezone, heatmapLayer);
     }
 
     /**
@@ -132,17 +119,17 @@ public class DigestHeatmapResource {
      */
     @GET
     @Path("/range")
-    public Response getRangeHeatmap(@QueryParam("startTime") String startTime,
-                                    @QueryParam("endTime") String endTime,
-                                    @QueryParam("layer") String layer) {
+    @APIResponse(responseCode = "200", description = "Heatmap range retrieved")
+    @APIResponse(responseCode = "400", description = "Invalid heatmap range or layer")
+    public List<HeatmapDataPoint> getRangeHeatmap(@QueryParam("startTime") String startTime,
+                                                   @QueryParam("endTime") String endTime,
+                                                   @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
 
         if (startTime == null || startTime.isBlank() || endTime == null || endTime.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("startTime and endTime are required"))
-                    .build();
+            throw problem(INVALID_HEATMAP_RANGE, "startTime and endTime are required");
         }
 
         Instant start;
@@ -151,34 +138,21 @@ public class DigestHeatmapResource {
             start = Instant.parse(startTime);
             end = Instant.parse(endTime);
         } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("startTime and endTime must be valid ISO-8601 timestamps"))
-                    .build();
+            throw problem(INVALID_HEATMAP_RANGE, "startTime and endTime must be valid ISO-8601 timestamps");
         }
 
         if (end.isBefore(start)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("endTime must be after startTime"))
-                    .build();
+            throw problem(INVALID_HEATMAP_RANGE, "endTime must be after startTime");
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid layer. Must be one of: stays, trips, combined"))
-                    .build();
+            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+                    Map.of("layer", String.valueOf(layer)));
         }
 
         log.info("Received request for range heatmap: user={}, start={}, end={}", userId, start, end);
 
-        try {
-            List<HeatmapDataPoint> points = digestService.getHeatmapForRange(userId, start, end, heatmapLayer);
-            return Response.ok(ApiResponse.success(points)).build();
-        } catch (Exception e) {
-            log.error("Failed to generate range heatmap for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to generate heatmap: " + e.getMessage()))
-                    .build();
-        }
+        return digestService.getHeatmapForRange(userId, start, end, heatmapLayer);
     }
 }

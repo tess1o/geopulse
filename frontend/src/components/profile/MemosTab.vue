@@ -141,6 +141,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useNotesStore } from '@/stores/notes'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
@@ -159,6 +160,12 @@ const apiKeyConfigured = ref(false)
 const errors = ref({})
 const destinationOptions = [{ label: 'GeoPulse', value: 'GEOPULSE' }, { label: 'Memos', value: 'MEMOS' }]
 const visibilityOptions = [{ label: 'Private', value: 'PRIVATE' }, { label: 'Protected', value: 'PROTECTED' }, { label: 'Public', value: 'PUBLIC' }]
+const connectionMessages = {
+  CONNECTED: 'Successfully connected to Memos server',
+  USER_NOT_FOUND: 'User not found',
+  API_KEY_REQUIRED: 'API key is required',
+  CONNECTION_FAILED: 'Connection failed'
+}
 const form = ref({ serverUrl: '', apiKey: '', enabled: false, defaultSaveDestination: 'GEOPULSE', defaultVisibility: 'PRIVATE', searchCacheEnabled: true, includeTags: [], excludeTags: [] })
 
 const normalizeTagList = (tags) => {
@@ -262,12 +269,12 @@ const handleTestConnection = async () => {
   try {
     const payload = await notesStore.testMemosConfig({ serverUrl: form.value.serverUrl.trim(), apiKey: form.value.apiKey?.trim() || null })
     testStatus.value = payload?.success ? 'success' : 'error'
-    testMessage.value = payload?.message || (payload?.success ? 'Successfully connected to Memos server' : 'Connection failed')
-    testDetails.value = payload?.details || ''
+    testMessage.value = connectionMessages[payload?.status] || (payload?.success ? connectionMessages.CONNECTED : connectionMessages.CONNECTION_FAILED)
+    testDetails.value = payload?.memoCount == null ? (payload?.details || '') : `Server returned ${payload.memoCount} memo(s)`
   } catch (error) {
     testStatus.value = 'error'
     testMessage.value = 'Connection test failed'
-    testDetails.value = error.userMessage || error.message || ''
+    testDetails.value = formatApiErrorDetail(error, '')
   } finally {
     testLoading.value = false
   }

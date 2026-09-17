@@ -185,6 +185,7 @@ import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { useImmichStore } from '@/stores/immich'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const route = useRoute()
 const router = useRouter()
@@ -278,7 +279,7 @@ const loadCountryData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading country data:', err)
-    error.value = err.response?.data?.message || err.message || 'Failed to load country details'
+    error.value = formatApiErrorDetail(err, 'Failed to load country details')
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -328,26 +329,7 @@ const handleSortChange = async ({ sortBy, sortDirection }) => {
 
 const handleExportVisits = async () => {
   try {
-    const url = `/api/location-analytics/country/${encodeURIComponent(countryName.value)}/visits/export?sortBy=${currentSortBy.value}&sortDirection=${currentSortDirection.value}`
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}` || ''
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Export failed with status ${response.status}`)
-    }
-
-    const blob = await response.blob()
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = `country_${countryName.value}_visits_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-    URL.revokeObjectURL(downloadUrl)
+    await store.exportVisits('country', countryName.value, currentSortBy.value, currentSortDirection.value)
 
     toast.add({
       severity: 'success',
@@ -360,7 +342,7 @@ const handleExportVisits = async () => {
     toast.add({
       severity: 'error',
       summary: 'Export Failed',
-      detail: err.message || 'Failed to export visits',
+      detail: formatApiErrorDetail(err, 'Failed to export visits'),
       life: 5000
     })
   }

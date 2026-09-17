@@ -3,6 +3,7 @@ import apiService from '../utils/apiService'
 import {useTimezone} from '@/composables/useTimezone'
 import {clearCachedUserProfile, readCachedUserProfile, writeCachedUserProfile} from '@/utils/userProfileCache'
 import {isBackendDown} from '@/utils/errorHandler'
+import {normalizeApiError} from '@/utils/apiErrorDetail'
 
 let authReconcilePromise = null
 
@@ -63,6 +64,8 @@ export const useAuthStore = defineStore('auth', {
     state: () => ({
         user: null,
         isAuthenticated: false,
+        error: null,
+        accountLinking: null,
         authStatus: {
             demoModeEnabled: false,
             demoAdminReadOnlyEnabled: false,
@@ -154,6 +157,11 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
+        fail(error, fallback) {
+            this.error = normalizeApiError(error, fallback)
+            return this.error
+        },
+
         clearUser() {
             this.user = null
             this.isAuthenticated = false
@@ -168,24 +176,24 @@ export const useAuthStore = defineStore('auth', {
         async login(email, password) {
             try {
                 const response = await apiService.login(email, password)
-                return this.consumeBrowserAuthResponse(response?.data)
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'Login failed')
             }
         },
 
         async demoLogin(personaId) {
             try {
                 const response = await apiService.post('/auth/demo-login', {personaId})
-                return this.consumeBrowserAuthResponse(response?.data)
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'Demo login failed')
             }
         },
 
@@ -204,6 +212,19 @@ export const useAuthStore = defineStore('auth', {
             this.clearUser()
         },
 
+        async logoutStrict() {
+            await apiService.logoutStrict()
+            this.clearUser()
+        },
+
+        async fetchTimelineDisplayPreferences() {
+            try {
+                return await apiService.get('/users/preferences/timeline/display')
+            } catch (error) {
+                throw this.fail(error, 'Failed to load timeline display preferences')
+            }
+        },
+
         async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
             const response = await apiService.post('/users/update', {
                 fullName,
@@ -216,7 +237,7 @@ export const useAuthStore = defineStore('auth', {
                 timeFormat
             })
 
-            const updatedUser = response?.data
+            const updatedUser = response
             if (updatedUser) {
                 this.setUser(updatedUser)
                 return this.user
@@ -235,7 +256,7 @@ export const useAuthStore = defineStore('auth', {
                 }
             })
 
-            const avatarPath = response?.data?.avatar || response?.avatar
+            const avatarPath = response?.avatar
             if (!avatarPath) {
                 throw new Error('Avatar upload succeeded but no avatar path was returned')
             }
@@ -245,7 +266,7 @@ export const useAuthStore = defineStore('auth', {
 
         async updateTimelineDisplayPreferences(displayPreferences) {
             const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
-            const updatedPreferences = response?.data || null
+            const updatedPreferences = response || null
 
             if (updatedPreferences) {
                 const userPatch = {}
@@ -297,11 +318,11 @@ export const useAuthStore = defineStore('auth', {
                 newPassword
             })
 
-            if (response?.data?.hasPassword) {
+            if (response?.hasPassword) {
                 this.patchCurrentUser({hasPassword: true})
             }
 
-            return response?.data || null
+            return response || null
         },
 
         async _reconcileAuthState() {
@@ -369,8 +390,7 @@ export const useAuthStore = defineStore('auth', {
 
         async getOidcProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/providers')
-                return response?.data || []
+                return await apiService.get('/auth/oidc/providers') || []
             } catch (error) {
                 console.error('Failed to get OIDC providers:', error)
                 return []
@@ -382,32 +402,36 @@ export const useAuthStore = defineStore('auth', {
                 const response = await apiService.post(`/auth/oidc/login/${providerName}`, {}, {
                     params: redirectUri ? {redirectUri} : {}
                 })
-                window.location.href = response.data.authorizationUrl
+                window.location.href = response.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC login:', error)
-                throw error
+                throw this.fail(error, 'Failed to initiate OIDC login')
             }
         },
 
         async handleOidcCallback(code, state) {
             try {
                 const response = await apiService.post('/auth/oidc/callback', {code, state})
-                return this.consumeBrowserAuthResponse(response?.data)
+                this.accountLinking = null
+                return this.consumeBrowserAuthResponse(response)
             } catch (error) {
+                if (error?.response?.data?.code === 'OIDC_ACCOUNT_LINKING_REQUIRED') {
+                    this.accountLinking = error.response.data.linking || null
+                }
                 if (!shouldPreserveCachedProfile(error)) {
                     this.clearUser()
                 }
-                throw error
+                throw this.fail(error, 'OIDC authentication failed')
             }
         },
 
         async linkOidcProvider(providerName) {
             try {
                 const response = await apiService.post(`/auth/oidc/link/${providerName}`)
-                window.location.href = response.data.authorizationUrl
+                window.location.href = response.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC linking:', error)
-                throw error
+                throw this.fail(error, 'Failed to initiate OIDC linking')
             }
         },
 
@@ -416,14 +440,13 @@ export const useAuthStore = defineStore('auth', {
                 await apiService.delete(`/auth/oidc/unlink/${providerName}`)
             } catch (error) {
                 console.error('Failed to unlink OIDC provider:', error)
-                throw error
+                throw this.fail(error, 'Failed to unlink OIDC provider')
             }
         },
 
         async getLinkedProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/connections')
-                return response.data
+                return await apiService.get('/auth/oidc/connections')
             } catch (error) {
                 console.error('Failed to get linked OIDC providers:', error)
                 return []
@@ -432,20 +455,18 @@ export const useAuthStore = defineStore('auth', {
 
         async fetchCurrentUserProfile() {
             try {
-                const response = await apiService.get('/users/me')
-                const userData = response?.data
-                this.setUser(userData)
+                const user = await apiService.get('/users/me')
+                this.setUser(user)
                 return this.user
             } catch (error) {
                 console.error('Failed to fetch current user profile:', error)
-                throw error
+                throw this.fail(error, 'Failed to fetch user profile')
             }
         },
 
         async getRegistrationStatus() {
             try {
-                const response = await apiService.get('/auth/status')
-                return response.data
+                return await apiService.get('/auth/status')
             } catch (error) {
                 console.error('Failed to fetch registration status:', error)
                 return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false }
@@ -468,13 +489,80 @@ export const useAuthStore = defineStore('auth', {
             }
             try {
                 const response = await apiService.get('/auth/status')
-                const status = {...fallback, ...(response.data || {})}
+                const status = {...fallback, ...response}
                 this.authStatus = status
                 return status
             } catch (error) {
                 console.error('Failed to get auth status:', error)
                 this.authStatus = fallback
                 return fallback
+            }
+        },
+
+        async generateMobileAuth() {
+            try {
+                return await apiService.get('/auth/mobile')
+            } catch (error) {
+                throw this.fail(error, 'Unable to create authentication link')
+            }
+        },
+
+        async validateInvitation(token) {
+            try {
+                return await apiService.get(`/auth/invitation/${token}/validate`)
+            } catch (error) {
+                throw this.fail(error, 'Failed to validate invitation')
+            }
+        },
+
+        async registerInvitation(payload) {
+            try {
+                return await apiService.post('/auth/invitation/register', payload)
+            } catch (error) {
+                throw this.fail(error, 'Registration failed')
+            }
+        },
+
+        async listApiTokens() {
+            try {
+                return await apiService.get('/api-tokens')
+            } catch (error) {
+                throw this.fail(error, 'Failed to load API tokens')
+            }
+        },
+
+        async saveApiToken(id, payload) {
+            try {
+                return id
+                    ? await apiService.put(`/api-tokens/${id}`, payload)
+                    : await apiService.post('/api-tokens', payload)
+            } catch (error) {
+                throw this.fail(error, 'Failed to save API token')
+            }
+        },
+
+        async revokeApiToken(id) {
+            try {
+                await apiService.delete(`/api-tokens/${id}`)
+            } catch (error) {
+                throw this.fail(error, 'Failed to revoke API token')
+            }
+        },
+
+        async linkAccountWithPassword(payload) {
+            try {
+                return this.consumeBrowserAuthResponse(
+                    await apiService.post('/auth/oidc/link-with-password', payload))
+            } catch (error) {
+                throw this.fail(error, 'Password verification failed')
+            }
+        },
+
+        async initiateOidcAccountVerification(payload) {
+            try {
+                return await apiService.post('/auth/oidc/link-with-oidc', payload)
+            } catch (error) {
+                throw this.fail(error, 'OIDC verification initiation failed')
             }
         }
     }

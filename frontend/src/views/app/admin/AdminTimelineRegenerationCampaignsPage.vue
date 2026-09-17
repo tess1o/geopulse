@@ -401,10 +401,12 @@ import { useToast } from 'primevue/usetoast'
 import { storeToRefs } from 'pinia'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 import { useTimezone } from '@/composables/useTimezone'
 import { useAuthStore } from '@/stores/auth'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const adminService = useAdminStore()
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
@@ -640,14 +642,7 @@ const sourceSeverity = (source) => {
   return 'secondary'
 }
 
-const extractApiErrorMessage = (error, fallback) => (
-  error?.response?.data?.message
-  || error?.response?.data?.error
-  || error?.response?.data?.data?.message
-  || error?.userMessage
-  || error?.message
-  || fallback
-)
+const extractApiErrorMessage = formatApiErrorDetail
 
 onMounted(() => {
   loadCampaigns()

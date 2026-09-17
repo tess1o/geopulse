@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
@@ -158,6 +159,7 @@ public class ImportJobService {
 
                 job.setDetectedDataTypes(detectedDataTypes);
                 job.setStatus(ImportStatus.PROCESSING);
+                job.setPhase(ImportPhase.IMPORTING);
                 job.setProgress(25);
 
                 log.info("Validated import job {} - detected data types: {}", job.getJobId(), detectedDataTypes);
@@ -295,6 +297,7 @@ public class ImportJobService {
 
     private void completeImportJob(ImportJob job, boolean recalculateBadges) {
         job.setStatus(ImportStatus.COMPLETED);
+        job.setPhase(ImportPhase.COMPLETED);
         job.setCompletedAt(Instant.now());
         job.setProgress(100);
         job.setProgressMessage("Import completed successfully");
@@ -341,6 +344,8 @@ public class ImportJobService {
             if (!coverageStatus.userEnabled()) {
                 return false;
             }
+
+            job.setPhase(ImportPhase.COVERAGE_RECALCULATION);
 
             if (coverageStatus.processing()) {
                 job.setProgress(Math.max(job.getProgress(), 95));

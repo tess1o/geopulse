@@ -5,7 +5,7 @@ import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import io.quarkiverse.httpproblem.HttpProblem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,8 +58,7 @@ class MobileSessionExchangeResourceTest {
         Response response = resource.exchangeSessionCode(request);
 
         assertEquals(200, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        var data = (AuthResponse) apiResponse.getData();
+        var data = (AuthResponse) response.getEntity();
 
         assertEquals(accessToken, data.getAccessToken());
         assertEquals(refreshToken, data.getRefreshToken());
@@ -72,20 +72,16 @@ class MobileSessionExchangeResourceTest {
         MobileSessionExchangeRequest request = new MobileSessionExchangeRequest("missing-code");
         when(mobileDeepLinkService.exchangeSessionCode("missing-code")).thenReturn(Optional.empty());
 
-        Response response = resource.exchangeSessionCode(request);
-
-        assertEquals(410, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        assertEquals("Mobile session code is expired or invalid", apiResponse.getMessage());
+        HttpProblem problem = assertThrows(HttpProblem.class, () -> resource.exchangeSessionCode(request));
+        assertEquals(410, problem.getStatusCode());
+        assertEquals("Mobile session code is expired or invalid", problem.getDetail());
     }
 
     @Test
     void exchangeSessionCode_returnsBadRequestWhenBodyIsMissing() {
-        Response response = resource.exchangeSessionCode(null);
-
-        assertEquals(400, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        assertNotNull(apiResponse);
-        assertEquals("sessionCode is required", apiResponse.getMessage());
+        HttpProblem problem = assertThrows(HttpProblem.class, () -> resource.exchangeSessionCode(null));
+        assertNotNull(problem);
+        assertEquals(400, problem.getStatusCode());
+        assertEquals("sessionCode is required", problem.getDetail());
     }
 }

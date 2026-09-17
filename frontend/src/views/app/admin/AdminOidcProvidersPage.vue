@@ -277,7 +277,7 @@
               :class="testResult.success ? 'pi pi-check-circle text-3xl text-green-500' : 'pi pi-times-circle text-3xl text-red-500'"
             ></i>
             <span class="test-result-message">
-              {{ testResult.message }}
+              {{ testResult.success ? 'Successfully connected to OIDC provider' : testResult.detail }}
             </span>
           </div>
 
@@ -348,10 +348,12 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 import PageContainer from "@/components/ui/layout/PageContainer.vue";
 import { useAuthStore } from '@/stores/auth'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const adminService = useAdminStore()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
@@ -438,7 +440,7 @@ const handleSaveProvider = async (providerData) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to save provider',
+      detail: formatApiErrorDetail(error, 'Failed to save provider'),
       life: 5000
     })
   }
@@ -452,7 +454,7 @@ const confirmDelete = (provider) => {
 const deleteProvider = async () => {
   deleting.value = true
   try {
-    const result = await adminService.deleteOidcProvider(providerToDelete.value.name)
+    await adminService.deleteOidcProvider(providerToDelete.value.name)
 
     // Show appropriate message based on whether it reverted to env or was deleted
     const message = isEnvironmentProvider(providerToDelete.value)
@@ -462,7 +464,7 @@ const deleteProvider = async () => {
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: result.message || message,
+      detail: message,
       life: 3000
     })
     deleteDialogVisible.value = false
@@ -472,7 +474,7 @@ const deleteProvider = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete provider',
+      detail: formatApiErrorDetail(error, 'Failed to delete provider'),
       life: 5000
     })
   } finally {
@@ -539,7 +541,7 @@ const toggleProviderStatus = async (provider) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update provider status',
+      detail: formatApiErrorDetail(error, 'Failed to update provider status'),
       life: 5000
     })
   }

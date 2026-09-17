@@ -107,10 +107,18 @@ public class DigestPdfService {
         stream.addRect(0, pageHeight - 152, width, 152);
         stream.fill();
         text(stream, "GEOPULSE REWIND", PAGE_MARGIN, pageHeight - 58, 10, fonts.bold, new Color(219, 234, 254));
-        text(stream, digest.getPeriod().getDisplayName(), PAGE_MARGIN, pageHeight - 98, 28, fonts.bold, Color.WHITE);
+        text(stream, periodLabel(digest), PAGE_MARGIN, pageHeight - 98, 28, fonts.bold, Color.WHITE);
         String subtitle = formatDistance(digest.getMetrics().getTotalDistance(), user.getDistanceUnit()) + "  ·  "
                 + digest.getMetrics().getTripCount() + " trips  ·  " + digest.getMetrics().getActiveDays() + " active days";
         text(stream, subtitle, PAGE_MARGIN, pageHeight - 123, 11, fonts.regular, new Color(219, 234, 254));
+    }
+
+    private static String periodLabel(TimeDigest digest) {
+        Integer month = digest.getPeriod().getMonth();
+        return month == null
+                ? String.valueOf(digest.getPeriod().getYear())
+                : YearMonth.of(digest.getPeriod().getYear(), month)
+                        .format(DateTimeFormatter.ofPattern("MMMM yyyy"));
     }
 
     private void drawMetricCards(PDPageContentStream stream, DigestMetrics metrics, DistanceUnit unit, Fonts fonts, float width) throws Exception {
@@ -249,8 +257,8 @@ public class DigestPdfService {
         for (Milestone milestone : milestones.stream().limit(4).toList()) {
             fillRoundRect(stream, x, y - 34, width, 39, 4, new Color(255, 251, 235));
             fillRoundRect(stream, x + 10, y - 20, 12, 12, 6, AMBER);
-            text(stream, truncate(safe(milestone.getTitle()), 27), x + 30, y - 13, 9, fonts.bold, INK);
-            text(stream, truncate(safe(milestone.getDescription()), 35), x + 30, y - 27, 7.5f, fonts.regular, MUTED);
+            text(stream, truncate(safe(milestone.getTitle().fallback()), 27), x + 30, y - 13, 9, fonts.bold, INK);
+            text(stream, truncate(safe(milestone.getDescription().fallback()), 35), x + 30, y - 27, 7.5f, fonts.regular, MUTED);
             y -= 42;
         }
         return y - 8;

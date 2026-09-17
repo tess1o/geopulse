@@ -1,268 +1,169 @@
-import {defineStore} from 'pinia'
-import apiService from '../utils/apiService'
+import { defineStore } from 'pinia'
+import apiService from '@/utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useFriendsStore = defineStore('friends', {
-    state: () => ({
-        friends: [],
-        receivedInvites: [],
-        sentInvitations: []
-    }),
+  state: () => ({
+    friends: [],
+    receivedInvites: [],
+    sentInvitations: [],
+    loading: false,
+    error: null
+  }),
 
-    getters: {
-        // Direct access getters
-        getFriends: (state) => state.friends,
-        getReceivedInvites: (state) => state.receivedInvites,
-        getSentInvitations: (state) => state.sentInvitations,
+  getters: {
+    receivedInvitesCount: (state) => state.receivedInvites.length
+  },
 
-        // Count getters
-        friendsCount: (state) => state.friends.length,
-        receivedInvitesCount: (state) => state.receivedInvites.length,
-        sentInvitationsCount: (state) => state.sentInvitations.length,
-
-        // Check if data exists
-        hasFriends: (state) => state.friends.length > 0,
-        hasReceivedInvites: (state) => state.receivedInvites.length > 0,
-        hasSentInvitations: (state) => state.sentInvitations.length > 0,
-        hasPendingActivity: (state) => state.receivedInvites.length > 0 || state.sentInvitations.length > 0,
-
-        // Find specific friends/invites
-        getFriendById: (state) => (id) => {
-            return state.friends.find(friend => friend.id === id)
-        },
-
-        getReceivedInviteById: (state) => (id) => {
-            return state.receivedInvites.find(invite => invite.id === id)
-        },
-
-        getSentInvitationById: (state) => (id) => {
-            return state.sentInvitations.find(invitation => invitation.id === id)
-        },
-
-        // Check if user is already a friend or has pending invitation
-        isFriend: (state) => (userId) => {
-            return state.friends.some(friend => friend.id === userId || friend.userId === userId)
-        },
-
-        hasReceivedInviteFrom: (state) => (userId) => {
-            return state.receivedInvites.some(invite => invite.senderId === userId)
-        },
-
-        hasSentInvitationTo: (state) => (userId) => {
-            return state.sentInvitations.some(invitation => invitation.receiverId === userId)
-        },
-
-        // Get friends with last known locations (for map display)
-        getFriendsWithLocations: (state) => {
-            return state.friends.filter(friend =>
-                friend.lastLatitude && friend.lastLongitude
-            )
-        },
-
-        // Search friends by name
-        searchFriends: (state) => (searchTerm) => {
-            if (!searchTerm) return state.friends
-            const term = searchTerm.toLowerCase()
-            return state.friends.filter(friend =>
-                friend.name?.toLowerCase().includes(term) ||
-                friend.fullName?.toLowerCase().includes(term) ||
-                friend.email?.toLowerCase().includes(term)
-            )
-        },
-
-        // Get summary of all social activity
-        getSocialSummary: (state) => {
-            return {
-                totalFriends: state.friends.length,
-                pendingReceived: state.receivedInvites.length,
-                pendingSent: state.sentInvitations.length,
-                friendsWithLocations: state.friends.filter(f => f.lastLatitude && f.lastLongitude).length
-            }
-        }
+  actions: {
+    fail(error, fallback) {
+      this.error = normalizeApiError(error, fallback)
+      return this.error
     },
 
-    actions: {
-        // Set data (replaces mutations)
-        setFriends(friends) {
-            this.friends = friends
-        },
+    async fetchFriends() {
+      try {
+        this.friends = await apiService.get('/friends') || []
+        return this.friends
+      } catch (error) {
+        throw this.fail(error, 'Failed to load friends')
+      }
+    },
 
-        setReceivedInvites(invites) {
-            this.receivedInvites = invites
-        },
+    async fetchReceivedInvitations() {
+      try {
+        this.receivedInvites = await apiService.get('/friends/invitations/received') || []
+        return this.receivedInvites
+      } catch (error) {
+        throw this.fail(error, 'Failed to load received invitations')
+      }
+    },
 
-        setSentInvitations(invitations) {
-            this.sentInvitations = invitations
-        },
+    async fetchSentInvitations() {
+      try {
+        this.sentInvitations = await apiService.get('/friends/invitations/sent') || []
+        return this.sentInvitations
+      } catch (error) {
+        throw this.fail(error, 'Failed to load sent invitations')
+      }
+    },
 
-        removeFriend(friendId) {
-            this.friends = this.friends.filter(friend => friend.id !== friendId)
-        },
+    async sendFriendRequest(receiverEmail) {
+      try {
+        const invitation = await apiService.post('/friends/invitations', { receiverEmail })
+        this.sentInvitations.push(invitation)
+        return invitation
+      } catch (error) {
+        throw this.fail(error, 'Failed to send invitation')
+      }
+    },
 
-        removeReceivedInvite(inviteId) {
-            this.receivedInvites = this.receivedInvites.filter(invite => invite.id !== inviteId)
-        },
+    async deleteFriendship(friendId) {
+      try {
+        await apiService.delete(`/friends/${friendId}`)
+        this.friends = this.friends.filter(friend => (friend.friendId || friend.userId || friend.id) !== friendId)
+      } catch (error) {
+        throw this.fail(error, 'Failed to remove friend')
+      }
+    },
 
-        removeSentInvitation(invitationId) {
-            this.sentInvitations = this.sentInvitations.filter(invitation => invitation.id !== invitationId)
-        },
+    async acceptInvitation(id) {
+      try {
+        const invitation = await apiService.put(`/friends/invitations/${id}/accept`, {})
+        this.receivedInvites = this.receivedInvites.filter(item => item.id !== id)
+        await this.fetchFriends()
+        return invitation
+      } catch (error) {
+        throw this.fail(error, 'Failed to accept invitation')
+      }
+    },
 
-        // API Actions - Fetch data
-        async fetchFriends() {
-            try {
-                const response = await apiService.get('/friends')
-                this.setFriends(response.data)
-                return response
-            } catch (error) {
-                throw error
-            }
-        },
+    async rejectInvitation(id) {
+      try {
+        const invitation = await apiService.put(`/friends/invitations/${id}/reject`, {})
+        this.receivedInvites = this.receivedInvites.filter(item => item.id !== id)
+        return invitation
+      } catch (error) {
+        throw this.fail(error, 'Failed to reject invitation')
+      }
+    },
 
-        async fetchReceivedInvitations() {
-            try {
-                const response = await apiService.get('/friends/invitations/received')
-                this.setReceivedInvites(response.data)
-                return response
-            } catch (error) {
-                throw error
-            }
-        },
+    async cancelInvitation(id) {
+      try {
+        const invitation = await apiService.put(`/friends/invitations/${id}/cancel`, {})
+        this.sentInvitations = this.sentInvitations.filter(item => item.id !== id)
+        return invitation
+      } catch (error) {
+        throw this.fail(error, 'Failed to cancel invitation')
+      }
+    },
 
-        async fetchSentInvitations() {
-            try {
-                const response = await apiService.get('/friends/invitations/sent')
-                this.setSentInvitations(response.data)
-                return response
-            } catch (error) {
-                throw error
-            }
-        },
+    async refreshAllFriendsData() {
+      this.loading = true
+      this.error = null
+      try {
+        await Promise.all([
+          this.fetchFriends(),
+          this.fetchReceivedInvitations(),
+          this.fetchSentInvitations()
+        ])
+      } finally {
+        this.loading = false
+      }
+    },
 
-        // API Actions - Friend management
-        async sendFriendRequest(receiverEmail) {
-            try {
-                await apiService.post('/friends/invitations', {
-                    receiverEmail
-                })
-                // Refresh sent invitations to show the new request
-                await this.fetchSentInvitations()
-            } catch (error) {
-                throw error
-            }
-        },
+    async searchUsersToInvite(query) {
+      try {
+        return await apiService.get('/friends/search-users-to-invite', { query }) || []
+      } catch (error) {
+        throw this.fail(error, 'Failed to search users')
+      }
+    },
 
-        async deleteFriendship(friendId) {
-            try {
-                await apiService.delete(`/friends/${friendId}`, {})
-                // Remove from local state immediately
-                this.removeFriend(friendId)
-                // Refresh to ensure data consistency
-                await this.fetchFriends()
-            } catch (error) {
-                // Re-fetch friends to revert any optimistic updates
-                await this.fetchFriends()
-                throw error
-            }
-        },
+    async getFriendPermissions(friendId) {
+      try {
+        return await apiService.get(`/friends/${friendId}/permissions`)
+      } catch (error) {
+        throw this.fail(error, 'Failed to load friend permissions')
+      }
+    },
 
-        // API Actions - Invitation management
-        async acceptInvitation(id) {
-            try {
-                await apiService.put(`/friends/invitations/${id}/accept`, {})
-                // Remove from received invites
-                this.removeReceivedInvite(id)
-                // Refresh both friends and invites to reflect the change
-                await Promise.all([
-                    this.fetchFriends(),
-                    this.fetchReceivedInvitations()
-                ])
-            } catch (error) {
-                // Refresh invites on error
-                await this.fetchReceivedInvitations()
-                throw error
-            }
-        },
+    async updateFriendPermissions(friendId, shareTimeline) {
+      try {
+        return await apiService.put(`/friends/${friendId}/permissions`, { shareTimeline })
+      } catch (error) {
+        throw this.fail(error, 'Failed to update friend permissions')
+      }
+    },
 
-        async rejectInvitation(id) {
-            try {
-                await apiService.put(`/friends/invitations/${id}/reject`, {})
-                // Remove from received invites
-                this.removeReceivedInvite(id)
-                // Refresh to ensure consistency
-                await this.fetchReceivedInvitations()
-            } catch (error) {
-                // Refresh invites on error
-                await this.fetchReceivedInvitations()
-                throw error
-            }
-        },
+    async updateLiveLocationPermission(friendId, shareLiveLocation) {
+      try {
+        return await apiService.put(`/friends/${friendId}/permissions/live`, { shareLiveLocation })
+      } catch (error) {
+        throw this.fail(error, 'Failed to update live location permission')
+      }
+    },
 
-        async cancelInvitation(id) {
-            try {
-                await apiService.put(`/friends/invitations/${id}/cancel`, {})
-                // Remove from sent invitations
-                this.removeSentInvitation(id)
-                // Refresh to ensure consistency
-                await this.fetchSentInvitations()
-            } catch (error) {
-                // Refresh invitations on error
-                await this.fetchSentInvitations()
-                throw error
-            }
-        },
+    async getFriendsLocationTrails(minutes = 60, endTime = null) {
+      const utcEndTime = endTime instanceof Date
+        ? endTime.toISOString()
+        : (typeof endTime === 'string' && endTime.trim() ? endTime.trim() : null)
+      try {
+        return await apiService.get('/friends/location/trails', {
+          minutes,
+          ...(utcEndTime ? { endTime: utcEndTime } : {})
+        }) || []
+      } catch (error) {
+        throw this.fail(error, 'Failed to load friend location trails')
+      }
+    },
 
-        // Convenience methods
-        async refreshAllFriendsData() {
-            try {
-                await Promise.all([
-                    this.fetchFriends(),
-                    this.fetchReceivedInvitations(),
-                    this.fetchSentInvitations()
-                ])
-            } catch (error) {
-                console.error('Error refreshing friends data:', error)
-                throw error
-            }
-        },
+    async acceptMultipleInvitations(inviteIds) {
+      for (const id of inviteIds) await this.acceptInvitation(id)
+    },
 
-        // Check relationship status with a user
-        getRelationshipStatus(userId) {
-            if (this.isFriend(userId)) return 'friend'
-            if (this.hasReceivedInviteFrom(userId)) return 'received_invite'
-            if (this.hasSentInvitationTo(userId)) return 'sent_invitation'
-            return 'none'
-        },
-
-        async searchUsersToInvite(query) {
-            try {
-                const response = await apiService.get(`/friends/search-users-to-invite?query=${query}`)
-                return response.data // Assuming response.data is an array of user objects
-            } catch (error) {
-                console.error('Error searching users to invite:', error)
-                throw error
-            }
-        },
-
-        // Batch operations
-        async acceptMultipleInvitations(inviteIds) {
-            try {
-                const acceptPromises = inviteIds.map(id => this.acceptInvitation(id))
-                await Promise.all(acceptPromises)
-            } catch (error) {
-                // Refresh all data to ensure consistency
-                await this.refreshAllFriendsData()
-                throw error
-            }
-        },
-
-        async rejectMultipleInvitations(inviteIds) {
-            try {
-                const rejectPromises = inviteIds.map(id => this.rejectInvitation(id))
-                await Promise.all(rejectPromises)
-            } catch (error) {
-                // Refresh all data to ensure consistency
-                await this.refreshAllFriendsData()
-                throw error
-            }
-        }
+    async rejectMultipleInvitations(inviteIds) {
+      for (const id of inviteIds) await this.rejectInvitation(id)
     }
+  }
 })

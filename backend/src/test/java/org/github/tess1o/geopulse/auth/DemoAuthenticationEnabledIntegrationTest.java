@@ -82,14 +82,13 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .get("/api/auth/status")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.demoModeEnabled", equalTo(true))
-                .body("data.passwordRegistrationEnabled", equalTo(false))
-                .body("data.oidcRegistrationEnabled", equalTo(false))
-                .body("data.demoPersonas.id", contains("kyiv", "new-york", "london"))
-                .body("data.demoPersonas[1].label", equalTo("🗽 Login as New York"))
-                .body("data.demoPersonas[1].detail", equalTo("(Miles, 12-hour clock, US date format)"))
-                .body("data.demoPersonas[1].email", nullValue());
+                .body("demoModeEnabled", equalTo(true))
+                .body("passwordRegistrationEnabled", equalTo(false))
+                .body("oidcRegistrationEnabled", equalTo(false))
+                .body("demoPersonas.id", contains("kyiv", "new-york", "london"))
+                .body("demoPersonas[1].label", equalTo("🗽 Login as New York"))
+                .body("demoPersonas[1].detail", equalTo("(Miles, 12-hour clock, US date format)"))
+                .body("demoPersonas[1].email", nullValue());
     }
 
     @Test
@@ -105,13 +104,12 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/auth/demo-login")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.user.email", equalTo("new-york@demo.geopulse.cc"))
-                .body("data.user.demoMode", equalTo(true))
-                .body("data.user.distanceUnit", equalTo("MILES"))
-                .body("data.user.temperatureUnit", equalTo("FAHRENHEIT"))
-                .body("data.user.dateFormat", equalTo("MDY"))
-                .body("data.user.timeFormat", equalTo("12h"))
+                .body("user.email", equalTo("new-york@demo.geopulse.cc"))
+                .body("user.demoMode", equalTo(true))
+                .body("user.distanceUnit", equalTo("MILES"))
+                .body("user.temperatureUnit", equalTo("FAHRENHEIT"))
+                .body("user.dateFormat", equalTo("MDY"))
+                .body("user.timeFormat", equalTo("12h"))
                 .cookie("access_token", notNullValue())
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());
@@ -130,13 +128,12 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/auth/demo-login")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.user.email", equalTo("kyiv@demo.geopulse.cc"))
-                .body("data.user.demoMode", equalTo(true))
-                .body("data.user.distanceUnit", equalTo("KILOMETERS"))
-                .body("data.user.temperatureUnit", equalTo("CELSIUS"))
-                .body("data.user.dateFormat", equalTo("DMY"))
-                .body("data.user.timeFormat", equalTo("24h"))
+                .body("user.email", equalTo("kyiv@demo.geopulse.cc"))
+                .body("user.demoMode", equalTo(true))
+                .body("user.distanceUnit", equalTo("KILOMETERS"))
+                .body("user.temperatureUnit", equalTo("CELSIUS"))
+                .body("user.dateFormat", equalTo("DMY"))
+                .body("user.timeFormat", equalTo("24h"))
                 .cookie("access_token", notNullValue())
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());
@@ -155,7 +152,6 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/auth/demo-login")
                 .then()
                 .statusCode(404)
-                .body("status", equalTo("error"))
                 .extract()
                 .response();
 
@@ -205,8 +201,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/users/update")
                 .then()
                 .statusCode(403)
-                .header("X-GeoPulse-Demo-Blocked", "true")
-                .body("status", equalTo("error"));
+                .header("X-GeoPulse-Demo-Blocked", "true");
     }
 
     @Test
@@ -225,8 +220,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/users/register")
                 .then()
                 .statusCode(403)
-                .header("X-GeoPulse-Demo-Blocked", "true")
-                .body("status", equalTo("error"));
+                .header("X-GeoPulse-Demo-Blocked", "true");
     }
 
     @Test
@@ -238,8 +232,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .get("/api/export/jobs")
                 .then()
                 .statusCode(403)
-                .header("X-GeoPulse-Demo-Blocked", "true")
-                .body("status", equalTo("error"));
+                .header("X-GeoPulse-Demo-Blocked", "true");
     }
 
     @Test
@@ -259,8 +252,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .post("/api/import/upload/init")
                 .then()
                 .statusCode(403)
-                .header("X-GeoPulse-Demo-Blocked", "true")
-                .body("status", equalTo("error"));
+                .header("X-GeoPulse-Demo-Blocked", "true");
     }
 
     private void ensureDemoUser(String email,

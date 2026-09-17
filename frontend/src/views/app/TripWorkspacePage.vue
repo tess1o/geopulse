@@ -621,7 +621,8 @@ import { useTripsStore } from '@/stores/trips'
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
 import { useTimelineStore } from '@/stores/timeline'
-import friendsService from '@/services/friendsService'
+import { useFriendsStore } from '@/stores/friends'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -663,6 +664,7 @@ const authStore = useAuthStore()
 const tripsStore = useTripsStore()
 const immichStore = useImmichStore()
 const timelineStore = useTimelineStore()
+const friendsStore = useFriendsStore()
 
 const {
   currentTrip,
@@ -1154,17 +1156,17 @@ const loadCollaboratorsData = async () => {
   if (!isOwner.value) return
   collaboratorsLoading.value = true
   try {
-    const [loadedCollaborators, friendsResponse] = await Promise.all([
+    const [loadedCollaborators, loadedFriends] = await Promise.all([
       tripsStore.fetchTripCollaborators(tripId.value),
-      friendsService.getFriends()
+      friendsStore.fetchFriends()
     ])
     collaborators.value = Array.isArray(loadedCollaborators) ? loadedCollaborators : []
-    availableFriends.value = Array.isArray(friendsResponse?.data) ? friendsResponse.data : []
+    availableFriends.value = Array.isArray(loadedFriends) ? loadedFriends : []
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Failed to Load Collaborators',
-      detail: error.response?.data?.message || error.message || 'Could not load collaborators.',
+      detail: formatApiErrorDetail(error, 'Could not load collaborators.'),
       life: 5000
     })
   } finally {
@@ -1190,7 +1192,7 @@ const addCollaborator = async () => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Add Collaborator',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      detail: formatApiErrorDetail(error, 'Request failed.'),
       life: 5000
     })
   } finally {
@@ -1216,7 +1218,7 @@ const updateCollaboratorRole = async (collaborator, nextRole) => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Update Role',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      detail: formatApiErrorDetail(error, 'Request failed.'),
       life: 5000
     })
   } finally {
@@ -1240,7 +1242,7 @@ const removeCollaborator = async (collaborator) => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Remove Collaborator',
-      detail: error.response?.data?.message || error.message || 'Request failed.',
+      detail: formatApiErrorDetail(error, 'Request failed.'),
       life: 5000
     })
   } finally {
@@ -1373,11 +1375,10 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual override'
         toast.add({
           severity: 'error',
           summary: 'Reset Failed',
-          detail: errorMessage,
+          detail: formatApiErrorDetail(error, 'Failed to reset manual override'),
           life: 5000
         })
       }
@@ -1406,11 +1407,10 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
           life: 3000
         })
       } catch (error) {
-        const errorMessage = error.response?.data?.message || error.message || 'Failed to reset manual trip split'
         toast.add({
           severity: 'error',
           summary: 'Reset Failed',
-          detail: errorMessage,
+          detail: formatApiErrorDetail(error, 'Failed to reset manual trip split'),
           life: 5000
         })
       }
@@ -1501,7 +1501,7 @@ const loadWorkspace = async () => {
     await fetchWorkspaceRange(initialRange, true)
     await refreshVisitComparisons()
   } catch (error) {
-    pageError.value = error.response?.data?.message || error.message || 'Failed to load trip planner'
+    pageError.value = formatApiErrorDetail(error, 'Failed to load trip planner')
   } finally {
     isInitialLoading.value = false
   }
@@ -1728,7 +1728,7 @@ const resolvePlanSuggestionForCoordinates = async (latitude, longitude, {
     toast.add({
       severity: 'warn',
       summary: 'Plan suggestion unavailable',
-      detail: error.response?.data?.message || error.message || 'You can still edit title and save.',
+      detail: formatApiErrorDetail(error, 'You can still edit title and save.'),
       life: 3000
     })
   } finally {
@@ -2004,7 +2004,7 @@ const submitPlanItem = async () => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Save Plan Item',
-      detail: error.response?.data?.message || error.message || 'Request failed',
+      detail: formatApiErrorDetail(error, 'Request failed'),
       life: 5000
     })
   } finally {
@@ -2037,7 +2037,7 @@ const confirmDeletePlanItem = (item) => {
         toast.add({
           severity: 'error',
           summary: 'Failed to Delete Plan Item',
-          detail: error.response?.data?.message || error.message || 'Delete failed',
+          detail: formatApiErrorDetail(error, 'Delete failed'),
           life: 5000
         })
       }
@@ -2068,7 +2068,7 @@ const applyVisitOverride = async (item, action) => {
     toast.add({
       severity: 'error',
       summary: 'Failed to Update Visit Status',
-      detail: error.response?.data?.message || error.message || 'Update failed',
+      detail: formatApiErrorDetail(error, 'Update failed'),
       life: 5000
     })
   }
@@ -2112,7 +2112,7 @@ const openTimelineGenerationDialogForJob = async (jobId) => {
         toast.add({
           severity: 'warn',
           summary: 'Refresh Incomplete',
-          detail: error.response?.data?.message || error.message || 'Timeline completed, but workspace refresh failed.',
+          detail: formatApiErrorDetail(error, 'Timeline completed, but workspace refresh failed.'),
           life: 5000
         })
       } finally {

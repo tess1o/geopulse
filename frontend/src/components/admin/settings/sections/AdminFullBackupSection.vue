@@ -183,10 +183,13 @@ import ProgressBar from 'primevue/progressbar'
 import Select from 'primevue/select'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { useToast } from 'primevue/usetoast'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 import { applyMaintenanceStatus, refreshMaintenance } from '@/stores/maintenance'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
+const adminService = useAdminStore()
 const props = defineProps({ adminReadOnly: { type: Boolean, default: false } })
 const toast = useToast()
 const backupPassword = ref('')
@@ -218,7 +221,7 @@ const restoreProgressInDialog = computed(() => restoreDialogVisible.value && (re
 const restoreStarting = computed(() => restoring.value && restoreStatusPending.value)
 const restorePreparationFailed = computed(() => backupStatus.value?.state === 'PREPARATION_FAILED')
 const restoreTerminal = computed(() => RESTORE_TERMINAL_STATES.has(backupStatus.value?.state))
-const restoreFailureMessage = computed(() => backupStatus.value?.error || backupStatus.value?.message || 'Restore preparation failed.')
+const restoreFailureMessage = computed(() => backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || 'Restore preparation failed.')
 const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || restorePreparationFailed.value || ['completed', 'failed'].includes(backupStatus.value?.status))
 const backupProgressValue = computed(() => Math.max(0, Math.min(100, backupStatus.value?.progressPercent ?? 0)))
 const backupProgressTitle = computed(() => {
@@ -231,12 +234,12 @@ const backupProgressTitle = computed(() => {
 })
 const backupProgressMessage = computed(() => {
   if (restoreStarting.value) return 'Restoration is being prepared in the background. GeoPulse remains available until activation.'
-  return backupStatus.value?.error || backupStatus.value?.message || backupStatus.value?.phase || 'Waiting for status'
+  return backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || backupStatus.value?.phase || 'Waiting for status'
 })
 
 const onFullFileSelect = (event) => { selectedFullFile.value = event.files?.[0] || null }
 const onFullFileClear = () => { selectedFullFile.value = null }
-const showError = (summary, error, fallback) => toast.add({ severity: 'error', summary, detail: error.response?.data?.message || error.message || fallback, life: 5000 })
+const showError = (summary, error, fallback) => toast.add({ severity: 'error', summary, detail: formatApiErrorDetail(error, fallback), life: 5000 })
 
 const loadBackupStatus = async () => {
   try {

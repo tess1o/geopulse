@@ -15,6 +15,19 @@ import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfi
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 let maintenanceAbortController = new AbortController();
 
+async function parseBlobProblem(error) {
+    const data = error?.response?.data;
+    const contentType = data?.type || error?.response?.headers?.['content-type'] || '';
+    if (data instanceof Blob && (contentType.includes('json') || contentType.includes('problem'))) {
+        try {
+            error.response.data = JSON.parse(await data.text());
+        } catch {
+            // Keep the original transport error when the response is not valid JSON.
+        }
+    }
+    return error;
+}
+
 function isCompletionLogout(url = '') {
     return maintenance.activated && String(url).includes('/auth/logout');
 }
@@ -234,7 +247,8 @@ const apiService = {
             '/auth/refresh-cookie',
             '/auth/logout',
             '/auth/oidc/providers',
-            '/auth/oidc/callback'
+            '/auth/oidc/callback',
+            '/home/content'
         ];
 
         // Skip auth check for shared location endpoints (they use their own temporary tokens)
@@ -308,6 +322,7 @@ const apiService = {
             });
             return response;
         } catch (error) {
+            await parseBlobProblem(error);
             this.handleError(error);
             throw error;
         }
@@ -423,6 +438,9 @@ const apiService = {
         } catch (error) {
             // Quarkus REST CSRF handles token validation automatically
             // No manual CSRF retry logic needed
+            if (options.responseType === 'blob') {
+                await parseBlobProblem(error);
+            }
             throw error;
         }
     },
@@ -477,6 +495,7 @@ const apiService = {
 
             return true;
         } catch (error) {
+            await parseBlobProblem(error);
             this.handleError(error);
             throw error;
         }
@@ -581,7 +600,7 @@ const apiService = {
      * Login user with credentials (cookie-based auth for browser clients)
      * @param {string} email - User ID
      * @param {string} password - User password
-     * @returns {Promise<Object>} - Standard API response envelope
+     * @returns {Promise<Object>} - Browser authentication response
      */
     async login(email, password) {
         try {
@@ -590,7 +609,7 @@ const apiService = {
                 password,
             });
 
-            if (response && response.data) {
+            if (response?.user || response?.id || response?.userId) {
                 return response;
             }
             throw new Error('Invalid login response');

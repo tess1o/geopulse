@@ -24,9 +24,11 @@ import Message from 'primevue/message'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
+const adminStore = useAdminStore()
 const settings = ref([])
 const testing = ref(false)
 const testSuccess = ref(false)
@@ -35,12 +37,12 @@ onMounted(async () => { settings.value = await loadSettings('panoramax') })
 const testEndpoint = async () => {
   testing.value = true
   try {
-    const response = await apiService.post('/admin/settings/panoramax/test')
-    testSuccess.value = response?.success ?? response?.data?.success ?? false
-    testMessage.value = response?.message || response?.data?.message || 'Endpoint test completed'
+    const response = await adminStore.testPanoramaxConnection()
+    testSuccess.value = response?.success ?? false
+    testMessage.value = response.success ? 'Panoramax STAC vector tiles found' : (response.detail || 'Endpoint test failed')
   } catch (error) {
     testSuccess.value = false
-    testMessage.value = error?.response?.data?.message || 'Endpoint test failed'
+    testMessage.value = formatApiErrorDetail(error, 'Endpoint test failed')
   } finally { testing.value = false }
 }
 </script>

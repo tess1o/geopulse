@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 /**
  * Composable for editing favorite locations.
@@ -148,7 +149,7 @@ export function useFavoriteEditor() {
         }
       } catch (error) {
         console.error('Error updating favorite:', error)
-        const errorMessage = error.response?.data?.message || error.userMessage || error.message || 'Failed to update favorite location'
+        const errorMessage = formatApiErrorDetail(error, 'Failed to update favorite location')
         toast.add({
           severity: 'error',
           summary: 'Update Failed',

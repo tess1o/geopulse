@@ -44,7 +44,7 @@
                    severity="error"
                    :closable="true"
                    @close="shareLinksStore.clearError()">
-            {{ shareLinksStore.getError }}
+            {{ formatApiErrorDetail(shareLinksStore.getError) }}
           </Message>
 
           <!-- Links List -->
@@ -617,6 +617,7 @@ import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { buildShareLinkOptions, buildShareUrl } from '@/utils/shareLinkUrls'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 

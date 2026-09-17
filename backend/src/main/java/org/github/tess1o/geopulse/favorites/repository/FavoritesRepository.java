@@ -21,6 +21,8 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
     private final EntityManager em;
 
+    private static final int BATCH_SIZE = 10000;
+
     @Inject
     public FavoritesRepository(EntityManager em) {
         this.em = em;
@@ -143,7 +145,6 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
             return Map.of();
         }
 
-        final int BATCH_SIZE = 10000;
         Map<String, FavoritesEntity> finalResultMap = new HashMap<>();
         int totalPoints = points.size();
 

@@ -19,6 +19,10 @@ import org.jboss.resteasy.reactive.RestHeader;
 import java.util.Map;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/gpslogger")
@@ -43,6 +47,9 @@ public class GpsLoggerResource {
     @POST
     @Operation(summary = "Ingest GPS Logger location",
             description = "Receives a GPS Logger location update and stores it as a GPS point for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted or ignored",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleGpsLogger(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String authHeader,
                                     @RestHeader("X-Limit-D") String deviceId) {

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
 
 @Data
 @Builder
@@ -12,7 +13,8 @@ import lombok.NoArgsConstructor;
 public class TestOidcProviderResponse {
 
     private boolean success;
-    private String message;
+    private ApiErrorCode code;
+    private String detail;
 
     // Discovered endpoints (if successful)
     private String authorizationEndpoint;
@@ -33,7 +35,6 @@ public class TestOidcProviderResponse {
             String issuer) {
         return TestOidcProviderResponse.builder()
                 .success(true)
-                .message("Successfully connected to OIDC provider")
                 .authorizationEndpoint(authorizationEndpoint)
                 .tokenEndpoint(tokenEndpoint)
                 .userinfoEndpoint(userinfoEndpoint)
@@ -45,7 +46,8 @@ public class TestOidcProviderResponse {
     public static TestOidcProviderResponse failure(String errorType, String errorDetails) {
         return TestOidcProviderResponse.builder()
                 .success(false)
-                .message("Failed to connect to OIDC provider")
+                .code(ApiErrorCode.OIDC_PROVIDER_CONNECTION_FAILED)
+                .detail("Failed to connect to OIDC provider")
                 .errorType(errorType)
                 .errorDetails(errorDetails)
                 .build();

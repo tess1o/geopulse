@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 @Data
 @Builder
@@ -14,7 +15,7 @@ public class MaintenanceStatusDto {
     private boolean blocked;
     private boolean warning;
     private boolean restarting;
-    private String message;
+    private MessageDescriptor message;
     private String backupCreatedAt;
     private String completedAt;
 }

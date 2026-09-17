@@ -13,6 +13,7 @@ import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
 import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import '@/styles/photo-map-markers.css'
 
 const props = defineProps({
@@ -79,22 +80,12 @@ const fetchAndRenderPhotos = async () => {
   try {
     loading.value = true
     await immichStore.fetchPhotos()
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'fetch',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
     renderPhotoMarkers()
   } catch (error) {
     console.error('Failed to fetch Immich photos:', error)
     emit('error', {
       type: 'fetch',
-      message: error.userMessage || 'Failed to load photos from Immich',
+      message: formatApiErrorDetail(error, 'Failed to load photos from Immich'),
       error
     })
   } finally {
@@ -109,22 +100,12 @@ const refreshPhotos = async () => {
 
   try {
     await immichStore.fetchPhotos(null, null, true)
-
-    if (immichStore.photosError) {
-      emit('error', {
-        type: 'refresh',
-        message: immichStore.photosError,
-        error: new Error(immichStore.photosError)
-      })
-      return
-    }
-
     renderPhotoMarkers()
   } catch (error) {
     console.error('Failed to refresh Immich photos:', error)
     emit('error', {
       type: 'refresh',
-      message: error.userMessage || 'Failed to refresh photos from Immich',
+      message: formatApiErrorDetail(error, 'Failed to refresh photos from Immich'),
       error
     })
   }

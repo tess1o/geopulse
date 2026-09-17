@@ -68,10 +68,10 @@ class BoatSetupServiceTest {
         TestableBoatSetupService service = new TestableBoatSetupService();
         UUID userId = UUID.randomUUID();
         BoatSetupStatusDTO readyStatus = BoatSetupStatusDTO.builder()
-                .status("READY")
-                .datasetStatus("READY")
-                .userEnvironmentStatus("READY")
-                .phase("Boat setup is ready")
+                .status(BoatSetupStatusDTO.Status.READY)
+                .datasetStatus(BoatSetupStatusDTO.DatasetStatus.READY)
+                .userEnvironmentStatus(BoatSetupStatusDTO.EnvironmentStatus.READY)
+                .phase(BoatSetupStatusDTO.Phase.BOAT_SETUP_IS_READY)
                 .progressPercentage(100)
                 .build();
         service.currentStatus = readyStatus;
@@ -117,10 +117,10 @@ class BoatSetupServiceTest {
                 return currentStatus;
             }
             return BoatSetupStatusDTO.builder()
-                    .status("PENDING")
-                    .datasetStatus("READY")
-                    .userEnvironmentStatus("PENDING")
-                    .phase("GPS water evidence needs enrichment")
+                    .status(BoatSetupStatusDTO.Status.PENDING)
+                    .datasetStatus(BoatSetupStatusDTO.DatasetStatus.READY)
+                    .userEnvironmentStatus(BoatSetupStatusDTO.EnvironmentStatus.PENDING)
+                    .phase(BoatSetupStatusDTO.Phase.GPS_WATER_EVIDENCE_NEEDS_ENRICHMENT)
                     .progressPercentage(0)
                     .build();
         }

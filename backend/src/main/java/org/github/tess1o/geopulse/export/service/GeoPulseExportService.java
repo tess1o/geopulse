@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
+import org.github.tess1o.geopulse.export.exceptions.GeoPulseExportException;
 import org.github.tess1o.geopulse.export.mapper.ExportDataMapper;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -225,7 +226,7 @@ public class GeoPulseExportService {
                         gen.writeStringField("startDate", job.getDateRange().getStartDate().toString());
                         gen.writeStringField("endDate", job.getDateRange().getEndDate().toString());
                     } catch (IOException e) {
-                        throw new RuntimeException("Failed to write GPS metadata", e);
+                        throw new GeoPulseExportException("Failed to write GPS metadata", e);
                     }
                 },
                 // Array field name
@@ -295,7 +296,7 @@ public class GeoPulseExportService {
                         gen.writeEndArray();
 
                     } catch (IOException e) {
-                        throw new RuntimeException("Failed to write timeline metadata", e);
+                        throw new GeoPulseExportException("Failed to write timeline metadata", e);
                     }
                 },
                 // Array field name for data gaps

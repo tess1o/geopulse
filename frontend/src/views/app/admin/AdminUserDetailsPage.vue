@@ -301,13 +301,15 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { copyToClipboard } from '@/utils/clipboardUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 const { timeAgo } = timezone
@@ -345,7 +347,7 @@ const isCurrentUser = computed(() => user.value?.id === authStore.userId)
 const loadUser = async () => {
   loading.value = true
   try {
-    const response = await apiService.get(`/admin/users/${route.params.id}`)
+    const response = await adminStore.getUserDetails(route.params.id)
     user.value = response
     // Update breadcrumb with user name
     breadcrumbItems.value[2].label = user.value.fullName || user.value.email
@@ -368,12 +370,8 @@ const loadApiTokens = async () => {
   if (!route.params.id) return
   apiTokensLoading.value = true
   try {
-    const response = await apiService.get('/admin/api-tokens', {
-      userId: route.params.id,
-      page: 0,
-      size: 100
-    })
-    apiTokens.value = response?.content || []
+    const response = await adminStore.getUserApiTokens(route.params.id, 0, 100)
+    apiTokens.value = response?.items || []
   } catch (error) {
     console.error('Failed to load API tokens:', error)
     toast.add({
@@ -389,9 +387,7 @@ const loadApiTokens = async () => {
 
 const toggleStatus = async () => {
   try {
-    await apiService.put(`/admin/users/${user.value.id}/status`, {
-      active: !user.value.active
-    })
+    await adminStore.updateUserStatus(user.value.id, !user.value.active)
 
     user.value.active = !user.value.active
 
@@ -406,7 +402,7 @@ const toggleStatus = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update user status',
+      detail: formatApiErrorDetail(error, 'Failed to update user status'),
       life: 3000
     })
   }
@@ -416,9 +412,7 @@ const toggleRole = async () => {
   const newRole = user.value.role === 'ADMIN' ? 'USER' : 'ADMIN'
 
   try {
-    await apiService.put(`/admin/users/${user.value.id}/role`, {
-      role: newRole
-    })
+    await adminStore.updateUserRole(user.value.id, newRole)
 
     user.value.role = newRole
 
@@ -433,7 +427,7 @@ const toggleRole = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to change user role',
+      detail: formatApiErrorDetail(error, 'Failed to change user role'),
       life: 3000
     })
   }
@@ -441,7 +435,7 @@ const toggleRole = async () => {
 
 const resetPassword = async () => {
   try {
-    const response = await apiService.post(`/admin/users/${user.value.id}/reset-password`)
+    const response = await adminStore.resetUserPassword(user.value.id)
     tempPassword.value = response.temporaryPassword
     passwordDialogVisible.value = true
 
@@ -493,7 +487,7 @@ const revokeApiToken = async () => {
 
   apiTokenRevoking.value = true
   try {
-    await apiService.delete(`/admin/api-tokens/${apiTokenToRevoke.value.id}`)
+    await adminStore.revokeUserApiToken(apiTokenToRevoke.value.id)
     toast.add({
       severity: 'success',
       summary: 'Revoked',
@@ -508,7 +502,7 @@ const revokeApiToken = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to revoke API token',
+      detail: formatApiErrorDetail(error, 'Failed to revoke API token'),
       life: 3000
     })
   } finally {
@@ -534,7 +528,7 @@ const confirmDelete = () => {
 const deleteUser = async () => {
   deleting.value = true
   try {
-    await apiService.delete(`/admin/users/${user.value.id}`)
+    await adminStore.deleteUser(user.value.id)
 
     toast.add({
       severity: 'success',
@@ -549,7 +543,7 @@ const deleteUser = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete user',
+      detail: formatApiErrorDetail(error, 'Failed to delete user'),
       life: 3000
     })
   } finally {

@@ -186,6 +186,7 @@ import {useAuthStore} from '@/stores/auth'
 import {useCoverageStore} from '@/stores/coverage'
 import {useLocationStore} from '@/stores/location'
 import {showDemoModeToast} from '@/utils/demoMode'
+import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -257,15 +258,6 @@ const canRecalculateCoverage = computed(() =>
   && !processing.value
   && !statusLoading.value
   && !demoReadOnly.value
-)
-
-const extractCoverageErrorMessage = (error, fallback) => (
-  error?.response?.data?.message
-  || error?.response?.data?.error?.message
-  || error?.response?.data?.error
-  || error?.userMessage
-  || error?.message
-  || fallback
 )
 
 const showDemoCoverageReadOnlyToast = () => {
@@ -477,7 +469,7 @@ const handleCoverageToggle = async () => {
     scheduleFetch()
   } catch (error) {
     userCoverageEnabled.value = userEnabled.value
-    const detail = extractCoverageErrorMessage(error, coverageStore.statusError || 'Failed to update coverage settings')
+    const detail = formatApiErrorDetail(error, 'Failed to update coverage settings')
     coverageActionError.value = detail
     toast.add({
       severity: 'error',
@@ -523,7 +515,7 @@ const handleCoverageRecalculation = async () => {
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
-    const detail = extractCoverageErrorMessage(error, coverageStore.statusError || 'Failed to recalculate coverage')
+    const detail = formatApiErrorDetail(error, 'Failed to recalculate coverage')
     coverageActionError.value = detail
     toast.add({
       severity: 'error',

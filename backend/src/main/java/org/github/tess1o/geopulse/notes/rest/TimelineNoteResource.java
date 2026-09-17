@@ -5,27 +5,46 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.notes.model.*;
+import org.github.tess1o.geopulse.notes.model.CreateNoteRequest;
+import org.github.tess1o.geopulse.notes.model.NoteDto;
+import org.github.tess1o.geopulse.notes.model.NoteMapMarkersResponse;
+import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
+import org.github.tess1o.geopulse.notes.model.UpdateNoteRequest;
 import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.NoSuchElementException;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTE_RANGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTE_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
+@RolesAllowed({"USER", "ADMIN"})
 @Tag(name = "User: Notes", description = "Manage GeoPulse notes and live Memos integration.")
 public class TimelineNoteResource {
 
@@ -37,139 +56,72 @@ public class TimelineNoteResource {
 
     @GET
     @Path("/notes/search")
-    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
-    public CompletableFuture<Response> searchNotes(
-            @QueryParam("startTime") String startTimeStr,
-            @QueryParam("endTime") String endTimeStr,
+    public CompletionStage<NoteSearchResponse> searchNotes(
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime,
             @QueryParam("includeExternal") @DefaultValue("true") boolean includeExternal,
             @QueryParam("limit") Integer limit,
             @QueryParam("latitude") Double latitude,
             @QueryParam("longitude") Double longitude,
-            @QueryParam("radiusMeters") Double radiusMeters
-    ) {
-        UUID userId = currentUserService.getCurrentUserId();
-        try {
-            Instant startTime = parseInstantOrDefault(startTimeStr, Instant.EPOCH);
-            Instant endTime = parseInstantOrDefault(endTimeStr, Instant.now());
-            validateRange(startTime, endTime);
-
-            return noteService.searchNotes(userId, startTime, endTime, includeExternal, limit, latitude, longitude, radiusMeters)
-                    .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
-                    .exceptionally(throwable -> {
-                        log.error("Failed to search notes for user {}: {}", userId, throwable.getMessage(), throwable);
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(ApiResponse.error("Failed to search notes"))
-                                .build();
-                    });
-        } catch (IllegalArgumentException e) {
-            return CompletableFuture.completedFuture(toBadRequest("Invalid note search parameters: " + e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to search notes for user {}: {}", userId, e.getMessage(), e);
-            return CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to search notes"))
-                    .build());
-        }
+            @QueryParam("radiusMeters") Double radiusMeters) {
+        Instant start = parseInstantOrDefault(startTime, Instant.EPOCH);
+        Instant end = parseInstantOrDefault(endTime, Instant.now());
+        validateRange(start, end);
+        return noteService.searchNotes(currentUserService.getCurrentUserId(), start, end,
+                includeExternal, limit, latitude, longitude, radiusMeters);
     }
 
     @GET
     @Path("/notes/map-markers")
-    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
-    public CompletableFuture<Response> getNoteMapMarkers(
-            @QueryParam("startTime") String startTimeStr,
-            @QueryParam("endTime") String endTimeStr,
+    public CompletionStage<NoteMapMarkersResponse> getNoteMapMarkers(
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime,
             @QueryParam("includeExternal") @DefaultValue("true") boolean includeExternal,
-            @QueryParam("coordinatePrecision") Integer coordinatePrecision
-    ) {
-        UUID userId = currentUserService.getCurrentUserId();
-        try {
-            Instant startTime = parseInstantOrDefault(startTimeStr, Instant.EPOCH);
-            Instant endTime = parseInstantOrDefault(endTimeStr, Instant.now());
-            validateRange(startTime, endTime);
-
-            return noteService.getMapMarkers(userId, startTime, endTime, includeExternal, coordinatePrecision)
-                    .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
-                    .exceptionally(throwable -> {
-                        log.error("Failed to load note map markers for user {}: {}", userId, throwable.getMessage(), throwable);
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(ApiResponse.error("Failed to load note map markers"))
-                                .build();
-                    });
-        } catch (IllegalArgumentException e) {
-            return CompletableFuture.completedFuture(toBadRequest("Invalid note map parameters: " + e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to load note map markers for user {}: {}", userId, e.getMessage(), e);
-            return CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load note map markers"))
-                    .build());
-        }
+            @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
+        Instant start = parseInstantOrDefault(startTime, Instant.EPOCH);
+        Instant end = parseInstantOrDefault(endTime, Instant.now());
+        validateRange(start, end);
+        return noteService.getMapMarkers(currentUserService.getCurrentUserId(), start, end,
+                includeExternal, coordinatePrecision);
     }
 
     @POST
     @Path("/notes")
-    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
-    public CompletableFuture<Response> createNote(@Valid CreateNoteRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
+    @APIResponse(responseCode = "201", description = "Note created")
+    public CompletionStage<RestResponse<NoteDto>> createNote(@NotNull @Valid CreateNoteRequest request) {
         try {
-            return noteService.createNote(userId, request)
-                    .thenApply(note -> Response.ok(ApiResponse.success(note)).build())
-                    .exceptionally(throwable -> {
-                        log.error("Failed to create note for user {}: {}", userId, throwable.getMessage(), throwable);
-                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                                .entity(ApiResponse.error("Failed to create note"))
-                                .build();
-                    });
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return CompletableFuture.completedFuture(toBadRequest(e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to create note for user {}: {}", userId, e.getMessage(), e);
-            return CompletableFuture.completedFuture(Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create note"))
-                    .build());
+            return noteService.createNote(currentUserService.getCurrentUserId(), request)
+                    .thenApply(note -> RestResponse.status(Response.Status.CREATED, note));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            throw problem(INVALID_NOTE_REQUEST, exception.getMessage());
         }
     }
 
     @PATCH
     @Path("/notes/{noteId}")
-    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
-    public Response updateNote(@PathParam("noteId") Long noteId, @Valid UpdateNoteRequest request) {
-        UUID userId = currentUserService.getCurrentUserId();
+    public NoteDto updateNote(@PathParam("noteId") Long noteId,
+                              @NotNull @Valid UpdateNoteRequest request) {
         try {
-            NoteDto note = noteService.updateLocalNote(userId, noteId, request);
-            return Response.ok(ApiResponse.success(note)).build();
-        } catch (NoSuchElementException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update note {} for user {}: {}", noteId, userId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update note"))
-                    .build();
+            return noteService.updateLocalNote(currentUserService.getCurrentUserId(), noteId, request);
+        } catch (NoSuchElementException exception) {
+            throw problem(NOTE_NOT_FOUND, exception.getMessage());
         }
     }
 
     @DELETE
     @Path("/notes/{noteId}")
-    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
-    public Response deleteNote(@PathParam("noteId") Long noteId) {
-        UUID userId = currentUserService.getCurrentUserId();
+    @APIResponse(responseCode = "204", description = "Note deleted")
+    public RestResponse<Void> deleteNote(@PathParam("noteId") Long noteId) {
         try {
-            noteService.deleteLocalNote(userId, noteId);
-            return Response.ok(ApiResponse.success("Note deleted")).build();
-        } catch (NoSuchElementException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete note {} for user {}: {}", noteId, userId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete note"))
-                    .build();
+            noteService.deleteLocalNote(currentUserService.getCurrentUserId(), noteId);
+            return RestResponse.noContent();
+        } catch (NoSuchElementException exception) {
+            throw problem(NOTE_NOT_FOUND, exception.getMessage());
         }
     }
 
@@ -179,20 +131,14 @@ public class TimelineNoteResource {
         }
         try {
             return Instant.parse(value);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Use ISO-8601 time format");
+        } catch (DateTimeParseException exception) {
+            throw problem(INVALID_NOTE_RANGE, "Use ISO-8601 time format");
         }
     }
 
     private void validateRange(Instant startTime, Instant endTime) {
         if (startTime.isAfter(endTime)) {
-            throw new IllegalArgumentException("Start time must be before end time");
+            throw problem(INVALID_NOTE_RANGE, "Start time must be before end time");
         }
-    }
-
-    private Response toBadRequest(String message) {
-        return Response.status(Response.Status.BAD_REQUEST)
-                .entity(ApiResponse.error(message))
-                .build();
     }
 }

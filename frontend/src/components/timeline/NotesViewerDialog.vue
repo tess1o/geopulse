@@ -99,6 +99,7 @@ import { useToast } from 'primevue/usetoast'
 import { useTimezone } from '@/composables/useTimezone'
 import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 import { useNotesStore } from '@/stores/notes'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 
 const props = defineProps({
@@ -246,7 +247,7 @@ const deleteSelectedNote = async () => {
     toast.add({
       severity: 'error',
       summary: 'Delete failed',
-      detail: error.userMessage || error.message || 'Failed to delete note',
+      detail: formatApiErrorDetail(error, 'Failed to delete note'),
       life: 5000
     })
   } finally {

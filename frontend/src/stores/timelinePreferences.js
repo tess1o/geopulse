@@ -1,12 +1,12 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
-
-const unwrapApiData = (response) => response?.data ?? response
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
     state: () => ({
         timelinePreferences: null,
-        lastUpdateResponseData: null
+        lastUpdateResponseData: null,
+        error: null
     }),
 
     getters: {
@@ -73,22 +73,22 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
                 this.setTimelinePreferences(response)
                 return response
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load timeline preferences')
+                throw this.error
             }
         },
 
         async updateTimelinePreferences(changes) {
             try {
                 const response = await apiService.put(`/users/preferences/timeline`, {...changes})
-                const responseData = unwrapApiData(response)
-
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
 
-                this.lastUpdateResponseData = responseData || null
-                return responseData?.jobId || responseData?.boatSetupJobId || null
+                this.lastUpdateResponseData = response || null
+                return response?.jobId || response?.boatSetupJobId || null
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to update timeline preferences')
+                throw this.error
             }
         },
 
@@ -99,11 +99,10 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
                 // Refresh preferences after reset
                 await this.fetchTimelinePreferences()
 
-                // Return job ID if available (for async timeline regeneration)
-                // Response structure: { status: "success", data: { jobId: "..." } }
-                return response?.data?.jobId || null
+                return response?.jobId || null
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to reset timeline preferences')
+                throw this.error
             }
         },
     }

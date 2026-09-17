@@ -208,13 +208,15 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { parseSettingValue } from '@/utils/settingHelpers'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const toast = useToast()
 const { loadSettings, resetSetting } = useAdminSettings()
 const { adminReadOnly } = storeToRefs(useAuthStore())
+const adminStore = useAdminStore()
 
 const settings = ref([])
 const originalSettings = ref([])
@@ -319,8 +321,7 @@ const loadStatus = async (showLoading = true) => {
   statusRequestInFlight = true
   if (showLoading) loadingStatus.value = true
   try {
-    const response = await apiService.get('/admin/settings/map-matching/status')
-    status.value = response?.data || response || {}
+    status.value = await adminStore.getMapMatchingStatus() || {}
   } catch (error) {
     console.warn('Failed to load map-matching status:', error)
   } finally {
@@ -405,7 +406,7 @@ const saveAllChanges = async () => {
 
   isSaving.value = true
   try {
-    await apiService.post('/admin/settings/bulk', { settings: changed })
+    await adminStore.bulkUpdateSettings(changed)
     toast.add({
       severity: 'success',
       summary: 'Settings Saved',
@@ -418,7 +419,7 @@ const saveAllChanges = async () => {
     toast.add({
       severity: 'error',
       summary: 'Save Failed',
-      detail: error.response?.data?.message || error.message || 'Failed to save map matching settings',
+      detail: formatApiErrorDetail(error, 'Failed to save map matching settings'),
       life: 5000
     })
   } finally {
@@ -435,18 +436,18 @@ const testConnection = async () => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
   testingConnection.value = true
   try {
-    const response = await apiService.post('/admin/settings/map-matching/valhalla/test')
+    const response = await adminStore.testValhallaConnection()
     toast.add({
       severity: 'success',
       summary: 'Connection OK',
-      detail: response.message || 'Valhalla endpoint is reachable',
+      detail: response.success ? 'Valhalla endpoint is reachable' : (response.detail || 'Unable to reach Valhalla'),
       life: 3500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: 'Connection Failed',
-      detail: error.response?.data?.message || error.message || 'Unable to reach Valhalla',
+      detail: formatApiErrorDetail(error, 'Unable to reach Valhalla'),
       life: 5000
     })
   } finally {
@@ -458,12 +459,11 @@ const rebuildHistoricalQueue = async () => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
   rebuildingHistoricalQueue.value = true
   try {
-    const response = await apiService.post('/admin/settings/map-matching/historical/rebuild')
-    const data = response?.data || {}
+    const data = await adminStore.rebuildMapMatchingHistoricalQueue()
     toast.add({
       severity: 'success',
       summary: 'Historical Queue Rebuilt',
-      detail: data.message || `Queued ${formatNumber(data.queuedUsers)} user histories for re-scan`,
+      detail: `Queued ${formatNumber(data.queuedUsers)} user histories for re-scan`,
       life: 4000
     })
     await loadStatus()
@@ -471,7 +471,7 @@ const rebuildHistoricalQueue = async () => {
     toast.add({
       severity: 'error',
       summary: 'Rebuild Failed',
-      detail: error.response?.data?.message || error.message || 'Failed to rebuild historical map matching queue',
+      detail: formatApiErrorDetail(error, 'Failed to rebuild historical map matching queue'),
       life: 5000
     })
   } finally {

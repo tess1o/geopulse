@@ -82,13 +82,14 @@ import Card from 'primevue/card'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import Button from 'primevue/button'
-import apiService from '@/utils/apiService'
+import { useNotificationsStore } from '@/stores/notifications'
 import ChannelSettings from './NotificationChannelSettings.vue'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
 const props = defineProps({ readOnly: Boolean })
 const emit = defineEmits(['saved'])
 const saving = ref(false)
+const notificationsStore = useNotificationsStore()
 const channel = () => ({ inAppEnabled: true, appriseEnabled: false, routingMode: 'URLS', destination: '', appriseConfigKey: '', appriseTag: '' })
 const form = reactive({ gpsHealthEnabled: false, gpsSilenceMinutes: 60, gpsHealth: channel(), rewindEnabled: false, rewind: channel(), whatsNewEnabled: true })
 
@@ -102,16 +103,14 @@ const assign = (value = {}) => Object.assign(form, {
 })
 
 onMounted(async () => {
-  const response = await apiService.get('/notifications/preferences')
-  assign(response?.data || response)
+  assign(await notificationsStore.fetchPreferences())
 })
 
 const save = async () => {
   if (props.readOnly) return
   saving.value = true
   try {
-    const response = await apiService.put('/notifications/preferences', form)
-    assign(response?.data || response)
+    assign(await notificationsStore.updatePreferences(form))
     emit('saved')
   } finally {
     saving.value = false

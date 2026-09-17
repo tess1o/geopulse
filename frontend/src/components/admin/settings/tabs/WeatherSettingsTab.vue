@@ -125,13 +125,14 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { parseSettingValue } from '@/utils/settingHelpers'
 
 const toast = useToast()
 const { loadSettings, resetSetting } = useAdminSettings()
 const { adminReadOnly } = storeToRefs(useAuthStore())
+const adminStore = useAdminStore()
 const settings = ref([])
 const originalSettings = ref([])
 const status = ref({})
@@ -204,8 +205,7 @@ const reloadSettings = async () => {
 const loadStatus = async () => {
   loadingStatus.value = true
   try {
-    const response = await apiService.get('/admin/weather/status')
-    status.value = response?.data || response || {}
+    status.value = await adminStore.getWeatherStatus() || {}
     statusRefreshedAt.value = new Date()
   } catch (error) {
     console.warn('Failed to load weather status:', error)
@@ -215,11 +215,10 @@ const processWeatherNow = async () => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
   processingWeatherNow.value = true
   try {
-    const response = await apiService.post('/admin/weather/process-now')
-    const result = response?.data || response || {}
+    const result = await adminStore.processWeatherNow() || {}
     toast.add({ severity: 'info',
       summary: result.alreadyRunning ? 'Already Running' : 'Processing Requested',
-      detail: result.message || 'The weather worker was notified', life: 4000 })
+      detail: result.alreadyRunning ? 'Weather processing is already running' : 'The weather worker was notified', life: 4000 })
     await loadStatus()
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Unable to Start Processing', detail: error.message, life: 5000 })
@@ -286,7 +285,7 @@ const saveAllChanges = async () => {
   if (!changed.length) return (hasUnsavedChanges.value = false)
   isSaving.value = true
   try {
-    await apiService.post('/admin/settings/bulk', { settings: changed })
+    await adminStore.bulkUpdateSettings(changed)
     toast.add({ severity: 'success', summary: 'Settings Saved', detail: `Updated ${changed.length} setting${changed.length === 1 ? '' : 's'}`, life: 3000 })
     await reloadSettings()
     await loadStatus()
@@ -298,8 +297,13 @@ const testConnection = async () => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
   testingConnection.value = true
   try {
-    const response = await apiService.post('/admin/settings/weather/test')
-    toast.add({ severity: 'success', summary: 'Connection OK', detail: response.message || 'Weather provider is reachable', life: 3500 })
+    const response = await adminStore.testWeatherConnection()
+    toast.add({
+      severity: response.success ? 'success' : 'error',
+      summary: response.success ? 'Connection OK' : 'Connection Failed',
+      detail: response.message || (response.success ? 'Weather provider is reachable' : 'Weather provider is unavailable'),
+      life: 3500
+    })
     await loadStatus()
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Connection Failed', detail: error.message, life: 5000 })

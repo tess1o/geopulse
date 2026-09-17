@@ -1,6 +1,6 @@
 package org.github.tess1o.geopulse.gps.rest;
 
-import jakarta.ws.rs.core.Response;
+import io.quarkiverse.httpproblem.HttpProblem;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDeleteResult;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointsRetentionRequest;
+import org.github.tess1o.geopulse.gps.model.GpsPointDeleteResponse;
 import org.github.tess1o.geopulse.gps.model.BulkDeleteGpsPointsDto;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
@@ -22,7 +23,6 @@ import org.github.tess1o.geopulse.gps.service.filter.GpsFilterResult;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
@@ -39,11 +39,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -117,16 +117,12 @@ class GpsPointResourceMobilePointTest {
         when(coverageProcessingService.requestFullRecalculationAsync(userId))
                 .thenReturn(new CoverageProcessingService.CoverageSchedulingResult(true, true));
 
-        Response response = resource.deleteGpsPoints(request);
+        GpsPointDeleteResponse response = resource.deleteGpsPoints(request);
 
-        assertEquals(200, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) apiResponse.getData();
-        assertEquals(2, data.get("deletedCount"));
-        assertEquals(timelineJobId, data.get("timelineJobId"));
-        assertEquals(true, data.get("timelineRegenerationScheduled"));
-        assertEquals(true, data.get("coverageRebuildScheduled"));
+        assertEquals(2, response.deletedCount());
+        assertEquals(timelineJobId, response.timelineJobId());
+        assertEquals(true, response.timelineRegenerationScheduled());
+        assertEquals(true, response.coverageRebuildScheduled());
         verify(asyncTimelineGenerationService).scheduleTimelineRegenerationFromTimestamp(userId, earliestTimestamp);
         verify(coverageProcessingService).requestFullRecalculationAsync(userId);
     }
@@ -140,16 +136,12 @@ class GpsPointResourceMobilePointTest {
         when(gpsPointService.deleteGpsPoints(List.of(10L), userId))
                 .thenReturn(new GpsPointDeleteResult(0, null));
 
-        Response response = resource.deleteGpsPoints(request);
+        GpsPointDeleteResponse response = resource.deleteGpsPoints(request);
 
-        assertEquals(200, response.getStatus());
-        ApiResponse<?> apiResponse = (ApiResponse<?>) response.getEntity();
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) apiResponse.getData();
-        assertEquals(0, data.get("deletedCount"));
-        assertNull(data.get("timelineJobId"));
-        assertEquals(false, data.get("timelineRegenerationScheduled"));
-        assertEquals(false, data.get("coverageRebuildScheduled"));
+        assertEquals(0, response.deletedCount());
+        assertNull(response.timelineJobId());
+        assertEquals(false, response.timelineRegenerationScheduled());
+        assertEquals(false, response.coverageRebuildScheduled());
         verifyNoInteractions(asyncTimelineGenerationService, coverageService, coverageProcessingService);
     }
 
@@ -223,9 +215,7 @@ class GpsPointResourceMobilePointTest {
         when(gpsSourceService.isDefaultDuplicateDetectionEnabled()).thenReturn(false);
         when(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()).thenReturn(2);
 
-        Response response = resource.ingestMobileAppPoints(request, DEVICE_ID);
-
-        assertEquals(200, response.getStatus());
+        resource.ingestMobileAppPoints(request, DEVICE_ID);
         verify(gpsPointService).saveMobileAppGpsPoints(eq(points), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
     }
 
@@ -252,9 +242,7 @@ class GpsPointResourceMobilePointTest {
         when(gpsSourceService.isDefaultDuplicateDetectionEnabled()).thenReturn(true);
         when(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()).thenReturn(7);
 
-        Response response = resource.ingestMobileAppPoints(request, DEVICE_ID);
-
-        assertEquals(200, response.getStatus());
+        resource.ingestMobileAppPoints(request, DEVICE_ID);
         verify(gpsPointService).saveMobileAppGpsPoints(eq(points), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
     }
 
@@ -270,9 +258,7 @@ class GpsPointResourceMobilePointTest {
         when(gpsSourceService.isDefaultDuplicateDetectionEnabled()).thenReturn(false);
         when(gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()).thenReturn(2);
 
-        Response response = resource.ingestMobileAppPoints(request, DEVICE_ID);
-
-        assertEquals(200, response.getStatus());
+        resource.ingestMobileAppPoints(request, DEVICE_ID);
         verify(gpsPointService).saveMobileAppGpsPoints(eq(List.of()), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
     }
 
@@ -303,9 +289,9 @@ class GpsPointResourceMobilePointTest {
                 .when(gpsPointService)
                 .saveMobileAppGpsPoints(eq(points), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
 
-        Response response = resource.ingestMobileAppPoints(request, DEVICE_ID);
-
-        assertEquals(409, response.getStatus());
+        HttpProblem problem = assertThrows(HttpProblem.class,
+                () -> resource.ingestMobileAppPoints(request, DEVICE_ID));
+        assertEquals(409, problem.getStatusCode());
     }
 
     @Test

@@ -494,7 +494,7 @@
               <strong>{{ boatSetupTitle }}</strong>
               <div v-if="boatSetupPhaseText" class="boat-setup-phase">{{ boatSetupPhaseText }}</div>
               <a
-                v-if="boatSetupStatus.errorMessage && boatSetupStatus.docsUrl"
+                v-if="boatSetupStatus.error && boatSetupStatus.docsUrl"
                 :href="boatSetupStatus.docsUrl"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -679,6 +679,7 @@ import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import ToggleSwitch from 'primevue/toggleswitch'
+import { formatBoatSetupPhase } from '@/utils/boatSetupDisplay'
 
 const props = defineProps({
   modelValue: {
@@ -761,7 +762,7 @@ const boatSetupTitle = computed(() => {
 const boatSetupPhaseText = computed(() => {
   if (!props.boatSetupStatus) return null
   if (props.boatSetupStatus.status === 'READY') return 'Cached water evidence is available.'
-  return props.boatSetupStatus.phase
+  return formatBoatSetupPhase(props.boatSetupStatus.phase)
 })
 
 const boatSetupCanStart = computed(() => {

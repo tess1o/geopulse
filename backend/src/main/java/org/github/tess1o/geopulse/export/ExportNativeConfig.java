@@ -46,7 +46,6 @@ import org.github.tess1o.geopulse.export.rest.ExportResource;
         ExportMetadataDto.class,
         FavoritesDataDto.class,
         ExportDateRange.class,
-        ExportResource.ListExportJobsResponse.class
 })
     public class ExportNativeConfig {
 }

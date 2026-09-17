@@ -4,25 +4,25 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.trips.service.TripWorkspaceDataService;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
-import java.util.UUID;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/trips/{tripId}")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Trips", description = "Read trip workspace timeline and path data.")
 public class TripWorkspaceDataResource {
 
@@ -37,55 +37,35 @@ public class TripWorkspaceDataResource {
 
     @GET
     @Path("/timeline")
-    public Response getTripTimeline(@PathParam("tripId") Long tripId,
+    public MovementTimelineDTO getTripTimeline(@PathParam("tripId") Long tripId,
                                     @QueryParam("startTime") String startTime,
                                     @QueryParam("endTime") String endTime) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);
-            MovementTimelineDTO timeline = tripWorkspaceDataService.getTripTimeline(userId, tripId, parsedStart, parsedEnd);
-            return Response.ok(ApiResponse.success(timeline)).build();
+            return tripWorkspaceDataService.getTripTimeline(
+                    currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
         } catch (IllegalArgumentException | DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trip timeline for trip {}", tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip timeline"))
-                    .build();
+            throw problem(INVALID_TRIP_REQUEST, detail(e));
         }
     }
 
     @GET
     @Path("/path")
-    public Response getTripPath(@PathParam("tripId") Long tripId,
+    public GpsPointPathDTO getTripPath(@PathParam("tripId") Long tripId,
                                 @QueryParam("startTime") String startTime,
                                 @QueryParam("endTime") String endTime) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);
-            GpsPointPathDTO path = tripWorkspaceDataService.getTripPath(userId, tripId, parsedStart, parsedEnd);
-            return Response.ok(ApiResponse.success(path)).build();
+            return tripWorkspaceDataService.getTripPath(
+                    currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
         } catch (IllegalArgumentException | DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get trip path for trip {}", tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip path"))
-                    .build();
+            throw problem(INVALID_TRIP_REQUEST, detail(e));
         }
     }
 
@@ -95,5 +75,10 @@ public class TripWorkspaceDataResource {
         }
         return Instant.parse(value);
     }
-}
 
+    private static String detail(Exception exception) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "Invalid trip workspace range"
+                : exception.getMessage();
+    }
+}

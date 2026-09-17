@@ -1,11 +1,12 @@
 import { ref } from 'vue'
-import apiService from '@/utils/apiService'
+import { useTimelineStore } from '@/stores/timeline'
 
 /**
  * Composable for checking if a timeline job is currently running
  * and preventing operations that would conflict with it.
  */
 export function useTimelineJobCheck() {
+  const timelineStore = useTimelineStore()
   const isCheckingJob = ref(false)
   const activeJobId = ref(null)
 
@@ -16,8 +17,7 @@ export function useTimelineJobCheck() {
   const checkActiveJob = async () => {
     isCheckingJob.value = true
     try {
-      const response = await apiService.get('/streaming-timeline/jobs/active')
-      const activeJob = response.data;
+      const activeJob = await timelineStore.getUserActiveJob()
 
       if (activeJob && activeJob.jobId) {
         activeJobId.value = activeJob.jobId

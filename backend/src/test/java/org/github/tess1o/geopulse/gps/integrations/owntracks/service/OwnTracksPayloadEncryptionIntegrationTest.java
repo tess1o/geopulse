@@ -118,8 +118,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .when()
                 .post("/api/users/register")
                 .then()
-                .statusCode(201)
-                .body("status", equalTo("success"));
+                .statusCode(201);
 
         return given()
                 .contentType(ContentType.JSON)
@@ -128,9 +127,8 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .post("/api/auth/api-login")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
                 .extract()
-                .path("data.accessToken");
+                .path("accessToken");
     }
 
     private void createOwnTracksSource(String accessToken, String ownTracksUsername, String payloadSecret) {
@@ -152,7 +150,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .when()
                 .post("/api/gps/source/")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("hasPayloadEncryptionSecret", equalTo(payloadSecret != null))
                 .body("active", equalTo(true));
     }
@@ -179,9 +177,8 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .get("/api/gps/map-points")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.totalCount", equalTo(count))
-                .body("data.returnedCount", equalTo(count));
+                .body("totalCount", equalTo(count))
+                .body("returnedCount", equalTo(count));
     }
 
     private void assertMapPoint(String accessToken, int index, double lat, double lon, String timestamp) {
@@ -194,10 +191,10 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .get("/api/gps/map-points")
                 .then()
                 .statusCode(200)
-                .body("data.points[%d].latitude".formatted(index), equalTo((float) lat))
-                .body("data.points[%d].longitude".formatted(index), equalTo((float) lon))
-                .body("data.points[%d].timestamp".formatted(index), equalTo(timestamp))
-                .body("data.points[%d].sourceType".formatted(index), equalTo("OWNTRACKS"));
+                .body("points[%d].latitude".formatted(index), equalTo((float) lat))
+                .body("points[%d].longitude".formatted(index), equalTo((float) lon))
+                .body("points[%d].timestamp".formatted(index), equalTo(timestamp))
+                .body("points[%d].sourceType".formatted(index), equalTo("OWNTRACKS"));
     }
 
     private String encryptSecretBox(String plaintext, String secret, byte[] nonce) {

@@ -642,10 +642,10 @@ public class GpsPointServiceTest {
                 "timestamp",
                 "desc"
         );
-        assertEquals(1, page.getData().size());
-        assertNotNull(page.getData().get(0).getTelemetryGpsData());
-        assertEquals(1, page.getData().get(0).getTelemetryGpsData().size());
-        assertEquals("ignition", page.getData().get(0).getTelemetryGpsData().get(0).getKey());
+        assertEquals(1, page.items().size());
+        assertNotNull(page.items().get(0).getTelemetryGpsData());
+        assertEquals(1, page.items().get(0).getTelemetryGpsData().size());
+        assertEquals("ignition", page.items().get(0).getTelemetryGpsData().get(0).getKey());
         GpsPointPathDTO path = gpsPointService.getGpsPointPath(userId, Instant.EPOCH, Instant.now().plusSeconds(30000));
         assertEquals(1, path.getPoints().size());
         GpsPointPathPointDTO pathPoint = (GpsPointPathPointDTO) path.getPoints().get(0);

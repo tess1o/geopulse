@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
+import io.quarkiverse.httpproblem.HttpProblem;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import org.github.tess1o.geopulse.admin.model.ActionType;
@@ -9,7 +10,6 @@ import org.github.tess1o.geopulse.admin.service.AdminFullBackupService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -81,9 +81,13 @@ class AdminFullBackupResourceTest {
 
     @Test
     void rejectsNullLocalRestoreRequestAndReportsConcurrentOperationAsConflict() {
-        assertThat(resource.restoreLocal(null, null, null).getStatus()).isEqualTo(400);
+        assertThatThrownBy(() -> resource.restoreLocal(null, null, null))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(400));
         when(maintenanceService.tryStartBackup("manual-local")).thenReturn(false);
-        assertThat(resource.runBackupNow(null, null).getStatus()).isEqualTo(409);
+        assertThatThrownBy(() -> resource.runBackupNow(null, null))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(409));
     }
 
     @Test
@@ -91,12 +95,11 @@ class AdminFullBackupResourceTest {
         when(maintenanceService.tryStartBackup("manual-local")).thenReturn(true);
         when(backupService.writeLocalBackup()).thenThrow(new IOException("raw pg_dump stderr containing secret-value"));
 
-        Response response = resource.runBackupNow(null, null);
-
-        assertThat(response.getStatus()).isEqualTo(500);
-        assertThat(((ApiResponse<?>) response.getEntity()).getMessage())
-                .doesNotContain("secret-value", "stderr")
-                .contains("Could not create encrypted backup");
+        assertThatThrownBy(() -> resource.runBackupNow(null, null))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                        .doesNotContain("secret-value", "stderr")
+                        .contains("Could not create encrypted backup"));
         verify(maintenanceService).finishFailure(argThat(message -> !message.contains("secret-value")));
     }
 }

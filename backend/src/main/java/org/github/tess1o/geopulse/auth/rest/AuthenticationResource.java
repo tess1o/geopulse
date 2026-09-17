@@ -8,24 +8,29 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
 import org.github.tess1o.geopulse.auth.dto.DemoLoginRequest;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
+import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.util.Optional;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
@@ -65,62 +70,48 @@ public class AuthenticationResource {
      */
     @POST
     @Path("/login")
+    @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
+            responseDescription = "Authenticated browser session")
     public Response loginUser(LoginRequest request) {
+        if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+            log.warn("Password login blocked by configuration for email={}", request.getEmail());
+            throw problem(PASSWORD_LOGIN_DISABLED, "Password login is currently disabled");
+        }
         try {
-            // Check if password login is enabled (with admin bypass)
-            if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
-                log.warn("Password login blocked by configuration for email={}", request.getEmail());
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity(ApiResponse.error("Password login is currently disabled"))
-                        .build();
-            }
-
             AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
             return createBrowserLoginResponse(authResponse);
         } catch (UserNotFoundException e) {
             log.warn("Login failed: user not found for email={}", request.getEmail());
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("User is not found"))
-                    .build();
+            throw problem(INVALID_CREDENTIALS, "User is not found");
         } catch (InvalidPasswordException e) {
             log.warn("Login failed: invalid password for email={}", request.getEmail());
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Invalid password"))
-                    .build();
+            throw problem(INVALID_CREDENTIALS, "Invalid password");
         } catch (IllegalArgumentException e) {
             log.warn("Login failed: forbidden for email={}, reason={}", request.getEmail(), e.getMessage());
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(ACCESS_DENIED, e.getMessage());
         } catch (Exception e) {
             log.error("Authentication failed for user {}", request.getEmail(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Authentication failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Authentication failed");
         }
     }
 
     @POST
     @Path("/demo-login")
+    @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
+            responseDescription = "Authenticated demo browser session")
     public Response demoLogin(DemoLoginRequest request) {
         if (!demoModeService.isEnabled()) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Demo login is not available"))
-                    .build();
+            throw problem(DEMO_LOGIN_UNAVAILABLE, "Demo login is not available");
         }
 
         String personaId = request != null ? request.getPersonaId() : null;
         if (personaId == null || personaId.isBlank()) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Demo persona is required"))
-                    .build();
+            throw problem(INVALID_DEMO_PERSONA, "Demo persona is required");
         }
 
         Optional<String> personaEmail = demoModeService.findPersonaEmail(personaId);
         if (personaEmail.isEmpty()) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Demo persona is not available"))
-                    .build();
+            throw problem(DEMO_PERSONA_NOT_FOUND, "Demo persona is not available");
         }
 
         try {
@@ -130,19 +121,13 @@ public class AuthenticationResource {
             return createBrowserLoginResponse(authResponse);
         } catch (UserNotFoundException e) {
             log.warn("Demo login failed: user not found for personaId={}", personaId);
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Demo user is not available"))
-                    .build();
+            throw problem(DEMO_PERSONA_NOT_FOUND, "Demo user is not available");
         } catch (IllegalArgumentException e) {
             log.warn("Demo login failed: forbidden for personaId={}, reason={}", personaId, e.getMessage());
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(ACCESS_DENIED, e.getMessage());
         } catch (Exception e) {
             log.error("Demo login failed for personaId={}", personaId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Demo login failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Demo login failed");
         }
     }
 
@@ -154,41 +139,25 @@ public class AuthenticationResource {
      */
     @POST
     @Path("/api-login")
-    public Response apiLogin(LoginRequest request) {
+    public AuthResponse apiLogin(LoginRequest request) {
+        if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+            log.warn("API login blocked by configuration for email={}", request.getEmail());
+            throw problem(PASSWORD_LOGIN_DISABLED, "Password login is currently disabled");
+        }
         try {
-            // Check if password login is enabled (with admin bypass)
-            if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
-                log.warn("API login blocked by configuration for email={}", request.getEmail());
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity(ApiResponse.error("Password login is currently disabled"))
-                        .build();
-            }
-
-            AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
-
-            // API mode: Return tokens in response body, no cookies
-            return Response.ok(ApiResponse.success(authResponse))
-                    .build();
+            return authenticationService.authenticate(request.getEmail(), request.getPassword());
         } catch (UserNotFoundException e) {
             log.warn("API login failed: user not found for email={}", request.getEmail());
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("User is not found"))
-                    .build();
+            throw problem(INVALID_CREDENTIALS, "User is not found");
         } catch (InvalidPasswordException e) {
             log.warn("API login failed: invalid password for email={}", request.getEmail());
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("Invalid password"))
-                    .build();
+            throw problem(INVALID_CREDENTIALS, "Invalid password");
         } catch (IllegalArgumentException e) {
             log.warn("API login failed: forbidden for email={}, reason={}", request.getEmail(), e.getMessage());
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(ACCESS_DENIED, e.getMessage());
         } catch (Exception e) {
             log.error("API authentication failed for user {}", request.getEmail(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Authentication failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Authentication failed");
         }
     }
 
@@ -201,29 +170,22 @@ public class AuthenticationResource {
      */
     @POST
     @Path("/refresh")
-    public Response refreshToken(@Valid TokenRefreshRequest request) {
+    public org.github.tess1o.geopulse.user.model.RefreshTokenResponse refreshToken(
+            @Valid TokenRefreshRequest request) {
         try {
-            return Response.ok(authenticationService.refreshToken(request.getRefreshToken())).build();
+            return authenticationService.refreshToken(request.getRefreshToken());
         } catch (ParseException e) {
             log.warn("Token refresh failed: invalid refresh token");
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid refresh token"))
-                    .build();
+            throw problem(INVALID_REFRESH_TOKEN, "Invalid refresh token");
         } catch (UserNotFoundException e) {
             log.warn("Token refresh failed: user not found");
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("User is not found"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "User is not found");
         } catch (IllegalArgumentException e) {
             log.warn("Token refresh failed: unauthorized reason={}", e.getMessage());
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, e.getMessage());
         } catch (Exception e) {
             log.error("Refresh token request failed", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Token refresh failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Token refresh failed");
         }
     }
 
@@ -236,14 +198,12 @@ public class AuthenticationResource {
      */
     @POST
     @Path("/refresh-cookie")
+    @APIResponse(responseCode = "204", description = "Authentication cookies refreshed")
     public Response refreshTokenCookie(@CookieParam("refresh_token") String refreshTokenCookie) {
+        if (refreshTokenCookie == null || refreshTokenCookie.isEmpty()) {
+            throw problem(REFRESH_TOKEN_REQUIRED, "No refresh token cookie found");
+        }
         try {
-            if (refreshTokenCookie == null || refreshTokenCookie.isEmpty()) {
-                return Response.status(Response.Status.UNAUTHORIZED)
-                        .entity(ApiResponse.error("No refresh token cookie found"))
-                        .build();
-            }
-
             // Use existing refresh token logic
             var refreshResponse = authenticationService.refreshToken(refreshTokenCookie);
 
@@ -259,29 +219,21 @@ public class AuthenticationResource {
             var newTokenExpirationCookie = cookieService.createTokenExpirationCookie(refreshResponse.expiresIn());
 
             // Return success response with new cookies
-            return Response.ok(ApiResponse.success("Tokens refreshed successfully"))
+            return Response.noContent()
                     .cookie(newAccessTokenCookie)
                     .cookie(newRefreshTokenCookie)
                     .cookie(newTokenExpirationCookie)
                     .build();
 
         } catch (ParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid refresh token"))
-                    .build();
+            throw problem(INVALID_REFRESH_TOKEN, "Invalid refresh token");
         } catch (UserNotFoundException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error("User is not found"))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, "User is not found");
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(AUTHENTICATION_REQUIRED, e.getMessage());
         } catch (Exception e) {
             log.error("Cookie-based refresh token request failed", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Token refresh failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Token refresh failed");
         }
     }
 
@@ -293,11 +245,12 @@ public class AuthenticationResource {
      */
     @POST
     @Path("/logout")
+    @APIResponse(responseCode = "204", description = "Authentication cookies cleared")
     public Response logout() {
         try {
             var logoutCookies = cookieService.createLogoutCookies();
 
-            var responseBuilder = Response.ok(ApiResponse.success("Logged out successfully"));
+            var responseBuilder = Response.noContent();
             for (var cookie : logoutCookies) {
                 responseBuilder.cookie(cookie);
             }
@@ -305,15 +258,13 @@ public class AuthenticationResource {
             return responseBuilder.build();
         } catch (Exception e) {
             log.error("Failed to logout", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Logout failed"))
-                    .build();
+            throw problem(AUTHENTICATION_FAILED, "Logout failed");
         }
     }
 
     @GET
     @Path("/status")
-    public Response getAuthStatus() {
+    public AuthStatusResponse getAuthStatus() {
         boolean demoModeEnabled = demoModeService.isEnabled();
         AuthStatusResponse status = AuthStatusResponse.builder()
                 .passwordRegistrationEnabled(!demoModeEnabled && authConfigurationService.isPasswordRegistrationEnabled())
@@ -326,7 +277,7 @@ public class AuthenticationResource {
                 .demoAdminReadOnlyEnabled(demoModeService.isAdminReadOnlyEnabled())
                 .demoPersonas(demoModeService.getPublicPersonas())
                 .build();
-        return Response.ok(ApiResponse.success(status)).build();
+        return status;
     }
 
     private Response createBrowserLoginResponse(AuthResponse authResponse) {
@@ -334,7 +285,7 @@ public class AuthenticationResource {
         var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
         var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-        return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
+        return Response.ok(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null))
                 .cookie(accessTokenCookie)
                 .cookie(refreshTokenCookie)
                 .cookie(tokenExpirationCookie)

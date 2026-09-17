@@ -3,35 +3,49 @@ package org.github.tess1o.geopulse.notifications.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.notifications.model.dto.NotificationPreferencesDto;
+import org.github.tess1o.geopulse.notifications.model.dto.ReleaseAnnouncementResponse;
 import org.github.tess1o.geopulse.notifications.model.dto.UnreadCountDto;
+import org.github.tess1o.geopulse.notifications.model.dto.UpdateNotificationPreferencesRequest;
 import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationDto;
-import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
-import org.github.tess1o.geopulse.notifications.service.UserNotificationService;
 import org.github.tess1o.geopulse.notifications.service.NotificationPreferencesService;
 import org.github.tess1o.geopulse.notifications.service.ReleaseAnnouncementService;
-import org.github.tess1o.geopulse.notifications.model.dto.NotificationPreferencesDto;
-import org.github.tess1o.geopulse.notifications.model.dto.UpdateNotificationPreferencesRequest;
-import org.github.tess1o.geopulse.notifications.model.dto.ReleaseAnnouncementResponse;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.notifications.service.UserNotificationService;
+import org.github.tess1o.geopulse.shared.api.UpdatedCountResponse;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFICATION_PREFERENCES;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_RELEASE_ANNOUNCEMENT;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/notifications")
 @ApplicationScoped
+@Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
-@Tag(name = "User: Notifications", description = "Read and update notification seen state.")
+@Tag(name = "User: Notifications", description = "Read and update notifications and preferences.")
 public class NotificationResource {
 
     private final UserNotificationService notificationService;
@@ -52,118 +66,67 @@ public class NotificationResource {
 
     @GET
     @Path("/preferences")
-    public Response getPreferences() {
-        return Response.ok(ApiResponse.success(preferencesService.get(currentUserService.getCurrentUserId()))).build();
+    public NotificationPreferencesDto getPreferences() {
+        return preferencesService.get(currentUserService.getCurrentUserId());
     }
 
     @PUT
     @Path("/preferences")
-    public Response updatePreferences(UpdateNotificationPreferencesRequest request) {
+    public NotificationPreferencesDto updatePreferences(@NotNull @Valid UpdateNotificationPreferencesRequest request) {
         try {
-            NotificationPreferencesDto result = preferencesService.update(currentUserService.getCurrentUserId(), request);
-            return Response.ok(ApiResponse.success(result)).build();
+            return preferencesService.update(currentUserService.getCurrentUserId(), request);
         } catch (IllegalArgumentException exception) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(exception.getMessage())).build();
+            throw problem(INVALID_NOTIFICATION_PREFERENCES, exception.getMessage());
         }
     }
 
     @POST
     @Path("/release/current")
-    public Response currentReleaseAnnouncement() {
+    public ReleaseAnnouncementResponse currentReleaseAnnouncement() {
         try {
-            ReleaseAnnouncementResponse result = releaseAnnouncementService.current(currentUserService.getCurrentUserId());
-            return Response.ok(ApiResponse.success(result)).build();
+            return releaseAnnouncementService.current(currentUserService.getCurrentUserId());
         } catch (IllegalArgumentException exception) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(ApiResponse.error(exception.getMessage())).build();
+            throw problem(INVALID_RELEASE_ANNOUNCEMENT, exception.getMessage());
         }
     }
 
     @GET
-    public Response getNotifications(@QueryParam("limit") @DefaultValue("50") int limit) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<UserNotificationDto> notifications = notificationService.listNotifications(userId, limit);
-            return Response.ok(ApiResponse.success(notifications)).build();
-        } catch (Exception e) {
-            log.error("Failed to load notifications", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load notifications"))
-                    .build();
-        }
+    public List<UserNotificationDto> getNotifications(@QueryParam("limit") @DefaultValue("50") @Min(1) @Max(200) int limit) {
+        return notificationService.listNotifications(currentUserService.getCurrentUserId(), limit);
     }
 
     @GET
     @Path("/page")
-    public Response getNotificationsPage(@QueryParam("page") @DefaultValue("0") int page,
-                                         @QueryParam("pageSize") @DefaultValue("25") int pageSize,
-                                         @QueryParam("seen") Boolean seen,
-                                         @QueryParam("source") NotificationSource source,
-                                         @QueryParam("type") NotificationType type) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            UserNotificationPageDto notifications = notificationService.listNotificationsPage(
-                    userId,
-                    page,
-                    pageSize,
-                    seen,
-                    source,
-                    type
-            );
-            return Response.ok(ApiResponse.success(notifications)).build();
-        } catch (Exception e) {
-            log.error("Failed to load notifications page", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load notifications page"))
-                    .build();
-        }
+    public PageResponse<UserNotificationDto> getNotificationsPage(
+            @QueryParam("page") @DefaultValue("0") @Min(0) int page,
+            @QueryParam("pageSize") @DefaultValue("25") @Min(1) @Max(200) int pageSize,
+            @QueryParam("seen") Boolean seen,
+            @QueryParam("source") NotificationSource source,
+            @QueryParam("type") NotificationType type) {
+        return notificationService.listNotificationsPage(
+                currentUserService.getCurrentUserId(), page, pageSize, seen, source, type);
     }
 
     @GET
     @Path("/unread-count")
-    public Response getUnreadCount() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            UnreadCountDto unreadCount = notificationService.getUnreadCount(userId);
-            return Response.ok(ApiResponse.success(unreadCount)).build();
-        } catch (Exception e) {
-            log.error("Failed to load unread notification count", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load unread notification count"))
-                    .build();
-        }
+    public UnreadCountDto getUnreadCount() {
+        return notificationService.getUnreadCount(currentUserService.getCurrentUserId());
     }
 
     @POST
     @Path("/{notificationId}/seen")
-    public Response markSeen(@PathParam("notificationId") Long notificationId) {
+    public UserNotificationDto markSeen(@PathParam("notificationId") Long notificationId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            UserNotificationDto updated = notificationService.markSeen(userId, notificationId);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to mark notification {} as seen", notificationId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark notification as seen"))
-                    .build();
+            return notificationService.markSeen(currentUserService.getCurrentUserId(), notificationId);
+        } catch (IllegalArgumentException exception) {
+            throw problem(NOTIFICATION_NOT_FOUND, exception.getMessage());
         }
     }
 
     @POST
     @Path("/seen-all")
-    public Response markAllSeen() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            long updatedCount = notificationService.markAllSeen(userId);
-            return Response.ok(ApiResponse.success(Map.of("updatedCount", updatedCount))).build();
-        } catch (Exception e) {
-            log.error("Failed to mark notifications as seen", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark notifications as seen"))
-                    .build();
-        }
+    public UpdatedCountResponse markAllSeen() {
+        UUID userId = currentUserService.getCurrentUserId();
+        return new UpdatedCountResponse(notificationService.markAllSeen(userId));
     }
 }

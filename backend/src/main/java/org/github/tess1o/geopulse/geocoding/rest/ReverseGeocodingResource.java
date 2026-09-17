@@ -3,32 +3,61 @@ package org.github.tess1o.geopulse.geocoding.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.geocoding.dto.*;
+import org.github.tess1o.geopulse.geocoding.dto.ApplyNormalizationRulesRequest;
+import org.github.tess1o.geopulse.geocoding.dto.BulkUpdateGeocodingDto;
+import org.github.tess1o.geopulse.geocoding.dto.BulkUpdateGeocodingResult;
+import org.github.tess1o.geopulse.geocoding.dto.CreateNormalizationRuleRequest;
+import org.github.tess1o.geopulse.geocoding.dto.DistinctValuesDto;
+import org.github.tess1o.geopulse.geocoding.dto.GeocodingProviderDTO;
+import org.github.tess1o.geopulse.geocoding.dto.NormalizationRuleDto;
+import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
+import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingReconcileRequest;
+import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingReconcileResult;
+import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
+import org.github.tess1o.geopulse.geocoding.dto.UpdateNormalizationRuleRequest;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
 import org.github.tess1o.geopulse.geocoding.service.UserLocationNormalizationService;
+import org.github.tess1o.geopulse.shared.api.JobResponse;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
+import org.jboss.resteasy.reactive.RestResponse;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-/**
- * REST API for managing reverse geocoding results.
- */
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_RESULT_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOCODING_REQUEST;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_RECONCILIATION_JOB_ID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_RULE_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_RULE_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_ALREADY_ACTIVE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_JOB_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_JOB_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
+
 @Path("/api/geocoding")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Geocoding", description = "Manage reverse geocoding results, normalization, providers, and reconciliation.")
 public class ReverseGeocodingResource {
 
@@ -49,458 +78,199 @@ public class ReverseGeocodingResource {
         this.normalizationService = normalizationService;
     }
 
-    /**
-     * Extract current user ID from security context.
-     */
-    private UUID getCurrentUserId() {
-       return currentUserService.getCurrentUserId();
-    }
-
-    /**
-     * Get paginated list of geocoding results with optional filters.
-     * Shows only entities relevant to current user (user-specific + originals they reference).
-     *
-     * @param providerName Filter by provider (optional)
-     * @param searchText Search text for displayName, city, or country (optional)
-     * @param page Page number (1-based, default 1)
-     * @param limit Page size (default 50)
-     * @param sortField Field to sort by (default lastAccessedAt)
-     * @param sortOrder Sort order (asc or desc, default desc)
-     * @return Paginated geocoding results
-     */
     @GET
-    public Response getGeocodingResults(
+    public PageResponse<ReverseGeocodingDTO> getGeocodingResults(
             @QueryParam("providerName") String providerName,
             @QueryParam("searchText") String searchText,
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
             @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder) {
-
-        UUID currentUserId = getCurrentUserId();
-
-        log.debug("Fetching geocoding results for user {}: page={}, limit={}, provider={}, search={}",
-                currentUserId, page, limit, providerName, searchText);
-
+        if (page < 1 || limit < 1) {
+            throw problem(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
+        }
+        UUID userId = currentUserService.getCurrentUserId();
         List<ReverseGeocodingDTO> results = managementService.getGeocodingResults(
-                currentUserId, providerName, searchText, page, limit, sortField, sortOrder);
-
-        long totalRecords = managementService.countGeocodingResults(currentUserId, providerName, searchText);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", results);
-
-        Map<String, Object> pagination = new HashMap<>();
-        pagination.put("page", page);
-        pagination.put("limit", limit);
-        pagination.put("total", totalRecords);
-        pagination.put("totalPages", (int) Math.ceil((double) totalRecords / limit));
-        response.put("pagination", pagination);
-
-        return Response.ok(response).build();
+                userId, providerName, searchText, page, limit, sortField, sortOrder);
+        long total = managementService.countGeocodingResults(userId, providerName, searchText);
+        return new PageResponse<>(results, page, limit, total, (int) Math.ceil((double) total / limit));
     }
 
-    /**
-     * Get a single geocoding result by ID.
-     * User can only access originals or their own copies.
-     *
-     * @param id Geocoding result ID
-     * @return Geocoding result details
-     */
     @GET
     @Path("/{id}")
-    public Response getGeocodingResult(@PathParam("id") Long id) {
-        UUID currentUserId = getCurrentUserId();
-        log.debug("Fetching geocoding result {} for user {}", id, currentUserId);
-
+    public ReverseGeocodingDTO getGeocodingResult(@PathParam("id") Long id) {
         try {
-            ReverseGeocodingDTO result = managementService.getGeocodingResult(currentUserId, id);
-            return Response.ok(result).build();
+            return managementService.getGeocodingResult(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(GEOCODING_RESULT_NOT_FOUND, detail(e, "Geocoding result not found"), Map.of("id", id));
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(GEOCODING_ACCESS_DENIED, detail(e, "Access denied"));
         }
     }
 
-    /**
-     * Update a geocoding result with copy-on-write semantics.
-     * - Modifying original (user_id=NULL): Creates user-specific copy
-     * - Modifying own copy: Updates in-place
-     * - Modifying other's copy: Returns 403 Forbidden
-     *
-     * @param id Geocoding result ID
-     * @param updateDTO Update data
-     * @return Updated geocoding result (or newly created user copy)
-     */
     @PUT
     @Path("/{id}")
-    public Response updateGeocodingResult(
-            @PathParam("id") Long id,
-            @Valid ReverseGeocodingUpdateDTO updateDTO) {
-
-        UUID currentUserId = getCurrentUserId();
-        log.info("User {} updating geocoding result: {}", currentUserId, id);
-
+    public ReverseGeocodingDTO updateGeocodingResult(
+            @PathParam("id") Long id, @Valid ReverseGeocodingUpdateDTO update) {
         try {
-            ReverseGeocodingDTO updated = managementService.updateGeocodingResult(currentUserId, id, updateDTO);
-            return Response.ok(updated).build();
+            return managementService.updateGeocodingResult(currentUserService.getCurrentUserId(), id, update);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(GEOCODING_RESULT_NOT_FOUND, detail(e, "Geocoding result not found"), Map.of("id", id));
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Error updating geocoding result {} for user {}: {}", id, currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to update geocoding result"))
-                    .build();
+            throw problem(GEOCODING_ACCESS_DENIED, detail(e, "Access denied"));
         }
     }
 
-    /**
-     * Bulk update geocoding results (city and/or country fields).
-     * Uses copy-on-write semantics for shared originals.
-     *
-     * @param bulkDto Bulk update request
-     * @return Bulk update result with success/failure counts
-     */
     @PUT
     @Path("/bulk-update")
-    public Response bulkUpdateGeocoding(@Valid BulkUpdateGeocodingDto bulkDto) {
-        UUID currentUserId = getCurrentUserId();
-        log.info("User {} starting bulk update: {} results, updateCity={}, updateCountry={}",
-                currentUserId, bulkDto.getGeocodingIds().size(),
-                bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
-
+    public BulkUpdateGeocodingResult bulkUpdateGeocoding(@Valid BulkUpdateGeocodingDto request) {
         try {
-            BulkUpdateGeocodingResult result = managementService.bulkUpdateGeocoding(currentUserId, bulkDto);
-
-            // If complete failure, return error
+            BulkUpdateGeocodingResult result = managementService.bulkUpdateGeocoding(
+                    currentUserService.getCurrentUserId(), request);
             if (result.getSuccessCount() == 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Map.of("error", "Failed to update any geocoding results"))
-                        .build();
+                throw problem(INVALID_GEOCODING_REQUEST, "Failed to update any geocoding results");
             }
-
-            log.info("User {} bulk update completed: {} successful, {} failed",
-                    currentUserId, result.getSuccessCount(), result.getFailedCount());
-
-            return Response.ok(result).build();
-
+            return result;
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid bulk update data: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Invalid update data: " + e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to bulk update geocoding results for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to bulk update geocoding results"))
-                    .build();
+            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid update data"));
         }
     }
 
-    /**
-     * Get distinct city and country values for current user's geocoding results.
-     * Useful for autocomplete in bulk edit dialogs.
-     *
-     * @return Distinct values DTO
-     */
     @GET
     @Path("/distinct-values")
-    public Response getDistinctValues() {
-        UUID currentUserId = getCurrentUserId();
-        log.debug("User {} retrieving distinct city/country values", currentUserId);
-
-        try {
-            DistinctValuesDto distinctValues = managementService.getDistinctValues(currentUserId);
-            return Response.ok(distinctValues).build();
-        } catch (Exception e) {
-            log.error("Failed to retrieve distinct values for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to retrieve distinct values"))
-                    .build();
-        }
+    public DistinctValuesDto getDistinctValues() {
+        return managementService.getDistinctValues(currentUserService.getCurrentUserId());
     }
 
     @GET
     @Path("/normalization-rules")
-    public Response listNormalizationRules() {
-        UUID currentUserId = getCurrentUserId();
-        try {
-            List<NormalizationRuleDto> rules = normalizationService.listRules(currentUserId);
-            return Response.ok(rules).build();
-        } catch (Exception e) {
-            log.error("Failed to list normalization rules for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to list normalization rules"))
-                    .build();
-        }
+    public List<NormalizationRuleDto> listNormalizationRules() {
+        return normalizationService.listRules(currentUserService.getCurrentUserId());
     }
 
     @POST
     @Path("/normalization-rules")
-    public Response createNormalizationRule(@Valid CreateNormalizationRuleRequest request) {
-        UUID currentUserId = getCurrentUserId();
+    public RestResponse<NormalizationRuleDto> createNormalizationRule(
+            @Valid CreateNormalizationRuleRequest request) {
         try {
-            NormalizationRuleDto created = normalizationService.createRule(currentUserId, request);
-            return Response.status(Response.Status.CREATED).entity(created).build();
+            return RestResponse.status(Response.Status.CREATED,
+                    normalizationService.createRule(currentUserService.getCurrentUserId(), request));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create normalization rule for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to create normalization rule"))
-                    .build();
+            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid normalization rule"));
         }
     }
 
     @PUT
     @Path("/normalization-rules/{id}")
-    public Response updateNormalizationRule(@PathParam("id") Long id, @Valid UpdateNormalizationRuleRequest request) {
-        UUID currentUserId = getCurrentUserId();
+    public NormalizationRuleDto updateNormalizationRule(
+            @PathParam("id") Long id, @Valid UpdateNormalizationRuleRequest request) {
         try {
-            NormalizationRuleDto updated = normalizationService.updateRule(currentUserId, id, request);
-            return Response.ok(updated).build();
+            return normalizationService.updateRule(currentUserService.getCurrentUserId(), id, request);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to update normalization rule"))
-                    .build();
+            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid normalization rule"));
         }
     }
 
     @DELETE
     @Path("/normalization-rules/{id}")
-    public Response deleteNormalizationRule(@PathParam("id") Long id) {
-        UUID currentUserId = getCurrentUserId();
+    public RestResponse<Void> deleteNormalizationRule(@PathParam("id") Long id) {
         try {
-            normalizationService.deleteRule(currentUserId, id);
-            return Response.noContent().build();
+            normalizationService.deleteRule(currentUserService.getCurrentUserId(), id);
+            return RestResponse.noContent();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to delete normalization rule"))
-                    .build();
+            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
         }
     }
 
     @POST
     @Path("/normalization-rules/apply")
-    public Response applyNormalizationRules(@Valid ApplyNormalizationRulesRequest request) {
-        UUID currentUserId = getCurrentUserId();
-        try {
-            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
-            if (activeJob.isPresent()) {
-                return Response.status(Response.Status.CONFLICT)
-                        .entity(Map.of(
-                                "error", "You already have an active reconciliation job",
-                                "jobId", activeJob.get().getJobId().toString()
-                        ))
-                        .build();
-            }
-
-            UUID jobId = managementService.applyNormalizationRulesAsync(currentUserId, request);
-            return Response.ok(ApplyNormalizationRulesResponse.builder().jobId(jobId.toString()).build()).build();
-        } catch (Exception e) {
-            log.error("Failed to apply normalization rules for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to apply normalization rules"))
-                    .build();
-        }
+    public JobResponse applyNormalizationRules(@Valid ApplyNormalizationRulesRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        rejectActiveJob(userId);
+        return new JobResponse(managementService.applyNormalizationRulesAsync(userId, request));
     }
 
     @POST
     @Path("/normalization-rules/{id}/apply")
-    public Response applyNormalizationRule(@PathParam("id") Long id, @Valid ApplyNormalizationRulesRequest request) {
-        UUID currentUserId = getCurrentUserId();
+    public JobResponse applyNormalizationRule(
+            @PathParam("id") Long id, @Valid ApplyNormalizationRulesRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        rejectActiveJob(userId);
         try {
-            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
-            if (activeJob.isPresent()) {
-                return Response.status(Response.Status.CONFLICT)
-                        .entity(Map.of(
-                                "error", "You already have an active reconciliation job",
-                                "jobId", activeJob.get().getJobId().toString()
-                        ))
-                        .build();
-            }
-
-            UUID jobId = managementService.applyNormalizationRuleAsync(currentUserId, id, request);
-            return Response.ok(ApplyNormalizationRulesResponse.builder().jobId(jobId.toString()).build()).build();
+            return new JobResponse(managementService.applyNormalizationRuleAsync(userId, id, request));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
+            throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            return Response.status(Response.Status.FORBIDDEN)
-                    .entity(Map.of("error", e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to apply normalization rule {} for user {}: {}", id, currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to apply normalization rule"))
-                    .build();
+            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
         }
     }
 
-    /**
-     * Start bulk reconciliation job (async).
-     * Returns job ID immediately for progress tracking.
-     *
-     * @param request Reconciliation request
-     * @return Job ID
-     */
     @POST
     @Path("/reconcile/bulk")
-    public Response reconcileWithProviderBulk(@Valid ReverseGeocodingReconcileRequest request) {
-        UUID currentUserId = getCurrentUserId();
-        log.info("User {} starting bulk reconciliation with provider: {}", currentUserId, request.getProviderName());
-
-        try {
-            // Check if user already has active job
-            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
-            if (activeJob.isPresent()) {
-                return Response.status(Response.Status.CONFLICT)
-                        .entity(Map.of(
-                                "error", "You already have an active reconciliation job",
-                                "jobId", activeJob.get().getJobId().toString()
-                        ))
-                        .build();
-            }
-
-            UUID jobId = managementService.reconcileWithProviderAsync(currentUserId, request);
-            return Response.ok(Map.of("jobId", jobId.toString())).build();
-
-        } catch (Exception e) {
-            log.error("Error starting reconciliation for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to start reconciliation: " + e.getMessage()))
-                    .build();
-        }
+    public JobResponse reconcileWithProviderBulk(@Valid ReverseGeocodingReconcileRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        rejectActiveJob(userId);
+        return new JobResponse(managementService.reconcileWithProviderAsync(userId, request));
     }
 
-    /**
-     * Get progress of a reconciliation job.
-     *
-     * @param jobId Job ID
-     * @return Job progress
-     */
     @GET
     @Path("/reconcile/jobs/{jobId}")
-    public Response getReconciliationJobProgress(@PathParam("jobId") String jobId) {
-        UUID currentUserId = getCurrentUserId();
-
+    public ReconciliationJobProgress getReconciliationJobProgress(@PathParam("jobId") String jobId) {
+        UUID id;
         try {
-            UUID jobUuid = UUID.fromString(jobId);
-            Optional<ReconciliationJobProgress> jobProgress = reconciliationProgressService.getJobProgress(jobUuid);
-
-            if (jobProgress.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(Map.of("error", "Job not found"))
-                        .build();
-            }
-
-            // Verify job belongs to current user
-            if (!jobProgress.get().getUserId().equals(currentUserId)) {
-                return Response.status(Response.Status.FORBIDDEN)
-                        .entity(Map.of("error", "Access denied"))
-                        .build();
-            }
-
-            return Response.ok(jobProgress.get()).build();
-
+            id = UUID.fromString(jobId);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Map.of("error", "Invalid job ID format"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get job progress for job {}", jobId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to get job progress: " + e.getMessage()))
-                    .build();
+            throw problem(INVALID_RECONCILIATION_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId));
         }
+        ReconciliationJobProgress progress = reconciliationProgressService.getJobProgress(id)
+                .orElseThrow(() -> problem(RECONCILIATION_JOB_NOT_FOUND, "Reconciliation job not found",
+                        Map.of("jobId", jobId)));
+        if (!progress.getUserId().equals(currentUserService.getCurrentUserId())) {
+            throw problem(RECONCILIATION_JOB_ACCESS_DENIED, "Access denied");
+        }
+        return progress;
     }
 
-    /**
-     * Reconcile geocoding results with a specific provider (single item, synchronous).
-     * Kept for backward compatibility.
-     * Applies copy-on-write if data changed for originals.
-     *
-     * @param request Reconciliation request
-     * @return Reconciliation results
-     */
     @POST
     @Path("/reconcile/single")
-    public Response reconcileSingle(@Valid ReverseGeocodingReconcileRequest request) {
-        UUID currentUserId = getCurrentUserId();
-        log.info("User {} reconciling single result with provider: {}", currentUserId, request.getProviderName());
-
-        try {
-            ReverseGeocodingReconcileResult result = managementService.reconcileWithProvider(currentUserId, request);
-            return Response.ok(result).build();
-        } catch (Exception e) {
-            log.error("Error reconciling geocoding results for user {}: {}", currentUserId, e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Reconciliation failed: " + e.getMessage()))
-                    .build();
-        }
+    public ReverseGeocodingReconcileResult reconcileSingle(@Valid ReverseGeocodingReconcileRequest request) {
+        return managementService.reconcileWithProvider(currentUserService.getCurrentUserId(), request);
     }
 
-    /**
-     * Get list of enabled geocoding providers (for reconciliation).
-     *
-     * @return List of enabled providers
-     */
     @GET
     @Path("/providers")
-    public Response getEnabledProviders() {
-        log.debug("Fetching enabled geocoding providers");
-
-        List<GeocodingProviderDTO> providers = managementService.getEnabledProviders();
-        return Response.ok(providers).build();
+    public List<GeocodingProviderDTO> getEnabledProviders() {
+        return managementService.getEnabledProviders();
     }
 
-    /**
-     * Get list of providers that have data in the database (for filtering).
-     *
-     * @return List of provider names
-     */
     @GET
     @Path("/providers/available")
-    public Response getProvidersWithData() {
-        log.debug("Fetching providers with data");
+    public List<String> getProvidersWithData() {
+        return managementService.getProvidersWithData();
+    }
 
-        List<String> providers = managementService.getProvidersWithData();
-        return Response.ok(providers).build();
+    private void rejectActiveJob(UUID userId) {
+        reconciliationProgressService.getUserActiveJob(userId).ifPresent(active -> {
+            throw problem(RECONCILIATION_ALREADY_ACTIVE, "A reconciliation job is already active",
+                    Map.of("jobId", active.getJobId().toString()));
+        });
+    }
+
+    private static io.quarkiverse.httpproblem.HttpProblem normalizationNotFound(
+            NotFoundException exception, Long id) {
+        return problem(NORMALIZATION_RULE_NOT_FOUND, detail(exception, "Normalization rule not found"),
+                Map.of("id", id));
+    }
+
+    private static String detail(Exception exception, String fallback) {
+        return exception.getMessage() == null || exception.getMessage().isBlank()
+                ? fallback
+                : exception.getMessage();
     }
 }

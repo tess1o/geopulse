@@ -15,10 +15,14 @@ import org.github.tess1o.geopulse.user.mapper.UserMapper;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/auth/invitation")
 @Produces(MediaType.APPLICATION_JSON)
@@ -42,7 +46,7 @@ public class InvitationAuthResource {
      */
     @GET
     @Path("/{token}/validate")
-    public Response validateToken(@PathParam("token") String token) {
+    public ValidateInvitationResponse validateToken(@PathParam("token") String token) {
         try {
             UserInvitationEntity invitation = invitationService.validateToken(token);
 
@@ -52,20 +56,12 @@ public class InvitationAuthResource {
                     .message(getStatusMessage(invitation))
                     .build();
 
-            return Response.ok(response).build();
+            return response;
         } catch (IllegalArgumentException e) {
-            ValidateInvitationResponse response = ValidateInvitationResponse.builder()
-                    .valid(false)
-                    .status(null)
-                    .message("Invalid invitation token")
-                    .build();
-
-            return Response.status(Response.Status.NOT_FOUND).entity(response).build();
+            throw problem(INVITATION_NOT_FOUND, "Invalid invitation token");
         } catch (Exception e) {
             log.error("Error validating invitation token", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("error", "Failed to validate invitation"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Failed to validate invitation");
         }
     }
 
@@ -74,15 +70,13 @@ public class InvitationAuthResource {
      */
     @POST
     @Path("/register")
-    public Response registerViaInvitation(@Valid InvitationRegisterRequest request) {
+    public RestResponse<UserResponse> registerViaInvitation(@Valid InvitationRegisterRequest request) {
         try {
             // Validate the invitation token first
             UserInvitationEntity invitation = invitationService.validateToken(request.getToken());
 
             if (!invitation.isValid()) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error(getStatusMessage(invitation)))
-                        .build();
+                throw problem(INVALID_INVITATION, getStatusMessage(invitation).fallback());
             }
 
             // Register the user (this bypasses registration enabled checks)
@@ -98,32 +92,32 @@ public class InvitationAuthResource {
             invitationService.markAsUsed(request.getToken(), user.getId());
 
             UserResponse response = userMapper.toResponse(user);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(response))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED, response);
 
+        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+            throw e;
         } catch (IllegalArgumentException e) {
             log.warn("Registration via invitation failed: {}", e.getMessage());
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(INVALID_INVITATION, e.getMessage());
         } catch (Exception e) {
             log.error("Error registering user via invitation", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Registration failed"))
-                    .build();
+            throw problem(INTERNAL_ERROR, "Registration failed");
         }
     }
 
     /**
      * Get human-readable status message
      */
-    private String getStatusMessage(UserInvitationEntity invitation) {
+    private MessageDescriptor getStatusMessage(UserInvitationEntity invitation) {
         return switch (invitation.getStatus()) {
-            case PENDING -> "Invitation is valid and ready to use";
-            case USED -> "This invitation has already been used";
-            case EXPIRED -> "This invitation has expired";
-            case REVOKED -> "This invitation has been revoked";
+            case PENDING -> new MessageDescriptor("invitations.status.pending", Map.of(),
+                    "Invitation is valid and ready to use");
+            case USED -> new MessageDescriptor("invitations.status.used", Map.of(),
+                    "This invitation has already been used");
+            case EXPIRED -> new MessageDescriptor("invitations.status.expired", Map.of(),
+                    "This invitation has expired");
+            case REVOKED -> new MessageDescriptor("invitations.status.revoked", Map.of(),
+                    "This invitation has been revoked");
         };
     }
 }

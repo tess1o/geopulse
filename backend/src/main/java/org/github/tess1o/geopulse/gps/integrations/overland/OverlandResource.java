@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/overland")
@@ -37,6 +38,8 @@ public class OverlandResource {
     @POST
     @Operation(summary = "Ingest Overland locations",
             description = "Receives an Overland location batch and stores the points for the matching source token.")
+    @APIResponseSchema(value = OverlandResultResponse.class, responseCode = "200",
+            responseDescription = "Locations accepted")
     public Response handleOverland(OverlandLocations overlandLocations,
                                    @HeaderParam("Authorization") String overlandAuth) {
         log.info("Received payload for overland:{}", overlandLocations);

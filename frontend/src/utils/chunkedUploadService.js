@@ -58,16 +58,7 @@ export const chunkedUploadService = {
             options: JSON.stringify(options)
         })
 
-        if (!response.success) {
-            throw new Error(response.error?.message || 'Failed to initialize chunked upload')
-        }
-
-        return {
-            uploadId: response.uploadId,
-            totalChunks: response.totalChunks,
-            chunkSizeBytes: response.chunkSizeBytes,
-            expiresAt: response.expiresAt
-        }
+        return response
     },
 
     /**
@@ -96,16 +87,12 @@ export const chunkedUploadService = {
             onUploadProgress: onProgress
         })
 
-        if (!response.success) {
-            throw new Error(response.error?.message || `Failed to upload chunk ${chunkIndex}`)
-        }
-
         return {
             chunkIndex: response.chunkIndex,
             receivedChunks: response.receivedChunks,
             totalChunks: response.totalChunks,
             progress: response.progress,
-            isComplete: response.isComplete
+            isComplete: response.complete
         }
     },
 
@@ -149,13 +136,7 @@ export const chunkedUploadService = {
      * @returns {Promise<Object>} Import job response
      */
     async completeUpload(uploadId) {
-        const response = await apiService.post(`/import/upload/${uploadId}/complete`)
-
-        if (!response.success) {
-            throw new Error(response.error?.message || 'Failed to complete chunked upload')
-        }
-
-        return response
+        return apiService.post(`/import/upload/${uploadId}/complete`)
     },
 
     /**
@@ -164,13 +145,7 @@ export const chunkedUploadService = {
      * @returns {Promise<Object>} Upload status
      */
     async getUploadStatus(uploadId) {
-        const response = await apiService.get(`/import/upload/${uploadId}/status`)
-
-        if (!response.success) {
-            throw new Error(response.error?.message || 'Failed to get upload status')
-        }
-
-        return response
+        return apiService.get(`/import/upload/${uploadId}/status`)
     },
 
     /**
@@ -180,8 +155,8 @@ export const chunkedUploadService = {
      */
     async abortUpload(uploadId) {
         try {
-            const response = await apiService.delete(`/import/upload/${uploadId}`)
-            return response.success
+            await apiService.delete(`/import/upload/${uploadId}`)
+            return true
         } catch (error) {
             console.warn('Failed to abort upload:', error)
             return false

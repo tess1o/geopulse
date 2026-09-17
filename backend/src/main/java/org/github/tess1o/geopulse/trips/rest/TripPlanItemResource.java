@@ -4,149 +4,126 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripVisitOverrideRequestDto;
 import org.github.tess1o.geopulse.trips.model.dto.UpdateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.service.TripPlanItemService;
+import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
-import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import java.util.Map;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_PLAN_ITEM;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/trips/{tripId}/plan-items")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Trips and Planning", description = "Manage trip plan items and visit overrides.")
 public class TripPlanItemResource {
 
-    private final TripPlanItemService tripPlanItemService;
+    private final TripPlanItemService service;
     private final CurrentUserService currentUserService;
 
     @Inject
-    public TripPlanItemResource(TripPlanItemService tripPlanItemService,
-                                CurrentUserService currentUserService) {
-        this.tripPlanItemService = tripPlanItemService;
+    public TripPlanItemResource(TripPlanItemService service, CurrentUserService currentUserService) {
+        this.service = service;
         this.currentUserService = currentUserService;
     }
 
     @GET
-    public Response getPlanItems(@PathParam("tripId") Long tripId) {
+    public List<TripPlanItemDto> getPlanItems(@PathParam("tripId") Long tripId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<TripPlanItemDto> items = tripPlanItemService.getTripPlanItems(userId, tripId);
-            return Response.ok(ApiResponse.success(items)).build();
+            return service.getTripPlanItems(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to get plan items for trip {}", tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get trip plan items"))
-                    .build();
+            throw notFound(tripId, null);
         }
     }
 
     @POST
-    public Response createPlanItem(@PathParam("tripId") Long tripId, @Valid CreateTripPlanItemDto dto) {
+    public RestResponse<TripPlanItemDto> createPlanItem(
+            @PathParam("tripId") Long tripId, @Valid CreateTripPlanItemDto dto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripPlanItemDto created = tripPlanItemService.createTripPlanItem(userId, tripId, dto);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(created))
-                    .build();
+            return RestResponse.status(Response.Status.CREATED,
+                    service.createTripPlanItem(currentUserService.getCurrentUserId(), tripId, dto));
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip not found"))
-                    .build();
+            throw notFound(tripId, null);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to create plan item for trip {}", tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to create trip plan item"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @PUT
     @Path("/{itemId}")
-    public Response updatePlanItem(@PathParam("tripId") Long tripId,
-                                   @PathParam("itemId") Long itemId,
-                                   @Valid UpdateTripPlanItemDto dto) {
+    public TripPlanItemDto updatePlanItem(
+            @PathParam("tripId") Long tripId,
+            @PathParam("itemId") Long itemId,
+            @Valid UpdateTripPlanItemDto dto) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripPlanItemDto updated = tripPlanItemService.updateTripPlanItem(userId, tripId, itemId, dto);
-            return Response.ok(ApiResponse.success(updated)).build();
+            return service.updateTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId, dto);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip or plan item not found"))
-                    .build();
+            throw notFound(tripId, itemId);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to update plan item {} for trip {}", itemId, tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to update trip plan item"))
-                    .build();
+            throw invalid(e);
         }
     }
 
     @DELETE
     @Path("/{itemId}")
-    public Response deletePlanItem(@PathParam("tripId") Long tripId, @PathParam("itemId") Long itemId) {
+    public RestResponse<Void> deletePlanItem(
+            @PathParam("tripId") Long tripId, @PathParam("itemId") Long itemId) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            tripPlanItemService.deleteTripPlanItem(userId, tripId, itemId);
-            return Response.ok(ApiResponse.success("Trip plan item deleted successfully")).build();
+            service.deleteTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId);
+            return RestResponse.noContent();
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip or plan item not found"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to delete plan item {} for trip {}", itemId, tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to delete trip plan item"))
-                    .build();
+            throw notFound(tripId, itemId);
         }
     }
 
     @POST
     @Path("/{itemId}/visit-override")
-    public Response applyVisitOverride(@PathParam("tripId") Long tripId,
-                                       @PathParam("itemId") Long itemId,
-                                       @Valid TripVisitOverrideRequestDto request) {
+    public TripPlanItemDto applyVisitOverride(
+            @PathParam("tripId") Long tripId,
+            @PathParam("itemId") Long itemId,
+            @Valid TripVisitOverrideRequestDto request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-            TripPlanItemDto updated = tripPlanItemService.applyVisitOverride(userId, tripId, itemId, request);
-            return Response.ok(ApiResponse.success(updated)).build();
+            return service.applyVisitOverride(currentUserService.getCurrentUserId(), tripId, itemId, request);
         } catch (NotFoundException e) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Trip or plan item not found"))
-                    .build();
+            throw notFound(tripId, itemId);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to apply visit override for plan item {} in trip {}", itemId, tripId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to apply visit override"))
-                    .build();
+            throw invalid(e);
         }
+    }
+
+    private static io.quarkiverse.httpproblem.HttpProblem notFound(Long tripId, Long itemId) {
+        return itemId == null
+                ? problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId))
+                : problem(TRIP_PLAN_ITEM_NOT_FOUND, "Trip or plan item not found",
+                        Map.of("tripId", tripId, "itemId", itemId));
+    }
+
+    private static io.quarkiverse.httpproblem.HttpProblem invalid(IllegalArgumentException exception) {
+        String detail = exception.getMessage() == null || exception.getMessage().isBlank()
+                ? "Invalid trip plan item"
+                : exception.getMessage();
+        return problem(INVALID_TRIP_PLAN_ITEM, detail);
     }
 }

@@ -4,6 +4,7 @@ import router from '@/router'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { resolveNotificationDisplay, resolveNotificationRoute } from '@/utils/notificationDisplay'
 import { interruptsApplicationRequests, isMaintenanceInterruption } from '@/stores/maintenance'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
 const BACKLOG_WATERMARK_PREFIX = 'gp.notifications.backlog.watermark.'
@@ -40,7 +41,9 @@ export const useNotificationsStore = defineStore('notifications', {
     _onWindowFocus: null,
     currentUserId: null,
     backlogWatermark: null,
-    _toastHandler: null
+    _toastHandler: null,
+    preferences: null,
+    error: null
   }),
 
   getters: {
@@ -49,6 +52,11 @@ export const useNotificationsStore = defineStore('notifications', {
   },
 
   actions: {
+    fail(error, fallback) {
+      this.error = normalizeApiError(error, fallback)
+      return this.error
+    },
+
     initPreferences() {
       if (typeof window === 'undefined') {
         return
@@ -270,9 +278,13 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     async fetchNotifications({ limit = 100 } = {}) {
-      const params = { limit }
-      const response = await apiService.get('/notifications', params)
-      return Array.isArray(response?.data) ? response.data : []
+      try {
+        const response = await apiService.get('/notifications', { limit })
+        this.error = null
+        return Array.isArray(response) ? response : []
+      } catch (error) {
+        throw this.fail(error, 'Failed to load notifications')
+      }
     },
 
     async fetchNotificationsPage({
@@ -295,26 +307,57 @@ export const useNotificationsStore = defineStore('notifications', {
       if (type) {
         params.type = type
       }
-      const response = await apiService.get('/notifications/page', params)
-      return response?.data || {
-        items: [],
-        totalCount: 0,
-        page,
-        pageSize
+      try {
+        const response = await apiService.get('/notifications/page', params)
+        this.error = null
+        return response || { items: [], totalElements: 0, page, size: pageSize, totalPages: 0 }
+      } catch (error) {
+        throw this.fail(error, 'Failed to load notifications')
       }
     },
 
     async fetchUnreadCount() {
-      const response = await apiService.get('/notifications/unread-count')
-      const count = Number(response?.data?.count || 0)
-      const latestUnreadIdRaw = response?.data?.latestUnreadId
-      const latestUnreadId = Number.isFinite(Number(latestUnreadIdRaw))
-        ? Number(latestUnreadIdRaw)
-        : null
+      try {
+        const response = await apiService.get('/notifications/unread-count')
+        this.error = null
+        const count = Number(response?.count || 0)
+        const latestUnreadIdRaw = response?.latestUnreadId
+        const latestUnreadId = Number.isFinite(Number(latestUnreadIdRaw))
+          ? Number(latestUnreadIdRaw)
+          : null
+        return { count, latestUnreadId }
+      } catch (error) {
+        throw this.fail(error, 'Failed to load unread notification count')
+      }
+    },
 
-      return {
-        count,
-        latestUnreadId
+    async fetchPreferences() {
+      try {
+        this.preferences = await apiService.get('/notifications/preferences')
+        this.error = null
+        return this.preferences
+      } catch (error) {
+        throw this.fail(error, 'Failed to load notification preferences')
+      }
+    },
+
+    async updatePreferences(preferences) {
+      try {
+        this.preferences = await apiService.put('/notifications/preferences', preferences)
+        this.error = null
+        return this.preferences
+      } catch (error) {
+        throw this.fail(error, 'Failed to save notification preferences')
+      }
+    },
+
+    async fetchCurrentReleaseAnnouncement() {
+      try {
+        const announcement = await apiService.post('/notifications/release/current')
+        this.error = null
+        return announcement
+      } catch (error) {
+        throw this.fail(error, 'Failed to load release announcement')
       }
     },
 
@@ -431,31 +474,38 @@ export const useNotificationsStore = defineStore('notifications', {
     },
 
     async markSeen(notificationId) {
-      const normalizedId = Number(notificationId)
-      const existing = this.items.find(item => Number(item.id) === normalizedId)
-      const wasUnread = existing ? !existing.seen : false
-
-      const response = await apiService.post(`/notifications/${notificationId}/seen`, {})
-      const updated = response?.data || null
-      if (updated) {
-        this.items = this.items.map(item => Number(item.id) === Number(updated.id) ? updated : item)
+      try {
+        const normalizedId = Number(notificationId)
+        const existing = this.items.find(item => Number(item.id) === normalizedId)
+        const wasUnread = existing ? !existing.seen : false
+        const updated = await apiService.post(`/notifications/${notificationId}/seen`, {})
+        if (updated) {
+          this.items = this.items.map(item => Number(item.id) === Number(updated.id) ? updated : item)
+        }
+        if (wasUnread && this.unreadCount > 0) {
+          this.unreadCount = Math.max(0, this.unreadCount - 1)
+        }
+        this.error = null
+        return updated
+      } catch (error) {
+        throw this.fail(error, 'Failed to mark notification as seen')
       }
-      if (wasUnread && this.unreadCount > 0) {
-        this.unreadCount = Math.max(0, this.unreadCount - 1)
-      }
-      return updated
     },
 
     async markAllSeen() {
-      await apiService.post('/notifications/seen-all', {})
-      this.items = this.items.map(item => {
-        return {
+      try {
+        const result = await apiService.post('/notifications/seen-all', {})
+        this.items = this.items.map(item => ({
           ...item,
           seen: true,
           seenAt: item.seenAt || new Date().toISOString()
-        }
-      })
-      this.unreadCount = 0
+        }))
+        this.unreadCount = 0
+        this.error = null
+        return result
+      } catch (error) {
+        throw this.fail(error, 'Failed to mark notifications as seen')
+      }
     },
 
     async setBrowserNotificationsEnabled(enabled) {

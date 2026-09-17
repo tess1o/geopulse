@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.notes.model.NoteDestination;
 import org.github.tess1o.geopulse.notes.model.NoteDto;
 import org.github.tess1o.geopulse.notes.model.TestMemosConnectionRequest;
 import org.github.tess1o.geopulse.notes.model.TestMemosConnectionResponse;
+import org.github.tess1o.geopulse.notes.model.MemosConnectionStatus;
 import org.github.tess1o.geopulse.notes.model.UpdateMemosConfigRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -233,7 +234,7 @@ public class MemosNoteService {
         if (user == null) {
             return CompletableFuture.completedFuture(TestMemosConnectionResponse.builder()
                     .success(false)
-                    .message("User not found")
+                    .status(MemosConnectionStatus.USER_NOT_FOUND)
                     .build());
         }
 
@@ -246,7 +247,7 @@ public class MemosNoteService {
             } else {
                 return CompletableFuture.completedFuture(TestMemosConnectionResponse.builder()
                         .success(false)
-                        .message("API key is required")
+                        .status(MemosConnectionStatus.API_KEY_REQUIRED)
                         .details("No API key provided and no saved API key found")
                         .build());
             }
@@ -256,13 +257,13 @@ public class MemosNoteService {
             MemosListResponse response = memosClient.fetchMemosPage(serverUrl, apiKey, 1, null, null);
             return CompletableFuture.completedFuture(TestMemosConnectionResponse.builder()
                     .success(true)
-                    .message("Successfully connected to Memos server")
-                    .details("Server returned " + (response.getMemos() == null ? 0 : response.getMemos().size()) + " memo(s)")
+                    .status(MemosConnectionStatus.CONNECTED)
+                    .memoCount(response.getMemos() == null ? 0 : response.getMemos().size())
                     .build());
         } catch (Exception e) {
             return CompletableFuture.completedFuture(TestMemosConnectionResponse.builder()
                     .success(false)
-                    .message(preferencesService.resolveErrorMessage(e))
+                    .status(MemosConnectionStatus.CONNECTION_FAILED)
                     .details(e.getMessage())
                     .build());
         }

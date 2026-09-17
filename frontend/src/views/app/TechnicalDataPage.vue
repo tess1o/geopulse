@@ -897,6 +897,7 @@ import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { useTimezone } from '@/composables/useTimezone'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 
@@ -1336,7 +1337,7 @@ const loadTelemetryMapping = async (sourceType = selectedTelemetrySourceType.val
     toast.add({
       severity: 'error',
       summary: 'Telemetry Load Failed',
-      detail: error.response?.data?.message || error.message || 'Failed to load telemetry mapping',
+      detail: formatApiErrorDetail(error, 'Failed to load telemetry mapping'),
       life: 5000
     })
   } finally {
@@ -1386,7 +1387,7 @@ const saveTelemetryMapping = async () => {
     toast.add({
       severity: 'error',
       summary: 'Save Failed',
-      detail: error.response?.data?.message || error.message || 'Failed to save telemetry mapping',
+      detail: formatApiErrorDetail(error, 'Failed to save telemetry mapping'),
       life: 5000
     })
   } finally {
@@ -1409,7 +1410,7 @@ const resetTelemetryMapping = async () => {
     toast.add({
       severity: 'error',
       summary: 'Reset Failed',
-      detail: error.response?.data?.message || error.message || 'Failed to reset telemetry mapping',
+      detail: formatApiErrorDetail(error, 'Failed to reset telemetry mapping'),
       life: 5000
     })
   } finally {
@@ -1740,7 +1741,7 @@ const confirmDeleteGpsPoint = async () => {
     
   } catch (error) {
     console.error('Error deleting GPS point:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete GPS point'
+    const errorMessage = formatApiErrorDetail(error, 'Failed to delete GPS point')
     toast.add({
       severity: 'error',
       summary: 'Delete Failed',
@@ -1772,7 +1773,7 @@ const handleEditSave = async (updatedData) => {
     
   } catch (error) {
     console.error('Error updating GPS point:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to update GPS point'
+    const errorMessage = formatApiErrorDetail(error, 'Failed to update GPS point')
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
@@ -1823,7 +1824,7 @@ const confirmBulkDelete = async () => {
 
   } catch (error) {
     console.error('Error deleting GPS points:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete selected GPS points'
+    const errorMessage = formatApiErrorDetail(error, 'Failed to delete selected GPS points')
     toast.add({
       severity: 'error',
       summary: 'Bulk Delete Failed',
@@ -1859,7 +1860,7 @@ const confirmDeleteAll = async () => {
 
   } catch (error) {
     console.error('Error deleting all GPS data:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete all GPS data'
+    const errorMessage = formatApiErrorDetail(error, 'Failed to delete all GPS data')
     toast.add({
       severity: 'error',
       summary: 'Delete Failed',

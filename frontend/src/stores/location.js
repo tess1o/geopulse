@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import dayjs from 'dayjs';
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const useLocationStore = defineStore('location', {
     state: () => ({
-        locationPath: null
+        locationPath: null,
+        error: null
     }),
 
     getters: {
@@ -74,15 +76,16 @@ export const useLocationStore = defineStore('location', {
         // API Actions
         async fetchLocationPath(startTime, endTime) {
             try {
-                const response = await apiService.get('/gps/path', {
+                const path = await apiService.get('/gps/path', {
                     startTime: startTime,
                     endTime: endTime
                 })
 
-                this.setLocationPath(response.data)
-                return response
+                this.setLocationPath(path)
+                return path
             } catch (error) {
-                throw error
+                this.error = normalizeApiError(error, 'Failed to load location path')
+                throw this.error
             }
         },
 
@@ -94,18 +97,19 @@ export const useLocationStore = defineStore('location', {
 
         // Utility methods for common operations
         async getLastKnownPosition() {
-            const lastPoint = await apiService.get('/gps/last-known-position');
-
-            if (lastPoint?.status === "success" && lastPoint?.data) {
-                const data = lastPoint.data;
+            try {
+                const data = await apiService.get('/gps/last-known-position');
+                if (!data) return null
                 return {
                     lat: data.coordinates.lat,
                     lon: data.coordinates.lng,
                     timestamp: data.timestamp,
                     telemetryCurrentPopup: data.telemetryCurrentPopup || []
                 }
+            } catch (error) {
+                this.error = normalizeApiError(error, 'Failed to load last known position')
+                throw this.error
             }
-            return null;
         },
     }
 })

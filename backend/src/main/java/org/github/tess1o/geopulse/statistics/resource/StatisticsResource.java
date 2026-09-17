@@ -4,22 +4,24 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
+import org.github.tess1o.geopulse.statistics.model.UserStatistics;
 import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_STATISTICS_RANGE;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/statistics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Slf4j
 @Tag(name = "User: Statistics", description = "Read movement statistics for range, week, and month views.")
 public class StatisticsResource {
 
@@ -35,22 +37,27 @@ public class StatisticsResource {
     @GET
     @Path("")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getRangeStatistics(@QueryParam("startTime") String startTime,
+    public UserStatistics getRangeStatistics(@QueryParam("startTime") String startTime,
                                        @QueryParam("endTime") String endTime) {
-        log.info("Received request for range statistics: {} - {}", startTime, endTime);
-
-        UUID userId = currentUserService.getCurrentUserId();
-        Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
-        Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
-        ChartGroupMode chartGroupMode = Duration.between(start, end).toDays() < 10 ? ChartGroupMode.DAYS : ChartGroupMode.WEEKS;
-        var statistics = statisticsService.getStatistics(userId, start, end, chartGroupMode);
-        return Response.ok(statistics).build();
+        try {
+            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
+            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
+            if (start.isAfter(end)) {
+                throw problem(INVALID_STATISTICS_RANGE, "Start time must be before end time");
+            }
+            ChartGroupMode groupMode = Duration.between(start, end).toDays() < 10
+                    ? ChartGroupMode.DAYS
+                    : ChartGroupMode.WEEKS;
+            return statisticsService.getStatistics(currentUserService.getCurrentUserId(), start, end, groupMode);
+        } catch (DateTimeParseException e) {
+            throw problem(INVALID_STATISTICS_RANGE, "Invalid time format. Use ISO-8601 format");
+        }
     }
 
     @GET
     @Path("/weekly")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getWeeklyStatistics() {
+    public UserStatistics getWeeklyStatistics() {
         UUID userId = currentUserService.getCurrentUserId();
         Instant start = Instant.now()
                 .truncatedTo(java.time.temporal.ChronoUnit.DAYS)
@@ -58,14 +65,13 @@ public class StatisticsResource {
         Instant end = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS)
                 .plus(1, java.time.temporal.ChronoUnit.DAYS)
                 .minusSeconds(1);
-        log.info("Received request for weekly statistics: {} - {}", start, end);
-        return Response.ok(statisticsService.getStatistics(userId, start, end, ChartGroupMode.DAYS)).build();
+        return statisticsService.getStatistics(userId, start, end, ChartGroupMode.DAYS);
     }
 
     @GET
     @Path("/monthly")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getMonthlyStatistics() {
+    public UserStatistics getMonthlyStatistics() {
         UUID userId = currentUserService.getCurrentUserId();
         Instant start = Instant.now()
                 .truncatedTo(java.time.temporal.ChronoUnit.DAYS)
@@ -73,7 +79,6 @@ public class StatisticsResource {
         Instant end = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS)
                 .plus(1, java.time.temporal.ChronoUnit.DAYS)
                 .minusSeconds(1);
-        log.info("Received request for monthly statistics: {} - {}", start, end);
-        return Response.ok(statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS)).build();
+        return statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
     }
 }

@@ -262,11 +262,13 @@ import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import DemoReadOnlyBanner from '@/components/admin/DemoReadOnlyBanner.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
+import { useAdminStore } from '@/stores/admin'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 const timezone = useTimezone()
 
@@ -312,8 +314,8 @@ const loadUsers = async () => {
       params.append('search', searchQuery.value)
     }
 
-    const response = await apiService.get(`/admin/users?${params.toString()}`)
-    users.value = response.content
+    const response = await adminStore.getUsers(Object.fromEntries(params))
+    users.value = response.items
     totalRecords.value = response.totalElements
   } catch (error) {
     console.error('Failed to load users:', error)
@@ -357,9 +359,7 @@ const viewUser = (user) => {
 
 const toggleUserStatus = async (user) => {
   try {
-    await apiService.put(`/admin/users/${user.id}/status`, {
-      active: !user.active
-    })
+    await adminStore.updateUserStatus(user.id, !user.active)
 
     user.active = !user.active
 
@@ -374,7 +374,7 @@ const toggleUserStatus = async (user) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to update user status',
+      detail: formatApiErrorDetail(error, 'Failed to update user status'),
       life: 3000
     })
   }
@@ -390,7 +390,7 @@ const deleteUser = async () => {
 
   deleting.value = true
   try {
-    await apiService.delete(`/admin/users/${userToDelete.value.id}`)
+    await adminStore.deleteUser(userToDelete.value.id)
 
     toast.add({
       severity: 'success',
@@ -407,7 +407,7 @@ const deleteUser = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.error || 'Failed to delete user',
+      detail: formatApiErrorDetail(error, 'Failed to delete user'),
       life: 3000
     })
   } finally {

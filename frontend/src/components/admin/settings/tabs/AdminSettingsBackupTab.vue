@@ -76,9 +76,11 @@ import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import AdminFullBackupSection from '@/components/admin/settings/sections/AdminFullBackupSection.vue'
 import { useAuthStore } from '@/stores/auth'
-import adminService from '@/utils/adminService'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const adminService = useAdminStore()
 const toast = useToast()
 const authStore = useAuthStore()
 const { adminReadOnly } = storeToRefs(authStore)
@@ -122,7 +124,7 @@ const importBackup = async () => {
     const custom = result.customGeocodingProvidersImported ?? 0
     toast.add({ severity: 'success', summary: 'Import Complete', detail: `Restored ${settings} settings, ${oidc} OIDC providers, and ${custom} custom geocoding providers.`, life: 5000 })
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Import Failed', detail: error.response?.data?.message || error.message || 'Failed to import admin settings backup', life: 5000 })
+    toast.add({ severity: 'error', summary: 'Import Failed', detail: formatApiErrorDetail(error, 'Failed to import admin settings backup'), life: 5000 })
   } finally {
     importing.value = false
   }

@@ -436,7 +436,7 @@ import { useGeocodingStore } from '@/stores/geocoding'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useTimezone } from '@/composables/useTimezone'
 import { useReconciliationJobProgress } from '@/composables/useReconciliationJobProgress'
-import { getFriendlyErrorMessage } from '@/utils/errorHandler'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 
@@ -699,9 +699,6 @@ const mergeDistinctStrings = (...arrays) => {
 
 const normalizeDistinctResponse = (response) => {
   if (!response) return { cities: [], countries: [] }
-  if (response.data && (Array.isArray(response.data.cities) || Array.isArray(response.data.countries))) {
-    return response.data
-  }
   return response
 }
 
@@ -816,7 +813,7 @@ const saveRule = async () => {
     toast.add({
       severity: 'error',
       summary: 'Save Failed',
-      detail: error.message || 'Failed to save normalization rule',
+      detail: formatApiErrorDetail(error, 'Failed to save normalization rule'),
       life: 5000
     })
   }
@@ -840,7 +837,7 @@ const deleteRule = async (rule) => {
     toast.add({
       severity: 'error',
       summary: 'Delete Failed',
-      detail: error.message || 'Failed to delete normalization rule',
+      detail: formatApiErrorDetail(error, 'Failed to delete normalization rule'),
       life: 5000
     })
   }
@@ -874,7 +871,7 @@ const applyRulesNow = async () => {
     toast.add({
       severity: 'error',
       summary: 'Apply Failed',
-      detail: error.message || 'Failed to start normalization apply job',
+      detail: formatApiErrorDetail(error, 'Failed to start normalization apply job'),
       life: 5000
     })
   }
@@ -949,7 +946,7 @@ const handleEditSave = async (updatedData) => {
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
-      detail: error.message || 'Failed to update geocoding result',
+      detail: formatApiErrorDetail(error, 'Failed to update geocoding result'),
       life: 5000
     })
   } finally {
@@ -978,7 +975,7 @@ const handleReconcile = async (reconcileData) => {
     toast.add({
       severity: 'error',
       summary: 'Reconciliation Failed',
-      detail: getFriendlyErrorMessage(error, 'Failed to start reconciliation'),
+      detail: formatApiErrorDetail(error, 'Failed to start reconciliation'),
       life: 5000
     })
     showReconcileDialog.value = false

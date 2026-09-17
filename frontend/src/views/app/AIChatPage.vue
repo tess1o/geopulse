@@ -230,12 +230,14 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService.js'
+import { useAIStore } from '@/stores/ai'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 const toast = useToast()
 const timezone = useTimezone()
 const router = useRouter()
 const authStore = useAuthStore()
+const aiStore = useAIStore()
 const { demoReadOnly } = storeToRefs(authStore)
 
 // Constants
@@ -253,13 +255,15 @@ const hasExpiredConversation = ref(false)
 const initialScrollTimeouts = []
 let previousScrollRestoration = null
 let removeWindowLoadListener = null
-const aiSettings = ref({
+const defaultAISettings = {
   enabled: false,
   openaiApiKeyConfigured: false,
   apiKeyRequired: true,
   openaiModel: 'gpt-3.5-turbo'
-})
-const isAIAvailable = ref(false)
+}
+const aiSettings = computed(() => aiStore.settings || defaultAISettings)
+const isAIAvailable = computed(() => aiSettings.value.enabled &&
+  (!aiSettings.value.apiKeyRequired || aiSettings.value.openaiApiKeyConfigured))
 const checkingAIStatus = ref(true)
 
 // Computed properties
@@ -350,23 +354,9 @@ const clearMessageHistory = () => {
 // Methods
 const checkAIAvailability = async () => {
   try {
-    const response = await apiService.get('/ai/settings')
-    const data = response.data || response
-
-    aiSettings.value = {
-      enabled: data.enabled === true,
-      openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
-      apiKeyRequired: data.apiKeyRequired === true,
-      openaiModel: data.openaiModel || 'gpt-3.5-turbo'
-    }
-
-    // AI is available if enabled AND (no API key required OR API key is configured)
-    isAIAvailable.value = aiSettings.value.enabled &&
-      (!aiSettings.value.apiKeyRequired || aiSettings.value.openaiApiKeyConfigured)
-
+    await aiStore.fetchSettings()
   } catch (error) {
     console.warn('Failed to check AI settings:', error)
-    isAIAvailable.value = false
   } finally {
     checkingAIStatus.value = false
   }
@@ -396,9 +386,7 @@ const sendMessage = async (messageText) => {
 
   try {
     // Send to AI
-    const { data } = await apiService.post('/ai/chat', { message })
-
-    console.log('AI Response:', data)
+    const data = await aiStore.chat(message)
     
     // Add AI response with enhanced structure
     const aiMessage = {
@@ -415,13 +403,15 @@ const sendMessage = async (messageText) => {
   } catch (error) {
     console.error('Error sending message:', error)
     
-    let errorContent = 'Sorry, I encountered an error while processing your request.'
-    
-    if (error.response?.status === 400) {
-      errorContent = 'Please check your AI settings in your profile before using the chat assistant.'
-    } else if (error.response?.data?.response) {
-      errorContent = error.response.data.response
-    }
+    const problem = normalizeApiError(error, 'Sorry, I encountered an error while processing your request.')
+    const errorContent = {
+      AI_DISABLED: 'AI Assistant is disabled. Enable it in your profile settings.',
+      AI_API_KEY_REQUIRED: 'Add your AI provider API key in your profile settings.',
+      AI_CONTEXT_TOO_LARGE: 'The conversation or data is too large. Try a narrower question or clear the chat history.',
+      AI_RATE_LIMITED: 'The AI provider rate limit was reached. Please try again later.',
+      AI_PROVIDER_AUTHENTICATION_FAILED: 'The AI provider rejected the configured credentials.',
+      INVALID_AI_REQUEST: 'The AI provider rejected this request.'
+    }[problem.code] || problem.detail
 
     const errorMessage = {
       id: generateMessageId(),
@@ -437,7 +427,7 @@ const sendMessage = async (messageText) => {
     toast.add({
       severity: 'error',
       summary: 'Chat Error',
-      detail: 'Failed to get AI response. Please check your AI settings.'
+      detail: errorContent
     })
   } finally {
     isLoading.value = false

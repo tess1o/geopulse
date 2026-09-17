@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.time.Instant;
 
@@ -26,7 +27,7 @@ public class AdminBackupStatusDto {
     private String fileName;
     private Long sizeBytes;
     private String phase;
-    private String message;
+    private MessageDescriptor message;
     private Integer progressPercent;
     private Instant startedAt;
     private Instant completedAt;

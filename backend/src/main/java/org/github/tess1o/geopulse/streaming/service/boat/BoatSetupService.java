@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStartResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStatusDTO;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 import org.github.tess1o.geopulse.streaming.service.trips.GpsPointEnvironmentService;
 import org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService;
 import org.hibernate.Session;
@@ -33,10 +34,7 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HexFormat;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
@@ -121,13 +119,20 @@ public class BoatSetupService {
                 datasetVersion)
                 : 0;
 
-        String environmentStatus = !datasetReady ? "PENDING" : (missing == 0 ? "READY" : "PENDING");
+        BoatSetupStatusDTO.EnvironmentStatus environmentStatus = !datasetReady
+                ? BoatSetupStatusDTO.EnvironmentStatus.PENDING
+                : (missing == 0 ? BoatSetupStatusDTO.EnvironmentStatus.READY
+                : BoatSetupStatusDTO.EnvironmentStatus.PENDING);
+        BoatSetupStatusDTO.ErrorCode errorCode = BoatSetupStatusDTO.ErrorCode.from(datasetState.errorCode());
         BoatSetupStatusDTO currentStatus = BoatSetupStatusDTO.builder()
-                .status(datasetReady && missing == 0 ? "READY" : "PENDING")
-                .datasetStatus(datasetState.status())
+                .status(datasetReady && missing == 0
+                        ? BoatSetupStatusDTO.Status.READY : BoatSetupStatusDTO.Status.PENDING)
+                .datasetStatus(BoatSetupStatusDTO.DatasetStatus.from(datasetState.status()))
                 .userEnvironmentStatus(environmentStatus)
-                .phase(datasetReady ? (missing == 0 ? "Boat setup is ready" : "GPS water evidence needs enrichment")
-                        : "Water dataset is not imported")
+                .phase(datasetReady
+                        ? (missing == 0 ? BoatSetupStatusDTO.Phase.BOAT_SETUP_IS_READY
+                        : BoatSetupStatusDTO.Phase.GPS_WATER_EVIDENCE_NEEDS_ENRICHMENT)
+                        : BoatSetupStatusDTO.Phase.WATER_DATASET_IS_NOT_IMPORTED)
                 .progressPercentage(datasetReady && missing == 0 ? 100 : 0)
                 .processedGpsPoints(datasetReady ? Math.max(0, gpsPointEnvironmentService.countClassified(userId, datasetVersion)) : null)
                 .totalGpsPoints(datasetReady ? gpsPointEnvironmentService.countEligible(userId, GpsPointEnvironmentService.DEFAULT_START_DATE) : null)
@@ -135,15 +140,15 @@ public class BoatSetupService {
                 .datasetVersion(datasetVersion)
                 .featureCount(datasetState.featureCount())
                 .updatedAt(datasetState.updatedAt())
-                .errorCode(datasetState.errorCode())
-                .errorMessage(datasetState.errorMessage())
+                .errorCode(errorCode)
+                .error(message(errorCode, datasetState.errorMessage()))
                 .build();
 
         Optional<BoatSetupStatusDTO> latestJob = getLatestJob(userId, false);
         if (latestJob.isPresent()
-                && "FAILED".equals(latestJob.get().status())
-                && (!"READY".equals(currentStatus.status())
-                || "TRIP_RECLASSIFICATION_FAILED".equals(latestJob.get().errorCode()))) {
+                && latestJob.get().status() == BoatSetupStatusDTO.Status.FAILED
+                && (currentStatus.status() != BoatSetupStatusDTO.Status.READY
+                || latestJob.get().errorCode() == BoatSetupStatusDTO.ErrorCode.TRIP_RECLASSIFICATION_FAILED)) {
             return latestJob.get();
         }
 
@@ -153,7 +158,7 @@ public class BoatSetupService {
     public BoatSetupStartResponseDTO startSetup(UUID userId) {
         assertRestoreNotBlocked();
         BoatSetupStatusDTO currentStatus = getCurrentSetupStatus(userId);
-        if (currentStatus != null && "READY".equals(currentStatus.status())) {
+        if (currentStatus != null && currentStatus.status() == BoatSetupStatusDTO.Status.READY) {
             return BoatSetupStartResponseDTO.builder()
                     .jobId(currentStatus.jobId())
                     .status(currentStatus)
@@ -657,22 +662,28 @@ public class BoatSetupService {
     private BoatSetupStatusDTO toStatus(Object[] row, DatasetState datasetState) {
         return BoatSetupStatusDTO.builder()
                 .jobId((UUID) row[0])
-                .status((String) row[1])
-                .datasetStatus((String) row[2])
-                .userEnvironmentStatus((String) row[3])
-                .phase((String) row[4])
+                .status(BoatSetupStatusDTO.Status.from((String) row[1]))
+                .datasetStatus(BoatSetupStatusDTO.DatasetStatus.from((String) row[2]))
+                .userEnvironmentStatus(BoatSetupStatusDTO.EnvironmentStatus.from((String) row[3]))
+                .phase(BoatSetupStatusDTO.Phase.from((String) row[4]))
                 .progressPercentage(((Number) row[5]).intValue())
                 .downloadedBytes(toLong(row[6]))
                 .totalBytes(toLong(row[7]))
                 .processedGpsPoints(toLong(row[8]))
                 .totalGpsPoints(toLong(row[9]))
-                .errorCode((String) row[10])
-                .errorMessage((String) row[11])
+                .errorCode(BoatSetupStatusDTO.ErrorCode.from((String) row[10]))
+                .error(message(BoatSetupStatusDTO.ErrorCode.from((String) row[10]), (String) row[11]))
                 .docsUrl((String) row[12])
                 .updatedAt((Instant) row[13])
                 .datasetVersion(datasetState.datasetVersion())
                 .featureCount(datasetState.featureCount())
                 .build();
+    }
+
+    private MessageDescriptor message(BoatSetupStatusDTO.ErrorCode code, String fallback) {
+        if (fallback == null || fallback.isBlank()) return null;
+        String suffix = code == null ? "unknown" : code.name().toLowerCase(Locale.ROOT);
+        return new MessageDescriptor("boatSetup.errors." + suffix, Map.of(), fallback);
     }
 
     private DatasetState getDatasetState() {

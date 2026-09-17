@@ -9,14 +9,20 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.dto.CreateApiTokenRequest;
+import org.github.tess1o.geopulse.auth.dto.ApiTokenResponse;
+import org.github.tess1o.geopulse.auth.dto.CreateApiTokenResponse;
 import org.github.tess1o.geopulse.auth.dto.UpdateApiTokenRequest;
 import org.github.tess1o.geopulse.auth.service.ApiTokenService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.UUID;
+import java.util.List;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestResponse;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
@@ -35,37 +41,33 @@ public class ApiTokenResource {
     ApiTokenService apiTokenService;
 
     @GET
-    public Response listTokens() {
+    public List<ApiTokenResponse> listTokens() {
         UUID userId = currentUserService.getCurrentUserId();
-        return Response.ok(ApiResponse.success(apiTokenService.listForUser(userId))).build();
+        return apiTokenService.listForUser(userId);
     }
 
     @POST
-    public Response createToken(
+    public RestResponse<CreateApiTokenResponse> createToken(
             @Valid CreateApiTokenRequest createRequest,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
-            return Response.status(Response.Status.CREATED)
-                    .entity(ApiResponse.success(apiTokenService.createToken(
+            return RestResponse.status(Response.Status.CREATED, apiTokenService.createToken(
                             userId,
                             createRequest.getName(),
                             createRequest.getExpiresAt(),
                             ipAddress
-                    )))
-                    .build();
+                    ));
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(API_TOKEN_INVALID, e.getMessage());
         }
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateToken(
+    public ApiTokenResponse updateToken(
             @PathParam("id") UUID tokenId,
             @Valid UpdateApiTokenRequest updateRequest,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
@@ -73,23 +75,21 @@ public class ApiTokenResource {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
-            return Response.ok(ApiResponse.success(apiTokenService.updateToken(
+            return apiTokenService.updateToken(
                     userId,
                     tokenId,
                     updateRequest.getName(),
                     updateRequest.getExpiresAt(),
                     ipAddress
-            ))).build();
+            );
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(API_TOKEN_INVALID, e.getMessage());
         }
     }
 
     @DELETE
     @Path("/{id}")
-    public Response revokeToken(
+    public void revokeToken(
             @PathParam("id") UUID tokenId,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
@@ -97,11 +97,8 @@ public class ApiTokenResource {
             UUID userId = currentUserService.getCurrentUserId();
             String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
             apiTokenService.revokeOwnedToken(userId, tokenId, ipAddress);
-            return Response.ok(ApiResponse.success("API token revoked")).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
+            throw problem(API_TOKEN_INVALID, e.getMessage());
         }
     }
 }

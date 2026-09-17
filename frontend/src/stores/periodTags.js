@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import { normalizeApiError } from '@/utils/apiErrorDetail'
 
 export const usePeriodTagsStore = defineStore('periodTags', {
     state: () => ({
@@ -72,6 +73,11 @@ export const usePeriodTagsStore = defineStore('periodTags', {
     },
 
     actions: {
+        fail(error, fallback) {
+            this.error = normalizeApiError(error, fallback)
+            return this.error
+        },
+
         // Set filters
         setFilters(filters) {
             this.filters = { ...this.filters, ...filters }
@@ -80,12 +86,13 @@ export const usePeriodTagsStore = defineStore('periodTags', {
         // Fetch active tag
         async fetchActiveTag() {
             try {
-                const response = await apiService.get('/period-tags/active')
-                this.activeTag = response.data || null
+                this.activeTag = await apiService.get('/period-tags/active') || null
+                this.error = null
                 return this.activeTag
             } catch (error) {
                 console.error('Failed to fetch active tag:', error)
                 this.activeTag = null
+                this.fail(error, 'Failed to load active period tag')
                 return null
             }
         },
@@ -96,11 +103,10 @@ export const usePeriodTagsStore = defineStore('periodTags', {
             this.error = null
             try {
                 const response = await apiService.get('/period-tags')
-                this.periodTags = response.data || []
-                return response.data
+                this.periodTags = Array.isArray(response) ? response : []
+                return this.periodTags
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to load period tags')
             } finally {
                 this.isLoading = false
             }
@@ -115,16 +121,13 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                 const endDateEpochMillis = new Date(endDate).getTime()
 
                 const response = await apiService.get('/period-tags', {
-                    params: {
-                        startDate: startDateEpochMillis,
-                        endDate: endDateEpochMillis
-                    }
+                    startDate: startDateEpochMillis,
+                    endDate: endDateEpochMillis
                 })
-                this.periodTags = response.data || []
-                return response.data || []
+                this.periodTags = Array.isArray(response) ? response : []
+                return this.periodTags
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to load period tags')
             } finally {
                 this.isLoading = false
             }
@@ -141,9 +144,11 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                     params.excludeId = excludeId
                 }
                 const response = await apiService.get('/period-tags/check-overlaps', params)
-                return response.data || []
+                this.error = null
+                return Array.isArray(response) ? response : []
             } catch (error) {
                 console.error('Failed to check overlaps:', error)
+                this.fail(error, 'Failed to check period tag overlaps')
                 return []
             }
         },
@@ -159,10 +164,9 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                 await this.fetchPeriodTags()
 
                 // Return response with overlap info
-                return response.data
+                return response
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to create period tag')
             } finally {
                 this.isLoading = false
             }
@@ -178,10 +182,9 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                 // Refresh the list
                 await this.fetchPeriodTags()
 
-                return response.data
+                return response
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to update period tag')
             } finally {
                 this.isLoading = false
             }
@@ -197,8 +200,7 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                 // Remove from local state
                 this.periodTags = this.periodTags.filter(tag => tag.id !== id)
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to delete period tag')
             } finally {
                 this.isLoading = false
             }
@@ -210,10 +212,9 @@ export const usePeriodTagsStore = defineStore('periodTags', {
             try {
                 const response = await apiService.post(`/period-tags/${id}/unlink`)
                 await this.fetchPeriodTags()
-                return response.data || null
+                return response || null
             } catch (error) {
-                this.error = error.message
-                throw error
+                throw this.fail(error, 'Failed to unlink period tag')
             } finally {
                 this.isLoading = false
             }

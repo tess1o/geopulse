@@ -498,11 +498,11 @@ import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
 import { GEOCODING_PROVIDER_OPTIONS } from '@/constants/adminSettingsMetadata'
 import { getPlaceholder as getPlaceholderHelper, parseSettingValue } from '@/utils/settingHelpers'
-import apiService from '@/utils/apiService'
-import adminService from '@/utils/adminService'
-import { extractApiErrorDetail } from '@/utils/apiErrorDetail'
+import { useAdminStore } from '@/stores/admin'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 
+const adminService = useAdminStore()
 const { loadSettings } = useAdminSettings()
 const toast = useToast()
 const authStore = useAuthStore()
@@ -985,9 +985,7 @@ const saveAllChanges = async () => {
       return
     }
 
-    const response = await apiService.post('/admin/settings/bulk', {
-      settings: changedSettings
-    })
+    await adminService.bulkUpdateSettings(changedSettings)
 
     await reloadGeocodingSettings()
     originalSettings.value = JSON.parse(JSON.stringify(geocodingSettings.value))
@@ -998,18 +996,16 @@ const saveAllChanges = async () => {
     toast.add({
       severity: 'success',
       summary: 'Settings Saved',
-      detail: `Successfully saved ${response.updated} settings`,
+      detail: `Successfully saved ${changedSettings.length} settings`,
       life: 3000
     })
   } catch (error) {
     console.error('Failed to save settings:', error)
-    const errorDetail = extractApiErrorDetail(error, 'Failed to save settings')
-    const errorKey = error.response?.data?.key
-
+    const errorDetail = formatApiErrorDetail(error, 'Failed to save settings')
     toast.add({
       severity: 'error',
       summary: 'Save Failed',
-      detail: errorKey ? `${errorKey}: ${errorDetail}` : errorDetail,
+      detail: errorDetail,
       life: 5000
     })
 
@@ -1209,7 +1205,7 @@ const saveCustomProvider = async () => {
     resetCustomProviderForm()
     toast.add({ severity: 'success', summary: 'Provider Saved', detail: 'Custom geocoding provider saved', life: 3000 })
   } catch (error) {
-    const detail = extractApiErrorDetail(error, 'Failed to save custom provider')
+    const detail = formatApiErrorDetail(error, 'Failed to save custom provider')
     toast.add({ severity: 'error', summary: 'Save Failed', detail, life: 5000 })
   } finally {
     isSavingCustomProvider.value = false
@@ -1229,7 +1225,7 @@ const deleteCustomProvider = async (provider) => {
     }
     toast.add({ severity: 'success', summary: 'Provider Deleted', detail: 'Custom geocoding provider deleted', life: 3000 })
   } catch (error) {
-    const detail = extractApiErrorDetail(error, 'Failed to delete custom provider')
+    const detail = formatApiErrorDetail(error, 'Failed to delete custom provider')
     toast.add({ severity: 'error', summary: 'Delete Failed', detail, life: 5000 })
   }
 }

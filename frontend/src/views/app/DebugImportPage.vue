@@ -178,10 +178,12 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
-import apiService from '@/utils/apiService'
+import { useExportImportStore } from '@/stores/exportImport'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const router = useRouter()
 const toast = useToast()
+const exportImportStore = useExportImportStore()
 
 // Form state
 const selectedFile = ref(null)
@@ -248,16 +250,11 @@ const importData = async () => {
   isImporting.value = true
 
   try {
-    const formData = new FormData()
-    formData.append('file', selectedFile.value)
-    formData.append('clearExistingData', clearExistingData.value)
-    formData.append('updateTimelineConfig', updateTimelineConfig.value)
-
-    await apiService.post('/import/debug/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    await exportImportStore.uploadDebugImport(
+      selectedFile.value,
+      clearExistingData.value,
+      updateTimelineConfig.value
+    )
 
     toast.add({
       severity: 'success',
@@ -274,12 +271,7 @@ const importData = async () => {
   } catch (error) {
     console.error('Failed to import debug data:', error)
 
-    let errorMessage = 'Failed to import debug data'
-    if (error.response?.data?.error?.message) {
-      errorMessage = error.response.data.error.message
-    } else if (error.message) {
-      errorMessage = error.message
-    }
+    const errorMessage = formatApiErrorDetail(error, 'Failed to import debug data')
 
     importError.value = errorMessage
 

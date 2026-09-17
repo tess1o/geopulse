@@ -221,8 +221,8 @@ import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
-import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { useTimelineStore } from '@/stores/timeline'
 import DetailItem from './classification/DetailItem.vue'
@@ -301,19 +301,11 @@ async function fetchClassificationDetails(tripId) {
   error.value = null
 
   try {
-    const response = await apiService.get(
-      `/streaming-timeline/trips/${tripId}/classification`
-    )
-
-    if (response.status === 'success') {
-      details.value = response.data
-      selectedMovementType.value = response.data?.currentClassification || 'UNKNOWN'
-    } else {
-      error.value = response.message || 'Failed to load classification details'
-    }
+    details.value = await timelineStore.fetchTripClassification(tripId)
+    selectedMovementType.value = details.value?.currentClassification || 'UNKNOWN'
   } catch (err) {
     console.error('Error fetching classification details:', err)
-    error.value = err.message || 'Failed to load classification details'
+    error.value = formatApiErrorDetail(err, 'Failed to load classification details')
     toast.add({
       severity: 'error',
       summary: 'Error',

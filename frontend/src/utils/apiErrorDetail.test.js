@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractApiErrorDetail, formatViolationField } from './apiErrorDetail'
+import { formatApiErrorDetail, formatViolationField } from './apiErrorDetail'
 
 describe('apiErrorDetail', () => {
   it('formats nested violation field names for display', () => {
@@ -21,7 +21,7 @@ describe('apiErrorDetail', () => {
       }
     }
 
-    expect(extractApiErrorDetail(error, 'Fallback')).toBe(
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe(
       'Name: Provider name must use lowercase letters, numbers, and hyphens'
     )
   })
@@ -36,7 +36,7 @@ describe('apiErrorDetail', () => {
       }
     }
 
-    expect(extractApiErrorDetail(error, 'Fallback')).toBe(
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe(
       "Cannot delete custom provider 'local-photon' while it is the primary provider"
     )
   })
@@ -50,12 +50,12 @@ describe('apiErrorDetail', () => {
       }
     }
 
-    expect(extractApiErrorDetail(error, 'Fallback')).toBe(
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe(
       "Cannot delete custom provider 'test' while it is the primary provider"
     )
   })
 
   it('falls back to caller-provided text when no response detail exists', () => {
-    expect(extractApiErrorDetail({}, 'Failed to save custom provider')).toBe('Failed to save custom provider')
+    expect(formatApiErrorDetail({}, 'Failed to save custom provider')).toBe('Failed to save custom provider')
   })
 })

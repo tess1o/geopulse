@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.importdata.mapper.ImportDataMapper;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
@@ -262,9 +263,11 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         // Handle data clearing before import if requested
         if (job.getOptions().isClearDataBeforeImport()) {
+            job.setPhase(ImportPhase.CLEARING_EXISTING_DATA);
             clearExistingDataBeforeImport(fileContents, job);
             totalProgress += 10;
             job.setProgress(totalProgress);
+            job.setPhase(ImportPhase.IMPORTING);
         }
 
         // 3. Import GPS data first

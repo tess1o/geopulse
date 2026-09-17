@@ -14,7 +14,7 @@
       </div>
 
       <div v-else-if="currentDigest" class="digest-content">
-        <DigestMetrics :title="currentDigest.period?.displayName || displayPeriod" :metrics="currentDigest.metrics" :comparison="currentDigest.comparison" :highlights="currentDigest.highlights" />
+        <DigestMetrics :title="displayPeriod" :metrics="currentDigest.metrics" :comparison="currentDigest.comparison" :highlights="currentDigest.highlights" />
         <DigestMemories :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" @availability="immichAvailable = $event" />
         <DigestHighlights :highlights="currentDigest.highlights" />
         <div class="digest-feature-grid">
@@ -66,11 +66,11 @@ import DigestHeatmap from '@/components/digest/DigestHeatmap.vue'
 import { useDigestStore } from '@/stores/digest'
 import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 const digestStore = useDigestStore()
-const { currentDigest, loading: isLoading, error: errorMessage } = storeToRefs(digestStore)
+const { currentDigest, loading: isLoading, error: digestError } = storeToRefs(digestStore)
 const { handleError } = useErrorHandler()
 const toast = useToast()
 const route = useRoute()
@@ -84,7 +84,8 @@ const includePhotos = ref(false)
 const immichAvailable = ref(false)
 
 const hasError = computed(() => digestStore.hasError)
-const displayPeriod = computed(() => currentDigest.value?.period?.displayName || (viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value)))
+const errorMessage = computed(() => formatApiErrorDetail(digestError.value, 'Failed to load Rewind'))
+const displayPeriod = computed(() => viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value))
 
 const loadDigest = async () => {
   try {
@@ -114,11 +115,11 @@ const downloadPdf = async () => {
   try {
     const params = { viewMode: viewMode.value, year: selectedYear.value, includePhotos: includePhotos.value }
     if (viewMode.value === 'monthly') params.month = selectedMonth.value
-    await apiService.download('/digest/pdf', params)
+    await digestStore.downloadPdf(params)
     exportDialogVisible.value = false
     toast.add({ severity: 'success', summary: 'Rewind exported', detail: 'Your PDF is downloading.', life: 3500 })
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Export failed', detail: error.userMessage || 'Could not generate the PDF.', life: 5000 })
+    toast.add({ severity: 'error', summary: 'Export failed', detail: formatApiErrorDetail(error, 'Could not generate the PDF.'), life: 5000 })
   } finally {
     exporting.value = false
   }

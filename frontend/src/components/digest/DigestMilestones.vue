@@ -19,8 +19,8 @@
           </div>
         </div>
         <div class="milestone-content">
-          <div class="milestone-title">{{ milestone.title }}</div>
-          <div class="milestone-description">{{ milestone.description }}</div>
+          <div class="milestone-title">{{ formatMessageDescriptor(milestone.title) }}</div>
+          <div class="milestone-description">{{ formatMessageDescriptor(milestone.description) }}</div>
         </div>
       </div>
     </div>
@@ -33,6 +33,8 @@
 </template>
 
 <script setup>
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
+
 defineProps({
   milestones: {
     type: Array,

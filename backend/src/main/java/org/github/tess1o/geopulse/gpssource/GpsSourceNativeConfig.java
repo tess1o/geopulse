@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.gpssource.model.*;
         UpdateGpsSourceConfigStatusDto.class,
         CreateGpsSourceConfigDto.class,
         GpsSourceConfigDTO.class,
+        GpsFilteringDefaultsDTO.class,
         UpdateGpsSourceConfigDto.class,
         GpsTelemetryMappingEntry.class,
         GpsSourceTypeTelemetryConfigEntity.class,

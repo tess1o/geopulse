@@ -108,7 +108,7 @@ public class AuthorizationIntegrationTest {
                 .get("/api/friends")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"));
+                .body("$", notNullValue());
     }
     /**
      * Multiple protected endpoints requiring USER role
@@ -173,10 +173,9 @@ public class AuthorizationIntegrationTest {
                 .post("/api/users/register")
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.fullName", equalTo("New User"))
-                .body("data.role", equalTo("USER"))
-                .body("data.email", equalTo(newUserEmail));
+                .body("fullName", equalTo("New User"))
+                .body("role", equalTo("USER"))
+                .body("email", equalTo(newUserEmail));
         // Test login endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -190,7 +189,6 @@ public class AuthorizationIntegrationTest {
                 .post("/api/auth/login")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
                 .cookie("access_token", notNullValue())
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());

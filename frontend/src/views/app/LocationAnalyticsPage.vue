@@ -278,6 +278,7 @@ import LocationAnalyticsMap from '@/components/location-analytics/LocationAnalyt
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { usePeriodTagsStore } from '@/stores/periodTags'
 import { useTripsStore } from '@/stores/trips'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import {
   findMatchingTripForTimestamp,
   normalizeTripColor
@@ -605,7 +606,7 @@ const fetchMapPlaces = async (force = false) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load map places',
+      detail: formatApiErrorDetail(error, 'Failed to load map places'),
       life: 5000
     })
   }
@@ -670,7 +671,7 @@ watch(activeTab, async (newTab) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load location data',
+      detail: formatApiErrorDetail(error, 'Failed to load location data'),
       life: 5000
     })
   }

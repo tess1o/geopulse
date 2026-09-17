@@ -229,12 +229,13 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useVersionStore } from '@/stores/version'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const versionStore = useVersionStore()
 const { demoModeEnabled } = storeToRefs(authStore)
 const appVersion = ref(null)
 
@@ -292,7 +293,7 @@ const openGitHubIssues = () => {
 
 const fetchVersion = async () => {
   try {
-    const response = await apiService.get('/version')
+    const response = await versionStore.fetchVersion()
     if (response?.version) {
       appVersion.value = response.version
     }

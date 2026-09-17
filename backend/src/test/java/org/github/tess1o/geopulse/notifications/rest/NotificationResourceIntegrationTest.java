@@ -36,23 +36,32 @@ import static org.hamcrest.Matchers.*;
 @QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class NotificationResourceIntegrationTest {
+
     @Inject
     UserService userService;
+
     @Inject
     AuthenticationService authenticationService;
+
     @Inject
     UserRepository userRepository;
+
     @Inject
     UserNotificationRepository notificationRepository;
+
     @Inject
     GeofenceRuleRepository ruleRepository;
+
     @Inject
     GeofenceEventRepository eventRepository;
+
     @Inject
     UserTransaction userTransaction;
+
     private UserEntity ownerUser;
     private UserEntity otherUser;
     private String ownerToken;
+
     @BeforeEach
     @Transactional
     void setUp() {
@@ -71,10 +80,12 @@ class NotificationResourceIntegrationTest {
         AuthResponse auth = authenticationService.authenticate(ownerUser.getEmail(), "password123");
         ownerToken = auth.getAccessToken();
     }
+
     @AfterEach
     @Transactional
     void tearDown() {
     }
+
     @Test
     void shouldRequireAuthentication() {
         given()
@@ -84,6 +95,7 @@ class NotificationResourceIntegrationTest {
                 .then()
                 .statusCode(401);
     }
+
     @Test
     void shouldListOnlyOwnerNotifications() {
         createNotification(ownerUser,
@@ -116,11 +128,11 @@ class NotificationResourceIntegrationTest {
                 .get("/api/notifications?limit=50")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.size()", equalTo(3))
-                .body("data.title", hasItems("Owner geofence unread", "Owner geofence seen", "Owner import unread"))
-                .body("data.title", not(hasItem("Other user geofence")));
+                .body("size()", equalTo(3))
+                .body("title", hasItems("Owner geofence unread", "Owner geofence seen", "Owner import unread"))
+                .body("title", not(hasItem("Other user geofence")));
     }
+
     @Test
     void shouldPageNotificationsWithFiltersAcrossSources() {
         createNotification(ownerUser,
@@ -153,41 +165,41 @@ class NotificationResourceIntegrationTest {
                 .get("/api/notifications/page?page=0&pageSize=2")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.totalCount", equalTo(3))
-                .body("data.page", equalTo(0))
-                .body("data.pageSize", equalTo(2))
-                .body("data.items.size()", equalTo(2))
-                .body("data.items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
-                .body("data.items.title", not(hasItem("Other timeline unread")));
+                .body("totalElements", equalTo(3))
+                .body("page", equalTo(0))
+                .body("size", equalTo(2))
+                .body("items.size()", equalTo(2))
+                .body("items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
+                .body("items.title", not(hasItem("Other timeline unread")));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
                 .get("/api/notifications/page?seen=false&pageSize=25")
                 .then()
                 .statusCode(200)
-                .body("data.totalCount", equalTo(2))
-                .body("data.items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
-                .body("data.items.title", not(hasItem("Owner import seen")));
+                .body("totalElements", equalTo(2))
+                .body("items.title", hasItems("Owner timeline unread", "Owner geofence unread"))
+                .body("items.title", not(hasItem("Owner import seen")));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
                 .get("/api/notifications/page?source=TIMELINE")
                 .then()
                 .statusCode(200)
-                .body("data.totalCount", equalTo(1))
-                .body("data.items[0].source", equalTo("TIMELINE"))
-                .body("data.items[0].type", equalTo("TIMELINE_REGENERATION_REQUIRED"))
-                .body("data.items[0].title", equalTo("Owner timeline unread"));
+                .body("totalElements", equalTo(1))
+                .body("items[0].source", equalTo("TIMELINE"))
+                .body("items[0].type", equalTo("TIMELINE_REGENERATION_REQUIRED"))
+                .body("items[0].title", equalTo("Owner timeline unread"));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
                 .get("/api/notifications/page?type=TIMELINE_REGENERATION_REQUIRED")
                 .then()
                 .statusCode(200)
-                .body("data.totalCount", equalTo(1))
-                .body("data.items[0].title", equalTo("Owner timeline unread"));
+                .body("totalElements", equalTo(1))
+                .body("items[0].title", equalTo("Owner timeline unread"));
     }
+
     @Test
     void shouldReturnUnreadCountAndLatestUnreadId() {
         createNotification(ownerUser,
@@ -214,10 +226,10 @@ class NotificationResourceIntegrationTest {
                 .get("/api/notifications/unread-count")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.count", equalTo(2))
-                .body("data.latestUnreadId", equalTo(newestUnread.getId().intValue()));
+                .body("count", equalTo(2))
+                .body("latestUnreadId", equalTo(newestUnread.getId().intValue()));
     }
+
     @Test
     void shouldMarkSeenAndEnforceOwnerAccess() {
         GeofenceRuleEntity ownerRule = createRule(ownerUser, "Owner geofence");
@@ -261,10 +273,9 @@ class NotificationResourceIntegrationTest {
                 .post("/api/notifications/" + ownerNotification.getId() + "/seen")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.id", equalTo(ownerNotification.getId().intValue()))
-                .body("data.seen", equalTo(true))
-                .body("data.seenAt", notNullValue());
+                .body("id", equalTo(ownerNotification.getId().intValue()))
+                .body("seen", equalTo(true))
+                .body("seenAt", notNullValue());
         assertGeofenceEventSeen(ownerEvent.getId(), true);
         given()
                 .header("Authorization", "Bearer " + ownerToken)
@@ -272,11 +283,10 @@ class NotificationResourceIntegrationTest {
                 .when()
                 .post("/api/notifications/" + otherNotification.getId() + "/seen")
                 .then()
-                .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Notification not found"));
+                .statusCode(404);
         assertGeofenceEventSeen(otherEvent.getId(), false);
     }
+
     @Test
     void shouldMarkAllSeenGlobally() {
         GeofenceRuleEntity ownerRule = createRule(ownerUser, "Owner geofence");
@@ -309,18 +319,18 @@ class NotificationResourceIntegrationTest {
                 .post("/api/notifications/seen-all")
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.updatedCount", equalTo(2));
+                .body("updatedCount", equalTo(2));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
                 .get("/api/notifications/unread-count")
                 .then()
                 .statusCode(200)
-                .body("data.count", equalTo(0))
-                .body("data.latestUnreadId", nullValue());
+                .body("count", equalTo(0))
+                .body("latestUnreadId", nullValue());
         assertGeofenceEventSeen(ownerEvent.getId(), true);
     }
+
     @Test
     void shouldRollbackWhenGeofenceMarkSeenSyncFails() {
         UserNotificationEntity brokenGeofenceNotification = createNotification(
@@ -339,11 +349,10 @@ class NotificationResourceIntegrationTest {
                 .when()
                 .post("/api/notifications/" + brokenGeofenceNotification.getId() + "/seen")
                 .then()
-                .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Invalid geofence objectRef"));
+                .statusCode(404);
         assertNotificationSeen(brokenGeofenceNotification.getId(), false);
     }
+
     UserNotificationEntity createNotification(UserEntity owner,
                                               NotificationSource source,
                                               NotificationType type,
@@ -361,6 +370,7 @@ class NotificationResourceIntegrationTest {
                 null
         );
     }
+
     UserNotificationEntity createNotification(UserEntity owner,
                                               NotificationSource source,
                                               NotificationType type,
@@ -403,6 +413,7 @@ class NotificationResourceIntegrationTest {
             throw new RuntimeException(e);
         }
     }
+
     private GeofenceRuleEntity createRule(UserEntity owner, String name) {
         try {
             if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
@@ -431,6 +442,7 @@ class NotificationResourceIntegrationTest {
             throw new RuntimeException(e);
         }
     }
+
     private GeofenceEventEntity createEvent(UserEntity owner,
                                             UserEntity subject,
                                             GeofenceRuleEntity rule,
@@ -472,6 +484,7 @@ class NotificationResourceIntegrationTest {
             throw new RuntimeException(e);
         }
     }
+
     private void assertGeofenceEventSeen(Long eventId, boolean expectedSeen) {
         try {
             if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
@@ -487,6 +500,7 @@ class NotificationResourceIntegrationTest {
             throw new RuntimeException(e);
         }
     }
+
     private void assertNotificationSeen(Long notificationId, boolean expectedSeen) {
         try {
             if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
@@ -502,6 +516,7 @@ class NotificationResourceIntegrationTest {
             throw new RuntimeException(e);
         }
     }
+
     private void rollbackQuietly() {
         try {
             if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {

@@ -9,7 +9,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import io.quarkiverse.httpproblem.HttpProblem;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RESTORE_IN_PROGRESS;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 import java.util.Locale;
 import java.util.Set;
@@ -39,11 +42,10 @@ public class BackupRestoreGuardFilter implements ContainerRequestFilter {
                 || ("POST".equals(method) && RECOVERY_POST_PATHS.contains(path))) {
             return;
         }
-        requestContext.abortWith(Response.status(Response.Status.SERVICE_UNAVAILABLE)
-                .type(MediaType.APPLICATION_JSON)
+        HttpProblem problem = problem(RESTORE_IN_PROGRESS, RESTORE_BLOCK_MESSAGE);
+        requestContext.abortWith(Response.fromResponse(problem.toResponse())
                 .header(RESTORE_BLOCK_HEADER, "true")
                 .header("Cache-Control", "no-store")
-                .entity(ApiResponse.error(RESTORE_BLOCK_MESSAGE))
                 .build());
     }
 

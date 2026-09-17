@@ -68,6 +68,7 @@ import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { useNotesStore } from '@/stores/notes'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   visible: {
@@ -211,7 +212,7 @@ const save = async () => {
     toast.add({
       severity: 'error',
       summary: 'Save failed',
-      detail: error.userMessage || error.message || 'Failed to save note',
+      detail: formatApiErrorDetail(error, 'Failed to save note'),
       life: 5000
     })
   } finally {

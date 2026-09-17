@@ -79,6 +79,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
@@ -162,7 +163,7 @@ const unlinkProvider = async (providerName) => {
     toast.add({
       severity: 'error',
       summary: 'Unlink Failed',
-      detail: error.response?.data?.message || 'Failed to unlink account',
+      detail: formatApiErrorDetail(error, 'Failed to unlink account'),
       life: 5000
     });
   }

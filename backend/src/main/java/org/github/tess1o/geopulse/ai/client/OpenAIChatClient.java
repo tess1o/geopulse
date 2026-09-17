@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.ai.client.dto.ChatResponse;
 import org.github.tess1o.geopulse.ai.client.exception.AuthenticationException;
 import org.github.tess1o.geopulse.ai.client.exception.ContextLengthExceededException;
 import org.github.tess1o.geopulse.ai.client.exception.RateLimitException;
+import org.github.tess1o.geopulse.ai.client.exception.OpenAiApiException;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 
 import java.net.URI;
@@ -89,13 +90,13 @@ public class OpenAIChatClient {
                 throw new IllegalArgumentException(errorMessage, e);
             } else if (status >= 500) {
                 log.error("Server error from OpenAI API: {}", status, e);
-                throw new RuntimeException("OpenAI API server error", e);
+                throw new OpenAiApiException("OpenAI API server error", e);
             }
 
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error calling OpenAI API", e);
-            throw new RuntimeException("Failed to call OpenAI API", e);
+            throw new OpenAiApiException("Failed to call OpenAI API", e);
         }
     }
 

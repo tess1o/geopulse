@@ -1,14 +1,14 @@
 package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
-import jakarta.ws.rs.core.Response;
+import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.admin.dto.MapMatchingQueueRebuildResponse;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -62,13 +63,9 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingWorker.rebuildHistoricalQueue()).thenReturn(2L);
         when(currentUserService.getCurrentUserId()).thenReturn(adminId);
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue("203.0.113.7", null);
+        MapMatchingQueueRebuildResponse response = resource.rebuildMapMatchingHistoricalQueue("203.0.113.7", null);
 
-        assertThat(response.getStatus()).isEqualTo(200);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getStatus()).isEqualTo("success");
-        Map<?, ?> data = (Map<?, ?>) body.getData();
-        assertThat(data.get("queuedUsers")).isEqualTo(2L);
+        assertThat(response.queuedUsers()).isEqualTo(2L);
         verify(mapMatchingWorker).rebuildHistoricalQueue();
         verify(auditLogService).logAction(
                 adminId,
@@ -84,11 +81,9 @@ class AdminSettingsResourceMapMatchingRepairTest {
     void rebuildMapMatchingHistoricalQueueRejectsDisabledMapMatching() {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(false);
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue(null, null);
-
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getMessage()).isEqualTo("Map matching is disabled");
+        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue(null, null))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Map matching is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 
@@ -97,11 +92,9 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(true);
         when(mapMatchingConfiguration.backfillEnabled()).thenReturn(false);
 
-        Response response = resource.rebuildMapMatchingHistoricalQueue(null, null);
-
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> body = (ApiResponse<?>) response.getEntity();
-        assertThat(body.getMessage()).isEqualTo("Historical backfill is disabled");
+        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue(null, null))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Historical backfill is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 }

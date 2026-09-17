@@ -11,31 +11,47 @@ export const formatViolationField = (field) => {
     .replace(/^./, char => char.toUpperCase())
 }
 
-export const extractApiErrorDetail = (error, fallback) => {
-  const data = error?.response?.data
-  if (Array.isArray(data?.violations) && data.violations.length > 0) {
-    return data.violations
+const fallbackDetail = (data, error, fallback) => {
+  if (data?.detail) return data.detail
+  if (data?.title) return data.title
+  return error?.message || fallback || 'An unexpected error occurred'
+}
+
+export const normalizeApiError = (error, fallback) => {
+  if (error?.isApiError === true) {
+    return error
+  }
+
+  const data = error?.response?.data || {}
+  return {
+    isApiError: true,
+    status: error?.response?.status ?? data?.status ?? null,
+    code: data?.code ?? null,
+    parameters: data?.parameters || {},
+    violations: Array.isArray(data?.violations)
+      ? data.violations.map(violation => ({
+          field: violation?.field ?? null,
+          in: violation?.in ?? null,
+          code: violation?.code ?? null,
+          parameters: violation?.parameters || {},
+          detail: violation?.detail || violation?.message || null
+        }))
+      : [],
+    detail: fallbackDetail(data, error, fallback)
+  }
+}
+
+export const formatApiErrorDetail = (error, fallback) => {
+  const problem = normalizeApiError(error, fallback)
+  if (problem.violations.length > 0) {
+    return problem.violations
       .map(violation => {
         const field = formatViolationField(violation.field)
-        return field ? `${field}: ${violation.message}` : violation.message
+        if (!violation.detail) return null
+        return field ? `${field}: ${violation.detail}` : violation.detail
       })
       .filter(Boolean)
       .join('; ')
   }
-
-  if (data?.message) {
-    return data.message
-  }
-
-  if (data?.error) {
-    return data.error
-  }
-
-  if (data?.details) {
-    const details = String(data.details)
-    const exceptionMessage = details.match(/(?:java\.[\w.]+Exception|jakarta\.[\w.]+Exception):\s*(.+)$/)
-    return exceptionMessage?.[1] || details
-  }
-
-  return error?.message || fallback
+  return problem.detail
 }

@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.importdata.model.ImportPhase;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -112,6 +113,7 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             Instant firstTimestamp = job.getDataFirstTimestamp();
 
             if (clearMode && firstTimestamp != null && job.getDataLastTimestamp() != null) {
+                job.setPhase(ImportPhase.CLEARING_EXISTING_DATA);
                 job.updateProgress(20, "Clearing existing data in date range...");
                 log.info("Clearing old data using timestamps from validation: {} to {}",
                         firstTimestamp, job.getDataLastTimestamp());
@@ -126,6 +128,7 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             }
 
             // Start streaming import with direct DB writes
+            job.setPhase(ImportPhase.IMPORTING);
             job.updateProgress(20, progressMessage);
             StreamingImportResult result = streamingFunction.execute(job, user, clearMode);
             if (result.imported > 0) {

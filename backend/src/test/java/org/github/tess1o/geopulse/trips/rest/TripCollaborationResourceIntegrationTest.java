@@ -105,9 +105,8 @@ class TripCollaborationResourceIntegrationTest {
                 .get("/api/trips/{tripId}", tripId)
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.isOwner", equalTo(false))
-                .body("data.accessRole", equalTo("VIEW"));
+                .body("isOwner", equalTo(false))
+                .body("accessRole", equalTo("VIEW"));
 
         given()
                 .contentType(ContentType.JSON)
@@ -121,7 +120,7 @@ class TripCollaborationResourceIntegrationTest {
                 .post("/api/trips/{tripId}/plan-items", tripId)
                 .then()
                 .statusCode(404)
-                .body("status", equalTo("error"));
+                .body("code", equalTo("TRIP_NOT_FOUND"));
     }
 
     @Test
@@ -138,8 +137,7 @@ class TripCollaborationResourceIntegrationTest {
                 .put("/api/trips/{tripId}/collaborators/{friendId}", tripId, friendId)
                 .then()
                 .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.accessRole", equalTo("EDIT"));
+                .body("accessRole", equalTo("EDIT"));
 
         given()
                 .contentType(ContentType.JSON)
@@ -153,8 +151,7 @@ class TripCollaborationResourceIntegrationTest {
                 .post("/api/trips/{tripId}/plan-items", tripId)
                 .then()
                 .statusCode(201)
-                .body("status", equalTo("success"))
-                .body("data.title", equalTo("Now editable"));
+                .body("title", equalTo("Now editable"));
     }
 
     @Test
@@ -166,7 +163,7 @@ class TripCollaborationResourceIntegrationTest {
                 .get("/api/trips/{tripId}", tripId)
                 .then()
                 .statusCode(404)
-                .body("status", equalTo("error"));
+                .body("code", equalTo("TRIP_NOT_FOUND"));
     }
 
     private void persistFriendship(UserEntity owner, UserEntity friend) {

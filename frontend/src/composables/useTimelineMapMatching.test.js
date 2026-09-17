@@ -2,10 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { useTimelineMapMatching } from './useTimelineMapMatching'
 
-vi.mock('@/services/mapMatchingService', () => ({
-  default: {}
-}))
-
 describe('useTimelineMapMatching', () => {
   beforeEach(() => {
     vi.useRealTimers()
@@ -20,11 +16,9 @@ describe('useTimelineMapMatching', () => {
     })
     const service = {
       resolve: vi.fn().mockResolvedValue({
-        data: {
-          enabled: true,
-          provider: 'valhalla',
-          trips: [{ tripId: 1, targetId: 10, status: 'QUEUED', pollAfterMs: 2500 }]
-        }
+        enabled: true,
+        provider: 'valhalla',
+        trips: [{ tripId: 1, targetId: 10, status: 'QUEUED', pollAfterMs: 2500 }]
       }),
       status: vi.fn()
     }
@@ -33,7 +27,7 @@ describe('useTimelineMapMatching', () => {
       enabled: ref(true),
       visibleTrips: ref([trip(1)]),
       rawPathData,
-      service
+      store: service
     })
 
     await mapMatching.resolve()
@@ -57,10 +51,9 @@ describe('useTimelineMapMatching', () => {
     })
     const service = {
       resolve: vi.fn().mockResolvedValue({
-        data: {
-          enabled: true,
-          provider: 'valhalla',
-          trips: [
+        enabled: true,
+        provider: 'valhalla',
+        trips: [
             {
               tripId: 1,
               targetId: 10,
@@ -73,8 +66,7 @@ describe('useTimelineMapMatching', () => {
               status: 'FAILED',
               error: 'Valhalla trace_route failed with HTTP 400'
             }
-          ]
-        }
+        ]
       }),
       status: vi.fn()
     }
@@ -83,7 +75,7 @@ describe('useTimelineMapMatching', () => {
       enabled: ref(true),
       visibleTrips: ref([trip(1), trip(2, '2026-01-01T10:03:00Z')]),
       rawPathData,
-      service
+      store: service
     })
 
     await mapMatching.resolve()
@@ -108,27 +100,23 @@ describe('useTimelineMapMatching', () => {
     })
     const service = {
       resolve: vi.fn().mockResolvedValue({
-        data: {
-          enabled: true,
-          provider: 'valhalla',
-          trips: [{ tripId: 1, targetId: 10, status: 'QUEUED', pollAfterMs: 2500 }]
-        }
+        enabled: true,
+        provider: 'valhalla',
+        trips: [{ tripId: 1, targetId: 10, status: 'QUEUED', pollAfterMs: 2500 }]
       }),
-      status: vi.fn().mockResolvedValue({
-        data: [{
+      status: vi.fn().mockResolvedValue([{
           tripId: 1,
           targetId: 10,
           status: 'COMPLETED',
           segments: [[{ id: 'matched', latitude: 50.1, longitude: 30.1 }]]
-        }]
-      })
+        }])
     }
 
     const mapMatching = useTimelineMapMatching({
       enabled: ref(true),
       visibleTrips: ref([trip(1)]),
       rawPathData,
-      service
+      store: service
     })
 
     await mapMatching.resolve()

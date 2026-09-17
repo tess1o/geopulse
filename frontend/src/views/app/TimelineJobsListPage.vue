@@ -148,6 +148,7 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const router = useRouter()
 const timelineStore = useTimelineStore()
@@ -179,7 +180,7 @@ const checkForActiveJob = async () => {
     }
   } catch (err) {
     console.error('Failed to check for active job:', err)
-    error.value = err.message || 'Failed to check for active jobs'
+    error.value = formatApiErrorDetail(err, 'Failed to check for active jobs')
     loading.value = false
   }
 }

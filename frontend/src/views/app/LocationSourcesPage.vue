@@ -91,6 +91,7 @@ import { getLocationSourceDisplayName } from '@/components/location-sources/loca
 // Store
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Store setup
 const gpsStore = useGpsSourcesStore()
@@ -362,11 +363,10 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
     }
     locationSourceDialogRef.value?.close()
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
       summary: isEditMode ? 'Update Failed' : 'Add Failed',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to save location source'),
       life: 5000
     })
   } finally {
@@ -384,11 +384,10 @@ const handleStatusChange = async ({ id, status }) => {
       life: 3000
     })
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
       summary: 'Status Update Failed',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to update source status'),
       life: 5000
     })
   }
@@ -422,11 +421,10 @@ const deleteSource = async (id) => {
       life: 3000
     })
   } catch (error) {
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
       summary: 'Delete Failed',
-      detail: errorMessage,
+      detail: formatApiErrorDetail(error, 'Failed to delete location source'),
       life: 5000
     })
   }

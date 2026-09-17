@@ -272,9 +272,10 @@ import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
 import { useGeocodingStore } from '@/stores/geocoding'
+import { useFavoritesStore } from '@/stores/favorites'
 
 // Utilities
-import apiService from '@/utils/apiService'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 
 // PrimeVue
@@ -286,6 +287,7 @@ const router = useRouter()
 const toast = useToast()
 const placeStore = usePlaceStatisticsStore()
 const geocodingStore = useGeocodingStore()
+const favoritesStore = useFavoritesStore()
 
 // Composables
 const {
@@ -297,7 +299,7 @@ const {
 } = useTimelineRegeneration()
 
 // Store refs
-const { placeDetails, placeVisits, pagination, loading } = storeToRefs(placeStore)
+const { placeDetails, placeVisits, photoSearchWindow: placePhotoSearchWindow, pagination, loading } = storeToRefs(placeStore)
 
 // Local state
 const error = ref(null)
@@ -324,7 +326,6 @@ const {
 
 const PLACE_PHOTO_RADIUS_METERS = 100
 const PLACE_NOTES_LIMIT = 5000
-const placePhotoSearchWindow = ref(null)
 const placeNotesForMap = ref([])
 
 // Favorite editor composable (for editing favorite places)
@@ -620,11 +621,7 @@ const submitCreateFavorite = () => {
   const lat = geometry.latitude
   const lon = geometry.longitude
 
-  const action = () => apiService.post('/favorites/point', {
-    name: favoriteName,
-    lat: lat,
-    lon: lon
-  }).then(response => response.data?.jobId || response.data)
+  const action = () => favoritesStore.addPointToFavorites(favoriteName, lat, lon)
 
   // Close dialog and clean up immediately
   showCreateFavoriteDialog.value = false
@@ -651,10 +648,7 @@ const loadPlaceData = async () => {
     await placeStore.fetchPlaceDetails(placeType.value, placeId.value)
 
     try {
-      const response = await apiService.get(`/place-details/${placeType.value}/${placeId.value}/photo-search-window`, {
-        radiusMeters: PLACE_PHOTO_RADIUS_METERS
-      })
-      placePhotoSearchWindow.value = response?.data || null
+      await placeStore.fetchPhotoSearchWindow(placeType.value, placeId.value, PLACE_PHOTO_RADIUS_METERS)
     } catch (photoWindowError) {
       console.warn('Failed to load place photo search window, using place statistics fallback:', photoWindowError)
       placePhotoSearchWindow.value = null
@@ -664,7 +658,7 @@ const loadPlaceData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading place data:', err)
-    error.value = err.response?.data?.message || err.message || 'Failed to load place details'
+    error.value = formatApiErrorDetail(err, 'Failed to load place details')
 
     toast.add({
       severity: 'error',
@@ -730,43 +724,12 @@ const handleExportVisits = async () => {
       life: 3000
     })
 
-    // Call backend API to get CSV file
-    const url = `/api/place-details/${placeType.value}/${placeId.value}/visits/export?sortBy=${currentSortBy.value}&sortDirection=${currentSortDirection.value}`
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('authToken')}` || ''
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Export failed with status ${response.status}`)
-    }
-
-    // Get filename from Content-Disposition header or generate one
-    const contentDisposition = response.headers.get('Content-Disposition')
-    let filename = 'visits_export.csv'
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/)
-      if (filenameMatch) {
-        filename = filenameMatch[1]
-      }
-    }
-
-    // Create blob from response
-    const blob = await response.blob()
-
-    // Create download link
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = filename
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(downloadUrl)
+    await placeStore.exportVisits(
+      placeType.value,
+      placeId.value,
+      currentSortBy.value,
+      currentSortDirection.value
+    )
 
     // Get total count for success message
     const totalCount = pagination.value.totalCount || 'all'
@@ -774,7 +737,7 @@ const handleExportVisits = async () => {
     toast.add({
       severity: 'success',
       summary: 'Export Successful',
-      detail: `Exported ${totalCount} visits to ${filename}`,
+      detail: `Exported ${totalCount} visits to CSV`,
       life: 5000
     })
   } catch (err) {
@@ -782,7 +745,7 @@ const handleExportVisits = async () => {
     toast.add({
       severity: 'error',
       summary: 'Export Failed',
-      detail: err.message || 'Failed to export visits to CSV',
+      detail: formatApiErrorDetail(err, 'Failed to export visits to CSV'),
       life: 5000
     })
   }
@@ -848,7 +811,7 @@ const handleSaveGeocoding = async (updatedData) => {
     showGeocodingEditDialog.value = false
   } catch (err) {
     console.error('Error updating geocoding result:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to update geocoding location'
+    const errorMessage = formatApiErrorDetail(err, 'Failed to update geocoding location')
 
     toast.add({
       severity: 'error',

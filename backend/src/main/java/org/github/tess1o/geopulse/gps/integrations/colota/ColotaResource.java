@@ -12,6 +12,10 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 @Path("/api/colota")
@@ -34,6 +38,9 @@ public class ColotaResource {
     @POST
     @Operation(summary = "Ingest Colota location",
             description = "Receives a Colota-compatible location update and stores it for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Location accepted",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleColota(ColotaLocationMessage payload,
                                  @HeaderParam("Authorization") String authHeader) {
         log.info("Received Colota payload: {}", payload);

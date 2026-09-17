@@ -3,15 +3,31 @@ package org.github.tess1o.geopulse.streaming.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
-import org.github.tess1o.geopulse.streaming.model.dto.*;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
+import org.github.tess1o.geopulse.streaming.model.dto.CityDetailsDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.CityInCountryDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.CitySummaryDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.CountryDetailsDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.CountrySummaryDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.LocationAnalyticsMapPlaceDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.LocationSearchResultDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.PlaceVisitDTO;
 import org.github.tess1o.geopulse.streaming.service.LocationAnalyticsService;
 
 import java.io.BufferedWriter;
@@ -20,24 +36,30 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-/**
- * REST API resource for location analytics.
- * Provides city and country level aggregations and search capabilities.
- */
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.CITY_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.COUNTRY_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_BOUNDING_BOX;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DATE_RANGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_LOCATION_SEARCH;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.LOCATION_VISITS_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
+
 @Path("/api/location-analytics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Slf4j
+@RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
 @Tag(name = "User: Location Analytics", description = "Search and analyze visited cities, countries, places, and visits.")
 public class LocationAnalyticsResource {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @Inject
     LocationAnalyticsService analyticsService;
@@ -45,103 +67,32 @@ public class LocationAnalyticsResource {
     @Inject
     CurrentUserService currentUserService;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-
-    /**
-     * Search across places, cities, and countries.
-     *
-     * @param query search term (minimum 2 characters)
-     * @param type  filter by type: "place", "city", "country" (optional)
-     * @return search results
-     */
     @GET
     @Path("/search")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response search(
+    public List<LocationSearchResultDTO> search(
             @QueryParam("q") String query,
             @QueryParam("type") String type) {
-
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Location search request from user {} with query: '{}', type: {}", userId, query, type);
-
-        try {
-            // Validate query
-            if (query == null || query.trim().length() < 2) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Search query must be at least 2 characters"))
-                        .build();
-            }
-
-            List<LocationSearchResultDTO> results = analyticsService.search(
-                    userId, query.trim(), type);
-
-            return Response.ok(ApiResponse.success(results)).build();
-
-        } catch (Exception e) {
-            log.error("Search failed for user {}, query: {}", userId, query, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Search failed: " + e.getMessage()))
-                    .build();
+        if (query == null || query.trim().length() < 2) {
+            throw problem(INVALID_LOCATION_SEARCH, "Search query must be at least 2 characters");
         }
+        return analyticsService.search(currentUserService.getCurrentUserId(), query.trim(), type);
     }
 
-    /**
-     * Get list of all cities visited by user.
-     *
-     * @return list of city summaries
-     */
     @GET
     @Path("/cities")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCities() {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Get cities request from user {}", userId);
-
-        try {
-            List<CitySummaryDTO> cities = analyticsService.getAllCities(userId);
-            return Response.ok(ApiResponse.success(cities)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get cities for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get cities"))
-                    .build();
-        }
+    public List<CitySummaryDTO> getCities() {
+        return analyticsService.getAllCities(currentUserService.getCurrentUserId());
     }
 
-    /**
-     * Get list of all countries visited by user.
-     *
-     * @return list of country summaries
-     */
     @GET
     @Path("/countries")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCountries() {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Get countries request from user {}", userId);
-
-        try {
-            List<CountrySummaryDTO> countries = analyticsService.getAllCountries(userId);
-            return Response.ok(ApiResponse.success(countries)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get countries for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get countries"))
-                    .build();
-        }
+    public List<CountrySummaryDTO> getCountries() {
+        return analyticsService.getAllCountries(currentUserService.getCurrentUserId());
     }
 
-    /**
-     * Get map-ready aggregated places for the analytics map.
-     * Supports optional date and viewport filtering.
-     */
     @GET
     @Path("/map/places")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getMapPlaces(
+    public List<LocationAnalyticsMapPlaceDTO> getMapPlaces(
             @QueryParam("from") String from,
             @QueryParam("to") String to,
             @QueryParam("minLat") Double minLat,
@@ -149,445 +100,170 @@ public class LocationAnalyticsResource {
             @QueryParam("minLon") Double minLon,
             @QueryParam("maxLon") Double maxLon,
             @QueryParam("minVisits") @DefaultValue("1") Integer minVisits,
-            @QueryParam("limit") @DefaultValue("3000") Integer limit
-    ) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Map places request from user {} (limit={}, minVisits={})", userId, limit, minVisits);
-
+            @QueryParam("limit") @DefaultValue("3000") Integer limit) {
         try {
             Instant fromInstant = parseOptionalInstant(from);
             Instant toInstant = parseOptionalInstant(to);
-
             if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("'from' must be before 'to'"))
-                        .build();
+                throw problem(INVALID_DATE_RANGE, "'from' must be before 'to'");
             }
-
-            boolean anyViewportParam = minLat != null || maxLat != null || minLon != null || maxLon != null;
-            boolean allViewportParams = minLat != null && maxLat != null && minLon != null && maxLon != null;
-            if (anyViewportParam && !allViewportParams) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Viewport filter requires minLat, maxLat, minLon and maxLon"))
-                        .build();
-            }
-
-            if (allViewportParams) {
-                if (!Double.isFinite(minLat) || !Double.isFinite(maxLat) || !Double.isFinite(minLon) || !Double.isFinite(maxLon)) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Viewport bounds must be finite numbers"))
-                            .build();
-                }
-                if (minLat < -90 || maxLat > 90 || minLat > maxLat || minLon > maxLon) {
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(ApiResponse.error("Invalid viewport bounds"))
-                            .build();
-                }
-            }
-
-            List<LocationAnalyticsMapPlaceDTO> places = analyticsService.getMapPlaces(
-                    userId,
-                    fromInstant,
-                    toInstant,
-                    minLat,
-                    maxLat,
-                    minLon,
-                    maxLon,
-                    minVisits,
-                    limit
-            );
-
-            return Response.ok(ApiResponse.success(places)).build();
-
-        } catch (DateTimeParseException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid date format. Use ISO-8601 format, e.g. 2026-02-21T00:00:00Z"))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to fetch map places for user {}", userId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get map places"))
-                    .build();
+            validateViewport(minLat, maxLat, minLon, maxLon);
+            return analyticsService.getMapPlaces(
+                    currentUserService.getCurrentUserId(), fromInstant, toInstant,
+                    minLat, maxLat, minLon, maxLon, minVisits, limit);
+        } catch (DateTimeParseException exception) {
+            throw problem(INVALID_DATE_RANGE, "Dates must use ISO-8601 format");
         }
     }
 
-    /**
-     * Get detailed statistics for a specific city.
-     *
-     * @param cityName city name (URL encoded)
-     * @return city details
-     */
     @GET
     @Path("/city/{name}")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCityDetails(@PathParam("name") String cityName) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("City details request from user {} for city: {}", userId, cityName);
-
-        try {
-            Optional<CityDetailsDTO> details = analyticsService.getCityDetails(userId, cityName);
-
-            if (details.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("City not found or no visits recorded"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(details.get())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get city details for user {}, city: {}", userId, cityName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get city details"))
-                    .build();
-        }
+    public CityDetailsDTO getCityDetails(@PathParam("name") String cityName) {
+        return analyticsService.getCityDetails(currentUserService.getCurrentUserId(), cityName)
+                .orElseThrow(() -> problem(CITY_NOT_FOUND, "City not found or no visits recorded"));
     }
 
-    /**
-     * Get detailed statistics for a specific country.
-     *
-     * @param countryName country name (URL encoded)
-     * @return country details
-     */
     @GET
     @Path("/country/{name}")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCountryDetails(@PathParam("name") String countryName) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Country details request from user {} for country: {}", userId, countryName);
-
-        try {
-            Optional<CountryDetailsDTO> details = analyticsService.getCountryDetails(userId, countryName);
-
-            if (details.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Country not found or no visits recorded"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(details.get())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get country details for user {}, country: {}", userId, countryName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get country details"))
-                    .build();
-        }
+    public CountryDetailsDTO getCountryDetails(@PathParam("name") String countryName) {
+        return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
+                .orElseThrow(() -> problem(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
     }
 
-    /**
-     * Get paginated visits for a city.
-     *
-     * @param cityName      city name (URL encoded)
-     * @param page          zero-based page number (default: 0)
-     * @param size          page size (default: 50, max: 200)
-     * @param sortBy        field to sort by (default: "timestamp")
-     * @param sortDirection sort direction "asc" or "desc" (default: "desc")
-     * @return paginated visits
-     */
     @GET
     @Path("/city/{name}/visits")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCityVisits(
+    public PageResponse<PlaceVisitDTO> getCityVisits(
             @PathParam("name") String cityName,
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("50") int size,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
-
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("City visits request from user {} for city: {} (page={}, size={})",
-                userId, cityName, page, size);
-
-        try {
-            if (page < 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Page number must be non-negative"))
-                        .build();
-            }
-
-            PagedPlaceVisitsDTO visits = analyticsService.getCityVisits(
-                    userId, cityName, page, size, sortBy, sortDirection);
-
-            return Response.ok(ApiResponse.success(visits)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get city visits for user {}, city: {}", userId, cityName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get city visits"))
-                    .build();
-        }
+        validatePage(page);
+        return analyticsService.getCityVisits(
+                currentUserService.getCurrentUserId(), cityName, page, size, sortBy, sortDirection);
     }
 
-    /**
-     * Get paginated visits for a country.
-     *
-     * @param countryName   country name (URL encoded)
-     * @param page          zero-based page number (default: 0)
-     * @param size          page size (default: 50, max: 200)
-     * @param sortBy        field to sort by (default: "timestamp")
-     * @param sortDirection sort direction "asc" or "desc" (default: "desc")
-     * @return paginated visits
-     */
     @GET
     @Path("/country/{name}/visits")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCountryVisits(
+    public PageResponse<PlaceVisitDTO> getCountryVisits(
             @PathParam("name") String countryName,
             @QueryParam("page") @DefaultValue("0") int page,
             @QueryParam("size") @DefaultValue("50") int size,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
-
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Country visits request from user {} for country: {} (page={}, size={})",
-                userId, countryName, page, size);
-
-        try {
-            if (page < 0) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("Page number must be non-negative"))
-                        .build();
-            }
-
-            PagedPlaceVisitsDTO visits = analyticsService.getCountryVisits(
-                    userId, countryName, page, size, sortBy, sortDirection);
-
-            return Response.ok(ApiResponse.success(visits)).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get country visits for user {}, country: {}", userId, countryName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get country visits"))
-                    .build();
-        }
+        validatePage(page);
+        return analyticsService.getCountryVisits(
+                currentUserService.getCurrentUserId(), countryName, page, size, sortBy, sortDirection);
     }
 
-    /**
-     * Export all visits for a city as CSV.
-     *
-     * @param cityName      city name (URL encoded)
-     * @param sortBy        field to sort by (default: "timestamp")
-     * @param sortDirection sort direction "asc" or "desc" (default: "desc")
-     * @return CSV file
-     */
     @GET
     @Path("/city/{name}/visits/export")
     @Produces("text/csv")
-    @RolesAllowed({"USER", "ADMIN"})
+    @APIResponse(responseCode = "200", description = "City visits CSV export",
+            content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
     public Response exportCityVisits(
             @PathParam("name") String cityName,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
-
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Export city visits request from user {} for city: {}", userId, cityName);
-
-        try {
-            List<PlaceVisitDTO> visits = analyticsService.getAllCityVisits(
-                    userId, cityName, sortBy, sortDirection);
-
-            if (visits.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity("No visits found for this city")
-                        .build();
-            }
-
-            StreamingOutput stream = output -> {
-                try (BufferedWriter writer = new BufferedWriter(
-                        new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
-
-                    // Write CSV header
-                    writer.write("Location Name,Latitude,Longitude,Visit Date,Visit Time," +
-                            "End Date,End Time,Duration (hours),Duration (formatted),Day of Week");
-                    writer.newLine();
-
-                    // Write data rows
-                    for (PlaceVisitDTO visit : visits) {
-                        writeVisitCsvRow(writer, visit);
-                    }
-
-                    writer.flush();
-                }
-            };
-
-            String filename = String.format("city_%s_visits_%s.csv",
-                    sanitizeFilename(cityName),
-                    DATE_FORMATTER.format(Instant.now().atZone(ZoneId.systemDefault())));
-
-            return Response.ok(stream)
-                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to export city visits for user {}, city: {}", userId, cityName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Failed to export visits")
-                    .build();
+        List<PlaceVisitDTO> visits = analyticsService.getAllCityVisits(
+                currentUserService.getCurrentUserId(), cityName, sortBy, sortDirection);
+        if (visits.isEmpty()) {
+            throw problem(LOCATION_VISITS_NOT_FOUND, "No visits found for this city");
         }
+        return csvResponse(visits, "city_" + sanitizeFilename(cityName));
     }
 
-    /**
-     * Export all visits for a country as CSV.
-     *
-     * @param countryName   country name (URL encoded)
-     * @param sortBy        field to sort by (default: "timestamp")
-     * @param sortDirection sort direction "asc" or "desc" (default: "desc")
-     * @return CSV file
-     */
     @GET
     @Path("/country/{name}/visits/export")
     @Produces("text/csv")
-    @RolesAllowed({"USER", "ADMIN"})
+    @APIResponse(responseCode = "200", description = "Country visits CSV export",
+            content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
     public Response exportCountryVisits(
             @PathParam("name") String countryName,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
-
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Export country visits request from user {} for country: {}", userId, countryName);
-
-        try {
-            List<PlaceVisitDTO> visits = analyticsService.getAllCountryVisits(
-                    userId, countryName, sortBy, sortDirection);
-
-            if (visits.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity("No visits found for this country")
-                        .build();
-            }
-
-            StreamingOutput stream = output -> {
-                try (BufferedWriter writer = new BufferedWriter(
-                        new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
-
-                    // Write CSV header
-                    writer.write("Location Name,Latitude,Longitude,Visit Date,Visit Time," +
-                            "End Date,End Time,Duration (hours),Duration (formatted),Day of Week");
-                    writer.newLine();
-
-                    // Write data rows
-                    for (PlaceVisitDTO visit : visits) {
-                        writeVisitCsvRow(writer, visit);
-                    }
-
-                    writer.flush();
-                }
-            };
-
-            String filename = String.format("country_%s_visits_%s.csv",
-                    sanitizeFilename(countryName),
-                    DATE_FORMATTER.format(Instant.now().atZone(ZoneId.systemDefault())));
-
-            return Response.ok(stream)
-                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to export country visits for user {}, country: {}", userId, countryName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Failed to export visits")
-                    .build();
+        List<PlaceVisitDTO> visits = analyticsService.getAllCountryVisits(
+                currentUserService.getCurrentUserId(), countryName, sortBy, sortDirection);
+        if (visits.isEmpty()) {
+            throw problem(LOCATION_VISITS_NOT_FOUND, "No visits found for this country");
         }
+        return csvResponse(visits, "country_" + sanitizeFilename(countryName));
     }
 
-    /**
-     * Get all cities in a specific country.
-     *
-     * @param countryName country name (URL encoded)
-     * @return list of cities
-     */
     @GET
     @Path("/country/{name}/cities")
-    @RolesAllowed({"USER", "ADMIN"})
-    public Response getCitiesInCountry(@PathParam("name") String countryName) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Get cities in country request from user {} for country: {}", userId, countryName);
+    public List<CityInCountryDTO> getCitiesInCountry(@PathParam("name") String countryName) {
+        return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
+                .map(CountryDetailsDTO::getCities)
+                .orElseThrow(() -> problem(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
+    }
 
-        try {
-            Optional<CountryDetailsDTO> details = analyticsService.getCountryDetails(userId, countryName);
-
-            if (details.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity(ApiResponse.error("Country not found or no visits recorded"))
-                        .build();
-            }
-
-            return Response.ok(ApiResponse.success(details.get().getCities())).build();
-
-        } catch (Exception e) {
-            log.error("Failed to get cities in country for user {}, country: {}", userId, countryName, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to get cities"))
-                    .build();
+    private void validateViewport(Double minLat, Double maxLat, Double minLon, Double maxLon) {
+        boolean any = minLat != null || maxLat != null || minLon != null || maxLon != null;
+        boolean all = minLat != null && maxLat != null && minLon != null && maxLon != null;
+        if (any && !all) {
+            throw problem(INVALID_BOUNDING_BOX,
+                    "Viewport filter requires minLat, maxLat, minLon and maxLon");
+        }
+        if (all && (!Double.isFinite(minLat) || !Double.isFinite(maxLat)
+                || !Double.isFinite(minLon) || !Double.isFinite(maxLon))) {
+            throw problem(INVALID_BOUNDING_BOX, "Viewport bounds must be finite numbers");
+        }
+        if (all && (minLat < -90 || maxLat > 90 || minLat > maxLat || minLon > maxLon)) {
+            throw problem(INVALID_BOUNDING_BOX, "Invalid viewport bounds");
         }
     }
 
-    // Helper methods
+    private void validatePage(int page) {
+        if (page < 0) throw problem(INVALID_PAGE, "Page number must be non-negative");
+    }
 
-    /**
-     * Write a visit record as a CSV row.
-     */
-    @SneakyThrows({IOException.class})
-    private void writeVisitCsvRow(BufferedWriter writer, PlaceVisitDTO visit) {
+    private Response csvResponse(List<PlaceVisitDTO> visits, String namePrefix) {
+        StreamingOutput stream = output -> {
+            try (BufferedWriter writer = new BufferedWriter(
+                    new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
+                writer.write("Location Name,Latitude,Longitude,Visit Date,Visit Time," +
+                        "End Date,End Time,Duration (hours),Duration (formatted),Day of Week");
+                writer.newLine();
+                for (PlaceVisitDTO visit : visits) writeVisitCsvRow(writer, visit);
+            }
+        };
+        String filename = namePrefix + "_visits_" +
+                DATE_FORMATTER.format(Instant.now().atZone(ZoneId.systemDefault())) + ".csv";
+        return Response.ok(stream)
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .build();
+    }
+
+    private void writeVisitCsvRow(BufferedWriter writer, PlaceVisitDTO visit) throws IOException {
         ZoneId zoneId = ZoneId.systemDefault();
-        var startDateTime = visit.getTimestamp().atZone(zoneId);
-        var endDateTime = visit.getTimestamp().plusSeconds(visit.getStayDuration()).atZone(zoneId);
-
-        // Duration in hours
-        double durationHours = visit.getStayDuration() / 3600.0;
-
-        // Formatted duration (HH:MM:SS)
+        var start = visit.getTimestamp().atZone(zoneId);
+        var end = visit.getTimestamp().plusSeconds(visit.getStayDuration()).atZone(zoneId);
         long hours = visit.getStayDuration() / 3600;
         long minutes = (visit.getStayDuration() % 3600) / 60;
         long seconds = visit.getStayDuration() % 60;
-        String durationFormatted = String.format("%02d:%02d:%02d", hours, minutes, seconds);
-
-        // Day of week
-        String dayOfWeek = startDateTime.getDayOfWeek().toString();
-
-        // Escape CSV values
-        String locationName = escapeCsv(visit.getLocationName());
-
-        writer.write(String.format("%s,%.6f,%.6f,%s,%s,%s,%s,%.2f,%s,%s",
-                locationName,
-                visit.getLatitude(),
-                visit.getLongitude(),
-                DATE_FORMATTER.format(startDateTime),
-                TIME_FORMATTER.format(startDateTime),
-                DATE_FORMATTER.format(endDateTime),
-                TIME_FORMATTER.format(endDateTime),
-                durationHours,
-                durationFormatted,
-                dayOfWeek
-        ));
+        writer.write(String.format("%s,%.6f,%.6f,%s,%s,%s,%s,%.2f,%02d:%02d:%02d,%s",
+                escapeCsv(visit.getLocationName()), visit.getLatitude(), visit.getLongitude(),
+                DATE_FORMATTER.format(start), TIME_FORMATTER.format(start),
+                DATE_FORMATTER.format(end), TIME_FORMATTER.format(end),
+                visit.getStayDuration() / 3600.0, hours, minutes, seconds,
+                start.getDayOfWeek()));
         writer.newLine();
     }
 
-    /**
-     * Escape CSV value (handle quotes and commas).
-     */
     private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
+        if (value == null) return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
     }
 
-    /**
-     * Sanitize filename by removing unsafe characters.
-     */
     private String sanitizeFilename(String filename) {
         return filename.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     private Instant parseOptionalInstant(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return Instant.parse(value.trim());
+        return value == null || value.isBlank() ? null : Instant.parse(value.trim());
     }
 }

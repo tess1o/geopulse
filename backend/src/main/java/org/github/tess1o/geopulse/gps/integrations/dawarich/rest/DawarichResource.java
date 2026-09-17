@@ -17,6 +17,11 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import java.util.List;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 
@@ -41,6 +46,9 @@ public class DawarichResource {
     @Path("/health")
     @Operation(summary = "Check Dawarich compatibility health",
             description = "Returns a Dawarich-compatible health response for source connectivity checks.")
+    @APIResponse(responseCode = "200", description = "Dawarich-compatible health response",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = SchemaType.OBJECT)))
     public Response handleDawarichHealth(Request request, @HeaderParam("Authorization") String authHeader) {
         log.info("Received health request");
         var authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
@@ -57,6 +65,7 @@ public class DawarichResource {
     @Path("/points")
     @Operation(summary = "Ingest Dawarich points",
             description = "Receives Dawarich point payloads and stores them for the matching source token.")
+    @APIResponse(responseCode = "200", description = "Points accepted")
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         if (authResult.isEmpty()) {
@@ -73,6 +82,8 @@ public class DawarichResource {
     @Path("/stats")
     @Operation(summary = "Get Dawarich compatibility stats",
             description = "Returns a Dawarich-compatible stats response for authenticated compatibility clients.")
+    @APIResponseSchema(value = DawarichStatsResponse.class, responseCode = "200",
+            responseDescription = "Dawarich-compatible statistics")
     public Response handleDawarichStats(@QueryParam("api_key") String apiKey) {
         log.info("Received stats request with api_key: {}", apiKey);
 

@@ -89,12 +89,16 @@ import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAuthStore } from '@/stores/auth'
-import apiService from '@/utils/apiService'
+import { useAIStore } from '@/stores/ai'
+import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const toast = useToast()
 const authStore = useAuthStore()
+const aiStore = useAIStore()
+const adminStore = useAdminStore()
 const { adminReadOnly } = storeToRefs(authStore)
 
 const aiSettings = ref([])
@@ -111,7 +115,7 @@ const configSettings = computed(() =>
 
 const loadAISettings = async () => {
   try {
-    const response = await apiService.get('/ai/default-system-message')
+    const response = await aiStore.fetchDefaultSystemMessage()
     aiSystemMessage.value = response.message || ''
     aiSystemMessageOriginal.value = response.message || ''
     aiSystemMessageChanged.value = false
@@ -120,7 +124,7 @@ const loadAISettings = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load AI system message',
+      detail: formatApiErrorDetail(error, 'Failed to load AI system message'),
       life: 3000
     })
   }
@@ -129,7 +133,7 @@ const loadAISettings = async () => {
 const loadBuiltInDefault = async () => {
   loadingBuiltInDefault.value = true
   try {
-    const response = await apiService.get('/ai/builtin-system-message')
+    const response = await aiStore.fetchBuiltinSystemMessage()
     aiSystemMessage.value = response.message || ''
     aiSystemMessageChanged.value = aiSystemMessage.value !== aiSystemMessageOriginal.value
   } catch (error) {
@@ -137,7 +141,7 @@ const loadBuiltInDefault = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load built-in default',
+      detail: formatApiErrorDetail(error, 'Failed to load built-in default'),
       life: 3000
     })
   } finally {
@@ -154,7 +158,7 @@ const saveAISystemMessage = async () => {
   savingAIMessage.value = true
   try {
     const value = aiSystemMessage.value?.trim() || ''
-    await apiService.put('/admin/settings/ai.default-system-message', { value })
+    await adminStore.updateSetting('ai.default-system-message', value)
 
     aiSystemMessageOriginal.value = aiSystemMessage.value
     aiSystemMessageChanged.value = false
@@ -167,7 +171,7 @@ const saveAISystemMessage = async () => {
     })
   } catch (error) {
     console.error('Failed to save AI system message:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to save AI system message'
+    const errorMessage = formatApiErrorDetail(error, 'Failed to save AI system message')
     toast.add({
       severity: 'error',
       summary: 'Error',

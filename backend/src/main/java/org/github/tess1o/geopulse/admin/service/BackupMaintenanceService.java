@@ -10,6 +10,7 @@ import org.eclipse.microprofile.config.Config;
 import org.github.tess1o.geopulse.admin.backup.*;
 import org.github.tess1o.geopulse.admin.dto.backup.AdminBackupStatusDto;
 import org.github.tess1o.geopulse.admin.dto.backup.MaintenanceStatusDto;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -124,7 +125,8 @@ public class BackupMaintenanceService {
         backupRunning = true;
         backupStatus = AdminBackupStatusDto.builder().operationId(operationId).backupRunning(true)
                 .status("running").operation(operation).phase("snapshot")
-                .message("Creating encrypted PostgreSQL backup").startedAt(Instant.now()).build();
+                .message(message("backup.creating", "Creating encrypted PostgreSQL backup"))
+                .startedAt(Instant.now()).build();
         log.info("Backup operation {} started; type={}", operationId, operation);
         return true;
     }
@@ -267,7 +269,7 @@ public class BackupMaintenanceService {
         backupStatus.setSizeBytes(size);
         backupStatus.setProgressPercent(100);
         backupStatus.setCompletedAt(Instant.now());
-        backupStatus.setMessage("Backup completed successfully.");
+        backupStatus.setMessage(message("backup.completed", "Backup completed successfully."));
         backupStatus.setError(null);
         log.info("Backup operation {} completed; file={}; sizeBytes={}", operationId, name, size);
     }
@@ -298,7 +300,8 @@ public class BackupMaintenanceService {
         return MaintenanceStatusDto.builder().state(state).blocked(isRestoreBlocked())
                 .warning(restore != null && restore.state == RestoreOperationState.PREPARING)
                 .restarting(restore != null && restore.state == RestoreOperationState.SWAPPED_PENDING_RESTART)
-                .message(restore == null ? "GeoPulse is available." : restore.message())
+                .message(message("maintenance." + state.toLowerCase(Locale.ROOT),
+                        restore == null ? "GeoPulse is available." : restore.message()))
                 .backupCreatedAt(restore == null || restore.backupCreatedAt == null ? "" : restore.backupCreatedAt)
                 .completedAt(restore != null && restore.state == RestoreOperationState.COMPLETED ? restore.updatedAt : "")
                 .build();
@@ -312,8 +315,13 @@ public class BackupMaintenanceService {
                 .restartRequired(restore.state == RestoreOperationState.SWAPPED_PENDING_RESTART)
                 .environmentBlocked(isRestoreBlocked()).restoreRequired(restore.state == RestoreOperationState.ACTIVATION_FAILED)
                 .fileName(restore.fileName).phase(restore.phase.wireName()).progressPercent(restore.progress)
-                .message(restore.message()).error(restore.error).startedAt(Instant.parse(restore.startedAt))
+                .message(message("restore." + restore.state.name().toLowerCase(Locale.ROOT), restore.message()))
+                .error(restore.error).startedAt(Instant.parse(restore.startedAt))
                 .completedAt(restore.state == RestoreOperationState.COMPLETED ? Instant.parse(restore.updatedAt) : null).build();
+    }
+
+    private MessageDescriptor message(String key, String fallback) {
+        return new MessageDescriptor(key, java.util.Map.of(), fallback);
     }
 
     private boolean backupFinishedAfterRestore() {

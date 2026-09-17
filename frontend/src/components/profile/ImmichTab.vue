@@ -66,8 +66,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import Message from 'primevue/message'
-import apiService from '@/utils/apiService'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
+import { useImmichStore } from '@/stores/immich'
+import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
@@ -76,6 +77,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save', 'dirty-change'])
+const immichStore = useImmichStore()
 const saveLoading = ref(false)
 const apiKeyConfigured = ref(false)
 const testLoading = ref(false)
@@ -98,6 +100,16 @@ watch(hasChanges, (changed) => emit('dirty-change', Boolean(changed)))
 
 const canTestConnection = computed(() => form.value.serverUrl?.trim() && (form.value.apiKey?.trim() || apiKeyConfigured.value))
 
+const connectionMessages = {
+  CONNECTED: 'Successfully connected to Immich server',
+  USER_NOT_FOUND: 'The configured Immich user could not be found',
+  API_KEY_REQUIRED: 'An Immich API key is required',
+  AUTHENTICATION_FAILED: 'Immich rejected the API key',
+  SERVER_NOT_FOUND: 'The Immich server could not be found',
+  CONNECTION_TIMEOUT: 'The Immich connection timed out',
+  CONNECTION_FAILED: 'Failed to connect to the Immich server'
+}
+
 const handleTestConnection = async () => {
   if (props.readOnly || !form.value.serverUrl?.trim()) return
   testLoading.value = true
@@ -105,18 +117,20 @@ const handleTestConnection = async () => {
   testMessage.value = ''
   testDetails.value = ''
   try {
-    const result = await apiService.post('/users/me/immich-config/test', {
+    const result = await immichStore.testConnection({
       serverUrl: form.value.serverUrl.trim(),
       apiKey: form.value.apiKey?.trim() || null
     })
-    const success = result?.data?.success === true
+    const success = result?.success === true
     testStatus.value = success ? 'success' : 'error'
-    testMessage.value = result?.data?.message || (success ? 'Successfully connected to Immich server' : 'Failed to test connection')
-    testDetails.value = result?.data?.details || ''
+    testMessage.value = connectionMessages[result?.status] || (success ? connectionMessages.CONNECTED : 'Failed to test connection')
+    testDetails.value = result?.totalAssets != null
+      ? `${result.totalAssets} assets available.`
+      : (result?.details || '')
   } catch (error) {
     testStatus.value = 'error'
     testMessage.value = 'Connection test failed'
-    testDetails.value = error.userMessage || error.message || 'An unexpected error occurred'
+    testDetails.value = formatApiErrorDetail(error, 'An unexpected error occurred')
   } finally {
     testLoading.value = false
   }

@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventDto;
-import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -32,16 +33,16 @@ public class GeofenceEventService {
         this.notificationProjectionService = notificationProjectionService;
     }
 
-    public GeofenceEventPageDto listEventsPage(UUID ownerUserId, GeofenceEventQueryDto queryDto) {
+    public PageResponse<GeofenceEventDto> listEventsPage(UUID ownerUserId, GeofenceEventQueryDto queryDto) {
         GeofenceEventQueryDto query = normalizeQuery(queryDto);
         GeofenceEventRepository.GeofenceEventPageResult pageResult = eventRepository.findPageByOwner(ownerUserId, query);
 
-        return GeofenceEventPageDto.builder()
-                .items(pageResult.items().stream().map(this::toDto).toList())
-                .totalCount(pageResult.totalCount())
-                .page(query.getPage())
-                .pageSize(query.getPageSize())
-                .build();
+        return new PageResponse<>(
+                pageResult.items().stream().map(this::toDto).toList(),
+                query.getPage(),
+                query.getPageSize(),
+                pageResult.totalCount(),
+                (int) Math.ceil((double) pageResult.totalCount() / query.getPageSize()));
     }
 
     public long countUnread(UUID ownerUserId) {
@@ -51,7 +52,7 @@ public class GeofenceEventService {
     @Transactional
     public GeofenceEventDto markSeen(UUID ownerUserId, Long eventId) {
         GeofenceEventEntity event = eventRepository.findByIdAndOwner(eventId, ownerUserId)
-                .orElseThrow(() -> new IllegalArgumentException("Geofence event not found"));
+                .orElseThrow(() -> new NoSuchElementException("Geofence event not found"));
 
         Instant seenAt = event.getSeenAt() == null ? Instant.now() : event.getSeenAt();
         if (event.getSeenAt() == null) {

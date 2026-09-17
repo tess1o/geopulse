@@ -5,7 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.enterprise.inject.Instance;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.notifications.model.dto.UnreadCountDto;
-import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationPageDto;
+import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationDto;
 import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
@@ -45,7 +45,7 @@ public class UserNotificationService {
                 .toList();
     }
 
-    public UserNotificationPageDto listNotificationsPage(UUID ownerUserId,
+    public PageResponse<UserNotificationDto> listNotificationsPage(UUID ownerUserId,
                                                          int page,
                                                          int pageSize,
                                                          Boolean seen,
@@ -62,12 +62,12 @@ public class UserNotificationService {
                 type
         );
 
-        return UserNotificationPageDto.builder()
-                .items(result.items().stream().map(this::toDto).toList())
-                .totalCount(result.totalCount())
-                .page(normalizedPage)
-                .pageSize(normalizedPageSize)
-                .build();
+        return new PageResponse<>(
+                result.items().stream().map(this::toDto).toList(),
+                normalizedPage,
+                normalizedPageSize,
+                result.totalCount(),
+                (int) Math.ceil((double) result.totalCount() / normalizedPageSize));
     }
 
     public UnreadCountDto getUnreadCount(UUID ownerUserId) {

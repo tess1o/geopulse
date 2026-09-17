@@ -6,14 +6,17 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.testsupport.ExportTestFixtures;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -21,6 +24,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
@@ -89,5 +93,29 @@ class CsvExportServiceTest {
         assertTrue(csv.contains("\"\"ignition\"\":1"));
         assertTrue(csv.contains("\"\"batt_v\"\":12.6"));
         tempFileService.deleteTempFile(job.getTempFilePath());
+    }
+
+    @Test
+    @Transactional
+    void testGenerateCsvExportForApi_UsesRequestedVelocityUnit() throws Exception {
+        GpsPointEntity point = ExportTestFixtures.gpsPoint(
+                testUser,
+                testStartDate.plus(1, ChronoUnit.MINUTES),
+                37.7749,
+                -122.4194
+        );
+        point.setVelocity(100.0);
+        gpsPointRepository.persistAndFlush(point);
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        csvExportService.generateCsvExport(
+                output,
+                testUser.getId(),
+                GpsPointFilterDTO.builder().startTime(testStartDate).endTime(testEndDate).build(),
+                DistanceUnit.MILES);
+
+        String csv = output.toString(StandardCharsets.UTF_8);
+        assertTrue(csv.startsWith("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType,telemetry\n"));
+        assertEquals(62.1371, Double.parseDouble(csv.split("\\R")[1].split(",")[5]), 0.000001);
     }
 }

@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
         MapMatchedPointDTO.class,
         MapMatchingResolutionRequest.class,
         MapMatchingResolutionResponse.class,
+        MapMatchingResolutionStatus.class,
         MapMatchingStatusRequest.class,
         MapMatchingAdminStatusDTO.class,
         MapMatchingTripResolutionDTO.class,

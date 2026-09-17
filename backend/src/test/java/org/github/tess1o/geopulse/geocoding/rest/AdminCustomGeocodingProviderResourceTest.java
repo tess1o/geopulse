@@ -1,11 +1,10 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
 import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.core.Response;
+import io.quarkiverse.httpproblem.HttpProblem;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
 import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
-import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
@@ -37,12 +37,7 @@ class AdminCustomGeocodingProviderResourceTest {
         when(providerService.list()).thenReturn(List.of(provider));
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
-        Response response = resource.list();
-
-        assertThat(response.getStatus()).isEqualTo(200);
-        ApiResponse<?> entity = (ApiResponse<?>) response.getEntity();
-        assertThat(entity.getStatus()).isEqualTo("success");
-        assertThat(entity.getData()).isEqualTo(List.of(provider));
+        assertThat(resource.list()).isEqualTo(List.of(provider));
     }
 
     @Test
@@ -51,12 +46,10 @@ class AdminCustomGeocodingProviderResourceTest {
         when(providerService.create(request)).thenThrow(new IllegalArgumentException("Custom provider name cannot match a built-in provider: photon"));
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
-        Response response = resource.create(request);
-
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> entity = (ApiResponse<?>) response.getEntity();
-        assertThat(entity.getStatus()).isEqualTo("error");
-        assertThat(entity.getMessage()).isEqualTo("Custom provider name cannot match a built-in provider: photon");
+        assertThatThrownBy(() -> resource.create(request))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                        .isEqualTo("Custom provider name cannot match a built-in provider: photon"));
     }
 
     @Test
@@ -65,12 +58,10 @@ class AdminCustomGeocodingProviderResourceTest {
         when(providerService.update("missing", request)).thenThrow(new NotFoundException("Custom geocoding provider not found: missing"));
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
-        Response response = resource.update("missing", request);
-
-        assertThat(response.getStatus()).isEqualTo(404);
-        ApiResponse<?> entity = (ApiResponse<?>) response.getEntity();
-        assertThat(entity.getStatus()).isEqualTo("error");
-        assertThat(entity.getMessage()).isEqualTo("Custom geocoding provider not found: missing");
+        assertThatThrownBy(() -> resource.update("missing", request))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                        .isEqualTo("Custom geocoding provider not found: missing"));
     }
 
     @Test
@@ -79,24 +70,17 @@ class AdminCustomGeocodingProviderResourceTest {
                 .when(providerService).delete("local-photon");
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
-        Response response = resource.delete("local-photon");
-
-        assertThat(response.getStatus()).isEqualTo(400);
-        ApiResponse<?> entity = (ApiResponse<?>) response.getEntity();
-        assertThat(entity.getStatus()).isEqualTo("error");
-        assertThat(entity.getMessage()).isEqualTo("Cannot delete custom provider 'local-photon' while it is the primary provider");
+        assertThatThrownBy(() -> resource.delete("local-photon"))
+                .isInstanceOf(HttpProblem.class)
+                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                        .isEqualTo("Cannot delete custom provider 'local-photon' while it is the primary provider"));
     }
 
     @Test
     void delete_shouldReturnSuccessEnvelope() {
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
-        Response response = resource.delete("local-photon");
-
-        assertThat(response.getStatus()).isEqualTo(200);
-        ApiResponse<?> entity = (ApiResponse<?>) response.getEntity();
-        assertThat(entity.getStatus()).isEqualTo("success");
-        assertThat(entity.getMessage()).isEqualTo("Custom geocoding provider deleted");
+        resource.delete("local-photon");
     }
 
     private CustomGeocodingProviderRequest request() {
