@@ -137,10 +137,14 @@ const props = defineProps({
   readOnly: {
     type: Boolean,
     default: false
+  },
+  mapMatchingInfo: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved'])
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'split-trip-with-stay', 'photo-show-on-map', 'note-saved', 'show-map-matching-details'])
 
 const contextMenu = ref(null)
 const notePreviewTrigger = ref(null)
@@ -160,6 +164,10 @@ const {
 })
 
 const { appendGpsPointsMenuItem } = useTimelineGpsDrilldown(computed(() => props.tripItem))
+
+const isMapMatchingProblem = computed(() => (
+  props.mapMatchingInfo?.status === 'FAILED' || props.mapMatchingInfo?.status === 'SKIPPED'
+))
 
 const contextMenuItems = computed(() => {
   const items = [
@@ -211,6 +219,16 @@ const contextMenuItems = computed(() => {
   }
 
   appendGpsPointsMenuItem(items)
+
+  if (props.mapMatchingInfo) {
+    items.push({
+      label: 'Map matching details...',
+      icon: isMapMatchingProblem.value ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle',
+      command: () => {
+        emit('show-map-matching-details', props.tripItem)
+      }
+    })
+  }
 
   items.push({
     label: 'Export as GPX',

@@ -9,11 +9,10 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.dto.BulkUpdateRequest;
 import org.github.tess1o.geopulse.admin.dto.MapMatchingProviderTestResponse;
-import org.github.tess1o.geopulse.admin.dto.MapMatchingQueueRebuildResponse;
+import org.github.tess1o.geopulse.admin.dto.MapMatchingRebuildResponse;
 import org.github.tess1o.geopulse.admin.dto.PanoramaxTestResponse;
 import org.github.tess1o.geopulse.admin.dto.SettingResetResponse;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
@@ -32,6 +31,8 @@ import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildResult;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
@@ -46,8 +47,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -366,10 +367,15 @@ public class AdminSettingsResource {
         return mapMatchingWorker.status();
     }
 
+    /**
+     * Re-runs map matching over the stored history. Without a {@code mode} the re-run is limited to
+     * targets that never produced a usable match; {@code mode=ALL} deletes every stored result,
+     * matched routes included, and matches the whole history again.
+     */
     @POST
     @Path("/map-matching/rebuilds")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public MapMatchingQueueRebuildResponse rebuildMapMatchingHistoricalQueue() {
+    public MapMatchingRebuildResponse rebuildMapMatching(@QueryParam("mode") String mode) {
         if (!mapMatchingConfiguration.isEnabled()) {
             throw problem(MAP_MATCHING_DISABLED, "Map matching is disabled");
         }
@@ -379,20 +385,36 @@ public class AdminSettingsResource {
         if (!"valhalla".equals(mapMatchingConfiguration.provider()) || !mapMatchingConfiguration.valhallaConfigured()) {
             throw problem(MAP_MATCHING_PROVIDER_NOT_CONFIGURED, "Valhalla is not configured");
         }
+        MapMatchingRebuildMode rebuildMode = parseRebuildMode(mode);
 
-        long queuedUsers = mapMatchingWorker.rebuildHistoricalQueue();
+        MapMatchingRebuildResult result = mapMatchingWorker.rebuildMapMatching(rebuildMode);
         UUID adminId = currentUserService.getCurrentUserId();
         String ipAddress = UserIpAddress.resolve(httpRequest);
+        boolean fullRebuild = rebuildMode == MapMatchingRebuildMode.ALL;
         auditLogService.logAction(
                 adminId,
-                ActionType.MAP_MATCHING_HISTORICAL_REBUILD,
+                fullRebuild ? ActionType.MAP_MATCHING_CACHE_CLEARED : ActionType.MAP_MATCHING_HISTORICAL_REBUILD,
                 TargetType.SETTING,
-                "map-matching.historical-rebuild",
-                Map.of("queuedUsers", queuedUsers),
+                fullRebuild ? "map-matching.cache" : "map-matching.historical-rebuild",
+                Map.of("mode", rebuildMode.name(),
+                        "queuedUsers", result.queuedUsers(),
+                        "affectedTargets", result.affectedTargets()),
                 ipAddress
         );
 
-        return new MapMatchingQueueRebuildResponse(queuedUsers);
+        return new MapMatchingRebuildResponse(
+                result.mode(), result.queuedUsers(), result.affectedTargets(), result.purgedDetachedTargets());
+    }
+
+    private MapMatchingRebuildMode parseRebuildMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return MapMatchingRebuildMode.UNSUCCESSFUL;
+        }
+        try {
+            return MapMatchingRebuildMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw problem(MAP_MATCHING_MODE_INVALID, "Unknown map matching mode: " + mode);
+        }
     }
 
     private String limitErrorBody(String body) {

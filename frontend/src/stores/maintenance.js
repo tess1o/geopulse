@@ -142,7 +142,6 @@ export async function refreshMaintenance() {
   pending = (async () => {
     try {
       const base = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1'
-      console.log('Base =', base);
       const response = await fetch(`${base}/system/maintenance`, {
         cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(5000)
       })

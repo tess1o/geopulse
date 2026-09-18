@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.mapmatching.client.ValhallaRestClient;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteRequest;
 import org.github.tess1o.geopulse.mapmatching.client.ValhallaTraceRouteResponse;
 import org.github.tess1o.geopulse.mapmatching.dto.*;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
@@ -14,6 +15,7 @@ import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
         TimelineTripPathMatchEntity.class,
         MapMatchingStatus.class,
         MapMatchingSource.class,
+        MapMatchingRebuildMode.class,
         MapMatchedPointDTO.class,
         MapMatchingResolutionRequest.class,
         MapMatchingResolutionResponse.class,

@@ -98,13 +98,13 @@
           </div>
           <div class="buttons">
             <Button
-              label="Rebuild Historical Queue"
-              icon="pi pi-history"
+              label="Re-run Map Matching"
+              icon="pi pi-refresh"
               severity="secondary"
               outlined
-              :loading="rebuildingHistoricalQueue"
-              :disabled="rebuildHistoricalQueueDisabled"
-              @click="rebuildHistoricalQueue"
+              :loading="rerunningMapMatching"
+              :disabled="rerunMapMatchingDisabled"
+              @click="openRerunMapMatching()"
             />
             <Button label="Refresh" icon="pi pi-refresh" severity="secondary" outlined
               :loading="loadingStatus" @click="loadStatus" />
@@ -135,6 +135,11 @@
         </dl>
 
         <Message v-if="worker.lastError" severity="warn" :closable="false">{{ worker.lastError }}</Message>
+
+        <Message v-if="pendingRerunHint" severity="info" :closable="false">
+          Matching settings changed. Past trips are matched again when you view them in the timeline —
+          re-run map matching to update all of them now.
+        </Message>
 
         <details class="status-diagnostics">
           <summary>Diagnostics</summary>
@@ -189,6 +194,67 @@
         </details>
       </div>
     </SettingSection>
+
+    <Dialog
+      v-model:visible="rerunPromptVisible"
+      header="Re-run map matching?"
+      :modal="true"
+      :style="{ width: '32rem' }"
+    >
+      <div class="rerun-prompt">
+        <i class="pi pi-info-circle"></i>
+        <p>
+          Routes that already exist were matched with the old settings. Viewing a trip in the timeline
+          matches it again, or re-run now to update every past trip at once.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Later" severity="secondary" text @click="rerunPromptVisible = false" />
+        <Button label="Re-run now" icon="pi pi-refresh" @click="openRerunFromPrompt" />
+      </template>
+    </Dialog>
+
+    <Dialog
+      v-model:visible="rerunMapMatchingDialogVisible"
+      header="Re-run Map Matching"
+      :modal="true"
+      :style="{ width: '34rem' }"
+    >
+      <div class="rerun-options">
+        <div
+          v-for="option in rerunModeOptions"
+          :key="option.value"
+          class="rerun-option"
+          :class="{ selected: rerunMode === option.value }"
+        >
+          <RadioButton
+            v-model="rerunMode"
+            :inputId="`rerun-${option.value}`"
+            :value="option.value"
+            class="rerun-radio"
+          />
+          <label :for="`rerun-${option.value}`" class="rerun-info">
+            <span class="rerun-label">{{ option.label }}</span>
+            <p class="rerun-description">{{ option.description }}</p>
+          </label>
+        </div>
+      </div>
+
+      <Message v-if="rerunMode === 'ALL'" severity="warn" :closable="false">
+        Matched routes disappear from the map until they are recomputed.
+      </Message>
+      <template #footer>
+        <Button label="Cancel" icon="pi pi-times" text :disabled="rerunningMapMatching"
+          @click="rerunMapMatchingDialogVisible = false" />
+        <Button
+          label="Re-run"
+          icon="pi pi-refresh"
+          :severity="rerunMode === 'ALL' ? 'danger' : 'primary'"
+          :loading="rerunningMapMatching"
+          @click="rerunMapMatching"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
 
@@ -197,11 +263,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import ProgressBar from 'primevue/progressbar'
+import RadioButton from 'primevue/radiobutton'
 import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import SettingSection from '../SettingSection.vue'
@@ -211,6 +279,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAdminStore } from '@/stores/admin'
 import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { parseSettingValue } from '@/utils/settingHelpers'
+import { affectsMapMatchingCache } from '@/utils/mapMatchingSettings'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const toast = useToast()
@@ -224,7 +293,11 @@ const hasUnsavedChanges = ref(false)
 const isSaving = ref(false)
 const testingConnection = ref(false)
 const loadingStatus = ref(false)
-const rebuildingHistoricalQueue = ref(false)
+const rerunningMapMatching = ref(false)
+const rerunMapMatchingDialogVisible = ref(false)
+const rerunPromptVisible = ref(false)
+const rerunMode = ref('UNSUCCESSFUL')
+const pendingRerunHint = ref(false)
 const status = ref({})
 let statusRefreshTimer = null
 let statusRequestInFlight = false
@@ -275,12 +348,24 @@ const queue = computed(() => status.value.queue || {})
 const diagnostics = computed(() => status.value.diagnostics || {})
 const pendingReconciliationCount = computed(() => Number(diagnostics.value.pendingReconciliations) || 0)
 const hasPendingReconciliations = computed(() => pendingReconciliationCount.value > 0)
-const canRebuildHistoricalQueue = computed(() =>
+const canRerunMapMatching = computed(() =>
   status.value.enabled && status.value.configured && backfill.value.enabled
 )
-const rebuildHistoricalQueueDisabled = computed(() =>
-  adminReadOnly.value || rebuildingHistoricalQueue.value || worker.value.running || !canRebuildHistoricalQueue.value
+const rerunMapMatchingDisabled = computed(() =>
+  adminReadOnly.value || rerunningMapMatching.value || worker.value.running || !canRerunMapMatching.value
 )
+const rerunModeOptions = computed(() => [
+  {
+    value: 'UNSUCCESSFUL',
+    label: 'Retry failed and skipped trips',
+    description: 'Keeps routes that are already matched. Only trips that never produced a route are sent to Valhalla again.'
+  },
+  {
+    value: 'ALL',
+    label: `Re-match all trips (${formatNumber(backfill.value.totalTrips)})`,
+    description: 'Recomputes every stored route, including matched ones. Use this after the Valhalla map data changed.'
+  }
+])
 const waitingForQuietPeriod = computed(() => {
   if (!hasPendingReconciliations.value || !diagnostics.value.nextReconciliationEligibleAt) return false
   return new Date(diagnostics.value.nextReconciliationEligibleAt).getTime() > Date.now()
@@ -413,6 +498,9 @@ const saveAllChanges = async () => {
       detail: `Updated ${changed.length} setting${changed.length === 1 ? '' : 's'}`,
       life: 3000
     })
+    if (affectsMapMatchingCache(changed.map(setting => setting.key))) {
+      promptForRerun()
+    }
     await reloadSettings()
     await loadStatus()
   } catch (error) {
@@ -429,6 +517,9 @@ const saveAllChanges = async () => {
 
 const handleReset = async setting => {
   await resetSetting(setting)
+  if (affectsMapMatchingCache([setting.key])) {
+    promptForRerun()
+  }
   await reloadSettings()
 }
 
@@ -455,27 +546,54 @@ const testConnection = async () => {
   }
 }
 
-const rebuildHistoricalQueue = async () => {
+// Settings that change the cache key do not re-match history on their own; ask the admin instead of
+// silently queueing the whole history from a form save. Declining keeps the reminder in the status card.
+const promptForRerun = () => {
+  pendingRerunHint.value = true
+  rerunPromptVisible.value = true
+}
+
+// Applying new settings to trips that are already matched needs the ALL mode, so preselect it here; the
+// admin can still switch to retrying failures only.
+const openRerunFromPrompt = () => {
+  rerunPromptVisible.value = false
+  openRerunMapMatching('ALL')
+}
+
+const openRerunMapMatching = (mode = 'UNSUCCESSFUL') => {
   if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
-  rebuildingHistoricalQueue.value = true
+  rerunMode.value = mode
+  rerunMapMatchingDialogVisible.value = true
+}
+
+const rerunMapMatching = async () => {
+  if (adminReadOnly.value) return showDemoReadOnlyToast(toast)
+  rerunningMapMatching.value = true
+  const mode = rerunMode.value
   try {
-    const data = await adminStore.rebuildMapMatchingHistoricalQueue()
+    const data = await adminStore.rebuildMapMatching(mode)
+    rerunMapMatchingDialogVisible.value = false
+    pendingRerunHint.value = false
     toast.add({
       severity: 'success',
-      summary: 'Historical Queue Rebuilt',
-      detail: `Queued ${formatNumber(data.queuedUsers)} user histories for re-scan`,
+      summary: 'Map Matching Re-run',
+      detail: mode === 'ALL'
+        ? `Cleared ${formatNumber(data.affectedTargets)} cached matches; re-scanning `
+          + `${formatNumber(data.queuedUsers)} user histories`
+        : `Re-queued ${formatNumber(data.affectedTargets)} failed or skipped trips across `
+          + `${formatNumber(data.queuedUsers)} user histories`,
       life: 4000
     })
     await loadStatus()
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Rebuild Failed',
-      detail: formatApiErrorDetail(error, 'Failed to rebuild historical map matching queue'),
+      summary: 'Re-run Failed',
+      detail: formatApiErrorDetail(error, 'Failed to re-run map matching'),
       life: 5000
     })
   } finally {
-    rebuildingHistoricalQueue.value = false
+    rerunningMapMatching.value = false
   }
 }
 
@@ -523,6 +641,16 @@ onBeforeUnmount(clearStatusRefresh)
 .outcome-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--surface-border); border-radius: 999px; background: var(--surface-card); }
 .outcome-item dt { overflow: hidden; color: var(--text-color-secondary); font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
 .outcome-item dd { margin: 0; color: var(--text-color); font-weight: 700; }
+.rerun-prompt { display: flex; gap: 0.75rem; align-items: flex-start; }
+.rerun-prompt > i { color: var(--primary-color); font-size: 1.25rem; }
+.rerun-prompt p { margin: 0; line-height: 1.5; }
+.rerun-options { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
+.rerun-option { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.85rem; border: 1px solid var(--surface-border); border-radius: 0.5rem; cursor: pointer; }
+.rerun-option.selected { border-color: var(--primary-color); background: color-mix(in srgb, var(--primary-color) 6%, transparent); }
+.rerun-radio { margin-top: 0.15rem; }
+.rerun-info { display: grid; gap: 0.2rem; cursor: pointer; }
+.rerun-label { font-weight: 600; }
+.rerun-description { margin: 0; color: var(--text-color-secondary); font-size: 0.85rem; line-height: 1.4; }
 @media (max-width: 768px) {
   .save-actions { flex-direction: column; align-items: stretch; }
   .url-input { width: 100%; min-width: 0; }

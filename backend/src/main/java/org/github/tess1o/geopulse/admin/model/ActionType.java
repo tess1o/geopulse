@@ -45,6 +45,7 @@ public enum ActionType {
 
     // Map matching maintenance
     MAP_MATCHING_HISTORICAL_REBUILD,
+    MAP_MATCHING_CACHE_CLEARED,
 
     // Admin actions
     ADMIN_LOGIN

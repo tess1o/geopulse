@@ -127,4 +127,43 @@ Approximate requirements depend mainly on extract size:
 - Rebuild Valhalla tiles when you update the OpenStreetMap extract.
 - Start with conservative worker settings, then raise batch size or backfill activity after confirming Valhalla has enough
   CPU and memory.
+
+## Maintaining Historical Matches
+
+The **Processing Status** card in **Admin → Settings → Map Matching** has one maintenance action, **Re-run Map
+Matching**, which asks how much of the history to cover:
+
+- **Retry failed and skipped trips** (default) moves every trip whose match failed or was skipped back into the queue and
+  restarts the historical scan. Trips that are already matched keep their stored geometry, so this only spends Valhalla
+  calls on the trips that need them. Run it after fixing a Valhalla problem, for example when tiles were still building
+  while the earlier attempts were made.
+- **Re-match all trips** deletes every stored result, matched routes included, and matches the whole history again. Use it
+  when the map data changed and you want existing matches recomputed. Routes fall back to their raw GPS paths until they
+  are matched again.
+
+Changing a setting that affects matching (the Valhalla URL, input point limit, duration limit, or a quality threshold)
+does **not** re-match past trips by itself. Trips keep the routes they already have: each one is matched again when it is
+next viewed in the timeline, so nothing stays permanently out of date. To update every past trip in one go, use the
+**Re-run Map Matching** prompt that appears after saving such a setting, or the button in the same card. Setting the URL through
+environment variables behaves the same way — after changing it, re-run matching if you want history updated in bulk
+rather than trip by trip.
+
+## Troubleshooting
+
+Find a trip that still shows its raw GPS path and right-click it (long-press on touch devices): **Map matching
+details...** shows what map matching did with that trip — when a refined route was produced, that it is still queued, or
+why it was not refined. Administrators also get a button straight to this settings page so they can re-run matching.
+
+| Reason | What it means |
+|--------|---------------|
+| The routing engine could not find a road or path for this trip. | Valhalla could not snap the trace to the loaded map data. Verify the extract covers the trip area and that tile building finished. |
+| The routing engine has no map data for this area. | The trip lies outside the loaded extract. Build tiles for a wider region. |
+| The routing engine rejected this trip's GPS trace. | Valhalla returned an error for this specific trace. |
+| The routing engine was temporarily unavailable. | Connection or server-side failure. Matching retries until `map-matching.max-attempts` is reached. |
+| Trip has fewer than two eligible GPS points. | The timeline accuracy filter or a short trip left too few points to match. |
+| Trip exceeds configured map-matching duration limit. | The trip is longer than `map-matching.max-trip-duration-hours`. |
+| Movement type is not supported by road/path map matching. | Train, flight, boat, and unknown trips keep their raw GPS paths. |
+
+If the cause has been fixed since the trip was attempted, use **Re-run Map Matching → Retry failed and skipped trips** to
+re-queue it.
 - Leave Map Matching disabled globally until Valhalla responds successfully from the GeoPulse backend network.

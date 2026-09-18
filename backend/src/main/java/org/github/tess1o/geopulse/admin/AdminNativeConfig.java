@@ -17,6 +17,8 @@ import org.github.tess1o.geopulse.admin.model.*;
                 AdminBackupConfigDto.class,
                 AdminBackupFileDto.class,
                 AdminBackupStatusDto.class,
+                MapMatchingProviderTestResponse.class,
+                MapMatchingRebuildResponse.class,
                 UserAISettings.class,
                 RestoreLocalBackupRequest.class,
                 BulkUpdateRequest.class,

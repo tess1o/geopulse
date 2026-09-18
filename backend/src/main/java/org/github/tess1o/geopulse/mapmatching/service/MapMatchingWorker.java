@@ -11,8 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
 import org.github.tess1o.geopulse.mapmatching.event.MapMatchingSettingsChangedEvent;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildResult;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingReconciliation;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingTargetReset;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.mapmatching.repository.MapMatchingReconciliationRepository;
 import org.github.tess1o.geopulse.mapmatching.repository.TimelineTripPathMatchRepository;
@@ -134,22 +137,43 @@ public class MapMatchingWorker {
     }
 
     private void handleSettingsChanged(String key) {
-        if (configuration.isEnabled() && configuration.backfillEnabled()) {
-            if (affectsCache(key)) {
-                reconciliationRepository.restartAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
-            } else if ("map-matching.backfill.enabled".equals(key)) {
-                reconciliationRepository.enqueueAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
-            }
+        // Cache-affecting settings deliberately do not re-match history here. A changed config hash means
+        // stored results are never reused, so past trips are re-matched on demand or when an admin re-runs
+        // map matching; rewinding the scan on every save would silently queue the whole history.
+        if (configuration.isEnabled() && configuration.backfillEnabled()
+                && "map-matching.backfill.enabled".equals(key)) {
+            reconciliationRepository.enqueueAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
         }
         wake("setting changed: " + key);
     }
 
-    public long rebuildHistoricalQueue() {
+    /**
+     * Re-runs map matching over the stored history.
+     *
+     * <p>{@link MapMatchingRebuildMode#UNSUCCESSFUL} re-queues only the targets that never produced a
+     * usable match and keeps already matched routes as they are. {@link MapMatchingRebuildMode#ALL}
+     * deletes every stored result so the whole history is matched again, for example after the Valhalla
+     * map data changed. Both restart the historical scan so trips are discovered again.</p>
+     */
+    public MapMatchingRebuildResult rebuildMapMatching(MapMatchingRebuildMode mode) {
+        MapMatchingRebuildMode effectiveMode = mode == null ? MapMatchingRebuildMode.UNSUCCESSFUL : mode;
+        long affectedTargets;
+        long purgedDetachedTargets = 0;
+        if (effectiveMode == MapMatchingRebuildMode.ALL) {
+            affectedTargets = targetRepository.deleteAllTargets();
+        } else {
+            MapMatchingTargetReset reset = targetRepository.resetTerminalTargets();
+            affectedTargets = reset.requeuedTargets();
+            purgedDetachedTargets = reset.purgedDetachedTargets();
+        }
+        log.info("Map-matching re-run ({}) affected {} cached targets and purged {} detached rows",
+                effectiveMode, affectedTargets, purgedDetachedTargets);
+
         long queuedUsers = reconciliationRepository.restartAllTripOwners(MapMatchingSource.HISTORICAL, Instant.now());
         if (queuedUsers > 0) {
-            wake("admin historical rebuild");
+            wake("admin map matching re-run");
         }
-        return queuedUsers;
+        return new MapMatchingRebuildResult(effectiveMode, queuedUsers, affectedTargets, purgedDetachedTargets);
     }
 
     @Scheduled(every = "${geopulse.timeline.map-matching.worker.interval:60s}", delayed = "20s",
@@ -324,17 +348,6 @@ public class MapMatchingWorker {
         if (first == null) return second;
         if (second == null) return first;
         return first.isAfter(second) ? first : second;
-    }
-
-    private boolean affectsCache(String key) {
-        return key != null && (key.equals("map-matching.provider")
-                || key.equals("map-matching.valhalla.base-url")
-                || key.equals("map-matching.max-input-points")
-                || key.equals("map-matching.max-trip-duration-hours")
-                || key.equals("map-matching.quality.min-raw-distance-meters")
-                || key.equals("map-matching.quality.min-distance-coverage-percent")
-                || key.equals("map-matching.quality.max-discontinuity-percent")
-                || key.equals("map-matching.quality.max-short-discontinuity-meters"));
     }
 
     private void recordMetrics(long started, String result) {

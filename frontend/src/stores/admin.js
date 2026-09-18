@@ -139,8 +139,8 @@ const actions = {
         return apiService.post('/admin/settings/map-matching/valhalla/connection-tests');
     },
 
-    async rebuildMapMatchingHistoricalQueue() {
-        return apiService.post('/admin/settings/map-matching/rebuilds');
+    async rebuildMapMatching(mode) {
+        return apiService.post(`/admin/settings/map-matching/rebuilds?mode=${mode}`);
     },
 
     async testPanoramaxConnection() {

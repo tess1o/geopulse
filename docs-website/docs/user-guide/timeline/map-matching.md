@@ -55,6 +55,11 @@ Some trips may still appear as raw GPS paths:
 In these cases, GeoPulse keeps the raw GPS path visible. It does not hide the trip or replace it with a low-confidence
 route.
 
+To see what happened to a specific trip, right-click the trip card (long-press on a touch device) and choose **Map
+matching details...**. It confirms when a route was refined and when that happened, tells you if the trip is still
+waiting to be matched, or explains why it was not — for example that the routing engine has no map data for the area or
+that the trip type is not supported.
+
 ## Future Trips
 
 New trips may appear as raw GPS paths first. If automatic matching is enabled by your administrator, GeoPulse waits until
@@ -71,6 +76,10 @@ so GeoPulse gradually prepares matched routes for past trips.
 
 If backfill has not reached a trip yet, opening a timeline page may still queue visible trips for matching on demand,
 depending on your instance settings. While this happens, the raw path stays visible so the map remains usable.
+
+When your administrator changes how matching works — for example the Valhalla server or the matching limits — past trips
+keep the routes they already have. Each trip is matched again the next time you view it, and an administrator can update
+all past trips at once instead of waiting for them to come up.
 
 ## Raw GPS Still Matters
 

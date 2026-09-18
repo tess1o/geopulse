@@ -16,6 +16,8 @@ public class MapMatchingTripResolutionDTO {
     private MessageDescriptor error;
     private String source;
     private Instant retryAt;
+    /** When the last attempt finished, for both successful and failed matches; null while queued or processing. */
+    private Instant completedAt;
     private Integer pollAfterMs;
     private List<List<MapMatchedPointDTO>> segments;
 }

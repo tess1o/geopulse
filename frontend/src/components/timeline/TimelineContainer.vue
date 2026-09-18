@@ -140,6 +140,7 @@
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               :read-only="readOnly"
+              :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -147,6 +148,7 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
             <TripCard
@@ -158,6 +160,7 @@
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
               :read-only="readOnly"
+              :map-matching-info="mapMatchingByTripId.get(Number(slotProps.item.id)) || null"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
@@ -165,6 +168,7 @@
               @split-trip-with-stay="handleSplitTripWithStay"
               @photo-show-on-map="handlePhotoShowOnMap"
               @note-saved="handleNoteSaved"
+              @show-map-matching-details="handleShowMapMatchingDetails"
             />
 
             <!-- Data Gap Cards -->
@@ -219,6 +223,13 @@
       @split="handleTripSplitSaved"
       @close="handleCloseTripSplitDialog"
     />
+
+    <TripMapMatchingDetailsDialog
+      :visible="mapMatchingDetailsVisible"
+      :trip="selectedTripForMapMatchingDetails"
+      :info="selectedMapMatchingInfo"
+      @close="handleCloseMapMatchingDetails"
+    />
   </div>
 </template>
 
@@ -257,6 +268,9 @@ const DataGapToStayDialog = defineAsyncComponent(() =>
 const TripStaySplitDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripStaySplitDialog.vue')
 )
+const TripMapMatchingDetailsDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripMapMatchingDetailsDialog.vue')
+)
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
@@ -276,6 +290,9 @@ const dataGapConversionDialogVisible = ref(false)
 const selectedDataGapForConversion = ref(null)
 const tripSplitDialogVisible = ref(false)
 const selectedTripForSplit = ref(null)
+const mapMatchingDetailsVisible = ref(false)
+const selectedTripForMapMatchingDetails = ref(null)
+const selectedMapMatchingInfo = ref(null)
 const timelineContainerRef = ref(null)
 
 // Props
@@ -323,6 +340,10 @@ const props = defineProps({
   showTimelineLabels: {
     type: Boolean,
     default: true
+  },
+  mapMatchingByTripId: {
+    type: Object,
+    default: () => new Map()
   }
 })
 
@@ -614,6 +635,18 @@ const handleShowClassification = (tripItem) => {
 const handleCloseClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
+}
+
+const handleShowMapMatchingDetails = (tripItem) => {
+  selectedTripForMapMatchingDetails.value = tripItem
+  selectedMapMatchingInfo.value = props.mapMatchingByTripId.get(Number(tripItem?.id)) || null
+  mapMatchingDetailsVisible.value = true
+}
+
+const handleCloseMapMatchingDetails = () => {
+  mapMatchingDetailsVisible.value = false
+  selectedTripForMapMatchingDetails.value = null
+  selectedMapMatchingInfo.value = null
 }
 
 const handleQuickEditMovementType = (tripItem) => {

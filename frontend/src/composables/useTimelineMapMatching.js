@@ -39,6 +39,25 @@ export function useTimelineMapMatching({
     return result
   })
 
+  // What map matching did with each visible trip, keyed by trip id. Unlike the matched segments this is
+  // not gated behind pageSettled: the state is stable once a trip leaves the queue, and the trip card
+  // only reads it when the user opens the context menu. UNAVAILABLE is left out - it only shows up while
+  // the feature is being switched off, and there is nothing useful to tell the user about it.
+  const mapMatchingByTripId = computed(() => {
+    const result = new Map()
+    const trips = Array.isArray(resolution.value?.trips) ? resolution.value.trips : []
+    trips.forEach((trip) => {
+      if (!trip?.status || trip.status === 'UNAVAILABLE') return
+      result.set(Number(trip.tripId), {
+        status: trip.status,
+        targetId: trip.targetId ?? null,
+        error: trip.error ?? null,
+        completedAt: trip.completedAt ?? null
+      })
+    })
+    return result
+  })
+
   const pageSettled = computed(() => {
     if (!isEnabled() || resolving.value || !resolution.value) {
       return false
@@ -196,6 +215,7 @@ export function useTimelineMapMatching({
     statusText,
     activePathData,
     matchedTripIds,
+    mapMatchingByTripId,
     resolve,
     reset,
     stop

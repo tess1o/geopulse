@@ -482,6 +482,7 @@ public class MapMatchingService {
                         : message("mapMatching.error.failed", target.getLastError()))
                 .source(target.getSource())
                 .retryAt(target.getStatus() == MapMatchingStatus.PENDING ? target.getNextAttemptAt() : null)
+                .completedAt(target.getCompletedAt())
                 .pollAfterMs(recommendedPollDelay(target))
                 .segments(segments)
                 .build();

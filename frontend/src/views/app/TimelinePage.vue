@@ -80,6 +80,7 @@
               :timelineDataLoading="timelineDataLoading"
               :dateRange="dateRange"
               :read-only="demoReadOnly"
+              :map-matching-by-trip-id="mapMatchingByTripId"
               @timeline-item-click="handleTimelineItemClick"
               @tag-clicked="handleTagClicked"
               @rename-stay="handleRenameStay"
@@ -347,6 +348,7 @@ const visibleTrips = computed(() => {
 const {
   activePathData,
   matchedTripIds,
+  mapMatchingByTripId,
   statusText: mapMatchingStatusText,
   resolve: resolveMapMatching,
   reset: resetMapMatching

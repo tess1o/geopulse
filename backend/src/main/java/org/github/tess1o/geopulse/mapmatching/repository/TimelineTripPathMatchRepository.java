@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingStatus;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingSource;
+import org.github.tess1o.geopulse.mapmatching.model.MapMatchingTargetReset;
 import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -206,6 +207,52 @@ public class TimelineTripPathMatchRepository implements PanacheRepository<Timeli
             target.setStatus(MapMatchingStatus.PENDING);
             target.setNextAttemptAt(Instant.now().plusSeconds(delayMinutes * 60));
         });
+    }
+
+    /**
+     * Re-queues every target that never produced a usable match so a rebuild genuinely re-attempts it.
+     *
+     * <p>Without this, a trip that once failed (for example while Valhalla was unavailable or returned
+     * HTTP 400) kept its terminal verdict forever: {@link #findCurrent} has no status predicate, so a
+     * rebuild only re-attached the same FAILED/SKIPPED row instead of matching it again.</p>
+     *
+     * <p>Matches are left untouched, since re-matching correct geometry only spends Valhalla calls.
+     * Detached rows ({@code trip_id IS NULL}) are deleted rather than re-queued: they can never be
+     * claimed, and their stale verdict would otherwise be re-attached to a regenerated trip.</p>
+     */
+    @Transactional
+    public MapMatchingTargetReset resetTerminalTargets() {
+        long requeued = entityManager.createNativeQuery("""
+                UPDATE timeline_trip_path_matches
+                SET status = 'PENDING',
+                    attempts = 0,
+                    next_attempt_at = now(),
+                    locked_at = NULL,
+                    completed_at = NULL,
+                    last_error = NULL,
+                    matched_segments_json = NULL,
+                    updated_at = now()
+                WHERE status IN ('FAILED', 'SKIPPED')
+                  AND trip_id IS NOT NULL
+                """).executeUpdate();
+
+        long purgedDetached = entityManager.createNativeQuery("""
+                DELETE FROM timeline_trip_path_matches
+                WHERE status IN ('FAILED', 'SKIPPED')
+                  AND trip_id IS NULL
+                """).executeUpdate();
+
+        return new MapMatchingTargetReset(requeued, purgedDetached);
+    }
+
+    /**
+     * Removes every stored map-matching result, successful matches included, so the next backfill
+     * pass matches the whole history from scratch. Named around {@code deleteAll} to avoid shadowing
+     * {@link PanacheRepository#deleteAll()}.
+     */
+    @Transactional
+    public long deleteAllTargets() {
+        return entityManager.createNativeQuery("DELETE FROM timeline_trip_path_matches").executeUpdate();
     }
 
     @Transactional
