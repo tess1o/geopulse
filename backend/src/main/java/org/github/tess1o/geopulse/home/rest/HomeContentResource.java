@@ -8,7 +8,7 @@ import org.github.tess1o.geopulse.home.model.HomeContentResponse;
 import org.github.tess1o.geopulse.home.service.HomeContentService;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/home/content")
+@Path("/home-content")
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "User: Home", description = "Read content used by the home page.")
 public class HomeContentResource {

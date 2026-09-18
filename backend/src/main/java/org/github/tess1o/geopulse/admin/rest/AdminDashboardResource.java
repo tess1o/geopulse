@@ -30,7 +30,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 /**
  * REST resource for admin dashboard statistics.
  */
-@Path("/api/admin/dashboard")
+@Path("/admin/dashboard")
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
 @Slf4j
@@ -60,7 +60,6 @@ public class AdminDashboardResource {
      * @return Dashboard statistics including user and GPS metrics
      */
     @GET
-    @Path("/stats")
     public AdminDashboardResponse getDashboardStats() {
         log.debug("Metrics status - User: {}, GPS: {}", userMetrics.isEnabled(), gpsPointsMetrics.isEnabled());
         AdminDashboardResponse.BackupHealth backup = backupHealth();

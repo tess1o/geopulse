@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.ai;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.ai.client.dto.*;
 import org.github.tess1o.geopulse.ai.model.*;
+import org.github.tess1o.geopulse.ai.rest.AIChatResource;
 import org.github.tess1o.geopulse.ai.rest.AIResource;
 import org.github.tess1o.geopulse.ai.service.AIChatService;
 import org.github.tess1o.geopulse.ai.service.GeoPulseOpenAIClient;
@@ -25,9 +26,9 @@ import org.github.tess1o.geopulse.ai.service.GeoPulseOpenAIClient;
                 AIFriendLiveLocationDTO.class,
 
                 // REST API DTOs
-                AIResource.ChatRequest.class,
-                AIResource.ChatResponse.class,
-                AIResource.DefaultSystemMessageResponse.class,
+                AIChatResource.ChatRequest.class,
+                AIChatResource.ChatResponse.class,
+                AIChatResource.DefaultSystemMessageResponse.class,
                 AIResource.TestConnectionRequest.class,
 
                 // Services

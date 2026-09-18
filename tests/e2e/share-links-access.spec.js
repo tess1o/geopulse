@@ -105,7 +105,7 @@ test.describe('Shared Links Public Access', () => {
       let locationRequests = 0;
 
       page.on('request', request => {
-        if (new URL(request.url()).pathname.endsWith(`/api/shared/${link.id}/location`)) locationRequests++;
+        if (new URL(request.url()).pathname.endsWith(`/api/v1/public/share-links/${link.id}/location`)) locationRequests++;
       });
 
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -345,7 +345,7 @@ test.describe('Shared Links Public Access', () => {
       let timelineRequests = 0;
 
       page.on('request', request => {
-        if (new URL(request.url()).pathname.endsWith(`/api/shared/${link.id}/timeline`)) timelineRequests++;
+        if (new URL(request.url()).pathname.endsWith(`/api/v1/public/share-links/${link.id}/timeline`)) timelineRequests++;
       });
 
       await sharedTimelinePage.navigateToSharedTimeline(link.id);

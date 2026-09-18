@@ -24,13 +24,14 @@ import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_INVITATION;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/admin/invitations")
+@Path("/admin/invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -81,14 +82,10 @@ public class AdminInvitationResource {
      */
     @POST
     @RolesAllowed(SecurityRoles.ADMIN)
-    public RestResponse<CreateInvitationResponse> createInvitation(
-            @Valid CreateInvitationRequest createRequest,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp
-    ) {
+    public RestResponse<CreateInvitationResponse> createInvitation(@Valid CreateInvitationRequest createRequest) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
 
             UserInvitationEntity invitation = invitationService.createInvitation(
                     adminUserId,
@@ -115,14 +112,10 @@ public class AdminInvitationResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void revokeInvitation(
-            @PathParam("id") UUID invitationId,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp
-    ) {
+    public void revokeInvitation(@PathParam("id") UUID invitationId) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
 
             invitationService.revokeInvitation(invitationId, adminUserId, ipAddress);
         } catch (IllegalArgumentException e) {

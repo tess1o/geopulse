@@ -27,7 +27,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
  * Returns all named locations visited during the requested period together with
  * their total dwell time and visit count so the frontend can render a heatmap.
  */
-@Path("/api/digest/heatmap")
+@Path("/digest-heatmaps")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -121,8 +121,8 @@ public class DigestHeatmapResource {
     @Path("/range")
     @APIResponse(responseCode = "200", description = "Heatmap range retrieved")
     @APIResponse(responseCode = "400", description = "Invalid heatmap range or layer")
-    public List<HeatmapDataPoint> getRangeHeatmap(@QueryParam("startTime") String startTime,
-                                                   @QueryParam("endTime") String endTime,
+    public List<HeatmapDataPoint> getRangeHeatmap(@QueryParam("from") String startTime,
+                                                   @QueryParam("to") String endTime,
                                                    @QueryParam("layer") String layer) {
 
         var user = currentUserService.getCurrentUser();

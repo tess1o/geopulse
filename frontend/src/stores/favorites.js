@@ -143,7 +143,7 @@ export const useFavoritesStore = defineStore('favorites', {
         async addPointToFavorites(name, lat, lon) {
             this.error = null
             try {
-                const response = await apiService.post(`/favorites/point`, {
+                const response = await apiService.post(`/favorites/points`, {
                     name,
                     lat,
                     lon
@@ -161,7 +161,7 @@ export const useFavoritesStore = defineStore('favorites', {
         async addAreaToFavorites(name, northEastLat, northEastLon, southWestLat, southWestLon) {
             this.error = null
             try {
-                const response = await apiService.post(`/favorites/area`, {
+                const response = await apiService.post(`/favorites/areas`, {
                     name,
                     northEastLat,
                     northEastLon,
@@ -302,7 +302,7 @@ export const useFavoritesStore = defineStore('favorites', {
         async bulkUpdateFavorites(favoriteIds, updateCity, city, updateCountry, country) {
             this.error = null
             try {
-                const response = await apiService.put('/favorites/bulk-update', {
+                const response = await apiService.patch('/favorites/bulk-update', {
                     favoriteIds,
                     updateCity,
                     city,

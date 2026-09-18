@@ -50,7 +50,7 @@ describe('TimelinePhotoPreviewTrigger', () => {
     const photo = {
       id: 'photo-1',
       originalFileName: 'Lunch.jpg',
-      thumbnailUrl: '/users/me/immich/photos/photo-1/thumbnail'
+      thumbnailUrl: '/integrations/immich/photos/photo-1/thumbnail'
     }
     getPhotoThumbnailBlobUrl.mockResolvedValue('blob:photo-1')
 
@@ -90,7 +90,7 @@ describe('TimelinePhotoPreviewTrigger', () => {
     const wrapper = mountTrigger({
       photos: [{
         id: 'photo-1',
-        thumbnailUrl: '/users/me/immich/photos/photo-1/thumbnail'
+        thumbnailUrl: '/integrations/immich/photos/photo-1/thumbnail'
       }]
     })
     await flushPromises()

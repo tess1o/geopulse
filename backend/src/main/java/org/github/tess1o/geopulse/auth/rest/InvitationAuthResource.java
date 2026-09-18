@@ -24,7 +24,7 @@ import org.jboss.resteasy.reactive.RestResponse;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/auth/invitation")
+@Path("/registration-invitations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @PermitAll
@@ -45,7 +45,7 @@ public class InvitationAuthResource {
      * Validate an invitation token (public endpoint)
      */
     @GET
-    @Path("/{token}/validate")
+    @Path("/{token}")
     public ValidateInvitationResponse validateToken(@PathParam("token") String token) {
         try {
             UserInvitationEntity invitation = invitationService.validateToken(token);
@@ -69,11 +69,13 @@ public class InvitationAuthResource {
      * Register a new user via invitation (public endpoint, bypasses registration checks)
      */
     @POST
-    @Path("/register")
-    public RestResponse<UserResponse> registerViaInvitation(@Valid InvitationRegisterRequest request) {
+    @Path("/{token}/registrations")
+    public RestResponse<UserResponse> registerViaInvitation(
+            @PathParam("token") String token,
+            @Valid InvitationRegisterRequest request) {
         try {
             // Validate the invitation token first
-            UserInvitationEntity invitation = invitationService.validateToken(request.getToken());
+            UserInvitationEntity invitation = invitationService.validateToken(token);
 
             if (!invitation.isValid()) {
                 throw problem(INVALID_INVITATION, getStatusMessage(invitation).fallback());
@@ -81,7 +83,7 @@ public class InvitationAuthResource {
 
             // Register the user (this bypasses registration enabled checks)
             UserEntity user = userService.registerUserViaInvitation(
-                    request.getToken(),
+                    token,
                     request.getEmail(),
                     request.getPassword(),
                     request.getFullName(),
@@ -89,7 +91,7 @@ public class InvitationAuthResource {
             );
 
             // Mark invitation as used
-            invitationService.markAsUsed(request.getToken(), user.getId());
+            invitationService.markAsUsed(token, user.getId());
 
             UserResponse response = userMapper.toResponse(user);
             return RestResponse.status(Response.Status.CREATED, response);

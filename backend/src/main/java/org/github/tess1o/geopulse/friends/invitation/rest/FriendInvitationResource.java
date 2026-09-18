@@ -7,9 +7,9 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -40,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATI
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_INVITATION;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/friends/invitations")
+@Path("/friend-invitations")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -91,22 +91,22 @@ public class FriendInvitationResource {
         return friendInvitationService.getSentInvitations(currentUserService.getCurrentUserId());
     }
 
-    @PUT
+    @POST
     @Path("/{invitationId}/accept")
     @Transactional
     public FriendInvitationDTO acceptInvitation(@PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::acceptInvitation);
     }
 
-    @PUT
+    @POST
     @Path("/{invitationId}/reject")
     @Transactional
     public FriendInvitationDTO rejectInvitation(@PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::rejectInvitation);
     }
 
-    @PUT
-    @Path("/{invitationId}/cancel")
+    @DELETE
+    @Path("/{invitationId}")
     @Transactional
     public FriendInvitationDTO cancelInvitation(@PathParam("invitationId") Long invitationId) {
         return handleInvitation(invitationId, friendInvitationService::cancelInvitation);

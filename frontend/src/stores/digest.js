@@ -67,7 +67,7 @@ export const useDigestStore = defineStore('digest', {
                 this.setLoading(true)
                 this.clearError()
 
-                const digestData = await apiService.get('/digest/monthly', {
+                const digestData = await apiService.get('/digests/monthly', {
                     year,
                     month
                 })
@@ -98,7 +98,7 @@ export const useDigestStore = defineStore('digest', {
                 this.setLoading(true)
                 this.clearError()
 
-                const digestData = await apiService.get('/digest/yearly', {
+                const digestData = await apiService.get('/digests/yearly', {
                     year
                 })
 
@@ -161,8 +161,8 @@ export const useDigestStore = defineStore('digest', {
                     : { year, layer }
 
                 const endpoint = viewMode === 'monthly'
-                    ? '/digest/heatmap/monthly'
-                    : '/digest/heatmap/yearly'
+                    ? '/digest-heatmaps/monthly'
+                    : '/digest-heatmaps/yearly'
 
                 const data = await apiService.get(endpoint, params)
                 this.heatmapData[key] = data
@@ -205,9 +205,9 @@ export const useDigestStore = defineStore('digest', {
                     this.heatmapError = null
                 }
 
-                const data = await apiService.get('/digest/heatmap/range', {
-                    startTime,
-                    endTime,
+                const data = await apiService.get('/digest-heatmaps/range', {
+                    from: startTime,
+                    to: endTime,
                     layer
                 })
                 this.heatmapData[key] = data
@@ -228,7 +228,7 @@ export const useDigestStore = defineStore('digest', {
         async downloadPdf(params) {
             this.error = null
             try {
-                return await apiService.download('/digest/pdf', params)
+                return await apiService.download('/digests/pdf', params)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to export digest PDF')
                 throw this.error

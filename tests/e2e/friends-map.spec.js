@@ -405,7 +405,7 @@ test.describe('Friends Map Coverage', () => {
     const friendCoordinatesHistory = []
     let trackedFriendId = null
 
-    await page.route('**/api/friends**', async (route) => {
+    await page.route('**/api/v1/friends**', async (route) => {
       const request = route.request()
       const pathname = new URL(request.url()).pathname
       const isFriendsEndpoint = /\/api\/friends\/?$/.test(pathname)

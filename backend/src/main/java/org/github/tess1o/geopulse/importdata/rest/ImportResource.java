@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportJobResponse;
 import org.github.tess1o.geopulse.importdata.model.ImportJobsResponse;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
+import org.github.tess1o.geopulse.shared.api.SliceResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
  * REST resource for managing import jobs.
  * File uploads are handled by ImportUploadResource.
  */
-@Path("/api/import")
+@Path("/imports")
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Tag(name = "User: Import and Export", description = "Read, monitor, and delete import jobs.")
@@ -35,25 +36,24 @@ public class ImportResource {
     ImportJobService importJobService;
 
     @GET
-    @Path("/jobs")
-    public ImportJobsResponse getImportJobs(@QueryParam("limit") @DefaultValue("10") int limit,
-                                             @QueryParam("offset") @DefaultValue("0") int offset) {
-        if (limit < 1 || limit > 100) {
+    public SliceResponse<ImportJobResponse> getImportJobs(@QueryParam("page") @DefaultValue("0") int page,
+                                                          @QueryParam("size") @DefaultValue("10") int size) {
+        if (size < 1 || size > 100) {
             throw problem(INVALID_LIMIT, "Limit must be between 1 and 100", Map.of("min", 1, "max", 100));
         }
-        if (offset < 0) {
-            throw problem(INVALID_PAGE, "Offset must not be negative", Map.of("min", 0));
+        if (page < 0) {
+            throw problem(INVALID_PAGE, "Page must not be negative", Map.of("min", 0));
         }
 
         UUID userId = currentUserService.getCurrentUserId();
-        List<ImportJob> jobs = importJobService.getUserImportJobs(userId, limit + 1, offset);
-        boolean hasNext = jobs.size() > limit;
-        List<ImportJobResponse> items = jobs.stream().limit(limit).map(ImportJobResponse::from).toList();
-        return new ImportJobsResponse(items, limit, offset, hasNext);
+        List<ImportJob> jobs = importJobService.getUserImportJobs(userId, size + 1, page * size);
+        boolean hasNext = jobs.size() > size;
+        List<ImportJobResponse> items = jobs.stream().limit(size).map(ImportJobResponse::from).toList();
+        return new SliceResponse<>(items, page, size, hasNext);
     }
 
     @GET
-    @Path("/status/{importJobId}")
+    @Path("/{importJobId}")
     public ImportJobResponse getImportStatus(@PathParam("importJobId") UUID importJobId) {
         ImportJob job = importJobService.getImportJob(importJobId, currentUserService.getCurrentUserId());
         if (job == null) {
@@ -64,7 +64,7 @@ public class ImportResource {
     }
 
     @DELETE
-    @Path("/jobs/{importJobId}")
+    @Path("/{importJobId}")
     public void deleteImportJob(@PathParam("importJobId") UUID importJobId) {
         if (!importJobService.deleteImportJob(importJobId, currentUserService.getCurrentUserId())) {
             throw problem(IMPORT_JOB_NOT_FOUND, "Import job not found",

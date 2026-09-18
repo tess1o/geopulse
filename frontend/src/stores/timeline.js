@@ -136,9 +136,9 @@ export const useTimelineStore = defineStore('timeline', {
         async fetchMovementTimeline(startTime, endTime) {
             this.error = null
             try {
-                const timeline = await apiService.get('/streaming-timeline', {
-                    startTime: startTime,
-                    endTime: endTime
+                const timeline = await apiService.get('/timeline', {
+                    from: startTime,
+                    to: endTime
                 })
 
                 const normalizedStays = timeline.stays.map(stay => ({
@@ -174,8 +174,8 @@ export const useTimelineStore = defineStore('timeline', {
             this.weatherError = null
             try {
                 const payload = await apiService.get('/weather/samples', {
-                    startTime,
-                    endTime,
+                    from: startTime,
+                    to: endTime,
                     minLat: bounds.minLat,
                     minLon: bounds.minLon,
                     maxLat: bounds.maxLat,
@@ -219,7 +219,7 @@ export const useTimelineStore = defineStore('timeline', {
         async regenerateAllTimeline() {
             this.error = null
             try {
-                const result = await apiService.post('/streaming-timeline/regenerate-all')
+                const result = await apiService.post('/timeline/jobs')
                 this.clearTimelineData()
                 return result.jobId
             } catch (error) {
@@ -231,7 +231,7 @@ export const useTimelineStore = defineStore('timeline', {
         // Get job progress by job ID
         async getJobProgress(jobId) {
             try {
-                return await apiService.get(`/streaming-timeline/jobs/${jobId}`)
+                return await apiService.get(`/timeline/jobs/${jobId}`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load timeline job')
                 throw this.error
@@ -241,7 +241,7 @@ export const useTimelineStore = defineStore('timeline', {
         // Get active job for current user (if any)
         async getUserActiveJob() {
             try {
-                return await apiService.get('/streaming-timeline/jobs/active')
+                return await apiService.get('/timeline/jobs/current')
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to check active timeline jobs')
                 throw this.error
@@ -251,7 +251,7 @@ export const useTimelineStore = defineStore('timeline', {
         // Get historical jobs for current user
         async getUserHistoryJobs() {
             try {
-                return await apiService.get('/streaming-timeline/jobs/history')
+                return await apiService.get('/timeline/jobs/history')
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load timeline job history')
                 throw this.error
@@ -260,7 +260,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async updateTripMovementType(tripId, movementType) {
             try {
-                const updatedTrip = await apiService.put(`/streaming-timeline/trips/${tripId}/movement-type`, {
+                const updatedTrip = await apiService.put(`/trips/${tripId}/timeline/movement-type`, {
                     movementType
                 })
                 if (updatedTrip) {
@@ -275,7 +275,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async resetTripMovementType(tripId) {
             try {
-                const updatedTrip = await apiService.delete(`/streaming-timeline/trips/${tripId}/movement-type`)
+                const updatedTrip = await apiService.delete(`/trips/${tripId}/timeline/movement-type`)
                 if (updatedTrip) {
                     this.applyTripMovementUpdate(updatedTrip)
                 }
@@ -288,7 +288,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async getDataGapStayConversionPreview(gapId) {
             try {
-                return await apiService.get(`/streaming-timeline/data-gaps/${gapId}/stay-conversion-preview`)
+                return await apiService.get(`/timeline/data-gaps/${gapId}/stay-conversion-preview`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to preview data gap conversion')
                 throw this.error
@@ -297,7 +297,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async convertDataGapToStay(gapId, payload = {}) {
             try {
-                return await apiService.put(`/streaming-timeline/data-gaps/${gapId}/stay-conversion`, payload)
+                return await apiService.put(`/timeline/data-gaps/${gapId}/stay-conversion`, payload)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to convert data gap')
                 throw this.error
@@ -306,7 +306,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async resetDataGapStayOverride(overrideId) {
             try {
-                return await apiService.delete(`/streaming-timeline/data-gap-overrides/${overrideId}/stay-conversion`)
+                return await apiService.delete(`/timeline/data-gap-overrides/${overrideId}/stay-conversion`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to reset data gap override')
                 throw this.error
@@ -315,9 +315,9 @@ export const useTimelineStore = defineStore('timeline', {
 
         async fetchTripPath(startTime, endTime, options = {}) {
             try {
-                const params = { startTime, endTime }
+                const params = { from: startTime, to: endTime }
                 if (options.simplify === false) params.simplify = false
-                return await apiService.get('/gps/path', params)
+                return await apiService.get('/gps/points/path', params)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load trip path')
                 throw this.error
@@ -326,7 +326,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async previewTripStaySplit(tripId, payload) {
             try {
-                return await apiService.post(`/streaming-timeline/trips/${tripId}/stay-split/preview`, payload)
+                return await apiService.post(`/trips/${tripId}/timeline/stay-split/preview`, payload)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to preview trip split')
                 throw this.error
@@ -335,7 +335,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async splitTripWithStay(tripId, payload) {
             try {
-                return await apiService.put(`/streaming-timeline/trips/${tripId}/stay-split`, payload)
+                return await apiService.put(`/trips/${tripId}/timeline/stay-split`, payload)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to split trip')
                 throw this.error
@@ -344,7 +344,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async resetTripStaySplitOverride(overrideId) {
             try {
-                return await apiService.delete(`/streaming-timeline/trip-stay-split-overrides/${overrideId}`)
+                return await apiService.delete(`/timeline/stay-split-overrides/${overrideId}`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to reset trip split')
                 throw this.error
@@ -353,7 +353,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async fetchTimelineCount(startTime, endTime) {
             try {
-                return await apiService.get('/streaming-timeline/count', { startTime, endTime })
+                return await apiService.get('/timeline/count', { from: startTime, to: endTime })
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load timeline counts')
                 throw this.error
@@ -362,7 +362,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async fetchTripClassification(tripId) {
             try {
-                return await apiService.get(`/streaming-timeline/trips/${tripId}/classification`)
+                return await apiService.get(`/trips/${tripId}/timeline/classification`)
             } catch (error) {
                 this.error = normalizeApiError(error, 'Failed to load classification details')
                 throw this.error
@@ -371,7 +371,7 @@ export const useTimelineStore = defineStore('timeline', {
 
         async lookupLocation(latitude, longitude) {
             try {
-                return await apiService.get('/streaming-timeline/location-lookup', { latitude, longitude })
+                return await apiService.get('/timeline/location-lookup', { latitude, longitude })
             } catch (error) {
                 this.error = normalizeApiError(error, 'Could not check visits at this location')
                 throw this.error

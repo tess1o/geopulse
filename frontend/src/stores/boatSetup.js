@@ -22,7 +22,7 @@ export const useBoatSetupStore = defineStore('boatSetup', {
     async fetchStatus() {
       this.error = null
       try {
-        this.status = await apiService.get('/boat/setup/status')
+        this.status = await apiService.get('/trip-planning/boat-setup')
         this.currentJobId = this.status?.jobId || this.currentJobId
         return this.status
       } catch (error) {
@@ -34,7 +34,7 @@ export const useBoatSetupStore = defineStore('boatSetup', {
     async startSetup() {
       this.error = null
       try {
-        const setup = await apiService.post('/boat/setup/start')
+        const setup = await apiService.post('/trip-planning/boat-setup')
         this.currentJobId = setup?.jobId || this.currentJobId
         this.status = setup?.status || this.status
         return setup
@@ -48,7 +48,7 @@ export const useBoatSetupStore = defineStore('boatSetup', {
       if (!jobId) return this.fetchStatus()
       this.error = null
       try {
-        this.status = await apiService.get(`/boat/setup/jobs/${jobId}`)
+        this.status = await apiService.get(`/trip-planning/boat-setup/jobs/${jobId}`)
         this.currentJobId = this.status?.jobId || jobId
         return this.status
       } catch (error) {

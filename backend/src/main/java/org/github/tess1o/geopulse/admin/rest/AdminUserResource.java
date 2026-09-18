@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
@@ -29,7 +30,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 /**
  * REST resource for admin user management.
  */
-@Path("/api/admin/users")
+@Path("/admin/users")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -58,7 +59,7 @@ public class AdminUserResource {
             @QueryParam("page") @DefaultValue("0") @Min(0) int page,
             @QueryParam("size") @DefaultValue("10") @Min(1) @Max(200) int size,
             @QueryParam("sortBy") @DefaultValue("createdAt") String sortBy,
-            @QueryParam("sortDir") @DefaultValue("desc") String sortDir) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDir) {
 
         List<UserEntity> users = adminUserService.getUsers(search, page, size, sortBy, sortDir);
         long total = adminUserService.countUsers(search);
@@ -88,11 +89,7 @@ public class AdminUserResource {
     @PUT
     @Path("/{id}/status")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void updateUserStatus(
-            @PathParam("id") UUID id,
-            UpdateUserStatusRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void updateUserStatus(@PathParam("id") UUID id, UpdateUserStatusRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -104,7 +101,7 @@ public class AdminUserResource {
         adminUserService.setUserStatus(id, request.isActive());
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserStatusChange(adminId, id, request.isActive(), ipAddress);
 
     }
@@ -115,11 +112,7 @@ public class AdminUserResource {
     @PUT
     @Path("/{id}/role")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void updateUserRole(
-            @PathParam("id") UUID id,
-            UpdateUserRoleRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void updateUserRole(@PathParam("id") UUID id, UpdateUserRoleRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -135,7 +128,7 @@ public class AdminUserResource {
         }
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserRoleChange(adminId, id, oldRole, request.getRole().name(), ipAddress);
 
     }
@@ -144,19 +137,16 @@ public class AdminUserResource {
      * Reset user password.
      */
     @POST
-    @Path("/{id}/reset-password")
+    @Path("/{id}/password-resets")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public ResetPasswordResponse resetPassword(
-            @PathParam("id") UUID id,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public ResetPasswordResponse resetPassword(@PathParam("id") UUID id) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
         String tempPassword = adminUserService.resetPassword(id);
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logPasswordReset(adminId, id, ipAddress);
 
         return ResetPasswordResponse.builder()
@@ -170,10 +160,7 @@ public class AdminUserResource {
     @DELETE
     @Path("/{id}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void deleteUser(
-            @PathParam("id") UUID id,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void deleteUser(@PathParam("id") UUID id) {
 
         UUID adminId = currentUserService.getCurrentUserId();
 
@@ -194,7 +181,7 @@ public class AdminUserResource {
         }
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logUserDeleted(adminId, id, userEmail, ipAddress);
 
     }

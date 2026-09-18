@@ -61,8 +61,9 @@ class AdminFullBackupResourceTest {
         when(maintenanceService.currentOperationId()).thenReturn("backup-operation");
         when(backupService.writeLocalBackup()).thenReturn(fileName);
         when(backupService.resolveLocalBackup(fileName)).thenReturn(file);
+        when(resource.httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.10");
 
-        Response response = resource.downloadFullBackup("203.0.113.10", null);
+        Response response = resource.downloadFullBackup();
 
         assertThat(response.getStatus()).isEqualTo(200);
         verify(maintenanceService).finishSuccess(fileName, Files.size(file));
@@ -81,11 +82,11 @@ class AdminFullBackupResourceTest {
 
     @Test
     void rejectsNullLocalRestoreRequestAndReportsConcurrentOperationAsConflict() {
-        assertThatThrownBy(() -> resource.restoreLocal(null, null, null))
+        assertThatThrownBy(() -> resource.restoreLocal(null))
                 .isInstanceOf(HttpProblem.class)
                 .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(400));
         when(maintenanceService.tryStartBackup("manual-local")).thenReturn(false);
-        assertThatThrownBy(() -> resource.runBackupNow(null, null))
+        assertThatThrownBy(() -> resource.runBackupNow())
                 .isInstanceOf(HttpProblem.class)
                 .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(409));
     }
@@ -95,7 +96,7 @@ class AdminFullBackupResourceTest {
         when(maintenanceService.tryStartBackup("manual-local")).thenReturn(true);
         when(backupService.writeLocalBackup()).thenThrow(new IOException("raw pg_dump stderr containing secret-value"));
 
-        assertThatThrownBy(() -> resource.runBackupNow(null, null))
+        assertThatThrownBy(() -> resource.runBackupNow())
                 .isInstanceOf(HttpProblem.class)
                 .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
                         .doesNotContain("secret-value", "stderr")

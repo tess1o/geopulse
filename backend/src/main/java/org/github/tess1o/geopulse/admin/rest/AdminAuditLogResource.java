@@ -26,7 +26,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 /**
  * REST resource for admin audit log viewing.
  */
-@Path("/api/admin/audit-logs")
+@Path("/admin/audit-logs")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")

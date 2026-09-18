@@ -60,7 +60,7 @@ const findTelemetryRowByKey = async (page, keyToFind) => {
 };
 
 const isGpsDateRangeRequest = (request) => {
-    if (!request.url().includes('/api/gps')) {
+    if (!request.url().includes('/api/v1/gps/points')) {
         return false;
     }
 
@@ -988,7 +988,7 @@ test.describe('GPS Data Page', () => {
 
             // Track export API call for this filtered export
             const exportResponsePromise = page.waitForResponse(response => {
-                if (!response.url().includes('/api/gps/export')) {
+                if (!response.url().includes('/api/v1/gps/points/exports')) {
                     return false;
                 }
 

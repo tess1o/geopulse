@@ -20,7 +20,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
-@Path("/api/admin/weather")
+@Path("/admin/weather")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped

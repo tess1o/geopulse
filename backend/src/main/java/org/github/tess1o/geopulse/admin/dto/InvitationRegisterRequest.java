@@ -7,9 +7,6 @@ import lombok.Data;
 
 @Data
 public class InvitationRegisterRequest {
-    @NotBlank(message = "Token is required")
-    private String token;
-
     @Email(message = "Invalid email format")
     @NotBlank(message = "Email is required")
     @Size(max = 254)

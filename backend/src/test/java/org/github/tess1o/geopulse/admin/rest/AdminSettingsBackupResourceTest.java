@@ -72,7 +72,9 @@ class AdminSettingsBackupResourceTest {
                         .build()))
                 .build());
 
-        Response response = resource.exportSettingsBackup("203.0.113.7", null);
+        when(resource.httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.7");
+
+        Response response = resource.exportSettingsBackup();
 
         assertThat(response.getStatus()).isEqualTo(200);
         ArgumentCaptor<Map<String, Object>> detailsCaptor = ArgumentCaptor.forClass(Map.class);

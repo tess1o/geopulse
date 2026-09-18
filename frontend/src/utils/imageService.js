@@ -6,7 +6,7 @@ import apiService from './apiService'
 export const imageService = {
   /**
    * Load an authenticated image as a blob URL
-   * @param {string} endpoint - The API endpoint path (e.g., '/users/me/immich/photos/id/thumbnail')
+   * @param {string} endpoint - The API endpoint path (e.g., '/integrations/immich/photos/id/thumbnail')
    * @returns {Promise<string>} - Blob URL for the image
    */
   async loadAuthenticatedImage(endpoint) {

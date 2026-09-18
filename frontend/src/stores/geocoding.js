@@ -97,7 +97,7 @@ export const useGeocodingStore = defineStore('geocoding', {
 
     async bulkUpdateGeocoding(geocodingIds, updateCity, city, updateCountry, country) {
       try {
-        return await apiService.put('/geocoding/bulk-update', {
+        return await apiService.patch('/geocoding/bulk-update', {
           geocodingIds,
           updateCity,
           city,

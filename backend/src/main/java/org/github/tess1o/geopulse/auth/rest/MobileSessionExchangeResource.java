@@ -21,7 +21,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOBILE_SESSION_CODE_INVALID;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/mobile")
+@Path("/auth/mobile-sessions")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -32,7 +32,6 @@ public class MobileSessionExchangeResource {
     MobileDeepLinkService mobileDeepLinkService;
 
     @POST
-    @Path("/session/exchange")
     @APIResponseSchema(value = AuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated mobile session")
     public Response exchangeSessionCode(@Valid MobileSessionExchangeRequest request) {

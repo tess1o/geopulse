@@ -36,7 +36,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_TAG;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/period-tags")
+@Path("/period-tags")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -53,20 +53,23 @@ public class PeriodTagResource {
         this.currentUserService = currentUserService;
     }
 
-    //TODO: use normal dates, not long values.
     @GET
-    public List<PeriodTagDto> getPeriodTags(@QueryParam("startDate") Long startDateEpochMillis,
-                                            @QueryParam("endDate") Long endDateEpochMillis) {
+    public List<PeriodTagDto> getPeriodTags(@QueryParam("from") String from,
+                                            @QueryParam("to") String to) {
         UUID userId = currentUserService.getCurrentUserId();
-        if (startDateEpochMillis == null && endDateEpochMillis == null) {
+        if (from == null && to == null) {
             return service.getPeriodTags(userId);
         }
-        if (startDateEpochMillis == null || endDateEpochMillis == null
-                || startDateEpochMillis > endDateEpochMillis) {
-            throw problem(INVALID_PERIOD_RANGE, "A valid startDate and endDate are required");
+        try {
+            Instant start = Instant.parse(from);
+            Instant end = Instant.parse(to);
+            if (start.isAfter(end)) {
+                throw problem(INVALID_PERIOD_RANGE, "from must not be after to");
+            }
+            return service.getPeriodTagsForTimeRange(userId, start, end);
+        } catch (NullPointerException | DateTimeException exception) {
+            throw problem(INVALID_PERIOD_RANGE, "from and to must be valid ISO-8601 instants");
         }
-        return service.getPeriodTagsForTimeRange(
-                userId, Instant.ofEpochMilli(startDateEpochMillis), Instant.ofEpochMilli(endDateEpochMillis));
     }
 
     @GET
@@ -80,8 +83,8 @@ public class PeriodTagResource {
 
     @GET
     @Path("/check-overlaps")
-    public List<PeriodTagDto> checkOverlaps(@QueryParam("startTime") String startTime,
-                                            @QueryParam("endTime") String endTime,
+    public List<PeriodTagDto> checkOverlaps(@QueryParam("from") String startTime,
+                                            @QueryParam("to") String endTime,
                                             @QueryParam("excludeId") Long excludeId) {
         if (startTime == null || endTime == null) {
             throw problem(INVALID_PERIOD_RANGE, "startTime and endTime are required");
@@ -133,16 +136,6 @@ public class PeriodTagResource {
             service.deletePeriodTag(currentUserService.getCurrentUserId(), id,
                     "delete_both".equalsIgnoreCase(mode));
             return RestResponse.noContent();
-        } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
-        }
-    }
-
-    @POST
-    @Path("/{id}/unlink")
-    public PeriodTagDto unlinkPeriodTag(@PathParam("id") Long id) {
-        try {
-            return service.unlinkPeriodTagFromTrip(currentUserService.getCurrentUserId(), id);
         } catch (IllegalArgumentException exception) {
             throw problem(INVALID_PERIOD_TAG, exception.getMessage());
         }

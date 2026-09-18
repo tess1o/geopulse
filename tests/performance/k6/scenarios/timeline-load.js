@@ -1,7 +1,7 @@
 /**
  * GeoPulse k6 Load Test - Timeline Endpoint
  *
- * Tests the /api/streaming-timeline endpoint with various date ranges.
+ * Tests the /api/v1/timeline endpoint with various date ranges.
  * This endpoint returns trips, stays, and data gaps for a given time period.
  */
 
@@ -73,7 +73,7 @@ export default function (data) {
   const dateRange = generateDateRange(rangeType);
 
   // Build timeline API URL with query parameters
-  const timelineUrl = buildUrl(`${config.baseUrl}/api/streaming-timeline`, {
+  const timelineUrl = buildUrl(`${config.baseUrl}/api/v1/timeline`, {
     startTime: dateRange.start,
     endTime: dateRange.end,
   });

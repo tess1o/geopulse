@@ -13,7 +13,7 @@ const actions = {
      * @returns {Promise<Array>} List of OIDC providers
      */
     async getAllOidcProviders() {
-        return apiService.get('/admin/oidc/providers');
+        return apiService.get('/admin/oidc-providers');
     },
 
     /**
@@ -22,7 +22,7 @@ const actions = {
      * @returns {Promise<Object>} Provider configuration
      */
     async getOidcProvider(name) {
-        return apiService.get(`/admin/oidc/providers/${name}`);
+        return apiService.get(`/admin/oidc-providers/${name}`);
     },
 
     /**
@@ -31,7 +31,7 @@ const actions = {
      * @returns {Promise<Object>} Created provider
      */
     async createOidcProvider(provider) {
-        return apiService.post("/admin/oidc/providers", provider);
+        return apiService.post("/admin/oidc-providers", provider);
     },
 
     /**
@@ -41,7 +41,7 @@ const actions = {
      * @returns {Promise<Object>} Updated provider
      */
     async updateOidcProvider(name, updates) {
-        return apiService.put(`/admin/oidc/providers/${name}`, updates);
+        return apiService.put(`/admin/oidc-providers/${name}`, updates);
     },
 
     /**
@@ -50,7 +50,7 @@ const actions = {
      * @returns {Promise<Object>} Result
      */
     async deleteOidcProvider(name) {
-        return apiService.delete(`/admin/oidc/providers/${name}`);
+        return apiService.delete(`/admin/oidc-providers/${name}`);
     },
 
     /**
@@ -59,7 +59,7 @@ const actions = {
      * @returns {Promise<Object>} Reset provider configuration
      */
     async resetOidcProvider(name) {
-        return apiService.post(`/admin/oidc/providers/${name}/reset`, {});
+        return apiService.post(`/admin/oidc-providers/${name}/reset`, {});
     },
 
     /**
@@ -68,7 +68,7 @@ const actions = {
      * @returns {Promise<Object>} Test result
      */
     async testOidcProvider(name) {
-        return apiService.post(`/admin/oidc/providers/${name}/test`, {});
+        return apiService.post(`/admin/oidc-providers/${name}/connection-tests`, {});
     },
 
     // ==================== Custom Geocoding Provider Management ====================
@@ -105,7 +105,7 @@ const actions = {
      * @returns {Promise<Array>} Settings list
      */
     async getSettingsByCategory(category) {
-        return apiService.get(`/admin/settings/${category}`);
+        return apiService.get(`/admin/settings/categories/${category}`);
     },
 
     /**
@@ -115,7 +115,7 @@ const actions = {
      * @returns {Promise<Object>} Result
      */
     async updateSetting(key, value) {
-        return apiService.put(`/admin/settings/${key}`, { value });
+        return apiService.put(`/admin/settings/keys/${key}`, { value });
     },
 
     /**
@@ -124,7 +124,7 @@ const actions = {
      * @returns {Promise<Object>} Result
      */
     async resetSetting(key) {
-        return apiService.delete(`/admin/settings/${key}`);
+        return apiService.delete(`/admin/settings/keys/${key}`);
     },
 
     async bulkUpdateSettings(settings) {
@@ -136,19 +136,19 @@ const actions = {
     },
 
     async testValhallaConnection() {
-        return apiService.post('/admin/settings/map-matching/valhalla/test');
+        return apiService.post('/admin/settings/map-matching/valhalla/connection-tests');
     },
 
     async rebuildMapMatchingHistoricalQueue() {
-        return apiService.post('/admin/settings/map-matching/historical/rebuild');
+        return apiService.post('/admin/settings/map-matching/rebuilds');
     },
 
     async testPanoramaxConnection() {
-        return apiService.post('/admin/settings/panoramax/test');
+        return apiService.post('/admin/settings/panoramax/connection-tests');
     },
 
     async testAppriseConnection(payload) {
-        return apiService.post('/admin/settings/system/notifications/apprise/test', payload);
+        return apiService.post('/admin/settings/system-notifications/apprise/connection-tests', payload);
     },
 
     async getWeatherStatus() {
@@ -160,7 +160,7 @@ const actions = {
     },
 
     async testWeatherConnection() {
-        return apiService.post('/admin/settings/weather/test');
+        return apiService.post('/admin/settings/weather/connection-tests');
     },
 
     // ==================== User Management ====================
@@ -209,7 +209,7 @@ const actions = {
      * @returns {Promise<Object>} Result with new password
      */
     async resetUserPassword(userId) {
-        return apiService.post(`/admin/users/${userId}/reset-password`, {});
+        return apiService.post(`/admin/users/${userId}/password-resets`, {});
     },
 
     /**
@@ -291,13 +291,13 @@ const actions = {
     // ==================== Admin Settings Export ====================
 
     async exportAdminSettingsBackup() {
-        return apiService.download('/admin/settings-backup/export');
+        return apiService.download('/admin/backups/settings/exports');
     },
 
     async importAdminSettingsBackup(file) {
         const formData = new FormData();
         formData.append('file', file);
-        return apiService.post('/admin/settings-backup/import', formData, {
+        return apiService.post('/admin/backups/settings/imports', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }
@@ -379,7 +379,7 @@ const actions = {
     async getDashboardStats() {
         try {
             // Try the dedicated admin dashboard endpoint first
-            return await apiService.get('/admin/dashboard/stats');
+            return await apiService.get('/admin/dashboard');
         } catch (error) {
             console.warn('Admin dashboard endpoint unavailable, falling back to Prometheus:', error);
 

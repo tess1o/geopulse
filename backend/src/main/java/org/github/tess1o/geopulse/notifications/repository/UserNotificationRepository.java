@@ -20,12 +20,6 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
     public record UserNotificationPageResult(List<UserNotificationEntity> items, long totalCount) {
     }
 
-    public List<UserNotificationEntity> findByOwner(UUID ownerUserId, int limit) {
-        return find("ownerUser.id = ?1 AND inAppEnabled = true ORDER BY occurredAt DESC", ownerUserId)
-                .page(0, Math.max(1, limit))
-                .list();
-    }
-
     public UserNotificationPageResult findPageByOwner(UUID ownerUserId,
                                                       int page,
                                                       int pageSize,

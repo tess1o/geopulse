@@ -147,9 +147,9 @@ export const useFriendsTimelineStore = defineStore('friendsTimeline', {
             this.error = null
 
             try {
-                const params = { startTime, endTime }
+                const params = { from: startTime, to: endTime }
                 if (userIds?.length) params.userIds = userIds.join(',')
-                const timeline = await apiService.get('/streaming-timeline/multi-user', params)
+                const timeline = await apiService.get('/timeline/multi-user', params)
 
                 this.multiUserTimeline = timeline
                 this.dateRange = { start: startTime, end: endTime }

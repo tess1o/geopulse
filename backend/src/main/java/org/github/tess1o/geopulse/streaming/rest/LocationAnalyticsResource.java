@@ -50,7 +50,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.LOCATION_VISITS_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/location-analytics")
+@Path("/location-analytics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -117,21 +117,21 @@ public class LocationAnalyticsResource {
     }
 
     @GET
-    @Path("/city/{name}")
+    @Path("/cities/{name}")
     public CityDetailsDTO getCityDetails(@PathParam("name") String cityName) {
         return analyticsService.getCityDetails(currentUserService.getCurrentUserId(), cityName)
                 .orElseThrow(() -> problem(CITY_NOT_FOUND, "City not found or no visits recorded"));
     }
 
     @GET
-    @Path("/country/{name}")
+    @Path("/countries/{name}")
     public CountryDetailsDTO getCountryDetails(@PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
                 .orElseThrow(() -> problem(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
     }
 
     @GET
-    @Path("/city/{name}/visits")
+    @Path("/cities/{name}/visits")
     public PageResponse<PlaceVisitDTO> getCityVisits(
             @PathParam("name") String cityName,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -144,7 +144,7 @@ public class LocationAnalyticsResource {
     }
 
     @GET
-    @Path("/country/{name}/visits")
+    @Path("/countries/{name}/visits")
     public PageResponse<PlaceVisitDTO> getCountryVisits(
             @PathParam("name") String countryName,
             @QueryParam("page") @DefaultValue("0") int page,
@@ -157,7 +157,7 @@ public class LocationAnalyticsResource {
     }
 
     @GET
-    @Path("/city/{name}/visits/export")
+    @Path("/cities/{name}/visits/export")
     @Produces("text/csv")
     @APIResponse(responseCode = "200", description = "City visits CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
@@ -174,7 +174,7 @@ public class LocationAnalyticsResource {
     }
 
     @GET
-    @Path("/country/{name}/visits/export")
+    @Path("/countries/{name}/visits/export")
     @Produces("text/csv")
     @APIResponse(responseCode = "200", description = "Country visits CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
@@ -191,7 +191,7 @@ public class LocationAnalyticsResource {
     }
 
     @GET
-    @Path("/country/{name}/cities")
+    @Path("/countries/{name}/cities")
     public List<CityInCountryDTO> getCitiesInCountry(@PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
                 .map(CountryDetailsDTO::getCities)

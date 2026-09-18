@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -32,7 +33,6 @@ import org.github.tess1o.geopulse.notifications.service.ReleaseAnnouncementServi
 import org.github.tess1o.geopulse.notifications.service.UserNotificationService;
 import org.github.tess1o.geopulse.shared.api.UpdatedCountResponse;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFICATION_PREFERENCES;
@@ -40,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_RELEASE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/notifications")
+@Path("/notifications")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -91,15 +91,9 @@ public class NotificationResource {
     }
 
     @GET
-    public List<UserNotificationDto> getNotifications(@QueryParam("limit") @DefaultValue("50") @Min(1) @Max(200) int limit) {
-        return notificationService.listNotifications(currentUserService.getCurrentUserId(), limit);
-    }
-
-    @GET
-    @Path("/page")
-    public PageResponse<UserNotificationDto> getNotificationsPage(
+    public PageResponse<UserNotificationDto> getNotifications(
             @QueryParam("page") @DefaultValue("0") @Min(0) int page,
-            @QueryParam("pageSize") @DefaultValue("25") @Min(1) @Max(200) int pageSize,
+            @QueryParam("size") @DefaultValue("25") @Min(1) @Max(100) int pageSize,
             @QueryParam("seen") Boolean seen,
             @QueryParam("source") NotificationSource source,
             @QueryParam("type") NotificationType type) {
@@ -113,8 +107,8 @@ public class NotificationResource {
         return notificationService.getUnreadCount(currentUserService.getCurrentUserId());
     }
 
-    @POST
-    @Path("/{notificationId}/seen")
+    @PATCH
+    @Path("/{notificationId}/read-status")
     public UserNotificationDto markSeen(@PathParam("notificationId") Long notificationId) {
         try {
             return notificationService.markSeen(currentUserService.getCurrentUserId(), notificationId);
@@ -123,8 +117,8 @@ public class NotificationResource {
         }
     }
 
-    @POST
-    @Path("/seen-all")
+    @PATCH
+    @Path("/read-status")
     public UpdatedCountResponse markAllSeen() {
         UUID userId = currentUserService.getCurrentUserId();
         return new UpdatedCountResponse(notificationService.markAllSeen(userId));

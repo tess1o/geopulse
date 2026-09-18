@@ -7,12 +7,14 @@ import jakarta.ws.rs.core.*;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.admin.dto.backup.MaintenanceStatusDto;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 
-@Path("/api/maintenance/status")
+@Path("/system/maintenance")
 @PermitAll
 @Produces(MediaType.APPLICATION_JSON)
+@Tag(name = "User: System", description = "Public system status endpoints.")
 public class MaintenanceStatusResource {
     @Inject BackupMaintenanceService maintenance;
     @GET

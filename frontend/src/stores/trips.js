@@ -180,7 +180,7 @@ export const useTripsStore = defineStore('trips', {
     async unlinkTripFromPeriodTag(tripId) {
       this.error = null
       try {
-        const updated = await apiService.post(`/trips/${tripId}/unlink`)
+        const updated = await apiService.delete(`/trips/${tripId}/period-tags`)
         if (updated) {
           this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
           if (this.currentTrip?.id === updated.id) this.currentTrip = updated
@@ -299,7 +299,7 @@ export const useTripsStore = defineStore('trips', {
     async applyVisitOverride(tripId, itemId, action, visitedAt = null) {
       this.error = null
       try {
-        const updated = await apiService.post(`/trips/${tripId}/plan-items/${itemId}/visit-override`, {
+        const updated = await apiService.put(`/trips/${tripId}/plan-items/${itemId}/visit-override`, {
           action,
           visitedAt
         })
@@ -313,7 +313,7 @@ export const useTripsStore = defineStore('trips', {
     async previewReconstruction(payload) {
       this.error = null
       try {
-        return await apiService.post('/reconstruction/preview', payload)
+        return await apiService.post('/trip-planning/reconstructions/preview', payload)
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to preview reconstruction')
         throw this.error
@@ -323,7 +323,7 @@ export const useTripsStore = defineStore('trips', {
     async commitReconstruction(payload) {
       this.error = null
       try {
-        return await apiService.post('/reconstruction/commit', payload)
+        return await apiService.post('/trip-planning/reconstructions/commit', payload)
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to commit reconstruction')
         throw this.error
@@ -335,10 +335,10 @@ export const useTripsStore = defineStore('trips', {
       try {
         const params = {}
         if (startTime) {
-          params.startTime = startTime
+          params.from = startTime
         }
         if (endTime) {
-          params.endTime = endTime
+          params.to = endTime
         }
         const response = await apiService.get(`/trips/${tripId}/timeline`, params)
         this.workspaceTimeline = normalizeTimelineData(response)
@@ -354,10 +354,10 @@ export const useTripsStore = defineStore('trips', {
       try {
         const params = {}
         if (startTime) {
-          params.startTime = startTime
+          params.from = startTime
         }
         if (endTime) {
-          params.endTime = endTime
+          params.to = endTime
         }
         const response = await apiService.get(`/trips/${tripId}/path`, params)
         this.workspacePath = normalizePathData(response)
@@ -396,9 +396,9 @@ export const useTripsStore = defineStore('trips', {
       this.error = null
       try {
         const normalizedLon = Number.isFinite(lon) ? normalizeLongitude(lon) : lon
-        return await apiService.get('/trips/plan-suggestion', {
-          lat,
-          lon: normalizedLon
+        return await apiService.get('/trip-planning/suggestions', {
+          latitude: lat,
+          longitude: normalizedLon
         })
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to resolve plan suggestion')
@@ -414,15 +414,15 @@ export const useTripsStore = defineStore('trips', {
         }
 
         if (Number.isFinite(options?.lat) && Number.isFinite(options?.lon)) {
-          params.lat = options.lat
-          params.lon = normalizeLongitude(options.lon)
+          params.latitude = options.lat
+          params.longitude = normalizeLongitude(options.lon)
         }
 
         if (Number.isFinite(options?.limit)) {
           params.limit = options.limit
         }
 
-        const response = await apiService.get('/trips/plan-search', params)
+        const response = await apiService.get('/trip-planning/searches', params)
         return Array.isArray(response) ? response : []
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to search locations')

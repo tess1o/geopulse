@@ -69,7 +69,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         // API Actions
         async fetchTimelinePreferences() {
             try {
-                const response = await apiService.get(`/streaming-timeline/user/preferences`)
+                const response = await apiService.get(`/timeline/preferences`)
                 this.setTimelinePreferences(response)
                 return response
             } catch (error) {
@@ -80,7 +80,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
 
         async updateTimelinePreferences(changes) {
             try {
-                const response = await apiService.put(`/users/preferences/timeline`, {...changes})
+                const response = await apiService.put(`/preferences/timeline`, {...changes})
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
 
@@ -94,7 +94,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
 
         async resetTimelinePreferencesToDefaults() {
             try {
-                const response = await apiService.delete(`/users/preferences/timeline`)
+                const response = await apiService.delete(`/preferences/timeline`)
 
                 // Refresh preferences after reset
                 await this.fetchTimelinePreferences()

@@ -15,7 +15,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SERVICE_UNAVAILABLE;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/health")
+@Path("/system/health")
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Slf4j

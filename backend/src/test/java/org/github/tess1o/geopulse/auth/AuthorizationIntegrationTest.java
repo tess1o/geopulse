@@ -49,7 +49,7 @@ public class AuthorizationIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(401);
     }
@@ -63,7 +63,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer invalid-token-here")
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(401);
     }
@@ -77,7 +77,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + expiredJwtToken)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(401);
     }
@@ -91,7 +91,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "InvalidFormat " + validJwtToken)
                 .when()
-                .get("/api/favorites")
+                .get("/api/v1/favorites")
                 .then()
                 .statusCode(401);
     }
@@ -105,7 +105,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + validJwtToken)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(200)
                 .body("$", notNullValue());
@@ -120,35 +120,35 @@ public class AuthorizationIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(401);
         // Test Favorites endpoint
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/favorites")
+                .get("/api/v1/favorites")
                 .then()
                 .statusCode(401);
         // Test Statistics endpoint
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/statistics")
+                .get("/api/v1/statistics")
                 .then()
                 .statusCode(401);
         // Test GPS Source Config endpoint
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/gps/source")
+                .get("/api/v1/gps/sources")
                 .then()
                 .statusCode(401);
         // Test Timeline endpoint
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/timeline")
+                .get("/api/v1/timeline")
                 .then()
                 .statusCode(401);
     }
@@ -170,7 +170,7 @@ public class AuthorizationIntegrationTest {
                         }
                         """.formatted(newUserEmail))
                 .when()
-                .post("/api/users/register")
+                .post("/api/v1/registrations")
                 .then()
                 .statusCode(201)
                 .body("fullName", equalTo("New User"))
@@ -186,7 +186,7 @@ public class AuthorizationIntegrationTest {
                         }
                         """.formatted(testEmail))
                 .when()
-                .post("/api/auth/login")
+                .post("/api/v1/auth/sessions")
                 .then()
                 .statusCode(200)
                 .cookie("access_token", notNullValue())
@@ -202,7 +202,7 @@ public class AuthorizationIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .delete("/api/favorites/1")
+                .delete("/api/v1/favorites/1")
                 .then()
                 .statusCode(401);
         // With valid authentication (but non-existent resource)
@@ -210,7 +210,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + validJwtToken)
                 .when()
-                .delete("/api/favorites/999999")
+                .delete("/api/v1/favorites/999999")
                 .then()
                 .statusCode(anyOf(is(404), is(403))); // Not found or forbidden
     }
@@ -227,7 +227,7 @@ public class AuthorizationIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/favorites/point")
+                .post("/api/v1/favorites/points")
                 .then()
                 .statusCode(401);
     }
@@ -237,7 +237,7 @@ public class AuthorizationIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(401)
                 .log().body(); // Log the error response
@@ -250,7 +250,7 @@ public class AuthorizationIntegrationTest {
                         }
                         """.formatted(demoEmail))
                 .when()
-                .post("/api/auth/login")
+                .post("/api/v1/auth/sessions")
                 .then()
                 .statusCode(anyOf(is(200), is(401))) // 401 if user doesn't exist, which is fine
                 .log().body();
@@ -258,7 +258,7 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + validJwtToken)
                 .when()
-                .get("/api/friends")
+                .get("/api/v1/friends")
                 .then()
                 .statusCode(200)
                 .log().body();

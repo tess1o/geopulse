@@ -7,7 +7,7 @@ export const useVersionStore = defineStore('version', {
   actions: {
     async fetchVersion() {
       try {
-        const response = await apiService.get('/version')
+        const response = await apiService.get('/system/version')
         this.version = response.version
         return response
       } catch (error) {
@@ -17,7 +17,7 @@ export const useVersionStore = defineStore('version', {
     },
     async fetchStatus() {
       try {
-        this.status = await apiService.get('/version/status')
+        this.status = await apiService.get('/system/version/status')
         this.version = this.status.currentVersion || this.status.version || null
         return this.status
       } catch (error) {

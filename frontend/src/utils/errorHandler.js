@@ -220,9 +220,9 @@ export function isBackendDown(error) {
   const upstreamConnectionFailurePattern = /(ECONNREFUSED|ECONNRESET|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|socket hang up|upstream|proxy error|connect ECONNREFUSED|connection refused)/i
   const isHealthOrPublicAuthProbe =
     requestUrl.includes('/health') ||
-    requestUrl.includes('/auth/refresh-cookie') ||
-    requestUrl.includes('/auth/status') ||
-    requestUrl.includes('/auth/login') ||
+    requestUrl.includes('/auth/sessions/current/refresh') ||
+    requestUrl.includes('/auth/sessions/current') ||
+    requestUrl.includes('/auth/sessions') ||
     requestUrl.includes('/auth/oidc/providers')
   const isLocalProxy500ForBackendDown =
     responseStatus === 500 && (

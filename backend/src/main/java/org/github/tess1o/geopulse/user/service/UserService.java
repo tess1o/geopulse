@@ -59,7 +59,7 @@ public class UserService {
     int maxAvatarSizeBytes;
 
     private static final Pattern VALID_DEFAULT_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
-    private static final Pattern VALID_CUSTOM_AVATAR_PATTERN = Pattern.compile("^/api/users/[0-9a-fA-F\\-]{36}/avatar$");
+    private static final Pattern VALID_CUSTOM_AVATAR_PATTERN = Pattern.compile("^/api/v1/users/[0-9a-fA-F\\-]{36}/avatar$");
 
     private static final Set<String> ALLOWED_AVATAR_CONTENT_TYPES = Set.of(
             "image/jpeg",
@@ -468,7 +468,7 @@ public class UserService {
         boolean isCustomAvatar = VALID_CUSTOM_AVATAR_PATTERN.matcher(normalizedPath).matches();
         if (!isDefaultAvatar && !isCustomAvatar) {
             log.warn("Invalid avatar path attempted: {}", normalizedPath);
-            throw new IllegalArgumentException("Invalid avatar path. Allowed values: /avatars/avatar{1-20}.png or /api/users/{uuid}/avatar");
+            throw new IllegalArgumentException("Invalid avatar path. Allowed values: /avatars/avatar{1-20}.png or /api/v1/users/{uuid}/avatar");
         }
     }
 
@@ -535,7 +535,7 @@ public class UserService {
     }
 
     public String buildCustomAvatarPath(UUID userId) {
-        return "/api/users/" + userId + "/avatar";
+        return "/api/v1/users/" + userId + "/avatar";
     }
 
     public boolean isCustomAvatarPath(String avatarPath) {

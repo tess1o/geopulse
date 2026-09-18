@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTa
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.jboss.resteasy.reactive.RestHeader;
 
@@ -27,7 +28,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-@Path("/api/owntracks")
+@Path(ApiPaths.GPS_INGEST + "/owntracks")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -192,5 +193,4 @@ public class OwnTracksResource {
                 "stage", stage,
                 "result", result);
     }
-
 }

@@ -40,7 +40,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTE_RE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api")
+@Path("")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -58,8 +58,8 @@ public class TimelineNoteResource {
     @Path("/notes/search")
     @Blocking
     public CompletionStage<NoteSearchResponse> searchNotes(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("includeExternal") @DefaultValue("true") boolean includeExternal,
             @QueryParam("limit") Integer limit,
             @QueryParam("latitude") Double latitude,
@@ -76,8 +76,8 @@ public class TimelineNoteResource {
     @Path("/notes/map-markers")
     @Blocking
     public CompletionStage<NoteMapMarkersResponse> getNoteMapMarkers(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("includeExternal") @DefaultValue("true") boolean includeExternal,
             @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
         Instant start = parseInstantOrDefault(startTime, Instant.EPOCH);

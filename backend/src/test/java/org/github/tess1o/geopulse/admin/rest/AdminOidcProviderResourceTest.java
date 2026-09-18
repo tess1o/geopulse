@@ -143,7 +143,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.isFromEnvironment("keycloak")).thenReturn(false);
         doNothing().when(auditLogService).logAction(any(), any(), any(), any(), any(), any());
         // When: Creating provider
-        var response = resource.createProvider(createRequest, null, null);
+        var response = resource.createProvider(createRequest);
         // Then: Created response
         assertEquals(201, response.getStatus());
         assertNotNull(response.getEntity());
@@ -157,7 +157,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.getProviderByName("keycloak")).thenReturn(Optional.of(testProvider));
         // When: Creating provider
         HttpProblem problem = assertThrows(HttpProblem.class,
-                () -> resource.createProvider(createRequest, null, null));
+                () -> resource.createProvider(createRequest));
         // Then: Conflict response
         assertEquals(409, problem.getStatusCode());
         verify(configurationService, times(1)).getProviderByName("keycloak");
@@ -179,7 +179,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.isFromEnvironment("google")).thenReturn(false);
         doNothing().when(auditLogService).logAction(any(), any(), any(), any(), any(), any());
         // When: Updating provider
-        OidcProviderResponse response = resource.updateProvider("google", updateRequest, null, null);
+        OidcProviderResponse response = resource.updateProvider("google", updateRequest);
         // Then: Success response
         assertNotNull(response);
         verify(configurationService, times(1)).getProviderByName("google");
@@ -192,7 +192,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.getProviderByName("nonexistent")).thenReturn(Optional.empty());
         // When: Updating provider
         HttpProblem problem = assertThrows(HttpProblem.class,
-                () -> resource.updateProvider("nonexistent", updateRequest, null, null));
+                () -> resource.updateProvider("nonexistent", updateRequest));
         // Then: Not found response
         assertEquals(404, problem.getStatusCode());
         verify(configurationService, times(1)).getProviderByName("nonexistent");
@@ -207,7 +207,7 @@ class AdminOidcProviderResourceTest {
         doNothing().when(configurationService).deleteProvider("google");
         doNothing().when(auditLogService).logAction(any(), any(), any(), any(), any(), any());
         // When: Deleting provider
-        resource.deleteProvider("google", null, null);
+        resource.deleteProvider("google");
         // Then: Success response
         verify(configurationService, times(1)).existsInDatabase("google");
         verify(configurationService, times(1)).deleteProvider("google");
@@ -219,7 +219,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.existsInDatabase("google")).thenReturn(false);
         // When: Deleting provider
         HttpProblem problem = assertThrows(HttpProblem.class,
-                () -> resource.deleteProvider("google", null, null));
+                () -> resource.deleteProvider("google"));
         // Then: Bad request response
         assertEquals(400, problem.getStatusCode());
         verify(configurationService, times(1)).existsInDatabase("google");
@@ -235,7 +235,7 @@ class AdminOidcProviderResourceTest {
         doNothing().when(configurationService).deleteProvider("google");
         doNothing().when(auditLogService).logAction(any(), any(), any(), any(), any(), any());
         // When: Resetting provider
-        OidcProviderResponse response = resource.resetProvider("google", null, null);
+        OidcProviderResponse response = resource.resetProvider("google");
         // Then: Success response
         assertNotNull(response);
         verify(configurationService, atLeastOnce()).isFromEnvironment("google");
@@ -248,7 +248,7 @@ class AdminOidcProviderResourceTest {
         when(configurationService.isFromEnvironment("nonexistent")).thenReturn(false);
         // When: Resetting provider
         HttpProblem problem = assertThrows(HttpProblem.class,
-                () -> resource.resetProvider("nonexistent", null, null));
+                () -> resource.resetProvider("nonexistent"));
         // Then: Bad request response
         assertEquals(400, problem.getStatusCode());
         verify(configurationService, times(1)).isFromEnvironment("nonexistent");

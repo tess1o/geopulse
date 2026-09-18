@@ -279,9 +279,9 @@ export const useNotificationsStore = defineStore('notifications', {
 
     async fetchNotifications({ limit = 100 } = {}) {
       try {
-        const response = await apiService.get('/notifications', { limit })
+        const response = await apiService.get('/notifications', { page: 0, size: limit })
         this.error = null
-        return Array.isArray(response) ? response : []
+        return Array.isArray(response?.items) ? response.items : []
       } catch (error) {
         throw this.fail(error, 'Failed to load notifications')
       }
@@ -296,7 +296,7 @@ export const useNotificationsStore = defineStore('notifications', {
     } = {}) {
       const params = {
         page,
-        pageSize
+        size: pageSize
       }
       if (seen !== null && seen !== undefined) {
         params.seen = seen
@@ -308,7 +308,7 @@ export const useNotificationsStore = defineStore('notifications', {
         params.type = type
       }
       try {
-        const response = await apiService.get('/notifications/page', params)
+        const response = await apiService.get('/notifications', params)
         this.error = null
         return response || { items: [], totalElements: 0, page, size: pageSize, totalPages: 0 }
       } catch (error) {
@@ -478,7 +478,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const normalizedId = Number(notificationId)
         const existing = this.items.find(item => Number(item.id) === normalizedId)
         const wasUnread = existing ? !existing.seen : false
-        const updated = await apiService.post(`/notifications/${notificationId}/seen`, {})
+        const updated = await apiService.patch(`/notifications/${notificationId}/read-status`, {})
         if (updated) {
           this.items = this.items.map(item => Number(item.id) === Number(updated.id) ? updated : item)
         }
@@ -494,7 +494,7 @@ export const useNotificationsStore = defineStore('notifications', {
 
     async markAllSeen() {
       try {
-        const result = await apiService.post('/notifications/seen-all', {})
+        const result = await apiService.patch('/notifications/read-status', {})
         this.items = this.items.map(item => ({
           ...item,
           seen: true,

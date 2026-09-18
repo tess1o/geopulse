@@ -18,7 +18,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_STATISTICS_RANGE;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/statistics")
+@Path("/statistics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -37,8 +37,8 @@ public class StatisticsResource {
     @GET
     @Path("")
     @Produces(MediaType.APPLICATION_JSON)
-    public UserStatistics getRangeStatistics(@QueryParam("startTime") String startTime,
-                                       @QueryParam("endTime") String endTime) {
+    public UserStatistics getRangeStatistics(@QueryParam("from") String startTime,
+                                       @QueryParam("to") String endTime) {
         try {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();

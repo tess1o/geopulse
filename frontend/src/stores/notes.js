@@ -61,7 +61,7 @@ export const useNotesStore = defineStore('notes', {
 
       inFlightConfigRequest = (async () => {
         try {
-          this.memosConfig = await apiService.get('/users/me/memos-config') || null
+          this.memosConfig = await apiService.get('/integrations/memos') || null
           return this.memosConfig
         } catch (error) {
           this.configError = normalizeApiError(error, 'Failed to load Memos configuration')
@@ -79,7 +79,7 @@ export const useNotesStore = defineStore('notes', {
     async updateMemosConfig(configData) {
       this.configError = null
       try {
-        await apiService.put('/users/me/memos-config', configData)
+        await apiService.put('/integrations/memos', configData)
         await this.fetchMemosConfig(true)
         this.clearNotes()
       } catch (error) {
@@ -90,7 +90,7 @@ export const useNotesStore = defineStore('notes', {
 
     async testMemosConfig(configData) {
       try {
-        return await apiService.post('/users/me/memos-config/test', configData)
+        return await apiService.post('/integrations/memos/connection-tests', configData)
       } catch (error) {
         this.configError = normalizeApiError(error, 'Failed to test Memos connection')
         throw this.configError
@@ -133,8 +133,8 @@ export const useNotesStore = defineStore('notes', {
       inFlightNotesRequest = (async () => {
         try {
           const response = await apiService.get('/notes/search', {
-            startTime: normalizedStart,
-            endTime: normalizedEnd,
+            from: normalizedStart,
+            to: normalizedEnd,
             includeExternal
           })
           const payload = response
@@ -156,9 +156,9 @@ export const useNotesStore = defineStore('notes', {
     },
 
     async fetchSharedNotes(linkId, accessToken, startTime = null, endTime = null) {
-      let url = `/shared/${linkId}/notes`
+      let url = `/public/share-links/${linkId}/notes`
       if (startTime && endTime) {
-        const params = new URLSearchParams({ startTime, endTime })
+        const params = new URLSearchParams({ from: startTime, to: endTime })
         url += `?${params.toString()}`
       }
 

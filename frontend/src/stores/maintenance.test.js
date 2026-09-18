@@ -32,7 +32,7 @@ describe('online restore maintenance lifecycle', () => {
     respond(preparing)
     const module = await import('./maintenance')
     await module.refreshMaintenance()
-    expect(fetch).toHaveBeenCalledWith('/api/maintenance/status', expect.objectContaining({ credentials: 'omit', cache: 'no-store' }))
+    expect(fetch).toHaveBeenCalledWith('/api/v1/system/maintenance', expect.objectContaining({ credentials: 'omit', cache: 'no-store' }))
     expect(module.maintenance.warning).toBe(true)
     expect(module.maintenance.blocked).toBe(false)
   })

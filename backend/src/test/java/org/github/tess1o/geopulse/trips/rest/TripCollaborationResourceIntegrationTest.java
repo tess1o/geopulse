@@ -102,7 +102,7 @@ class TripCollaborationResourceIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + friendToken)
                 .when()
-                .get("/api/trips/{tripId}", tripId)
+                .get("/api/v1/trips/{tripId}", tripId)
                 .then()
                 .statusCode(200)
                 .body("isOwner", equalTo(false))
@@ -117,7 +117,7 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/trips/{tripId}/plan-items", tripId)
+                .post("/api/v1/trips/{tripId}/plan-items", tripId)
                 .then()
                 .statusCode(404)
                 .body("code", equalTo("TRIP_NOT_FOUND"));
@@ -134,7 +134,7 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .put("/api/trips/{tripId}/collaborators/{friendId}", tripId, friendId)
+                .put("/api/v1/trips/{tripId}/collaborators/{friendId}", tripId, friendId)
                 .then()
                 .statusCode(200)
                 .body("accessRole", equalTo("EDIT"));
@@ -148,7 +148,7 @@ class TripCollaborationResourceIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/trips/{tripId}/plan-items", tripId)
+                .post("/api/v1/trips/{tripId}/plan-items", tripId)
                 .then()
                 .statusCode(201)
                 .body("title", equalTo("Now editable"));
@@ -160,7 +160,7 @@ class TripCollaborationResourceIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + outsiderToken)
                 .when()
-                .get("/api/trips/{tripId}", tripId)
+                .get("/api/v1/trips/{tripId}", tripId)
                 .then()
                 .statusCode(404)
                 .body("code", equalTo("TRIP_NOT_FOUND"));

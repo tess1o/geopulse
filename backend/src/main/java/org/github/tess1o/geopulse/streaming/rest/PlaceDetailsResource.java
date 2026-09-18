@@ -45,7 +45,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
  * REST API resource for place details and visit history.
  * Provides endpoints to view comprehensive information about specific locations.
  */
-@Path("/api/place-details")
+@Path("/places")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j

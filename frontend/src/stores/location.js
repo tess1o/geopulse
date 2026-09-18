@@ -76,9 +76,9 @@ export const useLocationStore = defineStore('location', {
         // API Actions
         async fetchLocationPath(startTime, endTime) {
             try {
-                const path = await apiService.get('/gps/path', {
-                    startTime: startTime,
-                    endTime: endTime
+                const path = await apiService.get('/gps/points/path', {
+                    from: startTime,
+                    to: endTime
                 })
 
                 this.setLocationPath(path)
@@ -98,7 +98,7 @@ export const useLocationStore = defineStore('location', {
         // Utility methods for common operations
         async getLastKnownPosition() {
             try {
-                const data = await apiService.get('/gps/last-known-position');
+                const data = await apiService.get('/gps/points/latest');
                 if (!data) return null
                 return {
                     lat: data.coordinates.lat,

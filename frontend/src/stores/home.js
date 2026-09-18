@@ -12,7 +12,7 @@ export const useHomeStore = defineStore('home', {
     async fetchContent() {
       this.error = null
       try {
-        const content = await apiService.get('/home/content')
+        const content = await apiService.get('/home-content')
         this.content = {
           tips: Array.isArray(content?.tips) ? content.tips : [],
           whatsNew: Array.isArray(content?.whatsNew) ? content.whatsNew : []

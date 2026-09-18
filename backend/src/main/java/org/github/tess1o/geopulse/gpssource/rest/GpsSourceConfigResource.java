@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -29,6 +30,7 @@ import org.github.tess1o.geopulse.gpssource.model.UpdateGpsSourceConfigStatusDto
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.util.List;
@@ -40,7 +42,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GPS_SOU
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TELEMETRY_MAPPING;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/gps/source")
+@Path(ApiPaths.GPS_SOURCES)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -155,7 +157,7 @@ public class GpsSourceConfigResource {
         return RestResponse.noContent();
     }
 
-    @PUT
+    @PATCH
     @Path("/{id}/status")
     @APIResponse(responseCode = "204", description = "GPS source status updated")
     public RestResponse<Void> updateStatus(
@@ -171,8 +173,12 @@ public class GpsSourceConfigResource {
     }
 
     @PUT
+    @Path("/{id}")
     @APIResponse(responseCode = "204", description = "GPS source updated")
-    public RestResponse<Void> updateGpsConfigSource(@NotNull @Valid UpdateGpsSourceConfigDto config) {
+    public RestResponse<Void> updateGpsConfigSource(
+            @PathParam("id") String configId,
+            @NotNull @Valid UpdateGpsSourceConfigDto config) {
+        config.setId(configId);
         try {
             boolean updated = gpsSourceService.updateGpsConfigSource(
                     config, currentUserService.getCurrentUserId());

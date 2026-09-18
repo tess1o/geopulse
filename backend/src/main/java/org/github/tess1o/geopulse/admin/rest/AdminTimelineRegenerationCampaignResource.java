@@ -32,7 +32,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/admin/timeline-regeneration-campaigns")
+@Path("/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j

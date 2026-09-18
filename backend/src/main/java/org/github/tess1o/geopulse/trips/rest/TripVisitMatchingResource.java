@@ -16,7 +16,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips/{tripId}/visit-suggestions")
+@Path("/trips/{tripId}/visit-suggestions")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

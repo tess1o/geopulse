@@ -393,7 +393,7 @@ test.describe('Timeline Map Interactions', () => {
         }
       });
 
-      await page.route('**/api/users/preferences/timeline/display', async (route) => {
+      await page.route('**/api/v1/preferences/timeline-display', async (route) => {
         if (route.request().method() !== 'GET') {
           await route.continue();
           return;

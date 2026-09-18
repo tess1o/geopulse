@@ -128,20 +128,6 @@ public class PeriodTagService {
     }
 
     @Transactional
-    public PeriodTagDto unlinkPeriodTagFromTrip(UUID userId, Long id) {
-        PeriodTagEntity entity = repository.findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Period tag not found"));
-
-        tripRepository.findByPeriodTagIdAndUserId(id, userId).ifPresent(linkedTrip -> {
-            linkedTrip.setPeriodTag(null);
-            tripRepository.persist(linkedTrip);
-        });
-
-        log.info("Unlinked period tag {} from trip for user {}", id, userId);
-        return toDto(entity);
-    }
-
-    @Transactional
     public void deletePeriodTag(UUID userId, Long id, boolean deleteBoth) {
         log.info("Deleting period tag {} for user {}", id, userId);
 

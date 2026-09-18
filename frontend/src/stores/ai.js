@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
 
+const integrationPath = () => '/integrations/ai'
+
 export const useAIStore = defineStore('ai', {
   state: () => ({
     settings: null,
@@ -14,7 +16,7 @@ export const useAIStore = defineStore('ai', {
       this.settingsLoading = true
       this.error = null
       try {
-        this.settings = await apiService.get('/ai/settings')
+        this.settings = await apiService.get(integrationPath())
         return this.settings
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to load AI settings')
@@ -27,7 +29,7 @@ export const useAIStore = defineStore('ai', {
     async saveSettings(settings) {
       this.error = null
       try {
-        await apiService.post('/ai/settings', settings)
+        await apiService.put(integrationPath(), settings)
         return await this.fetchSettings()
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to save AI settings')
@@ -37,7 +39,7 @@ export const useAIStore = defineStore('ai', {
 
     async testConnection(settings) {
       try {
-        return await apiService.post('/ai/test-connection', settings)
+        return await apiService.post(`${integrationPath()}/connection-tests`, settings)
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to connect to the AI provider')
         throw this.error
@@ -46,7 +48,7 @@ export const useAIStore = defineStore('ai', {
 
     async fetchDefaultSystemMessage() {
       try {
-        return await apiService.get('/ai/default-system-message')
+        return await apiService.get('/ai/system-messages/default')
       } catch (error) {
         throw normalizeApiError(error, 'Failed to load the default AI system message')
       }
@@ -54,7 +56,7 @@ export const useAIStore = defineStore('ai', {
 
     async fetchBuiltinSystemMessage() {
       try {
-        return await apiService.get('/ai/builtin-system-message')
+        return await apiService.get('/ai/system-messages/builtin')
       } catch (error) {
         throw normalizeApiError(error, 'Failed to load the built-in AI system message')
       }
@@ -62,7 +64,7 @@ export const useAIStore = defineStore('ai', {
 
     async chat(message) {
       try {
-        return await apiService.post('/ai/chat', { message })
+        return await apiService.post('/ai/chat-completions', { message })
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to get an AI response')
         throw this.error

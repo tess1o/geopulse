@@ -14,14 +14,12 @@ import org.github.tess1o.geopulse.notifications.repository.UserNotificationRepos
 
 import java.time.Instant;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
 public class UserNotificationService {
 
-    private static final int MAX_LIMIT = 200;
     private static final int MAX_PAGE_SIZE = 100;
 
     private final UserNotificationRepository notificationRepository;
@@ -35,14 +33,6 @@ public class UserNotificationService {
         for (NotificationSeenSyncAdapter adapter : syncAdapters) {
             this.syncAdaptersBySource.put(adapter.source(), adapter);
         }
-    }
-
-    public List<UserNotificationDto> listNotifications(UUID ownerUserId, int limit) {
-        int normalizedLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
-        return notificationRepository.findByOwner(ownerUserId, normalizedLimit)
-                .stream()
-                .map(this::toDto)
-                .toList();
     }
 
     public PageResponse<UserNotificationDto> listNotificationsPage(UUID ownerUserId,

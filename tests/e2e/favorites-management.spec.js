@@ -146,7 +146,7 @@ test.describe('Favorites Management Page', () => {
 
     test.describe('Add Favorite Point - Place Search', () => {
         const mockPlanSearch = async (page) => {
-            await page.route('**/api/trips/plan-search**', async (route) => {
+            await page.route('**/api/v1/trips/plan-search**', async (route) => {
                 await route.fulfill({
                     status: 200,
                     contentType: 'application/json',

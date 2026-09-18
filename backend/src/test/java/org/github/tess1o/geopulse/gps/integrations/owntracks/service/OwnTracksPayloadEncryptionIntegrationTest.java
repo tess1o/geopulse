@@ -116,7 +116,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                         "timezone", "UTC"
                 ))
                 .when()
-                .post("/api/users/register")
+                .post("/api/v1/registrations")
                 .then()
                 .statusCode(201);
 
@@ -124,7 +124,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(Map.of("email", email, "password", PASSWORD))
                 .when()
-                .post("/api/auth/api-login")
+                .post("/api/v1/auth/api-sessions")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -148,7 +148,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
-                .post("/api/gps/source/")
+                .post("/api/v1/gps/sources/")
                 .then()
                 .statusCode(201)
                 .body("hasPayloadEncryptionSecret", equalTo(payloadSecret != null))
@@ -161,7 +161,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body(payload)
                 .when()
-                .post("/api/owntracks")
+                .post("/api/v1/gps/ingest/owntracks")
                 .then()
                 .statusCode(200)
                 .body(equalTo("[]"));
@@ -174,7 +174,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .queryParam("endTime", "2026-08-10T16:43:00Z")
                 .queryParam("limit", 10)
                 .when()
-                .get("/api/gps/map-points")
+                .get("/api/v1/gps/points/map")
                 .then()
                 .statusCode(200)
                 .body("totalCount", equalTo(count))
@@ -188,7 +188,7 @@ class OwnTracksPayloadEncryptionIntegrationTest {
                 .queryParam("endTime", "2026-08-10T16:43:00Z")
                 .queryParam("limit", 10)
                 .when()
-                .get("/api/gps/map-points")
+                .get("/api/v1/gps/points/map")
                 .then()
                 .statusCode(200)
                 .body("points[%d].latitude".formatted(index), equalTo((float) lat))

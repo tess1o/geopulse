@@ -1,10 +1,10 @@
 /**
  * GeoPulse k6 Load Test - Location Analytics Endpoints
  *
- * Tests the /api/location-analytics/* endpoints:
- * - /api/location-analytics/cities
- * - /api/location-analytics/countries
- * - /api/location-analytics/search
+ * Tests the /api/v1/location-analytics/* endpoints:
+ * - /api/v1/location-analytics/cities
+ * - /api/v1/location-analytics/countries
+ * - /api/v1/location-analytics/search
  */
 
 import http from 'k6/http';
@@ -97,10 +97,10 @@ export default function (data) {
 }
 
 /**
- * Test GET /api/location-analytics/cities
+ * Test GET /api/v1/location-analytics/cities
  */
 function testGetCities(auth) {
-  const citiesUrl = `${config.baseUrl}/api/location-analytics/cities`;
+  const citiesUrl = `${config.baseUrl}/api/v1/location-analytics/cities`;
 
   const response = http.get(citiesUrl, {
     headers: auth.getAuthHeader(),
@@ -124,10 +124,10 @@ function testGetCities(auth) {
 }
 
 /**
- * Test GET /api/location-analytics/countries
+ * Test GET /api/v1/location-analytics/countries
  */
 function testGetCountries(auth) {
-  const countriesUrl = `${config.baseUrl}/api/location-analytics/countries`;
+  const countriesUrl = `${config.baseUrl}/api/v1/location-analytics/countries`;
 
   const response = http.get(countriesUrl, {
     headers: auth.getAuthHeader(),
@@ -151,14 +151,14 @@ function testGetCountries(auth) {
 }
 
 /**
- * Test GET /api/location-analytics/search
+ * Test GET /api/v1/location-analytics/search
  */
 function testSearch(auth) {
   // Sample search queries
   const searchQueries = ['New', 'San', 'Los', 'London', 'Paris', 'Test'];
   const query = randomItem(searchQueries);
 
-  const searchUrl = buildUrl(`${config.baseUrl}/api/location-analytics/search`, {
+  const searchUrl = buildUrl(`${config.baseUrl}/api/v1/location-analytics/search`, {
     q: query,
   });
 

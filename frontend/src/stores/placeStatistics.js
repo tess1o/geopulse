@@ -37,7 +37,7 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
       this.loading = true
       this.error = null
       try {
-        this.placeDetails = await apiService.get(`/place-details/${type}/${id}`)
+        this.placeDetails = await apiService.get(`/places/${type}/${id}`)
         return this.placeDetails
       } catch (error) {
         throw this.fail(error, 'Failed to fetch place details')
@@ -48,7 +48,7 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
 
     async fetchPhotoSearchWindow(type, id, radiusMeters = 100) {
       try {
-        this.photoSearchWindow = await apiService.get(`/place-details/${type}/${id}/photo-search-window`, {
+        this.photoSearchWindow = await apiService.get(`/places/${type}/${id}/photo-search-window`, {
           radiusMeters
         })
         return this.photoSearchWindow
@@ -62,7 +62,7 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
       this.loading = true
       this.error = null
       try {
-        const data = await apiService.get(`/place-details/${type}/${id}/visits`, {
+        const data = await apiService.get(`/places/${type}/${id}/visits`, {
           page,
           size: pageSize,
           sortBy,
@@ -87,7 +87,7 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
       this.loading = true
       this.error = null
       try {
-        await apiService.put(`/place-details/${type}/${id}`, { name: newName })
+        await apiService.put(`/places/${type}/${id}`, { name: newName })
         if (this.placeDetails && String(this.placeDetails.id) === String(id) && this.placeDetails.type === type) {
           this.placeDetails.locationName = newName
         }
@@ -100,7 +100,7 @@ export const usePlaceStatisticsStore = defineStore('placeStatistics', {
 
     async exportVisits(type, id, sortBy = 'timestamp', sortDirection = 'desc') {
       try {
-        return await apiService.download(`/place-details/${type}/${id}/visits/export`, {
+        return await apiService.download(`/places/${type}/${id}/visits/export`, {
           sortBy,
           sortDirection
         })

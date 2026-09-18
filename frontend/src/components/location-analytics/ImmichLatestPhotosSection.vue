@@ -400,9 +400,9 @@ const searchSignature = computed(() => {
 
 const normalizePhoto = (photo) => ({
   ...photo,
-  thumbnailUrl: photo.thumbnailUrl ? photo.thumbnailUrl.replace(/^\/api/, '') : null,
-  previewUrl: photo.previewUrl ? photo.previewUrl.replace(/^\/api/, '') : null,
-  downloadUrl: photo.downloadUrl ? photo.downloadUrl.replace(/^\/api/, '') : null
+  thumbnailUrl: photo.thumbnailUrl ? photo.thumbnailUrl.replace(/^\/api\/v1/, '') : null,
+  previewUrl: photo.previewUrl ? photo.previewUrl.replace(/^\/api\/v1/, '') : null,
+  downloadUrl: photo.downloadUrl ? photo.downloadUrl.replace(/^\/api\/v1/, '') : null
 })
 
 const buildMarkerKey = (latitude, longitude, precision = MAP_COORDINATE_PRECISION) => {

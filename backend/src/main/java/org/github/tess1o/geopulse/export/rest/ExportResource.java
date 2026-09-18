@@ -31,7 +31,6 @@ import org.github.tess1o.geopulse.export.service.DebugExportService;
 import org.github.tess1o.geopulse.export.service.ExportJobManager;
 import org.github.tess1o.geopulse.shared.api.SliceResponse;
 import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
-import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.io.InputStream;
@@ -48,7 +47,7 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/export")
+@Path("/exports")
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -68,36 +67,8 @@ public class ExportResource {
     @Inject
     SystemSettingsService settingsService;
 
-    @Deprecated
-    @POST
-    @Path("/owntracks/create")
-    public ExportJobResponse createOwnTracksExport(CreateExportRequest request) {
-        return createExport(legacyRequest(request, "owntracks"));
-    }
-
-    @Deprecated
-    @POST
-    @Path("/geojson/create")
-    public ExportJobResponse createGeoJsonExport(CreateExportRequest request) {
-        return createExport(legacyRequest(request, "geojson"));
-    }
-
-    @Deprecated
-    @POST
-    @Path("/gpx/create")
-    public ExportJobResponse createGpxExport(CreateExportRequest request) {
-        return createExport(legacyRequest(request, "gpx"));
-    }
-
-    @Deprecated
-    @POST
-    @Path("/csv/create")
-    public ExportJobResponse createCsvExport(CreateExportRequest request) {
-        return createExport(legacyRequest(request, "csv"));
-    }
-
     @GET
-    @Path("/gpx/trip/{tripId}")
+    @Path("/trips/{tripId}/gpx")
     @Produces({"application/gpx+xml", "application/problem+json"})
     @APIResponse(responseCode = "200", description = "Trip exported as GPX",
             content = @Content(mediaType = "application/gpx+xml",
@@ -115,7 +86,7 @@ public class ExportResource {
     }
 
     @GET
-    @Path("/gpx/stay/{stayId}")
+    @Path("/stays/{stayId}/gpx")
     @Produces({"application/gpx+xml", "application/problem+json"})
     @APIResponse(responseCode = "200", description = "Stay exported as GPX",
             content = @Content(mediaType = "application/gpx+xml",
@@ -133,7 +104,6 @@ public class ExportResource {
     }
 
     @POST
-    @Path("/create")
     @APIResponse(responseCode = "200", description = "Export job created")
     @APIResponse(responseCode = "400", description = "Invalid export request")
     @APIResponse(responseCode = "429", description = "Too many active export jobs")
@@ -157,7 +127,7 @@ public class ExportResource {
     }
 
     @GET
-    @Path("/status/{exportJobId}")
+    @Path("/{exportJobId}")
     @APIResponse(responseCode = "200", description = "Export job status")
     @APIResponse(responseCode = "404", description = "Export job not found")
     public ExportJobResponse getExportStatus(@PathParam("exportJobId") UUID exportJobId) {
@@ -169,7 +139,7 @@ public class ExportResource {
     }
 
     @GET
-    @Path("/csv/template")
+    @Path("/csv-template")
     @Produces({"text/csv", "application/problem+json"})
     @APIResponse(responseCode = "200", description = "CSV import template",
             content = @Content(mediaType = "text/csv",
@@ -184,7 +154,7 @@ public class ExportResource {
     }
 
     @GET
-    @Path("/download/{exportJobId}")
+    @Path("/{exportJobId}/content")
     @Produces({"application/zip", MediaType.APPLICATION_JSON, "application/gpx+xml", "text/csv",
             "application/problem+json"})
     @APIResponse(responseCode = "200", description = "Export file",
@@ -235,7 +205,6 @@ public class ExportResource {
     }
 
     @GET
-    @Path("/jobs")
     @APIResponse(responseCode = "200", description = "Export jobs")
     public SliceResponse<ExportJobResponse> listExportJobs(
             @QueryParam("page") @DefaultValue("0") int page,
@@ -253,7 +222,7 @@ public class ExportResource {
     }
 
     @DELETE
-    @Path("/jobs/{exportJobId}")
+    @Path("/{exportJobId}")
     @APIResponse(responseCode = "204", description = "Export job deleted")
     @APIResponse(responseCode = "404", description = "Export job not found")
     public RestResponse<Void> deleteExportJob(@PathParam("exportJobId") UUID exportJobId) {
@@ -264,7 +233,7 @@ public class ExportResource {
     }
 
     @POST
-    @Path("/debug/create")
+    @Path("/debug")
     @Produces({"application/zip", "application/problem+json"})
     @APIResponse(responseCode = "200", description = "Debug export archive",
             content = @Content(mediaType = "application/zip",
@@ -276,15 +245,6 @@ public class ExportResource {
         byte[] data = debugExportService.generateDebugExport(userId, request);
         return download(data, "application/zip",
                 "geopulse-debug-%s-%d.zip".formatted(userId, Instant.now().getEpochSecond()));
-    }
-
-    private CreateExportRequest legacyRequest(CreateExportRequest request, String format) {
-        if (request == null) {
-            throw problem(INVALID_EXPORT_REQUEST, "Export request is required");
-        }
-        request.setFormat(format);
-        request.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-        return request;
     }
 
     private void validateDateRange(ExportDateRange dateRange) {
@@ -334,7 +294,7 @@ public class ExportResource {
             response.setError(new MessageDescriptor("export.error.failed", Map.of(), job.getError()));
         }
         if ("COMPLETED".equals(job.getStatus().name())) {
-            response.setDownloadUrl("/api/export/download/" + job.getJobId());
+            response.setDownloadUrl("/api/v1/exports/" + job.getJobId() + "/content");
             response.setExpiresAt(job.getCreatedAt().plus(
                     settingsService.getInteger("export.job-expiry-hours"), ChronoUnit.HOURS));
         }

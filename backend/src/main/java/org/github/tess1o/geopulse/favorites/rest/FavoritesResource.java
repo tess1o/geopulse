@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -42,7 +43,7 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/favorites")
+@Path("/favorites")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -106,7 +107,7 @@ public class FavoritesResource {
     }
 
     @POST
-    @Path("/point")
+    @Path("/points")
     @APIResponse(responseCode = "201", description = "Point favorite created")
     public RestResponse<JobResponse> addPointToFavorites(@NotNull @Valid AddPointToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -120,7 +121,7 @@ public class FavoritesResource {
     }
 
     @POST
-    @Path("/area")
+    @Path("/areas")
     @APIResponse(responseCode = "201", description = "Area favorite created")
     public RestResponse<JobResponse> addAreaToFavorites(@NotNull @Valid AddAreaToFavoritesDto dto) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -157,7 +158,7 @@ public class FavoritesResource {
         }
     }
 
-    @PUT
+    @PATCH
     @Path("/bulk-update")
     public BulkUpdateFavoritesResult bulkUpdateFavorites(@NotNull @Valid BulkUpdateFavoritesDto request) {
         try {

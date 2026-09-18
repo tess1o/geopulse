@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.trips.model.dto.PlanSuggestionDto;
 import org.locationtech.jts.geom.Point;
 
@@ -22,7 +23,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips/plan-suggestion")
+@Path(ApiPaths.TRIP_PLANNING + "/suggestions")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -46,8 +47,8 @@ public class PlanSuggestionResource {
     }
 
     @GET
-    public PlanSuggestionDto getPlanSuggestion(@QueryParam("lat") Double latitude,
-                                      @QueryParam("lon") Double longitude) {
+    public PlanSuggestionDto getPlanSuggestion(@QueryParam("latitude") Double latitude,
+                                      @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
             throw problem(INVALID_TRIP_SEARCH, "lat and lon are required");
         }

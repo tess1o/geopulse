@@ -36,7 +36,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/auth/oidc")
+@Path("/auth/oidc")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -92,7 +92,7 @@ public class OidcAuthenticationResource {
      * Initiate OIDC login flow
      */
     @POST
-    @Path("/login/{provider}")
+    @Path("/login-authorizations/{provider}")
     public OidcLoginInitResponse initiateLogin(
             @PathParam("provider") String providerName,
             @QueryParam("redirectUri") @DefaultValue("/app/timeline") String redirectUri) {
@@ -111,7 +111,7 @@ public class OidcAuthenticationResource {
      * Handle OIDC callback after provider authentication
      */
     @POST
-    @Path("/callback")
+    @Path("/callbacks")
     @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated browser session")
     public Response handleCallback(@Valid OidcCallbackRequest request) {
@@ -162,7 +162,7 @@ public class OidcAuthenticationResource {
      * Initiate OIDC account linking for authenticated user
      */
     @POST
-    @Path("/link/{provider}")
+    @Path("/connections/{provider}/authorizations")
     @RolesAllowed({"USER", "ADMIN"})
     public OidcLoginInitResponse initiateLinking(
             @PathParam("provider") String providerName,
@@ -182,7 +182,7 @@ public class OidcAuthenticationResource {
      * Unlink OIDC provider from authenticated user
      */
     @DELETE
-    @Path("/unlink/{provider}")
+    @Path("/connections/{provider}")
     @RolesAllowed({"USER", "ADMIN"})
     public void unlinkProvider(@PathParam("provider") String providerName) {
         try {
@@ -210,7 +210,7 @@ public class OidcAuthenticationResource {
      * Link OIDC account using password verification
      */
     @POST
-    @Path("/link-with-password")
+    @Path("/account-links/password")
     @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
             responseDescription = "Linked and authenticated browser session")
     public Response linkAccountWithPassword(@Valid LinkAccountWithPasswordRequest request) {
@@ -241,7 +241,7 @@ public class OidcAuthenticationResource {
      * Initiate OIDC-to-OIDC verification for account linking
      */
     @POST
-    @Path("/link-with-oidc")
+    @Path("/account-links/oidc")
     public OidcLoginInitResponse linkAccountWithOidc(@Valid InitiateOidcLinkingRequest request) {
         try {
             return accountLinkingService.initiateOidcVerificationForLinking(request);

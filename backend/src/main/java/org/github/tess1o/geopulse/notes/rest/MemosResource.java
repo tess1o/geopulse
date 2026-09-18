@@ -28,7 +28,7 @@ import java.util.concurrent.CompletionStage;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MEMOS_CONFIG;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/users")
+@Path("/integrations/memos")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -43,7 +43,7 @@ public class MemosResource {
     CurrentUserService currentUserService;
 
     @GET
-    @Path("/me/memos-config")
+    @Path("")
     @Blocking
     @APIResponse(responseCode = "204", description = "Memos is not configured")
     public RestResponse<MemosConfigResponse> getCurrentUserMemosConfig() {
@@ -53,7 +53,7 @@ public class MemosResource {
     }
 
     @PUT
-    @Path("/me/memos-config")
+    @Path("")
     @Blocking
     @APIResponse(responseCode = "204", description = "Memos configuration updated")
     public RestResponse<Void> updateCurrentUserMemosConfig(
@@ -67,7 +67,7 @@ public class MemosResource {
     }
 
     @POST
-    @Path("/me/memos-config/test")
+    @Path("/connection-tests")
     @Blocking
     public CompletionStage<TestMemosConnectionResponse> testCurrentUserMemosConnection(
             @NotNull @Valid TestMemosConnectionRequest request) {

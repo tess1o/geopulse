@@ -37,7 +37,7 @@ export class TestHelpers {
     while (Date.now() < deadline) {
       try {
         const requestTimeout = Math.max(1000, Math.min(5000, deadline - Date.now()));
-        const response = await page.request.get(`${TestConfig.API_BASE_URL}/api/health`, {
+        const response = await page.request.get(`${TestConfig.API_BASE_URL}/api/v1/system/health`, {
           timeout: requestTimeout
         });
 

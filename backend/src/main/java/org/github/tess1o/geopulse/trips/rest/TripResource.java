@@ -36,7 +36,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PERIOD_TAG_NOT_
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips")
+@Path("/trips")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -123,8 +123,8 @@ public class TripResource {
         }
     }
 
-    @POST
-    @Path("/{id}/unlink")
+    @DELETE
+    @Path("/{id}/period-tags")
     public TripDto unlinkTripFromPeriodTag(@PathParam("id") Long id) {
         try {
             return tripService.unlinkTripFromPeriodTag(currentUserService.getCurrentUserId(), id);

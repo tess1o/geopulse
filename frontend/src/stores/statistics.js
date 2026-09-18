@@ -53,8 +53,8 @@ export const useStatisticsStore = defineStore('statistics', {
             this.error = null
             try {
                 const response = await apiService.get(`/statistics`, {
-                    startTime: startTime,
-                    endTime: endTime
+                    from: startTime,
+                    to: endTime
                 })
                 this.selectedRangeStatistics = response
                 return response

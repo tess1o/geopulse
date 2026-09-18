@@ -27,6 +27,7 @@ import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.prometheus.GeoPulseWorkloadMetrics;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.api.PageResponse;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
@@ -52,7 +53,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 /**
  * REST resource for GPS point data.
  */
-@Path("/api/gps")
+@Path(ApiPaths.GPS_POINTS)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -103,7 +104,6 @@ public class GpsPointResource {
      * @return The HTTP code, (200, 409, 500)
      */
     @POST
-    @Path("/points")
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public GpsIngestionResponse ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
@@ -150,8 +150,8 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public GpsPointPathDTO getGpsPointPath(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("simplify") @DefaultValue("true") boolean simplify) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point path for user {} between {} and {}", user.getEmail(), startTime, endTime);
@@ -181,12 +181,12 @@ public class GpsPointResource {
     }
 
     @GET
-    @Path("/map-points")
+    @Path("/map")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public RawGpsPointMapResponseDTO getRawGpsMapPoints(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("limit") @DefaultValue("" + DEFAULT_RAW_MAP_POINTS_LIMIT) int limit) {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -211,7 +211,7 @@ public class GpsPointResource {
     }
 
     @GET
-    @Path("/points/{pointId}/location")
+    @Path("/{pointId}/location")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public RawGpsPointLocationDTO resolveRawGpsPointLocation(@PathParam("pointId") Long pointId) {
@@ -288,8 +288,8 @@ public class GpsPointResource {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public GpsPointSummaryDTO getGpsPointSummary(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("accuracyMin") Double accuracyMin,
             @QueryParam("accuracyMax") Double accuracyMax,
             @QueryParam("speedMin") Double speedMin,
@@ -337,13 +337,11 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     public PageResponse<GpsPointDTO> getGpsPoints(
             @QueryParam("page") @DefaultValue("1") int page,
-            @QueryParam("limit") @DefaultValue("50") int limit,
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("size") @DefaultValue("50") int limit,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
-            @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder,
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortOrder,
             @QueryParam("accuracyMin") Double accuracyMin,
             @QueryParam("accuracyMax") Double accuracyMax,
             @QueryParam("speedMin") Double speedMin,
@@ -369,8 +367,7 @@ public class GpsPointResource {
             }
 
             // Build filters
-            GpsPointFilterDTO filters = buildFilters(startTime != null ? startTime : (startDate != null ? startDate : null),
-                    endTime != null ? endTime : endDate,
+            GpsPointFilterDTO filters = buildFilters(startTime, endTime,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
             return gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
@@ -388,21 +385,17 @@ public class GpsPointResource {
      * Export GPS points as CSV with streaming to prevent OOM.
      * This endpoint requires authentication and supports all filters.
      *
-     * @param startDate Start date filter (format: YYYY-MM-DD)
-     * @param endDate   End date filter (format: YYYY-MM-DD)
      * @return CSV file with GPS points (streamed)
      */
     @GET
-    @Path("/export")
+    @Path("/exports")
     @Produces("text/csv")
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponse(responseCode = "200", description = "GPS points CSV export",
             content = @Content(mediaType = "text/csv", schema = @Schema(type = SchemaType.STRING)))
     public Response exportGpsPoints(
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("accuracyMin") Double accuracyMin,
             @QueryParam("accuracyMax") Double accuracyMax,
             @QueryParam("speedMin") Double speedMin,
@@ -415,8 +408,8 @@ public class GpsPointResource {
         try {
             // Build filters
             GpsPointFilterDTO filters = buildFilters(
-                    startTime != null ? startTime : startDate,
-                    endTime != null ? endTime : endDate,
+                    startTime,
+                    endTime,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
             // If IDs are provided, add them to filters (overrides other filters)
@@ -439,7 +432,7 @@ public class GpsPointResource {
                     output, user.getId(), filters, user.getDistanceUnit());
 
             String filename = String.format("gps-points-export-%s.csv",
-                    startDate != null && endDate != null ? startDate + "_" + endDate : "all");
+                    startTime != null && endTime != null ? startTime + "_" + endTime : "all");
 
             return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
@@ -583,7 +576,6 @@ public class GpsPointResource {
      * @return 200 OK if successful
      */
     @DELETE
-    @Path("/all")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})
     public void deleteAllGpsData() {
@@ -689,7 +681,7 @@ public class GpsPointResource {
     }
 
     @GET
-    @Path("/last-known-position")
+    @Path("/latest")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @RolesAllowed({"USER", "ADMIN"})

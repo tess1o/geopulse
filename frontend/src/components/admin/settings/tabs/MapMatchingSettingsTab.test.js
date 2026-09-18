@@ -221,7 +221,7 @@ describe('MapMatchingSettingsTab processing status', () => {
     await rebuildButton.trigger('click')
     await flushPromises()
 
-    expect(mocks.post).toHaveBeenCalledWith('/admin/settings/map-matching/historical/rebuild')
+    expect(mocks.post).toHaveBeenCalledWith('/admin/settings/map-matching/rebuilds')
     expect(mocks.get).toHaveBeenCalledTimes(2)
 
     wrapper.unmount()

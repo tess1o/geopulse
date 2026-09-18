@@ -187,7 +187,7 @@ export const useAuthStore = defineStore('auth', {
 
         async demoLogin(personaId) {
             try {
-                const response = await apiService.post('/auth/demo-login', {personaId})
+                const response = await apiService.post('/auth/demo-sessions', {personaId})
                 return this.consumeBrowserAuthResponse(response)
             } catch (error) {
                 if (!shouldPreserveCachedProfile(error)) {
@@ -198,7 +198,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async register(email, password, fullName, timezone) {
-            await apiService.post('/users/register', {
+            await apiService.post('/registrations', {
                 email,
                 password,
                 fullName,
@@ -219,14 +219,14 @@ export const useAuthStore = defineStore('auth', {
 
         async fetchTimelineDisplayPreferences() {
             try {
-                return await apiService.get('/users/preferences/timeline/display')
+                return await apiService.get('/preferences/timeline-display')
             } catch (error) {
                 throw this.fail(error, 'Failed to load timeline display preferences')
             }
         },
 
         async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
-            const response = await apiService.post('/users/update', {
+            const response = await apiService.patch('/users/me', {
                 fullName,
                 avatar,
                 timezone,
@@ -250,7 +250,7 @@ export const useAuthStore = defineStore('auth', {
             const formData = new FormData()
             formData.append('file', file)
 
-            const response = await apiService.post('/users/avatar', formData, {
+            const response = await apiService.put('/users/me/avatar', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
@@ -265,7 +265,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async updateTimelineDisplayPreferences(displayPreferences) {
-            const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
+            const response = await apiService.put('/preferences/timeline-display', displayPreferences)
             const updatedPreferences = response || null
 
             if (updatedPreferences) {
@@ -313,7 +313,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         async changePassword(oldPassword, newPassword) {
-            const response = await apiService.post('/users/changePassword', {
+            const response = await apiService.put('/users/me/password', {
                 oldPassword,
                 newPassword
             })
@@ -399,7 +399,7 @@ export const useAuthStore = defineStore('auth', {
 
         async initiateOidcLogin(providerName, redirectUri = null) {
             try {
-                const response = await apiService.post(`/auth/oidc/login/${providerName}`, {}, {
+                const response = await apiService.post(`/auth/oidc/login-authorizations/${providerName}`, {}, {
                     params: redirectUri ? {redirectUri} : {}
                 })
                 window.location.href = response.authorizationUrl
@@ -411,7 +411,7 @@ export const useAuthStore = defineStore('auth', {
 
         async handleOidcCallback(code, state) {
             try {
-                const response = await apiService.post('/auth/oidc/callback', {code, state})
+                const response = await apiService.post('/auth/oidc/callbacks', {code, state})
                 this.accountLinking = null
                 return this.consumeBrowserAuthResponse(response)
             } catch (error) {
@@ -427,7 +427,7 @@ export const useAuthStore = defineStore('auth', {
 
         async linkOidcProvider(providerName) {
             try {
-                const response = await apiService.post(`/auth/oidc/link/${providerName}`)
+                const response = await apiService.post(`/auth/oidc/connections/${providerName}/authorizations`)
                 window.location.href = response.authorizationUrl
             } catch (error) {
                 console.error('Failed to initiate OIDC linking:', error)
@@ -437,7 +437,7 @@ export const useAuthStore = defineStore('auth', {
 
         async unlinkOidcProvider(providerName) {
             try {
-                await apiService.delete(`/auth/oidc/unlink/${providerName}`)
+                await apiService.delete(`/auth/oidc/connections/${providerName}`)
             } catch (error) {
                 console.error('Failed to unlink OIDC provider:', error)
                 throw this.fail(error, 'Failed to unlink OIDC provider')
@@ -466,7 +466,7 @@ export const useAuthStore = defineStore('auth', {
 
         async getRegistrationStatus() {
             try {
-                return await apiService.get('/auth/status')
+                return await apiService.get('/auth/sessions/current')
             } catch (error) {
                 console.error('Failed to fetch registration status:', error)
                 return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false }
@@ -488,7 +488,7 @@ export const useAuthStore = defineStore('auth', {
                 demoPersonas: []
             }
             try {
-                const response = await apiService.get('/auth/status')
+                const response = await apiService.get('/auth/sessions/current')
                 const status = {...fallback, ...response}
                 this.authStatus = status
                 return status
@@ -501,7 +501,7 @@ export const useAuthStore = defineStore('auth', {
 
         async generateMobileAuth() {
             try {
-                return await apiService.get('/auth/mobile')
+                return await apiService.post('/auth/mobile-codes', {})
             } catch (error) {
                 throw this.fail(error, 'Unable to create authentication link')
             }
@@ -509,15 +509,15 @@ export const useAuthStore = defineStore('auth', {
 
         async validateInvitation(token) {
             try {
-                return await apiService.get(`/auth/invitation/${token}/validate`)
+                return await apiService.get(`/registration-invitations/${token}`)
             } catch (error) {
                 throw this.fail(error, 'Failed to validate invitation')
             }
         },
 
-        async registerInvitation(payload) {
+        async registerInvitation(token, payload) {
             try {
-                return await apiService.post('/auth/invitation/register', payload)
+                return await apiService.post(`/registration-invitations/${token}/registrations`, payload)
             } catch (error) {
                 throw this.fail(error, 'Registration failed')
             }
@@ -552,7 +552,7 @@ export const useAuthStore = defineStore('auth', {
         async linkAccountWithPassword(payload) {
             try {
                 return this.consumeBrowserAuthResponse(
-                    await apiService.post('/auth/oidc/link-with-password', payload))
+                    await apiService.post('/auth/oidc/account-links/password', payload))
             } catch (error) {
                 throw this.fail(error, 'Password verification failed')
             }
@@ -560,7 +560,7 @@ export const useAuthStore = defineStore('auth', {
 
         async initiateOidcAccountVerification(payload) {
             try {
-                return await apiService.post('/auth/oidc/link-with-oidc', payload)
+                return await apiService.post('/auth/oidc/account-links/oidc', payload)
             } catch (error) {
                 throw this.fail(error, 'OIDC verification initiation failed')
             }

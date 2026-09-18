@@ -51,7 +51,7 @@ export const chunkedUploadService = {
     async initializeUpload(file, importFormat, options = {}) {
         // Note: We don't send totalChunks - backend calculates it based on configured chunk size
         // This ensures frontend and backend use the same chunk size from system settings
-        const response = await apiService.post('/import/upload/init', {
+        const response = await apiService.post('/import-uploads', {
             fileName: file.name,
             fileSize: file.size,
             importFormat,
@@ -78,12 +78,11 @@ export const chunkedUploadService = {
         const chunk = file.slice(start, end)
 
         const formData = new FormData()
-        formData.append('chunkIndex', chunkIndex.toString())
         formData.append('chunk', chunk, `chunk_${chunkIndex}`)
 
         // Note: Don't set Content-Type header manually - axios handles it automatically
         // for FormData and adds the correct boundary parameter
-        const response = await apiService.post(`/import/upload/${uploadId}/chunk`, formData, {
+        const response = await apiService.put(`/import-uploads/${uploadId}/parts/${chunkIndex}`, formData, {
             onUploadProgress: onProgress
         })
 
@@ -136,7 +135,7 @@ export const chunkedUploadService = {
      * @returns {Promise<Object>} Import job response
      */
     async completeUpload(uploadId) {
-        return apiService.post(`/import/upload/${uploadId}/complete`)
+        return apiService.post(`/import-uploads/${uploadId}/completion`)
     },
 
     /**
@@ -145,7 +144,7 @@ export const chunkedUploadService = {
      * @returns {Promise<Object>} Upload status
      */
     async getUploadStatus(uploadId) {
-        return apiService.get(`/import/upload/${uploadId}/status`)
+        return apiService.get(`/import-uploads/${uploadId}`)
     },
 
     /**
@@ -155,7 +154,7 @@ export const chunkedUploadService = {
      */
     async abortUpload(uploadId) {
         try {
-            await apiService.delete(`/import/upload/${uploadId}`)
+            await apiService.delete(`/import-uploads/${uploadId}`)
             return true
         } catch (error) {
             console.warn('Failed to abort upload:', error)

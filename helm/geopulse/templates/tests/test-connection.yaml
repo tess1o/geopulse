@@ -18,7 +18,7 @@ spec:
           echo "Testing GeoPulse deployment..."
           echo ""
           echo "1. Testing Backend health endpoint..."
-          if wget --spider -q -S http://{{ include "geopulse.fullname" . }}-backend:{{ .Values.backend.service.port }}/api/health 2>&1 | grep -E 'HTTP/[0-9\.]+ 200'; then
+          if wget --spider -q -S http://{{ include "geopulse.fullname" . }}-backend:{{ .Values.backend.service.port }}/api/v1/system/health 2>&1 | grep -E 'HTTP/[0-9\.]+ 200'; then
             echo "✓ Backend health check passed"
           else
             echo "✗ Backend health check failed"

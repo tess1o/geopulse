@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.admin.service.AdminSettingsBackupService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
@@ -32,13 +33,14 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/admin/settings-backup")
+@Path(ApiPaths.ADMIN_SETTINGS_BACKUPS)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "Admin: Settings Backup", description = "Export and import admin-configurable global settings.")
+@Tag(name = "Admin: Backups", description = "Export and import admin-configurable global settings.")
 public class AdminSettingsBackupResource {
 
     @Context
@@ -57,14 +59,12 @@ public class AdminSettingsBackupResource {
     CurrentUserService currentUserService;
 
     @GET
-    @Path("/export")
+    @Path("/exports")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
     @APIResponseSchema(value = AdminSettingsBackupDto.class, responseCode = "200",
             responseDescription = "Admin settings backup")
-    public Response exportSettingsBackup(
-            @jakarta.ws.rs.HeaderParam("X-Forwarded-For") String forwardedFor,
-            @jakarta.ws.rs.HeaderParam("X-Real-IP") String realIp) {
+    public Response exportSettingsBackup() {
         try {
             AdminSettingsBackupDto backup = backupService.exportBackup();
             byte[] payload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backup);
@@ -79,7 +79,7 @@ public class AdminSettingsBackupResource {
                             "oidcProviders", backup.getOidcProviders().size(),
                             "customGeocodingProviders", backup.getCustomGeocodingProviders().size()
                     ),
-                    UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
+                    UserIpAddress.resolve(httpRequest)
             );
 
             return Response.ok(payload)
@@ -94,13 +94,10 @@ public class AdminSettingsBackupResource {
     }
 
     @POST
-    @Path("/import")
+    @Path("/imports")
     @RolesAllowed(SecurityRoles.ADMIN)
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public AdminSettingsImportResult importSettingsBackup(
-            @RestForm("file") FileUpload file,
-            @jakarta.ws.rs.HeaderParam("X-Forwarded-For") String forwardedFor,
-            @jakarta.ws.rs.HeaderParam("X-Real-IP") String realIp) {
+    public AdminSettingsImportResult importSettingsBackup(@RestForm("file") FileUpload file) {
         if (file == null || file.uploadedFile() == null) {
             throw problem(INVALID_ADMIN_SETTINGS_BACKUP, "Admin settings backup file is required");
         }
@@ -117,7 +114,7 @@ public class AdminSettingsBackupResource {
                     TargetType.SETTING,
                     "admin-settings-backup",
                     auditDetails(result),
-                    UserIpAddress.resolve(httpRequest, forwardedFor, realIp)
+                    UserIpAddress.resolve(httpRequest)
             );
             return result;
         } catch (IllegalArgumentException e) {

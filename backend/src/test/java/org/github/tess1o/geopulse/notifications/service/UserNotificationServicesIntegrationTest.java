@@ -59,7 +59,7 @@ class UserNotificationServicesIntegrationTest {
                 "eventCode", "ENTER",
                 "eventVerb", "entered"
         ));
-        List<UserNotificationDto> list = userNotificationService.listNotifications(owner.getId(), 50);
+        List<UserNotificationDto> list = userNotificationService.listNotificationsPage(owner.getId(), 0, 50, null, null, null).items();
         assertThat(list).hasSize(1);
         UserNotificationDto dto = list.getFirst();
         assertThat(dto.getSource()).isEqualTo(NotificationSource.GEOFENCE);
@@ -93,7 +93,7 @@ class UserNotificationServicesIntegrationTest {
     void shouldMarkSeenAndMarkAllSeenViaService() {
         projectionService.publishSnapshot(geofenceEvent(1003L, GeofenceEventType.ENTER, GeofenceDeliveryStatus.SKIPPED), Map.of());
         projectionService.publishSnapshot(geofenceEvent(1004L, GeofenceEventType.LEAVE, GeofenceDeliveryStatus.FAILED), Map.of());
-        List<UserNotificationDto> before = userNotificationService.listNotifications(owner.getId(), 50);
+        List<UserNotificationDto> before = userNotificationService.listNotificationsPage(owner.getId(), 0, 50, null, null, null).items();
         assertThat(before).hasSize(2);
         UserNotificationDto markedOne = userNotificationService.markSeen(owner.getId(), before.getFirst().getId());
         assertThat(markedOne.getSeen()).isTrue();

@@ -191,7 +191,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.sharedLocationLoading = true
             this.clearError()
             try {
-                const response = await apiService.get(`/shared/${linkId}/info`)
+                const response = await apiService.get(`/public/share-links/${linkId}`)
                 this.sharedLocationInfo = response
                 return response
             } catch (error) {
@@ -207,7 +207,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.clearError()
             try {
                 const payload = password ? {password} : {}
-                const response = await apiService.post(`/shared/${linkId}/verify`, payload)
+                const response = await apiService.post(`/public/share-links/${linkId}/access-tokens`, payload)
                 this.sharedAccessToken = response.access_token
                 return response
             } catch (error) {
@@ -227,7 +227,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.sharedLocationLoading = true
             this.clearError()
             try {
-                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/location`, {
+                const response = await apiService.getWithCustomHeaders(`/public/share-links/${linkId}/location`, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
                 this.sharedLocationData = response
@@ -290,11 +290,11 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.clearError()
             try {
                 // Build URL with optional query params
-                let url = `/shared/${linkId}/timeline`
+                let url = `/public/share-links/${linkId}/timeline`
                 if (startTime && endTime) {
                     const params = new URLSearchParams({
-                        startTime: startTime,  // ISO-8601 format
-                        endTime: endTime
+                        from: startTime,
+                        to: endTime
                     })
                     url += `?${params.toString()}`
                 }
@@ -349,11 +349,11 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.clearError()
             try {
                 // Build URL with optional query params
-                let url = `/shared/${linkId}/path`
+                let url = `/public/share-links/${linkId}/path`
                 if (startTime && endTime) {
                     const params = new URLSearchParams({
-                        startTime: startTime,  // ISO-8601 format
-                        endTime: endTime
+                        from: startTime,
+                        to: endTime
                     })
                     url += `?${params.toString()}`
                 }
@@ -383,7 +383,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
             }
 
             try {
-                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/current`, {
+                const response = await apiService.getWithCustomHeaders(`/public/share-links/${linkId}/current-location`, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
                 this.sharedCurrentLocation = response

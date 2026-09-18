@@ -11,6 +11,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStartResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.BoatSetupStatusDTO;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
@@ -21,7 +22,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BOAT_SETUP_JOB_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/boat/setup")
+@Path(ApiPaths.TRIP_PLANNING + "/boat-setup")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -35,7 +36,6 @@ public class BoatSetupResource {
     BoatSetupService boatSetupService;
 
     @GET
-    @Path("/status")
     @RolesAllowed({"USER", "ADMIN"})
     public BoatSetupStatusDTO getStatus() {
         UUID userId = currentUserService.getCurrentUserId();
@@ -43,7 +43,6 @@ public class BoatSetupResource {
     }
 
     @POST
-    @Path("/start")
     @RolesAllowed({"USER", "ADMIN"})
     public BoatSetupStartResponseDTO startSetup() {
         UUID userId = currentUserService.getCurrentUserId();

@@ -17,7 +17,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DEBUG_IMPORT_FA
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DEBUG_IMPORT;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/import/debug")
+@Path("/debug-imports")
 @Slf4j
 @Tag(name = "User: Import and Export", description = "Upload debug import data.")
 public class DebugImportResource {
@@ -29,7 +29,6 @@ public class DebugImportResource {
     CurrentUserService currentUserService;
 
     @POST
-    @Path("/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     public void uploadDebugData(

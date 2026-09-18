@@ -88,7 +88,7 @@ export const useCoverageStore = defineStore('coverage', {
       this.settingsUpdating = true
       this.statusError = null
       try {
-        const data = await apiService.post('/coverage/recalculate', {})
+        const data = await apiService.post('/coverage/recalculations', {})
         if (data) {
           this.status = data
         }

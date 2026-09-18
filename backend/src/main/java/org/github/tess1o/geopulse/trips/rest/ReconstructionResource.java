@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionCommitResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionPreviewDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripReconstructionRequestDto;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.trips.service.TripReconstructionService;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -21,7 +22,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/reconstruction")
+@Path(ApiPaths.TRIP_PLANNING + "/reconstructions")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

@@ -9,6 +9,7 @@ import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -54,7 +55,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_JOB_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/geocoding")
+@Path("/geocoding")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -85,7 +86,7 @@ public class ReverseGeocodingResource {
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
-            @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortOrder) {
         if (page < 1 || limit < 1) {
             throw problem(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
         }
@@ -121,7 +122,7 @@ public class ReverseGeocodingResource {
         }
     }
 
-    @PUT
+    @PATCH
     @Path("/bulk-update")
     public BulkUpdateGeocodingResult bulkUpdateGeocoding(@Valid BulkUpdateGeocodingDto request) {
         try {

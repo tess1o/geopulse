@@ -9,10 +9,10 @@ const createAndLoginRasterUser = (page, dbManager, userData) =>
   TestSetupHelper.createAndLoginUser(page, dbManager, userData, { mapMode: 'RASTER' });
 
 const stubPlanSuggestion = async (page, title = 'Stubbed plan suggestion') => {
-  await page.route('**/api/trips/plan-suggestion*', async (route) => {
+  await page.route('**/api/v1/trip-planning/suggestions*', async (route) => {
     const url = new URL(route.request().url());
-    const lat = Number(url.searchParams.get('lat') || 51.5007);
-    const lon = Number(url.searchParams.get('lon') || -0.1246);
+    const lat = Number(url.searchParams.get('latitude') || url.searchParams.get('lat') || 51.5007);
+    const lon = Number(url.searchParams.get('longitude') || url.searchParams.get('lon') || -0.1246);
 
     await route.fulfill({
       status: 200,

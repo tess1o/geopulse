@@ -22,7 +22,6 @@ import java.util.UUID;
 @Slf4j
 public class TimelineConfigurationProvider {
 
-    //TODO: Why do we use repository here? Use service!
     private final UserRepository userRepository;
     private final GlobalTimelineConfig globalDefaults;
     private final TimelineConfigFieldRegistry fieldRegistry;

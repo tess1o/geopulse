@@ -94,7 +94,7 @@ export const TestData = {
     auth: {
       login: '/auth/login',
       register: '/users/register',
-      logout: '/auth/logout',
+      logout: '/auth/sessions/current',
       refresh: '/auth/refresh-cookie'
     }
   },

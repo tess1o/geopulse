@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionRequest;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingResolutionResponse;
@@ -18,9 +19,10 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MAP_MATCHING_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/map-matching")
+@Path("/map-matching-jobs")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Tag(name = "User: Trips and Planning", description = "Resolve map matching jobs for trips.")
 public class MapMatchingResource {
 
     private final CurrentUserService currentUserService;
@@ -33,7 +35,6 @@ public class MapMatchingResource {
     }
 
     @POST
-    @Path("/resolve")
     @RolesAllowed({"USER", "ADMIN"})
     public MapMatchingResolutionResponse resolve(@NotNull @Valid MapMatchingResolutionRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -45,7 +46,7 @@ public class MapMatchingResource {
     }
 
     @POST
-    @Path("/status")
+    @Path("/searches")
     @RolesAllowed({"USER", "ADMIN"})
     public List<MapMatchingTripResolutionDTO> status(@NotNull @Valid MapMatchingStatusRequest request) {
         UUID userId = currentUserService.getCurrentUserId();

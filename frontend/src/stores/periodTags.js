@@ -117,12 +117,9 @@ export const usePeriodTagsStore = defineStore('periodTags', {
             this.isLoading = true
             this.error = null
             try {
-                const startDateEpochMillis = new Date(startDate).getTime()
-                const endDateEpochMillis = new Date(endDate).getTime()
-
                 const response = await apiService.get('/period-tags', {
-                    startDate: startDateEpochMillis,
-                    endDate: endDateEpochMillis
+                    from: new Date(startDate).toISOString(),
+                    to: new Date(endDate).toISOString()
                 })
                 this.periodTags = Array.isArray(response) ? response : []
                 return this.periodTags
@@ -137,8 +134,8 @@ export const usePeriodTagsStore = defineStore('periodTags', {
         async checkOverlaps(startTime, endTime, excludeId = null) {
             try {
                 const params = {
-                    startTime: startTime,
-                    endTime: endTime
+                    from: startTime,
+                    to: endTime
                 }
                 if (excludeId) {
                     params.excludeId = excludeId
@@ -201,20 +198,6 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                 this.periodTags = this.periodTags.filter(tag => tag.id !== id)
             } catch (error) {
                 throw this.fail(error, 'Failed to delete period tag')
-            } finally {
-                this.isLoading = false
-            }
-        },
-
-        async unlinkPeriodTagFromTrip(id) {
-            this.isLoading = true
-            this.error = null
-            try {
-                const response = await apiService.post(`/period-tags/${id}/unlink`)
-                await this.fetchPeriodTags()
-                return response || null
-            } catch (error) {
-                throw this.fail(error, 'Failed to unlink period tag')
             } finally {
                 this.isLoading = false
             }

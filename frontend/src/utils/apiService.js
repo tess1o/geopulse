@@ -12,7 +12,8 @@ import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
 
-const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
+const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
+console.log(API_BASE_URL);
 let maintenanceAbortController = new AbortController();
 
 async function parseBlobProblem(error) {
@@ -29,7 +30,7 @@ async function parseBlobProblem(error) {
 }
 
 function isCompletionLogout(url = '') {
-    return maintenance.activated && String(url).includes('/auth/logout');
+    return maintenance.activated && String(url).includes('/auth/sessions/current');
 }
 
 function assertApplicationTransportAvailable(endpoint = '') {
@@ -151,7 +152,7 @@ const apiService = {
      * @returns {Promise<boolean>} True if refresh was successful
      */
     async refreshToken() {
-        assertApplicationTransportAvailable('/auth/refresh-cookie');
+        assertApplicationTransportAvailable('/auth/sessions/current/refresh');
         // If a refresh is already in progress, return the existing promise
         if (this._refreshingToken) {
             return this._refreshTokenPromise;
@@ -163,7 +164,7 @@ const apiService = {
             try {
                 // Cookie-based refresh is handled server-side.
                 // Include CSRF header when csrf-token cookie exists.
-                await this._performSecureRequest('post', '/auth/refresh-cookie', {});
+                await this._performSecureRequest('post', '/auth/sessions/current/refresh', {});
                 return true;
             } catch (refreshError) {
                 if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
@@ -239,20 +240,19 @@ const apiService = {
         assertApplicationTransportAvailable(endpoint);
         // Skip auth check for public endpoints
         const publicEndpoints = [
-            '/auth/login',
-            '/auth/demo-login',
-            '/auth/status',
-            '/users/register',
-            '/auth/refresh',
-            '/auth/refresh-cookie',
-            '/auth/logout',
+            '/auth/sessions',
+            '/auth/demo-sessions',
+            '/auth/sessions/current',
+            '/registrations',
+            '/auth/api-sessions/current/refresh',
+            '/auth/sessions/current/refresh',
             '/auth/oidc/providers',
-            '/auth/oidc/callback',
-            '/home/content'
+            '/auth/oidc/callbacks',
+            '/home-content'
         ];
 
         // Skip auth check for shared location endpoints (they use their own temporary tokens)
-        const isSharedEndpoint = endpoint.startsWith('/shared/');
+        const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
 
         if (publicEndpoints.includes(endpoint) || isSharedEndpoint) {
             return; // No auth check needed
@@ -360,7 +360,7 @@ const apiService = {
             await this.checkAuthExpired(endpoint);
 
             // Don't send auth headers for shared endpoints (they're public or use custom tokens)
-            const isSharedEndpoint = endpoint.startsWith('/shared/');
+            const isSharedEndpoint = endpoint.startsWith('/public/share-links/');
 
             if (isSharedEndpoint) {
                 const response = await axios.post(`${API_BASE_URL}${endpoint}`, data, {
@@ -604,7 +604,7 @@ const apiService = {
      */
     async login(email, password) {
         try {
-            const response = await this._performSecureRequest('post', '/auth/login', {
+            const response = await this._performSecureRequest('post', '/auth/sessions', {
                 email,
                 password,
             });
@@ -624,7 +624,7 @@ const apiService = {
      */
     async logout() {
         try {
-            await this._performSecureRequest('post', '/auth/logout', {});
+            await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
             // Even if logout fails on server, clear local data
             console.error('Logout request failed:', error);
@@ -639,7 +639,7 @@ const apiService = {
      */
     async logoutStrict() {
         try {
-            await this._performSecureRequest('post', '/auth/logout', {});
+            await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
             console.error('Logout request failed:', error);
             throw error;

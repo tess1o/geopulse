@@ -286,7 +286,6 @@ const handleSubmit = async () => {
 
   try {
     const payload = {
-      token: token.value,
       email: form.value.email,
       password: form.value.password,
       fullName: form.value.fullName || form.value.email.split('@')[0],
@@ -294,7 +293,7 @@ const handleSubmit = async () => {
     }
 
     // Register user via invitation
-    await authStore.registerInvitation(payload)
+    await authStore.registerInvitation(token.value, payload)
 
     // Log in the user automatically after successful registration
     await authStore.login(form.value.email, form.value.password)

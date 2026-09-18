@@ -11,7 +11,7 @@ describe('photo marker group normalization', () => {
       id: 'photo-1',
       latitude: 50.45,
       longitude: 30.52,
-      thumbnailUrl: '/users/me/immich/photos/photo-1/thumbnail'
+      thumbnailUrl: '/integrations/immich/photos/photo-1/thumbnail'
     }
 
     const [group] = normalizePhotoMarkerGroups([{

@@ -21,7 +21,7 @@ class DemoAuthenticationDisabledIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/auth/status")
+                .get("/api/v1/auth/sessions/current")
                 .then()
                 .statusCode(200)
                 .body("demoModeEnabled", equalTo(false))
@@ -38,7 +38,7 @@ class DemoAuthenticationDisabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/auth/demo-login")
+                .post("/api/v1/auth/demo-sessions")
                 .then()
                 .statusCode(404)
                 .extract()
@@ -62,7 +62,7 @@ class DemoAuthenticationDisabledIntegrationTest {
                         }
                         """.formatted(email))
                 .when()
-                .post("/api/users/register")
+                .post("/api/v1/registrations")
                 .then()
                 .statusCode(201)
                 .body("email", equalTo(email))

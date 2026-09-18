@@ -13,7 +13,6 @@ import java.util.List;
  * points that are less significant based on their distance from the line connecting
  * the endpoints. This preserves the overall shape while reducing the number of points.
  */
-//TODO: should be service, not static methods!
 public class GpsPathSimplifier {
 
     /**

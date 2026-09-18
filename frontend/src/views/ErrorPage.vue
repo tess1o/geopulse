@@ -263,9 +263,9 @@ const checkBackendConnectivity = async () => {
   const wasOffline = !backendOnline.value
   
   try {
-    const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
+    const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1'
     
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(`${API_BASE_URL}/system/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(3000), // 3 second timeout
       cache: 'no-cache'
@@ -406,10 +406,10 @@ const checkBackendStatus = async () => {
   retrying.value = true
   try {
     // Get API base URL
-    const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
+    const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1'
     
     // Try to ping the backend with a simple health check
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(`${API_BASE_URL}/system/health`, {
       method: 'GET',
       signal: AbortSignal.timeout(5000),
       cache: 'no-cache'

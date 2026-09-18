@@ -485,12 +485,12 @@ const mqttTlsHint = computed(() => (
     : 'Leave TLS/SSL settings unchecked'
 ))
 
-const owntracksUrl = computed(() => `${browserOrigin.value}/api/owntracks`)
-const overlandUrl = computed(() => `${browserOrigin.value}/api/overland`)
-const traccarUrl = computed(() => `${browserOrigin.value}/api/traccar`)
-const gpsLoggerUrl = computed(() => `${browserOrigin.value}/api/gpslogger`)
-const dawarichUrl = computed(() => `${browserOrigin.value}/api/dawarich`)
-const colotaUrl = computed(() => `${browserOrigin.value}/api/colota`)
+const owntracksUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/owntracks`)
+const overlandUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/overland`)
+const traccarUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/traccar`)
+const gpsLoggerUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/gpslogger`)
+const dawarichUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/dawarich`)
+const colotaUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/colota`)
 
 const traccarXmlSnippet = computed(() => `<entry key='forward.enable'>true</entry>
 <entry key='forward.type'>json</entry>
@@ -524,7 +524,7 @@ const gpsLoggerHttpBody = computed(() => `{
 
 const homeAssistantConfigYaml = computed(() => `rest_command:
   send_gps_data:
-    url: "${browserOrigin.value}/api/homeassistant"
+    url: "${browserOrigin.value}/api/v1/gps/ingest/home-assistant"
     method: POST
     headers:
       content-type: "application/json"

@@ -36,7 +36,7 @@ test.describe('Admin Invitations', () => {
     await loginPage.login(adminUser.email, adminUser.password);
     await TestHelpers.waitForNavigation(page, '**/app/timeline');
 
-    const deleteResponse = await page.request.delete(`/api/admin/users/${invitedDbUser.id}`);
+    const deleteResponse = await page.request.delete(`/api/v1/admin/users/${invitedDbUser.id}`);
     expect(deleteResponse.ok()).toBe(true);
 
     const deletedUserResult = await dbManager.client.query(

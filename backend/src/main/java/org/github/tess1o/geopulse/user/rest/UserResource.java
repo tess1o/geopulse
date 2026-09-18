@@ -34,7 +34,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 /**
  * REST resource for user management.
  */
-@Path("/api/users")
+@Path("")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -66,7 +66,7 @@ public class UserResource {
      */
 
     @POST
-    @Path("/register")
+    @Path("/registrations")
     public RestResponse<UserResponse> registerUser(@Valid UserRegistrationRequest request) {
         try {
             UserEntity user = userService.registerUser(
@@ -87,8 +87,8 @@ public class UserResource {
     }
 
 
-    @POST
-    @Path("/update")
+    @PATCH
+    @Path("/users/me")
     @RolesAllowed({"USER", "ADMIN"})
     public UserResponse updateProfile(@Valid UpdateProfileRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -96,8 +96,8 @@ public class UserResource {
         return userMapper.toResponse(userService.updateProfile(userId, request));
     }
 
-    @POST
-    @Path("/avatar")
+    @PUT
+    @Path("/users/me/avatar")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @RolesAllowed({"USER", "ADMIN"})
     public AvatarResponse uploadAvatar(@RestForm("file") FileUpload file) {
@@ -122,7 +122,7 @@ public class UserResource {
     }
 
     @GET
-    @Path("/{userId}/avatar")
+    @Path("/users/{userId}/avatar")
     @Produces({"image/jpeg", "image/png", "image/webp"})
     @RolesAllowed({"USER", "ADMIN"})
     @APIResponse(responseCode = "200", description = "User avatar",
@@ -157,8 +157,8 @@ public class UserResource {
         }
     }
 
-    @POST
-    @Path("/changePassword")
+    @PUT
+    @Path("/users/me/password")
     @RolesAllowed({"USER", "ADMIN"})
     public PasswordStatusResponse changePassword(@Valid UpdateUserPasswordRequest request) {
         try {
@@ -237,7 +237,7 @@ public class UserResource {
      */
     @PUT
     @RolesAllowed({"USER", "ADMIN"})
-    @Path("/preferences/timeline/display")
+    @Path("/preferences/timeline-display")
     @APIResponseSchema(value = TimelineDisplayPreferences.class, responseCode = "200",
             responseDescription = "Updated timeline display preferences")
     public Response updateTimelineDisplayPreferences(@Valid UpdateTimelineDisplayPreferencesRequest request) {
@@ -262,7 +262,7 @@ public class UserResource {
      */
     @GET
     @RolesAllowed({"USER", "ADMIN"})
-    @Path("/preferences/timeline/display")
+    @Path("/preferences/timeline-display")
     public TimelineDisplayPreferences getTimelineDisplayPreferences() {
         UUID userId = currentUserService.getCurrentUserId();
         log.debug("Getting timeline display preferences for user {}", userId);
@@ -277,7 +277,7 @@ public class UserResource {
      * @return The current user's profile data
      */
     @GET
-    @Path("/me")
+    @Path("/users/me")
     @RolesAllowed({"USER", "ADMIN"})
     public UserResponse getCurrentUserProfile() {
         return userMapper.toResponse(currentUserService.getCurrentUser());

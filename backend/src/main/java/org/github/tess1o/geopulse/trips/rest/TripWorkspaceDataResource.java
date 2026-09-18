@@ -18,7 +18,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RE
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips/{tripId}")
+@Path("/trips/{tripId}")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -38,8 +38,8 @@ public class TripWorkspaceDataResource {
     @GET
     @Path("/timeline")
     public MovementTimelineDTO getTripTimeline(@PathParam("tripId") Long tripId,
-                                    @QueryParam("startTime") String startTime,
-                                    @QueryParam("endTime") String endTime) {
+                                    @QueryParam("from") String startTime,
+                                    @QueryParam("to") String endTime) {
         try {
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);
@@ -55,8 +55,8 @@ public class TripWorkspaceDataResource {
     @GET
     @Path("/path")
     public GpsPointPathDTO getTripPath(@PathParam("tripId") Long tripId,
-                                @QueryParam("startTime") String startTime,
-                                @QueryParam("endTime") String endTime) {
+                                @QueryParam("from") String startTime,
+                                @QueryParam("to") String endTime) {
         try {
             Instant parsedStart = parseInstant(startTime);
             Instant parsedEnd = parseInstant(endTime);

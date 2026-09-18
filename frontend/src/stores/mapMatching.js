@@ -9,7 +9,7 @@ export const useMapMatchingStore = defineStore('mapMatching', {
     async resolve(tripIds) {
       this.error = null
       try {
-        return await apiService.post('/map-matching/resolve', { tripIds })
+        return await apiService.post('/map-matching-jobs', { tripIds })
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to resolve map matching')
         throw this.error
@@ -18,7 +18,7 @@ export const useMapMatchingStore = defineStore('mapMatching', {
 
     async status(targetIds) {
       try {
-        return await apiService.post('/map-matching/status', { targetIds })
+        return await apiService.post('/map-matching-jobs/searches', { targetIds })
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to load map matching status')
         throw this.error

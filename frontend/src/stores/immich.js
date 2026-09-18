@@ -23,10 +23,15 @@ const normalizeDateParam = (value) => {
 
 const normalizePhoto = (photo) => ({
   ...photo,
-  thumbnailUrl: photo.thumbnailUrl?.replace(/^\/api/, '') || null,
-  previewUrl: photo.previewUrl?.replace(/^\/api/, '') || null,
-  downloadUrl: photo.downloadUrl?.replace(/^\/api/, '') || null
+  thumbnailUrl: photo.thumbnailUrl?.replace(/^\/api\/v1/, '') || null,
+  previewUrl: photo.previewUrl?.replace(/^\/api\/v1/, '') || null,
+  downloadUrl: photo.downloadUrl?.replace(/^\/api\/v1/, '') || null
 })
+
+const toApiParams = (params = {}) => {
+  const { startDate, endDate, ...rest } = params
+  return { ...rest, ...(startDate ? { from: startDate } : {}), ...(endDate ? { to: endDate } : {}) }
+}
 
 export const useImmichStore = defineStore('immich', {
   state: () => ({
@@ -58,7 +63,7 @@ export const useImmichStore = defineStore('immich', {
       this.configError = null
       inFlightConfigRequest = (async () => {
         try {
-          this.config = await apiService.get('/users/me/immich-config') || null
+          this.config = await apiService.get('/integrations/immich') || null
           return this.config
         } catch (error) {
           this.configError = this.fail(error, 'Failed to load Immich configuration')
@@ -75,7 +80,7 @@ export const useImmichStore = defineStore('immich', {
     async updateConfig(configData) {
       this.configError = null
       try {
-        await apiService.put('/users/me/immich-config', configData)
+        await apiService.put('/integrations/immich', configData)
         await this.fetchConfig(true)
       } catch (error) {
         this.configError = this.fail(error, 'Failed to update Immich configuration')
@@ -85,7 +90,7 @@ export const useImmichStore = defineStore('immich', {
 
     async testConnection(configData) {
       try {
-        return await apiService.post('/users/me/immich-config/test', configData)
+        return await apiService.post('/integrations/immich/connection-tests', configData)
       } catch (error) {
         this.configError = this.fail(error, 'Failed to test Immich connection')
         throw this.configError
@@ -94,7 +99,7 @@ export const useImmichStore = defineStore('immich', {
 
     async searchPhotos(params) {
       try {
-        return await apiService.get('/users/me/immich/photos/search', params)
+        return await apiService.get('/integrations/immich/photos/search', toApiParams(params))
       } catch (error) {
         throw this.fail(error, 'Failed to search Immich photos')
       }
@@ -102,7 +107,7 @@ export const useImmichStore = defineStore('immich', {
 
     async fetchPhotoMapMarkers(params) {
       try {
-        return await apiService.get('/users/me/immich/photos/map-markers', params)
+        return await apiService.get('/integrations/immich/photos/map-markers', toApiParams(params))
       } catch (error) {
         throw this.fail(error, 'Failed to load Immich photo markers')
       }
@@ -110,7 +115,7 @@ export const useImmichStore = defineStore('immich', {
 
     async fetchPhotosForMapMarker(params) {
       try {
-        return await apiService.get('/users/me/immich/photos/map-marker/photos', params)
+        return await apiService.get('/integrations/immich/photos/by-marker', toApiParams(params))
       } catch (error) {
         throw this.fail(error, 'Failed to load Immich marker photos')
       }

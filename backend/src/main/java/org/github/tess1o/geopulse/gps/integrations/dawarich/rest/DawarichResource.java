@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.Dawarich
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.DawarichYearlyStats;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
@@ -25,7 +26,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 
-@Path("/api/dawarich/api/v1")
+@Path(ApiPaths.GPS_INGEST + "/dawarich")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)

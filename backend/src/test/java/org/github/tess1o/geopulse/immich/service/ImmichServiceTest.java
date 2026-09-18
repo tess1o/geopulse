@@ -99,7 +99,7 @@ class ImmichServiceTest {
         assertThat(singleMarker.getSinglePhoto()).isNotNull();
         assertThat(singleMarker.getSinglePhoto().getId()).isEqualTo("single-photo");
         assertThat(singleMarker.getSinglePhoto().getThumbnailUrl())
-                .isEqualTo("/api/users/" + userId + "/immich/photos/single-photo/thumbnail");
+                .isEqualTo("/api/v1/integrations/immich/photos/single-photo/thumbnail");
         assertThat(singleMarker.getSinglePhoto().getWidth()).isNull();
         ArgumentCaptor<ImmichSearchRequest> searchCaptor = ArgumentCaptor.forClass(ImmichSearchRequest.class);
         verify(immichClient).searchAssetsAllPages(any(), any(), searchCaptor.capture());

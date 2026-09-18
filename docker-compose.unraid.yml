@@ -46,7 +46,7 @@ services:
       geopulse-postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/system/health || exit 1"]
       interval: 3s
       timeout: 2s
       retries: 20

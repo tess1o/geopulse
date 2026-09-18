@@ -32,7 +32,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/coverage")
+@Path("/coverage")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -85,7 +85,7 @@ public class CoverageResource {
     }
 
     @POST
-    @Path("/recalculate")
+    @Path("/recalculations")
     @APIResponse(responseCode = "200", description = "Coverage recalculation started")
     @APIResponse(responseCode = "400", description = "Coverage is not enabled")
     @APIResponse(responseCode = "409", description = "An import already manages recalculation")

@@ -62,8 +62,9 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.valhallaConfigured()).thenReturn(true);
         when(mapMatchingWorker.rebuildHistoricalQueue()).thenReturn(2L);
         when(currentUserService.getCurrentUserId()).thenReturn(adminId);
+        when(resource.httpRequest.getHeader("X-Forwarded-For")).thenReturn("203.0.113.7");
 
-        MapMatchingQueueRebuildResponse response = resource.rebuildMapMatchingHistoricalQueue("203.0.113.7", null);
+        MapMatchingQueueRebuildResponse response = resource.rebuildMapMatchingHistoricalQueue();
 
         assertThat(response.queuedUsers()).isEqualTo(2L);
         verify(mapMatchingWorker).rebuildHistoricalQueue();
@@ -81,7 +82,7 @@ class AdminSettingsResourceMapMatchingRepairTest {
     void rebuildMapMatchingHistoricalQueueRejectsDisabledMapMatching() {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(false);
 
-        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue(null, null))
+        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue())
                 .isInstanceOf(HttpProblem.class)
                 .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Map matching is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
@@ -92,7 +93,7 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(true);
         when(mapMatchingConfiguration.backfillEnabled()).thenReturn(false);
 
-        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue(null, null))
+        assertThatThrownBy(() -> resource.rebuildMapMatchingHistoricalQueue())
                 .isInstanceOf(HttpProblem.class)
                 .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Historical backfill is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);

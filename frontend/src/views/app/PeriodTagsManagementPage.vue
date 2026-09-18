@@ -549,8 +549,11 @@ const unlinkTagFromTrip = (tag) => {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await store.unlinkPeriodTagFromTrip(tag.id)
-        await tripsStore.fetchTrips()
+        await tripsStore.unlinkTripFromPeriodTag(linkedTrip.id)
+        await Promise.all([
+          store.fetchPeriodTags(),
+          tripsStore.fetchTrips()
+        ])
         toast.add({
           severity: 'success',
           summary: 'Unlinked',

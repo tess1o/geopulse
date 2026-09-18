@@ -26,12 +26,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.LocationLookupResponseDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineCountResponse;
-import org.github.tess1o.geopulse.streaming.model.dto.TripClassificationDetailsDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
-import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateResponseDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.TripStaySplitResponse;
-import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.DataGapStayOverrideService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
@@ -39,9 +34,6 @@ import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import org.github.tess1o.geopulse.streaming.service.TimelineLocationLookupService;
-import org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService;
-import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
-import org.github.tess1o.geopulse.streaming.service.TripStaySplitOverrideService;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.Instant;
@@ -60,11 +52,10 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELIN
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ALREADY_ACTIVE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/streaming-timeline")
+@Path("/timeline")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -78,17 +69,14 @@ public class StreamingTimelineResource {
     @Inject TimelineJobProgressService jobProgressService;
     @Inject AsyncTimelineGenerationService asyncTimelineGenerationService;
     @Inject org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
-    @Inject TripClassificationDetailsService tripClassificationDetailsService;
-    @Inject TripMovementTypeOverrideService tripMovementTypeOverrideService;
     @Inject DataGapStayOverrideService dataGapStayOverrideService;
-    @Inject TripStaySplitOverrideService tripStaySplitOverrideService;
     @Inject StreamingTimelineGenerationService timelineGenerationService;
     @Inject MultiUserTimelineService multiUserTimelineService;
     @Inject TimelineLocationLookupService timelineLocationLookupService;
 
     @GET
-    public MovementTimelineDTO getTimeline(@QueryParam("startTime") String startTime,
-                                           @QueryParam("endTime") String endTime) {
+    public MovementTimelineDTO getTimeline(@QueryParam("from") String startTime,
+                                           @QueryParam("to") String endTime) {
         TimeRange range = parseTimeRange(startTime, endTime);
         return streamingTimelineAggregator.getTimelineFromDb(
                 currentUserService.getCurrentUserId(), range.start(), range.end());
@@ -112,8 +100,8 @@ public class StreamingTimelineResource {
 
     @GET
     @Path("/count")
-    public TimelineCountResponse getTimelineCount(@QueryParam("startTime") String startTime,
-                                                  @QueryParam("endTime") String endTime) {
+    public TimelineCountResponse getTimelineCount(@QueryParam("from") String startTime,
+                                                  @QueryParam("to") String endTime) {
         TimeRange range = parseTimeRange(startTime, endTime);
         Map<String, Long> counts = streamingTimelineAggregator.getTimelineItemCounts(
                 currentUserService.getCurrentUserId(), range.start(), range.end());
@@ -126,80 +114,13 @@ public class StreamingTimelineResource {
     }
 
     @GET
-    @Path("/user/preferences")
+    @Path("/preferences")
     public TimelineConfig getUserPreferences() {
         return configurationProvider.getConfigurationForUser(currentUserService.getCurrentUserId());
     }
 
-    @GET
-    @Path("/trips/{tripId}/classification")
-    public TripClassificationDetailsDTO getTripClassificationDetails(@PathParam("tripId") Long tripId) {
-        return tripClassificationDetailsService
-                .getTripClassificationDetails(tripId, currentUserService.getCurrentUserId())
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
-                        Map.of("tripId", tripId)));
-    }
-
-    @PUT
-    @Path("/trips/{tripId}/movement-type")
-    public TripMovementTypeUpdateResponseDTO updateTripMovementType(
-            @PathParam("tripId") Long tripId, TripMovementTypeUpdateRequest request) {
-        if (request == null || request.getMovementType() == null || request.getMovementType().isBlank()) {
-            throw problem(INVALID_TIMELINE_REQUEST, "movementType is required");
-        }
-        TripType movementType;
-        try {
-            movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, "Invalid movementType",
-                    Map.of("movementType", request.getMovementType(), "allowedValues",
-                            String.join(",", Arrays.stream(TripType.values()).map(Enum::name).toList())));
-        }
-        return tripMovementTypeOverrideService
-                .setManualMovementType(currentUserService.getCurrentUserId(), tripId, movementType)
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
-                        Map.of("tripId", tripId)));
-    }
-
     @DELETE
-    @Path("/trips/{tripId}/movement-type")
-    public TripMovementTypeUpdateResponseDTO resetTripMovementType(@PathParam("tripId") Long tripId) {
-        return tripMovementTypeOverrideService
-                .resetToAutomaticMovementType(currentUserService.getCurrentUserId(), tripId)
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
-                        Map.of("tripId", tripId)));
-    }
-
-    @POST
-    @Path("/trips/{tripId}/stay-split/preview")
-    public TripStaySplitResponse previewTripStaySplit(
-            @PathParam("tripId") Long tripId, TripStaySplitRequest request) {
-        try {
-            return tripStaySplitOverrideService
-                    .previewSplit(currentUserService.getCurrentUserId(), tripId, request)
-                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
-                            Map.of("tripId", tripId)));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
-        }
-    }
-
-    @PUT
-    @Path("/trips/{tripId}/stay-split")
-    public TripStaySplitResponse splitTripWithStay(
-            @PathParam("tripId") Long tripId, TripStaySplitRequest request) {
-        try {
-            return tripStaySplitOverrideService
-                    .splitTrip(currentUserService.getCurrentUserId(), tripId, request)
-                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
-                            Map.of("tripId", tripId)));
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
-        }
-    }
-
-    @DELETE
-    @Path("/trip-stay-split-overrides/{overrideId}")
+    @Path("/stay-split-overrides/{overrideId}")
     public TripStaySplitResponse resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
         return timelineGenerationService
                 .resetTripStaySplitOverride(currentUserService.getCurrentUserId(), overrideId)
@@ -246,8 +167,8 @@ public class StreamingTimelineResource {
     @GET
     @Path("/multi-user")
     public MultiUserTimelineDTO getMultiUserTimeline(
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
             @QueryParam("userIds") String userIds) {
         TimeRange range = parseTimeRange(startTime, endTime);
         try {
@@ -259,7 +180,7 @@ public class StreamingTimelineResource {
     }
 
     @POST
-    @Path("/regenerate-all")
+    @Path("/jobs")
     public JobResponse regenerateAllTimeline() {
         try {
             return new JobResponse(asyncTimelineGenerationService
@@ -288,7 +209,7 @@ public class StreamingTimelineResource {
     }
 
     @GET
-    @Path("/jobs/active")
+    @Path("/jobs/current")
     public RestResponse<TimelineJobProgress> getActiveJob() {
         return jobProgressService.getUserActiveJob(currentUserService.getCurrentUserId())
                 .map(RestResponse::ok)

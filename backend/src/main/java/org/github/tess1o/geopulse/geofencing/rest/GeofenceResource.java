@@ -15,6 +15,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -60,7 +61,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFIC
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/geofences")
+@Path("/geofences")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -133,12 +134,12 @@ public class GeofenceResource {
     @GET
     @Path("/events")
     public PageResponse<GeofenceEventDto> getEvents(@QueryParam("page") @DefaultValue("0") int page,
-                                          @QueryParam("pageSize") @DefaultValue("25") int pageSize,
+                                          @QueryParam("size") @DefaultValue("25") int pageSize,
                                           @QueryParam("sortBy") @DefaultValue("occurredAt") String sortBy,
-                                          @QueryParam("sortDir") @DefaultValue("desc") String sortDir,
+                                          @QueryParam("sortDirection") @DefaultValue("desc") String sortDir,
                                           @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly,
-                                          @QueryParam("dateFrom") String dateFromValue,
-                                          @QueryParam("dateTo") String dateToValue,
+                                          @QueryParam("from") String dateFromValue,
+                                          @QueryParam("to") String dateToValue,
                                           @QueryParam("subjectUserIds") String subjectUserIdsValue,
                                           @QueryParam("eventTypes") String eventTypesValue) {
         try {
@@ -165,8 +166,8 @@ public class GeofenceResource {
         return new CountResponse(eventService.countUnread(currentUserService.getCurrentUserId()));
     }
 
-    @POST
-    @Path("/events/{eventId}/seen")
+    @PATCH
+    @Path("/events/{eventId}/read-status")
     public GeofenceEventDto markEventSeen(@PathParam("eventId") Long eventId) {
         try {
             return eventService.markSeen(currentUserService.getCurrentUserId(), eventId);
@@ -175,8 +176,8 @@ public class GeofenceResource {
         }
     }
 
-    @POST
-    @Path("/events/seen-all")
+    @PATCH
+    @Path("/events/read-status")
     public UpdatedCountResponse markAllEventsSeen() {
         return new UpdatedCountResponse(eventService.markAllSeen(currentUserService.getCurrentUserId()));
     }
@@ -197,7 +198,7 @@ public class GeofenceResource {
     }
 
     @POST
-    @Path("/templates/test-connection")
+    @Path("/templates/connection-tests")
     public AppriseTestResponse testTemplateConnection(@NotNull @Valid AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {

@@ -80,7 +80,7 @@ export const useGeofencesStore = defineStore('geofences', {
 
     async testTemplateConnection(payload) {
       try {
-        return await apiService.post('/geofences/templates/test-connection', payload)
+        return await apiService.post('/geofences/templates/connection-tests', payload)
       } catch (error) {
         throw this.fail(error, 'Connection test failed')
       }
@@ -132,7 +132,7 @@ export const useGeofencesStore = defineStore('geofences', {
 
     async markEventSeen(eventId) {
       try {
-        const updated = await apiService.post(`/geofences/events/${eventId}/seen`, {})
+        const updated = await apiService.patch(`/geofences/events/${eventId}/read-status`, {})
         this.events = this.events.map(event => event.id === updated.id ? updated : event)
         this.unreadCount = Math.max(0, this.unreadCount - 1)
         return updated
@@ -143,7 +143,7 @@ export const useGeofencesStore = defineStore('geofences', {
 
     async markAllEventsSeen() {
       try {
-        const result = await apiService.post('/geofences/events/seen-all', {})
+        const result = await apiService.patch('/geofences/events/read-status', {})
         this.events = this.events.map(event => ({ ...event, seen: true }))
         this.unreadCount = 0
         return result

@@ -29,7 +29,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
  * Supports both direct uploads (small files) and chunked uploads (large files).
  * All import formats are handled through a single endpoint with a format parameter.
  */
-@Path("/api/import/upload")
+@Path("")
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -62,6 +62,7 @@ public class ImportUploadResource {
      * Large files (>80MB) should use the chunked upload flow instead.
      */
     @POST
+    @Path("/imports")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public ImportJobResponse uploadFile(
             @RestForm("file") FileUpload file,
@@ -144,7 +145,7 @@ public class ImportUploadResource {
      * Frontend splits files >80MB into chunks to bypass upload limits (e.g., Cloudflare 100MB).
      */
     @POST
-    @Path("/init")
+    @Path("/import-uploads")
     @Consumes(MediaType.APPLICATION_JSON)
     public ChunkedUploadInitResponse initializeChunkedUpload(ChunkedUploadInitRequest request) {
         try {
@@ -233,12 +234,12 @@ public class ImportUploadResource {
     /**
      * Upload a single chunk of a chunked upload.
      */
-    @POST
-    @Path("/{uploadId}/chunk")
+    @PUT
+    @Path("/import-uploads/{uploadId}/parts/{chunkIndex}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public ChunkUploadResponse uploadChunk(
             @PathParam("uploadId") UUID uploadId,
-            @RestForm("chunkIndex") int chunkIndex,
+            @PathParam("chunkIndex") int chunkIndex,
             @RestForm("chunk") FileUpload chunkFile) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -310,7 +311,7 @@ public class ImportUploadResource {
      * Complete a chunked upload and create an import job.
      */
     @POST
-    @Path("/{uploadId}/complete")
+    @Path("/import-uploads/{uploadId}/completion")
     public ImportJobResponse completeChunkedUpload(@PathParam("uploadId") UUID uploadId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -390,7 +391,7 @@ public class ImportUploadResource {
      * Get the status of a chunked upload session.
      */
     @GET
-    @Path("/{uploadId}/status")
+    @Path("/import-uploads/{uploadId}")
     public ChunkedUploadStatusResponse getUploadStatus(@PathParam("uploadId") UUID uploadId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -420,7 +421,7 @@ public class ImportUploadResource {
      * Abort a chunked upload and cleanup temp files.
      */
     @DELETE
-    @Path("/{uploadId}")
+    @Path("/import-uploads/{uploadId}")
     public void abortUpload(@PathParam("uploadId") UUID uploadId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();

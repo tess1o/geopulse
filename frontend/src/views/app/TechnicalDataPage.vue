@@ -1586,8 +1586,8 @@ const buildFilterParams = () => {
 
   // Date/time range
   if (hasDateFilter.value) {
-    params.startTime = formatDateForAPI(appliedStartDateTime.value)
-    params.endTime = formatDateForAPI(appliedEndDateTime.value)
+    params.from = formatDateForAPI(appliedStartDateTime.value)
+    params.to = formatDateForAPI(appliedEndDateTime.value)
   }
 
   // Advanced filters
@@ -1617,9 +1617,9 @@ const loadGPSPoints = async () => {
     // Start with pagination and sorting
     const params = {
       page: currentPage.value + 1,
-      limit: pageSize.value,
+      size: pageSize.value,
       sortBy: sortField.value,
-      sortOrder: sortOrder.value === 1 ? 'asc' : 'desc'
+      sortDirection: sortOrder.value === 1 ? 'asc' : 'desc'
     }
 
     // Merge with filter params

@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
@@ -59,7 +60,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 /**
  * REST resource for admin settings management.
  */
-@Path("/api/admin/settings")
+@Path("/admin/settings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
@@ -115,7 +116,7 @@ public class AdminSettingsResource {
      * Get settings for a specific category.
      */
     @GET
-    @Path("/{category}")
+    @Path("/categories/{category}")
     @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
     public List<SettingInfo> getSettingsByCategory(@PathParam("category") String category) {
         return settingsService.getSettingsByCategory(category);
@@ -129,13 +130,9 @@ public class AdminSettingsResource {
      * used for other categories (auth, ai, import, export).
      */
     @PUT
-    @Path("/{key}")
+    @Path("/keys/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void updateSetting(
-            @PathParam("key") String key,
-            UpdateSettingRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void updateSetting(@PathParam("key") String key, UpdateSettingRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
         String oldValue = settingsService.getString(key);
@@ -143,7 +140,7 @@ public class AdminSettingsResource {
         settingsService.setValue(key, request.getValue(), adminId);
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logSettingChange(adminId, key, oldValue, request.getValue(), ipAddress);
 
     }
@@ -152,12 +149,9 @@ public class AdminSettingsResource {
      * Reset a setting to default (delete from DB).
      */
     @DELETE
-    @Path("/{key}")
+    @Path("/keys/{key}")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public SettingResetResponse resetSetting(
-            @PathParam("key") String key,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public SettingResetResponse resetSetting(@PathParam("key") String key) {
 
         UUID adminId = currentUserService.getCurrentUserId();
         String oldValue = settingsService.getString(key);
@@ -165,7 +159,7 @@ public class AdminSettingsResource {
         settingsService.resetToDefault(key);
 
         // Audit log
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logSettingReset(adminId, key, oldValue, ipAddress);
 
         return new SettingResetResponse(settingsService.getDefaultValue(key));
@@ -184,13 +178,10 @@ public class AdminSettingsResource {
     @Path("/bulk")
     @Transactional
     @RolesAllowed(SecurityRoles.ADMIN)
-    public void bulkUpdateSettings(
-            BulkUpdateRequest request,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void bulkUpdateSettings(BulkUpdateRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
 
         // 1. Validate ALL provider settings together with full context
         List<UpdateSettingRequest> geocodingSettings = request.getSettings().stream()
@@ -217,29 +208,29 @@ public class AdminSettingsResource {
 
         // 2. Group settings by save order (same order as before for validation)
         List<UpdateSettingRequest> credentialSettings = request.getSettings().stream()
-            .filter(s -> s.getKey().contains(".api-key") || s.getKey().contains(".access-token"))
-            .collect(Collectors.toList());
+                .filter(s -> s.getKey().contains(".api-key") || s.getKey().contains(".access-token"))
+                .collect(Collectors.toList());
 
         List<UpdateSettingRequest> enabledSettings = request.getSettings().stream()
-            .filter(s -> s.getKey().contains(".enabled"))
-            .collect(Collectors.toList());
+                .filter(s -> s.getKey().contains(".enabled"))
+                .collect(Collectors.toList());
 
         List<UpdateSettingRequest> providerSettings = request.getSettings().stream()
-            .filter(s -> s.getKey().equals("geocoding.primary-provider") ||
-                         s.getKey().equals("geocoding.fallback-provider") ||
-                         s.getKey().equals("weather.primary-provider") ||
-                         s.getKey().equals("weather.secondary-provider"))
-            .collect(Collectors.toList());
+                .filter(s -> s.getKey().equals("geocoding.primary-provider") ||
+                        s.getKey().equals("geocoding.fallback-provider") ||
+                        s.getKey().equals("weather.primary-provider") ||
+                        s.getKey().equals("weather.secondary-provider"))
+                .collect(Collectors.toList());
 
         List<UpdateSettingRequest> otherSettings = request.getSettings().stream()
-            .filter(s -> !s.getKey().contains(".api-key") &&
-                         !s.getKey().contains(".access-token") &&
-                         !s.getKey().contains(".enabled") &&
-                         !s.getKey().equals("geocoding.primary-provider") &&
-                         !s.getKey().equals("geocoding.fallback-provider") &&
-                         !s.getKey().equals("weather.primary-provider") &&
-                         !s.getKey().equals("weather.secondary-provider"))
-            .collect(Collectors.toList());
+                .filter(s -> !s.getKey().contains(".api-key") &&
+                        !s.getKey().contains(".access-token") &&
+                        !s.getKey().contains(".enabled") &&
+                        !s.getKey().equals("geocoding.primary-provider") &&
+                        !s.getKey().equals("geocoding.fallback-provider") &&
+                        !s.getKey().equals("weather.primary-provider") &&
+                        !s.getKey().equals("weather.secondary-provider"))
+                .collect(Collectors.toList());
 
         // 3. Save in correct order (within transaction)
         List<UpdateSettingRequest> orderedSettings = new ArrayList<>();
@@ -254,11 +245,11 @@ public class AdminSettingsResource {
 
             // Audit log each change
             auditLogService.logSettingChange(
-                adminId,
-                settingUpdate.getKey(),
-                oldValue,
-                settingUpdate.getValue(),
-                ipAddress
+                    adminId,
+                    settingUpdate.getKey(),
+                    oldValue,
+                    settingUpdate.getValue(),
+                    ipAddress
             );
         }
 
@@ -269,7 +260,7 @@ public class AdminSettingsResource {
      * Test Apprise connectivity using current system settings.
      */
     @POST
-    @Path("/system/notifications/apprise/test")
+    @Path("/system-notifications/apprise/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
     public AppriseTestResponse testAppriseConnection(AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
@@ -285,14 +276,14 @@ public class AdminSettingsResource {
     }
 
     @POST
-    @Path("/weather/test")
+    @Path("/weather/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
     public WeatherTestResponse testWeatherConnection() {
         return weatherService.testProviderConnection();
     }
 
     @POST
-    @Path("/panoramax/test")
+    @Path("/panoramax/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
     public PanoramaxTestResponse testPanoramaxConnection() {
         String endpoint = settingsService.getString("panoramax.endpoint").trim();
@@ -326,7 +317,7 @@ public class AdminSettingsResource {
     }
 
     @POST
-    @Path("/map-matching/valhalla/test")
+    @Path("/map-matching/valhalla/connection-tests")
     @RolesAllowed(SecurityRoles.ADMIN)
     public MapMatchingProviderTestResponse testValhallaConnection() {
         if (!mapMatchingConfiguration.valhallaConfigured()) {
@@ -376,11 +367,9 @@ public class AdminSettingsResource {
     }
 
     @POST
-    @Path("/map-matching/historical/rebuild")
+    @Path("/map-matching/rebuilds")
     @RolesAllowed(SecurityRoles.ADMIN)
-    public MapMatchingQueueRebuildResponse rebuildMapMatchingHistoricalQueue(
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public MapMatchingQueueRebuildResponse rebuildMapMatchingHistoricalQueue() {
         if (!mapMatchingConfiguration.isEnabled()) {
             throw problem(MAP_MATCHING_DISABLED, "Map matching is disabled");
         }
@@ -393,7 +382,7 @@ public class AdminSettingsResource {
 
         long queuedUsers = mapMatchingWorker.rebuildHistoricalQueue();
         UUID adminId = currentUserService.getCurrentUserId();
-        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
+        String ipAddress = UserIpAddress.resolve(httpRequest);
         auditLogService.logAction(
                 adminId,
                 ActionType.MAP_MATCHING_HISTORICAL_REBUILD,

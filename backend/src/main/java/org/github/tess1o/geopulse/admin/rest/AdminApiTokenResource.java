@@ -17,12 +17,13 @@ import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.List;
 import java.util.UUID;
+
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/admin/api-tokens")
+@Path("/admin/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed("ADMIN")
@@ -52,13 +53,10 @@ public class AdminApiTokenResource {
 
     @DELETE
     @Path("/{id}")
-    public void revokeToken(
-            @PathParam("id") UUID tokenId,
-            @HeaderParam("X-Forwarded-For") String forwardedFor,
-            @HeaderParam("X-Real-IP") String realIp) {
+    public void revokeToken(@PathParam("id") UUID tokenId) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
+            String ipAddress = UserIpAddress.resolve(request);
             apiTokenService.revokeTokenAsAdmin(adminUserId, tokenId, ipAddress);
         } catch (IllegalArgumentException e) {
             throw problem(API_TOKEN_INVALID, e.getMessage());

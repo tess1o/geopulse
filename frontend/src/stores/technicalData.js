@@ -62,7 +62,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             try {
                 this.setLoading(true)
 
-                const summary = await apiService.get('/gps/summary', params)
+                const summary = await apiService.get('/gps/points/summary', params)
                 this.setSummaryStats(summary)
                 return summary
             } catch (error) {
@@ -76,7 +76,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             try {
                 this.setLoading(true)
 
-                const response = await apiService.get('/gps', params)
+                const response = await apiService.get('/gps/points', params)
 
                 const gpsPoints = response.items || []
                 const totalRecords = response.totalElements ?? this.summaryStats.totalPoints ?? 0
@@ -103,7 +103,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 if (selectedIds && selectedIds.length > 0) {
                     params = { ...params, ids: selectedIds.join(',') }
                 }
-                await apiService.download('/gps/export', params)
+                await apiService.download('/gps/points/exports', params)
                 return true
             } catch (error) {
                 throw this.fail(error, 'Failed to export GPS points')
@@ -112,7 +112,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async updateGpsPoint(pointId, data) {
             try {
-                return await apiService.put(`/gps/${pointId}`, data)
+                return await apiService.put(`/gps/points/${pointId}`, data)
             } catch (error) {
                 throw this.fail(error, 'Failed to update GPS point')
             }
@@ -120,7 +120,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async deleteGpsPoint(pointId) {
             try {
-                return await apiService.delete(`/gps/${pointId}`)
+                return await apiService.delete(`/gps/points/${pointId}`)
             } catch (error) {
                 throw this.fail(error, 'Failed to delete GPS point')
             }
@@ -128,7 +128,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async deleteGpsPoints(pointIds) {
             try {
-                return await apiService.post('/gps/bulk', {
+                return await apiService.post('/gps/points/bulk', {
                     gpsPointIds: pointIds
                 })
             } catch (error) {
@@ -138,7 +138,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async deleteAllGpsData() {
             try {
-                await apiService.delete('/gps/all')
+                await apiService.delete('/gps/points')
                 this.clearData()
                 return true
             } catch (error) {
@@ -148,7 +148,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async fetchRawMapPoints(params) {
             try {
-                return await apiService.get('/gps/map-points', params)
+                return await apiService.get('/gps/points/map', params)
             } catch (error) {
                 throw this.fail(error, 'Failed to load raw GPS points')
             }

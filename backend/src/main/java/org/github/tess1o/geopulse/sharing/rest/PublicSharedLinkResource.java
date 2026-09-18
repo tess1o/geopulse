@@ -23,7 +23,7 @@ import java.util.concurrent.CompletionStage;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/shared")
+@Path("/public/share-links")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -34,7 +34,7 @@ public class PublicSharedLinkResource {
     SharedLinkService sharedLinkService;
 
     @GET
-    @Path("/{linkId}/info")
+    @Path("/{linkId}")
     public SharedLocationInfo getSharedLocationInfo(@PathParam("linkId") UUID linkId) {
         try {
             return sharedLinkService.getSharedLocationInfo(linkId);
@@ -44,7 +44,7 @@ public class PublicSharedLinkResource {
     }
 
     @POST
-    @Path("/{linkId}/verify")
+    @Path("/{linkId}/access-tokens")
     public AccessTokenResponse verifyPassword(@PathParam("linkId") UUID linkId, @Valid VerifyPasswordRequest request) {
         try {
             return sharedLinkService.verifyPassword(linkId, request.getPassword());
@@ -73,8 +73,8 @@ public class PublicSharedLinkResource {
     public MovementTimelineDTO getSharedTimeline(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
             Instant endInstant = parseOptionalInstant(endTime, "endTime");
@@ -96,8 +96,8 @@ public class PublicSharedLinkResource {
     public CompletionStage<NoteSearchResponse> getSharedNotes(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
             Instant endInstant = parseOptionalInstant(endTime, "endTime");
@@ -118,8 +118,8 @@ public class PublicSharedLinkResource {
     public GpsPointPathDTO getSharedPath(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader,
-            @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime) {
         try {
             Instant startInstant = parseOptionalInstant(startTime, "startTime");
             Instant endInstant = parseOptionalInstant(endTime, "endTime");
@@ -136,7 +136,7 @@ public class PublicSharedLinkResource {
     }
 
     @GET
-    @Path("/{linkId}/current")
+    @Path("/{linkId}/current-location")
     public LocationHistoryResponse.CurrentLocationData getSharedCurrentLocation(
             @PathParam("linkId") UUID linkId,
             @HeaderParam("Authorization") String authHeader) {

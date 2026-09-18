@@ -186,7 +186,7 @@ export const useExportImportStore = defineStore('exportImport', {
                     payload.options = options
                 }
 
-                const job = await apiService.post('/export/create', payload)
+                const job = await apiService.post('/exports', payload)
                 this.setCurrentExportJob(job)
                 this.addExportJob(job)
                 return job
@@ -200,7 +200,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async fetchExportStatus(exportJobId) {
             this.exportError = null
             try {
-                const job = await apiService.get(`/export/status/${exportJobId}`)
+                const job = await apiService.get(`/exports/${exportJobId}`)
                 this.updateExportJob(exportJobId, job)
 
                 if (this.currentExportJob?.exportJobId === exportJobId) {
@@ -216,7 +216,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async fetchExportJobs(page = 0, size = 10) {
             this.exportError = null
             try {
-                const response = await apiService.get('/export/jobs', { page, size })
+                const response = await apiService.get('/exports', { page, size })
                 this.setExportJobs(response.items)
                 return response
             } catch (error) {
@@ -227,7 +227,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async downloadExportFile(exportJobId) {
             this.exportError = null
             try {
-                return await apiService.download(`/export/download/${exportJobId}`)
+                return await apiService.download(`/exports/${exportJobId}/content`)
             } catch (error) {
                 throw this.failExport(error, 'Failed to download export')
             }
@@ -236,7 +236,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async deleteExportJob(exportJobId) {
             this.exportError = null
             try {
-                await apiService.delete(`/export/jobs/${exportJobId}`)
+                await apiService.delete(`/exports/${exportJobId}`)
                 this.removeExportJob(exportJobId)
                 return true
             } catch (error) {
@@ -272,7 +272,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async downloadCsvTemplate() {
             this.exportError = null
             try {
-                return await apiService.download('/export/csv/template')
+                return await apiService.download('/exports/csv-template')
             } catch (error) {
                 throw this.failExport(error, 'Failed to download CSV template')
             }
@@ -282,7 +282,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async exportTripAsGpx(tripId) {
             this.exportError = null
             try {
-                return await apiService.download(`/export/gpx/trip/${tripId}`)
+                return await apiService.download(`/exports/trips/${tripId}/gpx`)
             } catch (error) {
                 throw this.failExport(error, 'Failed to export trip')
             }
@@ -292,7 +292,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async exportStayAsGpx(stayId) {
             this.exportError = null
             try {
-                return await apiService.download(`/export/gpx/stay/${stayId}`)
+                return await apiService.download(`/exports/stays/${stayId}/gpx`)
             } catch (error) {
                 throw this.failExport(error, 'Failed to export stay')
             }
@@ -301,7 +301,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async downloadDebugExport(request) {
             this.exportError = null
             try {
-                const response = await apiService.post('/export/debug/create', request, { responseType: 'blob' })
+                const response = await apiService.post('/exports/debug', request, { responseType: 'blob' })
                 if (!(response.data instanceof Blob)) {
                     throw new Error('Invalid debug export response')
                 }
@@ -343,7 +343,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 formData.append('format', importFormat)
                 formData.append('options', JSON.stringify(options))
 
-                const response = await apiService.post('/import/upload', formData, {
+                const response = await apiService.post('/imports', formData, {
                     onUploadProgress: (progressEvent) => {
                         // Cap at 99% during upload, reach 100% only when response received
                         const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
@@ -412,7 +412,7 @@ export const useExportImportStore = defineStore('exportImport', {
         async fetchImportStatus(importJobId) {
             this.importError = null
             try {
-                const response = await apiService.get(`/import/status/${importJobId}`)
+                const response = await apiService.get(`/imports/${importJobId}`)
                 
                 this.updateImportJob(importJobId, response)
                 
@@ -426,10 +426,10 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
-        async fetchImportJobs(limit = 10, offset = 0) {
+        async fetchImportJobs(size = 10, page = 0) {
             this.importError = null
             try {
-                const response = await apiService.get('/import/jobs', { limit, offset })
+                const response = await apiService.get('/imports', { page, size })
                 
                 this.setImportJobs(response.items)
                 
@@ -446,7 +446,7 @@ export const useExportImportStore = defineStore('exportImport', {
             formData.append('clearExistingData', clearExistingData)
             formData.append('updateTimelineConfig', updateTimelineConfig)
             try {
-                await apiService.post('/import/debug/upload', formData)
+                await apiService.post('/debug-imports', formData)
             } catch (error) {
                 throw this.failImport(error, 'Failed to import debug data')
             }

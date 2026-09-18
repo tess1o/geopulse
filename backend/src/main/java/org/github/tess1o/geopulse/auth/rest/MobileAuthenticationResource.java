@@ -3,7 +3,7 @@ package org.github.tess1o.geopulse.auth.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -19,7 +19,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Slf4j
-@Path("/api/auth")
+@Path("/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @RequestScoped
 @Tag(name = "User: Authentication", description = "Create mobile authentication codes for the authenticated user.")
@@ -31,8 +31,8 @@ public class MobileAuthenticationResource {
     @Inject
     MobileDeepLinkService mobileDeepLinkService;
 
-    @GET
-    @Path("/mobile")
+    @POST
+    @Path("/mobile-codes")
     @RolesAllowed({"USER", "ADMIN"})
     public MobileAuthInitResponse generateCode() {
         try {

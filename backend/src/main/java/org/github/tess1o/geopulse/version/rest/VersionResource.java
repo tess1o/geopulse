@@ -13,7 +13,7 @@ import org.github.tess1o.geopulse.version.service.VersionStatusService;
 import org.github.tess1o.geopulse.version.dto.GeoPulseVersionResponse;
 import org.github.tess1o.geopulse.version.dto.VersionStatusResponse;
 
-@Path("/api/version")
+@Path("/system/version")
 @Tag(name = "User: System", description = "Read application version and version status.")
 public class VersionResource {
 

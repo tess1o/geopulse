@@ -30,6 +30,7 @@ import org.github.tess1o.geopulse.immich.model.TestImmichConnectionRequest;
 import org.github.tess1o.geopulse.immich.model.TestImmichConnectionResponse;
 import org.github.tess1o.geopulse.immich.model.UpdateImmichConfigRequest;
 import org.github.tess1o.geopulse.immich.service.ImmichService;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.OffsetDateTime;
@@ -38,14 +39,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.IMMICH_PHOTO_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_CONFIG;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_SEARCH;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_USER_ID;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/users")
+@Path(ApiPaths.INTEGRATIONS + "/immich")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -60,63 +59,25 @@ public class ImmichResource {
     CurrentUserService currentUserService;
 
     @GET
-    @Path("/{userId}/immich-config")
     @Blocking
     @APIResponse(responseCode = "204", description = "Immich is not configured")
-    public RestResponse<ImmichConfigResponse> getImmichConfig(@PathParam("userId") String userIdValue) {
-        return getConfig(authorizedUserId(userIdValue));
-    }
-
-    @GET
-    @Path("/me/immich-config")
-    @Blocking
-    @APIResponse(responseCode = "204", description = "Immich is not configured")
-    public RestResponse<ImmichConfigResponse> getCurrentUserImmichConfig() {
+    public RestResponse<ImmichConfigResponse> getImmichConfig() {
         return getConfig(currentUserService.getCurrentUserId());
     }
 
     @PUT
-    @Path("/{userId}/immich-config")
     @Blocking
     @APIResponse(responseCode = "204", description = "Immich configuration updated")
-    public RestResponse<Void> updateImmichConfig(
-            @PathParam("userId") String userIdValue,
-            @NotNull @Valid UpdateImmichConfigRequest request) {
-        return updateConfig(authorizedUserId(userIdValue), request);
-    }
-
-    @PUT
-    @Path("/me/immich-config")
-    @Blocking
-    @APIResponse(responseCode = "204", description = "Immich configuration updated")
-    public RestResponse<Void> updateCurrentUserImmichConfig(
-            @NotNull @Valid UpdateImmichConfigRequest request) {
+    public RestResponse<Void> updateImmichConfig(@NotNull @Valid UpdateImmichConfigRequest request) {
         return updateConfig(currentUserService.getCurrentUserId(), request);
     }
 
     @GET
-    @Path("/{userId}/immich/photos/search")
+    @Path("/photos/search")
     @Blocking
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(
-            @PathParam("userId") String userIdValue,
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
-            @QueryParam("latitude") Double latitude,
-            @QueryParam("longitude") Double longitude,
-            @QueryParam("radiusMeters") Double radiusMeters,
-            @QueryParam("city") String city,
-            @QueryParam("country") String country,
-            @QueryParam("limit") Integer limit) {
-        return searchPhotosForUser(authorizedUserId(userIdValue), startDate, endDate,
-                latitude, longitude, radiusMeters, city, country, limit);
-    }
-
-    @GET
-    @Path("/me/immich/photos/search")
-    @Blocking
-    public CompletableFuture<ImmichPhotoSearchResponse> searchCurrentUserPhotos(
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
+            @QueryParam("from") String startDate,
+            @QueryParam("to") String endDate,
             @QueryParam("latitude") Double latitude,
             @QueryParam("longitude") Double longitude,
             @QueryParam("radiusMeters") Double radiusMeters,
@@ -128,28 +89,11 @@ public class ImmichResource {
     }
 
     @GET
-    @Path("/{userId}/immich/photos/map-markers")
+    @Path("/photos/map-markers")
     @Blocking
     public CompletableFuture<ImmichPhotoMapMarkersResponse> getPhotoMapMarkers(
-            @PathParam("userId") String userIdValue,
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
-            @QueryParam("latitude") Double latitude,
-            @QueryParam("longitude") Double longitude,
-            @QueryParam("radiusMeters") Double radiusMeters,
-            @QueryParam("city") String city,
-            @QueryParam("country") String country,
-            @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
-        return photoMapMarkersForUser(authorizedUserId(userIdValue), startDate, endDate,
-                latitude, longitude, radiusMeters, city, country, coordinatePrecision);
-    }
-
-    @GET
-    @Path("/me/immich/photos/map-markers")
-    @Blocking
-    public CompletableFuture<ImmichPhotoMapMarkersResponse> getCurrentUserPhotoMapMarkers(
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
+            @QueryParam("from") String startDate,
+            @QueryParam("to") String endDate,
             @QueryParam("latitude") Double latitude,
             @QueryParam("longitude") Double longitude,
             @QueryParam("radiusMeters") Double radiusMeters,
@@ -161,32 +105,11 @@ public class ImmichResource {
     }
 
     @GET
-    @Path("/{userId}/immich/photos/map-marker/photos")
+    @Path("/photos/by-marker")
     @Blocking
     public CompletableFuture<ImmichPhotoSearchResponse> getPhotosForMapMarker(
-            @PathParam("userId") String userIdValue,
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
-            @QueryParam("latitude") Double latitude,
-            @QueryParam("longitude") Double longitude,
-            @QueryParam("radiusMeters") Double radiusMeters,
-            @QueryParam("city") String city,
-            @QueryParam("country") String country,
-            @QueryParam("markerLatitude") Double markerLatitude,
-            @QueryParam("markerLongitude") Double markerLongitude,
-            @QueryParam("coordinatePrecision") Integer coordinatePrecision,
-            @QueryParam("limit") Integer limit) {
-        return photosForMapMarkerForUser(authorizedUserId(userIdValue), startDate, endDate,
-                latitude, longitude, radiusMeters, city, country, markerLatitude, markerLongitude,
-                coordinatePrecision, limit);
-    }
-
-    @GET
-    @Path("/me/immich/photos/map-marker/photos")
-    @Blocking
-    public CompletableFuture<ImmichPhotoSearchResponse> getCurrentUserPhotosForMapMarker(
-            @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate,
+            @QueryParam("from") String startDate,
+            @QueryParam("to") String endDate,
             @QueryParam("latitude") Double latitude,
             @QueryParam("longitude") Double longitude,
             @QueryParam("radiusMeters") Double radiusMeters,
@@ -202,91 +125,43 @@ public class ImmichResource {
     }
 
     @POST
-    @Path("/{userId}/immich-config/test")
+    @Path("/connection-tests")
     @Blocking
     public CompletableFuture<TestImmichConnectionResponse> testImmichConnection(
-            @PathParam("userId") String userIdValue,
-            @NotNull @Valid TestImmichConnectionRequest request) {
-        return immichService.testImmichConnection(authorizedUserId(userIdValue), request);
-    }
-
-    @POST
-    @Path("/me/immich-config/test")
-    @Blocking
-    public CompletableFuture<TestImmichConnectionResponse> testCurrentUserImmichConnection(
             @NotNull @Valid TestImmichConnectionRequest request) {
         return immichService.testImmichConnection(currentUserService.getCurrentUserId(), request);
     }
 
     @GET
-    @Path("/{userId}/immich/photos/{photoId}/thumbnail")
+    @Path("/photos/{photoId}/thumbnail")
     @Produces("image/jpeg")
     @Blocking
     @APIResponse(responseCode = "200", description = "Immich photo thumbnail",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getPhotoThumbnail(
-            @PathParam("userId") String userIdValue,
-            @PathParam("photoId") String photoId) {
-        return photoBytes(authorizedUserId(userIdValue), photoId, PhotoVariant.THUMBNAIL);
-    }
-
-    @GET
-    @Path("/me/immich/photos/{photoId}/thumbnail")
-    @Produces("image/jpeg")
-    @Blocking
-    @APIResponse(responseCode = "200", description = "Immich photo thumbnail",
-            content = @Content(mediaType = "image/jpeg",
-                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getCurrentUserPhotoThumbnail(@PathParam("photoId") String photoId) {
+    public CompletableFuture<Response> getPhotoThumbnail(@PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.THUMBNAIL);
     }
 
     @GET
-    @Path("/{userId}/immich/photos/{photoId}/preview")
+    @Path("/photos/{photoId}/preview")
     @Produces("image/jpeg")
     @Blocking
     @APIResponse(responseCode = "200", description = "Immich photo preview",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getPhotoPreview(
-            @PathParam("userId") String userIdValue,
-            @PathParam("photoId") String photoId) {
-        return photoBytes(authorizedUserId(userIdValue), photoId, PhotoVariant.PREVIEW);
-    }
-
-    @GET
-    @Path("/me/immich/photos/{photoId}/preview")
-    @Produces("image/jpeg")
-    @Blocking
-    @APIResponse(responseCode = "200", description = "Immich photo preview",
-            content = @Content(mediaType = "image/jpeg",
-                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> getCurrentUserPhotoPreview(@PathParam("photoId") String photoId) {
+    public CompletableFuture<Response> getPhotoPreview(@PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.PREVIEW);
     }
 
     @GET
-    @Path("/{userId}/immich/photos/{photoId}/download")
+    @Path("/photos/{photoId}/download")
     @Produces("image/jpeg")
     @Blocking
     @APIResponse(responseCode = "200", description = "Original Immich photo",
             content = @Content(mediaType = "image/jpeg",
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> downloadPhoto(
-            @PathParam("userId") String userIdValue,
-            @PathParam("photoId") String photoId) {
-        return photoBytes(authorizedUserId(userIdValue), photoId, PhotoVariant.ORIGINAL);
-    }
-
-    @GET
-    @Path("/me/immich/photos/{photoId}/download")
-    @Produces("image/jpeg")
-    @Blocking
-    @APIResponse(responseCode = "200", description = "Original Immich photo",
-            content = @Content(mediaType = "image/jpeg",
-                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
-    public CompletableFuture<Response> downloadCurrentUserPhoto(@PathParam("photoId") String photoId) {
+    public CompletableFuture<Response> downloadPhoto(@PathParam("photoId") String photoId) {
         return photoBytes(currentUserService.getCurrentUserId(), photoId, PhotoVariant.ORIGINAL);
     }
 
@@ -352,19 +227,6 @@ public class ImmichResource {
             throw problem(IMMICH_PHOTO_NOT_FOUND, "Immich photo could not be retrieved",
                     Map.of("photoId", photoId));
         });
-    }
-
-    private UUID authorizedUserId(String userIdValue) {
-        UUID userId;
-        try {
-            userId = UUID.fromString(userIdValue);
-        } catch (IllegalArgumentException | NullPointerException exception) {
-            throw problem(INVALID_USER_ID, "User ID must be a UUID");
-        }
-        if (!currentUserService.getCurrentUserId().equals(userId)) {
-            throw problem(ACCESS_DENIED, "Access denied");
-        }
-        return userId;
     }
 
     private ImmichPhotoSearchRequest buildSearchRequest(

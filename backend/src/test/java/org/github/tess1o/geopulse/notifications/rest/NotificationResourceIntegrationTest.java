@@ -91,7 +91,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/notifications")
+                .get("/api/v1/notifications")
                 .then()
                 .statusCode(401);
     }
@@ -125,12 +125,12 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications?limit=50")
+                .get("/api/v1/notifications?page=0&size=50")
                 .then()
                 .statusCode(200)
-                .body("size()", equalTo(3))
-                .body("title", hasItems("Owner geofence unread", "Owner geofence seen", "Owner import unread"))
-                .body("title", not(hasItem("Other user geofence")));
+                .body("items.size()", equalTo(3))
+                .body("items.title", hasItems("Owner geofence unread", "Owner geofence seen", "Owner import unread"))
+                .body("items.title", not(hasItem("Other user geofence")));
     }
 
     @Test
@@ -162,7 +162,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/page?page=0&pageSize=2")
+                .get("/api/v1/notifications?page=0&size=2")
                 .then()
                 .statusCode(200)
                 .body("totalElements", equalTo(3))
@@ -174,7 +174,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/page?seen=false&pageSize=25")
+                .get("/api/v1/notifications?seen=false&size=25")
                 .then()
                 .statusCode(200)
                 .body("totalElements", equalTo(2))
@@ -183,7 +183,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/page?source=TIMELINE")
+                .get("/api/v1/notifications?source=TIMELINE")
                 .then()
                 .statusCode(200)
                 .body("totalElements", equalTo(1))
@@ -193,7 +193,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/page?type=TIMELINE_REGENERATION_REQUIRED")
+                .get("/api/v1/notifications?type=TIMELINE_REGENERATION_REQUIRED")
                 .then()
                 .statusCode(200)
                 .body("totalElements", equalTo(1))
@@ -223,7 +223,7 @@ class NotificationResourceIntegrationTest {
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/unread-count")
+                .get("/api/v1/notifications/unread-count")
                 .then()
                 .statusCode(200)
                 .body("count", equalTo(2))
@@ -270,7 +270,7 @@ class NotificationResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/notifications/" + ownerNotification.getId() + "/seen")
+                .patch("/api/v1/notifications/" + ownerNotification.getId() + "/read-status")
                 .then()
                 .statusCode(200)
                 .body("id", equalTo(ownerNotification.getId().intValue()))
@@ -281,7 +281,7 @@ class NotificationResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/notifications/" + otherNotification.getId() + "/seen")
+                .patch("/api/v1/notifications/" + otherNotification.getId() + "/read-status")
                 .then()
                 .statusCode(404);
         assertGeofenceEventSeen(otherEvent.getId(), false);
@@ -316,14 +316,14 @@ class NotificationResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/notifications/seen-all")
+                .patch("/api/v1/notifications/read-status")
                 .then()
                 .statusCode(200)
                 .body("updatedCount", equalTo(2));
         given()
                 .header("Authorization", "Bearer " + ownerToken)
                 .when()
-                .get("/api/notifications/unread-count")
+                .get("/api/v1/notifications/unread-count")
                 .then()
                 .statusCode(200)
                 .body("count", equalTo(0))
@@ -347,7 +347,7 @@ class NotificationResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/notifications/" + brokenGeofenceNotification.getId() + "/seen")
+                .patch("/api/v1/notifications/" + brokenGeofenceNotification.getId() + "/read-status")
                 .then()
                 .statusCode(404);
         assertNotificationSeen(brokenGeofenceNotification.getId(), false);

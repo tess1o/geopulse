@@ -19,7 +19,7 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DATE_RANGE;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/weather")
+@Path("/weather")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
@@ -35,8 +35,8 @@ public class WeatherResource {
 
     @GET
     @Path("/samples")
-    public WeatherSamplesResponse getSamples(@QueryParam("startTime") String startTime,
-                                             @QueryParam("endTime") String endTime,
+    public WeatherSamplesResponse getSamples(@QueryParam("from") String startTime,
+                                             @QueryParam("to") String endTime,
                                              @QueryParam("minLat") Double minLat,
                                              @QueryParam("minLon") Double minLon,
                                              @QueryParam("maxLat") Double maxLat,

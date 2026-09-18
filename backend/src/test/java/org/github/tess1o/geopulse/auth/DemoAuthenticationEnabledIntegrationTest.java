@@ -79,7 +79,7 @@ class DemoAuthenticationEnabledIntegrationTest {
         given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/auth/status")
+                .get("/api/v1/auth/sessions/current")
                 .then()
                 .statusCode(200)
                 .body("demoModeEnabled", equalTo(true))
@@ -101,7 +101,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/auth/demo-login")
+                .post("/api/v1/auth/demo-sessions")
                 .then()
                 .statusCode(200)
                 .body("user.email", equalTo("new-york@demo.geopulse.cc"))
@@ -125,7 +125,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/auth/demo-login")
+                .post("/api/v1/auth/demo-sessions")
                 .then()
                 .statusCode(200)
                 .body("user.email", equalTo("kyiv@demo.geopulse.cc"))
@@ -149,7 +149,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/auth/demo-login")
+                .post("/api/v1/auth/demo-sessions")
                 .then()
                 .statusCode(404)
                 .extract()
@@ -164,7 +164,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + demoAccessToken)
                 .when()
-                .get("/api/admin/dashboard/stats")
+                .get("/api/v1/admin/dashboard")
                 .then()
                 .statusCode(200)
                 .body("totalUsers", notNullValue());
@@ -181,7 +181,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .put("/api/admin/settings/auth.registration.enabled")
+                .put("/api/v1/admin/settings/keys/auth.registration.enabled")
                 .then()
                 .statusCode(403);
     }
@@ -198,7 +198,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/users/update")
+                .patch("/api/v1/users/me")
                 .then()
                 .statusCode(403)
                 .header("X-GeoPulse-Demo-Blocked", "true");
@@ -217,7 +217,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/users/register")
+                .post("/api/v1/registrations")
                 .then()
                 .statusCode(403)
                 .header("X-GeoPulse-Demo-Blocked", "true");
@@ -229,7 +229,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + demoAccessToken)
                 .when()
-                .get("/api/export/jobs")
+                .get("/api/v1/exports")
                 .then()
                 .statusCode(403)
                 .header("X-GeoPulse-Demo-Blocked", "true");
@@ -249,7 +249,7 @@ class DemoAuthenticationEnabledIntegrationTest {
                         }
                         """)
                 .when()
-                .post("/api/import/upload/init")
+                .post("/api/v1/import-uploads")
                 .then()
                 .statusCode(403)
                 .header("X-GeoPulse-Demo-Blocked", "true");

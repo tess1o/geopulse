@@ -46,7 +46,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_TRAIL_RANGE;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/friends")
+@Path("/friends")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -105,10 +105,10 @@ public class FriendResource {
     }
 
     @GET
-    @Path("/location/trails")
+    @Path("/trails")
     public List<FriendLocationTrailDTO> getFriendsLocationTrails(
             @QueryParam("minutes") @DefaultValue("60") Integer minutes,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("to") String endTime) {
         if (minutes == null || minutes <= 0 || minutes > 1440) {
             throw problem(INVALID_FRIEND_TRAIL_RANGE, "minutes must be between 1 and 1440",
                     Map.of("min", 1, "max", 1440));
@@ -131,8 +131,8 @@ public class FriendResource {
     }
 
     @GET
-    @Path("/search-users-to-invite")
-    public List<UserSearchDTO> searchUsersToInvite(@QueryParam("query") @NotNull String query) {
+    @Path("/candidates")
+    public List<UserSearchDTO> searchUsersToInvite(@QueryParam("q") @NotNull String query) {
         return friendService.searchUsersToInvite(currentUserService.getCurrentUserId(), query);
     }
 

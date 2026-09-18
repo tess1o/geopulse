@@ -417,7 +417,7 @@ const fetchGithubStats = async () => {
 
 const fetchVersionStatus = async () => {
   try {
-    const response = await fetch('/api/version/status')
+    const response = await fetch('/api/v1/system/version/status')
     if (!response.ok) {
       throw new Error('Failed to fetch app version status')
     }
@@ -432,7 +432,7 @@ const fetchVersionStatus = async () => {
     releaseUrl.value = defaultReleaseNotesUrl
 
     try {
-      const response = await fetch('/api/version')
+      const response = await fetch('/api/v1/system/version')
       if (!response.ok) {
         throw new Error('Failed to fetch app version fallback')
       }

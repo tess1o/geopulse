@@ -32,7 +32,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips/{tripId}/plan-items")
+@Path("/trips/{tripId}/plan-items")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ public class TripPlanItemResource {
         }
     }
 
-    @POST
+    @PUT
     @Path("/{itemId}/visit-override")
     public TripPlanItemDto applyVisitOverride(
             @PathParam("tripId") Long tripId,

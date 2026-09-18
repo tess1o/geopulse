@@ -48,7 +48,7 @@ backend:
   livenessProbe:
     enabled: true
     httpGet:
-      path: /api/health
+      path: /api/v1/system/health
       port: 8080
     initialDelaySeconds: 60
     periodSeconds: 10
@@ -58,7 +58,7 @@ backend:
   readinessProbe:
     enabled: true
     httpGet:
-      path: /api/health
+      path: /api/v1/system/health
       port: 8080
     initialDelaySeconds: 30
     periodSeconds: 5
@@ -507,7 +507,7 @@ config:
   # Prometheus Metrics Configuration
   prometheus:
     # Enable custom Prometheus metrics collection (default: false)
-    # Note: The /api/prometheus/metrics endpoint is always available
+    # Note: The /api/v1/system/metrics endpoint is always available
     # This setting controls whether GeoPulse collects and exposes custom application metrics
     enabled: false
     # Refresh interval for metrics collection (default: 10m)

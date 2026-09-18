@@ -10,6 +10,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResultDto;
+import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.trips.service.TripPlanSearchService;
 
 import java.util.List;
@@ -19,7 +20,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/trips/plan-search")
+@Path(ApiPaths.TRIP_PLANNING + "/searches")
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -38,8 +39,8 @@ public class PlanSearchResource {
 
     @GET
     public List<PlanSearchResultDto> search(@QueryParam("q") String query,
-                           @QueryParam("lat") Double latitude,
-                           @QueryParam("lon") Double longitude,
+                           @QueryParam("latitude") Double latitude,
+                           @QueryParam("longitude") Double longitude,
                            @QueryParam("limit") Integer limit) {
         String safeQuery = query == null ? "" : query.trim();
         if (safeQuery.length() < 2) {

@@ -1148,16 +1148,16 @@ async function refreshEvents() {
   try {
     const params = {
       page: geofenceEventsQuery.value.page,
-      pageSize: geofenceEventsQuery.value.pageSize,
+      size: geofenceEventsQuery.value.pageSize,
       sortBy: geofenceEventsQuery.value.sortBy,
-      sortDir: geofenceEventsQuery.value.sortDir,
+      sortDirection: geofenceEventsQuery.value.sortDir,
       unreadOnly: geofenceEventsQuery.value.unreadOnly
     }
     if (geofenceEventsQuery.value.dateFrom) {
-      params.dateFrom = geofenceEventsQuery.value.dateFrom
+      params.from = geofenceEventsQuery.value.dateFrom
     }
     if (geofenceEventsQuery.value.dateTo) {
-      params.dateTo = geofenceEventsQuery.value.dateTo
+      params.to = geofenceEventsQuery.value.dateTo
     }
     if (Array.isArray(geofenceEventsQuery.value.subjectUserIds) && geofenceEventsQuery.value.subjectUserIds.length > 0) {
       params.subjectUserIds = geofenceEventsQuery.value.subjectUserIds.join(',')

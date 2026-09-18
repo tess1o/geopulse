@@ -84,7 +84,7 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
       this.loading = true
       this.error = null
       try {
-        this.cityDetails = await apiService.get(`/location-analytics/city/${encodeURIComponent(cityName)}`)
+        this.cityDetails = await apiService.get(`/location-analytics/cities/${encodeURIComponent(cityName)}`)
         return this.cityDetails
       } catch (error) {
         throw this.fail(error, 'Failed to fetch city details')
@@ -114,7 +114,7 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
       this.loading = true
       this.error = null
       try {
-        this.countryDetails = await apiService.get(`/location-analytics/country/${encodeURIComponent(countryName)}`)
+        this.countryDetails = await apiService.get(`/location-analytics/countries/${encodeURIComponent(countryName)}`)
         return this.countryDetails
       } catch (error) {
         throw this.fail(error, 'Failed to fetch country details')
@@ -131,7 +131,7 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
       this.loading = true
       this.error = null
       try {
-        const data = await apiService.get(`/location-analytics/${kind}/${encodeURIComponent(name)}/visits`, {
+        const data = await apiService.get(`/location-analytics/${kind === 'city' ? 'cities' : 'countries'}/${encodeURIComponent(name)}/visits`, {
           page, size: pageSize, sortBy, sortDirection
         })
         this[`${kind}Visits`] = data.items || []
@@ -152,7 +152,7 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
     async exportVisits(kind, name, sortBy = 'timestamp', sortDirection = 'desc') {
       try {
         return await apiService.download(
-          `/location-analytics/${kind}/${encodeURIComponent(name)}/visits/export`,
+          `/location-analytics/${kind === 'city' ? 'cities' : 'countries'}/${encodeURIComponent(name)}/visits/export`,
           { sortBy, sortDirection }
         )
       } catch (error) {

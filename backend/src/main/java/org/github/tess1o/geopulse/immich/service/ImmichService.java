@@ -308,7 +308,7 @@ public class ImmichService {
         CompletableFuture<List<ImmichPhotoDto>> searchFuture = inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
                 immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
                         .thenApply(response -> {
-                            List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest, userId);
+                            List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest);
                             cacheSearchResult(cacheKey, allFilteredPhotos);
                             return allFilteredPhotos;
                         })
@@ -405,7 +405,7 @@ public class ImmichService {
         return distance <= searchRequest.getRadiusMeters();
     }
 
-    private ImmichPhotoDto mapToPhotoDto(ImmichAsset asset, UUID userId) {
+    private ImmichPhotoDto mapToPhotoDto(ImmichAsset asset) {
         ImmichExifInfo exifInfo = asset.getExifInfo();
         Integer width = asset.getWidth() != null ? asset.getWidth() : exifInfo != null ? exifInfo.getExifImageWidth() : null;
         Integer height = asset.getHeight() != null ? asset.getHeight() : exifInfo != null ? exifInfo.getExifImageHeight() : null;
@@ -417,9 +417,9 @@ public class ImmichService {
                 .height(height)
                 .isFavorite(asset.getIsFavorite())
                 .rating(exifInfo != null ? exifInfo.getRating() : null)
-                .thumbnailUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/thumbnail")
-                .previewUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/preview")
-                .downloadUrl("/api/users/" + userId + "/immich/photos/" + asset.getId() + "/download");
+                .thumbnailUrl("/api/v1/integrations/immich/photos/" + asset.getId() + "/thumbnail")
+                .previewUrl("/api/v1/integrations/immich/photos/" + asset.getId() + "/preview")
+                .downloadUrl("/api/v1/integrations/immich/photos/" + asset.getId() + "/download");
 
         if (exifInfo != null) {
             builder.latitude(exifInfo.getLatitude())
@@ -473,14 +473,14 @@ public class ImmichService {
         return first.getTakenAt().isAfter(second.getTakenAt()) ? first : second;
     }
 
-    private List<ImmichPhotoDto> extractAndFilterPhotos(ImmichSearchResponse response, ImmichPhotoSearchRequest searchRequest, UUID userId) {
+    private List<ImmichPhotoDto> extractAndFilterPhotos(ImmichSearchResponse response, ImmichPhotoSearchRequest searchRequest) {
         List<ImmichAsset> assets = response.getAssets() != null && response.getAssets().getItems() != null
                 ? response.getAssets().getItems()
                 : List.of();
 
         return assets.stream()
                 .filter(asset -> filterByLocation(asset, searchRequest))
-                .map(asset -> mapToPhotoDto(asset, userId))
+                .map(asset -> mapToPhotoDto(asset))
                 .collect(Collectors.toMap(
                         ImmichPhotoDto::getId,
                         photo -> photo,

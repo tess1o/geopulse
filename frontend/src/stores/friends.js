@@ -32,7 +32,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async fetchReceivedInvitations() {
       try {
-        this.receivedInvites = await apiService.get('/friends/invitations/received') || []
+        this.receivedInvites = await apiService.get('/friend-invitations/received') || []
         return this.receivedInvites
       } catch (error) {
         throw this.fail(error, 'Failed to load received invitations')
@@ -41,7 +41,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async fetchSentInvitations() {
       try {
-        this.sentInvitations = await apiService.get('/friends/invitations/sent') || []
+        this.sentInvitations = await apiService.get('/friend-invitations/sent') || []
         return this.sentInvitations
       } catch (error) {
         throw this.fail(error, 'Failed to load sent invitations')
@@ -50,7 +50,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async sendFriendRequest(receiverEmail) {
       try {
-        const invitation = await apiService.post('/friends/invitations', { receiverEmail })
+        const invitation = await apiService.post('/friend-invitations', { receiverEmail })
         this.sentInvitations.push(invitation)
         return invitation
       } catch (error) {
@@ -69,7 +69,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async acceptInvitation(id) {
       try {
-        const invitation = await apiService.put(`/friends/invitations/${id}/accept`, {})
+        const invitation = await apiService.post(`/friend-invitations/${id}/accept`)
         this.receivedInvites = this.receivedInvites.filter(item => item.id !== id)
         await this.fetchFriends()
         return invitation
@@ -80,7 +80,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async rejectInvitation(id) {
       try {
-        const invitation = await apiService.put(`/friends/invitations/${id}/reject`, {})
+        const invitation = await apiService.post(`/friend-invitations/${id}/reject`)
         this.receivedInvites = this.receivedInvites.filter(item => item.id !== id)
         return invitation
       } catch (error) {
@@ -90,7 +90,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async cancelInvitation(id) {
       try {
-        const invitation = await apiService.put(`/friends/invitations/${id}/cancel`, {})
+        const invitation = await apiService.delete(`/friend-invitations/${id}`)
         this.sentInvitations = this.sentInvitations.filter(item => item.id !== id)
         return invitation
       } catch (error) {
@@ -114,7 +114,7 @@ export const useFriendsStore = defineStore('friends', {
 
     async searchUsersToInvite(query) {
       try {
-        return await apiService.get('/friends/search-users-to-invite', { query }) || []
+        return await apiService.get('/friends/candidates', { q: query }) || []
       } catch (error) {
         throw this.fail(error, 'Failed to search users')
       }
@@ -149,9 +149,9 @@ export const useFriendsStore = defineStore('friends', {
         ? endTime.toISOString()
         : (typeof endTime === 'string' && endTime.trim() ? endTime.trim() : null)
       try {
-        return await apiService.get('/friends/location/trails', {
+        return await apiService.get('/friends/trails', {
           minutes,
-          ...(utcEndTime ? { endTime: utcEndTime } : {})
+          ...(utcEndTime ? { to: utcEndTime } : {})
         }) || []
       } catch (error) {
         throw this.fail(error, 'Failed to load friend location trails')

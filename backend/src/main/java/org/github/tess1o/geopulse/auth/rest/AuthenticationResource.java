@@ -32,7 +32,7 @@ import java.util.Optional;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
-@Path("/api/auth")
+@Path("/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
@@ -69,7 +69,7 @@ public class AuthenticationResource {
      * @return JWT tokens if authentication is successful
      */
     @POST
-    @Path("/login")
+    @Path("/sessions")
     @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated browser session")
     public Response loginUser(LoginRequest request) {
@@ -96,7 +96,7 @@ public class AuthenticationResource {
     }
 
     @POST
-    @Path("/demo-login")
+    @Path("/demo-sessions")
     @APIResponseSchema(value = BrowserAuthResponse.class, responseCode = "200",
             responseDescription = "Authenticated demo browser session")
     public Response demoLogin(DemoLoginRequest request) {
@@ -138,7 +138,7 @@ public class AuthenticationResource {
      * @return JWT tokens if authentication is successful
      */
     @POST
-    @Path("/api-login")
+    @Path("/api-sessions")
     public AuthResponse apiLogin(LoginRequest request) {
         if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
             log.warn("API login blocked by configuration for email={}", request.getEmail());
@@ -169,7 +169,7 @@ public class AuthenticationResource {
      * @return A new access token if the refresh token is valid
      */
     @POST
-    @Path("/refresh")
+    @Path("/api-sessions/current/refresh")
     public org.github.tess1o.geopulse.user.model.RefreshTokenResponse refreshToken(
             @Valid TokenRefreshRequest request) {
         try {
@@ -197,7 +197,7 @@ public class AuthenticationResource {
      * @return Success response with new tokens set as cookies
      */
     @POST
-    @Path("/refresh-cookie")
+    @Path("/sessions/current/refresh")
     @APIResponse(responseCode = "204", description = "Authentication cookies refreshed")
     public Response refreshTokenCookie(@CookieParam("refresh_token") String refreshTokenCookie) {
         if (refreshTokenCookie == null || refreshTokenCookie.isEmpty()) {
@@ -243,8 +243,8 @@ public class AuthenticationResource {
      *
      * @return Success response
      */
-    @POST
-    @Path("/logout")
+    @DELETE
+    @Path("/sessions/current")
     @APIResponse(responseCode = "204", description = "Authentication cookies cleared")
     public Response logout() {
         try {
@@ -263,7 +263,7 @@ public class AuthenticationResource {
     }
 
     @GET
-    @Path("/status")
+    @Path("/sessions/current")
     public AuthStatusResponse getAuthStatus() {
         boolean demoModeEnabled = demoModeService.isEnabled();
         AuthStatusResponse status = AuthStatusResponse.builder()

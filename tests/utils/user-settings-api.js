@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { TestConfig } from '../config/test-config.js';
 
-const userEndpoint = (path) => `${TestConfig.API_BASE_URL}/api/users${path}`;
+const userEndpoint = (path) => `${TestConfig.API_BASE_URL}/api/v1/users${path}`;
 
 async function getCsrfHeaders(page) {
   const cookies = await page.context().cookies(TestConfig.API_BASE_URL);
