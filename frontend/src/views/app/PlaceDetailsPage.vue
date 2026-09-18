@@ -443,8 +443,8 @@ const placeNotesSearchParams = computed(() => {
   }
 
   const params = {
-    startTime: firstVisit,
-    endTime: lastVisit,
+    from: firstVisit,
+    to: lastVisit,
     includeExternal: true,
     limit: PLACE_NOTES_LIMIT
   }

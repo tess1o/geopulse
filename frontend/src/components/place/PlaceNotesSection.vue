@@ -147,7 +147,7 @@ const normalizedSearchParams = computed(() => {
     return acc
   }, {})
 
-  if (!params.startTime || !params.endTime) {
+  if (!params.from || !params.to) {
     return null
   }
 

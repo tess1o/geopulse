@@ -55,7 +55,7 @@ test.describe('Place Details Page', () => {
       expect(await placeDetailsPage.hasVisitsTable()).toBe(true);
 
       // Verify edit button is present
-      const editButton = page.locator('button:has-text("Edit")');
+      const editButton = page.locator('.location-details-header .identity-actions button:has(.p-button-label:text-is("Edit"))');
       expect(await editButton.isVisible()).toBe(true);
     });
 

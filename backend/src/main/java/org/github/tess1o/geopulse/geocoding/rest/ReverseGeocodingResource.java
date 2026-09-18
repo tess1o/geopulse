@@ -86,13 +86,13 @@ public class ReverseGeocodingResource {
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
-            @QueryParam("sortDirection") @DefaultValue("desc") String sortOrder) {
+            @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         if (page < 1 || limit < 1) {
             throw problem(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
         }
         UUID userId = currentUserService.getCurrentUserId();
         List<ReverseGeocodingDTO> results = managementService.getGeocodingResults(
-                userId, providerName, searchText, page, limit, sortField, sortOrder);
+                userId, providerName, searchText, page, limit, sortField, sortDirection);
         long total = managementService.countGeocodingResults(userId, providerName, searchText);
         return new PageResponse<>(results, page, limit, total, (int) Math.ceil((double) total / limit));
     }

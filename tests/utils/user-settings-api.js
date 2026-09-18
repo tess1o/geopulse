@@ -3,6 +3,9 @@ import { TestConfig } from '../config/test-config.js';
 
 const userEndpoint = (path) => `${TestConfig.API_BASE_URL}/api/v1/users${path}`;
 
+// Profile updates are PATCH /api/v1/users/me (the old POST /api/v1/users/update is gone).
+const currentUserEndpoint = `${TestConfig.API_BASE_URL}/api/v1/users/me`;
+
 async function getCsrfHeaders(page) {
   const cookies = await page.context().cookies(TestConfig.API_BASE_URL);
   const csrfToken = cookies.find((cookie) => cookie.name === 'csrf-token')?.value;
@@ -22,7 +25,7 @@ export class UserSettingsApi {
 
   static async updateCurrentUserProfile(page, overrides = {}) {
     const currentUser = await this.getCurrentUser(page);
-    const response = await page.request.post(userEndpoint('/update'), {
+    const response = await page.request.patch(currentUserEndpoint, {
       headers: await getCsrfHeaders(page),
       data: {
         fullName: currentUser.fullName || '',

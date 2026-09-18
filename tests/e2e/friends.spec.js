@@ -875,7 +875,7 @@ test.describe('Friends Page', () => {
       await page.route('**/api/v1/friends**', async (route) => {
         const request = route.request();
         const pathname = new URL(request.url()).pathname;
-        const isFriendsEndpoint = /\/api\/friends\/?$/.test(pathname);
+        const isFriendsEndpoint = /\/api\/v1\/friends\/?$/.test(pathname);
 
         if (!isFriendsEndpoint || request.method() !== 'GET') {
           await route.continue();

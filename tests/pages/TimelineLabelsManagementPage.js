@@ -13,7 +13,13 @@ export class TimelineLabelsManagementPage {
       dateRangeInput: '.p-dialog:visible input[id="dateRange_input"], .p-dialog:visible #dateRange input, .p-dialog:visible #dateRange',
       tagNameInput: '.p-dialog:visible input#tagName',
       confirmAccept: '.p-confirmdialog-accept-button',
-      contextMenuOption: '.p-select-option',
+      tripPlanLink: '.trip-plan-link',
+      // Row actions live in a popup Menu opened from the overflow trigger
+      rowActionsTrigger: '.actions-inline-row button:has(.pi-ellipsis-v)',
+      rowActionsMenu: '.p-menu.p-menu-overlay:visible',
+      rowActionsMenuItem: '.p-menu-item:not(.p-disabled)',
+      rowActionsMenuItemContent: '.p-menu-item-content',
+      rowActionsMenuItemLabel: '.p-menu-item-label',
     };
   }
 
@@ -28,6 +34,56 @@ export class TimelineLabelsManagementPage {
 
   rowByLabelName(labelName) {
     return this.page.locator(this.selectors.tableRows).filter({ hasText: labelName }).first();
+  }
+
+  // The row action menu is a popup rendered on <body> only while open, so it is
+  // never a descendant of the row. Enabled items carry data-p-disabled="false";
+  // disabled ones have no pointer-events:none and swallow the click silently,
+  // so callers must assert the item is enabled instead of relying on the click.
+  getRowActionsMenu() {
+    return this.page.locator(this.selectors.rowActionsMenu).last();
+  }
+
+  rowActionItem(actionLabel) {
+    return this.getRowActionsMenu()
+      .locator(this.selectors.rowActionsMenuItem)
+      .filter({ has: this.page.locator(`.p-menu-item-label:text-is("${actionLabel}")`) });
+  }
+
+  async openRowActions(rowOrName) {
+    const row = typeof rowOrName === 'string' ? this.rowByLabelName(rowOrName) : rowOrName;
+    await expect(row).toBeVisible({ timeout: 10000 });
+
+    await row.locator(this.selectors.rowActionsTrigger).click();
+    await this.getRowActionsMenu().waitFor({ state: 'visible', timeout: 5000 });
+
+    return row;
+  }
+
+  async isRowActionAvailable(actionLabel) {
+    return (await this.rowActionItem(actionLabel).count()) > 0;
+  }
+
+  async clickRowAction(rowOrName, actionLabel) {
+    await this.openRowActions(rowOrName);
+
+    const item = this.rowActionItem(actionLabel);
+    await expect(
+      item,
+      `Row action "${actionLabel}" is missing or disabled for this label`
+    ).toHaveCount(1, { timeout: 5000 });
+
+    await item.locator(this.selectors.rowActionsMenuItemContent).click();
+    // Selecting an item closes the overlay; wait so the next step does not race it.
+    await this.getRowActionsMenu().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+
+  // The menu items depend on the trips store, which loads in parallel with the
+  // labels, so a linked row can still render "Not linked" on first paint.
+  async waitForLinkedTripResolved(labelName) {
+    const row = this.rowByLabelName(labelName);
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row.locator(this.selectors.tripPlanLink)).toContainText(labelName, { timeout: 10000 });
   }
 
   async getVisibleLabelNames() {
@@ -107,10 +163,7 @@ export class TimelineLabelsManagementPage {
   }
 
   async editLabel(oldName, { newName, startIndex = 8, endIndex = 12, randomizeColor = true }) {
-    const row = this.rowByLabelName(oldName);
-    await expect(row).toBeVisible({ timeout: 10000 });
-
-    await row.locator('.actions-inline-row button:has(.pi-pencil)').click();
+    await this.clickRowAction(oldName, 'Edit Label');
     await this.page.waitForSelector(this.selectors.editDialog, { timeout: 5000 });
 
     if (newName) {
@@ -133,25 +186,24 @@ export class TimelineLabelsManagementPage {
   }
 
   async createTripPlanFromLabel(labelName) {
-    const row = this.rowByLabelName(labelName);
-    await expect(row).toBeVisible({ timeout: 10000 });
-    await row.locator('.actions-inline-row button:has(.pi-briefcase)').click();
+    await this.clickRowAction(labelName, 'Create Trip Plan');
   }
 
   async unlinkLabelFromTrip(labelName) {
-    const row = this.rowByLabelName(labelName);
-    await expect(row).toBeVisible({ timeout: 10000 });
-
-    await row.locator('.actions-inline-row button:has(.pi-link)').click();
+    await this.waitForLinkedTripResolved(labelName);
+    await this.clickRowAction(labelName, 'Unlink Trip Plan');
     await this.page.waitForSelector(this.selectors.confirmAccept, { timeout: 5000 });
     await this.page.click(this.selectors.confirmAccept);
   }
 
   async deleteLabel(labelName, mode = 'standalone') {
-    const row = this.rowByLabelName(labelName);
-    await expect(row).toBeVisible({ timeout: 10000 });
+    if (mode !== 'standalone') {
+      await this.waitForLinkedTripResolved(labelName);
+    }
 
-    await row.locator('.actions-inline-row button:has(.pi-trash)').click();
+    // The menu item is labelled "Delete Label" in both modes; the mode only
+    // changes which confirmation the app shows afterwards.
+    await this.clickRowAction(labelName, 'Delete Label');
 
     if (mode === 'standalone') {
       await this.page.waitForSelector(this.selectors.confirmAccept, { timeout: 5000 });

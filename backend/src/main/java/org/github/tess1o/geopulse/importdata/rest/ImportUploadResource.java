@@ -1,19 +1,18 @@
 package org.github.tess1o.geopulse.importdata.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkiverse.httpproblem.HttpProblem;
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.importdata.model.*;
 import org.github.tess1o.geopulse.importdata.service.ChunkedUploadService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.importdata.service.ImportTempFileService;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
 
 import java.io.IOException;
@@ -25,15 +24,14 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
 import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
- * Unified REST resource for handling all file imports.
- * Supports both direct uploads (small files) and chunked uploads (large files).
- * All import formats are handled through a single endpoint with a format parameter.
+ * REST resource for chunked uploads of large import files.
+ * Direct uploads of small files are handled by ImportResource.
  */
 @Path("")
 @Authenticated
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@Tag(name = "User: Import and Export", description = "Upload files and manage chunked imports.")
+@Tag(name = "User: Import and Export", description = "Upload large files in chunks and manage chunked imports.")
 public class ImportUploadResource {
 
     @Inject
@@ -50,93 +48,6 @@ public class ImportUploadResource {
 
     @Inject
     ObjectMapper objectMapper;
-
-    @ConfigProperty(name = "geopulse.import.chunked.max-file-size-gb", defaultValue = "10")
-    int maxFileSizeGB;
-
-    // ==================== DIRECT UPLOAD ====================
-
-    /**
-     * Direct file upload for small files (under chunked threshold).
-     * Files are either kept in memory (small) or stored in temp directory (medium).
-     * Large files (>80MB) should use the chunked upload flow instead.
-     */
-    @POST
-    @Path("/imports")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public ImportJobResponse uploadFile(
-            @RestForm("file") FileUpload file,
-            @RestForm("format") String format,
-            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-
-            // Validate format
-            ImportFormat importFormat = ImportFormat.fromString(format);
-            if (importFormat == null) {
-                throw problem(INVALID_IMPORT_FORMAT,
-                        "Unknown import format: " + format + ". Supported formats: " + ImportFormat.getSupportedFormats());
-            }
-
-            log.info("Received {} import request for user: {}", importFormat.getValue(), userId);
-
-            // Check for existing active jobs
-            if (importJobService.hasActiveImportJob(userId)) {
-                throw problem(IMPORT_ACTIVE_JOB_CONFLICT,
-                        "An import job is already in progress. Please wait for it to complete.");
-            }
-
-            // Validate file
-            if (file == null || file.size() == 0) {
-                throw problem(INVALID_IMPORT_FILE, "No file provided");
-            }
-
-            // Validate file size
-            long maxFileSizeBytes = (long) maxFileSizeGB * 1024L * 1024L * 1024L;
-            if (file.size() > maxFileSizeBytes) {
-                throw problem(IMPORT_FILE_TOO_LARGE, "File exceeds the configured import limit",
-                        Map.of("fileSizeBytes", file.size(), "maxFileSizeBytes", maxFileSizeBytes));
-            }
-
-            // Get file name and resolve GPX format if needed
-            String fileName = file.fileName() != null ? file.fileName() : importFormat.getDefaultFileName();
-            importFormat = ImportFormat.resolveGpxFormat(fileName, importFormat);
-
-            // Validate file extension
-            if (!importFormat.isValidExtension(fileName)) {
-                throw problem(INVALID_IMPORT_FILE_TYPE,
-                        "Invalid file type for " + importFormat.getValue() + " import. " +
-                                "Allowed extensions: " + importFormat.getAllowedExtensions(),
-                        Map.of("format", importFormat.getValue()));
-            }
-
-            // Parse options
-            ImportOptions importOptions;
-            try {
-                importOptions = objectMapper.readValue(options, ImportOptions.class);
-                importOptions.setImportFormat(importFormat.getValue());
-            } catch (Exception e) {
-                log.error("Failed to parse import options", e);
-                throw problem(INVALID_IMPORT_OPTIONS, "Invalid import options format");
-            }
-
-            // Create import job
-            ImportJob job = createImportJob(userId, file, fileName, importOptions);
-
-            log.info("Created {} import job: jobId={}, fileName={}, size={} MB",
-                    importFormat.getValue(), job.getJobId(), fileName, file.size() / (1024 * 1024));
-
-            return ImportJobResponse.from(job);
-
-        } catch (IllegalStateException e) {
-            throw problem(IMPORT_RATE_LIMITED, e.getMessage());
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create import job", e);
-            throw problem(IMPORT_FAILED, "Failed to create import job");
-        }
-    }
 
     // ==================== CHUNKED UPLOAD ====================
 
@@ -223,7 +134,7 @@ public class ImportUploadResource {
                     session.getUploadId(), session.getTotalChunks(),
                     chunkedUploadService.getChunkSizeBytes(), session.getExpiresAt());
 
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+        } catch (HttpProblem e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to initialize chunked upload", e);
@@ -299,7 +210,7 @@ public class ImportUploadResource {
         } catch (IOException e) {
             log.error("Failed to save chunk", e);
             throw problem(IMPORT_CHUNK_SAVE_FAILED, "Failed to save chunk");
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+        } catch (HttpProblem e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to process chunk upload", e);
@@ -379,7 +290,7 @@ public class ImportUploadResource {
         } catch (IOException e) {
             log.error("Failed to assemble chunked upload", e);
             throw problem(IMPORT_ASSEMBLY_FAILED, "Failed to assemble uploaded chunks");
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+        } catch (HttpProblem e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to complete chunked upload", e);
@@ -409,7 +320,7 @@ public class ImportUploadResource {
                     session.getStatus(), session.isComplete(), session.isExpired(), session.getExpiresAt(),
                     Set.copyOf(session.getReceivedChunks()));
 
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+        } catch (HttpProblem e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to get upload status", e);
@@ -431,7 +342,7 @@ public class ImportUploadResource {
                 throw problem(IMPORT_UPLOAD_NOT_FOUND, "Upload session not found");
             }
 
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
+        } catch (HttpProblem e) {
             throw e;
         } catch (Exception e) {
             log.error("Failed to abort upload", e);
@@ -440,37 +351,6 @@ public class ImportUploadResource {
     }
 
     // ==================== HELPER METHODS ====================
-
-    private ImportJob createImportJob(UUID userId, FileUpload file, String fileName, ImportOptions importOptions) throws IOException {
-        ImportJob job;
-        long fileSize = file.size();
-
-        if (tempFileService.shouldUseTempFile(fileSize)) {
-            // Large file: move to temp storage (no memory overhead)
-            log.info("Large file detected ({} MB), using temp file storage", fileSize / (1024 * 1024));
-
-            String tempFilePath = tempFileService.moveUploadedFileToTemp(
-                    file.uploadedFile(), UUID.randomUUID(), fileName);
-
-            // Create job with temp file path (no data in memory!)
-            job = new ImportJob(userId, importOptions, fileName, new byte[0]);
-            job.setTempFilePath(tempFilePath);
-            job.setFileSizeBytes(fileSize);
-
-            importJobService.registerJob(job);
-        } else {
-            // Small file: keep in memory (fast path)
-            log.info("Small file detected ({} MB), keeping in memory", fileSize / (1024 * 1024));
-
-            byte[] fileContent = java.nio.file.Files.readAllBytes(file.uploadedFile());
-            job = new ImportJob(userId, importOptions, fileName, fileContent);
-            job.setFileSizeBytes(fileSize);
-
-            importJobService.registerJob(job);
-        }
-
-        return job;
-    }
 
     private ChunkUploadResponse createChunkResponse(ChunkedUploadSession session, int chunkIndex) {
         return new ChunkUploadResponse(

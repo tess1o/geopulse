@@ -641,7 +641,7 @@ const loadGeocodingResults = async () => {
 
     if (sortField.value) {
       params.sortField = sortField.value
-      params.sortOrder = sortOrder.value === 1 ? 'asc' : 'desc'
+      params.sortDirection = sortOrder.value === 1 ? 'asc' : 'desc'
     }
 
     await geocodingStore.fetchGeocodingResults(params)

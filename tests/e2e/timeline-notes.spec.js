@@ -580,7 +580,7 @@ test.describe('Place details GeoPulse notes', () => {
 
     const placeDetailsPage = new PlaceDetailsPage(page);
     await placeDetailsPage.navigateToFavorite(favoriteId);
-    await expect(page.locator('.place-header')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.location-details-header')).toBeVisible({ timeout: 15000 });
     await waitForVectorMap(page, '.place-map-container');
 
     const notesCard = page.locator('.place-notes-card').first();

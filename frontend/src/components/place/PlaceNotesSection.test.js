@@ -44,8 +44,8 @@ const mountSection = (props = {}) => mount(PlaceNotesSection, {
   props: {
     title: 'Notes near Test Place',
     searchParams: {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000,
       latitude: 50,
@@ -97,8 +97,8 @@ describe('PlaceNotesSection', () => {
 
   it('calls notes search with place params and renders geotagged notes sorted by event time', async () => {
     const searchParams = {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000,
       latitude: 50,
@@ -168,8 +168,8 @@ describe('PlaceNotesSection', () => {
       Number(note.longitude) <= 30.2
     ))
     const areaSearchParams = {
-      startTime: '2026-07-01T00:00:00Z',
-      endTime: '2026-07-03T00:00:00Z',
+      from: '2026-07-01T00:00:00Z',
+      to: '2026-07-03T00:00:00Z',
       includeExternal: true,
       limit: 5000
     }

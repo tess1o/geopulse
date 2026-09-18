@@ -47,6 +47,7 @@ components:
       - TIMELINE_REGENERATION_CAMPAIGN_CREATED
       - TIMELINE_REGENERATION_CAMPAIGN_RETRIED
       - MAP_MATCHING_HISTORICAL_REBUILD
+      - MAP_MATCHING_CACHE_CLEARED
       - ADMIN_LOGIN
       type: string
     ActivityChartData:
@@ -379,6 +380,7 @@ components:
       - MAP_MATCHING_DISABLED
       - MAP_MATCHING_BACKFILL_DISABLED
       - MAP_MATCHING_PROVIDER_NOT_CONFIGURED
+      - MAP_MATCHING_MODE_INVALID
       - INVALID_DEMO_PERSONA
       - INVALID_INVITATION
       - INVALID_IMPORT_FORMAT
@@ -2702,6 +2704,7 @@ components:
           - MAP_MATCHING_DISABLED
           - MAP_MATCHING_BACKFILL_DISABLED
           - MAP_MATCHING_PROVIDER_NOT_CONFIGURED
+          - MAP_MATCHING_MODE_INVALID
           - INVALID_DEMO_PERSONA
           - INVALID_INVITATION
           - INVALID_IMPORT_FORMAT
@@ -4031,10 +4034,23 @@ components:
           type: string
         detail:
           type: string
-    MapMatchingQueueRebuildResponse:
+    MapMatchingRebuildMode:
+      enum:
+      - UNSUCCESSFUL
+      - ALL
+      type: string
+    MapMatchingRebuildResponse:
       type: object
       properties:
+        mode:
+          $ref: "#/components/schemas/MapMatchingRebuildMode"
         queuedUsers:
+          format: int64
+          type: integer
+        affectedTargets:
+          format: int64
+          type: integer
+        purgedDetachedTargets:
           format: int64
           type: integer
     MapMatchingResolutionRequest:
@@ -4089,6 +4105,8 @@ components:
         source:
           type: string
         retryAt:
+          $ref: "#/components/schemas/Instant"
+        completedAt:
           $ref: "#/components/schemas/Instant"
         pollAfterMs:
           format: int32
@@ -8284,7 +8302,7 @@ tags:
 - name: "User: Immich"
   description: Manage Immich configuration and retrieve Immich photo data.
 - name: "User: Import and Export"
-  description: Upload files and manage chunked imports.
+  description: Upload large files in chunks and manage chunked imports.
 - name: "User: Journey Insights"
   description: Read journey insight summaries.
 - name: "User: Location Analytics"
@@ -9400,23 +9418,28 @@ paths:
         - ADMIN
   /api/v1/admin/settings/map-matching/rebuilds:
     post:
-      operationId: AdminSettingsResource_rebuildMapMatchingHistoricalQueue
+      operationId: AdminSettingsResource_rebuildMapMatching
       tags:
       - "Admin: System Settings"
+      parameters:
+      - name: mode
+        in: query
+        schema:
+          type: string
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MapMatchingQueueRebuildResponse"
+                $ref: "#/components/schemas/MapMatchingRebuildResponse"
         "401":
           description: Authentication is required or the provided credentials are
             invalid.
         "403":
           description: The authenticated user does not have permission to access this
             resource.
-      summary: Rebuild Map Matching Historical Queue
+      summary: Rebuild Map Matching
       security:
       - jwt:
         - ADMIN
@@ -14090,41 +14113,8 @@ paths:
       security:
       - jwt: []
   /api/v1/imports:
-    get:
-      operationId: ImportResource_getImportJobs
-      tags:
-      - "User: Import and Export"
-      parameters:
-      - name: page
-        in: query
-        schema:
-          format: int32
-          default: 0
-          type: integer
-      - name: size
-        in: query
-        schema:
-          format: int32
-          default: 10
-          type: integer
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SliceResponseImportJobResponse"
-        "401":
-          description: Authentication is required or the provided credentials are
-            invalid.
-        "403":
-          description: The authenticated user does not have permission to access this
-            resource.
-      summary: Get Import Jobs
-      security:
-      - jwt: []
     post:
-      operationId: ImportUploadResource_uploadFile
+      operationId: ImportResource_uploadFile
       tags:
       - "User: Import and Export"
       requestBody:
@@ -14158,6 +14148,39 @@ paths:
           description: The authenticated user does not have permission to access this
             resource.
       summary: Upload File
+      security:
+      - jwt: []
+    get:
+      operationId: ImportResource_getImportJobs
+      tags:
+      - "User: Import and Export"
+      parameters:
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      - name: size
+        in: query
+        schema:
+          format: int32
+          default: 10
+          type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SliceResponseImportJobResponse"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Import Jobs
       security:
       - jwt: []
   /api/v1/imports/{importJobId}:

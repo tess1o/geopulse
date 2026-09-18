@@ -385,7 +385,7 @@ const actions = {
 
             try {
                 // Fallback to Prometheus metrics
-                const response = await fetch('/api/prometheus/metrics');
+                const response = await fetch('/api/v1/system/metrics');
                 const text = await response.text();
                 return parsePrometheusMetrics(text);
             } catch (prometheusError) {

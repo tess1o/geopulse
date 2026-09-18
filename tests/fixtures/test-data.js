@@ -89,13 +89,15 @@ export const TestData = {
   },
 
   // API endpoints
+  // Use TestConfig.API_ENDPOINTS instead — these paths were only informational
+  // and went stale when the REST API moved under /api/v1.
   api: {
-    baseUrl: process.env.API_BASE_URL || 'http://localhost:8081/api',
+    baseUrl: process.env.API_BASE_URL || 'http://localhost:8081',
     auth: {
-      login: '/auth/login',
-      register: '/users/register',
-      logout: '/auth/sessions/current',
-      refresh: '/auth/refresh-cookie'
+      login: '/api/v1/auth/sessions',
+      register: '/api/v1/registrations',
+      logout: '/api/v1/auth/sessions/current',
+      refresh: '/api/v1/auth/sessions/current/refresh'
     }
   },
 
