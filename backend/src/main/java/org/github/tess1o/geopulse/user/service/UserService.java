@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEve
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
@@ -24,6 +25,8 @@ import org.github.tess1o.geopulse.user.repository.UserAvatarRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.net.URI;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -65,6 +68,15 @@ public class UserService {
             "image/jpeg",
             "image/png",
             "image/webp"
+    );
+
+    private static final List<TripType> MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES = List.of(
+            TripType.WALK,
+            TripType.RUNNING,
+            TripType.BICYCLE,
+            TripType.CAR,
+            TripType.MOTORCYCLE,
+            TripType.PUBLIC_TRANSPORT
     );
 
     // Mapping for timezone names that differ between JavaScript and Java
@@ -895,6 +907,10 @@ public class UserService {
             }
             user.setTimelineDisplayMapMatchingEnabled(request.getMapMatchingEnabled());
         }
+        if (request.getMapMatchingExcludedMovementTypes() != null) {
+            user.setTimelineDisplayMapMatchingExcludedMovementTypes(
+                    validateMapMatchingExcludedMovementTypes(request.getMapMatchingExcludedMovementTypes()));
+        }
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
@@ -933,10 +949,32 @@ public class UserService {
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
                 .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(isTimelineDisplayMapMatchingEnabled(user, mapMatchingAvailable))
+                .mapMatchingExcludedMovementTypes(user.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
+                        ? List.of() : user.getTimelineDisplayMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(mapMatchingAvailable)
                 .panoramaxAvailable(panoramaxAvailable)
                 .panoramaxEndpoint(panoramaxAvailable ? systemSettingsService.getString("panoramax.endpoint").trim() : null)
                 .build();
+    }
+
+    private List<TripType> validateMapMatchingExcludedMovementTypes(List<String> values) {
+        EnumSet<TripType> selected = EnumSet.noneOf(TripType.class);
+        Set<String> allowed = MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES.stream()
+                .map(Enum::name)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+        for (String value : values) {
+            String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+            if (!allowed.contains(normalized)) {
+                throw new IllegalArgumentException("Invalid map-matching excluded movement type: " + value
+                        + ". Allowed values: " + String.join(", ", allowed));
+            }
+            selected.add(TripType.valueOf(normalized));
+        }
+
+        return MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES.stream()
+                .filter(selected::contains)
+                .toList();
     }
 
     public boolean isPanoramaxAvailable() {

@@ -2,10 +2,12 @@ package org.github.tess1o.geopulse.auth.model;
 
 import lombok.*;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.DistanceUnit;
 import org.github.tess1o.geopulse.user.model.TemperatureUnit;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Response DTO for authentication containing JWT tokens.
@@ -42,5 +44,6 @@ public class AuthResponse {
     private Boolean autoShowTripReplayControls;
     private Boolean enable3dBuildingsByDefault;
     private Boolean mapMatchingEnabled;
+    private List<TripType> mapMatchingExcludedMovementTypes;
     private Boolean mapMatchingAvailable;
 }

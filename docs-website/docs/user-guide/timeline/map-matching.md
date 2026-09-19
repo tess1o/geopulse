@@ -29,7 +29,8 @@ After the administrator has enabled it:
 1. Open **Profile** from your avatar menu.
 2. Go to **Display Settings**.
 3. Turn on **Map Matching**.
-4. Save your changes.
+4. Optionally choose movement types under **Show raw GPS for**.
+5. Save your changes.
 
 If the switch is disabled, Map Matching is not currently available on your GeoPulse instance. Ask your administrator to
 enable Valhalla-backed Map Matching. Administrators can use the
@@ -46,6 +47,9 @@ recorded GPS trace. The comparison control is only shown when a matched trip is 
 
 Some trips may still appear as raw GPS paths:
 
+- Their current movement type is selected under **Show raw GPS for**. This also applies after manually changing a trip's
+  movement type. GeoPulse hides matching progress, comparison controls, and Map Matching details for these trips, although
+  matching may continue in the background.
 - GeoPulse is still processing the match.
 - The trip type is not supported for matching.
 - Valhalla does not have map data for that region.

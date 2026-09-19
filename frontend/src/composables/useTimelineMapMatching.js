@@ -1,4 +1,4 @@
-import { computed, getCurrentInstance, onBeforeUnmount, ref, unref } from 'vue'
+import { computed, getCurrentInstance, onBeforeUnmount, ref, unref, watch } from 'vue'
 import { useMapMatchingStore } from '@/stores/mapMatching'
 import {
   areVisibleMapMatchingTripsSettled,
@@ -11,6 +11,7 @@ import {
 
 export function useTimelineMapMatching({
   enabled,
+  excludedMovementTypes,
   visibleTrips,
   rawPathData,
   store = null
@@ -28,11 +29,35 @@ export function useTimelineMapMatching({
     return Array.isArray(trips) ? trips : []
   }
 
+  const normalizeMovementType = (value) => {
+    const normalized = String(value || '').trim().toUpperCase()
+    return {
+      WALKING: 'WALK',
+      RUN: 'RUNNING',
+      CYCLING: 'BICYCLE',
+      BIKE: 'BICYCLE',
+      DRIVING: 'CAR'
+    }[normalized] || normalized
+  }
+  const excludedMovementTypeSet = computed(() => new Set(
+    (Array.isArray(unref(excludedMovementTypes)) ? unref(excludedMovementTypes) : [])
+      .map(normalizeMovementType)
+  ))
+  const eligibleVisibleTrips = computed(() => readVisibleTrips().filter(trip => (
+    !excludedMovementTypeSet.value.has(normalizeMovementType(trip?.movementType))
+  )))
+  const eligibleTripIds = computed(() => new Set(
+    eligibleVisibleTrips.value.map(trip => Number(trip.id))
+  ))
+
   const matchedSegmentsByTripId = computed(() => {
     const result = new Map()
     const trips = Array.isArray(resolution.value?.trips) ? resolution.value.trips : []
     trips.forEach((trip) => {
-      if (trip?.status === 'COMPLETED' && Array.isArray(trip.segments) && trip.segments.length > 0) {
+      if (eligibleTripIds.value.has(Number(trip?.tripId))
+          && trip?.status === 'COMPLETED'
+          && Array.isArray(trip.segments)
+          && trip.segments.length > 0) {
         result.set(Number(trip.tripId), trip.segments)
       }
     })
@@ -47,7 +72,9 @@ export function useTimelineMapMatching({
     const result = new Map()
     const trips = Array.isArray(resolution.value?.trips) ? resolution.value.trips : []
     trips.forEach((trip) => {
-      if (!trip?.status || trip.status === 'UNAVAILABLE') return
+      if (!eligibleTripIds.value.has(Number(trip?.tripId))
+          || !trip?.status
+          || trip.status === 'UNAVAILABLE') return
       result.set(Number(trip.tripId), {
         status: trip.status,
         targetId: trip.targetId ?? null,
@@ -64,7 +91,7 @@ export function useTimelineMapMatching({
     }
 
     return areVisibleMapMatchingTripsSettled(
-      readVisibleTrips().map(trip => trip.id),
+      eligibleVisibleTrips.value.map(trip => trip.id),
       resolution.value.trips
     )
   })
@@ -77,7 +104,10 @@ export function useTimelineMapMatching({
 
   const pendingCount = computed(() => {
     const trips = Array.isArray(resolution.value?.trips) ? resolution.value.trips : []
-    return trips.filter(trip => trip?.status === 'QUEUED' || trip?.status === 'PROCESSING').length
+    return trips.filter(trip => (
+      eligibleTripIds.value.has(Number(trip?.tripId))
+      && (trip?.status === 'QUEUED' || trip?.status === 'PROCESSING')
+    )).length
   })
 
   const statusText = computed(() => {
@@ -202,6 +232,17 @@ export function useTimelineMapMatching({
 
     schedulePoll(token)
   }
+
+  watch(
+    () => readVisibleTrips()
+      .map(trip => `${trip?.id}:${normalizeMovementType(trip?.movementType)}`)
+      .join('|'),
+    () => {
+      if (!isEnabled() || (!resolution.value && !resolving.value)) return
+      reset()
+      void resolve()
+    }
+  )
 
   if (getCurrentInstance()) {
     onBeforeUnmount(stop)

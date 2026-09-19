@@ -34,6 +34,7 @@ vi.mock('../utils/apiService', () => ({
     isTokenExpired: vi.fn(),
     refreshToken: vi.fn(),
     get: vi.fn(),
+    put: vi.fn(),
     clearAuthData: vi.fn(),
     handleError: vi.fn()
   }
@@ -60,6 +61,7 @@ const user = (overrides = {}) => ({
   autoShowTripReplayControls: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
+  mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: false,
   demoMode: false,
   canViewAdmin: false,
@@ -113,6 +115,7 @@ describe('auth store cached profile reconciliation', () => {
     apiService.get.mockResolvedValue(user({
       timezone: 'Europe/London',
       mapRenderMode: 'VECTOR',
+      mapMatchingExcludedMovementTypes: ['WALK'],
       mapMatchingAvailable: true
     }))
 
@@ -122,11 +125,31 @@ describe('auth store cached profile reconciliation', () => {
     expect(authStore.userTimezone).toBe('Europe/London')
     expect(authStore.mapRenderMode).toBe('VECTOR')
     expect(authStore.mapMatchingAvailable).toBe(true)
+    expect(authStore.mapMatchingExcludedMovementTypes).toEqual(['WALK'])
     expect(readCachedProfile()).toMatchObject({
       timezone: 'Europe/London',
       mapRenderMode: 'VECTOR',
+      mapMatchingExcludedMovementTypes: ['WALK'],
       mapMatchingAvailable: true
     })
+  })
+
+  it('patches and caches map matching movement exclusions after saving display preferences', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(user())
+    apiService.put.mockResolvedValue({
+      mapMatchingEnabled: true,
+      mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE'],
+      mapMatchingAvailable: true
+    })
+
+    await authStore.updateTimelineDisplayPreferences({
+      mapMatchingEnabled: true,
+      mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE']
+    })
+
+    expect(authStore.mapMatchingExcludedMovementTypes).toEqual(['WALK', 'BICYCLE'])
+    expect(readCachedProfile().mapMatchingExcludedMovementTypes).toEqual(['WALK', 'BICYCLE'])
   })
 
   it('refreshes an expired cookie session before reconciling the cached profile', async () => {

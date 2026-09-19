@@ -45,7 +45,7 @@ GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_DISCONTINUITY_PERCENT=10
 GEOPULSE_TIMELINE_MAP_MATCHING_QUALITY_MAX_SHORT_DISCONTINUITY_METERS=100
 ```
 
-The global setting enables the integration. The automatic and backfill settings control precomputation for all users. Users can separately enable **Profile -> Display Settings -> Map Matching** only after the integration is globally enabled and Valhalla is configured; this opt-in displays matched geometry and queues missing visible trips on demand.
+The global setting enables the integration. The automatic and backfill settings control precomputation for all users. Users can separately enable **Profile -> Display Settings -> Map Matching** only after the integration is globally enabled and Valhalla is configured; this opt-in displays matched geometry and queues missing visible trips on demand. Users may select supported movement types that should always display raw GPS. Those exclusions hide matching progress and details but do not prevent automatic, historical, or on-demand matching from running and caching results.
 
 ## Background processing
 

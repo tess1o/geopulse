@@ -32,6 +32,9 @@ export function writeCachedUserProfile(user) {
         autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: user.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: user.mapMatchingEnabled ?? false,
+        mapMatchingExcludedMovementTypes: Array.isArray(user.mapMatchingExcludedMovementTypes)
+            ? user.mapMatchingExcludedMovementTypes
+            : [],
         mapMatchingAvailable: user.mapMatchingAvailable ?? false,
         demoMode: !!user.demoMode,
         canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',

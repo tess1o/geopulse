@@ -399,7 +399,6 @@ components:
       - IMPORT_UPLOAD_INVALID_STATE
       - IMPORT_UPLOAD_INCOMPLETE
       - IMPORT_FILE_TOO_LARGE
-      - IMPORT_RATE_LIMITED
       - IMPORT_CHUNK_SAVE_FAILED
       - IMPORT_ASSEMBLY_FAILED
       - IMPORT_FAILED
@@ -512,6 +511,10 @@ components:
         requestId:
           description: Request correlation identifier
           type: string
+        parameters:
+          description: "Error-code specific parameters, used to format the detail"
+          type: object
+          additionalProperties: {}
         violations:
           description: "Validation failures, when applicable"
           type: array
@@ -570,22 +573,33 @@ components:
           type: object
           additionalProperties: {}
         detail:
-          description: English fallback detail
-          type: string
+          description: Localizable validation message
+          type: object
+          allOf:
+          - $ref: "#/components/schemas/MessageDescriptor"
     ApiViolationCode:
       enum:
+      - ASSERT_FALSE
       - ASSERT_TRUE
       - DECIMAL_MAX
       - DECIMAL_MIN
+      - DIGITS
       - EMAIL
       - FUTURE
+      - FUTURE_OR_PRESENT
       - MAX
       - MIN
+      - NEGATIVE
+      - NEGATIVE_OR_ZERO
       - NOT_BLANK
       - NOT_EMPTY
       - NOT_NULL
+      - "NULL"
+      - PAST
+      - PAST_OR_PRESENT
       - PATTERN
       - POSITIVE
+      - POSITIVE_OR_ZERO
       - SIZE
       - VALID_AREA_BOUNDS
       - INVALID_VALUE
@@ -708,6 +722,10 @@ components:
           type: boolean
         mapMatchingEnabled:
           type: boolean
+        mapMatchingExcludedMovementTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripType"
         mapMatchingAvailable:
           type: boolean
     AuthStatusResponse:
@@ -5785,6 +5803,10 @@ components:
           type: boolean
         mapMatchingEnabled:
           type: boolean
+        mapMatchingExcludedMovementTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripType"
         mapMatchingAvailable:
           type: boolean
         panoramaxAvailable:
@@ -6624,6 +6646,19 @@ components:
         actualPlacesCount:
           format: int32
           type: integer
+    TripType:
+      enum:
+      - WALK
+      - BICYCLE
+      - RUNNING
+      - CAR
+      - MOTORCYCLE
+      - PUBLIC_TRANSPORT
+      - TRAIN
+      - FLIGHT
+      - BOAT
+      - UNKNOWN
+      type: string
     TripVisitOverrideRequestDto:
       type: object
       properties:
@@ -7080,6 +7115,10 @@ components:
           type: boolean
         mapMatchingEnabled:
           type: boolean
+        mapMatchingExcludedMovementTypes:
+          type: array
+          items:
+            type: string
     UpdateTimelinePermissionRequest:
       required:
       - shareTimeline
@@ -7616,6 +7655,10 @@ components:
           type: boolean
         mapMatchingEnabled:
           type: boolean
+        mapMatchingExcludedMovementTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TripType"
         mapMatchingAvailable:
           type: boolean
     UserSearchDTO:

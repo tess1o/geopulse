@@ -15,7 +15,7 @@ const segmentTypeOptions = [
   { label: 'Trip', value: 'TRIP' }
 ]
 
-const movementTypeOptions = [
+export const movementTypeOptions = [
   { label: 'Walk', value: 'WALK' },
   { label: 'Running', value: 'RUNNING' },
   { label: 'Bicycle', value: 'BICYCLE' },

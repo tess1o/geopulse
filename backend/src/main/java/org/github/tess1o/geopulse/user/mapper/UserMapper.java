@@ -58,6 +58,8 @@ public class UserMapper {
                 .enable3dBuildingsByDefault(Boolean.TRUE.equals(entity.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(mapMatchingAvailable
                         && Boolean.TRUE.equals(entity.getTimelineDisplayMapMatchingEnabled()))
+                .mapMatchingExcludedMovementTypes(entity.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
+                        ? java.util.List.of() : entity.getTimelineDisplayMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(mapMatchingAvailable)
                 .build();
     }

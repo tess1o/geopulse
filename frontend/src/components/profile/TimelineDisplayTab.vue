@@ -179,6 +179,29 @@
             </SettingCard>
 
             <SettingCard
+              v-if="mapMatchingAvailable && form.mapMatchingEnabled"
+              title="Show raw GPS for"
+              description="Keep the original GPS path for selected movement types."
+              details="Matching may still run in the background, but matched geometry, progress, comparison controls, and details stay hidden."
+              setting-id="mapMatchingExcludedMovementTypes"
+            >
+              <template #control>
+                <MultiSelect
+                  id="mapMatchingExcludedMovementTypes"
+                  v-model="form.mapMatchingExcludedMovementTypes"
+                  :options="mapMatchingMovementTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Use matched routes for all supported types"
+                  display="chip"
+                  class="w-full"
+                  aria-label="Movement types that show raw GPS"
+                  :disabled="readOnly"
+                />
+              </template>
+            </SettingCard>
+
+            <SettingCard
               title="Path simplification"
               description="Reduce the number of points drawn for a trip."
               details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data."
@@ -285,9 +308,11 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
+import MultiSelect from 'primevue/multiselect'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
+import { movementTypeOptions } from '@/composables/useTripReconstructionSegments'
 
 const props = defineProps({
   readOnly: {
@@ -316,6 +341,7 @@ const form = ref({
   autoShowTripReplayControls: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
+  mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: false
 })
 
@@ -335,6 +361,27 @@ const mapRenderModeOptions = [
   { label: 'Vector (MapLibre)', value: 'VECTOR' },
   { label: 'Raster (Leaflet)', value: 'RASTER' }
 ]
+const mapMatchingMovementTypeValues = new Set([
+  'WALK',
+  'RUNNING',
+  'BICYCLE',
+  'CAR',
+  'MOTORCYCLE',
+  'PUBLIC_TRANSPORT'
+])
+const mapMatchingMovementTypeOptions = movementTypeOptions.filter(option => (
+  mapMatchingMovementTypeValues.has(option.value)
+))
+const normalizeMovementTypeList = (values) => {
+  const selected = new Set((Array.isArray(values) ? values : []).map(value => String(value).trim().toUpperCase()))
+  return mapMatchingMovementTypeOptions.map(option => option.value).filter(value => selected.has(value))
+}
+const movementTypeListsEqual = (left, right) => {
+  const normalizedLeft = normalizeMovementTypeList(left)
+  const normalizedRight = normalizeMovementTypeList(right)
+  return normalizedLeft.length === normalizedRight.length
+    && normalizedLeft.every((value, index) => value === normalizedRight[index])
+}
 const editablePreferenceKeys = [
   'customMapTileUrl',
   'customMapStyleUrl',
@@ -347,7 +394,8 @@ const editablePreferenceKeys = [
   'showCurrentLocationTelemetry',
   'autoShowTripReplayControls',
   'enable3dBuildingsByDefault',
-  'mapMatchingEnabled'
+  'mapMatchingEnabled',
+  'mapMatchingExcludedMovementTypes'
 ]
 
 const normalizePreferences = (preferences = {}) => ({
@@ -363,6 +411,7 @@ const normalizePreferences = (preferences = {}) => ({
   autoShowTripReplayControls: preferences.autoShowTripReplayControls ?? true,
   enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
+  mapMatchingExcludedMovementTypes: normalizeMovementTypeList(preferences.mapMatchingExcludedMovementTypes),
   mapMatchingAvailable: preferences.mapMatchingAvailable ?? false
 })
 
@@ -382,7 +431,11 @@ const hasChanges = computed(() => {
   const current = normalizePreferences(form.value)
   const initial = normalizePreferences(props.initialPreferences)
 
-  return editablePreferenceKeys.some((key) => current[key] !== initial[key])
+  return editablePreferenceKeys.some((key) => (
+    key === 'mapMatchingExcludedMovementTypes'
+      ? !movementTypeListsEqual(current[key], initial[key])
+      : current[key] !== initial[key]
+  ))
 })
 
 // Initialize form from props
@@ -497,7 +550,8 @@ const handleSubmit = async () => {
       showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry,
       autoShowTripReplayControls: form.value.autoShowTripReplayControls,
       enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
-      mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false
+      mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false,
+      mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes)
     })
   } finally {
     loading.value = false
@@ -519,6 +573,7 @@ const handleReset = () => {
     autoShowTripReplayControls: true,
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
+    mapMatchingExcludedMovementTypes: [],
     mapMatchingAvailable: mapMatchingAvailable.value
   }
   errors.value = {

@@ -12,6 +12,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
+import java.util.List;
+
 /**
  * Request DTO for updating timeline display preferences.
  * These settings affect ONLY how timelines are rendered in the UI.
@@ -94,4 +96,10 @@ public class UpdateTimelineDisplayPreferencesRequest {
      * Use cached Valhalla map matching for timeline trip path display.
      */
     private Boolean mapMatchingEnabled;
+
+    /**
+     * Movement types that should keep displaying raw GPS even when map matching is enabled.
+     * Null leaves the existing value unchanged; an empty list clears it.
+     */
+    private List<String> mapMatchingExcludedMovementTypes;
 }

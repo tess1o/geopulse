@@ -248,6 +248,9 @@ const readTimelineDisplayFallback = () => {
     ? user.customMapStyleUrl
     : cachedProfile.customMapStyleUrl
   const mapMatchingAvailable = user.mapMatchingAvailable ?? cachedProfile.mapMatchingAvailable
+  const mapMatchingExcludedMovementTypes = user.mapMatchingExcludedMovementTypes
+    ?? cachedProfile.mapMatchingExcludedMovementTypes
+    ?? []
 
   return {
     showCurrentLocationTelemetry: user.showCurrentLocationTelemetry
@@ -265,6 +268,9 @@ const readTimelineDisplayFallback = () => {
     mapMatchingEnabled: mapMatchingAvailable === false
       ? false
       : (user.mapMatchingEnabled ?? cachedProfile.mapMatchingEnabled ?? false),
+    mapMatchingExcludedMovementTypes: Array.isArray(mapMatchingExcludedMovementTypes)
+      ? mapMatchingExcludedMovementTypes
+      : [],
     panoramaxAvailable: false,
     panoramaxEndpoint: null
   }
@@ -289,6 +295,7 @@ const mapRenderMode = ref(initialTimelineDisplaySettings.mapRenderMode)
 const autoShowTripReplayControls = ref(initialTimelineDisplaySettings.autoShowTripReplayControls)
 const enable3dBuildingsByDefault = ref(initialTimelineDisplaySettings.enable3dBuildingsByDefault)
 const mapMatchingEnabled = ref(initialTimelineDisplaySettings.mapMatchingEnabled)
+const mapMatchingExcludedMovementTypes = ref(initialTimelineDisplaySettings.mapMatchingExcludedMovementTypes)
 const panoramaxAvailable = ref(initialTimelineDisplaySettings.panoramaxAvailable)
 const panoramaxEndpoint = ref(initialTimelineDisplaySettings.panoramaxEndpoint)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
@@ -354,6 +361,7 @@ const {
   reset: resetMapMatching
 } = useTimelineMapMatching({
   enabled: mapMatchingEnabled,
+  excludedMovementTypes: mapMatchingExcludedMovementTypes,
   visibleTrips,
   rawPathData: pathData
 })
@@ -778,6 +786,9 @@ const loadTimelineDisplaySettings = async () => {
     autoShowTripReplayControls.value = data?.autoShowTripReplayControls ?? fallback.autoShowTripReplayControls
     enable3dBuildingsByDefault.value = data?.enable3dBuildingsByDefault ?? fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = data?.mapMatchingEnabled ?? fallback.mapMatchingEnabled
+    mapMatchingExcludedMovementTypes.value = Array.isArray(data?.mapMatchingExcludedMovementTypes)
+      ? data.mapMatchingExcludedMovementTypes
+      : fallback.mapMatchingExcludedMovementTypes
     panoramaxAvailable.value = data?.panoramaxAvailable ?? false
     panoramaxEndpoint.value = data?.panoramaxEndpoint || null
   } catch (error) {
@@ -788,6 +799,7 @@ const loadTimelineDisplaySettings = async () => {
     autoShowTripReplayControls.value = fallback.autoShowTripReplayControls
     enable3dBuildingsByDefault.value = fallback.enable3dBuildingsByDefault
     mapMatchingEnabled.value = fallback.mapMatchingEnabled
+    mapMatchingExcludedMovementTypes.value = fallback.mapMatchingExcludedMovementTypes
     panoramaxAvailable.value = false
     panoramaxEndpoint.value = null
   } finally {

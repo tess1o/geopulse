@@ -54,6 +54,9 @@ function normalizeUser(source) {
         autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: raw.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: raw.mapMatchingEnabled ?? false,
+        mapMatchingExcludedMovementTypes: Array.isArray(raw.mapMatchingExcludedMovementTypes)
+            ? [...raw.mapMatchingExcludedMovementTypes]
+            : [],
         mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
         demoMode: !!raw.demoMode,
         canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
@@ -99,6 +102,7 @@ export const useAuthStore = defineStore('auth', {
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: (state) => state.user?.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
+        mapMatchingExcludedMovementTypes: (state) => state.user?.mapMatchingExcludedMovementTypes ?? [],
         mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
@@ -294,6 +298,11 @@ export const useAuthStore = defineStore('auth', {
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingEnabled')) {
                     userPatch.mapMatchingEnabled = updatedPreferences.mapMatchingEnabled ?? false
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingExcludedMovementTypes')) {
+                    userPatch.mapMatchingExcludedMovementTypes = Array.isArray(updatedPreferences.mapMatchingExcludedMovementTypes)
+                        ? [...updatedPreferences.mapMatchingExcludedMovementTypes]
+                        : []
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingAvailable')) {
                     userPatch.mapMatchingAvailable = updatedPreferences.mapMatchingAvailable ?? false

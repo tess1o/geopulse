@@ -5,7 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -38,6 +40,7 @@ public class UserResponse {
     private Boolean autoShowTripReplayControls;
     private Boolean enable3dBuildingsByDefault;
     private Boolean mapMatchingEnabled;
+    private List<TripType> mapMatchingExcludedMovementTypes;
     private Boolean mapMatchingAvailable;
     // Don't include passwordHash in responses
 }

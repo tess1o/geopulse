@@ -34,6 +34,7 @@ public class BrowserAuthResponseMapper {
                 .autoShowTripReplayControls(authResponse.getAutoShowTripReplayControls())
                 .enable3dBuildingsByDefault(authResponse.getEnable3dBuildingsByDefault())
                 .mapMatchingEnabled(authResponse.getMapMatchingEnabled())
+                .mapMatchingExcludedMovementTypes(authResponse.getMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(authResponse.getMapMatchingAvailable())
                 .build();
 

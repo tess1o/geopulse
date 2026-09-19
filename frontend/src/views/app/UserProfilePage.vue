@@ -148,6 +148,7 @@ const timelineDisplayPrefs = ref({
   autoShowTripReplayControls: autoShowTripReplayControls.value ?? true,
   enable3dBuildingsByDefault: enable3dBuildingsByDefault.value ?? false,
   mapMatchingEnabled: false,
+  mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: mapMatchingAvailable.value ?? false
 })
 
@@ -527,6 +528,9 @@ const loadTimelineDisplayPreferences = async () => {
         autoShowTripReplayControls: data.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: data.enable3dBuildingsByDefault ?? false,
         mapMatchingEnabled: data.mapMatchingEnabled ?? false,
+        mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)
+          ? data.mapMatchingExcludedMovementTypes
+          : [],
         mapMatchingAvailable: data.mapMatchingAvailable ?? false
       }
     }

@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -156,6 +157,8 @@ public class AuthenticationService {
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
                 .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
                 .mapMatchingEnabled(userService.isTimelineDisplayMapMatchingEnabled(user))
+                .mapMatchingExcludedMovementTypes(user.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
+                        ? List.of() : user.getTimelineDisplayMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(userService.isMapMatchingAvailable())
                 .build();
     }

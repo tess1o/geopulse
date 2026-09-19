@@ -195,6 +195,131 @@ describe('useTimelineMapMatching', () => {
 
     mapMatching.stop()
   })
+
+  it('does not let a pending excluded trip delay eligible matched geometry', async () => {
+    const rawPathData = ref({
+      points: [
+        point('car-raw', '2026-01-01T10:00:00Z'),
+        point('walk-raw-a', '2026-01-01T10:03:00Z'),
+        point('walk-raw-b', '2026-01-01T10:04:00Z')
+      ]
+    })
+    const service = {
+      resolve: vi.fn().mockResolvedValue({
+        enabled: true,
+        provider: 'valhalla',
+        trips: [
+          {
+            tripId: 1,
+            targetId: 10,
+            status: 'COMPLETED',
+            segments: [[{ id: 'car-matched', latitude: 50.1, longitude: 30.1 }]]
+          },
+          { tripId: 2, targetId: 11, status: 'QUEUED', pollAfterMs: 60000 }
+        ]
+      }),
+      status: vi.fn()
+    }
+    const trips = ref([
+      { ...trip(1), movementType: 'CAR' },
+      { ...trip(2, '2026-01-01T10:03:00Z'), movementType: 'WALK' }
+    ])
+    const mapMatching = useTimelineMapMatching({
+      enabled: ref(true),
+      excludedMovementTypes: ref(['WALK']),
+      visibleTrips: trips,
+      rawPathData,
+      store: service
+    })
+
+    await mapMatching.resolve()
+    await nextTick()
+
+    expect(service.resolve).toHaveBeenCalledWith([1, 2])
+    expect(mapMatching.pageSettled.value).toBe(true)
+    expect(mapMatching.pendingCount.value).toBe(0)
+    expect(mapMatching.statusText.value).toBe('')
+    expect(mapMatching.matchedTripIds.value).toEqual([1])
+    expect(Array.from(mapMatching.mapMatchingByTripId.value.keys())).toEqual([1])
+    expect(mapMatching.activePathData.value.points.map(pathPoint => pathPoint.id)).toContain('car-matched')
+
+    mapMatching.stop()
+  })
+
+  it('keeps raw GPS and hides matching UI when every visible trip is excluded', async () => {
+    const rawPathData = ref({ points: [point('raw-a', '2026-01-01T10:00:00Z')] })
+    const service = {
+      resolve: vi.fn().mockResolvedValue({
+        enabled: true,
+        provider: 'valhalla',
+        trips: [{ tripId: 1, targetId: 10, status: 'QUEUED', pollAfterMs: 60000 }]
+      }),
+      status: vi.fn()
+    }
+    const mapMatching = useTimelineMapMatching({
+      enabled: ref(true),
+      excludedMovementTypes: ref(['WALK']),
+      visibleTrips: ref([{ ...trip(1), movementType: 'WALKING' }]),
+      rawPathData,
+      store: service
+    })
+
+    await mapMatching.resolve()
+    await nextTick()
+
+    expect(service.resolve).toHaveBeenCalledWith([1])
+    expect(mapMatching.pageSettled.value).toBe(false)
+    expect(mapMatching.pendingCount.value).toBe(0)
+    expect(mapMatching.activePathData.value).toBe(rawPathData.value)
+    expect(mapMatching.matchedTripIds.value).toEqual([])
+    expect(mapMatching.mapMatchingByTripId.value.size).toBe(0)
+
+    mapMatching.stop()
+  })
+
+  it('re-resolves after an in-place manual movement type change', async () => {
+    const rawPathData = ref({ points: [point('raw-a', '2026-01-01T10:00:00Z')] })
+    const service = {
+      resolve: vi.fn()
+        .mockResolvedValueOnce({
+          enabled: true,
+          provider: 'valhalla',
+          trips: [{
+            tripId: 1,
+            targetId: 10,
+            status: 'COMPLETED',
+            segments: [[{ id: 'walk-matched', latitude: 50.1, longitude: 30.1 }]]
+          }]
+        })
+        .mockResolvedValueOnce({
+          enabled: true,
+          provider: 'valhalla',
+          trips: [{
+            tripId: 1,
+            targetId: 11,
+            status: 'COMPLETED',
+            segments: [[{ id: 'car-matched', latitude: 50.1, longitude: 30.1 }]]
+          }]
+        }),
+      status: vi.fn()
+    }
+    const trips = ref([{ ...trip(1), movementType: 'WALK', movementTypeSource: 'MANUAL' }])
+    const mapMatching = useTimelineMapMatching({
+      enabled: ref(true),
+      excludedMovementTypes: ref(['WALK']),
+      visibleTrips: trips,
+      rawPathData,
+      store: service
+    })
+
+    await mapMatching.resolve()
+    trips.value[0].movementType = 'CAR'
+    await vi.waitFor(() => expect(service.resolve).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(mapMatching.matchedTripIds.value).toEqual([1]))
+
+    expect(mapMatching.resolution.value.trips[0].targetId).toBe(11)
+    mapMatching.stop()
+  })
 })
 
 const point = (id, timestamp) => ({

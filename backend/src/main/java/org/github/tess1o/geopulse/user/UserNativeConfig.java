@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.user;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.*;
 
 @RegisterForReflection(targets = {
@@ -20,6 +21,7 @@ import org.github.tess1o.geopulse.user.model.*;
         DistanceUnit.class,
         TemperatureUnit.class,
         MapRenderMode.class,
+        TripType.class,
         UserAvatarEntity.class
 })
 public class UserNativeConfig {

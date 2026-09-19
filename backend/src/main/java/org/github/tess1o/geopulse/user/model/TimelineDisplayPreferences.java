@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+
+import java.util.List;
 
 /**
  * Timeline display preferences - settings that affect ONLY how timelines are rendered in the UI.
@@ -94,6 +97,11 @@ public class TimelineDisplayPreferences {
      * Default: false
      */
     private Boolean mapMatchingEnabled;
+
+    /**
+     * Movement types that should keep displaying raw GPS even when map matching is enabled.
+     */
+    private List<TripType> mapMatchingExcludedMovementTypes;
 
     /**
      * Whether map matching is enabled globally and configured by an administrator.

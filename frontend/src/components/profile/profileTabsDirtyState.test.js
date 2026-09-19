@@ -164,6 +164,26 @@ const AutoCompleteStub = {
   `
 }
 
+const MultiSelectStub = {
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  methods: {
+    updateValues(event) {
+      this.$emit('update:modelValue', String(event.target.value || '')
+        .split(',')
+        .map(value => value.trim())
+        .filter(Boolean))
+    }
+  },
+  template: `
+    <input
+      :value="Array.isArray(modelValue) ? modelValue.join(', ') : ''"
+      v-bind="$attrs"
+      @input="updateValues"
+    />
+  `
+}
+
 const SettingCardStub = {
   props: ['title', 'description', 'settingId'],
   template: '<section v-bind="$attrs" :data-setting-id="settingId"><h3>{{ title }}</h3><p>{{ description }}</p><slot name="control" /></section>'
@@ -179,6 +199,7 @@ const globalOptions = {
     Dropdown: DropdownStub,
     Select: DropdownStub,
     AutoComplete: AutoCompleteStub,
+    MultiSelect: MultiSelectStub,
     ToggleSwitch: ToggleSwitchStub,
     Textarea: {
       props: ['modelValue'],
@@ -220,6 +241,7 @@ const timelineDisplayPrefs = {
   autoShowTripReplayControls: true,
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
+  mapMatchingExcludedMovementTypes: [],
   mapMatchingAvailable: true
 }
 
@@ -451,6 +473,45 @@ describe('profile tab dirty state', () => {
     expect(toggle.attributes('disabled')).toBeUndefined()
     await toggle.setValue(true)
     expect(lastDirtyValue(wrapper)).toBe(true)
+  })
+
+  it('hides raw GPS movement types while map matching is off', async () => {
+    const wrapper = mount(TimelineDisplayTab, {
+      props: { initialPreferences: timelineDisplayPrefs },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(wrapper.find('#mapMatchingExcludedMovementTypes').exists()).toBe(false)
+  })
+
+  it('tracks and saves raw GPS movement types by value', async () => {
+    const initialPreferences = {
+      ...timelineDisplayPrefs,
+      mapMatchingEnabled: true,
+      mapMatchingExcludedMovementTypes: ['WALK']
+    }
+    const wrapper = mount(TimelineDisplayTab, {
+      props: { initialPreferences },
+      global: globalOptions
+    })
+    await flushPromises()
+
+    expect(lastDirtyValue(wrapper)).not.toBe(true)
+    await wrapper.find('#mapMatchingExcludedMovementTypes').setValue('WALK, CAR')
+    expect(lastDirtyValue(wrapper)).toBe(true)
+
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('save').at(-1)[0].mapMatchingExcludedMovementTypes).toEqual(['WALK', 'CAR'])
+
+    await wrapper.setProps({
+      initialPreferences: {
+        ...initialPreferences,
+        mapMatchingExcludedMovementTypes: ['CAR', 'WALK']
+      }
+    })
+    await flushPromises()
+    expect(lastDirtyValue(wrapper)).toBe(false)
   })
 
   it('emits dirty changes from the AI tab and clears when saved settings become canonical', async () => {

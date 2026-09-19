@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEve
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import org.github.tess1o.geopulse.user.model.UpdateTimelineDisplayPreferencesRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -22,8 +23,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -130,6 +133,64 @@ class UserServiceMapMatchingDisplayPreferencesTest {
         userService.updateTimelineDisplayPreferences(userId, request);
 
         assertTrue(user.getTimelineDisplayMapMatchingEnabled());
+    }
+
+    @Test
+    void mapMatchingMovementTypeExclusionsDefaultToEmpty() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setTimelineDisplayMapMatchingExcludedMovementTypes(null);
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        assertEquals(List.of(), userService.getTimelineDisplayPreferences(userId)
+                .getMapMatchingExcludedMovementTypes());
+    }
+
+    @Test
+    void normalizesAndDeduplicatesMapMatchingMovementTypeExclusions() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        userService.updateTimelineDisplayPreferences(userId, UpdateTimelineDisplayPreferencesRequest.builder()
+                .mapMatchingExcludedMovementTypes(List.of(" car ", "walk", "CAR"))
+                .build());
+
+        assertEquals(List.of(TripType.WALK, TripType.CAR),
+                user.getTimelineDisplayMapMatchingExcludedMovementTypes());
+    }
+
+    @Test
+    void nullLeavesMapMatchingMovementTypeExclusionsUnchangedAndEmptyClearsThem() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        user.setTimelineDisplayMapMatchingExcludedMovementTypes(List.of(TripType.WALK));
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        userService.updateTimelineDisplayPreferences(userId, UpdateTimelineDisplayPreferencesRequest.builder().build());
+        assertEquals(List.of(TripType.WALK), user.getTimelineDisplayMapMatchingExcludedMovementTypes());
+
+        userService.updateTimelineDisplayPreferences(userId, UpdateTimelineDisplayPreferencesRequest.builder()
+                .mapMatchingExcludedMovementTypes(List.of())
+                .build());
+        assertEquals(List.of(), user.getTimelineDisplayMapMatchingExcludedMovementTypes());
+    }
+
+    @Test
+    void rejectsUnsupportedMapMatchingMovementTypeExclusions() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(userRepository.findById(userId)).thenReturn(user);
+
+        assertThrows(IllegalArgumentException.class, () -> userService.updateTimelineDisplayPreferences(
+                userId,
+                UpdateTimelineDisplayPreferencesRequest.builder()
+                        .mapMatchingExcludedMovementTypes(List.of("TRAIN"))
+                        .build()));
     }
 
     @Test

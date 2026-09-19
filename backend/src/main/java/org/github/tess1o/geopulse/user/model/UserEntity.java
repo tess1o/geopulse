@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.hibernate.annotations.Type;
 
 import java.io.Serializable;
@@ -173,6 +174,11 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Column(name = "timeline_display_map_matching_enabled", nullable = false)
     @Builder.Default
     private Boolean timelineDisplayMapMatchingEnabled = false;
+
+    @Type(JsonType.class)
+    @Column(name = "timeline_display_map_matching_excluded_movement_types", columnDefinition = "jsonb", nullable = false)
+    @Builder.Default
+    private List<TripType> timelineDisplayMapMatchingExcludedMovementTypes = List.of();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
