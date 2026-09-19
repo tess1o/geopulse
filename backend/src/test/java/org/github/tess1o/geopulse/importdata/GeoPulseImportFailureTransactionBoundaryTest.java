@@ -6,7 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -23,6 +22,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.testsupport.ImportSchedulerEnabledTestProfile;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.github.tess1o.geopulse.testsupport.TestIds;
@@ -49,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
-@TestProfile(GeoPulseImportFailureTransactionBoundaryTest.SchedulerEnabledProfile.class)
+@TestProfile(ImportSchedulerEnabledTestProfile.class)
 @SerializedDatabaseTest
 class GeoPulseImportFailureTransactionBoundaryTest {
 
@@ -326,15 +326,5 @@ class GeoPulseImportFailureTransactionBoundaryTest {
             current = current.getCause();
         }
         return false;
-    }
-
-    public static class SchedulerEnabledProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of(
-                    "geopulse.import.scheduler.enabled", "true",
-                    "quarkus.scheduler.enabled", "false"
-            );
-        }
     }
 }

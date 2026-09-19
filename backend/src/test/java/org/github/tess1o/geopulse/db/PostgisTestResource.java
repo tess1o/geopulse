@@ -4,12 +4,16 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PostgisTestResource implements QuarkusTestResourceLifecycleManager {
@@ -19,7 +23,16 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
     private static final String DEFAULT_DATABASE_NAME = "gp_test_shared";
     private static final Object LOCK = new Object();
     private static PostgreSQLContainer<?> postgreSQLContainer;
-    private static int startedReferences = 0;
+
+    /** Marks that this JVM already registered its database cleanup, shared across classloaders. */
+    private static final String CLEANUP_REGISTERED_PROPERTY = "geopulse.test.db-cleanup-registered";
+
+    /**
+     * Keeps every JVM on its own databases and temp directories. A shared PostgreSQL server is exactly what CI
+     * uses (it passes {@code QUARKUS_DATASOURCE_*}), and the per-process suffix is what stops a run from colliding
+     * with a previous run's databases still sitting on that server.
+     */
+    private static final long PROCESS_ID = ProcessHandle.current().pid();
 
     private static final Map<String, Map<String, String>> sharedConfigs = new HashMap<>();
 
@@ -40,17 +53,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         String existingPassword = System.getenv("QUARKUS_DATASOURCE_PASSWORD");
 
         synchronized (LOCK) {
-            startedReferences++;
-
             if (isNonBlank(existingDbUrl) && isNonBlank(existingUsername) && isNonBlank(existingPassword)) {
-                if (DEFAULT_DATABASE_NAME.equals(databaseName)) {
-                    return Map.of(
-                            "quarkus.datasource.jdbc.url", existingDbUrl,
-                            "quarkus.datasource.username", existingUsername,
-                            "quarkus.datasource.password", existingPassword
-                    );
-                }
-
                 return new HashMap<>(sharedConfigs.computeIfAbsent(
                         configKey(existingDbUrl, existingUsername, databaseName),
                         ignored -> createSharedDatabaseConfig(existingDbUrl, existingUsername, existingPassword, databaseName)
@@ -68,7 +71,14 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                 postgreSQLContainer = new PostgreSQLContainer<>(postgis)
                         .withDatabaseName("test")
                         .withUsername("postgres")
-                        .withPassword("password");
+                        .withPassword("password")
+                        // Each distinct @TestProfile makes Quarkus discard the classloader that holds
+                        // the static container reference above, so without reuse this resource starts a
+                        // brand-new container (about 6.5s) roughly a dozen times per suite run. Reuse
+                        // lets the next classloader adopt the container still running from the previous
+                        // one. Needs testcontainers.reuse.enable=true; without it Testcontainers just
+                        // starts a fresh container as before.
+                        .withReuse(true);
                 postgreSQLContainer.start();
             }
 
@@ -86,27 +96,31 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
 
     @Override
     public void stop() {
-        synchronized (LOCK) {
-            if (startedReferences > 0) {
-                startedReferences--;
-            }
-            // Intentionally keep shared test database for full test JVM lifecycle.
-            // Database/container cleanup happens naturally when JVM exits.
-        }
+        // Intentionally does not stop the container: the next classloader adopts it (see withReuse above), and
+        // reuse keeps it alive past JVM exit so later runs skip startup too. Databases are not dropped here
+        // either - Quarkus calls stop() on every profile switch - see registerDatabaseCleanup, which drops this
+        // JVM's databases once at exit. The container itself is reaped by `docker rm -f`.
     }
 
     private static Map<String, String> createSharedDatabaseConfig(String jdbcUrl, String username, String password,
                                                                   String databaseName) {
+        String runDatabaseName = databaseName + "_" + PROCESS_ID;
         String adminJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, "postgres");
 
+        // Dropped and recreated on every call rather than created-if-absent: Quarkus runs this resource
+        // again for each distinct @TestProfile, and every one of those boots must see an empty schema so
+        // that Flyway replays all migrations. Reusing a container (or a server named by env vars) means
+        // the database outlives the boot, and tests that assert exact row counts would then run against
+        // the previous boot's rows while Flyway reported the schema as already up to date.
         try (Connection connection = DriverManager.getConnection(adminJdbcUrl, username, password);
              Statement statement = connection.createStatement()) {
-            statement.execute("CREATE DATABASE " + quoteIdentifier(databaseName));
-        } catch (Exception ignored) {
-            // Database may already exist if test resource reinitializes in the same environment.
+            statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(runDatabaseName) + " WITH (FORCE)");
+            statement.execute("CREATE DATABASE " + quoteIdentifier(runDatabaseName));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to create test database " + runDatabaseName, e);
         }
 
-        String databaseJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, databaseName);
+        String databaseJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, runDatabaseName);
         try (Connection connection = DriverManager.getConnection(databaseJdbcUrl, username, password)) {
             ensurePostgisSchema(connection);
         } catch (Exception e) {
@@ -117,7 +131,72 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         config.put("quarkus.datasource.jdbc.url", databaseJdbcUrl);
         config.put("quarkus.datasource.username", username);
         config.put("quarkus.datasource.password", password);
+        config.putAll(perProcessDirectoryConfig());
+        registerDatabaseCleanup(jdbcUrl, username, password);
         return config;
+    }
+
+    /**
+     * Drops this JVM's test databases when it exits.
+     *
+     * <p>The container is reused across runs (see {@code withReuse} in {@link #start()}), so without this every
+     * run would leave its own databases behind for as long as the container lives - about 200 MB per full suite
+     * run, growing with each one. Cleanup is registered as a shutdown hook rather than done in {@link #stop()}
+     * because Quarkus calls {@code stop()} on every profile switch, which would drop the database out from under
+     * the tests still using it.</p>
+     *
+     * <p>Only databases ending in this JVM's process id are matched, so a concurrent run - or another shard of
+     * this one - is never affected. Registered once per JVM via a system property, because each profile gets its
+     * own classloader and therefore its own statics.</p>
+     */
+    private static void registerDatabaseCleanup(String jdbcUrl, String username, String password) {
+        if (System.getProperty(CLEANUP_REGISTERED_PROPERTY) != null) {
+            return;
+        }
+        System.setProperty(CLEANUP_REGISTERED_PROPERTY, "true");
+
+        String adminJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, "postgres");
+        String runSuffixPattern = "%\\_" + PROCESS_ID;
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try (Connection connection = DriverManager.getConnection(adminJdbcUrl, username, password)) {
+                List<String> databases = findDatabasesWithSuffix(connection, runSuffixPattern);
+                for (String database : databases) {
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(database) + " WITH (FORCE)");
+                    }
+                }
+            } catch (Exception e) {
+                // Best effort: leaving a database behind is harmless, failing during shutdown is not.
+            }
+        }, "geopulse-test-db-cleanup"));
+    }
+
+    private static List<String> findDatabasesWithSuffix(Connection connection, String suffixPattern) throws Exception {
+        List<String> databases = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT datname FROM pg_database WHERE datname LIKE ?")) {
+            statement.setString(1, suffixPattern);
+            try (ResultSet rs = statement.executeQuery()) {
+                while (rs.next()) {
+                    databases.add(rs.getString(1));
+                }
+            }
+        }
+        return databases;
+    }
+
+    /**
+     * Gives this JVM its own import/export temp directories. They default to fixed paths under
+     * /tmp/geopulse, and the services that own them delete files left behind by a previous run as
+     * they start up - so parallel forked JVMs sharing them would delete each other's in-flight files.
+     */
+    private static Map<String, String> perProcessDirectoryConfig() {
+        Path root = Paths.get(System.getProperty("java.io.tmpdir"), "geopulse-test-" + PROCESS_ID);
+        return Map.of(
+                "geopulse.import.temp-directory", root.resolve("imports").toString(),
+                "geopulse.import.chunks-directory", root.resolve("chunks").toString(),
+                "geopulse.export.temp-directory", root.resolve("exports").toString()
+        );
     }
 
     private static void ensurePostgisSchema(Connection connection) throws Exception {

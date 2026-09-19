@@ -29,8 +29,12 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 
+// restrictToAnnotatedClass was redundant here: there are no initArgs, so this resource returns the
+// same datasource config as the globally applied one, while the flag still forced Quarkus to restart
+// the application for this class. setUp() creates its own users with random emails, so it does not
+// need a database to itself.
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripCollaborationResourceIntegrationTest {
 

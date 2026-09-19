@@ -407,7 +407,20 @@
                     </includes>
                     <skipITs>${skipITs}</skipITs>
                     <reuseForks>true</reuseForks>
+                    <!-- Stays at 1 on purpose. Raising it looks like free parallelism (each fork is its own JVM
+                         running its own Quarkus application) but it is counterproductive here: at forkCount>1
+                         surefire switches to a shared-queue work-stealing mode and issues one discovery request
+                         per test class, which defeats Quarkus's cached application, so every class pays a full
+                         boot. Measured on this suite: forkCount=1 gives 13 application boots for the whole run,
+                         forkCount=2 gives one per class and ends up slower overall. -->
                     <forkCount>1</forkCount>
+                    <environmentVariables>
+                        <!-- PostgisTestResource asks Testcontainers to reuse its container, which is what
+                             keeps the integration suite from starting a new PostGIS for every distinct
+                             @TestProfile. Set here rather than relying on ~/.testcontainers.properties so
+                             the behaviour does not depend on who is running the build. -->
+                        <TESTCONTAINERS_REUSE_ENABLE>true</TESTCONTAINERS_REUSE_ENABLE>
+                    </environmentVariables>
                     <properties>
                         <configurationParameters>
                             junit.jupiter.tags.exclude=unit

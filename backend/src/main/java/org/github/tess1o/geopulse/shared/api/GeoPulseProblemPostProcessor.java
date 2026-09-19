@@ -195,22 +195,23 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    /** A violation's field and location, detached from the class that carried them. */
+    private record OriginalViolation(String field, String in) {
+    }
+
     private static HttpProblem validationProblem(HttpProblem problem, ConstraintViolationException exception) {
-        List<Violation> original = problem.getParameters().get("violations") instanceof List<?> violations
-                ? (List<Violation>) violations
-                : List.of();
+        List<OriginalViolation> original = readOriginalViolations(problem);
         List<ConstraintViolation<?>> constraints = new ArrayList<>(exception.getConstraintViolations());
         List<ApiViolation> violations = new ArrayList<>(constraints.size());
 
         for (int index = 0; index < constraints.size(); index++) {
             ConstraintViolation<?> constraint = constraints.get(index);
-            Violation location = index < original.size() ? original.get(index) : null;
+            OriginalViolation location = index < original.size() ? original.get(index) : null;
             Annotation annotation = constraint.getConstraintDescriptor().getAnnotation();
             ApiViolationCode code = ApiViolationCode.from(annotation);
             Map<String, Object> parameters = constraintParameters(annotation);
             violations.add(new ApiViolation(
-                    location == null ? constraint.getPropertyPath().toString() : location.field,
+                    location == null ? constraint.getPropertyPath().toString() : location.field(),
                     locationIn(location),
                     code,
                     parameters,
@@ -221,6 +222,53 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
                 .with("code", VALIDATION_FAILED)
                 .with("violations", violations)
                 .build();
+    }
+
+    /**
+     * Reads back the violations the library already put on the problem.
+     *
+     * <p>This is the one value read back out of a problem that cannot be matched by name alone, because it is an
+     * object rather than a code, so the elements are converted into {@link OriginalViolation} without naming
+     * {@code Violation} in a cast. When the problem was built by an instance from another classloader — see the
+     * class javadoc — the elements are that classloader's {@code Violation}, and casting to ours throws while
+     * reading its two public fields by name does not.</p>
+     */
+    private static List<OriginalViolation> readOriginalViolations(HttpProblem problem) {
+        if (!(problem.getParameters().get("violations") instanceof List<?> violations) || violations.isEmpty()) {
+            return List.of();
+        }
+
+        List<OriginalViolation> original = new ArrayList<>(violations.size());
+        for (Object violation : violations) {
+            original.add(toOriginalViolation(violation));
+        }
+        return original;
+    }
+
+    private static OriginalViolation toOriginalViolation(Object violation) {
+        if (violation == null) {
+            return null;
+        }
+        if (violation instanceof Violation own) {
+            return new OriginalViolation(own.field, own.in);
+        }
+        return new OriginalViolation(readStringField(violation, "field"), readStringField(violation, "in"));
+    }
+
+    private static String readStringField(Object violation, String name) {
+        try {
+            Object value = violation.getClass().getField(name).get(violation);
+            return value instanceof String text ? text : null;
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static String locationIn(OriginalViolation location) {
+        if (location == null || location.in() == null || "?".equals(location.in())) {
+            return UNKNOWN_LOCATION;
+        }
+        return location.in();
     }
 
     /**
@@ -238,13 +286,6 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
         } catch (URISyntaxException e) {
             return null;
         }
-    }
-
-    private static String locationIn(Violation location) {
-        if (location == null || location.in == null || "?".equals(location.in)) {
-            return UNKNOWN_LOCATION;
-        }
-        return location.in;
     }
 
     private static Map<String, Object> constraintParameters(Annotation annotation) {
