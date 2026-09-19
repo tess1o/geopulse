@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.weather.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -17,7 +19,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DATE_RANGE;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/weather")
 @Produces(MediaType.APPLICATION_JSON)
@@ -46,13 +47,13 @@ public class WeatherResource {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
             if (start.isAfter(end)) {
-                throw problem(INVALID_DATE_RANGE, "Start time must be before end time");
+                throw new GeoPulseException(INVALID_DATE_RANGE, "Start time must be before end time");
             }
 
             return weatherService.findSamples(userId, start, end, minLat, minLon, maxLat, maxLon);
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_DATE_RANGE, "Times must use ISO-8601 format",
-                    Map.of("fields", "startTime,endTime"));
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Times must use ISO-8601 format",
+                    Map.of("fields", "startTime,endTime"), e);
         }
     }
 

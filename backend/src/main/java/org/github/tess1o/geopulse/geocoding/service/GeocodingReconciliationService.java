@@ -3,8 +3,7 @@ package org.github.tess1o.geopulse.geocoding.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
@@ -15,6 +14,9 @@ import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationR
 import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.ReconciliationResult;
 
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_RESULT_NOT_FOUND;
 
 /**
  * Executes single geocoding reconciliation operations in their own transaction.
@@ -51,11 +53,11 @@ public class GeocodingReconciliationService {
     public ReverseGeocodingDTO reconcileWithProvider(UUID currentUserId, Long geocodingId, String providerName) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found");
         }
 
         if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
-            throw new ForbiddenException("Cannot reconcile another user's geocoding data");
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
         }
 
         try {

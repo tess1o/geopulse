@@ -36,14 +36,20 @@ class TripCollaborationResourceIntegrationTest {
 
     @Inject
     AuthenticationService authenticationService;
+
     @Inject
+
     UserService userService;
+
     @Inject
     UserRepository userRepository;
+
     @Inject
     TripRepository tripRepository;
+
     @Inject
     TripCollaboratorRepository tripCollaboratorRepository;
+
     @Inject
     FriendshipRepository friendshipRepository;
 
@@ -119,6 +125,7 @@ class TripCollaborationResourceIntegrationTest {
                 .when()
                 .post("/api/v1/trips/{tripId}/plan-items", tripId)
                 .then()
+                .log().body(true)
                 .statusCode(404)
                 .body("code", equalTo("TRIP_NOT_FOUND"));
     }
@@ -162,6 +169,7 @@ class TripCollaborationResourceIntegrationTest {
                 .when()
                 .get("/api/v1/trips/{tripId}", tripId)
                 .then()
+                .log().body(true)
                 .statusCode(404)
                 .body("code", equalTo("TRIP_NOT_FOUND"));
     }

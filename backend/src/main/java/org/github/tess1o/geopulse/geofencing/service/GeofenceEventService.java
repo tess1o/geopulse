@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
@@ -17,6 +18,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_QUERY;
 
 @ApplicationScoped
 public class GeofenceEventService {
@@ -119,7 +122,7 @@ public class GeofenceEventService {
         int pageSize = Math.min(Math.max(source.getPageSize(), 1), MAX_PAGE_SIZE);
 
         if (source.getDateFrom() != null && source.getDateTo() != null && source.getDateFrom().isAfter(source.getDateTo())) {
-            throw new IllegalArgumentException("dateFrom must be before or equal to dateTo");
+            throw new GeoPulseException(INVALID_GEOFENCE_QUERY, "dateFrom must be before or equal to dateTo");
         }
 
         List<UUID> subjectUserIds = source.getSubjectUserIds() == null
@@ -152,7 +155,7 @@ public class GeofenceEventService {
             case "subject", "subjectdisplayname" -> "subjectDisplayName";
             case "event", "eventtype" -> "eventType";
             case "time", "occurredat" -> "occurredAt";
-            default -> throw new IllegalArgumentException(
+            default -> throw new GeoPulseException(INVALID_GEOFENCE_QUERY,
                     "Unsupported sortBy value. Supported values: occurredAt, subjectDisplayName, eventType."
             );
         };

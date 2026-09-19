@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.user.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -23,13 +25,13 @@ import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
 import java.nio.file.Files;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for user management.
@@ -78,11 +80,7 @@ public class UserResource {
             UserResponse response = userMapper.toResponse(user);
             return RestResponse.status(Response.Status.CREATED, response);
         } catch (IllegalArgumentException e) {
-            log.error("Failed to register user due to duplicate", e);
-            throw problem(USER_REGISTRATION_CONFLICT, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to register user", e);
-            throw problem(INTERNAL_ERROR, "Failed to register user");
+            throw new GeoPulseException(USER_REGISTRATION_CONFLICT, USER_REGISTRATION_CONFLICT.title(), e);
         }
     }
 
@@ -102,11 +100,11 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     public AvatarResponse uploadAvatar(@RestForm("file") FileUpload file) {
         if (file == null || file.uploadedFile() == null || file.size() == 0) {
-            throw problem(INVALID_AVATAR, "No avatar file uploaded");
+            throw new GeoPulseException(INVALID_AVATAR, "No avatar file uploaded");
         }
         String contentType = file.contentType();
         if (contentType == null || contentType.isBlank()) {
-            throw problem(INVALID_AVATAR, "Avatar content type is missing");
+            throw new GeoPulseException(INVALID_AVATAR, "Avatar content type is missing");
         }
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -114,10 +112,9 @@ public class UserResource {
             String avatarPath = userService.upsertCustomAvatar(userId, imageBytes, contentType);
             return new AvatarResponse(avatarPath);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_AVATAR, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to upload avatar", e);
-            throw problem(INTERNAL_ERROR, "Failed to upload avatar");
+            throw new GeoPulseException(INVALID_AVATAR, INVALID_AVATAR.title(), e);
+        } catch (IOException e) {
+            throw new GeoPulseException(INTERNAL_ERROR, "Failed to read uploaded avatar", e);
         }
     }
 
@@ -132,29 +129,24 @@ public class UserResource {
                     @Content(mediaType = "image/webp", schema = @Schema(type = SchemaType.STRING, format = "binary"))
             })
     public Response getUserAvatar(@PathParam("userId") UUID userId, @HeaderParam("If-None-Match") String ifNoneMatch) {
-        try {
-            Optional<UserAvatarEntity> avatarOpt = userService.findUserAvatar(userId);
-            if (avatarOpt.isEmpty()) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
+        Optional<UserAvatarEntity> avatarOpt = userService.findUserAvatar(userId);
+        if (avatarOpt.isEmpty()) {
+            throw new GeoPulseException(NOT_FOUND, "Avatar not found");
+        }
 
-            UserAvatarEntity avatar = avatarOpt.get();
-            String etag = "\"" + avatar.getUpdatedAt().toEpochMilli() + "-" + avatar.getSizeBytes() + "\"";
-            if (etag.equals(ifNoneMatch)) {
-                return Response.notModified()
-                        .header("ETag", etag)
-                        .header("Cache-Control", "private, no-cache, max-age=0")
-                        .build();
-            }
-
-            return Response.ok(avatar.getImageData(), avatar.getContentType())
+        UserAvatarEntity avatar = avatarOpt.get();
+        String etag = "\"" + avatar.getUpdatedAt().toEpochMilli() + "-" + avatar.getSizeBytes() + "\"";
+        if (etag.equals(ifNoneMatch)) {
+            return Response.notModified()
                     .header("ETag", etag)
                     .header("Cache-Control", "private, no-cache, max-age=0")
                     .build();
-        } catch (Exception e) {
-            log.error("Failed to load avatar for user {}", userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to load avatar");
         }
+
+        return Response.ok(avatar.getImageData(), avatar.getContentType())
+                .header("ETag", etag)
+                .header("Cache-Control", "private, no-cache, max-age=0")
+                .build();
     }
 
     @PUT
@@ -166,9 +158,7 @@ public class UserResource {
             userService.changePassword(userId, request);
             return new PasswordStatusResponse(true);
         } catch (InvalidPasswordException e) {
-            throw problem(INVALID_PASSWORD, "Invalid password");
-        } catch (Exception e) {
-            throw problem(INTERNAL_ERROR, "Failed to change the password");
+            throw new GeoPulseException(INVALID_PASSWORD, "Invalid password", e);
         }
     }
 
@@ -248,7 +238,7 @@ public class UserResource {
         try {
             userService.updateTimelineDisplayPreferences(userId, request);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_TIMELINE_PREFERENCES, e.getMessage());
+            throw new GeoPulseException(INVALID_TIMELINE_PREFERENCES, INVALID_TIMELINE_PREFERENCES.title(), e);
         }
 
         TimelineDisplayPreferences updatedPreferences = userService.getTimelineDisplayPreferences(userId);

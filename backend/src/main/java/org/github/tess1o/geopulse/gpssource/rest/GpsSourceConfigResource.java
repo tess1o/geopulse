@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.gpssource.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.validation.Valid;
@@ -40,7 +42,6 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_SOURCE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GPS_SOURCE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TELEMETRY_MAPPING;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.GPS_SOURCES)
 @Produces(MediaType.APPLICATION_JSON)
@@ -99,8 +100,8 @@ public class GpsSourceConfigResource {
             return telemetryConfigService.getResolvedConfig(
                     currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
-                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
+            throw new GeoPulseException(INVALID_TELEMETRY_MAPPING, INVALID_TELEMETRY_MAPPING.title(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)), exception);
         }
     }
 
@@ -113,8 +114,8 @@ public class GpsSourceConfigResource {
             return telemetryConfigService.upsertConfig(
                     currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue), mapping);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
-                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
+            throw new GeoPulseException(INVALID_TELEMETRY_MAPPING, INVALID_TELEMETRY_MAPPING.title(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)), exception);
         }
     }
 
@@ -127,8 +128,8 @@ public class GpsSourceConfigResource {
                     currentUserService.getCurrentUserId(), parseSourceType(sourceTypeValue));
             return RestResponse.noContent();
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_TELEMETRY_MAPPING, exception.getMessage(),
-                    Map.of("sourceType", String.valueOf(sourceTypeValue)));
+            throw new GeoPulseException(INVALID_TELEMETRY_MAPPING, INVALID_TELEMETRY_MAPPING.title(),
+                    Map.of("sourceType", String.valueOf(sourceTypeValue)), exception);
         }
     }
 
@@ -140,7 +141,7 @@ public class GpsSourceConfigResource {
         try {
             return RestResponse.status(Response.Status.CREATED, gpsSourceService.addGpsSourceConfig(config));
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_GPS_SOURCE, exception.getMessage());
+            throw new GeoPulseException(INVALID_GPS_SOURCE, INVALID_GPS_SOURCE.title(), exception);
         }
     }
 
@@ -151,7 +152,7 @@ public class GpsSourceConfigResource {
         boolean deleted = gpsSourceService.deleteGpsSourceConfig(
                 configId, currentUserService.getCurrentUserId());
         if (!deleted) {
-            throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found",
+            throw new GeoPulseException(GPS_SOURCE_NOT_FOUND, "GPS source not found",
                     Map.of("sourceId", configId.toString()));
         }
         return RestResponse.noContent();
@@ -166,7 +167,7 @@ public class GpsSourceConfigResource {
         boolean updated = gpsSourceService.updateGpsConfigSourceStatus(
                 configId, currentUserService.getCurrentUserId(), newStatus.isStatus());
         if (!updated) {
-            throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found",
+            throw new GeoPulseException(GPS_SOURCE_NOT_FOUND, "GPS source not found",
                     Map.of("sourceId", configId.toString()));
         }
         return RestResponse.noContent();
@@ -183,11 +184,11 @@ public class GpsSourceConfigResource {
             boolean updated = gpsSourceService.updateGpsConfigSource(
                     config, currentUserService.getCurrentUserId());
             if (!updated) {
-                throw problem(GPS_SOURCE_NOT_FOUND, "GPS source not found");
+                throw new GeoPulseException(GPS_SOURCE_NOT_FOUND, "GPS source not found");
             }
             return RestResponse.noContent();
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_GPS_SOURCE, exception.getMessage());
+            throw new GeoPulseException(INVALID_GPS_SOURCE, INVALID_GPS_SOURCE.title(), exception);
         }
     }
 
@@ -198,7 +199,7 @@ public class GpsSourceConfigResource {
         try {
             return GpsSourceType.valueOf(sourceTypeValue.trim().toUpperCase());
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Unsupported source type: " + sourceTypeValue);
+            throw new IllegalArgumentException("Unsupported source type: " + sourceTypeValue, exception);
         }
     }
 }

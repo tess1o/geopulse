@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.notes.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -38,7 +40,6 @@ import java.util.concurrent.CompletionStage;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTE_RANGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTE_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTE_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("")
 @Produces(MediaType.APPLICATION_JSON)
@@ -96,7 +97,7 @@ public class TimelineNoteResource {
             return noteService.createNote(currentUserService.getCurrentUserId(), request)
                     .thenApply(note -> RestResponse.status(Response.Status.CREATED, note));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            throw problem(INVALID_NOTE_REQUEST, exception.getMessage());
+            throw new GeoPulseException(INVALID_NOTE_REQUEST, INVALID_NOTE_REQUEST.title(), exception);
         }
     }
 
@@ -108,7 +109,7 @@ public class TimelineNoteResource {
         try {
             return noteService.updateLocalNote(currentUserService.getCurrentUserId(), noteId, request);
         } catch (NoSuchElementException exception) {
-            throw problem(NOTE_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(NOTE_NOT_FOUND, NOTE_NOT_FOUND.title(), exception);
         }
     }
 
@@ -121,7 +122,7 @@ public class TimelineNoteResource {
             noteService.deleteLocalNote(currentUserService.getCurrentUserId(), noteId);
             return RestResponse.noContent();
         } catch (NoSuchElementException exception) {
-            throw problem(NOTE_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(NOTE_NOT_FOUND, NOTE_NOT_FOUND.title(), exception);
         }
     }
 
@@ -132,13 +133,13 @@ public class TimelineNoteResource {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException exception) {
-            throw problem(INVALID_NOTE_RANGE, "Use ISO-8601 time format");
+            throw new GeoPulseException(INVALID_NOTE_RANGE, "Use ISO-8601 time format", exception);
         }
     }
 
     private void validateRange(Instant startTime, Instant endTime) {
         if (startTime.isAfter(endTime)) {
-            throw problem(INVALID_NOTE_RANGE, "Start time must be before end time");
+            throw new GeoPulseException(INVALID_NOTE_RANGE, "Start time must be before end time");
         }
     }
 }

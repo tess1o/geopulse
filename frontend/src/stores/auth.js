@@ -16,7 +16,9 @@ function shouldPreserveCachedProfile(error) {
         return true
     }
 
-    const status = error.response?.status
+    // Errors travelling through fail() have already been normalized by normalizeApiError, which flattens
+    // response.status to a top-level status and drops .response entirely.
+    const status = error.response?.status ?? error.status
     return typeof status === 'number' && status >= 500
 }
 

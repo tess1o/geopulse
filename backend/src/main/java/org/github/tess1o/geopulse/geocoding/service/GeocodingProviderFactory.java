@@ -31,10 +31,7 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -172,8 +169,8 @@ public class GeocodingProviderFactory {
     /**
      * Get available enabled providers for informational purposes.
      */
-    public java.util.List<String> getEnabledProviders() {
-        java.util.List<String> enabled = new java.util.ArrayList<>();
+    public List<String> getEnabledProviders() {
+        List<String> enabled = new ArrayList<>();
         if (nominatimService.isEnabled()) enabled.add("Nominatim");
         if (googleMapsService.isEnabled()) enabled.add("GoogleMaps");
         if (mapboxService.isEnabled()) enabled.add("Mapbox");
@@ -382,7 +379,7 @@ public class GeocodingProviderFactory {
     }
 
     private NominatimRestClient buildNominatimClient(CustomGeocodingProviderEntity entity) {
-        Map<String, String> headers = new java.util.LinkedHashMap<>(customProviderService.decryptHeaders(entity));
+        Map<String, String> headers = new LinkedHashMap<>(customProviderService.decryptHeaders(entity));
         headers.putIfAbsent("User-Agent", nominatimUserAgent);
         return RestClientBuilder.newBuilder()
                 .baseUri(URI.create(entity.getUrl()))

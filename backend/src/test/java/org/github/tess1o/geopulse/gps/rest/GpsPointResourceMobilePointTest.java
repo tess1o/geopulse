@@ -1,6 +1,6 @@
 package org.github.tess1o.geopulse.gps.rest;
 
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
@@ -289,9 +289,9 @@ class GpsPointResourceMobilePointTest {
                 .when(gpsPointService)
                 .saveMobileAppGpsPoints(eq(points), eq(DEVICE_ID), eq(userId), eq(GpsSourceType.MOBILE_APP), any(GpsSourceConfigEntity.class));
 
-        HttpProblem problem = assertThrows(HttpProblem.class,
+        GeoPulseException problem = assertThrows(GeoPulseException.class,
                 () -> resource.ingestMobileAppPoints(request, DEVICE_ID));
-        assertEquals(409, problem.getStatusCode());
+        assertEquals(409, problem.code().statusCode());
     }
 
     @Test

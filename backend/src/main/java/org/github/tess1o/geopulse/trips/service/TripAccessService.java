@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorAccessRole;
 import org.github.tess1o.geopulse.trips.model.entity.TripCollaboratorEntity;
@@ -11,6 +11,8 @@ import org.github.tess1o.geopulse.trips.repository.TripRepository;
 
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 
 @ApplicationScoped
 public class TripAccessService {
@@ -41,7 +43,7 @@ public class TripAccessService {
 
     public TripAccessContext requireAccess(UUID actorUserId, Long tripId, TripAccessLevel requiredLevel) {
         TripEntity trip = tripRepository.findByIdOptional(tripId)
-                .orElseThrow(() -> new NotFoundException("Trip not found"));
+                .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found"));
 
         UUID ownerUserId = trip.getUser().getId();
         if (ownerUserId.equals(actorUserId)) {
@@ -52,16 +54,16 @@ public class TripAccessService {
                 .findByTripIdAndCollaboratorUserId(tripId, actorUserId);
 
         if (membership.isEmpty()) {
-            throw new NotFoundException("Trip not found");
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found");
         }
 
         if (!friendshipRepository.existsFriendship(ownerUserId, actorUserId)) {
-            throw new NotFoundException("Trip not found");
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found");
         }
 
         TripCollaboratorAccessRole role = membership.get().getAccessRole();
         if (!hasLevel(role, requiredLevel)) {
-            throw new NotFoundException("Trip not found");
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found");
         }
 
         return new TripAccessContext(trip, false, role);

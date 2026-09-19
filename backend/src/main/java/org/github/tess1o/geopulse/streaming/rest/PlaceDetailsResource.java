@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -39,7 +41,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PLACE_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PLACE_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PLACE_RENAME_NOT_ALLOWED;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST API resource for place details and visit history.
@@ -75,7 +76,7 @@ public class PlaceDetailsResource {
         log.info("Place details request from user {} for {}:{}", userId, type, id);
 
         return placeDetailsService.getPlaceDetails(type, id, userId, user.getTimezone())
-                .orElseThrow(() -> problem(PLACE_NOT_FOUND, "Place not found or access denied"));
+                .orElseThrow(() -> new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied"));
     }
 
     /**
@@ -100,11 +101,11 @@ public class PlaceDetailsResource {
                 userId, type, id, radiusMeters);
 
         if (radiusMeters <= 0 || radiusMeters > 5000) {
-            throw problem(INVALID_PLACE_REQUEST, "radiusMeters must be between 0 and 5000");
+            throw new GeoPulseException(INVALID_PLACE_REQUEST, "radiusMeters must be between 0 and 5000");
         }
 
         return placeDetailsService.getPlacePhotoSearchWindow(type, id, userId, radiusMeters)
-                .orElseThrow(() -> problem(PLACE_NOT_FOUND, "Place not found or access denied"));
+                .orElseThrow(() -> new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied"));
     }
 
     /**
@@ -134,7 +135,7 @@ public class PlaceDetailsResource {
                 userId, type, id, page, size, sortBy, sortDirection);
 
         if (page < 0) {
-            throw problem(INVALID_PAGE, "Page number must be non-negative");
+            throw new GeoPulseException(INVALID_PAGE, "Page number must be non-negative");
         }
         return placeDetailsService.getPlaceVisits(type, id, userId, page, size, sortBy, sortDirection);
     }
@@ -161,7 +162,7 @@ public class PlaceDetailsResource {
 
         boolean updated = placeDetailsService.updatePlaceName(type, id, userId, request.name().trim());
         if (!updated) {
-            throw problem(PLACE_RENAME_NOT_ALLOWED,
+            throw new GeoPulseException(PLACE_RENAME_NOT_ALLOWED,
                     "Only favorite locations can be renamed");
         }
         return RestResponse.noContent();
@@ -193,12 +194,11 @@ public class PlaceDetailsResource {
         UUID userId = user.getId();
         log.info("Export visits request from user {} for {}:{}", userId, type, id);
 
-        try {
             // Get place details for metadata
             Optional<PlaceDetailsDTO> placeDetailsOpt = placeDetailsService.getPlaceDetails(
                     type, id, userId, user.getTimezone());
             if (placeDetailsOpt.isEmpty()) {
-                throw problem(PLACE_NOT_FOUND, "Place not found or access denied");
+                throw new GeoPulseException(PLACE_NOT_FOUND, "Place not found or access denied");
             }
 
             PlaceDetailsDTO placeDetails = placeDetailsOpt.get();
@@ -273,12 +273,6 @@ public class PlaceDetailsResource {
                     .header("Content-Type", "text/csv; charset=utf-8")
                     .build();
 
-        } catch (WebApplicationException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            log.error("Failed to export visits for user {}, {}:{}", userId, type, id, e);
-            throw e;
-        }
     }
 
     /**

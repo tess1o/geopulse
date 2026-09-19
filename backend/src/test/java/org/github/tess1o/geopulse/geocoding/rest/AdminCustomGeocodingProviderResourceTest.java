@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
 import jakarta.ws.rs.NotFoundException;
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderResponse;
 import org.github.tess1o.geopulse.geocoding.service.CustomGeocodingProviderService;
@@ -47,9 +47,9 @@ class AdminCustomGeocodingProviderResourceTest {
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
         assertThatThrownBy(() -> resource.create(request))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
-                        .isEqualTo("Custom provider name cannot match a built-in provider: photon"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
+                        .isEqualTo("Bad Request"));
     }
 
     @Test
@@ -59,9 +59,9 @@ class AdminCustomGeocodingProviderResourceTest {
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
         assertThatThrownBy(() -> resource.update("missing", request))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
-                        .isEqualTo("Custom geocoding provider not found: missing"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
+                        .isEqualTo("Not Found"));
     }
 
     @Test
@@ -71,9 +71,9 @@ class AdminCustomGeocodingProviderResourceTest {
         AdminCustomGeocodingProviderResource resource = new AdminCustomGeocodingProviderResource(providerService);
 
         assertThatThrownBy(() -> resource.delete("local-photon"))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
-                        .isEqualTo("Cannot delete custom provider 'local-photon' while it is the primary provider"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
+                        .isEqualTo("Bad Request"));
     }
 
     @Test

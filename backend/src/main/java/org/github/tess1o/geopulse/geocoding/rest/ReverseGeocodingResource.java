@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -53,7 +55,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_R
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_ALREADY_ACTIVE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_JOB_ACCESS_DENIED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RECONCILIATION_JOB_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/geocoding")
 @Produces(MediaType.APPLICATION_JSON)
@@ -88,7 +89,7 @@ public class ReverseGeocodingResource {
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
             @QueryParam("sortDirection") @DefaultValue("desc") String sortDirection) {
         if (page < 1 || limit < 1) {
-            throw problem(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
+            throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "page and limit must be positive");
         }
         UUID userId = currentUserService.getCurrentUserId();
         List<ReverseGeocodingDTO> results = managementService.getGeocodingResults(
@@ -103,9 +104,9 @@ public class ReverseGeocodingResource {
         try {
             return managementService.getGeocodingResult(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            throw problem(GEOCODING_RESULT_NOT_FOUND, detail(e, "Geocoding result not found"), Map.of("id", id));
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found", Map.of("id", id), e);
         } catch (ForbiddenException e) {
-            throw problem(GEOCODING_ACCESS_DENIED, detail(e, "Access denied"));
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -116,9 +117,9 @@ public class ReverseGeocodingResource {
         try {
             return managementService.updateGeocodingResult(currentUserService.getCurrentUserId(), id, update);
         } catch (NotFoundException e) {
-            throw problem(GEOCODING_RESULT_NOT_FOUND, detail(e, "Geocoding result not found"), Map.of("id", id));
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found", Map.of("id", id), e);
         } catch (ForbiddenException e) {
-            throw problem(GEOCODING_ACCESS_DENIED, detail(e, "Access denied"));
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -129,11 +130,11 @@ public class ReverseGeocodingResource {
             BulkUpdateGeocodingResult result = managementService.bulkUpdateGeocoding(
                     currentUserService.getCurrentUserId(), request);
             if (result.getSuccessCount() == 0) {
-                throw problem(INVALID_GEOCODING_REQUEST, "Failed to update any geocoding results");
+                throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "Failed to update any geocoding results");
             }
             return result;
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid update data"));
+            throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "Invalid update data", e);
         }
     }
 
@@ -157,7 +158,7 @@ public class ReverseGeocodingResource {
             return RestResponse.status(Response.Status.CREATED,
                     normalizationService.createRule(currentUserService.getCurrentUserId(), request));
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid normalization rule"));
+            throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "Invalid normalization rule", e);
         }
     }
 
@@ -170,9 +171,9 @@ public class ReverseGeocodingResource {
         } catch (NotFoundException e) {
             throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_GEOCODING_REQUEST, detail(e, "Invalid normalization rule"));
+            throw new GeoPulseException(INVALID_GEOCODING_REQUEST, "Invalid normalization rule", e);
         }
     }
 
@@ -185,7 +186,7 @@ public class ReverseGeocodingResource {
         } catch (NotFoundException e) {
             throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -208,7 +209,7 @@ public class ReverseGeocodingResource {
         } catch (NotFoundException e) {
             throw normalizationNotFound(e, id);
         } catch (ForbiddenException e) {
-            throw problem(NORMALIZATION_RULE_ACCESS_DENIED, detail(e, "Access denied"));
+            throw new GeoPulseException(NORMALIZATION_RULE_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -227,13 +228,13 @@ public class ReverseGeocodingResource {
         try {
             id = UUID.fromString(jobId);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_RECONCILIATION_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId));
+            throw new GeoPulseException(INVALID_RECONCILIATION_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId), e);
         }
         ReconciliationJobProgress progress = reconciliationProgressService.getJobProgress(id)
-                .orElseThrow(() -> problem(RECONCILIATION_JOB_NOT_FOUND, "Reconciliation job not found",
+                .orElseThrow(() -> new GeoPulseException(RECONCILIATION_JOB_NOT_FOUND, "Reconciliation job not found",
                         Map.of("jobId", jobId)));
         if (!progress.getUserId().equals(currentUserService.getCurrentUserId())) {
-            throw problem(RECONCILIATION_JOB_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(RECONCILIATION_JOB_ACCESS_DENIED, "Access denied");
         }
         return progress;
     }
@@ -258,20 +259,14 @@ public class ReverseGeocodingResource {
 
     private void rejectActiveJob(UUID userId) {
         reconciliationProgressService.getUserActiveJob(userId).ifPresent(active -> {
-            throw problem(RECONCILIATION_ALREADY_ACTIVE, "A reconciliation job is already active",
+            throw new GeoPulseException(RECONCILIATION_ALREADY_ACTIVE, "A reconciliation job is already active",
                     Map.of("jobId", active.getJobId().toString()));
         });
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem normalizationNotFound(
+    private static GeoPulseException normalizationNotFound(
             NotFoundException exception, Long id) {
-        return problem(NORMALIZATION_RULE_NOT_FOUND, detail(exception, "Normalization rule not found"),
-                Map.of("id", id));
-    }
-
-    private static String detail(Exception exception, String fallback) {
-        return exception.getMessage() == null || exception.getMessage().isBlank()
-                ? fallback
-                : exception.getMessage();
+        return new GeoPulseException(NORMALIZATION_RULE_NOT_FOUND, "Normalization rule not found",
+                Map.of("id", id), exception);
     }
 }

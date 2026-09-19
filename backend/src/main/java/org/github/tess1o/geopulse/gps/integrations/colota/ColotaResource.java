@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.colota;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -48,7 +51,7 @@ public class ColotaResource {
 
         var authResult = authRegistry.authenticate(GpsSourceType.COLOTA, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();

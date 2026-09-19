@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.sharing.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -21,7 +23,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/public/share-links")
 @Produces(MediaType.APPLICATION_JSON)
@@ -39,7 +40,7 @@ public class PublicSharedLinkResource {
         try {
             return sharedLinkService.getSharedLocationInfo(linkId);
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         }
     }
 
@@ -49,9 +50,9 @@ public class PublicSharedLinkResource {
         try {
             return sharedLinkService.verifyPassword(linkId, request.getPassword());
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_PASSWORD_INVALID, "Invalid password");
+            throw new GeoPulseException(SHARED_LINK_PASSWORD_INVALID, "Invalid password", e);
         }
     }
 
@@ -62,9 +63,9 @@ public class PublicSharedLinkResource {
         try {
             return sharedLinkService.getSharedLocation(linkId, bearerToken(authHeader));
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -82,11 +83,11 @@ public class PublicSharedLinkResource {
             return sharedLinkService.getSharedTimeline(
                     linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
     }
 
@@ -105,11 +106,11 @@ public class PublicSharedLinkResource {
             return sharedLinkService.getSharedNotes(
                     linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
     }
 
@@ -127,11 +128,11 @@ public class PublicSharedLinkResource {
             return sharedLinkService.getSharedPath(
                     linkId, bearerToken(authHeader), startInstant, endInstant);
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARED_TIME_RANGE, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
     }
 
@@ -143,20 +144,20 @@ public class PublicSharedLinkResource {
         try {
             Optional<LocationHistoryResponse.CurrentLocationData> result =
                     sharedLinkService.getSharedCurrentLocation(linkId, bearerToken(authHeader));
-            return result.orElseThrow(() -> problem(
+            return result.orElseThrow(() -> new GeoPulseException(
                     SHARED_LOCATION_NOT_FOUND, "Current location not available"));
         } catch (NotFoundException e) {
-            throw problem(SHARED_LOCATION_NOT_FOUND, "Current location not available");
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available", e);
         } catch (ForbiddenException e) {
-            throw problem(SHARED_LINK_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARE_LINK, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARE_LINK, INVALID_SHARE_LINK.title(), e);
         }
     }
 
     private String bearerToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw problem(SHARED_LINK_TOKEN_REQUIRED, "Authorization token required");
+            throw new GeoPulseException(SHARED_LINK_TOKEN_REQUIRED, "Authorization token required");
         }
         return authHeader.substring("Bearer ".length());
     }
@@ -168,15 +169,15 @@ public class PublicSharedLinkResource {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_SHARED_TIME_RANGE,
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE,
                     "Invalid " + fieldName + " format. Expected ISO-8601",
-                    Map.of("field", fieldName));
+                    Map.of("field", fieldName), e);
         }
     }
 
     private void validateRange(Instant start, Instant end) {
         if (start != null && end != null && start.isAfter(end)) {
-            throw problem(INVALID_SHARED_TIME_RANGE, "startTime must be before endTime");
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, "startTime must be before endTime");
         }
     }
 }

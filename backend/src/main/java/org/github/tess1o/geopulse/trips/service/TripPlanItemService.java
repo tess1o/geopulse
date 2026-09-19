@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripPlanItemDto;
@@ -19,6 +19,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
@@ -69,7 +71,7 @@ public class TripPlanItemService {
         tripAccessService.requirePlanEditAccess(userId, tripId);
 
         TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
-                .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
+                .orElseThrow(() -> new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip plan item not found"));
 
         entity.setTitle(dto.getTitle().trim());
         entity.setNotes(dto.getNotes());
@@ -100,7 +102,7 @@ public class TripPlanItemService {
         tripAccessService.requirePlanEditAccess(userId, tripId);
 
         TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
-                .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
+                .orElseThrow(() -> new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip plan item not found"));
 
         tripPlanItemRepository.delete(entity);
         log.info("Deleted trip plan item {} for trip {} and user {}", itemId, tripId, userId);
@@ -111,7 +113,7 @@ public class TripPlanItemService {
         tripAccessService.requirePlanEditAccess(userId, tripId);
 
         TripPlanItemEntity entity = tripPlanItemRepository.findByIdAndTripId(itemId, tripId)
-                .orElseThrow(() -> new NotFoundException("Trip plan item not found"));
+                .orElseThrow(() -> new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip plan item not found"));
 
         String action = request != null && request.getAction() != null ? request.getAction().trim().toUpperCase() : "";
 

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.weather.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -17,7 +19,6 @@ import org.github.tess1o.geopulse.weather.service.WeatherStatusService;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 import org.github.tess1o.geopulse.weather.service.WeatherService;
 
 @Path("/admin/weather")
@@ -47,12 +48,9 @@ public class AdminWeatherResource {
             accepted.setQueuedUserRanges(queued);
             return RestResponse.status(Response.Status.ACCEPTED, accepted);
         } catch (IllegalArgumentException e) {
-            throw problem(WEATHER_BACKFILL_INVALID, e.getMessage());
+            throw new GeoPulseException(WEATHER_BACKFILL_INVALID, WEATHER_BACKFILL_INVALID.title(), e);
         } catch (NotFoundException e) {
-            throw problem(WEATHER_TARGET_NOT_FOUND, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to queue admin weather backfill range", e);
-            throw problem(INTERNAL_ERROR, "Failed to queue weather backfill range");
+            throw new GeoPulseException(WEATHER_TARGET_NOT_FOUND, WEATHER_TARGET_NOT_FOUND.title(), e);
         }
     }
 

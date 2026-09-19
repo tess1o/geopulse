@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -32,7 +34,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for OIDC provider management.
@@ -78,7 +79,7 @@ public class AdminOidcProviderResource {
     public OidcProviderResponse getProvider(@PathParam("name") String name) {
         return configurationService.getProviderByName(name)
                 .map(this::mapToResponse)
-                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found"));
+                .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND, "Provider not found"));
     }
 
     /**
@@ -92,7 +93,7 @@ public class AdminOidcProviderResource {
 
         // Check if provider already exists
         if (configurationService.getProviderByName(request.getName()).isPresent()) {
-            throw problem(OIDC_PROVIDER_CONFLICT, "Provider with this name already exists",
+            throw new GeoPulseException(OIDC_PROVIDER_CONFLICT, "Provider with this name already exists",
                     Map.of("name", request.getName()));
         }
 
@@ -140,7 +141,7 @@ public class AdminOidcProviderResource {
         UUID adminId = currentUserService.getCurrentUserId();
 
         OidcProviderConfiguration existing = configurationService.getProviderByName(name)
-                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
                         Map.of("name", name)));
 
         // Capture old state for audit
@@ -204,13 +205,13 @@ public class AdminOidcProviderResource {
 
         // Check if provider exists in database
         if (!configurationService.existsInDatabase(name)) {
-            throw problem(OIDC_PROVIDER_ENVIRONMENT_ONLY,
+            throw new GeoPulseException(OIDC_PROVIDER_ENVIRONMENT_ONLY,
                     "Cannot delete environment-based provider; remove it from environment variables",
                     Map.of("name", name));
         }
 
         OidcProviderConfiguration provider = configurationService.getProviderByName(name)
-                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
                         Map.of("name", name)));
 
         Map<String, Object> providerDetails = new HashMap<>();
@@ -247,7 +248,7 @@ public class AdminOidcProviderResource {
 
         // Check if provider exists in environment
         if (!configurationService.isFromEnvironment(name)) {
-            throw problem(OIDC_PROVIDER_ENVIRONMENT_MISSING,
+            throw new GeoPulseException(OIDC_PROVIDER_ENVIRONMENT_MISSING,
                     "Provider does not exist in environment variables", Map.of("name", name));
         }
 
@@ -266,7 +267,7 @@ public class AdminOidcProviderResource {
 
         // Return the environment provider configuration
         OidcProviderConfiguration envProvider = configurationService.getProviderByName(name)
-                .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND,
+                .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND,
                         "Failed to load environment provider after reset", Map.of("name", name)));
 
         return mapToResponse(envProvider);
@@ -282,7 +283,7 @@ public class AdminOidcProviderResource {
         try {
             // Get provider configuration
             OidcProviderConfiguration provider = configurationService.getProviderByName(name)
-                    .orElseThrow(() -> problem(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
+                    .orElseThrow(() -> new GeoPulseException(OIDC_PROVIDER_NOT_FOUND, "Provider not found",
                             Map.of("name", name)));
 
             // Attempt to fetch discovery document
@@ -303,8 +304,6 @@ public class AdminOidcProviderResource {
 
             return response;
 
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
         } catch (Exception e) {
             log.error("Failed to test OIDC provider connection: {}", e.getMessage(), e);
             return TestOidcProviderResponse.failure(e.getClass().getSimpleName(), e.getMessage());
@@ -343,7 +342,7 @@ public class AdminOidcProviderResource {
     /**
      * REST client interface for OIDC discovery document.
      */
-    @jakarta.ws.rs.Path("/")
+    @Path("/")
     public interface OidcDiscoveryClient {
         @GET
         @Produces(MediaType.APPLICATION_JSON)

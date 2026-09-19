@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
@@ -18,7 +20,6 @@ import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.TRIP_PLANNING + "/searches")
 @ApplicationScoped
@@ -44,15 +45,15 @@ public class PlanSearchResource {
                            @QueryParam("limit") Integer limit) {
         String safeQuery = query == null ? "" : query.trim();
         if (safeQuery.length() < 2) {
-            throw problem(INVALID_TRIP_SEARCH, "q must be at least 2 characters", Map.of("minLength", 2));
+            throw new GeoPulseException(INVALID_TRIP_SEARCH, "q must be at least 2 characters", Map.of("minLength", 2));
         }
 
         if ((latitude == null) != (longitude == null)) {
-            throw problem(INVALID_TRIP_SEARCH, "lat and lon must be provided together");
+            throw new GeoPulseException(INVALID_TRIP_SEARCH, "lat and lon must be provided together");
         }
 
         if (latitude != null && (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)) {
-            throw problem(INVALID_TRIP_SEARCH, "Invalid lat/lon values");
+            throw new GeoPulseException(INVALID_TRIP_SEARCH, "Invalid lat/lon values");
         }
 
         return tripPlanSearchService.search(

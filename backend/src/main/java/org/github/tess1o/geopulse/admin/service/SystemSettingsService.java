@@ -719,7 +719,7 @@ public class SystemSettingsService {
                 try {
                     Integer.parseInt(value);
                 } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Invalid integer value: " + value);
+            throw new IllegalArgumentException("Invalid integer value: " + value, e);
                 }
                 break;
             case STRING:
@@ -899,7 +899,7 @@ public class SystemSettingsService {
         try {
             return DistanceUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES");
+            throw new IllegalArgumentException("Setting " + DEFAULT_DISTANCE_UNIT_KEY + " must be KILOMETERS or MILES", e);
         }
     }
 
@@ -920,7 +920,7 @@ public class SystemSettingsService {
         try {
             return TemperatureUnit.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT");
+            throw new IllegalArgumentException("Setting " + DEFAULT_TEMPERATURE_UNIT_KEY + " must be CELSIUS or FAHRENHEIT", e);
         }
     }
 }

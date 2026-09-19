@@ -9,22 +9,29 @@ import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.core.MediaType;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.model.ApiTokenAuthenticationResult;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
+import org.github.tess1o.geopulse.shared.api.RequestCorrelationHandler;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.security.Principal;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 
 @ApplicationScoped
 @Priority(Priorities.AUTHENTICATION - 50)
+@Slf4j
 public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechanism {
     public static final String ATTR_AUTH_TYPE = "geopulse.auth.type";
     public static final String ATTR_USER_ID = "geopulse.auth.userId";
@@ -35,6 +42,7 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String INVALID_SERVICE_ACCOUNT_TOKEN = "Invalid service account token";
+    private static final String AUTHENTICATION_REQUIRED_DETAIL = "Authentication is required";
 
     @Inject
     ApiTokenService apiTokenService;
@@ -103,17 +111,40 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
             authFailureMessage = INVALID_SERVICE_ACCOUNT_TOKEN;
         }
         if (authFailureMessage == null) {
-            return HttpAuthenticationMechanism.super.sendChallenge(context);
+            authFailureMessage = AUTHENTICATION_REQUIRED_DETAIL;
         }
 
-        String responseBody = """
-                {"status":"error","message":"%s","data":null}\
-                """.formatted(authFailureMessage);
+        ApiErrorCode code = AUTHENTICATION_REQUIRED;
+        String detail = authFailureMessage;
+        String errorId = UUID.randomUUID().toString();
+        String requestId = context.get(RequestCorrelationHandler.REQUEST_ID);
+        if (requestId == null) {
+            requestId = UUID.randomUUID().toString();
+            context.put(RequestCorrelationHandler.REQUEST_ID, requestId);
+        }
+        String instance = context.request().path();
+        String type = code.typeUri().toString();
+        String responseBody = new JsonObject()
+                .put("type", type)
+                .put("title", code.title())
+                .put("status", code.statusCode())
+                .put("detail", detail)
+                .put("instance", instance)
+                .put("code", code.name())
+                .put("errorId", errorId)
+                .put("requestId", requestId)
+                .encode();
 
+        log.info("status={}, title=\"{}\", detail=\"{}\", instance=\"{}\", type={}, code={}, errorId={}, requestId={}",
+                code.statusCode(), code.title(), detail, instance, type, code, errorId, requestId);
+
+        String finalRequestId = requestId;
         return Uni.createFrom().emitter(emitter -> context.response()
                 .setStatusCode(401)
                 .putHeader("WWW-Authenticate", "Bearer")
-                .putHeader("Content-Type", MediaType.APPLICATION_JSON)
+                .putHeader("Content-Type", "application/problem+json")
+                .putHeader(RequestCorrelationHandler.REQUEST_ID_HEADER, finalRequestId)
+                .putHeader(RequestCorrelationHandler.ERROR_ID_HEADER, errorId)
                 .end(responseBody)
                 .onComplete(result -> {
                     if (result.succeeded()) {

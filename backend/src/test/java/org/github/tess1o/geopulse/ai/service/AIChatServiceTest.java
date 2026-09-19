@@ -1,6 +1,6 @@
 package org.github.tess1o.geopulse.ai.service;
 
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.ai.orchestration.AIChatOrchestrator;
@@ -102,8 +102,8 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(openAISettings);
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
-        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.code().statusCode());
     }
 
     /**
@@ -187,8 +187,8 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(disabledSettings);
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
-        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.code().statusCode());
     }
 
     /**
@@ -206,7 +206,7 @@ public class AIChatServiceTest {
                 .build();
         when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
                 .thenReturn(openAISettings);
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> aiChatService.chat("Hello"));
-        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.getStatusCode());
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> aiChatService.chat("Hello"));
+        assertEquals(ApiErrorCode.CONFLICT.statusCode(), problem.code().statusCode());
     }
 }

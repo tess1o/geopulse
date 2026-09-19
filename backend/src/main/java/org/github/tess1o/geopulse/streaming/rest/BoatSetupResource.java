@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -20,7 +22,6 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BOAT_SETUP_JOB_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.TRIP_PLANNING + "/boat-setup")
 @Produces(MediaType.APPLICATION_JSON)
@@ -55,6 +56,6 @@ public class BoatSetupResource {
     public BoatSetupStatusDTO getJob(@PathParam("jobId") UUID jobId) {
         UUID userId = currentUserService.getCurrentUserId();
         return boatSetupService.getJobStatus(userId, jobId)
-                .orElseThrow(() -> problem(BOAT_SETUP_JOB_NOT_FOUND, "Boat setup job not found"));
+                .orElseThrow(() -> new GeoPulseException(BOAT_SETUP_JOB_NOT_FOUND, "Boat setup job not found"));
     }
 }

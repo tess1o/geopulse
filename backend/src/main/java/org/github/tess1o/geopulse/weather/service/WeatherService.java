@@ -6,7 +6,7 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.integration.dto.ExternalIntegrationHealthDto;
@@ -33,6 +33,8 @@ import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetClaim;
 import org.github.tess1o.geopulse.weather.repository.WeatherSampleTargetRepository;
 import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliation;
 import org.github.tess1o.geopulse.weather.repository.WeatherBackfillReconciliationRepository;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.WEATHER_TARGET_NOT_FOUND;
 import org.github.tess1o.geopulse.weather.repository.WeatherTargetBatchRow;
 import org.locationtech.jts.geom.Point;
 
@@ -275,7 +277,7 @@ public class WeatherService {
 
         if (request.getUserId() != null) {
             if (entityManager.find(UserEntity.class, request.getUserId()) == null) {
-                throw new NotFoundException("User not found: " + request.getUserId());
+                throw new GeoPulseException(WEATHER_TARGET_NOT_FOUND, "Weather target not found");
             }
             return queueHistoricalBackfill(request.getUserId(), request.getStartTime(), request.getEndTime())
                     == WeatherReconciliationQueueStatus.QUEUED ? 1 : 0;

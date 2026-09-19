@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.net.impl.SocketAddressImpl;
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.admin.dto.CreateOidcProviderRequest;
 import org.github.tess1o.geopulse.admin.dto.OidcProviderResponse;
 import org.github.tess1o.geopulse.admin.dto.UpdateOidcProviderRequest;
@@ -117,9 +117,9 @@ class AdminOidcProviderResourceTest {
         // Given: Provider does not exist
         when(configurationService.getProviderByName("nonexistent")).thenReturn(Optional.empty());
         // When: Getting provider
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> resource.getProvider("nonexistent"));
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> resource.getProvider("nonexistent"));
         // Then: Not found response
-        assertEquals(404, problem.getStatusCode());
+        assertEquals(404, problem.code().statusCode());
         verify(configurationService, times(1)).getProviderByName("nonexistent");
     }
     @Test
@@ -156,10 +156,10 @@ class AdminOidcProviderResourceTest {
         // Given: Provider already exists
         when(configurationService.getProviderByName("keycloak")).thenReturn(Optional.of(testProvider));
         // When: Creating provider
-        HttpProblem problem = assertThrows(HttpProblem.class,
+        GeoPulseException problem = assertThrows(GeoPulseException.class,
                 () -> resource.createProvider(createRequest));
         // Then: Conflict response
-        assertEquals(409, problem.getStatusCode());
+        assertEquals(409, problem.code().statusCode());
         verify(configurationService, times(1)).getProviderByName("keycloak");
         verify(configurationService, never()).saveProvider(any(), any());
         verifyNoInteractions(auditLogService);
@@ -191,10 +191,10 @@ class AdminOidcProviderResourceTest {
         // Given: Provider does not exist
         when(configurationService.getProviderByName("nonexistent")).thenReturn(Optional.empty());
         // When: Updating provider
-        HttpProblem problem = assertThrows(HttpProblem.class,
+        GeoPulseException problem = assertThrows(GeoPulseException.class,
                 () -> resource.updateProvider("nonexistent", updateRequest));
         // Then: Not found response
-        assertEquals(404, problem.getStatusCode());
+        assertEquals(404, problem.code().statusCode());
         verify(configurationService, times(1)).getProviderByName("nonexistent");
         verify(configurationService, never()).saveProvider(any(), any());
         verifyNoInteractions(auditLogService);
@@ -218,10 +218,10 @@ class AdminOidcProviderResourceTest {
         // Given: Provider exists in environment only (not in DB)
         when(configurationService.existsInDatabase("google")).thenReturn(false);
         // When: Deleting provider
-        HttpProblem problem = assertThrows(HttpProblem.class,
+        GeoPulseException problem = assertThrows(GeoPulseException.class,
                 () -> resource.deleteProvider("google"));
         // Then: Bad request response
-        assertEquals(400, problem.getStatusCode());
+        assertEquals(400, problem.code().statusCode());
         verify(configurationService, times(1)).existsInDatabase("google");
         verify(configurationService, never()).deleteProvider(any());
         verifyNoInteractions(auditLogService);
@@ -247,10 +247,10 @@ class AdminOidcProviderResourceTest {
         // Given: Provider does not exist in environment
         when(configurationService.isFromEnvironment("nonexistent")).thenReturn(false);
         // When: Resetting provider
-        HttpProblem problem = assertThrows(HttpProblem.class,
+        GeoPulseException problem = assertThrows(GeoPulseException.class,
                 () -> resource.resetProvider("nonexistent"));
         // Then: Bad request response
-        assertEquals(400, problem.getStatusCode());
+        assertEquals(400, problem.code().statusCode());
         verify(configurationService, times(1)).isFromEnvironment("nonexistent");
         verify(configurationService, never()).deleteProvider(any());
         verifyNoInteractions(auditLogService);

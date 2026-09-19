@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.importdata.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -15,7 +17,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.DEBUG_IMPORT_FAILED;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DEBUG_IMPORT;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/debug-imports")
 @Slf4j
@@ -37,11 +38,11 @@ public class DebugImportResource {
             @FormParam("updateTimelineConfig") @DefaultValue("true") boolean updateTimelineConfig) {
 
         if (file == null || file.uploadedFile() == null) {
-            throw problem(INVALID_DEBUG_IMPORT, "No file uploaded");
+            throw new GeoPulseException(INVALID_DEBUG_IMPORT, "No file uploaded");
         }
 
         if (file.fileName() == null || !file.fileName().toLowerCase(java.util.Locale.ROOT).endsWith(".zip")) {
-            throw problem(INVALID_DEBUG_IMPORT, "File must be a ZIP archive");
+            throw new GeoPulseException(INVALID_DEBUG_IMPORT, "File must be a ZIP archive");
         }
 
         try {
@@ -59,11 +60,9 @@ public class DebugImportResource {
             debugImportService.importDebugData(userId, zipData, request);
 
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid debug import request: {}", e.getMessage());
-            throw problem(INVALID_DEBUG_IMPORT, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to import debug data", e);
-            throw problem(DEBUG_IMPORT_FAILED, "Debug import failed");
+            throw new GeoPulseException(INVALID_DEBUG_IMPORT, INVALID_DEBUG_IMPORT.title(), e);
+        } catch (java.io.IOException e) {
+            throw new GeoPulseException(DEBUG_IMPORT_FAILED, "Debug import failed", e);
         }
     }
 }

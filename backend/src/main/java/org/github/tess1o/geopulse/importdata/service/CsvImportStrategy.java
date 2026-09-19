@@ -256,9 +256,9 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
             return row;
 
         } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Invalid timestamp format. Expected ISO-8601 (e.g., 2024-01-15T10:30:00Z)");
+            throw new IllegalArgumentException("Invalid timestamp format. Expected ISO-8601 (e.g., 2024-01-15T10:30:00Z)", e);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid numeric value in CSV row");
+            throw new IllegalArgumentException("Invalid numeric value in CSV row", e);
         }
     }
 

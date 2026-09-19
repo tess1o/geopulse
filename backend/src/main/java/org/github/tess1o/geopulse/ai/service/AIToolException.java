@@ -17,9 +17,17 @@ public class AIToolException extends RuntimeException {
     }
 
     public AIToolException(String code, String message, Map<String, Object> details) {
-        super(message);
+        this(code, message, details, null);
+    }
+
+    public AIToolException(String code, String message, Throwable cause) {
+        this(code, message, Map.of(), cause);
+    }
+
+    public AIToolException(String code, String message, Map<String, Object> details, Throwable cause) {
+        super(message, cause);
         this.code = code;
-        this.details = details != null ? details : Map.of();
+        this.details = details == null || details.isEmpty() ? Map.of() : Map.copyOf(details);
     }
 
     public String getCode() {

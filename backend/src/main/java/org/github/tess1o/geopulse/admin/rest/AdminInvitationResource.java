@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -29,7 +31,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_INVITATION;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/admin/invitations")
 @Produces(MediaType.APPLICATION_JSON)
@@ -102,7 +103,7 @@ public class AdminInvitationResource {
 
             return RestResponse.status(Response.Status.CREATED, response);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_INVITATION, e.getMessage());
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 
@@ -119,7 +120,7 @@ public class AdminInvitationResource {
 
             invitationService.revokeInvitation(invitationId, adminUserId, ipAddress);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_INVITATION, e.getMessage());
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 }

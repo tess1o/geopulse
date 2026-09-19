@@ -18,6 +18,9 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -73,7 +76,7 @@ public class CsvExportService {
                     }
                 });
             } catch (UncheckedIOException e) {
-                throw e.getCause();
+                throw e.getCause(); // NOPMD - deliberately rethrow the original checked cause
             }
         }
     }
@@ -93,10 +96,10 @@ public class CsvExportService {
         int batchSize = settingsService.getInteger("export.batch-size");
 
         // Create temp file
-        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".csv");
+        Path tempFile = tempFileService.createTempFile(job.getJobId(), ".csv");
 
-        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+        try (OutputStream os = Files.newOutputStream(tempFile);
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
 
             // Write CSV header
             writer.write("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type,telemetry\n");
@@ -143,7 +146,7 @@ public class CsvExportService {
                             }
                         });
             } catch (UncheckedIOException e) {
-                throw e.getCause();
+                throw e.getCause(); // NOPMD - deliberately rethrow the original checked cause
             }
 
             log.info("Completed streaming CSV export: {} records in {} batches", totalWritten[0], batchCount[0]);
@@ -153,7 +156,7 @@ public class CsvExportService {
         job.setTempFilePath(tempFile.toString());
         job.setFileExtension(".csv");
         job.setContentType("text/csv");
-        job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
+        job.setFileSizeBytes(Files.size(tempFile));
 
         job.updateProgress(95, "Finalizing CSV export...");
         job.updateProgress(100, "Export completed");
@@ -168,7 +171,7 @@ public class CsvExportService {
         return row.toString();
     }
 
-    private String telemetryToJson(java.util.Map<String, Object> telemetry) {
+    private String telemetryToJson(Map<String, Object> telemetry) {
         if (telemetry == null || telemetry.isEmpty()) {
             return "";
         }

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.geocoding.dto.CustomGeocodingProviderRequest;
@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOT_FOUND;
 
 @ApplicationScoped
 public class CustomGeocodingProviderService {
@@ -78,7 +80,7 @@ public class CustomGeocodingProviderService {
     @Transactional
     public CustomGeocodingProviderResponse update(String name, CustomGeocodingProviderRequest request) {
         CustomGeocodingProviderEntity entity = repository.findByName(name)
-                .orElseThrow(() -> new NotFoundException("Custom geocoding provider not found: " + name));
+                .orElseThrow(() -> new GeoPulseException(NOT_FOUND, "Custom geocoding provider not found"));
         validateRequest(request, entity.getName());
         if (!Boolean.TRUE.equals(request.getEnabled())) {
             assertNotSelected(entity.getName(), "disable");
@@ -104,7 +106,7 @@ public class CustomGeocodingProviderService {
     @Transactional
     public void delete(String name) {
         CustomGeocodingProviderEntity entity = repository.findByName(name)
-                .orElseThrow(() -> new NotFoundException("Custom geocoding provider not found: " + name));
+                .orElseThrow(() -> new GeoPulseException(NOT_FOUND, "Custom geocoding provider not found"));
         assertNotSelected(entity.getName(), "delete");
         repository.delete(entity);
     }
@@ -162,7 +164,7 @@ public class CustomGeocodingProviderService {
         try {
             uri = URI.create(request.getUrl().trim());
         } catch (Exception e) {
-            throw new IllegalArgumentException("Provider URL is invalid");
+            throw new IllegalArgumentException("Provider URL is invalid", e);
         }
         if (uri.getScheme() == null || uri.getHost() == null
                 || (!uri.getScheme().equalsIgnoreCase("http") && !uri.getScheme().equalsIgnoreCase("https"))) {

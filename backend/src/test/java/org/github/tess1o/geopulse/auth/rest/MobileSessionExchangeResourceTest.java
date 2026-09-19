@@ -5,7 +5,7 @@ import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.MobileSessionExchangeRequest;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.auth.service.MobileDeepLinkService;
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -72,16 +72,16 @@ class MobileSessionExchangeResourceTest {
         MobileSessionExchangeRequest request = new MobileSessionExchangeRequest("missing-code");
         when(mobileDeepLinkService.exchangeSessionCode("missing-code")).thenReturn(Optional.empty());
 
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> resource.exchangeSessionCode(request));
-        assertEquals(410, problem.getStatusCode());
-        assertEquals("Mobile session code is expired or invalid", problem.getDetail());
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> resource.exchangeSessionCode(request));
+        assertEquals(410, problem.code().statusCode());
+        assertEquals("Mobile session code is expired or invalid", problem.detail());
     }
 
     @Test
     void exchangeSessionCode_returnsBadRequestWhenBodyIsMissing() {
-        HttpProblem problem = assertThrows(HttpProblem.class, () -> resource.exchangeSessionCode(null));
+        GeoPulseException problem = assertThrows(GeoPulseException.class, () -> resource.exchangeSessionCode(null));
         assertNotNull(problem);
-        assertEquals(400, problem.getStatusCode());
-        assertEquals("sessionCode is required", problem.getDetail());
+        assertEquals(400, problem.code().statusCode());
+        assertEquals("sessionCode is required", problem.detail());
     }
 }

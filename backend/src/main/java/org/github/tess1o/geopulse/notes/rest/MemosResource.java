@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.notes.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -26,7 +28,6 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.concurrent.CompletionStage;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MEMOS_CONFIG;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/integrations/memos")
 @Produces(MediaType.APPLICATION_JSON)
@@ -62,7 +63,7 @@ public class MemosResource {
             noteService.updateMemosConfig(currentUserService.getCurrentUserId(), request);
             return RestResponse.noContent();
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_MEMOS_CONFIG, exception.getMessage());
+            throw new GeoPulseException(INVALID_MEMOS_CONFIG, INVALID_MEMOS_CONFIG.title(), exception);
         }
     }
 

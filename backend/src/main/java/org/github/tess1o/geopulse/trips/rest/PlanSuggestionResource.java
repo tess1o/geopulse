@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
@@ -21,7 +23,6 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_SEARCH;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.TRIP_PLANNING + "/suggestions")
 @ApplicationScoped
@@ -50,11 +51,11 @@ public class PlanSuggestionResource {
     public PlanSuggestionDto getPlanSuggestion(@QueryParam("latitude") Double latitude,
                                       @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
-            throw problem(INVALID_TRIP_SEARCH, "lat and lon are required");
+            throw new GeoPulseException(INVALID_TRIP_SEARCH, "lat and lon are required");
         }
 
         if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-            throw problem(INVALID_TRIP_SEARCH, "Invalid lat/lon values");
+            throw new GeoPulseException(INVALID_TRIP_SEARCH, "Invalid lat/lon values");
         }
 
         UUID userId = currentUserService.getCurrentUserId();

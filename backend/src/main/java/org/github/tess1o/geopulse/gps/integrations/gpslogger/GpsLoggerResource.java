@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.gpslogger;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
@@ -62,7 +65,7 @@ public class GpsLoggerResource {
 
         var authResult = authRegistry.authenticate(GpsSourceType.GPSLOGGER, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();

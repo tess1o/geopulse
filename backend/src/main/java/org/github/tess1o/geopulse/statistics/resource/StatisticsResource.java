@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.statistics.resource;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -16,7 +18,6 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_STATISTICS_RANGE;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/statistics")
 @Produces(MediaType.APPLICATION_JSON)
@@ -43,14 +44,14 @@ public class StatisticsResource {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
             if (start.isAfter(end)) {
-                throw problem(INVALID_STATISTICS_RANGE, "Start time must be before end time");
+                throw new GeoPulseException(INVALID_STATISTICS_RANGE, "Start time must be before end time");
             }
             ChartGroupMode groupMode = Duration.between(start, end).toDays() < 10
                     ? ChartGroupMode.DAYS
                     : ChartGroupMode.WEEKS;
             return statisticsService.getStatistics(currentUserService.getCurrentUserId(), start, end, groupMode);
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_STATISTICS_RANGE, "Invalid time format. Use ISO-8601 format");
+            throw new GeoPulseException(INVALID_STATISTICS_RANGE, "Invalid time format. Use ISO-8601 format", e);
         }
     }
 

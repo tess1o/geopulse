@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -22,7 +24,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/registration-invitations")
 @Produces(MediaType.APPLICATION_JSON)
@@ -58,10 +59,7 @@ public class InvitationAuthResource {
 
             return response;
         } catch (IllegalArgumentException e) {
-            throw problem(INVITATION_NOT_FOUND, "Invalid invitation token");
-        } catch (Exception e) {
-            log.error("Error validating invitation token", e);
-            throw problem(INTERNAL_ERROR, "Failed to validate invitation");
+            throw new GeoPulseException(INVITATION_NOT_FOUND, "Invalid invitation token", e);
         }
     }
 
@@ -78,7 +76,7 @@ public class InvitationAuthResource {
             UserInvitationEntity invitation = invitationService.validateToken(token);
 
             if (!invitation.isValid()) {
-                throw problem(INVALID_INVITATION, getStatusMessage(invitation).fallback());
+                throw new GeoPulseException(INVALID_INVITATION, getStatusMessage(invitation).fallback());
             }
 
             // Register the user (this bypasses registration enabled checks)
@@ -96,14 +94,8 @@ public class InvitationAuthResource {
             UserResponse response = userMapper.toResponse(user);
             return RestResponse.status(Response.Status.CREATED, response);
 
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
         } catch (IllegalArgumentException e) {
-            log.warn("Registration via invitation failed: {}", e.getMessage());
-            throw problem(INVALID_INVITATION, e.getMessage());
-        } catch (Exception e) {
-            log.error("Error registering user via invitation", e);
-            throw problem(INTERNAL_ERROR, "Registration failed");
+            throw new GeoPulseException(INVALID_INVITATION, INVALID_INVITATION.title(), e);
         }
     }
 

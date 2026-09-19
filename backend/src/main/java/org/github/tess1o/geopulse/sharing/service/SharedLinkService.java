@@ -2,11 +2,11 @@ package org.github.tess1o.geopulse.sharing.service;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.jwt.build.Jwt;
+import io.smallrye.jwt.auth.principal.ParseException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -37,6 +37,11 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_PASSWORD_INVALID;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LOCATION_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
@@ -151,7 +156,7 @@ public class SharedLinkService {
     public SharedLinkDto updateShareLink(UUID linkId, UpdateShareLinkDto updateDto, UUID userId) {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -263,7 +268,7 @@ public class SharedLinkService {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
             log.warn("Share link not found or access denied: linkId={}, userId={}", linkId, userId);
-            throw new NotFoundException("Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found");
         }
 
         sharedLinkRepository.delete(entityOpt.get());
@@ -274,7 +279,7 @@ public class SharedLinkService {
     public SharedLocationInfo getSharedLocationInfo(UUID linkId) {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         sharedLinkRepository.incrementViewCount(linkId);
@@ -287,7 +292,7 @@ public class SharedLinkService {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
             log.warn("Link not found or expired for verification: {}", linkId);
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -295,7 +300,7 @@ public class SharedLinkService {
         if (entity.getPassword() != null) {
             if (password == null || !passwordUtils.isPasswordValid(password, entity.getPassword())) {
                 log.warn("Invalid password attempt for linkId: {}", linkId);
-                throw new ForbiddenException("Invalid password");
+                throw new GeoPulseException(SHARED_LINK_PASSWORD_INVALID, "Invalid password");
             }
         }
 
@@ -315,7 +320,7 @@ public class SharedLinkService {
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
             log.warn("Link not found or expired for location access: {}", linkId);
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -356,28 +361,18 @@ public class SharedLinkService {
     }
 
     private void validateTemporaryToken(String token, UUID expectedLinkId) {
+        org.eclipse.microprofile.jwt.JsonWebToken jwt;
         try {
             log.debug("Validating temporary token for linkId: {}", expectedLinkId);
+            jwt = jwtParser.parse(token);
+        } catch (ParseException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        }
 
-            org.eclipse.microprofile.jwt.JsonWebToken jwt = jwtParser.parse(token);
-
-            String tokenType = jwt.getClaim("type");
-            if (!"temp".equals(tokenType)) {
-                log.warn("Invalid token type '{}' for linkId: {}", tokenType, expectedLinkId);
-                throw new ForbiddenException("Invalid token type");
-            }
-
-            String tokenLinkId = jwt.getClaim("linkId");
-            if (!expectedLinkId.toString().equals(tokenLinkId)) {
-                log.warn("Token linkId mismatch. Expected: {}, Got: {}", expectedLinkId, tokenLinkId);
-                throw new ForbiddenException("Token not valid for this link");
-            }
-
-            log.debug("Temporary token validation successful for linkId: {}", expectedLinkId);
-
-        } catch (Exception e) {
-            log.warn("Temporary token validation failed for linkId: {}, error: {}", expectedLinkId, e.getMessage());
-            throw new ForbiddenException("Invalid or expired token");
+        String tokenType = jwt.getClaim("type");
+        String tokenLinkId = jwt.getClaim("linkId");
+        if (!"temp".equals(tokenType) || !expectedLinkId.toString().equals(tokenLinkId)) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied");
         }
     }
 
@@ -391,7 +386,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -403,14 +398,14 @@ public class SharedLinkService {
 
         // Check if share is configured to show current location
         if (entity.getShowCurrentLocation() == null || !entity.getShowCurrentLocation()) {
-            throw new NotFoundException("Current location not available for this share");
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available");
         }
 
         // Check if we're within the active timeline period
         TimelineRange shareRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
         Instant now = Instant.now();
         if (now.isBefore(shareRange.start()) || now.isAfter(shareRange.end())) {
-            throw new NotFoundException("Current location only available during the timeline period");
+            throw new GeoPulseException(SHARED_LOCATION_NOT_FOUND, "Current location not available");
         }
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
@@ -432,7 +427,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -465,7 +460,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();
@@ -505,7 +500,7 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            throw new NotFoundException("Link not found or expired");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
         SharedLinkEntity entity = entityOpt.get();

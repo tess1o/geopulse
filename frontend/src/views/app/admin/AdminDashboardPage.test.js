@@ -1,18 +1,29 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import AdminDashboardPage from './AdminDashboardPage.vue'
-import adminService from '@/utils/adminService'
+
+vi.hoisted(() => {
+  // maplibre-gl is pulled in transitively and needs this to exist under jsdom.
+  Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: () => 'blob:test' })
+})
 
 const router = vi.hoisted(() => ({ push: vi.fn() }))
+const mocks = vi.hoisted(() => ({ getDashboardStats: vi.fn() }))
 
 vi.mock('vue-router', () => ({ useRouter: () => router }))
-vi.mock('@/utils/adminService', () => ({ default: { getDashboardStats: vi.fn() } }))
+vi.mock('@/stores/admin', () => ({ useAdminStore: () => ({ getDashboardStats: mocks.getDashboardStats }) }))
+// AppLayout transitively pulls in the whole map stack (maplibre, panoramax); stub the module so it never loads.
+vi.mock('@/components/ui/layout/AppLayout.vue', () => ({ default: { template: '<div><slot /></div>' } }))
 
 describe('AdminDashboardPage', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     router.push.mockReset()
     vi.setSystemTime(new Date('2026-09-08T12:00:00Z'))
-    adminService.getDashboardStats.mockResolvedValue({
+    mocks.getDashboardStats.mockResolvedValue({
+      totalUsers: 4,
+      activeUsers24h: 2,
+      totalGpsPoints: 1500,
+      gpsActivity24h: 250,
       health: {
         ingestion: { latestReceivedAt: '2026-08-28T23:06:00Z' }, backup: { latestBackupAt: '2026-09-08T00:00:00Z' }, security: { warnings: [] },
         geocoding: { status: 'CIRCUIT_OPEN', providers: [{ name: 'Nominatim', displayName: 'Nominatim', primary: true, status: 'CIRCUIT_OPEN', circuitBreakerObservedOpenAt: '2026-09-08T11:00:00Z' }] },

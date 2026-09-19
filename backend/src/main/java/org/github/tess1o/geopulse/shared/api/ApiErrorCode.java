@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.shared.api;
 
 import jakarta.ws.rs.core.Response;
 
+import java.net.URI;
+
 public enum ApiErrorCode {
     AI_API_KEY_REQUIRED(409),
     AI_CONNECTION_FAILED(400),
@@ -14,7 +16,6 @@ public enum ApiErrorCode {
     ADMIN_SELF_DELETE_FORBIDDEN(400),
     ADMIN_USER_NOT_FOUND(404),
     ADMIN_USER_UPDATE_INVALID(400),
-    AUTHENTICATION_FAILED(500),
     BOAT_SETUP_JOB_NOT_FOUND(404),
     BACKUP_FAILED(500),
     BACKUP_OPERATION_CONFLICT(409),
@@ -123,7 +124,6 @@ public enum ApiErrorCode {
     IMPORT_UPLOAD_INVALID_STATE(409),
     IMPORT_UPLOAD_INCOMPLETE(409),
     IMPORT_FILE_TOO_LARGE(413),
-    IMPORT_RATE_LIMITED(429),
     IMPORT_CHUNK_SAVE_FAILED(500),
     IMPORT_ASSEMBLY_FAILED(500),
     IMPORT_FAILED(500),
@@ -217,6 +217,10 @@ public enum ApiErrorCode {
     public String title() {
         Response.Status status = Response.Status.fromStatusCode(statusCode);
         return status == null ? "HTTP Error" : status.getReasonPhrase();
+    }
+
+    public URI typeUri() {
+        return URI.create("urn:geopulse:error:" + name());
     }
 
     public static ApiErrorCode forStatus(int statusCode) {

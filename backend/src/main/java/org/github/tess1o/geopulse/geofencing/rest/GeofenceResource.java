@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geofencing.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -59,7 +61,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENC
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_RULE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFICATION_TEMPLATE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_TEMPLATE_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/geofences")
 @ApplicationScoped
@@ -102,7 +103,7 @@ public class GeofenceResource {
             GeofenceRuleDto created = ruleService.createRule(currentUserService.getCurrentUserId(), request);
             return RestResponse.status(Response.Status.CREATED, created);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_GEOFENCE_RULE, exception.getMessage());
+            throw new GeoPulseException(INVALID_GEOFENCE_RULE, INVALID_GEOFENCE_RULE.title(), exception);
         }
     }
 
@@ -113,9 +114,9 @@ public class GeofenceResource {
         try {
             return ruleService.updateRule(currentUserService.getCurrentUserId(), ruleId, request);
         } catch (NoSuchElementException exception) {
-            throw problem(GEOFENCE_RULE_NOT_FOUND, exception.getMessage(), Map.of("ruleId", ruleId));
+            throw new GeoPulseException(GEOFENCE_RULE_NOT_FOUND, GEOFENCE_RULE_NOT_FOUND.title(), Map.of("ruleId", ruleId), exception);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_GEOFENCE_RULE, exception.getMessage(), Map.of("ruleId", ruleId));
+            throw new GeoPulseException(INVALID_GEOFENCE_RULE, INVALID_GEOFENCE_RULE.title(), Map.of("ruleId", ruleId), exception);
         }
     }
 
@@ -127,7 +128,7 @@ public class GeofenceResource {
             ruleService.deleteRule(currentUserService.getCurrentUserId(), ruleId);
             return RestResponse.noContent();
         } catch (NoSuchElementException exception) {
-            throw problem(GEOFENCE_RULE_NOT_FOUND, exception.getMessage(), Map.of("ruleId", ruleId));
+            throw new GeoPulseException(GEOFENCE_RULE_NOT_FOUND, GEOFENCE_RULE_NOT_FOUND.title(), Map.of("ruleId", ruleId), exception);
         }
     }
 
@@ -142,22 +143,18 @@ public class GeofenceResource {
                                           @QueryParam("to") String dateToValue,
                                           @QueryParam("subjectUserIds") String subjectUserIdsValue,
                                           @QueryParam("eventTypes") String eventTypesValue) {
-        try {
-            GeofenceEventQueryDto query = GeofenceEventQueryDto.builder()
-                    .page(page)
-                    .pageSize(pageSize)
-                    .sortBy(sortBy)
-                    .sortDir(sortDir)
-                    .unreadOnly(unreadOnly)
-                    .dateFrom(parseInstant(dateFromValue, "dateFrom"))
-                    .dateTo(parseInstant(dateToValue, "dateTo"))
-                    .subjectUserIds(parseUuidList(subjectUserIdsValue, "subjectUserIds"))
-                    .eventTypes(parseEventTypes(eventTypesValue))
-                    .build();
-            return eventService.listEventsPage(currentUserService.getCurrentUserId(), query);
-        } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_GEOFENCE_QUERY, exception.getMessage());
-        }
+        GeofenceEventQueryDto query = GeofenceEventQueryDto.builder()
+                .page(page)
+                .pageSize(pageSize)
+                .sortBy(sortBy)
+                .sortDir(sortDir)
+                .unreadOnly(unreadOnly)
+                .dateFrom(parseInstant(dateFromValue, "dateFrom"))
+                .dateTo(parseInstant(dateToValue, "dateTo"))
+                .subjectUserIds(parseUuidList(subjectUserIdsValue, "subjectUserIds"))
+                .eventTypes(parseEventTypes(eventTypesValue))
+                .build();
+        return eventService.listEventsPage(currentUserService.getCurrentUserId(), query);
     }
 
     @GET
@@ -172,7 +169,8 @@ public class GeofenceResource {
         try {
             return eventService.markSeen(currentUserService.getCurrentUserId(), eventId);
         } catch (NoSuchElementException exception) {
-            throw problem(GEOFENCE_EVENT_NOT_FOUND, exception.getMessage(), Map.of("eventId", eventId));
+            throw new GeoPulseException(GEOFENCE_EVENT_NOT_FOUND, "Geofence event not found",
+                    Map.of("eventId", eventId), exception);
         }
     }
 
@@ -202,7 +200,7 @@ public class GeofenceResource {
     public AppriseTestResponse testTemplateConnection(@NotNull @Valid AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
         if (result == null) {
-            throw problem(APPRISE_TEST_FAILED, "Apprise test returned no response");
+            throw new GeoPulseException(APPRISE_TEST_FAILED, "Apprise test returned no response");
         }
         return new AppriseTestResponse(result.isSuccess(), result.getStatusCode(), result.getMessage());
     }
@@ -216,7 +214,7 @@ public class GeofenceResource {
             NotificationTemplateDto created = templateService.createTemplate(currentUserService.getCurrentUserId(), request);
             return RestResponse.status(Response.Status.CREATED, created);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_NOTIFICATION_TEMPLATE, exception.getMessage());
+            throw new GeoPulseException(INVALID_NOTIFICATION_TEMPLATE, INVALID_NOTIFICATION_TEMPLATE.title(), exception);
         }
     }
 
@@ -227,9 +225,9 @@ public class GeofenceResource {
         try {
             return templateService.updateTemplate(currentUserService.getCurrentUserId(), templateId, request);
         } catch (NoSuchElementException exception) {
-            throw problem(NOTIFICATION_TEMPLATE_NOT_FOUND, exception.getMessage(), Map.of("templateId", templateId));
+            throw new GeoPulseException(NOTIFICATION_TEMPLATE_NOT_FOUND, NOTIFICATION_TEMPLATE_NOT_FOUND.title(), Map.of("templateId", templateId), exception);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_NOTIFICATION_TEMPLATE, exception.getMessage(), Map.of("templateId", templateId));
+            throw new GeoPulseException(INVALID_NOTIFICATION_TEMPLATE, INVALID_NOTIFICATION_TEMPLATE.title(), Map.of("templateId", templateId), exception);
         }
     }
 
@@ -241,7 +239,7 @@ public class GeofenceResource {
             templateService.deleteTemplate(currentUserService.getCurrentUserId(), templateId);
             return RestResponse.noContent();
         } catch (NoSuchElementException exception) {
-            throw problem(NOTIFICATION_TEMPLATE_NOT_FOUND, exception.getMessage(), Map.of("templateId", templateId));
+            throw new GeoPulseException(NOTIFICATION_TEMPLATE_NOT_FOUND, NOTIFICATION_TEMPLATE_NOT_FOUND.title(), Map.of("templateId", templateId), exception);
         }
     }
 
@@ -252,7 +250,8 @@ public class GeofenceResource {
         try {
             return Instant.parse(value.trim());
         } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException("Invalid " + paramName + " value. Expected ISO-8601 instant.");
+            throw new GeoPulseException(INVALID_GEOFENCE_QUERY,
+                    "Invalid " + paramName + " value. Expected ISO-8601 instant", exception);
         }
     }
 
@@ -275,7 +274,8 @@ public class GeofenceResource {
         try {
             return rawValues.stream().map(UUID::fromString).distinct().toList();
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Invalid UUID in " + paramName + " filter.");
+            throw new GeoPulseException(INVALID_GEOFENCE_QUERY,
+                    "Invalid UUID in " + paramName + " filter", exception);
         }
     }
 
@@ -290,7 +290,8 @@ public class GeofenceResource {
                     .distinct()
                     .toList();
         } catch (IllegalArgumentException exception) {
-            throw new IllegalArgumentException("Invalid eventTypes filter. Supported values: ENTER, LEAVE.");
+            throw new GeoPulseException(INVALID_GEOFENCE_QUERY,
+                    "Invalid eventTypes filter. Supported values: ENTER, LEAVE", exception);
         }
     }
 }

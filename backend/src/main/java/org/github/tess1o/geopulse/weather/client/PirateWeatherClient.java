@@ -19,12 +19,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -40,12 +35,6 @@ public class PirateWeatherClient implements WeatherProviderClient {
 
     @Inject
     WeatherConfigurationService configurationService;
-
-    @ConfigProperty(name = "geopulse.weather.pirate.connect-timeout-seconds", defaultValue = "5")
-    long connectTimeoutSeconds;
-
-    @ConfigProperty(name = "geopulse.weather.pirate.read-timeout-seconds", defaultValue = "15")
-    long readTimeoutSeconds;
 
     private final Map<String, PirateWeatherRestClient> clients = new ConcurrentHashMap<>();
 
@@ -100,7 +89,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
             List<Instant> targetHours) {
         requireApiKey();
         List<Instant> hours = targetHours == null ? List.of() : targetHours.stream()
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .map(value -> value.truncatedTo(java.time.temporal.ChronoUnit.HOURS))
                 .distinct()
                 .sorted()
@@ -121,7 +110,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
                     UNITS,
                     HOURLY_EXCLUDE);
             PirateWeatherResponse payload = readPayload(response);
-            java.util.Set<Instant> requested = new java.util.HashSet<>(hours);
+            Set<Instant> requested = new HashSet<>(hours);
             Map<Instant, WeatherProviderSample> result = new LinkedHashMap<>();
             List<PirateWeatherResponse.PirateWeatherDataPoint> points = payload.getHourly() == null
                     ? List.of()
@@ -276,7 +265,7 @@ public class PirateWeatherClient implements WeatherProviderClient {
         }
         int connectTimeout = Math.max(1, configurationService.pirateConnectTimeoutSeconds());
         int readTimeout = Math.max(1, configurationService.pirateReadTimeoutSeconds());
-        java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
+        Set<String> activeUrls = new HashSet<>(List.of(
                 clientCacheKey(configurationService.pirateBaseUrl(), connectTimeout, readTimeout),
                 clientCacheKey(configurationService.pirateTimeMachineUrl(), connectTimeout, readTimeout)));
         clients.entrySet().removeIf(entry -> {

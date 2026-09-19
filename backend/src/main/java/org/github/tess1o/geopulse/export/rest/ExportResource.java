@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.export.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -45,7 +47,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/exports")
 @Authenticated
@@ -81,7 +82,7 @@ public class ExportResource {
             return download(data, "application/gpx+xml",
                     "trip-%d-%d.gpx".formatted(tripId, Instant.now().getEpochSecond()));
         } catch (IllegalArgumentException exception) {
-            throw problem(TRIP_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(TRIP_NOT_FOUND, TRIP_NOT_FOUND.title(), exception);
         }
     }
 
@@ -99,7 +100,7 @@ public class ExportResource {
             return download(data, "application/gpx+xml",
                     "stay-%d-%d.gpx".formatted(stayId, Instant.now().getEpochSecond()));
         } catch (IllegalArgumentException exception) {
-            throw problem(STAY_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(STAY_NOT_FOUND, STAY_NOT_FOUND.title(), exception);
         }
     }
 
@@ -109,7 +110,7 @@ public class ExportResource {
     @APIResponse(responseCode = "429", description = "Too many active export jobs")
     public ExportJobResponse createExport(CreateExportRequest request) {
         if (request == null || request.getDataTypes() == null || request.getDataTypes().isEmpty()) {
-            throw problem(INVALID_EXPORT_REQUEST, "Data types are required",
+            throw new GeoPulseException(INVALID_EXPORT_REQUEST, "Data types are required",
                     Map.of("field", "dataTypes"));
         }
         validateDateRange(request.getDateRange());
@@ -122,7 +123,7 @@ public class ExportResource {
             return toResponse(exportJobManager.createExportJob(userId, request.getDataTypes(),
                     request.getDateRange(), request.getFormat(), request.getOptions()));
         } catch (IllegalStateException exception) {
-            throw problem(RATE_LIMIT_EXCEEDED, exception.getMessage());
+            throw new GeoPulseException(RATE_LIMIT_EXCEEDED, RATE_LIMIT_EXCEEDED.title(), exception);
         }
     }
 
@@ -133,7 +134,7 @@ public class ExportResource {
     public ExportJobResponse getExportStatus(@PathParam("exportJobId") UUID exportJobId) {
         ExportJob job = exportJobManager.getExportJob(exportJobId, currentUserService.getCurrentUserId());
         if (job == null) {
-            throw problem(EXPORT_NOT_FOUND, "Export job not found");
+            throw new GeoPulseException(EXPORT_NOT_FOUND, "Export job not found");
         }
         return toResponse(job);
     }
@@ -175,21 +176,21 @@ public class ExportResource {
         UUID userId = currentUserService.getCurrentUserId();
         ExportJob job = exportJobManager.getExportJob(exportJobId, userId);
         if (job == null) {
-            throw problem(EXPORT_NOT_FOUND, "Export job not found");
+            throw new GeoPulseException(EXPORT_NOT_FOUND, "Export job not found");
         }
         if (!"COMPLETED".equals(job.getStatus().name()) || job.getTempFilePath() == null) {
-            throw problem(EXPORT_NOT_READY, "Export is not ready for download");
+            throw new GeoPulseException(EXPORT_NOT_READY, "Export is not ready for download");
         }
 
         int expiryHours = settingsService.getInteger("export.job-expiry-hours");
         if (job.getCreatedAt().plus(expiryHours, ChronoUnit.HOURS).isBefore(Instant.now())) {
-            throw problem(EXPORT_EXPIRED, "Export has expired");
+            throw new GeoPulseException(EXPORT_EXPIRED, "Export has expired");
         }
 
         java.nio.file.Path exportFile = Paths.get(job.getTempFilePath());
         if (!Files.exists(exportFile)) {
             log.error("Export file not found on disk: {}", job.getTempFilePath());
-            throw problem(EXPORT_FILE_MISSING, "Export file not found");
+            throw new GeoPulseException(EXPORT_FILE_MISSING, "Export file not found");
         }
 
         StreamingOutput stream = output -> {
@@ -227,7 +228,7 @@ public class ExportResource {
     @APIResponse(responseCode = "404", description = "Export job not found")
     public RestResponse<Void> deleteExportJob(@PathParam("exportJobId") UUID exportJobId) {
         if (!exportJobManager.deleteExportJob(exportJobId, currentUserService.getCurrentUserId())) {
-            throw problem(EXPORT_NOT_FOUND, "Export job not found");
+            throw new GeoPulseException(EXPORT_NOT_FOUND, "Export job not found");
         }
         return RestResponse.noContent();
     }
@@ -249,28 +250,28 @@ public class ExportResource {
 
     private void validateDateRange(ExportDateRange dateRange) {
         if (dateRange == null || dateRange.getStartDate() == null || dateRange.getEndDate() == null) {
-            throw problem(INVALID_DATE_RANGE, "Date range is required");
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Date range is required");
         }
         if (dateRange.getStartDate().isAfter(Instant.now())) {
-            throw problem(INVALID_DATE_RANGE, "Start date cannot be in the future");
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Start date cannot be in the future");
         }
         if (dateRange.getStartDate().isAfter(dateRange.getEndDate())) {
-            throw problem(INVALID_DATE_RANGE, "Start date must be before end date");
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Start date must be before end date");
         }
     }
 
     private void validateDebugRequest(DebugExportRequest request) {
         if (request == null || request.getStartDate() == null || request.getEndDate() == null) {
-            throw problem(INVALID_DEBUG_EXPORT_REQUEST, "Start date and end date are required");
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date and end date are required");
         }
         if (request.getStartDate().isAfter(Instant.now())) {
-            throw problem(INVALID_DEBUG_EXPORT_REQUEST, "Start date cannot be in the future");
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date cannot be in the future");
         }
         if (request.getStartDate().isAfter(request.getEndDate())) {
-            throw problem(INVALID_DEBUG_EXPORT_REQUEST, "Start date must be before end date");
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Start date must be before end date");
         }
         if (request.getLatitudeShift() == null || request.getLongitudeShift() == null) {
-            throw problem(INVALID_DEBUG_EXPORT_REQUEST, "Latitude and longitude shift are required");
+            throw new GeoPulseException(INVALID_DEBUG_EXPORT_REQUEST, "Latitude and longitude shift are required");
         }
     }
 

@@ -5,7 +5,6 @@ import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.weather.dto.OpenMeteoResponse;
 import org.github.tess1o.geopulse.weather.dto.WeatherEndpointTestResponse;
@@ -18,10 +17,8 @@ import java.net.URI;
 import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Optional;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -47,12 +44,6 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
 
     @Inject
     WeatherConfigurationService configurationService;
-
-    @ConfigProperty(name = "geopulse.weather.open-meteo.connect-timeout-seconds", defaultValue = "5")
-    long connectTimeoutSeconds;
-
-    @ConfigProperty(name = "geopulse.weather.open-meteo.read-timeout-seconds", defaultValue = "15")
-    long readTimeoutSeconds;
 
     private final Map<String, OpenMeteoRestClient> clients = new ConcurrentHashMap<>();
 
@@ -82,7 +73,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
     }
 
     public WeatherProviderSample fetchHourly(double latitude, double longitude, Instant targetAt) {
-        Instant hour = targetAt.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+        Instant hour = targetAt.truncatedTo(ChronoUnit.HOURS);
         WeatherProviderSample sample = fetchHourlyBatch(latitude, longitude, List.of(hour)).get(hour);
         if (sample == null) {
             throw new WeatherProviderException(
@@ -101,8 +92,8 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
             return Map.of();
         }
         List<Instant> hours = targetHours.stream()
-                .filter(java.util.Objects::nonNull)
-                .map(value -> value.truncatedTo(java.time.temporal.ChronoUnit.HOURS))
+                .filter(Objects::nonNull)
+                .map(value -> value.truncatedTo(ChronoUnit.HOURS))
                 .distinct()
                 .sorted()
                 .toList();
@@ -111,7 +102,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         }
         Instant firstHour = hours.getFirst();
         Instant lastHour = hours.getLast();
-        boolean archive = lastHour.isBefore(Instant.now().minus(java.time.Duration.ofDays(2)));
+        boolean archive = lastHour.isBefore(Instant.now().minus(Duration.ofDays(2)));
         String baseUrl = archive ? configurationService.archiveUrl() : configurationService.forecastUrl();
         String endpoint = archive ? "archive hourly weather" : "forecast hourly weather";
         OpenMeteoRestClient client = null;
@@ -129,7 +120,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
                         formatter.format(firstHour), formatter.format(lastHour), "UTC", apiKeyOrNull());
                 payload = readPayload(response);
             }
-            return fromHourlyBatch(payload, latitude, longitude, new java.util.HashSet<>(hours));
+            return fromHourlyBatch(payload, latitude, longitude, new HashSet<>(hours));
         } catch (WeatherProviderException e) {
             throw e;
         } catch (IllegalArgumentException e) {
@@ -262,7 +253,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         }
         int connectTimeout = Math.max(1, configurationService.openMeteoConnectTimeoutSeconds());
         int readTimeout = Math.max(1, configurationService.openMeteoReadTimeoutSeconds());
-        java.util.Set<String> activeUrls = new java.util.HashSet<>(java.util.List.of(
+        Set<String> activeUrls = new HashSet<>(List.of(
                 clientCacheKey(configurationService.forecastUrl(), connectTimeout, readTimeout),
                 clientCacheKey(configurationService.archiveUrl(), connectTimeout, readTimeout)));
         clients.entrySet().removeIf(entry -> {
@@ -327,14 +318,14 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
     }
 
     private Optional<WeatherProviderSample> fromHourly(OpenMeteoResponse payload, double requestedLatitude, double requestedLongitude, Instant targetAt) {
-        return Optional.ofNullable(fromHourlyBatch(payload, requestedLatitude, requestedLongitude, java.util.Set.of(targetAt)).get(targetAt));
+        return Optional.ofNullable(fromHourlyBatch(payload, requestedLatitude, requestedLongitude, Set.of(targetAt)).get(targetAt));
     }
 
     private Map<Instant, WeatherProviderSample> fromHourlyBatch(
             OpenMeteoResponse payload,
             double requestedLatitude,
             double requestedLongitude,
-            java.util.Set<Instant> targetHours) {
+            Set<Instant> targetHours) {
         OpenMeteoResponse.OpenMeteoHourly hourly = payload.getHourly();
         if (hourly == null || hourly.getTime() == null) {
             return Map.of();
@@ -373,7 +364,7 @@ public class OpenMeteoWeatherClient implements WeatherProviderClient {
         return result;
     }
 
-    private <T> T valueAt(java.util.List<T> values, int index) {
+    private <T> T valueAt(List<T> values, int index) {
         if (values == null || index < 0 || index >= values.size()) {
             return null;
         }

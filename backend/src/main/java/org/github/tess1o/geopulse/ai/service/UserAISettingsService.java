@@ -4,14 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.transaction.Transactional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.ai.client.exception.AISettingsException;
 import org.github.tess1o.geopulse.ai.client.exception.OpenAiApiException;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.net.URI;
@@ -19,6 +21,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_CONNECTION_FAILED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_AI_REQUEST;
 
 @ApplicationScoped
 @Slf4j
@@ -112,7 +117,7 @@ public class UserAISettingsService {
                 .orElse(dbSettings.getOpenaiApiKey());
 
         if (settings.isApiKeyRequired() && (apiKey == null || apiKey.isBlank())) {
-            throw new WebApplicationException("API key is required but not provided.", jakarta.ws.rs.core.Response.Status.BAD_REQUEST);
+            throw new GeoPulseException(INVALID_AI_REQUEST, "API key is required");
         }
 
         RestClientBuilder clientBuilder = RestClientBuilder.newBuilder()
@@ -125,18 +130,18 @@ public class UserAISettingsService {
 
         GeoPulseOpenAIClient client = clientBuilder.build(GeoPulseOpenAIClient.class);
 
+        GeoPulseOpenAIClient.ModelsResponse models;
         try {
-            GeoPulseOpenAIClient.ModelsResponse models = client.getModels();
-            if (models == null || models.data() == null) {
-                throw new WebApplicationException("Failed to fetch models: empty response from provider.", jakarta.ws.rs.core.Response.Status.BAD_GATEWAY);
-            }
-            return models.data()
-                    .stream().map(GeoPulseOpenAIClient.Model::id)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.error("Failed to fetch models: {}", e.getMessage());
-            throw new OpenAiApiException(e);
+            models = client.getModels();
+        } catch (WebApplicationException | ProcessingException e) {
+            throw new GeoPulseException(AI_CONNECTION_FAILED, "Failed to connect to the AI provider", e);
         }
+        if (models == null || models.data() == null) {
+            throw new GeoPulseException(AI_CONNECTION_FAILED, "AI provider returned an empty response");
+        }
+        return models.data()
+                .stream().map(GeoPulseOpenAIClient.Model::id)
+                .collect(Collectors.toList());
     }
 
 

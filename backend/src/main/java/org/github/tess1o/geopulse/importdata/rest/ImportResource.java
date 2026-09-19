@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.importdata.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.security.Authenticated;
 import jakarta.inject.Inject;
@@ -26,7 +29,6 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for managing import jobs and uploading files to import.
@@ -67,84 +69,77 @@ public class ImportResource {
             @RestForm("file") FileUpload file,
             @RestForm("format") String format,
             @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
+        UUID userId = currentUserService.getCurrentUserId();
 
-            // Validate format
-            ImportFormat importFormat = ImportFormat.fromString(format);
-            if (importFormat == null) {
-                throw problem(INVALID_IMPORT_FORMAT,
-                        "Unknown import format: " + format + ". Supported formats: " + ImportFormat.getSupportedFormats());
-            }
+        ImportFormat importFormat = ImportFormat.fromString(format);
+        if (importFormat == null) {
+            throw new GeoPulseException(INVALID_IMPORT_FORMAT,
+                    "Unknown import format: " + format + ". Supported formats: " + ImportFormat.getSupportedFormats());
+        }
 
-            log.info("Received {} import request for user: {}", importFormat.getValue(), userId);
+        log.info("Received {} import request for user: {}", importFormat.getValue(), userId);
 
             // Check for existing active jobs
-            if (importJobService.hasActiveImportJob(userId)) {
-                throw problem(IMPORT_ACTIVE_JOB_CONFLICT,
-                        "An import job is already in progress. Please wait for it to complete.");
-            }
+        if (importJobService.hasActiveImportJob(userId)) {
+            throw new GeoPulseException(IMPORT_ACTIVE_JOB_CONFLICT,
+                    "An import job is already in progress. Please wait for it to complete.");
+        }
 
             // Validate file
-            if (file == null || file.size() == 0) {
-                throw problem(INVALID_IMPORT_FILE, "No file provided");
-            }
+        if (file == null || file.size() == 0) {
+            throw new GeoPulseException(INVALID_IMPORT_FILE, "No file provided");
+        }
 
             // Validate file size
-            long maxFileSizeBytes = (long) maxFileSizeGB * 1024L * 1024L * 1024L;
-            if (file.size() > maxFileSizeBytes) {
-                throw problem(IMPORT_FILE_TOO_LARGE, "File exceeds the configured import limit",
-                        Map.of("fileSizeBytes", file.size(), "maxFileSizeBytes", maxFileSizeBytes));
-            }
+        long maxFileSizeBytes = (long) maxFileSizeGB * 1024L * 1024L * 1024L;
+        if (file.size() > maxFileSizeBytes) {
+            throw new GeoPulseException(IMPORT_FILE_TOO_LARGE, "File exceeds the configured import limit",
+                    Map.of("fileSizeBytes", file.size(), "maxFileSizeBytes", maxFileSizeBytes));
+        }
 
             // Get file name and resolve GPX format if needed
-            String fileName = file.fileName() != null ? file.fileName() : importFormat.getDefaultFileName();
-            importFormat = ImportFormat.resolveGpxFormat(fileName, importFormat);
+        String fileName = file.fileName() != null ? file.fileName() : importFormat.getDefaultFileName();
+        importFormat = ImportFormat.resolveGpxFormat(fileName, importFormat);
 
             // Validate file extension
-            if (!importFormat.isValidExtension(fileName)) {
-                throw problem(INVALID_IMPORT_FILE_TYPE,
-                        "Invalid file type for " + importFormat.getValue() + " import. " +
-                                "Allowed extensions: " + importFormat.getAllowedExtensions(),
-                        Map.of("format", importFormat.getValue()));
-            }
+        if (!importFormat.isValidExtension(fileName)) {
+            throw new GeoPulseException(INVALID_IMPORT_FILE_TYPE,
+                    "Invalid file type for " + importFormat.getValue() + " import. " +
+                            "Allowed extensions: " + importFormat.getAllowedExtensions(),
+                    Map.of("format", importFormat.getValue()));
+        }
 
             // Parse options
-            ImportOptions importOptions;
-            try {
-                importOptions = objectMapper.readValue(options, ImportOptions.class);
-                importOptions.setImportFormat(importFormat.getValue());
-            } catch (Exception e) {
-                log.error("Failed to parse import options", e);
-                throw problem(INVALID_IMPORT_OPTIONS, "Invalid import options format");
-            }
+        ImportOptions importOptions;
+        try {
+            importOptions = objectMapper.readValue(options, ImportOptions.class);
+            importOptions.setImportFormat(importFormat.getValue());
+        } catch (JsonProcessingException e) {
+            throw new GeoPulseException(INVALID_IMPORT_OPTIONS, "Invalid import options format", e);
+        }
 
             // Create import job
-            ImportJob job = createImportJob(userId, file, fileName, importOptions);
-
-            log.info("Created {} import job: jobId={}, fileName={}, size={} MB",
-                    importFormat.getValue(), job.getJobId(), fileName, file.size() / (1024 * 1024));
-
-            return ImportJobResponse.from(job);
-
-        } catch (IllegalStateException e) {
-            throw problem(IMPORT_RATE_LIMITED, e.getMessage());
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Failed to create import job", e);
-            throw problem(IMPORT_FAILED, "Failed to create import job");
+        ImportJob job;
+        try {
+            job = createImportJob(userId, file, fileName, importOptions);
+        } catch (IOException e) {
+            throw new GeoPulseException(IMPORT_FAILED, "Failed to create import job", e);
         }
+
+        log.info("Created {} import job: jobId={}, fileName={}, size={} MB",
+                importFormat.getValue(), job.getJobId(), fileName, file.size() / (1024 * 1024));
+
+        return ImportJobResponse.from(job);
     }
 
     @GET
     public SliceResponse<ImportJobResponse> getImportJobs(@QueryParam("page") @DefaultValue("0") int page,
                                                           @QueryParam("size") @DefaultValue("10") int size) {
         if (size < 1 || size > 100) {
-            throw problem(INVALID_LIMIT, "Limit must be between 1 and 100", Map.of("min", 1, "max", 100));
+            throw new GeoPulseException(INVALID_LIMIT, "Limit must be between 1 and 100", Map.of("min", 1, "max", 100));
         }
         if (page < 0) {
-            throw problem(INVALID_PAGE, "Page must not be negative", Map.of("min", 0));
+            throw new GeoPulseException(INVALID_PAGE, "Page must not be negative", Map.of("min", 0));
         }
 
         UUID userId = currentUserService.getCurrentUserId();
@@ -159,7 +154,7 @@ public class ImportResource {
     public ImportJobResponse getImportStatus(@PathParam("importJobId") UUID importJobId) {
         ImportJob job = importJobService.getImportJob(importJobId, currentUserService.getCurrentUserId());
         if (job == null) {
-            throw problem(IMPORT_JOB_NOT_FOUND, "Import job not found",
+            throw new GeoPulseException(IMPORT_JOB_NOT_FOUND, "Import job not found",
                     Map.of("importJobId", importJobId.toString()));
         }
         return ImportJobResponse.from(job);
@@ -169,7 +164,7 @@ public class ImportResource {
     @Path("/{importJobId}")
     public void deleteImportJob(@PathParam("importJobId") UUID importJobId) {
         if (!importJobService.deleteImportJob(importJobId, currentUserService.getCurrentUserId())) {
-            throw problem(IMPORT_JOB_NOT_FOUND, "Import job not found",
+            throw new GeoPulseException(IMPORT_JOB_NOT_FOUND, "Import job not found",
                     Map.of("importJobId", importJobId.toString()));
         }
     }

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -87,7 +90,7 @@ public class OwnTracksResource {
             recordStage(stageStart, "auth", authResult.isEmpty() ? "unauthorized" : "success");
             if (authResult.isEmpty()) {
                 result = "unauthorized";
-                return Response.status(Response.Status.UNAUTHORIZED).build();
+                throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
             }
 
             UUID userId = authResult.get().getUserId();

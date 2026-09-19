@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import org.github.tess1o.geopulse.admin.model.ActionType;
@@ -83,12 +83,12 @@ class AdminFullBackupResourceTest {
     @Test
     void rejectsNullLocalRestoreRequestAndReportsConcurrentOperationAsConflict() {
         assertThatThrownBy(() -> resource.restoreLocal(null))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(400));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).code().statusCode()).isEqualTo(400));
         when(maintenanceService.tryStartBackup("manual-local")).thenReturn(false);
         assertThatThrownBy(() -> resource.runBackupNow())
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getStatusCode()).isEqualTo(409));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).code().statusCode()).isEqualTo(409));
     }
 
     @Test
@@ -97,8 +97,8 @@ class AdminFullBackupResourceTest {
         when(backupService.writeLocalBackup()).thenThrow(new IOException("raw pg_dump stderr containing secret-value"));
 
         assertThatThrownBy(() -> resource.runBackupNow())
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
                         .doesNotContain("secret-value", "stderr")
                         .contains("Could not create encrypted backup"));
         verify(maintenanceService).finishFailure(argThat(message -> !message.contains("secret-value")));

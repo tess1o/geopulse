@@ -78,7 +78,7 @@ public class TimelineImportHelper {
                         Thread.currentThread().interrupt();
                         log.warn("Timeline generation retry interrupted for user {}", job.getUserId(), ie);
                         jobProgressService.failJob(timelineJobId, "Timeline generation retry interrupted");
-                        throw new RuntimeException("Timeline generation retry interrupted", ie);
+                        throw new RuntimeException("Timeline generation retry interrupted", ie); // NOPMD - preserves the nested InterruptedException
                     }
                 } else {
                     log.error("Failed to trigger timeline generation for bulk import for user {} after {} attempts: {}",

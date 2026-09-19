@@ -1,3 +1,5 @@
+import { formatMessageDescriptor } from './messageDescriptor'
+
 export const formatViolationField = (field) => {
   if (!field) {
     return null
@@ -47,8 +49,9 @@ export const formatApiErrorDetail = (error, fallback) => {
     return problem.violations
       .map(violation => {
         const field = formatViolationField(violation.field)
-        if (!violation.detail) return null
-        return field ? `${field}: ${violation.detail}` : violation.detail
+        const text = formatMessageDescriptor(violation.detail)
+        if (!text) return null
+        return field ? `${field}: ${text}` : text
       })
       .filter(Boolean)
       .join('; ')

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.periods.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,7 +36,6 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_DELETE_MODE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_RANGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PERIOD_TAG;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/period-tags")
 @ApplicationScoped
@@ -64,11 +65,11 @@ public class PeriodTagResource {
             Instant start = Instant.parse(from);
             Instant end = Instant.parse(to);
             if (start.isAfter(end)) {
-                throw problem(INVALID_PERIOD_RANGE, "from must not be after to");
+                throw new GeoPulseException(INVALID_PERIOD_RANGE, "from must not be after to");
             }
             return service.getPeriodTagsForTimeRange(userId, start, end);
         } catch (NullPointerException | DateTimeException exception) {
-            throw problem(INVALID_PERIOD_RANGE, "from and to must be valid ISO-8601 instants");
+            throw new GeoPulseException(INVALID_PERIOD_RANGE, "from and to must be valid ISO-8601 instants", exception);
         }
     }
 
@@ -87,17 +88,17 @@ public class PeriodTagResource {
                                             @QueryParam("to") String endTime,
                                             @QueryParam("excludeId") Long excludeId) {
         if (startTime == null || endTime == null) {
-            throw problem(INVALID_PERIOD_RANGE, "startTime and endTime are required");
+            throw new GeoPulseException(INVALID_PERIOD_RANGE, "startTime and endTime are required");
         }
         try {
             Instant start = Instant.parse(startTime);
             Instant end = Instant.parse(endTime);
             if (!end.isAfter(start)) {
-                throw problem(INVALID_PERIOD_RANGE, "endTime must be after startTime");
+                throw new GeoPulseException(INVALID_PERIOD_RANGE, "endTime must be after startTime");
             }
             return service.checkOverlaps(currentUserService.getCurrentUserId(), start, end, excludeId);
         } catch (DateTimeException exception) {
-            throw problem(INVALID_PERIOD_RANGE, "startTime and endTime must be valid ISO-8601 timestamps");
+            throw new GeoPulseException(INVALID_PERIOD_RANGE, "startTime and endTime must be valid ISO-8601 timestamps", exception);
         }
     }
 
@@ -108,7 +109,7 @@ public class PeriodTagResource {
             PeriodTagDto created = service.createPeriodTag(currentUserService.getCurrentUserId(), request);
             return RestResponse.status(Response.Status.CREATED, created);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
+            throw new GeoPulseException(INVALID_PERIOD_TAG, INVALID_PERIOD_TAG.title(), exception);
         }
     }
 
@@ -119,7 +120,7 @@ public class PeriodTagResource {
         try {
             return service.updatePeriodTag(currentUserService.getCurrentUserId(), id, request);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
+            throw new GeoPulseException(INVALID_PERIOD_TAG, INVALID_PERIOD_TAG.title(), exception);
         }
     }
 
@@ -129,7 +130,7 @@ public class PeriodTagResource {
     public RestResponse<Void> deletePeriodTag(@PathParam("id") Long id,
                                               @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
         if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
-            throw problem(INVALID_PERIOD_DELETE_MODE,
+            throw new GeoPulseException(INVALID_PERIOD_DELETE_MODE,
                     "Invalid delete mode. Supported values: unlink_only, delete_both");
         }
         try {
@@ -137,7 +138,7 @@ public class PeriodTagResource {
                     "delete_both".equalsIgnoreCase(mode));
             return RestResponse.noContent();
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_PERIOD_TAG, exception.getMessage());
+            throw new GeoPulseException(INVALID_PERIOD_TAG, INVALID_PERIOD_TAG.title(), exception);
         }
     }
 }

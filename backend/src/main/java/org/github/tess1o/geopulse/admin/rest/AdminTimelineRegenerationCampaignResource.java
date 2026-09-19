@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -7,7 +9,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
@@ -27,15 +28,12 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INTERNAL_ERROR;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_INVALID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/admin/timeline-regeneration-campaigns")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Slf4j
 @Tag(name = "Admin: Timeline Regeneration", description = "Preview, create, inspect, and retry timeline regeneration campaigns.")
 public class AdminTimelineRegenerationCampaignResource {
 
@@ -59,10 +57,7 @@ public class AdminTimelineRegenerationCampaignResource {
             TimelineRegenerationCampaignPreviewDTO preview = campaignService.previewAdminCampaign(request);
             return preview;
         } catch (IllegalArgumentException e) {
-            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to preview timeline regeneration campaign", e);
-            throw problem(INTERNAL_ERROR, "Failed to preview timeline regeneration campaign");
+            throw new GeoPulseException(TIMELINE_REGENERATION_CAMPAIGN_INVALID, TIMELINE_REGENERATION_CAMPAIGN_INVALID.title(), e);
         }
     }
 
@@ -87,10 +82,7 @@ public class AdminTimelineRegenerationCampaignResource {
             );
             return RestResponse.status(Response.Status.CREATED, created);
         } catch (IllegalArgumentException e) {
-            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to create timeline regeneration campaign", e);
-            throw problem(INTERNAL_ERROR, "Failed to create timeline regeneration campaign");
+            throw new GeoPulseException(TIMELINE_REGENERATION_CAMPAIGN_INVALID, TIMELINE_REGENERATION_CAMPAIGN_INVALID.title(), e);
         }
     }
 
@@ -108,7 +100,7 @@ public class AdminTimelineRegenerationCampaignResource {
             TimelineRegenerationCampaignDetailDTO details = campaignService.getCampaignDetails(campaignId);
             return details;
         } catch (IllegalArgumentException e) {
-            throw problem(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, e.getMessage());
+            throw new GeoPulseException(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND.title(), e);
         }
     }
 
@@ -130,12 +122,9 @@ public class AdminTimelineRegenerationCampaignResource {
             );
             return campaign;
         } catch (IllegalArgumentException e) {
-            throw problem(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, e.getMessage());
+            throw new GeoPulseException(TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND, TIMELINE_REGENERATION_CAMPAIGN_NOT_FOUND.title(), e);
         } catch (IllegalStateException e) {
-            throw problem(TIMELINE_REGENERATION_CAMPAIGN_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to retry timeline regeneration campaign {}", campaignId, e);
-            throw problem(INTERNAL_ERROR, "Failed to retry timeline regeneration campaign");
+            throw new GeoPulseException(TIMELINE_REGENERATION_CAMPAIGN_INVALID, TIMELINE_REGENERATION_CAMPAIGN_INVALID.title(), e);
         }
     }
 }

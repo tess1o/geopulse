@@ -93,7 +93,7 @@ describe('auth store cached profile reconciliation', () => {
       email: 'demo@example.com',
       demoMode: true
     }))
-    apiService.get.mockResolvedValue({ data: user({ demoMode: false }) })
+    apiService.get.mockResolvedValue(user({ demoMode: false }))
 
     const authStore = useAuthStore()
     await authStore.checkAuth()
@@ -110,13 +110,11 @@ describe('auth store cached profile reconciliation', () => {
       mapRenderMode: 'RASTER',
       mapMatchingAvailable: false
     }))
-    apiService.get.mockResolvedValue({
-      data: user({
-        timezone: 'Europe/London',
-        mapRenderMode: 'VECTOR',
-        mapMatchingAvailable: true
-      })
-    })
+    apiService.get.mockResolvedValue(user({
+      timezone: 'Europe/London',
+      mapRenderMode: 'VECTOR',
+      mapMatchingAvailable: true
+    }))
 
     const authStore = useAuthStore()
     await authStore.checkAuth()
@@ -135,7 +133,7 @@ describe('auth store cached profile reconciliation', () => {
     storeCachedProfile(user({ demoMode: true }))
     apiService.isTokenExpired.mockReturnValue(true)
     apiService.refreshToken.mockResolvedValue(true)
-    apiService.get.mockResolvedValue({ data: user({ demoMode: false }) })
+    apiService.get.mockResolvedValue(user({ demoMode: false }))
 
     const authStore = useAuthStore()
     await authStore.checkAuth()

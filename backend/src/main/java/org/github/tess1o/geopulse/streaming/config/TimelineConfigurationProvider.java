@@ -106,7 +106,7 @@ public class TimelineConfigurationProvider {
 
             return Boolean.TRUE.equals(globalDefaults.getDefaultTimelineConfig().getBoatEnabled());
         } catch (NoResultException e) {
-            throw new UserNotFoundException("User not found: " + userId);
+            throw new UserNotFoundException("User not found: " + userId, e);
         }
     }
 

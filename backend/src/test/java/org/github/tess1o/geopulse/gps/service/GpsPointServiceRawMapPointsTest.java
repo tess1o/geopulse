@@ -1,7 +1,6 @@
 package org.github.tess1o.geopulse.gps.service;
 
 import jakarta.persistence.EntityManager;
-import jakarta.ws.rs.ForbiddenException;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceEvaluationService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -11,6 +10,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
 import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_ACCESS_DENIED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -146,7 +147,8 @@ class GpsPointServiceRawMapPointsTest {
         GpsPointService service = createService(repository, resolver);
 
         assertThatThrownBy(() -> service.resolveRawGpsPointLocation(currentUserId, 99L))
-                .isInstanceOf(ForbiddenException.class);
+                .isInstanceOfSatisfying(GeoPulseException.class,
+                        exception -> assertThat(exception.code()).isEqualTo(GPS_POINT_ACCESS_DENIED));
         verifyNoInteractions(resolver);
     }
 

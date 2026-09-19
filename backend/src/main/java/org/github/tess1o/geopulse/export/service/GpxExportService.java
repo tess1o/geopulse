@@ -275,7 +275,7 @@ public class GpxExportService {
                         }
                     });
         } catch (GpxStreamRuntimeException e) {
-            throw e.xmlCause();
+            throw e.xmlCause(); // NOPMD - deliberately rethrow the original XML cause
         }
 
         // Close track if we wrote any points

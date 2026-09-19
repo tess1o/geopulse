@@ -1,7 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
 import io.vertx.core.http.HttpServerRequest;
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.admin.dto.MapMatchingRebuildResponse;
 import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.TargetType;
@@ -118,8 +118,8 @@ class AdminSettingsResourceMapMatchingRepairTest {
         givenMapMatchingEnabledAndConfigured();
 
         assertThatThrownBy(() -> resource.rebuildMapMatching("EVERYTHING"))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail())
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail())
                         .isEqualTo("Unknown map matching mode: EVERYTHING"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
@@ -129,8 +129,8 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.isEnabled()).thenReturn(false);
 
         assertThatThrownBy(() -> resource.rebuildMapMatching(null))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Map matching is disabled"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Map matching is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 
@@ -140,8 +140,8 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.backfillEnabled()).thenReturn(false);
 
         assertThatThrownBy(() -> resource.rebuildMapMatching(null))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Historical backfill is disabled"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Historical backfill is disabled"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 
@@ -153,8 +153,8 @@ class AdminSettingsResourceMapMatchingRepairTest {
         when(mapMatchingConfiguration.valhallaConfigured()).thenReturn(false);
 
         assertThatThrownBy(() -> resource.rebuildMapMatching(null))
-                .isInstanceOf(HttpProblem.class)
-                .satisfies(error -> assertThat(((HttpProblem) error).getDetail()).isEqualTo("Valhalla is not configured"));
+                .isInstanceOf(GeoPulseException.class)
+                .satisfies(error -> assertThat(((GeoPulseException) error).detail()).isEqualTo("Valhalla is not configured"));
         verifyNoInteractions(mapMatchingWorker, auditLogService);
     }
 }

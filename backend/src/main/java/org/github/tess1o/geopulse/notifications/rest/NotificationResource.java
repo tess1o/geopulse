@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.notifications.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -38,7 +40,6 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_NOTIFICATION_PREFERENCES;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_RELEASE_ANNOUNCEMENT;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NOTIFICATION_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/notifications")
 @ApplicationScoped
@@ -76,7 +77,7 @@ public class NotificationResource {
         try {
             return preferencesService.update(currentUserService.getCurrentUserId(), request);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_NOTIFICATION_PREFERENCES, exception.getMessage());
+            throw new GeoPulseException(INVALID_NOTIFICATION_PREFERENCES, INVALID_NOTIFICATION_PREFERENCES.title(), exception);
         }
     }
 
@@ -86,7 +87,7 @@ public class NotificationResource {
         try {
             return releaseAnnouncementService.current(currentUserService.getCurrentUserId());
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_RELEASE_ANNOUNCEMENT, exception.getMessage());
+            throw new GeoPulseException(INVALID_RELEASE_ANNOUNCEMENT, INVALID_RELEASE_ANNOUNCEMENT.title(), exception);
         }
     }
 
@@ -113,7 +114,7 @@ public class NotificationResource {
         try {
             return notificationService.markSeen(currentUserService.getCurrentUserId(), notificationId);
         } catch (IllegalArgumentException exception) {
-            throw problem(NOTIFICATION_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(NOTIFICATION_NOT_FOUND, NOTIFICATION_NOT_FOUND.title(), exception);
         }
     }
 

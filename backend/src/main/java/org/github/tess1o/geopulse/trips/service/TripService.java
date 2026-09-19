@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.trips.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
@@ -30,6 +30,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PERIOD_TAG_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
@@ -101,7 +103,7 @@ public class TripService {
     @Transactional
     public TripDto createTripFromPeriodTag(UUID userId, Long periodTagId) {
         PeriodTagEntity tag = periodTagRepository.findByIdAndUserId(periodTagId, userId)
-                .orElseThrow(() -> new NotFoundException("Period tag not found"));
+                .orElseThrow(() -> new GeoPulseException(PERIOD_TAG_NOT_FOUND, "Period tag not found"));
 
         if (tag.getEndTime() == null) {
             throw new IllegalArgumentException("Cannot convert active period tag without end time");
@@ -346,7 +348,7 @@ public class TripService {
         try {
             return TripStatus.valueOf(statusFilter.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Invalid status filter: " + statusFilter);
+            throw new IllegalArgumentException("Invalid status filter: " + statusFilter, ex);
         }
     }
 

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.digest.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -19,7 +21,6 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource exposing heatmap location data for the Rewind (TimeDigest)
@@ -60,18 +61,18 @@ public class DigestHeatmapResource {
         String timezone = user.getTimezone();
 
         if (year < 2000 || year > 2100) {
-            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
                     Map.of("year", year, "min", 2000, "max", 2100));
         }
 
         if (month < 1 || month > 12) {
-            throw problem(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
+            throw new GeoPulseException(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
                     Map.of("month", month, "min", 1, "max", 12));
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+            throw new GeoPulseException(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
                     Map.of("layer", String.valueOf(layer)));
         }
 
@@ -97,13 +98,13 @@ public class DigestHeatmapResource {
         String timezone = user.getTimezone();
 
         if (year < 2000 || year > 2100) {
-            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
                     Map.of("year", year, "min", 2000, "max", 2100));
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+            throw new GeoPulseException(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
                     Map.of("layer", String.valueOf(layer)));
         }
 
@@ -129,7 +130,7 @@ public class DigestHeatmapResource {
         UUID userId = user.getId();
 
         if (startTime == null || startTime.isBlank() || endTime == null || endTime.isBlank()) {
-            throw problem(INVALID_HEATMAP_RANGE, "startTime and endTime are required");
+            throw new GeoPulseException(INVALID_HEATMAP_RANGE, "startTime and endTime are required");
         }
 
         Instant start;
@@ -138,16 +139,16 @@ public class DigestHeatmapResource {
             start = Instant.parse(startTime);
             end = Instant.parse(endTime);
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_HEATMAP_RANGE, "startTime and endTime must be valid ISO-8601 timestamps");
+            throw new GeoPulseException(INVALID_HEATMAP_RANGE, "startTime and endTime must be valid ISO-8601 timestamps", e);
         }
 
         if (end.isBefore(start)) {
-            throw problem(INVALID_HEATMAP_RANGE, "endTime must be after startTime");
+            throw new GeoPulseException(INVALID_HEATMAP_RANGE, "endTime must be after startTime");
         }
 
         HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
         if (heatmapLayer == null) {
-            throw problem(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
+            throw new GeoPulseException(INVALID_HEATMAP_LAYER, "Invalid layer. Must be one of: stays, trips, combined",
                     Map.of("layer", String.valueOf(layer)));
         }
 

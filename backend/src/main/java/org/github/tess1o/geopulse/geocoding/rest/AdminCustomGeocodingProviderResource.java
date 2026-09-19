@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.geocoding.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -25,7 +27,6 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/admin/geocoding/providers")
 @Produces(MediaType.APPLICATION_JSON)
@@ -53,7 +54,7 @@ public class AdminCustomGeocodingProviderResource {
         try {
             return RestResponse.status(Response.Status.CREATED, providerService.create(request));
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_CUSTOM_GEOCODING_PROVIDER, e.getMessage());
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 
@@ -66,9 +67,9 @@ public class AdminCustomGeocodingProviderResource {
         try {
             return providerService.update(name, request);
         } catch (NotFoundException e) {
-            throw problem(NOT_FOUND, e.getMessage());
+            throw new GeoPulseException(NOT_FOUND, NOT_FOUND.title(), e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_CUSTOM_GEOCODING_PROVIDER, e.getMessage());
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 
@@ -79,9 +80,9 @@ public class AdminCustomGeocodingProviderResource {
         try {
             providerService.delete(name);
         } catch (NotFoundException e) {
-            throw problem(NOT_FOUND, e.getMessage());
+            throw new GeoPulseException(NOT_FOUND, NOT_FOUND.title(), e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_CUSTOM_GEOCODING_PROVIDER, e.getMessage());
+            throw new GeoPulseException(INVALID_CUSTOM_GEOCODING_PROVIDER, INVALID_CUSTOM_GEOCODING_PROVIDER.title(), e);
         }
     }
 }

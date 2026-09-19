@@ -10,9 +10,8 @@ import lombok.Getter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
-import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
-import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.RefreshTokenResponse;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
@@ -25,6 +24,11 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_CREDENTIALS;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_REFRESH_TOKEN;
 
 @ApplicationScoped
 public class AuthenticationService {
@@ -90,25 +94,17 @@ public class AuthenticationService {
 
     public AuthResponse authenticate(String email, String password) {
         Optional<UserEntity> userOpt = userService.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found");
+        String storedHash = userOpt.map(UserEntity::getPasswordHash)
+                .filter(hash -> !hash.isBlank())
+                .orElseGet(securePasswordUtils::dummyPasswordHash);
+        boolean passwordValid = securePasswordUtils.isPasswordValid(password, storedHash);
+        if (userOpt.isEmpty() || !passwordValid) {
+            throw new GeoPulseException(INVALID_CREDENTIALS, "Invalid email or password");
         }
 
         UserEntity user = userOpt.get();
-
-        // Check if user account is active
-        if (!user.isActive()) {
-            throw new IllegalArgumentException("User account is disabled");
-        }
-
-        // Authenticate user
-        if (!securePasswordUtils.isPasswordValid(password, user.getPasswordHash())) {
-            throw new InvalidPasswordException("Invalid password");
-        }
-
+        requireActive(user);
         adminBootstrapService.ensureAdminForAuthenticatedUser(user);
-
-        // Generate JWT tokens
         return getAuthResponse(user);
     }
 
@@ -117,15 +113,15 @@ public class AuthenticationService {
      * This bypasses password validation since the user has already been authenticated by external provider.
      */
     public AuthResponse createAuthResponse(UserEntity user) {
-        // Check if user account is active
-        if (!user.isActive()) {
-            throw new IllegalArgumentException("User account is disabled");
-        }
-
+        requireActive(user);
         adminBootstrapService.ensureAdminForAuthenticatedUser(user);
-
-        // Generate JWT tokens
         return getAuthResponse(user);
+    }
+
+    private static void requireActive(UserEntity user) {
+        if (!user.isActive()) {
+            throw new GeoPulseException(ACCESS_DENIED, "User account is disabled");
+        }
     }
 
     private AuthResponse getAuthResponse(UserEntity user) {
@@ -164,33 +160,42 @@ public class AuthenticationService {
                 .build();
     }
 
-    public RefreshTokenResponse refreshToken(String refreshToken) throws ParseException {
-        // Parse the refresh token
-        JsonWebToken jwt = jwtParser.parse(refreshToken);
+    public RefreshTokenResponse refreshToken(String refreshToken) {
+        JsonWebToken jwt;
+        try {
+            jwt = jwtParser.parse(refreshToken);
+        } catch (ParseException e) {
+            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token", e);
+        }
 
         // Validate it's a refresh token
         String tokenType = jwt.getClaim("type");
         if (!"refresh".equals(tokenType)) {
-            throw new IllegalArgumentException("Invalid token type");
+            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token");
         }
 
         // Get user ID from token
         String userIdStr = jwt.getSubject();
         if (userIdStr == null) {
-            throw new IllegalArgumentException("Invalid token: missing user ID");
+            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token");
         }
 
-        // Find the user
-        Optional<UserEntity> userOpt = userService.findById(UUID.fromString(userIdStr));
+        UUID userId;
+        try {
+            userId = UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_REFRESH_TOKEN, "Invalid refresh token", e);
+        }
+        Optional<UserEntity> userOpt = userService.findById(userId);
         if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UserEntity user = userOpt.get();
 
         // Check if user is still active (optional security check)
         if (!user.isActive()) {
-            throw new IllegalArgumentException("User account is deactivated");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         return new RefreshTokenResponse(

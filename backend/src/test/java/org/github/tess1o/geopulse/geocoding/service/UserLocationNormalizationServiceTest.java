@@ -5,7 +5,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
@@ -17,6 +16,7 @@ import org.github.tess1o.geopulse.geocoding.model.NormalizationRuleType;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.repository.UserLocationNormalizationRuleRepository;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.github.tess1o.geopulse.testsupport.TestIds;
@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.NORMALIZATION_RULE_ACCESS_DENIED;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -229,7 +230,9 @@ class UserLocationNormalizationServiceTest {
                         .targetCountry("Germany")
                         .build());
 
-        assertThrows(ForbiddenException.class, () -> normalizationService.deleteRule(userId, otherRule.getId()));
+        GeoPulseException exception = assertThrows(GeoPulseException.class,
+                () -> normalizationService.deleteRule(userId, otherRule.getId()));
+        assertEquals(NORMALIZATION_RULE_ACCESS_DENIED, exception.code());
     }
 
     private void waitForJob(UUID jobId) {

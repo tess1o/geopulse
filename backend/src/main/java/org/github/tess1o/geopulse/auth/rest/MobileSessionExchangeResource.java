@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -19,7 +21,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.MOBILE_SESSION_CODE_INVALID;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/auth/mobile-sessions")
 @Produces(MediaType.APPLICATION_JSON)
@@ -36,14 +37,14 @@ public class MobileSessionExchangeResource {
             responseDescription = "Authenticated mobile session")
     public Response exchangeSessionCode(@Valid MobileSessionExchangeRequest request) {
         if (request == null) {
-            throw problem(BAD_REQUEST, "sessionCode is required");
+            throw new GeoPulseException(BAD_REQUEST, "sessionCode is required");
         }
 
         Optional<AuthResponse> authResponse =
                 mobileDeepLinkService.exchangeSessionCode(request.getSessionCode());
 
         if (authResponse.isEmpty()) {
-            throw problem(MOBILE_SESSION_CODE_INVALID, "Mobile session code is expired or invalid");
+            throw new GeoPulseException(MOBILE_SESSION_CODE_INVALID, "Mobile session code is expired or invalid");
         }
 
         return Response.ok(authResponse.get())

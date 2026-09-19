@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.Valid;
@@ -20,7 +22,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_RECONSTRUCTION;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.TRIP_PLANNING + "/reconstructions")
 @ApplicationScoped
@@ -45,7 +46,7 @@ public class ReconstructionResource {
         try {
             return tripReconstructionService.preview(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found");
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -57,16 +58,13 @@ public class ReconstructionResource {
         try {
             return tripReconstructionService.commit(currentUserService.getCurrentUserId(), request);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found");
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem invalid(IllegalArgumentException exception) {
-        String detail = exception.getMessage() == null || exception.getMessage().isBlank()
-                ? "Invalid reconstruction request"
-                : exception.getMessage();
-        return problem(INVALID_TRIP_RECONSTRUCTION, detail);
+    private static GeoPulseException invalid(IllegalArgumentException exception) {
+        return new GeoPulseException(INVALID_TRIP_RECONSTRUCTION, "Invalid reconstruction request", exception);
     }
 }

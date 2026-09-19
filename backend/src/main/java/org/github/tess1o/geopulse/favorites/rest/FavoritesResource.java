@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.favorites.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -41,7 +43,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/favorites")
 @ApplicationScoped
@@ -84,9 +85,9 @@ public class FavoritesResource {
             UUID jobId = boundsChanged ? service.createTimelineRegenerationJob(userId) : null;
             return new JobResponse(jobId);
         } catch (SecurityException exception) {
-            throw problem(FAVORITE_ACCESS_DENIED, "Not authorized to update this favorite");
+            throw new GeoPulseException(FAVORITE_ACCESS_DENIED, "Not authorized to update this favorite", exception);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_FAVORITE, exception.getMessage());
+            throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
     }
 
@@ -100,9 +101,9 @@ public class FavoritesResource {
             service.deleteFavorite(userId, favoriteId);
             return new JobResponse(service.createTimelineRegenerationJob(userId));
         } catch (SecurityException exception) {
-            throw problem(FAVORITE_ACCESS_DENIED, "Not authorized to delete this favorite");
+            throw new GeoPulseException(FAVORITE_ACCESS_DENIED, "Not authorized to delete this favorite", exception);
         } catch (IllegalArgumentException exception) {
-            throw problem(FAVORITE_NOT_FOUND, "Favorite not found");
+            throw new GeoPulseException(FAVORITE_NOT_FOUND, "Favorite not found", exception);
         }
     }
 
@@ -116,7 +117,7 @@ public class FavoritesResource {
             return RestResponse.status(Response.Status.CREATED,
                     new JobResponse(service.createTimelineRegenerationJob(userId)));
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_FAVORITE, exception.getMessage());
+            throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
     }
 
@@ -130,7 +131,7 @@ public class FavoritesResource {
             return RestResponse.status(Response.Status.CREATED,
                     new JobResponse(service.createTimelineRegenerationJob(userId)));
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_FAVORITE, exception.getMessage());
+            throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
     }
 
@@ -139,14 +140,14 @@ public class FavoritesResource {
     @APIResponse(responseCode = "201", description = "Favorites created")
     public RestResponse<BulkAddFavoritesResult> bulkAddFavorites(@NotNull @Valid BulkAddFavoritesDto request) {
         if (request.getPoints().isEmpty() && request.getAreas().isEmpty()) {
-            throw problem(NO_FAVORITES_PROVIDED, "No favorites provided for bulk add");
+            throw new GeoPulseException(NO_FAVORITES_PROVIDED, "No favorites provided for bulk add");
         }
 
         UUID userId = currentUserService.getCurrentUserId();
         try {
             BulkAddFavoritesResult result = service.bulkAddFavorites(userId, request);
             if (result.getSuccessCount() == 0) {
-                throw problem(FAVORITES_BULK_CREATE_FAILED, "Failed to add any favorites");
+                throw new GeoPulseException(FAVORITES_BULK_CREATE_FAILED, "Failed to add any favorites");
             }
             UUID jobId = service.createTimelineRegenerationJob(userId);
             if (jobId != null) {
@@ -154,7 +155,7 @@ public class FavoritesResource {
             }
             return RestResponse.status(Response.Status.CREATED, result);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_FAVORITE, exception.getMessage());
+            throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
     }
 
@@ -165,11 +166,11 @@ public class FavoritesResource {
             BulkUpdateFavoritesResult result = service.bulkUpdateFavorites(
                     currentUserService.getCurrentUserId(), request);
             if (result.getSuccessCount() == 0) {
-                throw problem(FAVORITES_BULK_UPDATE_FAILED, "Failed to update any favorites");
+                throw new GeoPulseException(FAVORITES_BULK_UPDATE_FAILED, "Failed to update any favorites");
             }
             return result;
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_FAVORITE, exception.getMessage());
+            throw new GeoPulseException(INVALID_FAVORITE, INVALID_FAVORITE.title(), exception);
         }
     }
 
@@ -185,7 +186,7 @@ public class FavoritesResource {
         UUID userId = currentUserService.getCurrentUserId();
         Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(userId);
         if (activeJob.isPresent()) {
-            throw problem(RECONCILIATION_ALREADY_ACTIVE,
+            throw new GeoPulseException(RECONCILIATION_ALREADY_ACTIVE,
                     "You already have an active reconciliation job",
                     Map.of("jobId", activeJob.get().getJobId().toString()));
         }
@@ -199,13 +200,13 @@ public class FavoritesResource {
         try {
             parsedJobId = UUID.fromString(jobId);
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_RECONCILIATION_JOB_ID, "Invalid job ID format");
+            throw new GeoPulseException(INVALID_RECONCILIATION_JOB_ID, "Invalid job ID format", exception);
         }
 
         ReconciliationJobProgress progress = reconciliationProgressService.getJobProgress(parsedJobId)
-                .orElseThrow(() -> problem(RECONCILIATION_JOB_NOT_FOUND, "Job not found"));
+                .orElseThrow(() -> new GeoPulseException(RECONCILIATION_JOB_NOT_FOUND, "Job not found"));
         if (!progress.getUserId().equals(currentUserService.getCurrentUserId())) {
-            throw problem(RECONCILIATION_JOB_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(RECONCILIATION_JOB_ACCESS_DENIED, "Access denied");
         }
         return progress;
     }

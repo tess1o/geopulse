@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,7 +36,6 @@ import java.util.UUID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PERIOD_TAG_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/trips")
 @ApplicationScoped
@@ -68,7 +69,7 @@ public class TripResource {
         try {
             return tripService.getTrip(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         }
     }
 
@@ -89,7 +90,7 @@ public class TripResource {
             return RestResponse.status(Response.Status.CREATED,
                     tripService.createTripFromPeriodTag(currentUserService.getCurrentUserId(), periodTagId));
         } catch (NotFoundException e) {
-            throw problem(PERIOD_TAG_NOT_FOUND, "Period tag not found", Map.of("periodTagId", periodTagId));
+            throw new GeoPulseException(PERIOD_TAG_NOT_FOUND, "Period tag not found", Map.of("periodTagId", periodTagId), e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -101,7 +102,7 @@ public class TripResource {
         try {
             return tripService.updateTrip(currentUserService.getCurrentUserId(), id, dto);
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -112,14 +113,14 @@ public class TripResource {
     public RestResponse<Void> deleteTrip(@PathParam("id") Long id,
                                          @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
         if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
-            throw problem(INVALID_TRIP_REQUEST, "Invalid delete mode",
+            throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid delete mode",
                     Map.of("mode", mode, "allowedValues", "unlink_only,delete_both"));
         }
         try {
             tripService.deleteTrip(currentUserService.getCurrentUserId(), id, "delete_both".equalsIgnoreCase(mode));
             return RestResponse.noContent();
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         }
     }
 
@@ -129,7 +130,7 @@ public class TripResource {
         try {
             return tripService.unlinkTripFromPeriodTag(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         }
     }
 
@@ -139,7 +140,7 @@ public class TripResource {
         try {
             return tripService.getTripCollaborators(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         }
     }
 
@@ -153,7 +154,7 @@ public class TripResource {
             return tripService.upsertTripCollaborator(
                     currentUserService.getCurrentUserId(), id, UUID.fromString(friendId), dto);
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -168,20 +169,17 @@ public class TripResource {
                     currentUserService.getCurrentUserId(), id, UUID.fromString(friendId));
             return RestResponse.noContent();
         } catch (NotFoundException e) {
-            throw notFound(id);
+            throw notFound(id, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem notFound(Long tripId) {
-        return problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
+    private static GeoPulseException notFound(Long tripId, NotFoundException cause) {
+        return new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), cause);
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem invalid(IllegalArgumentException exception) {
-        String detail = exception.getMessage() == null || exception.getMessage().isBlank()
-                ? "Invalid trip request"
-                : exception.getMessage();
-        return problem(INVALID_TRIP_REQUEST, detail);
+    private static GeoPulseException invalid(IllegalArgumentException exception) {
+        return new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid trip request", exception);
     }
 }

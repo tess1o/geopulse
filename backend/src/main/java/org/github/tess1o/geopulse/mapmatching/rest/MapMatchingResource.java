@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.mapmatching.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -17,7 +19,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_MAP_MATCHING_REQUEST;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/map-matching-jobs")
 @Produces(MediaType.APPLICATION_JSON)
@@ -41,7 +42,7 @@ public class MapMatchingResource {
         try {
             return mapMatchingService.resolve(userId, request.getTripIds());
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_MAP_MATCHING_REQUEST, e.getMessage());
+            throw new GeoPulseException(INVALID_MAP_MATCHING_REQUEST, INVALID_MAP_MATCHING_REQUEST.title(), e);
         }
     }
 
@@ -53,7 +54,7 @@ public class MapMatchingResource {
         try {
             return mapMatchingService.status(userId, request.getTargetIds());
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_MAP_MATCHING_REQUEST, e.getMessage());
+            throw new GeoPulseException(INVALID_MAP_MATCHING_REQUEST, INVALID_MAP_MATCHING_REQUEST.title(), e);
         }
     }
 }

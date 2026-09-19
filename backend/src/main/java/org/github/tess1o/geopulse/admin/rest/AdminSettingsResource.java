@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.http.HttpServerRequest;
@@ -56,7 +58,6 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for admin settings management.
@@ -192,7 +193,7 @@ public class AdminSettingsResource {
         if (!geocodingSettings.isEmpty()) {
             String validationError = geocodingValidationService.validateGeocodingChanges(geocodingSettings);
             if (validationError != null) {
-                throw problem(INVALID_ADMIN_SETTINGS, validationError);
+                throw new GeoPulseException(INVALID_ADMIN_SETTINGS, validationError);
             }
         }
 
@@ -203,7 +204,7 @@ public class AdminSettingsResource {
         if (!weatherSettings.isEmpty()) {
             String validationError = weatherValidationService.validateWeatherChanges(weatherSettings);
             if (validationError != null) {
-                throw problem(INVALID_ADMIN_SETTINGS, validationError);
+                throw new GeoPulseException(INVALID_ADMIN_SETTINGS, validationError);
             }
         }
 
@@ -352,7 +353,7 @@ public class AdminSettingsResource {
             return new MapMatchingProviderTestResponse(
                     false, response.statusCode(), "valhalla", statusUri.toString(), detail);
         } catch (Exception e) {
-            String detail = e.getMessage() == null ? "Valhalla connection failed" : e.getMessage();
+            String detail = "Valhalla connection failed";
             integrationHealthService.recordFailure(ExternalIntegrationType.MAP_MATCHING, "valhalla",
                     ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE, e.getClass().getSimpleName(),
                     e.getMessage(), null, null);
@@ -377,13 +378,13 @@ public class AdminSettingsResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     public MapMatchingRebuildResponse rebuildMapMatching(@QueryParam("mode") String mode) {
         if (!mapMatchingConfiguration.isEnabled()) {
-            throw problem(MAP_MATCHING_DISABLED, "Map matching is disabled");
+            throw new GeoPulseException(MAP_MATCHING_DISABLED, "Map matching is disabled");
         }
         if (!mapMatchingConfiguration.backfillEnabled()) {
-            throw problem(MAP_MATCHING_BACKFILL_DISABLED, "Historical backfill is disabled");
+            throw new GeoPulseException(MAP_MATCHING_BACKFILL_DISABLED, "Historical backfill is disabled");
         }
         if (!"valhalla".equals(mapMatchingConfiguration.provider()) || !mapMatchingConfiguration.valhallaConfigured()) {
-            throw problem(MAP_MATCHING_PROVIDER_NOT_CONFIGURED, "Valhalla is not configured");
+            throw new GeoPulseException(MAP_MATCHING_PROVIDER_NOT_CONFIGURED, "Valhalla is not configured");
         }
         MapMatchingRebuildMode rebuildMode = parseRebuildMode(mode);
 
@@ -413,7 +414,7 @@ public class AdminSettingsResource {
         try {
             return MapMatchingRebuildMode.valueOf(mode.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw problem(MAP_MATCHING_MODE_INVALID, "Unknown map matching mode: " + mode);
+            throw new GeoPulseException(MAP_MATCHING_MODE_INVALID, "Unknown map matching mode: " + mode, e);
         }
     }
 

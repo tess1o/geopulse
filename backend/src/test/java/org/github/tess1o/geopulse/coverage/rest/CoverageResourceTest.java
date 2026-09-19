@@ -1,6 +1,6 @@
 package org.github.tess1o.geopulse.coverage.rest;
 
-import io.quarkiverse.httpproblem.HttpProblem;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
@@ -62,7 +62,7 @@ class CoverageResourceTest {
         when(importJobService.hasActiveImportJob(userId)).thenReturn(true);
 
         assertThatThrownBy(coverageResource::recalculateCoverage)
-                .isInstanceOf(HttpProblem.class)
+                .isInstanceOf(GeoPulseException.class)
                 .hasMessageContaining("Coverage recalculation is already managed by the active import job");
         verifyNoInteractions(processingService);
     }
@@ -83,7 +83,7 @@ class CoverageResourceTest {
     @Test
     void updateCoverageSettings_returnsBadRequestWhenEnabledIsMissing() {
         assertThatThrownBy(() -> coverageResource.updateCoverageSettings(null))
-                .isInstanceOf(HttpProblem.class)
+                .isInstanceOf(GeoPulseException.class)
                 .hasMessageContaining("enabled is required");
         verifyNoInteractions(coverageService, processingService, currentUserService);
     }
@@ -94,7 +94,7 @@ class CoverageResourceTest {
         when(currentUserService.getCurrentUser()).thenReturn(user);
 
         assertThatThrownBy(() -> coverageResource.getCoverageCells("0,0,1,1", null, null))
-                .isInstanceOf(HttpProblem.class)
+                .isInstanceOf(GeoPulseException.class)
                 .hasMessageContaining("Coverage is not enabled for this user");
         verifyNoInteractions(coverageService, processingService, importJobService);
     }

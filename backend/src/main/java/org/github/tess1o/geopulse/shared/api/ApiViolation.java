@@ -11,5 +11,5 @@ public record ApiViolation(
         @Schema(description = "Request location containing the field") String in,
         @Schema(description = "Stable machine-readable validation code") ApiViolationCode code,
         @Schema(description = "Primitive values used to format the validation message") Map<String, Object> parameters,
-        @Schema(description = "English fallback detail") String detail) {
+        @Schema(description = "Localizable validation message") MessageDescriptor detail) {
 }

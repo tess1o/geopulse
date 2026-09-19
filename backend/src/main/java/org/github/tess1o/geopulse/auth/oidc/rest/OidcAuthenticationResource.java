@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.oidc.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -8,7 +10,6 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponseSchema;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
@@ -26,21 +27,19 @@ import org.github.tess1o.geopulse.auth.oidc.service.OidcAccountLinkingService;
 import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import io.quarkiverse.httpproblem.HttpProblem;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/auth/oidc")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @RequestScoped
-@Slf4j
 @Tag(name = "User: Authentication", description = "Authenticate users and manage OIDC account linking.")
 public class OidcAuthenticationResource {
 
@@ -99,11 +98,11 @@ public class OidcAuthenticationResource {
         try {
             // Check if OIDC login is enabled
             if (!authConfigurationService.isOidcLoginEnabled()) {
-                throw problem(OIDC_LOGIN_DISABLED, "OIDC login is currently disabled");
+                throw new GeoPulseException(OIDC_LOGIN_DISABLED, "OIDC login is currently disabled");
             }
             return oidcAuthService.initiateLogin(providerName, null, redirectUri, null);
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_PROVIDER_INVALID, e.getMessage());
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -132,9 +131,9 @@ public class OidcAuthenticationResource {
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (OidcRegistrationDisabledException e) {
-            throw problem(OIDC_REGISTRATION_DISABLED, e.getMessage());
+            throw new GeoPulseException(OIDC_REGISTRATION_DISABLED, OIDC_REGISTRATION_DISABLED.title(), e);
         } catch (OidcLoginDisabledException e) {
-            throw problem(OIDC_LOGIN_DISABLED, e.getMessage());
+            throw new GeoPulseException(OIDC_LOGIN_DISABLED, OIDC_LOGIN_DISABLED.title(), e);
         } catch (OidcAccountLinkingRequiredException e) {
             // Handle account linking requirement
             OidcAccountLinkingErrorResponse errorResponse = OidcAccountLinkingErrorResponse.builder()
@@ -147,14 +146,10 @@ public class OidcAuthenticationResource {
                             .build())
                     .build();
             
-            throw HttpProblem.builder(problem(OIDC_ACCOUNT_LINKING_REQUIRED, "Account linking required"))
-                    .with("linking", errorResponse)
-                    .build();
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_REQUIRED, "Account linking required",
+                    Map.of("linking", errorResponse), e);
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_PROVIDER_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to handle OIDC callback", e);
-            throw problem(OIDC_AUTHENTICATION_FAILED, "OIDC authentication failed");
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -171,10 +166,7 @@ public class OidcAuthenticationResource {
             UUID userId = currentUserService.getCurrentUserId();
             return oidcAuthService.initiateLogin(providerName, userId, redirectUri, null);
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_PROVIDER_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to initiate OIDC linking for provider: {}", providerName, e);
-            throw problem(OIDC_AUTHENTICATION_FAILED, "Failed to initiate OIDC account linking");
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -189,10 +181,7 @@ public class OidcAuthenticationResource {
             UUID userId = currentUserService.getCurrentUserId();
             userOidcConnectionService.unlinkProvider(userId, providerName);
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_PROVIDER_INVALID, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to unlink OIDC provider: {}", providerName, e);
-            throw problem(OIDC_AUTHENTICATION_FAILED, "Failed to unlink OIDC provider");
+            throw new GeoPulseException(OIDC_PROVIDER_INVALID, OIDC_PROVIDER_INVALID.title(), e);
         }
     }
 
@@ -230,10 +219,7 @@ public class OidcAuthenticationResource {
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_ACCOUNT_LINKING_FAILED, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to link account with password", e);
-            throw problem(OIDC_AUTHENTICATION_FAILED, "Account linking failed");
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
     }
 
@@ -246,10 +232,7 @@ public class OidcAuthenticationResource {
         try {
             return accountLinkingService.initiateOidcVerificationForLinking(request);
         } catch (IllegalArgumentException e) {
-            throw problem(OIDC_ACCOUNT_LINKING_FAILED, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to initiate OIDC verification for linking", e);
-            throw problem(OIDC_AUTHENTICATION_FAILED, "OIDC verification initiation failed");
+            throw new GeoPulseException(OIDC_ACCOUNT_LINKING_FAILED, OIDC_ACCOUNT_LINKING_FAILED.title(), e);
         }
     }
 }

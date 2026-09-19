@@ -9,10 +9,8 @@ import org.eclipse.microprofile.openapi.models.parameters.Parameter;
 import org.eclipse.microprofile.openapi.models.PathItem;
 import org.eclipse.microprofile.openapi.models.Paths;
 import org.eclipse.microprofile.openapi.models.media.Content;
-import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.eclipse.microprofile.openapi.models.responses.APIResponse;
 import org.eclipse.microprofile.openapi.models.responses.APIResponses;
-import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +18,7 @@ import java.util.stream.Collectors;
 
 public class StandardAuthResponsesOpenApiFilter implements OASFilter {
 
-    private static final String API_ERROR_RESPONSE_SCHEMA = "GeoPulseHttpProblem";
+    private static final String API_ERROR_RESPONSE_SCHEMA = "ApiProblemResponse";
     private static final String API_ERROR_RESPONSE_REF = "#/components/schemas/" + API_ERROR_RESPONSE_SCHEMA;
     private static final String API_ERROR_CODES_EXTENSION = "x-geopulse-api-errors";
     private static final String APPLICATION_PROBLEM_JSON = "application/problem+json";
@@ -48,7 +46,6 @@ public class StandardAuthResponsesOpenApiFilter implements OASFilter {
             }
         }
 
-        openAPI.getComponents().addSchema(API_ERROR_RESPONSE_SCHEMA, apiErrorResponseSchema());
     }
 
     private static void removeInfrastructureHeaders(Operation operation) {
@@ -140,20 +137,4 @@ public class StandardAuthResponsesOpenApiFilter implements OASFilter {
                 && !responseCode.equals("403");
     }
 
-    private static Schema apiErrorResponseSchema() {
-        return OASFactory.createSchema()
-                .addType(Schema.SchemaType.OBJECT)
-                .addProperty("type", OASFactory.createSchema().addType(Schema.SchemaType.STRING))
-                .addProperty("title", OASFactory.createSchema().addType(Schema.SchemaType.STRING))
-                .addProperty("status", OASFactory.createSchema().addType(Schema.SchemaType.INTEGER))
-                .addProperty("detail", OASFactory.createSchema().addType(Schema.SchemaType.STRING))
-                .addProperty("code", OASFactory.createSchema()
-                        .addType(Schema.SchemaType.STRING)
-                        .enumeration(java.util.Arrays.stream(ApiErrorCode.values())
-                                .map(ApiErrorCode::name)
-                                .map(value -> (Object) value)
-                                .toList()))
-                .addProperty("parameters", OASFactory.createSchema().addType(Schema.SchemaType.OBJECT))
-                .addProperty("violations", OASFactory.createSchema().addType(Schema.SchemaType.ARRAY));
-    }
 }

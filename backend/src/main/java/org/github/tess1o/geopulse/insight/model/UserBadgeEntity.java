@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.insight.model;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Slf4j
 public class UserBadgeEntity extends PanacheEntityBase {
 
     @Id
@@ -137,7 +139,7 @@ public class UserBadgeEntity extends PanacheEntityBase {
                     return localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
                 } catch (DateTimeParseException e3) {
                     // Log the error and return null
-                    System.err.println("Failed to parse badge date: " + dateString);
+                    log.error("Failed to parse badge date: " + dateString, e3);
                     return null;
                 }
             }

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import io.quarkiverse.httpproblem.HttpProblem;
 import jakarta.annotation.security.RolesAllowed;
@@ -43,7 +45,6 @@ import java.util.UUID;
 
 import static org.github.tess1o.geopulse.admin.backup.RestoreOperationState.PREPARING;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 
 @Path("/admin/backups")
@@ -81,7 +82,7 @@ public class AdminFullBackupResource {
                     schema = @Schema(type = SchemaType.STRING, format = "binary")))
     public Response downloadFullBackup() {
         if (!maintenanceService.tryStartBackup("download")) {
-            throw problem(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
+            throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
         }
         try {
             String operationId = maintenanceService.currentOperationId();
@@ -104,10 +105,9 @@ public class AdminFullBackupResource {
             audit(ActionType.ADMIN_FULL_BACKUP_DOWNLOADED, fileName, operationId, httpRequest);
             return Response.ok(stream).header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
                     .header("Content-Type", "application/octet-stream").build();
-        } catch (Exception e) {
-            log.error("Full backup download creation failed; failureType={}", e.getClass().getSimpleName());
+        } catch (Exception e) { // NOPMD - backup API exposes checked Exception; this try contains no application problems
             maintenanceService.finishFailure(BACKUP_FAILURE_MESSAGE);
-            throw problem(BACKUP_FAILED, BACKUP_FAILURE_MESSAGE);
+            throw new GeoPulseException(BACKUP_FAILED, BACKUP_FAILURE_MESSAGE, e);
         }
     }
 
@@ -116,7 +116,7 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     public AdminBackupCreatedResponse runBackupNow() {
         if (!maintenanceService.tryStartBackup("manual-local")) {
-            throw problem(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
+            throw new GeoPulseException(BACKUP_OPERATION_CONFLICT, "Another backup or restore is already running");
         }
         try {
             String operationId = maintenanceService.currentOperationId();
@@ -125,10 +125,9 @@ public class AdminFullBackupResource {
             maintenanceService.finishSuccess(fileName, size);
             audit(ActionType.ADMIN_FULL_BACKUP_CREATED, fileName, operationId, httpRequest);
             return new AdminBackupCreatedResponse(fileName, size);
-        } catch (Exception e) {
-            log.error("Manual full backup failed; failureType={}", e.getClass().getSimpleName());
+        } catch (Exception e) { // NOPMD - backup API exposes checked Exception; this try contains no application problems
             maintenanceService.finishFailure(BACKUP_FAILURE_MESSAGE);
-            throw problem(BACKUP_FAILED, BACKUP_FAILURE_MESSAGE);
+            throw new GeoPulseException(BACKUP_FAILED, BACKUP_FAILURE_MESSAGE, e);
         }
     }
 
@@ -138,10 +137,9 @@ public class AdminFullBackupResource {
     public List<AdminBackupFileDto> listFiles() {
         try {
             return backupService.listLocalBackups();
-        } catch (Exception e) {
-            log.warn("Failed to list local backup files", e);
-            throw problem(BACKUP_FAILED,
-                    "Failed to list local backup files. Check the configured backup folder.");
+        } catch (IOException e) {
+            throw new GeoPulseException(BACKUP_FAILED,
+                    "Failed to list local backup files. Check the configured backup folder.", e);
         }
     }
 
@@ -172,10 +170,10 @@ public class AdminFullBackupResource {
                     .header("Content-Type", "application/octet-stream")
                     .build();
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_BACKUP_REQUEST, e.getMessage());
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
         } catch (IOException e) {
             log.warn("Could not open local backup for download; file={}", fileName, e);
-            throw problem(BACKUP_FAILED, "Failed to open the local backup file.");
+            throw new GeoPulseException(BACKUP_FAILED, "Failed to open the local backup file.", e);
         }
     }
 
@@ -184,7 +182,7 @@ public class AdminFullBackupResource {
     @RolesAllowed(SecurityRoles.ADMIN)
     public void deleteLocalBackup(@PathParam("fileName") String fileName) {
         if (!maintenanceService.tryStartFileMutation("delete")) {
-            throw problem(BACKUP_OPERATION_CONFLICT,
+            throw new GeoPulseException(BACKUP_OPERATION_CONFLICT,
                     "Cannot delete a backup while another backup or restore is running");
         }
         try {
@@ -193,11 +191,10 @@ public class AdminFullBackupResource {
             audit(ActionType.ADMIN_FULL_BACKUP_DELETED, fileName, operationId, httpRequest);
             log.info("Backup file operation {} deleted {}", operationId, fileName);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_BACKUP_REQUEST, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to delete local backup {}", fileName, e);
-            throw problem(BACKUP_FAILED,
-                    "Failed to delete the local backup. Check backup folder permissions.");
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
+        } catch (IOException e) {
+            throw new GeoPulseException(BACKUP_FAILED,
+                    "Failed to delete the local backup. Check backup folder permissions.", e);
         } finally {
             maintenanceService.finishFileMutation();
         }
@@ -212,16 +209,9 @@ public class AdminFullBackupResource {
     public Response restoreUploaded(@RestForm("file") FileUpload file,
                                     @RestForm("password") String password) {
         if (file == null || file.uploadedFile() == null) {
-            throw problem(INVALID_BACKUP_REQUEST, "Backup file is required");
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, "Backup file is required");
         }
-        try {
-            return prepareRestore(file.uploadedFile(), file.fileName(), password, httpRequest);
-        } catch (HttpProblem e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("Could not read uploaded full backup", e);
-            throw problem(RESTORE_PREPARATION_FAILED, "Failed to read the uploaded backup.");
-        }
+        return prepareRestore(file.uploadedFile(), file.fileName(), password, httpRequest);
     }
 
     @POST
@@ -230,17 +220,14 @@ public class AdminFullBackupResource {
     @APIResponseSchema(value = RestoreAcceptedResponse.class, responseCode = "202",
             responseDescription = "Restore preparation accepted")
     public Response restoreLocal(RestoreLocalBackupRequest request) {
+        if (request == null) {
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, "Restore request is required");
+        }
         try {
-            if (request == null) throw new IllegalArgumentException("Restore request is required");
             java.nio.file.Path file = backupService.resolveLocalBackup(request.getFileName());
             return prepareRestore(file, request.getFileName(), request.getPassword(), httpRequest);
-        } catch (HttpProblem e) {
-            throw e;
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_BACKUP_REQUEST, e.getMessage());
-        } catch (Exception e) {
-            log.warn("Could not open selected local backup for restore", e);
-            throw problem(RESTORE_PREPARATION_FAILED, "Failed to open the selected local backup.");
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
         }
     }
 
@@ -262,7 +249,7 @@ public class AdminFullBackupResource {
             backupScheduler.rescheduleFromConfig();
             return backupService.getConfig();
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_BACKUP_REQUEST, e.getMessage());
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
         }
     }
 
@@ -284,7 +271,7 @@ public class AdminFullBackupResource {
             audit(ActionType.ADMIN_FULL_RESTORE_RETRIED, maintenanceService.getStatus().getFileName(), operationId, httpRequest);
             return Response.accepted(maintenanceService.getStatus()).build();
         } catch (IllegalArgumentException e) {
-            throw problem(RESTORE_OPERATION_CONFLICT, e.getMessage());
+            throw new GeoPulseException(RESTORE_OPERATION_CONFLICT, RESTORE_OPERATION_CONFLICT.title(), e);
         }
     }
 
@@ -300,10 +287,10 @@ public class AdminFullBackupResource {
             audit(ActionType.ADMIN_FULL_RESTORE_DISCARDED, fileName, operationId, httpRequest);
             return Response.ok(maintenanceService.getStatus()).build();
         } catch (IllegalArgumentException e) {
-            throw problem(RESTORE_OPERATION_CONFLICT, e.getMessage());
-        } catch (Exception e) {
-            throw problem(RESTORE_PREPARATION_FAILED,
-                    "Could not discard staging. The application remains blocked; check database connections and permissions.");
+            throw new GeoPulseException(RESTORE_OPERATION_CONFLICT, RESTORE_OPERATION_CONFLICT.title(), e);
+        } catch (Exception e) { // NOPMD - discardPrepared exposes checked Exception after classified state errors
+            throw new GeoPulseException(RESTORE_PREPARATION_FAILED,
+                    "Could not discard staging. The application remains blocked; check database connections and permissions.", e);
         }
     }
 
@@ -313,12 +300,12 @@ public class AdminFullBackupResource {
             audit(ActionType.ADMIN_FULL_BACKUP_IMPORTED, fileName, operationId, httpRequest);
             return Response.accepted(new RestoreAcceptedResponse(operationId, PREPARING)).build();
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_BACKUP_REQUEST, e.getMessage());
+            throw new GeoPulseException(INVALID_BACKUP_REQUEST, INVALID_BACKUP_REQUEST.title(), e);
         } catch (IllegalStateException e) {
-            throw problem(RESTORE_OPERATION_CONFLICT, e.getMessage());
-        } catch (Exception e) {
-            throw problem(RESTORE_PREPARATION_FAILED,
-                    "Could not prepare the restore. Check persistent working storage and database permissions.");
+            throw new GeoPulseException(RESTORE_OPERATION_CONFLICT, RESTORE_OPERATION_CONFLICT.title(), e);
+        } catch (Exception e) { // NOPMD - startRestore exposes checked Exception after classified input/state errors
+            throw new GeoPulseException(RESTORE_PREPARATION_FAILED,
+                    "Could not prepare the restore. Check persistent working storage and database permissions.", e);
         }
     }
 

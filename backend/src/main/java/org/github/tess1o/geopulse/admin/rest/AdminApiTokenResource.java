@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -21,7 +23,6 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/admin/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
@@ -59,7 +60,7 @@ public class AdminApiTokenResource {
             String ipAddress = UserIpAddress.resolve(request);
             apiTokenService.revokeTokenAsAdmin(adminUserId, tokenId, ipAddress);
         } catch (IllegalArgumentException e) {
-            throw problem(API_TOKEN_INVALID, e.getMessage());
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 }

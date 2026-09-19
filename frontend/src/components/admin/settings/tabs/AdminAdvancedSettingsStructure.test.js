@@ -44,7 +44,12 @@ vi.mock('@/utils/adminService', () => ({
 
 vi.mock('@/utils/apiService', () => ({
   default: {
-    post: vi.fn()
+    post: vi.fn(),
+    // The real auth store is used here, and it reaches for these while the tabs mount.
+    get: vi.fn().mockResolvedValue([]),
+    isTokenExpired: vi.fn(() => false),
+    clearAuthData: vi.fn(),
+    handleError: vi.fn()
   }
 }))
 

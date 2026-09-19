@@ -242,7 +242,7 @@ public class TripReconstructionService {
             type = SegmentType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
-                    "Segment " + (index + 1) + " has invalid segmentType. Allowed values: STAY, TRIP"
+                    "Segment " + (index + 1) + " has invalid segmentType. Allowed values: STAY, TRIP", ex
             );
         }
 
@@ -299,8 +299,8 @@ public class TripReconstructionService {
         try {
             return TripType.valueOf(rawType.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-                throw new IllegalArgumentException(
-                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, BOAT, UNKNOWN"
+            throw new IllegalArgumentException(
+                    "Invalid movementType. Allowed values: WALK, BICYCLE, RUNNING, CAR, TRAIN, FLIGHT, BOAT, UNKNOWN", ex
             );
         }
     }

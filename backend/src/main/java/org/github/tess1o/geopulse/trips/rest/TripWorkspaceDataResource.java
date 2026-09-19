@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
@@ -16,7 +18,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/trips/{tripId}")
 @ApplicationScoped
@@ -46,9 +47,9 @@ public class TripWorkspaceDataResource {
             return tripWorkspaceDataService.getTripTimeline(
                     currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), e);
         } catch (IllegalArgumentException | DateTimeParseException e) {
-            throw problem(INVALID_TRIP_REQUEST, detail(e));
+            throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid trip workspace range", e);
         }
     }
 
@@ -63,9 +64,9 @@ public class TripWorkspaceDataResource {
             return tripWorkspaceDataService.getTripPath(
                     currentUserService.getCurrentUserId(), tripId, parsedStart, parsedEnd);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), e);
         } catch (IllegalArgumentException | DateTimeParseException e) {
-            throw problem(INVALID_TRIP_REQUEST, detail(e));
+            throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid trip workspace range", e);
         }
     }
 
@@ -76,9 +77,4 @@ public class TripWorkspaceDataResource {
         return Instant.parse(value);
     }
 
-    private static String detail(Exception exception) {
-        return exception.getMessage() == null || exception.getMessage().isBlank()
-                ? "Invalid trip workspace range"
-                : exception.getMessage();
-    }
 }

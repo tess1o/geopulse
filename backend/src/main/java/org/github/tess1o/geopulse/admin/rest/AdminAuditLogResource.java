@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Max;
@@ -21,7 +23,6 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.BAD_REQUEST;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for admin audit log viewing.
@@ -59,7 +60,7 @@ public class AdminAuditLogResource {
             try {
                 actionType = ActionType.valueOf(actionTypeStr);
             } catch (IllegalArgumentException e) {
-                throw problem(BAD_REQUEST, "Invalid action type", Map.of("actionType", actionTypeStr));
+                throw new GeoPulseException(BAD_REQUEST, "Invalid action type", Map.of("actionType", actionTypeStr), e);
             }
         }
 
@@ -68,7 +69,7 @@ public class AdminAuditLogResource {
             try {
                 targetType = TargetType.valueOf(targetTypeStr);
             } catch (IllegalArgumentException e) {
-                throw problem(BAD_REQUEST, "Invalid target type", Map.of("targetType", targetTypeStr));
+                throw new GeoPulseException(BAD_REQUEST, "Invalid target type", Map.of("targetType", targetTypeStr), e);
             }
         }
 

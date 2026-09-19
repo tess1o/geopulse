@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.sharing.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -18,7 +20,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/share-links")
 @Produces(MediaType.APPLICATION_JSON)
@@ -39,7 +40,7 @@ public class SharedLinkResource {
         try {
             return sharedLinkService.getSharedLinks(currentUserService.getCurrentUserId());
         } catch (SecurityException e) {
-            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Unauthorized", e);
         }
     }
 
@@ -51,11 +52,11 @@ public class SharedLinkResource {
             return RestResponse.status(Response.Status.CREATED,
                     sharedLinkService.createShareLink(request, currentUser));
         } catch (TooManyLinksException e) {
-            throw problem(SHARED_LINK_LIMIT_EXCEEDED, e.getMessage());
+            throw new GeoPulseException(SHARED_LINK_LIMIT_EXCEEDED, SHARED_LINK_LIMIT_EXCEEDED.title(), e);
         } catch (SecurityException e) {
-            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Unauthorized", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARE_LINK, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARE_LINK, INVALID_SHARE_LINK.title(), e);
         }
     }
 
@@ -66,11 +67,11 @@ public class SharedLinkResource {
         try {
             return sharedLinkService.updateShareLink(id, updateDto, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found", e);
         } catch (SecurityException e) {
-            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Unauthorized", e);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_SHARE_LINK, e.getMessage());
+            throw new GeoPulseException(INVALID_SHARE_LINK, INVALID_SHARE_LINK.title(), e);
         }
     }
 
@@ -81,9 +82,9 @@ public class SharedLinkResource {
         try {
             sharedLinkService.deleteShareLink(id, currentUserService.getCurrentUserId());
         } catch (NotFoundException e) {
-            throw problem(SHARED_LINK_NOT_FOUND, "Link not found");
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found", e);
         } catch (SecurityException e) {
-            throw problem(AUTHENTICATION_REQUIRED, "Unauthorized");
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Unauthorized", e);
         }
     }
 }

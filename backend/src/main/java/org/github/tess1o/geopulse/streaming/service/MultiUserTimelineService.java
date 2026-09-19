@@ -3,7 +3,7 @@ package org.github.tess1o.geopulse.streaming.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.ACCESS_DENIED;
 
 /**
  * Service for fetching and aggregating timelines from multiple users.
@@ -131,13 +133,13 @@ public class MultiUserTimelineService {
             // Check friendship exists
             if (!friendshipRepository.existsFriendship(requestingUserId, targetUserId)) {
                 log.warn("User {} attempted to access timeline of non-friend {}", requestingUserId, targetUserId);
-                throw new ForbiddenException("Not authorized to view timeline of user: " + targetUserId);
+                throw new GeoPulseException(ACCESS_DENIED, "Not authorized to view this timeline");
             }
 
             // Check timeline permission
             if (!permissionRepository.hasTimelinePermission(targetUserId, requestingUserId)) {
                 log.warn("User {} attempted to access timeline of {} without permission", requestingUserId, targetUserId);
-                throw new ForbiddenException("User has not granted timeline access: " + targetUserId);
+                throw new GeoPulseException(ACCESS_DENIED, "Not authorized to view this timeline");
             }
         }
 

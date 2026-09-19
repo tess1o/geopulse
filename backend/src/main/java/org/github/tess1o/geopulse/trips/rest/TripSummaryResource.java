@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
@@ -16,7 +18,6 @@ import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/trips/{tripId}/summary")
 @ApplicationScoped
@@ -38,7 +39,7 @@ public class TripSummaryResource {
         try {
             return tripSummaryService.getSummary(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), e);
         }
     }
 }

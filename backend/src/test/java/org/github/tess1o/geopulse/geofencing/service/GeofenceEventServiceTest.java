@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_GEOFENCE_QUERY;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -85,8 +87,10 @@ class GeofenceEventServiceTest {
                 .dateFrom(Instant.parse("2026-03-24T12:00:00Z"))
                 .dateTo(Instant.parse("2026-03-24T11:00:00Z"))
                 .build()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("dateFrom must be before or equal to dateTo");
+                .isInstanceOfSatisfying(GeoPulseException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(INVALID_GEOFENCE_QUERY);
+                    assertThat(exception.detail()).contains("dateFrom must be before or equal to dateTo");
+                });
     }
 
     @Test
@@ -96,8 +100,10 @@ class GeofenceEventServiceTest {
         assertThatThrownBy(() -> service.listEventsPage(ownerId, GeofenceEventQueryDto.builder()
                 .sortBy("deliveryStatus")
                 .build()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported sortBy value");
+                .isInstanceOfSatisfying(GeoPulseException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo(INVALID_GEOFENCE_QUERY);
+                    assertThat(exception.detail()).contains("Unsupported sortBy value");
+                });
     }
 
     @Test

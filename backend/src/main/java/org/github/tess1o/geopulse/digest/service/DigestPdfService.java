@@ -342,10 +342,10 @@ public class DigestPdfService {
         try {
             ZoneId zone = ZoneId.of(user.getTimezone());
             Instant start = digest.getPeriod().getMonth() == null
-                    ? java.time.LocalDate.of(digest.getPeriod().getYear(), 1, 1).atStartOfDay(zone).toInstant()
+                    ? LocalDate.of(digest.getPeriod().getYear(), 1, 1).atStartOfDay(zone).toInstant()
                     : YearMonth.of(digest.getPeriod().getYear(), digest.getPeriod().getMonth()).atDay(1).atStartOfDay(zone).toInstant();
             Instant end = digest.getPeriod().getMonth() == null
-                    ? java.time.LocalDate.of(digest.getPeriod().getYear(), 12, 31).plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1)
+                    ? LocalDate.of(digest.getPeriod().getYear(), 12, 31).plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1)
                     : YearMonth.of(digest.getPeriod().getYear(), digest.getPeriod().getMonth()).atEndOfMonth().plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1);
             ImmichPhotoSearchRequest request = new ImmichPhotoSearchRequest();
             request.setStartDate(OffsetDateTime.ofInstant(start, zone));

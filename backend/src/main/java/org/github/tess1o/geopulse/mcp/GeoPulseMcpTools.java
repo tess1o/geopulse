@@ -115,9 +115,7 @@ public class GeoPulseMcpTools {
             return action.get();
         } catch (AIToolException e) {
             log.error("Error while executing tool", e);
-            throw new ToolCallException(
-                    e.getCode() + ": " + e.getMessage()
-            );
+            throw new ToolCallException(e.getCode() + ": " + e.getMessage(), e);
         }
     }
 }

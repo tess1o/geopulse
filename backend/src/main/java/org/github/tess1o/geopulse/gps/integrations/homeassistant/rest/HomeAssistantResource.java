@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.homeassistant.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -40,7 +43,7 @@ public class HomeAssistantResource {
 
         var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         UUID userId = authResult.get().getUserId();

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -30,7 +32,6 @@ import java.util.Map;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_PLAN_ITEM;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_PLAN_ITEM_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/trips/{tripId}/plan-items")
 @ApplicationScoped
@@ -54,7 +55,7 @@ public class TripPlanItemResource {
         try {
             return service.getTripPlanItems(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
-            throw notFound(tripId, null);
+            throw notFound(tripId, null, e);
         }
     }
 
@@ -65,7 +66,7 @@ public class TripPlanItemResource {
             return RestResponse.status(Response.Status.CREATED,
                     service.createTripPlanItem(currentUserService.getCurrentUserId(), tripId, dto));
         } catch (NotFoundException e) {
-            throw notFound(tripId, null);
+            throw notFound(tripId, null, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -80,7 +81,7 @@ public class TripPlanItemResource {
         try {
             return service.updateTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId, dto);
         } catch (NotFoundException e) {
-            throw notFound(tripId, itemId);
+            throw notFound(tripId, itemId, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -94,7 +95,7 @@ public class TripPlanItemResource {
             service.deleteTripPlanItem(currentUserService.getCurrentUserId(), tripId, itemId);
             return RestResponse.noContent();
         } catch (NotFoundException e) {
-            throw notFound(tripId, itemId);
+            throw notFound(tripId, itemId, e);
         }
     }
 
@@ -107,23 +108,20 @@ public class TripPlanItemResource {
         try {
             return service.applyVisitOverride(currentUserService.getCurrentUserId(), tripId, itemId, request);
         } catch (NotFoundException e) {
-            throw notFound(tripId, itemId);
+            throw notFound(tripId, itemId, e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem notFound(Long tripId, Long itemId) {
+    private static GeoPulseException notFound(Long tripId, Long itemId, NotFoundException cause) {
         return itemId == null
-                ? problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId))
-                : problem(TRIP_PLAN_ITEM_NOT_FOUND, "Trip or plan item not found",
-                        Map.of("tripId", tripId, "itemId", itemId));
+                ? new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), cause)
+                : new GeoPulseException(TRIP_PLAN_ITEM_NOT_FOUND, "Trip or plan item not found",
+                        Map.of("tripId", tripId, "itemId", itemId), cause);
     }
 
-    private static io.quarkiverse.httpproblem.HttpProblem invalid(IllegalArgumentException exception) {
-        String detail = exception.getMessage() == null || exception.getMessage().isBlank()
-                ? "Invalid trip plan item"
-                : exception.getMessage();
-        return problem(INVALID_TRIP_PLAN_ITEM, detail);
+    private static GeoPulseException invalid(IllegalArgumentException exception) {
+        return new GeoPulseException(INVALID_TRIP_PLAN_ITEM, "Invalid trip plan item", exception);
     }
 }

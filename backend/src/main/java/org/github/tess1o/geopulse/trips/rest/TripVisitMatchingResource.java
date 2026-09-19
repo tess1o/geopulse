@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
@@ -14,7 +16,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/trips/{tripId}/visit-suggestions")
 @ApplicationScoped
@@ -38,12 +39,9 @@ public class TripVisitMatchingResource {
         try {
             return tripVisitAutoMatchService.getStoredSuggestions(currentUserService.getCurrentUserId(), tripId);
         } catch (NotFoundException e) {
-            throw problem(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId));
+            throw new GeoPulseException(TRIP_NOT_FOUND, "Trip not found", Map.of("tripId", tripId), e);
         } catch (IllegalArgumentException e) {
-            String detail = e.getMessage() == null || e.getMessage().isBlank()
-                    ? "Invalid trip request"
-                    : e.getMessage();
-            throw problem(INVALID_TRIP_REQUEST, detail);
+            throw new GeoPulseException(INVALID_TRIP_REQUEST, "Invalid trip request", e);
         }
     }
 }

@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
@@ -607,12 +608,12 @@ public class FavoriteLocationService {
             Point point;
             if (favorite.getType() == FavoriteLocationType.POINT) {
                 // For points, use the point coordinates directly
-                org.locationtech.jts.geom.Point geomPoint = (org.locationtech.jts.geom.Point) favorite.getGeometry();
+                Point geomPoint = (Point) favorite.getGeometry();
                 point = GeoUtils.createPoint(geomPoint.getX(), geomPoint.getY());
             } else {
                 // For areas, use the center point
                 Polygon polygon = (Polygon) favorite.getGeometry();
-                org.locationtech.jts.geom.Coordinate centroid = polygon.getCentroid().getCoordinate();
+                Coordinate centroid = polygon.getCentroid().getCoordinate();
                 point = GeoUtils.createPoint(centroid.x, centroid.y);
             }
 

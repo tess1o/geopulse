@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.gps.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -48,7 +50,6 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for GPS point data.
@@ -118,10 +119,7 @@ public class GpsPointResource {
             gpsPointService.saveMobileAppGpsPoints(points, deviceId, userId, GpsSourceType.MOBILE_APP, config);
             return GpsIngestionResponse.success();
         } catch (GpsCoordinateDuplicateException ex) {
-            throw problem(GPS_POINT_DUPLICATE, "Duplicate point");
-        } catch (Exception e) {
-            log.error("Failed to ingest mobile app GPS point", e);
-            throw problem(INTERNAL_ERROR, "Failed to ingest GPS point");
+            throw new GeoPulseException(GPS_POINT_DUPLICATE, "Duplicate point", ex);
         }
     }
 
@@ -173,10 +171,7 @@ public class GpsPointResource {
 
             return path;
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)");
-        } catch (Exception e) {
-            log.error("Failed to retrieve GPS point path for user {}", user.getId(), e);
-            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS point path");
+            throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)", e);
         }
     }
 
@@ -192,7 +187,7 @@ public class GpsPointResource {
 
         try {
             if (limit < 1 || limit > MAX_RAW_MAP_POINTS_LIMIT) {
-                throw problem(INVALID_LIMIT, "Limit must be between 1 and " + MAX_RAW_MAP_POINTS_LIMIT,
+                throw new GeoPulseException(INVALID_LIMIT, "Limit must be between 1 and " + MAX_RAW_MAP_POINTS_LIMIT,
                         Map.of("min", 1, "max", MAX_RAW_MAP_POINTS_LIMIT));
             }
 
@@ -200,13 +195,8 @@ public class GpsPointResource {
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
             RawGpsPointMapResponseDTO result = gpsPointService.getRawGpsMapPoints(userId, start, end, limit);
             return result;
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)");
-        } catch (Exception e) {
-            log.error("Failed to retrieve raw GPS map points for user {}", userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to retrieve raw GPS map points");
+            throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)", e);
         }
     }
 
@@ -221,12 +211,9 @@ public class GpsPointResource {
             RawGpsPointLocationDTO result = gpsPointService.resolveRawGpsPointLocation(userId, pointId);
             return result;
         } catch (NotFoundException e) {
-            throw problem(GPS_POINT_NOT_FOUND, e.getMessage());
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, GPS_POINT_NOT_FOUND.title(), e);
         } catch (ForbiddenException e) {
-            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
-        } catch (Exception e) {
-            log.error("Failed to resolve raw GPS point location {} for user {}", pointId, userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to resolve GPS point location");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -298,26 +285,20 @@ public class GpsPointResource {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point summary for user {} with timezone {}", user.getId(), user.getTimezone());
 
+        GpsPointFilterDTO filters = buildFilters(startTime, endTime, accuracyMin, accuracyMax,
+                speedMin, speedMax, sourceTypes);
+
+        GpsPointSummaryDTO summary;
+
         try {
-            // Parse filters
-            GpsPointFilterDTO filters = buildFilters(startTime, endTime, accuracyMin, accuracyMax,
-                    speedMin, speedMax, sourceTypes);
-
-            GpsPointSummaryDTO summary;
-
-            try {
-                ZoneId userTimezone = ZoneId.of(user.getTimezone());
-                summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), userTimezone, filters);
-            } catch (DateTimeException e) {
-                log.warn("Invalid timezone '{}' for user {}, falling back to UTC", user.getTimezone(), user.getId());
-                summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), ZoneId.of("UTC"), filters);
-            }
-
-            return summary;
-        } catch (Exception e) {
-            log.error("Failed to retrieve GPS point summary for user {}", user.getId(), e);
-            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS point summary");
+            ZoneId userTimezone = ZoneId.of(user.getTimezone());
+            summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), userTimezone, filters);
+        } catch (DateTimeException e) {
+            log.warn("Invalid timezone '{}' for user {}, falling back to UTC", user.getTimezone(), user.getId());
+            summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), ZoneId.of("UTC"), filters);
         }
+
+        return summary;
     }
 
     /**
@@ -354,15 +335,15 @@ public class GpsPointResource {
         try {
             // Validate pagination parameters
             if (page < 1) {
-                throw problem(INVALID_PAGE, "Page number must be greater than 0", Map.of("min", 1));
+                throw new GeoPulseException(INVALID_PAGE, "Page number must be greater than 0", Map.of("min", 1));
             }
             if (limit < 1 || limit > 1000) {
-                throw problem(INVALID_LIMIT, "Limit must be between 1 and 1000", Map.of("min", 1, "max", 1000));
+                throw new GeoPulseException(INVALID_LIMIT, "Limit must be between 1 and 1000", Map.of("min", 1, "max", 1000));
             }
 
             // Validate sort order
             if (!sortOrder.equalsIgnoreCase("asc") && !sortOrder.equalsIgnoreCase("desc")) {
-                throw problem(INVALID_GPS_QUERY, "Sort order must be 'asc' or 'desc'",
+                throw new GeoPulseException(INVALID_GPS_QUERY, "Sort order must be 'asc' or 'desc'",
                         Map.of("sortOrder", sortOrder));
             }
 
@@ -371,13 +352,8 @@ public class GpsPointResource {
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
             return gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_GPS_QUERY, "Invalid date/time format");
-        } catch (Exception e) {
-            log.error("Failed to retrieve GPS points for user {}", userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to retrieve GPS points");
+            throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid date/time format", e);
         }
     }
 
@@ -424,7 +400,7 @@ public class GpsPointResource {
                     log.info("Exporting {} specific GPS points by IDs", gpsPointIds.size());
                 } catch (NumberFormatException e) {
                     log.warn("Invalid GPS point IDs format: {}", ids, e);
-                    throw problem(INVALID_GPS_QUERY, "Invalid GPS point IDs format");
+                    throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid GPS point IDs format", e);
                 }
             }
 
@@ -438,13 +414,8 @@ public class GpsPointResource {
                     .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                     .header("Content-Type", "text/csv; charset=utf-8")
                     .build();
-        } catch (io.quarkiverse.httpproblem.HttpProblem e) {
-            throw e;
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_GPS_QUERY, "Invalid date/time format");
-        } catch (Exception e) {
-            log.error("Failed to export GPS points for user {}", user.getId(), e);
-            throw problem(INTERNAL_ERROR, "Failed to export GPS points");
+            throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid date/time format", e);
         }
     }
 
@@ -559,12 +530,9 @@ public class GpsPointResource {
             GpsPointDTO updatedPoint = gpsPointService.updateGpsPoint(pointId, editDto, userId);
             return updatedPoint;
         } catch (NotFoundException e) {
-            throw problem(GPS_POINT_NOT_FOUND, "GPS point not found");
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found", e);
         } catch (ForbiddenException e) {
-            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
-        } catch (Exception e) {
-            log.error("Failed to update GPS point {} for user {}", pointId, userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to update GPS point");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -582,12 +550,7 @@ public class GpsPointResource {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete ALL GPS data for user {}", userId);
 
-        try {
-            gpsPointService.deleteAllGpsData(userId);
-        } catch (Exception e) {
-            log.error("Failed to delete all GPS data for user {}", userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to delete all GPS data");
-        }
+        gpsPointService.deleteAllGpsData(userId);
     }
 
     /**
@@ -608,12 +571,9 @@ public class GpsPointResource {
             GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoint(pointId, userId);
             return buildDeleteResponse(userId, deleteResult);
         } catch (NotFoundException e) {
-            throw problem(GPS_POINT_NOT_FOUND, "GPS point not found");
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found", e);
         } catch (ForbiddenException e) {
-            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
-        } catch (Exception e) {
-            log.error("Failed to delete GPS point {} for user {}", pointId, userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to delete GPS point");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied", e);
         }
     }
 
@@ -638,10 +598,7 @@ public class GpsPointResource {
             GpsPointDeleteResult deleteResult = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
             return buildDeleteResponse(userId, deleteResult);
         } catch (ForbiddenException e) {
-            throw problem(GPS_POINT_ACCESS_DENIED, "Access denied");
-        } catch (Exception e) {
-            log.error("Failed to delete GPS points for user {}", userId, e);
-            throw problem(INTERNAL_ERROR, "Failed to delete GPS points");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied", e);
         }
     }
 

@@ -102,9 +102,15 @@ class ApiTokenAuthenticationTest {
                 .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("type", equalTo("urn:geopulse:error:AUTHENTICATION_REQUIRED"))
+                .body("status", equalTo(401))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -118,9 +124,13 @@ class ApiTokenAuthenticationTest {
                 .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -132,9 +142,13 @@ class ApiTokenAuthenticationTest {
                 .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test
@@ -146,9 +160,13 @@ class ApiTokenAuthenticationTest {
                 .get("/api/v1/users/me")
                 .then()
                 .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("message", equalTo("Invalid service account token"))
-                .body("data", nullValue());
+                .contentType("application/problem+json")
+                .header("X-Request-Id", not(blankOrNullString()))
+                .header("X-Error-Id", not(blankOrNullString()))
+                .body("code", equalTo("AUTHENTICATION_REQUIRED"))
+                .body("detail", equalTo("Invalid service account token"))
+                .body("requestId", not(blankOrNullString()))
+                .body("errorId", not(blankOrNullString()));
     }
 
     @Test

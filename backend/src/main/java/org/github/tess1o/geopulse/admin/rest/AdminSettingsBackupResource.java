@@ -1,6 +1,9 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -35,7 +38,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.ADMIN_SETTINGS_BACKUPS)
 @Produces(MediaType.APPLICATION_JSON)
@@ -65,32 +67,32 @@ public class AdminSettingsBackupResource {
     @APIResponseSchema(value = AdminSettingsBackupDto.class, responseCode = "200",
             responseDescription = "Admin settings backup")
     public Response exportSettingsBackup() {
+        AdminSettingsBackupDto backup = backupService.exportBackup();
+        byte[] payload;
         try {
-            AdminSettingsBackupDto backup = backupService.exportBackup();
-            byte[] payload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backup);
-            UUID adminId = currentUserService.getCurrentUserId();
-            auditLogService.logAction(
-                    adminId,
-                    ActionType.ADMIN_SETTINGS_EXPORTED,
-                    TargetType.SETTING,
-                    "admin-settings-backup",
-                    Map.of(
-                            "settings", backup.getSettings().size(),
-                            "oidcProviders", backup.getOidcProviders().size(),
-                            "customGeocodingProviders", backup.getCustomGeocodingProviders().size()
-                    ),
-                    UserIpAddress.resolve(httpRequest)
-            );
-
-            return Response.ok(payload)
-                    .header("Content-Disposition", "attachment; filename=\"geopulse-admin-settings-"
-                            + Instant.now().getEpochSecond() + ".json\"")
-                    .header("Content-Type", "application/json; charset=utf-8")
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to export admin settings backup", e);
-            throw problem(INTERNAL_ERROR, "Failed to export admin settings backup");
+            payload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(backup);
+        } catch (JsonProcessingException e) {
+            throw new GeoPulseException(INTERNAL_ERROR, "Failed to export admin settings backup", e);
         }
+        UUID adminId = currentUserService.getCurrentUserId();
+        auditLogService.logAction(
+                adminId,
+                ActionType.ADMIN_SETTINGS_EXPORTED,
+                TargetType.SETTING,
+                "admin-settings-backup",
+                Map.of(
+                        "settings", backup.getSettings().size(),
+                        "oidcProviders", backup.getOidcProviders().size(),
+                        "customGeocodingProviders", backup.getCustomGeocodingProviders().size()
+                ),
+                UserIpAddress.resolve(httpRequest)
+        );
+
+        return Response.ok(payload)
+                .header("Content-Disposition", "attachment; filename=\"geopulse-admin-settings-"
+                        + Instant.now().getEpochSecond() + ".json\"")
+                .header("Content-Type", "application/json; charset=utf-8")
+                .build();
     }
 
     @POST
@@ -99,7 +101,7 @@ public class AdminSettingsBackupResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public AdminSettingsImportResult importSettingsBackup(@RestForm("file") FileUpload file) {
         if (file == null || file.uploadedFile() == null) {
-            throw problem(INVALID_ADMIN_SETTINGS_BACKUP, "Admin settings backup file is required");
+            throw new GeoPulseException(INVALID_ADMIN_SETTINGS_BACKUP, "Admin settings backup file is required");
         }
 
         try {
@@ -118,10 +120,9 @@ public class AdminSettingsBackupResource {
             );
             return result;
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_ADMIN_SETTINGS_BACKUP, e.getMessage());
-        } catch (Exception e) {
-            log.error("Failed to import admin settings backup", e);
-            throw problem(INTERNAL_ERROR, "Failed to import admin settings backup");
+            throw new GeoPulseException(INVALID_ADMIN_SETTINGS_BACKUP, INVALID_ADMIN_SETTINGS_BACKUP.title(), e);
+        } catch (java.io.IOException e) {
+            throw new GeoPulseException(INTERNAL_ERROR, "Failed to import admin settings backup", e);
         }
     }
 

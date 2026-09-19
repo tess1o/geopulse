@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -53,7 +55,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_AC
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_ALREADY_ACTIVE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_JOB_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_SPLIT_OVERRIDE_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/timeline")
 @Produces(MediaType.APPLICATION_JSON)
@@ -87,14 +88,14 @@ public class StreamingTimelineResource {
     public LocationLookupResponseDTO lookupLocation(@QueryParam("latitude") Double latitude,
                                                     @QueryParam("longitude") Double longitude) {
         if (latitude == null || longitude == null) {
-            throw problem(INVALID_LOCATION_LOOKUP, "latitude and longitude are required");
+            throw new GeoPulseException(INVALID_LOCATION_LOOKUP, "latitude and longitude are required");
         }
         try {
             return timelineLocationLookupService.lookup(
                     currentUserService.getCurrentUserId(), latitude, longitude);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_LOCATION_LOOKUP, detail(e, "Invalid location"),
-                    Map.of("latitude", latitude, "longitude", longitude));
+            throw new GeoPulseException(INVALID_LOCATION_LOOKUP, "Invalid location",
+                    Map.of("latitude", latitude, "longitude", longitude), e);
         }
     }
 
@@ -124,7 +125,7 @@ public class StreamingTimelineResource {
     public TripStaySplitResponse resetTripStaySplitOverride(@PathParam("overrideId") Long overrideId) {
         return timelineGenerationService
                 .resetTripStaySplitOverride(currentUserService.getCurrentUserId(), overrideId)
-                .orElseThrow(() -> problem(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
+                .orElseThrow(() -> new GeoPulseException(TRIP_SPLIT_OVERRIDE_NOT_FOUND,
                         "Trip split override not found or access denied", Map.of("overrideId", overrideId)));
     }
 
@@ -134,10 +135,10 @@ public class StreamingTimelineResource {
         try {
             return dataGapStayOverrideService
                     .previewLatestPointConversion(currentUserService.getCurrentUserId(), gapId)
-                    .orElseThrow(() -> problem(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
+                    .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
                             Map.of("gapId", gapId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid data gap conversion request"));
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid data gap conversion request", e);
         }
     }
 
@@ -148,10 +149,10 @@ public class StreamingTimelineResource {
         try {
             return dataGapStayOverrideService
                     .convertGapToStay(currentUserService.getCurrentUserId(), gapId, request)
-                    .orElseThrow(() -> problem(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
+                    .orElseThrow(() -> new GeoPulseException(DATA_GAP_NOT_FOUND, "Data gap not found or access denied",
                             Map.of("gapId", gapId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid data gap conversion request"));
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid data gap conversion request", e);
         }
     }
 
@@ -160,7 +161,7 @@ public class StreamingTimelineResource {
     public DataGapStayOverrideResponseDTO resetDataGapStayOverride(@PathParam("overrideId") Long overrideId) {
         return timelineGenerationService
                 .resetDataGapStayOverride(currentUserService.getCurrentUserId(), overrideId)
-                .orElseThrow(() -> problem(DATA_GAP_OVERRIDE_NOT_FOUND,
+                .orElseThrow(() -> new GeoPulseException(DATA_GAP_OVERRIDE_NOT_FOUND,
                         "Data gap override not found or access denied", Map.of("overrideId", overrideId)));
     }
 
@@ -171,12 +172,8 @@ public class StreamingTimelineResource {
             @QueryParam("to") String endTime,
             @QueryParam("userIds") String userIds) {
         TimeRange range = parseTimeRange(startTime, endTime);
-        try {
-            return multiUserTimelineService.getMultiUserTimeline(
-                    currentUserService.getCurrentUserId(), range.start(), range.end(), parseUserIds(userIds));
-        } catch (jakarta.ws.rs.ForbiddenException e) {
-            throw problem(ACCESS_DENIED, detail(e, "Access denied"));
-        }
+        return multiUserTimelineService.getMultiUserTimeline(
+                currentUserService.getCurrentUserId(), range.start(), range.end(), parseUserIds(userIds));
     }
 
     @POST
@@ -186,7 +183,7 @@ public class StreamingTimelineResource {
             return new JobResponse(asyncTimelineGenerationService
                     .regenerateTimelineAsync(currentUserService.getCurrentUserId()));
         } catch (IllegalStateException e) {
-            throw problem(TIMELINE_JOB_ALREADY_ACTIVE, detail(e, "A timeline job is already active"));
+            throw new GeoPulseException(TIMELINE_JOB_ALREADY_ACTIVE, "A timeline job is already active", e);
         }
     }
 
@@ -197,13 +194,13 @@ public class StreamingTimelineResource {
         try {
             jobUuid = UUID.fromString(jobId);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_TIMELINE_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId));
+            throw new GeoPulseException(INVALID_TIMELINE_JOB_ID, "Invalid job ID format", Map.of("jobId", jobId), e);
         }
         TimelineJobProgress progress = jobProgressService.getJobProgress(jobUuid)
-                .orElseThrow(() -> problem(TIMELINE_JOB_NOT_FOUND, "Timeline job not found",
+                .orElseThrow(() -> new GeoPulseException(TIMELINE_JOB_NOT_FOUND, "Timeline job not found",
                         Map.of("jobId", jobId)));
         if (!progress.getUserId().equals(currentUserService.getCurrentUserId())) {
-            throw problem(TIMELINE_JOB_ACCESS_DENIED, "Access denied");
+            throw new GeoPulseException(TIMELINE_JOB_ACCESS_DENIED, "Access denied");
         }
         return progress;
     }
@@ -227,11 +224,11 @@ public class StreamingTimelineResource {
             Instant start = startTime == null ? Instant.EPOCH : Instant.parse(startTime);
             Instant end = endTime == null ? Instant.now() : Instant.parse(endTime);
             if (start.isAfter(end)) {
-                throw problem(INVALID_TIMELINE_REQUEST, "Start time must be before end time");
+                throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Start time must be before end time");
             }
             return new TimeRange(start, end);
         } catch (DateTimeParseException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, "Invalid time format. Use ISO-8601 format");
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid time format. Use ISO-8601 format", e);
         }
     }
 
@@ -245,14 +242,8 @@ public class StreamingTimelineResource {
                     .map(UUID::fromString)
                     .toList();
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, "Invalid user ID format");
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid user ID format", e);
         }
-    }
-
-    private static String detail(Exception exception, String fallback) {
-        return exception.getMessage() == null || exception.getMessage().isBlank()
-                ? fallback
-                : exception.getMessage();
     }
 
     private record TimeRange(Instant start, Instant end) {

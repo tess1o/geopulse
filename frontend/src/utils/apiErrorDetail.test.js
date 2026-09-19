@@ -26,12 +26,49 @@ describe('apiErrorDetail', () => {
     )
   })
 
-  it('prefers explicit API messages over generic errors', () => {
+  it('resolves a localizable violation descriptor through its fallback', () => {
+    const error = {
+      response: {
+        data: {
+          violations: [
+            {
+              field: 'size.request.password',
+              code: 'SIZE',
+              parameters: { min: 3, max: 128 },
+              detail: {
+                key: 'validation.size',
+                parameters: { min: 3, max: 128 },
+                fallback: 'Password must be between 3 and 128 characters'
+              }
+            }
+          ]
+        }
+      }
+    }
+
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe(
+      'Password: Password must be between 3 and 128 characters'
+    )
+  })
+
+  it('never renders a violation descriptor as an object', () => {
+    const error = {
+      response: {
+        data: {
+          violations: [{ field: 'email', detail: { key: 'validation.notBlank' } }]
+        }
+      }
+    }
+
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe('Email: validation.notBlank')
+  })
+
+  it('prefers an explicit problem detail over the generic axios error', () => {
     const error = {
       message: 'Request failed with status code 400',
       response: {
         data: {
-          message: "Cannot delete custom provider 'local-photon' while it is the primary provider"
+          detail: "Cannot delete custom provider 'local-photon' while it is the primary provider"
         }
       }
     }
@@ -41,18 +78,16 @@ describe('apiErrorDetail', () => {
     )
   })
 
-  it('extracts useful messages from Quarkus details payloads', () => {
+  it('falls back to the problem title when the detail is absent', () => {
     const error = {
       response: {
         data: {
-          details: "Error id 123, java.lang.IllegalArgumentException: Cannot delete custom provider 'test' while it is the primary provider"
+          title: 'Conflict'
         }
       }
     }
 
-    expect(formatApiErrorDetail(error, 'Fallback')).toBe(
-      "Cannot delete custom provider 'test' while it is the primary provider"
-    )
+    expect(formatApiErrorDetail(error, 'Fallback')).toBe('Conflict')
   })
 
   it('falls back to caller-provided text when no response detail exists', () => {

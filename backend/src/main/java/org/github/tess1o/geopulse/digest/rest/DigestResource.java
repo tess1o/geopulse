@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.digest.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -21,7 +23,6 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/digests")
 @Produces(MediaType.APPLICATION_JSON)
@@ -51,12 +52,12 @@ public class DigestResource {
 
         // Validate parameters
         if (year < 2000 || year > 2100) {
-            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
                     Map.of("year", year, "min", 2000, "max", 2100));
         }
 
         if (month < 1 || month > 12) {
-            throw problem(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
+            throw new GeoPulseException(INVALID_DIGEST_MONTH, "Invalid month. Must be between 1 and 12",
                     Map.of("month", month, "min", 1, "max", 12));
         }
 
@@ -76,7 +77,7 @@ public class DigestResource {
 
         // Validate parameters
         if (year < 2000 || year > 2100) {
-            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
                     Map.of("year", year, "min", 2000, "max", 2100));
         }
 
@@ -107,15 +108,15 @@ public class DigestResource {
             @QueryParam("month") Integer month,
             @DefaultValue("false") @QueryParam("includePhotos") boolean includePhotos) {
         if (!"monthly".equals(viewMode) && !"yearly".equals(viewMode)) {
-            throw problem(INVALID_DIGEST_VIEW_MODE, "viewMode must be monthly or yearly",
+            throw new GeoPulseException(INVALID_DIGEST_VIEW_MODE, "viewMode must be monthly or yearly",
                     Map.of("viewMode", String.valueOf(viewMode)));
         }
         if (year < 2000 || year > 2100) {
-            throw problem(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
+            throw new GeoPulseException(INVALID_DIGEST_YEAR, "Invalid year. Must be between 2000 and 2100",
                     Map.of("year", year, "min", 2000, "max", 2100));
         }
         if ("monthly".equals(viewMode) && (month == null || month < 1 || month > 12)) {
-            throw problem(INVALID_DIGEST_MONTH, "A month between 1 and 12 is required for monthly exports",
+            throw new GeoPulseException(INVALID_DIGEST_MONTH, "A month between 1 and 12 is required for monthly exports",
                     Map.of("month", month == null ? "" : month, "min", 1, "max", 12));
         }
 

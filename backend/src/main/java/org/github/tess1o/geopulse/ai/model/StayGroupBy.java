@@ -60,7 +60,7 @@ public enum StayGroupBy {
         }
         
         String normalizedValue = value.toLowerCase().trim();
-        for (StayGroupBy groupBy : StayGroupBy.values()) {
+        for (StayGroupBy groupBy : values()) {
             if (groupBy.getValue().toLowerCase().equals(normalizedValue)) {
                 return groupBy;
             }

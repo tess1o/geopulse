@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.coverage.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.Min;
@@ -30,7 +32,6 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/coverage")
 @Produces(MediaType.APPLICATION_JSON)
@@ -68,7 +69,7 @@ public class CoverageResource {
     @APIResponse(responseCode = "400", description = "Invalid coverage settings")
     public CoverageStatus updateCoverageSettings(CoverageSettingsRequest request) {
         if (request == null || request.enabled() == null) {
-            throw problem(COVERAGE_ENABLED_REQUIRED, "enabled is required",
+            throw new GeoPulseException(COVERAGE_ENABLED_REQUIRED, "enabled is required",
                     Map.of("field", "enabled"));
         }
 
@@ -92,12 +93,12 @@ public class CoverageResource {
     public CoverageStatus recalculateCoverage() {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            throw problem(COVERAGE_DISABLED, "Coverage is not enabled for this user");
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         UUID userId = user.getId();
         if (importJobService.hasActiveImportJob(userId)) {
-            throw problem(COVERAGE_RECALCULATION_CONFLICT,
+            throw new GeoPulseException(COVERAGE_RECALCULATION_CONFLICT,
                     "Coverage recalculation is already managed by the active import job");
         }
 
@@ -116,28 +117,28 @@ public class CoverageResource {
                                                 @QueryParam("limit") @Min(1) Integer limit) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            throw problem(COVERAGE_DISABLED, "Coverage is not enabled for this user");
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         if (bbox == null || bbox.isBlank()) {
-            throw problem(INVALID_BOUNDING_BOX, "bbox is required (minLon,minLat,maxLon,maxLat)");
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, "bbox is required (minLon,minLat,maxLon,maxLat)");
         }
 
         double[] bounds;
         try {
             bounds = parseBbox(bbox);
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_BOUNDING_BOX, e.getMessage());
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, INVALID_BOUNDING_BOX.title(), e);
         }
 
         int grid = gridMeters == null ? CoverageDefaults.DEFAULT_GRID_METERS : gridMeters;
         if (!coverageService.isGridSupported(grid)) {
-            throw problem(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
+            throw new GeoPulseException(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
         }
         int cellLimit = CoverageDefaults.DEFAULT_CELLS_PER_VIEW;
         if (limit != null) {
             if (limit < 1) {
-                throw problem(INVALID_LIMIT, "limit must be greater than 0", Map.of("min", 1));
+                throw new GeoPulseException(INVALID_LIMIT, "limit must be greater than 0", Map.of("min", 1));
             }
             cellLimit = Math.min(limit, CoverageDefaults.MAX_CELLS_PER_VIEW);
         }
@@ -170,12 +171,12 @@ public class CoverageResource {
     public CoverageSummary getCoverageSummary(@QueryParam("grid") Integer gridMeters) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
-            throw problem(COVERAGE_DISABLED, "Coverage is not enabled for this user");
+            throw new GeoPulseException(COVERAGE_DISABLED, "Coverage is not enabled for this user");
         }
 
         int grid = gridMeters == null ? CoverageDefaults.DEFAULT_GRID_METERS : gridMeters;
         if (!coverageService.isGridSupported(grid)) {
-            throw problem(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
+            throw new GeoPulseException(UNSUPPORTED_COVERAGE_GRID, "Unsupported grid size", Map.of("grid", grid));
         }
 
         UUID userId = user.getId();

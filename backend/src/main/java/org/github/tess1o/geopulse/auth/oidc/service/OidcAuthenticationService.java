@@ -176,7 +176,7 @@ public class OidcAuthenticationService {
                     log.debug("Race condition resolved: connection already exists for same user");
                 } else if (existing.isPresent()) {
                     // Different user - this OIDC account is already claimed
-                    throw new IllegalArgumentException("This OIDC account is already linked to another user");
+            throw new IllegalArgumentException("This OIDC account is already linked to another user", e);
                 } else {
                     throw new RuntimeException("Unique constraint violated but connection not found", e);
                 }

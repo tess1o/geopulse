@@ -416,7 +416,7 @@ public class AdminSettingsBackupService {
         try {
             uri = URI.create(value.trim());
         } catch (Exception e) {
-            throw new IllegalArgumentException(message);
+            throw new IllegalArgumentException(message, e);
         }
         if (uri.getScheme() == null || uri.getHost() == null
                 || (!uri.getScheme().equalsIgnoreCase("http") && !uri.getScheme().equalsIgnoreCase("https"))) {

@@ -93,7 +93,7 @@ public class OpenAIChatClient {
                 throw new OpenAiApiException("OpenAI API server error", e);
             }
 
-            throw e;
+            throw new OpenAiApiException("OpenAI API request failed", e);
         } catch (Exception e) {
             log.error("Unexpected error calling OpenAI API", e);
             throw new OpenAiApiException("Failed to call OpenAI API", e);

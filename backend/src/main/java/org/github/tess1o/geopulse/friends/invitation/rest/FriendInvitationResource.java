@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.friends.invitation.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -38,7 +40,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATI
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATION_RECIPIENT_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_INVITATION_WRONG_STATUS;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_INVITATION;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/friend-invitations")
 @ApplicationScoped
@@ -73,9 +74,9 @@ public class FriendInvitationResource {
                     currentUserService.getCurrentUserId(), receiverId);
             return RestResponse.status(Response.Status.CREATED, invitation);
         } catch (UserNotFoundException exception) {
-            throw problem(FRIEND_INVITATION_RECIPIENT_NOT_FOUND, exception.getMessage());
+            throw new GeoPulseException(FRIEND_INVITATION_RECIPIENT_NOT_FOUND, FRIEND_INVITATION_RECIPIENT_NOT_FOUND.title(), exception);
         } catch (FriendsException exception) {
-            throw problem(INVALID_FRIEND_INVITATION, exception.getMessage());
+            throw new GeoPulseException(INVALID_FRIEND_INVITATION, INVALID_FRIEND_INVITATION.title(), exception);
         }
     }
 
@@ -116,14 +117,14 @@ public class FriendInvitationResource {
         try {
             return action.apply(invitationId, currentUserService.getCurrentUserId());
         } catch (InvitationNotFoundException exception) {
-            throw problem(FRIEND_INVITATION_NOT_FOUND, exception.getMessage(),
-                    Map.of("invitationId", invitationId));
+            throw new GeoPulseException(FRIEND_INVITATION_NOT_FOUND, FRIEND_INVITATION_NOT_FOUND.title(),
+                    Map.of("invitationId", invitationId), exception);
         } catch (NotAuthorizedUserException exception) {
-            throw problem(FRIEND_INVITATION_ACCESS_DENIED, exception.getMessage(),
-                    Map.of("invitationId", invitationId));
+            throw new GeoPulseException(FRIEND_INVITATION_ACCESS_DENIED, FRIEND_INVITATION_ACCESS_DENIED.title(),
+                    Map.of("invitationId", invitationId), exception);
         } catch (InvitationWrongStatusException exception) {
-            throw problem(FRIEND_INVITATION_WRONG_STATUS, exception.getMessage(),
-                    Map.of("invitationId", invitationId));
+            throw new GeoPulseException(FRIEND_INVITATION_WRONG_STATUS, FRIEND_INVITATION_WRONG_STATUS.title(),
+                    Map.of("invitationId", invitationId), exception);
         }
     }
 

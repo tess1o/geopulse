@@ -5,14 +5,11 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import org.github.tess1o.geopulse.admin.service.BackupMaintenanceService;
 import io.quarkiverse.httpproblem.HttpProblem;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.RESTORE_IN_PROGRESS;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 import java.util.Locale;
 import java.util.Set;
@@ -45,11 +42,14 @@ public class BackupRestoreGuardFilter implements ContainerRequestFilter {
                 || ("DELETE".equals(method) && LOGOUT_PATH.equals(path))) {
             return;
         }
-        HttpProblem problem = problem(RESTORE_IN_PROGRESS, RESTORE_BLOCK_MESSAGE);
-        requestContext.abortWith(Response.fromResponse(problem.toResponse())
-                .header(RESTORE_BLOCK_HEADER, "true")
-                .header("Cache-Control", "no-store")
-                .build());
+        throw HttpProblem.builder()
+                .withStatus(RESTORE_IN_PROGRESS.statusCode())
+                .withTitle(RESTORE_IN_PROGRESS.title())
+                .withDetail(RESTORE_BLOCK_MESSAGE)
+                .with("code", RESTORE_IN_PROGRESS)
+                .withHeader(RESTORE_BLOCK_HEADER, "true")
+                .withHeader("Cache-Control", "no-store")
+                .build();
     }
 
     private String normalizePath(String path) {

@@ -465,6 +465,7 @@
                 </dependencies>
                 <executions>
                     <execution>
+                        <id>legacy-pmd</id>
                         <goals>
                             <goal>check</goal>
                         </goals>
@@ -474,6 +475,32 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <id>error-handling-pmd</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                        <configuration>
+                            <rulesets>
+                                <ruleset>pmd-error-handling.xml</ruleset>
+                            </rulesets>
+                            <failOnViolation>true</failOnViolation>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>error-handling-rules</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>native</id>
             <activation>

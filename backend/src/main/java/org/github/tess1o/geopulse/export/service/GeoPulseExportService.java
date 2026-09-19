@@ -336,7 +336,7 @@ public class GeoPulseExportService {
                 .endDate(job.getDateRange().getEndDate())
                 .dataGaps(dataGaps.stream()
                         .map(exportDataMapper::toDataGapDto)
-                        .collect(java.util.stream.Collectors.toList()))
+                        .collect(Collectors.toList()))
                 .build();
 
         streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);

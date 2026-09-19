@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.immich.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
@@ -42,7 +44,6 @@ import java.util.concurrent.CompletableFuture;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.IMMICH_PHOTO_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_CONFIG;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_IMMICH_SEARCH;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.INTEGRATIONS + "/immich")
 @Produces(MediaType.APPLICATION_JSON)
@@ -176,7 +177,7 @@ public class ImmichResource {
             immichService.updateUserImmichConfig(userId, request);
             return RestResponse.noContent();
         } catch (IllegalArgumentException exception) {
-            throw problem(INVALID_IMMICH_CONFIG, exception.getMessage());
+            throw new GeoPulseException(INVALID_IMMICH_CONFIG, INVALID_IMMICH_CONFIG.title(), exception);
         }
     }
 
@@ -201,7 +202,7 @@ public class ImmichResource {
             Double radiusMeters, String city, String country, Double markerLatitude,
             Double markerLongitude, Integer coordinatePrecision, Integer limit) {
         if (markerLatitude == null || markerLongitude == null) {
-            throw problem(INVALID_IMMICH_SEARCH, "markerLatitude and markerLongitude are required",
+            throw new GeoPulseException(INVALID_IMMICH_SEARCH, "markerLatitude and markerLongitude are required",
                     Map.of("fields", "markerLatitude,markerLongitude"));
         }
         ImmichPhotoSearchRequest request = buildSearchRequest(
@@ -224,7 +225,7 @@ public class ImmichResource {
             }
             return response.build();
         }).exceptionally(throwable -> {
-            throw problem(IMMICH_PHOTO_NOT_FOUND, "Immich photo could not be retrieved",
+            throw new GeoPulseException(IMMICH_PHOTO_NOT_FOUND, "Immich photo could not be retrieved",
                     Map.of("photoId", photoId));
         });
     }
@@ -244,7 +245,7 @@ public class ImmichResource {
             request.setLimit(limit);
             return request;
         } catch (DateTimeParseException | NullPointerException exception) {
-            throw problem(INVALID_IMMICH_SEARCH, "startDate and endDate must use ISO-8601 format");
+            throw new GeoPulseException(INVALID_IMMICH_SEARCH, "startDate and endDate must use ISO-8601 format", exception);
         }
     }
 

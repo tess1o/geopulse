@@ -6,24 +6,27 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.api.ApiErrorCode;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_RESULT_NOT_FOUND;
 /**
  * Comprehensive integration tests for ReverseGeocodingManagementService.
  * Tests the sophisticated copy-on-write logic, authorization, and timeline synchronization.
@@ -193,9 +196,8 @@ class ReverseGeocodingManagementServiceTest {
         updateDTO.setCity("New York");
         updateDTO.setCountry("USA");
         // Then: 403 Forbidden
-        assertThrows(ForbiddenException.class, () -> {
-            managementService.updateGeocodingResult(USER_B_ID, userACopy.getId(), updateDTO);
-        }, "Should throw ForbiddenException");
+        assertGeoPulse(GEOCODING_ACCESS_DENIED,
+                () -> managementService.updateGeocodingResult(USER_B_ID, userACopy.getId(), updateDTO));
         // And: Entity unchanged
         ReverseGeocodingLocationEntity checkEntity = repository.findById(userACopy.getId());
         assertEquals("My Coffee Shop", checkEntity.getDisplayName(), "Should be unchanged");
@@ -211,9 +213,8 @@ class ReverseGeocodingManagementServiceTest {
         entityManager.flush();
         // When: User B tries to access it
         // Then: 403 Forbidden
-        assertThrows(ForbiddenException.class, () -> {
-            managementService.getGeocodingResult(USER_B_ID, userACopy.getId());
-        }, "Should throw ForbiddenException");
+        assertGeoPulse(GEOCODING_ACCESS_DENIED,
+                () -> managementService.getGeocodingResult(USER_B_ID, userACopy.getId()));
     }
     @Test
     @Transactional
@@ -233,13 +234,12 @@ class ReverseGeocodingManagementServiceTest {
     }
     @Test
     @Transactional
-    @DisplayName("Auth Test 4: Non-existent entity throws NotFoundException")
+    @DisplayName("Auth Test 4: Non-existent entity returns the not-found error code")
     void testNonExistentEntityThrowsNotFound() {
         // When: Access non-existent entity
         // Then: 404 Not Found
-        assertThrows(NotFoundException.class, () -> {
-            managementService.getGeocodingResult(USER_A_ID, 999999L);
-        }, "Should throw NotFoundException");
+        assertGeoPulse(GEOCODING_RESULT_NOT_FOUND,
+                () -> managementService.getGeocodingResult(USER_A_ID, 999999L));
     }
     // ==================== Management Page Tests ====================
     @Test
@@ -392,9 +392,8 @@ class ReverseGeocodingManagementServiceTest {
         entityManager.flush();
         // When: User B tries to reconcile it
         // Then: 403 Forbidden
-        assertThrows(ForbiddenException.class, () -> {
-            managementService.reconcileWithProvider(USER_B_ID, userACopy.getId(), "nominatim");
-        }, "Should throw ForbiddenException when reconciling another user's copy");
+        assertGeoPulse(GEOCODING_ACCESS_DENIED,
+                () -> managementService.reconcileWithProvider(USER_B_ID, userACopy.getId(), "nominatim"));
     }
     @Test
     @Transactional
@@ -432,13 +431,12 @@ class ReverseGeocodingManagementServiceTest {
     }
     @Test
     @Transactional
-    @DisplayName("Reconciliation Test 4: Reconciliation with non-existent entity throws NotFoundException")
+    @DisplayName("Reconciliation Test 4: Reconciliation with non-existent entity returns the not-found error code")
     void testReconcileNonExistentEntity() {
         // When: Try to reconcile non-existent entity
         // Then: 404 Not Found
-        assertThrows(NotFoundException.class, () -> {
-            managementService.reconcileWithProvider(USER_A_ID, 999999L, "nominatim");
-        }, "Should throw NotFoundException for non-existent entity");
+        assertGeoPulse(GEOCODING_RESULT_NOT_FOUND,
+                () -> managementService.reconcileWithProvider(USER_A_ID, 999999L, "nominatim"));
     }
     @Test
     @Transactional
@@ -505,9 +503,8 @@ class ReverseGeocodingManagementServiceTest {
             managementService.reconcileWithProvider(USER_A_ID, userACopy.getId(), "nominatim");
         });
         // User A CANNOT reconcile User B's copy
-        assertThrows(ForbiddenException.class, () -> {
-            managementService.reconcileWithProvider(USER_A_ID, userBCopy.getId(), "nominatim");
-        });
+        assertGeoPulse(GEOCODING_ACCESS_DENIED,
+                () -> managementService.reconcileWithProvider(USER_A_ID, userBCopy.getId(), "nominatim"));
     }
     @Test
     @Transactional
@@ -550,6 +547,11 @@ class ReverseGeocodingManagementServiceTest {
         assertNotNull(result.getLatitude());
         assertEquals(coords.getX(), result.getLongitude(), 0.01);
         assertEquals(coords.getY(), result.getLatitude(), 0.01);
+    }
+
+    private void assertGeoPulse(ApiErrorCode code, Executable action) {
+        GeoPulseException exception = assertThrows(GeoPulseException.class, action);
+        assertEquals(code, exception.code());
     }
 
     private Point coord(double lon, double lat) {

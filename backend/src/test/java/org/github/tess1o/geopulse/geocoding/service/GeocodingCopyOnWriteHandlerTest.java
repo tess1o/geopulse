@@ -1,12 +1,12 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
-import jakarta.ws.rs.ForbiddenException;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.*;
@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
 import static org.mockito.Mockito.*;
 /**
  * Unit tests for GeocodingCopyOnWriteHandler.
@@ -104,7 +105,7 @@ class GeocodingCopyOnWriteHandlerTest {
             verify(timelineSyncService).switchToNewGeocodingReference(USER_ID, 100L, 200L, "Custom Name");
         }
         @Test
-        @DisplayName("Should throw ForbiddenException when modifying another user's entity")
+        @DisplayName("Should deny modifying another user's entity")
         void testUserTryingToModifyAnotherUsersEntity() {
             // Given
             ReverseGeocodingLocationEntity otherUserEntity = createUserOwnedEntity(OTHER_USER_ID);
@@ -112,9 +113,10 @@ class GeocodingCopyOnWriteHandlerTest {
                     .displayName("Hacker Name")
                     .build();
             // When / Then
-            assertThrows(ForbiddenException.class, () -> {
+            GeoPulseException exception = assertThrows(GeoPulseException.class, () -> {
                 handler.handleUserUpdate(USER_ID, otherUserEntity, updateDTO);
             });
+            assertEquals(GEOCODING_ACCESS_DENIED, exception.code());
             verify(entityMapper, never()).updateEntityWithValues(
                     any(ReverseGeocodingLocationEntity.class), any(), any(), any());
             verify(entityMapper, never()).createUserCopyWithValues(

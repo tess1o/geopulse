@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.ai.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -19,7 +21,6 @@ import org.jboss.resteasy.reactive.RestResponse;
 import java.util.List;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AI_CONNECTION_FAILED;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path(ApiPaths.INTEGRATIONS + "/ai")
 @Produces(MediaType.APPLICATION_JSON)
@@ -50,19 +51,13 @@ public class AIResource {
     @POST
     @Path("/connection-tests")
     public List<String> testConnection(@NotNull @Valid TestConnectionRequest request) {
-        try {
-            UserAISettings settings = UserAISettings.builder()
-                    .openaiApiUrl(request.openaiApiUrl())
-                    .openaiApiKey(request.openaiApiKey())
-                    .apiKeyRequired(request.isApiKeyNeeded())
-                    .build();
-            return aiSettingsService.testConnectionAndFetchModels(
-                    currentUserService.getCurrentUserId(), settings);
-        } catch (Exception e) {
-            log.error("Failed to test connection", e);
-            throw problem(AI_CONNECTION_FAILED,
-                    e.getMessage() == null ? "Failed to connect to the AI provider" : e.getMessage());
-        }
+        UserAISettings settings = UserAISettings.builder()
+                .openaiApiUrl(request.openaiApiUrl())
+                .openaiApiKey(request.openaiApiKey())
+                .apiKeyRequired(request.isApiKeyNeeded())
+                .build();
+        return aiSettingsService.testConnectionAndFetchModels(
+                currentUserService.getCurrentUserId(), settings);
     }
 
     public record TestConnectionRequest(

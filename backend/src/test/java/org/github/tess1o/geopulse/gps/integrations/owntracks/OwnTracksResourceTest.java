@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTa
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -21,6 +22,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -122,13 +125,12 @@ class OwnTracksResourceTest {
         when(authRegistry.authenticate(eq(GpsSourceType.OWNTRACKS), anyString()))
                 .thenReturn(Optional.empty());
 
-        Response response = resource.handleOwnTracks(
+        GeoPulseException exception = assertThrows(GeoPulseException.class, () -> resource.handleOwnTracks(
                 Map.of("_type", "location", "lat", 42.7, "lon", 23.3, "tst", 1715770000L),
                 "Basic bad-token",
-                "device-a"
-        );
+                "device-a"));
 
-        assertEquals(401, response.getStatus());
+        assertEquals(AUTHENTICATION_REQUIRED, exception.code());
         verify(gpsPointService, never()).saveOwnTracksGpsPoint(any(), any(), anyString(), any(), any());
     }
 }

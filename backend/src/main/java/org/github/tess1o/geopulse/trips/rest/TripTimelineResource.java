@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.trips.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -29,7 +31,6 @@ import java.util.Map;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TIMELINE_REQUEST;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * Timeline overrides scoped to a single trip.
@@ -60,7 +61,7 @@ public class TripTimelineResource {
     public TripClassificationDetailsDTO getTripClassificationDetails(@PathParam("tripId") Long tripId) {
         return tripClassificationDetailsService
                 .getTripClassificationDetails(tripId, currentUserService.getCurrentUserId())
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                         Map.of("tripId", tripId)));
     }
 
@@ -69,19 +70,19 @@ public class TripTimelineResource {
     public TripMovementTypeUpdateResponseDTO updateTripMovementType(
             @PathParam("tripId") Long tripId, TripMovementTypeUpdateRequest request) {
         if (request == null || request.getMovementType() == null || request.getMovementType().isBlank()) {
-            throw problem(INVALID_TIMELINE_REQUEST, "movementType is required");
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "movementType is required");
         }
         TripType movementType;
         try {
             movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, "Invalid movementType",
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid movementType",
                     Map.of("movementType", request.getMovementType(), "allowedValues",
-                            String.join(",", Arrays.stream(TripType.values()).map(Enum::name).toList())));
+                            String.join(",", Arrays.stream(TripType.values()).map(Enum::name).toList())), e);
         }
         return tripMovementTypeOverrideService
                 .setManualMovementType(currentUserService.getCurrentUserId(), tripId, movementType)
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                         Map.of("tripId", tripId)));
     }
 
@@ -90,7 +91,7 @@ public class TripTimelineResource {
     public TripMovementTypeUpdateResponseDTO resetTripMovementType(@PathParam("tripId") Long tripId) {
         return tripMovementTypeOverrideService
                 .resetToAutomaticMovementType(currentUserService.getCurrentUserId(), tripId)
-                .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                         Map.of("tripId", tripId)));
     }
 
@@ -101,10 +102,10 @@ public class TripTimelineResource {
         try {
             return tripStaySplitOverrideService
                     .previewSplit(currentUserService.getCurrentUserId(), tripId, request)
-                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                    .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                             Map.of("tripId", tripId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid trip split request", e);
         }
     }
 
@@ -115,16 +116,10 @@ public class TripTimelineResource {
         try {
             return tripStaySplitOverrideService
                     .splitTrip(currentUserService.getCurrentUserId(), tripId, request)
-                    .orElseThrow(() -> problem(TRIP_NOT_FOUND, "Trip not found or access denied",
+                    .orElseThrow(() -> new GeoPulseException(TRIP_NOT_FOUND, "Trip not found or access denied",
                             Map.of("tripId", tripId)));
         } catch (IllegalArgumentException | IllegalStateException e) {
-            throw problem(INVALID_TIMELINE_REQUEST, detail(e, "Invalid trip split request"));
+            throw new GeoPulseException(INVALID_TIMELINE_REQUEST, "Invalid trip split request", e);
         }
-    }
-
-    private static String detail(Exception exception, String fallback) {
-        return exception.getMessage() == null || exception.getMessage().isBlank()
-                ? fallback
-                : exception.getMessage();
     }
 }

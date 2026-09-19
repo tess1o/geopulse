@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.friends.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -44,7 +46,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_LOCATION
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.FRIEND_RELATIONSHIP_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_ID;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_FRIEND_TRAIL_RANGE;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/friends")
 @ApplicationScoped
@@ -82,7 +83,7 @@ public class FriendResource {
             friendService.removeFriend(currentUserService.getCurrentUserId(), parsedFriendId);
             return RestResponse.noContent();
         } catch (FriendsException exception) {
-            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
+            throw new GeoPulseException(FRIEND_RELATIONSHIP_NOT_FOUND, FRIEND_RELATIONSHIP_NOT_FOUND.title(), Map.of("friendId", parsedFriendId.toString()), exception);
         }
     }
 
@@ -94,13 +95,13 @@ public class FriendResource {
             GpsPointEntity location = friendService.getFriendLocation(
                     currentUserService.getCurrentUserId(), parsedFriendId);
             if (location == null) {
-                throw problem(FRIEND_LOCATION_NOT_FOUND, "Friend location not found",
+                throw new GeoPulseException(FRIEND_LOCATION_NOT_FOUND, "Friend location not found",
                         Map.of("friendId", parsedFriendId.toString()));
             }
             return gpsPointMapper.toPathPoint(location);
         } catch (NotAuthorizedUserException exception) {
-            throw problem(FRIEND_LOCATION_ACCESS_DENIED, exception.getMessage(),
-                    Map.of("friendId", parsedFriendId.toString()));
+            throw new GeoPulseException(FRIEND_LOCATION_ACCESS_DENIED, FRIEND_LOCATION_ACCESS_DENIED.title(),
+                    Map.of("friendId", parsedFriendId.toString()), exception);
         }
     }
 
@@ -110,7 +111,7 @@ public class FriendResource {
             @QueryParam("minutes") @DefaultValue("60") Integer minutes,
             @QueryParam("to") String endTime) {
         if (minutes == null || minutes <= 0 || minutes > 1440) {
-            throw problem(INVALID_FRIEND_TRAIL_RANGE, "minutes must be between 1 and 1440",
+            throw new GeoPulseException(INVALID_FRIEND_TRAIL_RANGE, "minutes must be between 1 and 1440",
                     Map.of("min", 1, "max", 1440));
         }
 
@@ -118,7 +119,7 @@ public class FriendResource {
         try {
             requestedEndTime = endTime != null && !endTime.isBlank() ? Instant.parse(endTime) : Instant.now();
         } catch (DateTimeParseException exception) {
-            throw problem(INVALID_FRIEND_TRAIL_RANGE, "endTime must use ISO-8601 format");
+            throw new GeoPulseException(INVALID_FRIEND_TRAIL_RANGE, "endTime must use ISO-8601 format", exception);
         }
 
         return friendService.getFriendsLocationHistory(
@@ -143,7 +144,7 @@ public class FriendResource {
         try {
             return friendService.getFriendPermissions(currentUserService.getCurrentUserId(), parsedFriendId);
         } catch (FriendsException exception) {
-            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
+            throw new GeoPulseException(FRIEND_RELATIONSHIP_NOT_FOUND, FRIEND_RELATIONSHIP_NOT_FOUND.title(), Map.of("friendId", parsedFriendId.toString()), exception);
         }
     }
 
@@ -158,7 +159,7 @@ public class FriendResource {
             return friendService.updateFriendPermissions(
                     currentUserService.getCurrentUserId(), parsedFriendId, request.shareTimeline());
         } catch (FriendsException exception) {
-            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
+            throw new GeoPulseException(FRIEND_RELATIONSHIP_NOT_FOUND, FRIEND_RELATIONSHIP_NOT_FOUND.title(), Map.of("friendId", parsedFriendId.toString()), exception);
         }
     }
 
@@ -179,7 +180,7 @@ public class FriendResource {
             return friendService.updateLiveLocationPermission(
                     currentUserService.getCurrentUserId(), parsedFriendId, request.shareLiveLocation());
         } catch (FriendsException exception) {
-            throw problem(FRIEND_RELATIONSHIP_NOT_FOUND, exception.getMessage(), Map.of("friendId", parsedFriendId.toString()));
+            throw new GeoPulseException(FRIEND_RELATIONSHIP_NOT_FOUND, FRIEND_RELATIONSHIP_NOT_FOUND.title(), Map.of("friendId", parsedFriendId.toString()), exception);
         }
     }
 
@@ -187,7 +188,7 @@ public class FriendResource {
         try {
             return UUID.fromString(friendId);
         } catch (IllegalArgumentException | NullPointerException exception) {
-            throw problem(INVALID_FRIEND_ID, "Friend ID must be a UUID");
+            throw new GeoPulseException(INVALID_FRIEND_ID, "Friend ID must be a UUID", exception);
         }
     }
 }

@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.dawarich.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -70,7 +73,7 @@ public class DawarichResource {
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
         log.info("Received payload: {}", payload);
         UUID userId = authResult.get().getUserId();
@@ -91,7 +94,7 @@ public class DawarichResource {
 
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, apiKey);
         if (authResult.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         //TODO: implement proper stats, probably use stats service

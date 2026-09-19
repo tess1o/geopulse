@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.auth.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -23,7 +25,6 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.API_TOKEN_INVALID;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/api-tokens")
 @Produces(MediaType.APPLICATION_JSON)
@@ -59,7 +60,7 @@ public class ApiTokenResource {
                     ipAddress
             ));
         } catch (IllegalArgumentException e) {
-            throw problem(API_TOKEN_INVALID, e.getMessage());
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 
@@ -77,7 +78,7 @@ public class ApiTokenResource {
                     ipAddress
             );
         } catch (IllegalArgumentException e) {
-            throw problem(API_TOKEN_INVALID, e.getMessage());
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 
@@ -89,7 +90,7 @@ public class ApiTokenResource {
             String ipAddress = UserIpAddress.resolve(request);
             apiTokenService.revokeOwnedToken(userId, tokenId, ipAddress);
         } catch (IllegalArgumentException e) {
-            throw problem(API_TOKEN_INVALID, e.getMessage());
+            throw new GeoPulseException(API_TOKEN_INVALID, API_TOKEN_INVALID.title(), e);
         }
     }
 }

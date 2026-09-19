@@ -4,8 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
@@ -25,13 +24,12 @@ import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthSta
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GEOCODING_RESULT_NOT_FOUND;
 
 /**
  * Service for managing reverse geocoding results with copy-on-write semantics.
@@ -134,12 +132,12 @@ public class ReverseGeocodingManagementService {
     public ReverseGeocodingDTO getGeocodingResult(UUID userId, Long id) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(id);
         if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + id);
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found");
         }
 
         // Security check: User can access if it's original OR belongs to them
         if (entity.getUser() != null && !entity.isOwnedBy(userId)) {
-            throw new ForbiddenException("Cannot access another user's geocoding data");
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
         }
 
         return dtoMapper.toDTO(entity);
@@ -157,7 +155,7 @@ public class ReverseGeocodingManagementService {
     public ReverseGeocodingDTO updateGeocodingResult(UUID currentUserId, Long geocodingId, ReverseGeocodingUpdateDTO updateDTO) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found");
         }
 
         UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
@@ -173,7 +171,7 @@ public class ReverseGeocodingManagementService {
         log.info("Starting bulk update geocoding for user {}: {} results, updateCity={}, updateCountry={}",
                 currentUserId, bulkDto.getGeocodingIds().size(), bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
 
-        java.util.Map<Long, String> failures = new java.util.HashMap<>();
+        Map<Long, String> failures = new HashMap<>();
         int successCount = 0;
 
         for (Long geocodingId : bulkDto.getGeocodingIds()) {
@@ -287,10 +285,10 @@ public class ReverseGeocodingManagementService {
     private ReverseGeocodingDTO normalizeGeocodingForUser(UUID currentUserId, Long geocodingId, boolean syncTimeline) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found");
         }
         if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
-            throw new ForbiddenException("Cannot modify another user's geocoding data");
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
         }
 
         UserLocationNormalizationService.NormalizedLocation normalized =
@@ -337,7 +335,7 @@ public class ReverseGeocodingManagementService {
             return userCopy;
         }
 
-        throw new ForbiddenException("Cannot modify another user's geocoding data");
+        throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
     }
 
     /**
@@ -629,10 +627,10 @@ public class ReverseGeocodingManagementService {
     ReverseGeocodingDTO applySingleNormalizationRuleToGeocoding(UUID currentUserId, Long geocodingId, NormalizationRuleDto rule) {
         ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
         if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + geocodingId);
+            throw new GeoPulseException(GEOCODING_RESULT_NOT_FOUND, "Geocoding result not found");
         }
         if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
-            throw new ForbiddenException("Cannot modify another user's geocoding data");
+            throw new GeoPulseException(GEOCODING_ACCESS_DENIED, "Access denied");
         }
 
         UserLocationNormalizationService.NormalizedLocation normalized =
@@ -752,7 +750,7 @@ public class ReverseGeocodingManagementService {
 
         for (String providerName : enabledProviders) {
             var customProvider = customGeocodingProviderService == null
-                    ? java.util.Optional.<org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity>empty()
+                    ? Optional.<org.github.tess1o.geopulse.geocoding.model.CustomGeocodingProviderEntity>empty()
                     : customGeocodingProviderService.findByName(providerName);
             providers.add(GeocodingProviderDTO.builder()
                     .name(providerName)

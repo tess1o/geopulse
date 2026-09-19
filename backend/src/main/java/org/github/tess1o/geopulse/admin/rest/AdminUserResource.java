@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -25,7 +27,6 @@ import java.util.stream.Collectors;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 /**
  * REST resource for admin user management.
@@ -80,7 +81,7 @@ public class AdminUserResource {
     public UserDetailsResponse getUserById(@PathParam("id") UUID id) {
         return adminUserService.getUserById(id)
                 .map(this::toUserDetailsResponse)
-                .orElseThrow(() -> problem(ADMIN_USER_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
     }
 
     /**
@@ -95,7 +96,7 @@ public class AdminUserResource {
 
         // Prevent admin from disabling themselves
         if (id.equals(adminId) && !request.isActive()) {
-            throw problem(ADMIN_SELF_DISABLE_FORBIDDEN, "Cannot disable your own account");
+            throw new GeoPulseException(ADMIN_SELF_DISABLE_FORBIDDEN, "Cannot disable your own account");
         }
 
         adminUserService.setUserStatus(id, request.isActive());
@@ -117,14 +118,14 @@ public class AdminUserResource {
         UUID adminId = currentUserService.getCurrentUserId();
 
         UserEntity user = adminUserService.getUserById(id)
-                .orElseThrow(() -> problem(ADMIN_USER_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
 
         String oldRole = user.getRole().name();
 
         try {
             adminUserService.changeUserRole(id, request.getRole());
         } catch (IllegalStateException e) {
-            throw problem(ADMIN_USER_UPDATE_INVALID, e.getMessage());
+            throw new GeoPulseException(ADMIN_USER_UPDATE_INVALID, ADMIN_USER_UPDATE_INVALID.title(), e);
         }
 
         // Audit log
@@ -166,18 +167,18 @@ public class AdminUserResource {
 
         // Prevent admin from deleting themselves
         if (id.equals(adminId)) {
-            throw problem(ADMIN_SELF_DELETE_FORBIDDEN, "Cannot delete your own account");
+            throw new GeoPulseException(ADMIN_SELF_DELETE_FORBIDDEN, "Cannot delete your own account");
         }
 
         UserEntity user = adminUserService.getUserById(id)
-                .orElseThrow(() -> problem(ADMIN_USER_NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new GeoPulseException(ADMIN_USER_NOT_FOUND, "User not found"));
 
         String userEmail = user.getEmail();
 
         try {
             adminUserService.deleteUser(id);
         } catch (IllegalStateException e) {
-            throw problem(ADMIN_USER_UPDATE_INVALID, e.getMessage());
+            throw new GeoPulseException(ADMIN_USER_UPDATE_INVALID, ADMIN_USER_UPDATE_INVALID.title(), e);
         }
 
         // Audit log

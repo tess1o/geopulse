@@ -116,7 +116,7 @@ public class StreamingZipExportService {
                     }
                 });
             } catch (UncheckedIOException e) {
-                throw e.getCause();
+                throw e.getCause(); // NOPMD - deliberately rethrow the original checked cause
             }
 
             gen.writeEndArray(); // End array field

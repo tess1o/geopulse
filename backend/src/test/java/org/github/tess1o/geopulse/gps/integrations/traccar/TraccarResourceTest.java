@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -45,9 +48,10 @@ class TraccarResourceTest {
 
     @Test
     void returns401WhenAuthorizationHeaderIsInvalid() {
-        Response response = resource.handleTraccar(payloadWithUniqueId("phone-a"), "Token abc");
+        GeoPulseException exception = assertThrows(GeoPulseException.class,
+                () -> resource.handleTraccar(payloadWithUniqueId("phone-a"), "Token abc"));
 
-        assertEquals(401, response.getStatus());
+        assertEquals(AUTHENTICATION_REQUIRED, exception.code());
         verifyNoInteractions(gpsSourceService);
         verifyNoInteractions(gpsPointService);
     }
@@ -57,9 +61,10 @@ class TraccarResourceTest {
         when(gpsSourceService.findAllActiveByTokenAndSourceType("shared-token", GpsSourceType.TRACCAR))
                 .thenReturn(List.of());
 
-        Response response = resource.handleTraccar(payloadWithUniqueId("phone-a"), "Bearer shared-token");
+        GeoPulseException exception = assertThrows(GeoPulseException.class,
+                () -> resource.handleTraccar(payloadWithUniqueId("phone-a"), "Bearer shared-token"));
 
-        assertEquals(401, response.getStatus());
+        assertEquals(AUTHENTICATION_REQUIRED, exception.code());
         verify(gpsSourceService).findAllActiveByTokenAndSourceType("shared-token", GpsSourceType.TRACCAR);
         verifyNoInteractions(gpsPointService);
     }

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.rest;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -48,7 +50,6 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_DATE_RA
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_LOCATION_SEARCH;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_PAGE;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.LOCATION_VISITS_NOT_FOUND;
-import static org.github.tess1o.geopulse.shared.api.ApiProblems.problem;
 
 @Path("/location-analytics")
 @Produces(MediaType.APPLICATION_JSON)
@@ -73,7 +74,7 @@ public class LocationAnalyticsResource {
             @QueryParam("q") String query,
             @QueryParam("type") String type) {
         if (query == null || query.trim().length() < 2) {
-            throw problem(INVALID_LOCATION_SEARCH, "Search query must be at least 2 characters");
+            throw new GeoPulseException(INVALID_LOCATION_SEARCH, "Search query must be at least 2 characters");
         }
         return analyticsService.search(currentUserService.getCurrentUserId(), query.trim(), type);
     }
@@ -105,14 +106,14 @@ public class LocationAnalyticsResource {
             Instant fromInstant = parseOptionalInstant(from);
             Instant toInstant = parseOptionalInstant(to);
             if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
-                throw problem(INVALID_DATE_RANGE, "'from' must be before 'to'");
+                throw new GeoPulseException(INVALID_DATE_RANGE, "'from' must be before 'to'");
             }
             validateViewport(minLat, maxLat, minLon, maxLon);
             return analyticsService.getMapPlaces(
                     currentUserService.getCurrentUserId(), fromInstant, toInstant,
                     minLat, maxLat, minLon, maxLon, minVisits, limit);
         } catch (DateTimeParseException exception) {
-            throw problem(INVALID_DATE_RANGE, "Dates must use ISO-8601 format");
+            throw new GeoPulseException(INVALID_DATE_RANGE, "Dates must use ISO-8601 format", exception);
         }
     }
 
@@ -120,14 +121,14 @@ public class LocationAnalyticsResource {
     @Path("/cities/{name}")
     public CityDetailsDTO getCityDetails(@PathParam("name") String cityName) {
         return analyticsService.getCityDetails(currentUserService.getCurrentUserId(), cityName)
-                .orElseThrow(() -> problem(CITY_NOT_FOUND, "City not found or no visits recorded"));
+                .orElseThrow(() -> new GeoPulseException(CITY_NOT_FOUND, "City not found or no visits recorded"));
     }
 
     @GET
     @Path("/countries/{name}")
     public CountryDetailsDTO getCountryDetails(@PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
-                .orElseThrow(() -> problem(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
+                .orElseThrow(() -> new GeoPulseException(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
     }
 
     @GET
@@ -168,7 +169,7 @@ public class LocationAnalyticsResource {
         List<PlaceVisitDTO> visits = analyticsService.getAllCityVisits(
                 currentUserService.getCurrentUserId(), cityName, sortBy, sortDirection);
         if (visits.isEmpty()) {
-            throw problem(LOCATION_VISITS_NOT_FOUND, "No visits found for this city");
+            throw new GeoPulseException(LOCATION_VISITS_NOT_FOUND, "No visits found for this city");
         }
         return csvResponse(visits, "city_" + sanitizeFilename(cityName));
     }
@@ -185,7 +186,7 @@ public class LocationAnalyticsResource {
         List<PlaceVisitDTO> visits = analyticsService.getAllCountryVisits(
                 currentUserService.getCurrentUserId(), countryName, sortBy, sortDirection);
         if (visits.isEmpty()) {
-            throw problem(LOCATION_VISITS_NOT_FOUND, "No visits found for this country");
+            throw new GeoPulseException(LOCATION_VISITS_NOT_FOUND, "No visits found for this country");
         }
         return csvResponse(visits, "country_" + sanitizeFilename(countryName));
     }
@@ -195,27 +196,27 @@ public class LocationAnalyticsResource {
     public List<CityInCountryDTO> getCitiesInCountry(@PathParam("name") String countryName) {
         return analyticsService.getCountryDetails(currentUserService.getCurrentUserId(), countryName)
                 .map(CountryDetailsDTO::getCities)
-                .orElseThrow(() -> problem(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
+                .orElseThrow(() -> new GeoPulseException(COUNTRY_NOT_FOUND, "Country not found or no visits recorded"));
     }
 
     private void validateViewport(Double minLat, Double maxLat, Double minLon, Double maxLon) {
         boolean any = minLat != null || maxLat != null || minLon != null || maxLon != null;
         boolean all = minLat != null && maxLat != null && minLon != null && maxLon != null;
         if (any && !all) {
-            throw problem(INVALID_BOUNDING_BOX,
+            throw new GeoPulseException(INVALID_BOUNDING_BOX,
                     "Viewport filter requires minLat, maxLat, minLon and maxLon");
         }
         if (all && (!Double.isFinite(minLat) || !Double.isFinite(maxLat)
                 || !Double.isFinite(minLon) || !Double.isFinite(maxLon))) {
-            throw problem(INVALID_BOUNDING_BOX, "Viewport bounds must be finite numbers");
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, "Viewport bounds must be finite numbers");
         }
         if (all && (minLat < -90 || maxLat > 90 || minLat > maxLat || minLon > maxLon)) {
-            throw problem(INVALID_BOUNDING_BOX, "Invalid viewport bounds");
+            throw new GeoPulseException(INVALID_BOUNDING_BOX, "Invalid viewport bounds");
         }
     }
 
     private void validatePage(int page) {
-        if (page < 0) throw problem(INVALID_PAGE, "Page number must be non-negative");
+        if (page < 0) throw new GeoPulseException(INVALID_PAGE, "Page number must be non-negative");
     }
 
     private Response csvResponse(List<PlaceVisitDTO> visits, String namePrefix) {

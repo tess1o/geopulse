@@ -183,6 +183,30 @@ jobs:
           path: backend/target/pmd.xml
           retention-days: 7
 
+  error-contract:
+    name: Error Contract and OpenAPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Enforce error-handling rules
+        run: ./mvnw -pl backend -Perror-handling-pmd pmd:check
+
+      - name: Verify generated OpenAPI is current
+        run: |
+          make openapi
+          git diff --exit-code -- docs/openapi
+
   # Stage 2: Smoke E2E Tests
   smoke-e2e-tests:
     name: Smoke E2E Tests

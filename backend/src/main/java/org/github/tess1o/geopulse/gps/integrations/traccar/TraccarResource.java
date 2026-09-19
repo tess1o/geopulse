@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.traccar;
 
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.AUTHENTICATION_REQUIRED;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.HeaderParam;
@@ -51,12 +54,12 @@ public class TraccarResource {
         try {
             token = extractBearerToken(authHeader);
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required", e);
         }
 
         List<GpsSourceConfigEntity> tokenConfigs = gpsSourceService.findAllActiveByTokenAndSourceType(token, GpsSourceType.TRACCAR);
         if (tokenConfigs.isEmpty()) {
-            return Response.status(Response.Status.UNAUTHORIZED).build();
+            throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
 
         List<GpsSourceConfigEntity> matchedConfigs = resolveMatchedConfigs(payload, tokenConfigs);

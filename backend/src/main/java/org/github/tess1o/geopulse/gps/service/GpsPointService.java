@@ -31,8 +31,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import jakarta.persistence.EntityManager;
-import jakarta.ws.rs.ForbiddenException;
-import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -43,6 +42,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_ACCESS_DENIED;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
@@ -482,16 +484,16 @@ public class GpsPointService {
     public RawGpsPointLocationDTO resolveRawGpsPointLocation(UUID userId, Long pointId) {
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
-            throw new NotFoundException("GPS point not found with ID: " + pointId);
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found");
         }
 
         GpsPointEntity gpsPoint = optionalPoint.get();
         if (!gpsPoint.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("GPS point does not belong to the user");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
         }
 
         if (gpsPoint.getCoordinates() == null) {
-            throw new NotFoundException("GPS point has no coordinates");
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point has no coordinates");
         }
 
         LocationResolutionResult result = locationPointResolver.resolveLocationWithReferences(userId, gpsPoint.getCoordinates());
@@ -564,12 +566,12 @@ public class GpsPointService {
         // Find the GPS point and verify ownership
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
-            throw new NotFoundException("GPS point not found with ID: " + pointId);
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found");
         }
 
         GpsPointEntity gpsPoint = optionalPoint.get();
         if (!gpsPoint.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("GPS point does not belong to the user");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
         }
 
         // Store original timestamp for timeline recalculation
@@ -603,12 +605,12 @@ public class GpsPointService {
         // Find the GPS point and verify ownership
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
-            throw new NotFoundException("GPS point not found with ID: " + pointId);
+            throw new GeoPulseException(GPS_POINT_NOT_FOUND, "GPS point not found");
         }
 
         GpsPointEntity gpsPoint = optionalPoint.get();
         if (!gpsPoint.getUser().getId().equals(userId)) {
-            throw new ForbiddenException("GPS point does not belong to the user");
+            throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
         }
 
         // Store timestamp for timeline recalculation
@@ -641,7 +643,7 @@ public class GpsPointService {
         // Verify all points belong to the user
         for (GpsPointEntity point : gpsPoints) {
             if (!point.getUser().getId().equals(userId)) {
-                throw new ForbiddenException("One or more GPS points do not belong to the user");
+                throw new GeoPulseException(GPS_POINT_ACCESS_DENIED, "Access denied");
             }
         }
 
