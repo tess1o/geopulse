@@ -318,6 +318,13 @@ public class SharedLinkService {
 
         SharedLinkEntity entity = entityOpt.get();
 
+        // Timeline shares only expose their own date range. They must not reach this
+        // endpoint, because it ignores showCurrentLocation and the share period.
+        if (entity.getShareType() != ShareType.LIVE_LOCATION) {
+            log.warn("Live location requested for non-live share link: {}", linkId);
+            throw new ForbiddenException("This endpoint is only for live location shares");
+        }
+
         sharedLinkRepository.incrementViewCount(linkId);
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
