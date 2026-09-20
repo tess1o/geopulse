@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.user.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -14,7 +13,8 @@ import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -74,19 +74,19 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private String timezone = "UTC";
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "timeline_preferences")
     public TimelinePreferences timelinePreferences;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "immich_preferences")
     public ImmichPreferences immichPreferences;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "memos_preferences")
     public MemosPreferences memosPreferences;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", name = "notification_preferences")
     public NotificationPreferences notificationPreferences;
 
@@ -175,7 +175,7 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private Boolean timelineDisplayMapMatchingEnabled = false;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "timeline_display_map_matching_excluded_movement_types", columnDefinition = "jsonb", nullable = false)
     @Builder.Default
     private List<TripType> timelineDisplayMapMatchingExcludedMovementTypes = List.of();

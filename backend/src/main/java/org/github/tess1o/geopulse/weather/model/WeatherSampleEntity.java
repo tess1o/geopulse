@@ -1,10 +1,10 @@
 package org.github.tess1o.geopulse.weather.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -102,7 +102,7 @@ public class WeatherSampleEntity {
     @Column(name = "pressure")
     private Double pressure;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_data", columnDefinition = "jsonb")
     private Map<String, Object> rawData;
 

@@ -33,10 +33,10 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.VALIDATION_FAIL
  * Normalizes every problem for the wire, whatever produced it: application exceptions, the guard filters,
  * Bean Validation, or the framework's own mappers (routing 404/405, security, malformed bodies).
  *
- * <p>Runs at priority 102 so it executes before the library's {@code ProblemLogger} (101), {@code MdcPropertiesInjector}
- * (100) and {@code ProblemDefaultsProvider} (99) — they therefore no-op, and this class owns {@code code},
- * {@code type}, {@code errorId}, {@code instance} and {@code requestId} for both the response and the log line.
- * Ordering is descending; see {@code ProblemPostProcessor.DEFAULT_ORDERING}.</p>
+ * <p>Runs at priority 102 so it executes before the library's {@code MdcPropertiesInjector} (100) and
+ * {@code ProblemDefaultsProvider} (99), while {@code ProblemLogger} (0) runs last and logs the fully normalized
+ * problem. This class owns {@code code}, {@code type}, {@code errorId}, {@code instance} and {@code requestId} for
+ * both the response and the log line. Ordering is descending; see {@code ProblemPostProcessor.DEFAULT_ORDERING}.</p>
  *
  * <p>Everything this class reads back out of a problem — an existing {@code code}, an application exception in the
  * cause chain — is matched by <em>name</em>, never by class identity. The library stores post-processors in a
@@ -275,10 +275,8 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
     /**
      * Builds a readable instance reference, e.g. {@code /api/v1/trips/42}.
      *
-     * <p>Deliberately not {@code InstanceUtils.pathToInstance}: in the pinned quarkus-http-problem 3.33.1 that
-     * runs the path through {@code encodeUnwiseCharacters}, which percent-encodes "/" and collapses every instance
-     * into one opaque segment ({@code api%2Fv1%2Ftrips%2F42}). The main branch has since changed to a component
-     * constructor that does not do this, so this can be dropped once the dependency is upgraded.</p>
+     * <p>Deliberately not {@code InstanceUtils.pathToInstance}: {@code ProblemContext.path} has no leading slash,
+     * while the API contract exposes an absolute path.</p>
      */
     private static URI instanceUri(String path) {
         String absolutePath = path.startsWith("/") ? path : "/" + path;

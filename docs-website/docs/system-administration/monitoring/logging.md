@@ -9,7 +9,7 @@ GeoPulse writes application, Nginx, and Mosquitto logs to container stdout/stder
 
 ## Backend output
 
-Production backend records are JSON by default. Request-scoped application records carry `requestId`, and problem records also carry `errorId`. With Quarkus 3.37 or newer these are emitted as top-level JSON fields (`quarkus.log.console.json.mdc.flat-fields`); on the currently pinned Quarkus 3.35.x that property is not yet supported, so the values appear nested under `mdc` until the upgrade. The Quarkus access record is one formatted text value inside the JSON record's `message`, not a set of top-level HTTP fields.
+Production backend records are JSON by default. Request-scoped application records carry `requestId`, and problem records also carry `errorId`; both are emitted as top-level JSON fields. The Quarkus access record is one formatted text value inside the JSON record's `message`, not a set of top-level HTTP fields.
 
 Access records contain only method, query-free path, status, bytes, duration, and request ID. Health, metrics, invitation-token, and public share-token paths are excluded. Nginx logs only 4xx and 5xx responses and uses `$uri`, so query strings and headers are never included.
 

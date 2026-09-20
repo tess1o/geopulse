@@ -46,7 +46,7 @@ Notes:
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_LOG_LEVEL` | `(unset)` | Fallback application log level when no Admin override exists. Property: `geopulse.log.level`. | `ERROR`, `WARN`, `INFO`, or `DEBUG`; case-insensitive. TRACE is not available in production. | Backend restart |
-| `GEOPULSE_LOG_JSON_ENABLED` | `true` in production | Emit backend console records as JSON. MDC fields are flattened (`requestId`, `errorId`) on Quarkus 3.37+; on 3.35.x they are nested under `mdc`. | `true` or `false`. | Backend restart |
+| `GEOPULSE_LOG_JSON_ENABLED` | `true` in production | Emit backend console records as JSON with flattened MDC fields (`requestId`, `errorId`). | `true` or `false`. | Backend restart |
 | `GEOPULSE_HTTP_ACCESS_LOG_ENABLED` | `true` in production | Emit one sanitized backend request record, excluding health, metrics, invitation, and public share-token paths. | `true` or `false`. | Backend restart |
 | `GEOPULSE_MQTT_VERBOSE_LOGGING` | `false` | Enables verbose Mosquitto and authentication-plugin diagnostics. Debug output may expose credential material; enable only temporarily. | `true` or `false`. | Mosquitto restart |
 

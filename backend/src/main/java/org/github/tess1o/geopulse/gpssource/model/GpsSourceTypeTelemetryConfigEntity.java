@@ -1,11 +1,11 @@
 package org.github.tess1o.geopulse.gpssource.model;
 
-import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 import java.util.UUID;
@@ -37,7 +37,7 @@ public class GpsSourceTypeTelemetryConfigEntity {
     @Column(name = "source_type", nullable = false)
     private GpsSourceType sourceType;
 
-    @Type(JsonType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "mapping", columnDefinition = "jsonb", nullable = false)
     private List<GpsTelemetryMappingEntry> mapping;
 }

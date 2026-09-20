@@ -2,7 +2,9 @@ package org.github.tess1o.geopulse.shared.api;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.ext.Provider;
 
@@ -16,6 +18,11 @@ import jakarta.ws.rs.ext.Provider;
 @Provider
 @Priority(Priorities.USER)
 public class GeoPulseExceptionMapper extends ExceptionMapperBase<GeoPulseException> {
+
+    @Inject
+    public GeoPulseExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(GeoPulseException exception) {
