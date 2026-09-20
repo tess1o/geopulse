@@ -92,6 +92,7 @@ public class GeoPulseProblemPostProcessor implements ProblemPostProcessor {
         ApiErrorCode code = resolveCode(normalized);
         Object existingErrorId = normalized.getParameters().get("errorId");
         String errorId = existingErrorId == null ? UUID.randomUUID().toString() : existingErrorId.toString();
+        RequestCorrelationHandler.attachErrorId(routingContext, errorId);
 
         HttpProblem.Builder builder = HttpProblem.builder(normalized)
                 .withType(code.typeUri())

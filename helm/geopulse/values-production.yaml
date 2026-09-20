@@ -69,8 +69,6 @@ mosquitto:
   #   enabled: true
   #   data:
   #     size: 5Gi
-  #   logs:
-  #     size: 2Gi
 
 # JWT key generation
 keygen:

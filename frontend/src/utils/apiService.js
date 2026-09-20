@@ -11,6 +11,7 @@ import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
+import { productionErrorContext } from '@/utils/apiErrorDetail';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
 console.log(API_BASE_URL);
@@ -87,7 +88,7 @@ const apiService = {
             );
             return value || null;
         } catch (error) {
-            console.error('Error getting CSRF token:', error);
+            console.error('Error getting CSRF token:', import.meta.env.DEV ? error : productionErrorContext(error));
             return null;
         }
     },
@@ -125,7 +126,7 @@ const apiService = {
             const timezone = useTimezone()
             return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
         } catch (error) {
-            console.error('Error checking token expiration:', error);
+            console.error('Error checking token expiration:', import.meta.env.DEV ? error : productionErrorContext(error));
             return false;
         }
     },
@@ -142,7 +143,7 @@ const apiService = {
             );
             return value ? parseInt(value) : null;
         } catch (error) {
-            console.error('Error getting token expiration from cookie:', error);
+            console.error('Error getting token expiration from cookie:', import.meta.env.DEV ? error : productionErrorContext(error));
             return null;
         }
     },
@@ -222,7 +223,7 @@ const apiService = {
                             if (interruptsApplicationRequests() || isMaintenanceInterruption(refreshError)) {
                                 throw new MaintenanceInterruption();
                             }
-                            console.error('Token refresh failed:', refreshError);
+                            console.error('Token refresh failed:', import.meta.env.DEV ? refreshError : productionErrorContext(refreshError));
                             await this.handleError(refreshError);
                             throw refreshError;
                         }
@@ -538,7 +539,7 @@ const apiService = {
             this.redirectToErrorPage(error);
         }
 
-        console.error('API request failed:', error);
+        console.error('API request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
     },
 
     /**
@@ -555,24 +556,20 @@ const apiService = {
 
         // Use setTimeout to avoid issues with Vue router during navigation
         setTimeout(() => {
-            // Collect detailed error information
+            const responseData = error.response?.data || {};
+            const responseHeaders = error.response?.headers || {};
+            const rawUrl = error.config?.url || '';
             const errorDetails = {
-                message: error.message || 'Unknown error',
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data,
-                url: error.config?.url,
-                method: error.config?.method?.toUpperCase(),
-                headers: error.config?.headers,
                 timestamp: useTimezone().now().toISOString(),
-                userAgent: navigator.userAgent,
-                stack: error.stack
+                method: error.config?.method?.toUpperCase() || null,
+                url: rawUrl.split(/[?#]/, 1)[0] || null,
+                status: error.response?.status,
+                requestId: responseData.requestId || responseHeaders['x-request-id'] || null,
+                errorId: responseData.errorId || responseHeaders['x-error-id'] || null
             };
 
-            let detailsStoredInSession = false;
             try {
                 sessionStorage.setItem('errorDetails', JSON.stringify(errorDetails));
-                detailsStoredInSession = true;
 
                 const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
                 if (returnTo && !returnTo.startsWith('/error')) {
@@ -587,10 +584,6 @@ const apiService = {
                 title: 'Backend Unavailable',
                 message: 'GeoPulse servers are currently unavailable. Please try again later.'
             });
-
-            if (!detailsStoredInSession) {
-                errorParams.set('details', JSON.stringify(errorDetails));
-            }
 
             window.location.replace(`/error?${errorParams.toString()}`);
         }, 100);
@@ -627,7 +620,7 @@ const apiService = {
             await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
             // Even if logout fails on server, clear local data
-            console.error('Logout request failed:', error);
+            console.error('Logout request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
         } finally {
             this.clearAuthData();
         }
@@ -641,7 +634,7 @@ const apiService = {
         try {
             await this._performSecureRequest('delete', '/auth/sessions/current');
         } catch (error) {
-            console.error('Logout request failed:', error);
+            console.error('Logout request failed:', import.meta.env.DEV ? error : productionErrorContext(error));
             throw error;
         } finally {
             this.clearAuthData();

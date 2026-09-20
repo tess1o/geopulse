@@ -96,7 +96,7 @@ public class ImmichClient {
             int depth
     ) {
         if (depth >= MAX_PAGES) {
-            log.warn("Reached max Immich pagination depth ({}) for request {}", MAX_PAGES, originalRequest);
+            log.warn("Reached max Immich pagination depth ({})", MAX_PAGES);
             return CompletableFuture.completedFuture(null);
         }
 

@@ -97,7 +97,10 @@ function devServiceWorkerCleanupPlugin() {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+    esbuild: mode === 'production'
+        ? { pure: ['console.log', 'console.info', 'console.debug'] }
+        : undefined,
     build: {
         outDir: 'dist' // explicitly define output directory
     },
@@ -224,4 +227,4 @@ export default defineConfig({
             }
         }
     },
-});
+}));

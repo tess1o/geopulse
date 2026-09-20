@@ -109,6 +109,7 @@ public class GpsPointResource {
     @RolesAllowed({"USER", "ADMIN"})
     public GpsIngestionResponse ingestMobileAppPoints(@Valid GpsPointsRetentionRequest request,
                                                       @RestHeader("X-Device-Id") String xDeviceId) {
+        long started = System.nanoTime();
         var deviceId = xDeviceId == null ? "MOBILE APP" : xDeviceId;
         var points = request.getPoints() == null ? Collections.<GpsPointDTO>emptyList() : request.getPoints();
 
@@ -116,7 +117,8 @@ public class GpsPointResource {
             UUID userId = currentUserService.getCurrentUserId();
             GpsSourceConfigEntity config = buildMobileAppDefaultConfig();
 
-            gpsPointService.saveMobileAppGpsPoints(points, deviceId, userId, GpsSourceType.MOBILE_APP, config);
+            var summary = gpsPointService.saveMobileAppGpsPoints(points, deviceId, userId, GpsSourceType.MOBILE_APP, config);
+            if (summary != null) summary.logCompletion(GpsSourceType.MOBILE_APP, started);
             return GpsIngestionResponse.success();
         } catch (GpsCoordinateDuplicateException ex) {
             throw new GeoPulseException(GPS_POINT_DUPLICATE, "Duplicate point", ex);
@@ -152,7 +154,7 @@ public class GpsPointResource {
             @QueryParam("to") String endTime,
             @QueryParam("simplify") @DefaultValue("true") boolean simplify) {
         UserEntity user = currentUserService.getCurrentUser();
-        log.info("Received request to get GPS point path for user {} between {} and {}", user.getEmail(), startTime, endTime);
+        log.info("Received request to get GPS point path for user {} between {} and {}", user.getId(), startTime, endTime);
 
         try {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
@@ -399,7 +401,6 @@ public class GpsPointResource {
                     filters.setGpsPointIds(gpsPointIds);
                     log.info("Exporting {} specific GPS points by IDs", gpsPointIds.size());
                 } catch (NumberFormatException e) {
-                    log.warn("Invalid GPS point IDs format: {}", ids, e);
                     throw new GeoPulseException(INVALID_GPS_QUERY, "Invalid GPS point IDs format", e);
                 }
             }

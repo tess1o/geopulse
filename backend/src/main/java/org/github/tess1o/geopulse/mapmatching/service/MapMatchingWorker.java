@@ -264,7 +264,7 @@ public class MapMatchingWorker {
                 log.debug("Map-matching pipeline completed: trigger={}, phase={}, processedTargets={}, pendingReconciliations={}, error={}",
                         reason, phase, processed, reconciliationRepository.countPending(), lastError);
             } catch (RuntimeException e) {
-                log.warn("Unable to record final map-matching worker status: {}", e.getMessage());
+                log.warn("Unable to record final map-matching worker status: {}", e.getMessage(), e);
             } finally {
                 running.set(false);
                 if (rerunRequested.getAndSet(false) && running.compareAndSet(false, true)) {

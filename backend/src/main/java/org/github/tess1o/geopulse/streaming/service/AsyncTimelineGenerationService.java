@@ -117,7 +117,7 @@ public class AsyncTimelineGenerationService {
                 try {
                     jobProgressService.failJob(jobId, "Unexpected error: " + e.getMessage());
                 } catch (Exception failError) {
-                    log.error("Failed to mark job {} as failed: {}", jobId, failError.getMessage());
+                    log.error("Failed to mark job {} as failed: {}", jobId, failError.getMessage(), failError);
                 }
             } finally {
                 drainPendingRegeneration(userId);

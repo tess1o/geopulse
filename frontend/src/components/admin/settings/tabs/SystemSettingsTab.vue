@@ -50,6 +50,35 @@
       </SettingItem>
     </SettingSection>
 
+    <details v-if="loggingSetting" class="advanced-settings" open>
+      <summary>Observability</summary>
+      <SettingSection title="Application Logging">
+        <SettingItem
+          :setting="loggingSetting"
+          reset-label="Use environment/default"
+          @reset="handleLoggingReset"
+        >
+          <template #control="{ setting }">
+            <Select
+              v-model="setting.currentValue"
+              :options="logLevelOptions"
+              placeholder="Select log level"
+              @change="handleLoggingUpdate(setting)"
+              style="width: 220px"
+            />
+          </template>
+        </SettingItem>
+        <div v-if="loggingStatus" class="logging-status">
+          Configured: <strong>{{ loggingStatus.configuredLevel }}</strong> ·
+          Effective: <strong>{{ loggingStatus.effectiveLevel }}</strong> ·
+          Source: <strong>{{ loggingStatus.source }}</strong>
+        </div>
+        <Message v-if="loggingStatus?.effectiveLevel === 'DEBUG'" severity="warn" :closable="false">
+          DEBUG logging is verbose and should only be enabled temporarily in production.
+        </Message>
+      </SettingSection>
+    </details>
+
     <details v-if="updateCheckSettings.length > 0" class="advanced-settings">
       <summary>Update Check</summary>
       <SettingSection title="Release Metadata">
@@ -132,15 +161,20 @@ import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
+import Message from 'primevue/message'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 import { DISTANCE_UNIT_OPTIONS, TEMPERATURE_UNIT_OPTIONS } from '@/constants/adminSettingsMetadata'
+import { useAdminStore } from '@/stores/admin'
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
+const adminStore = useAdminStore()
 
 const systemSettings = ref([])
 const distanceUnitOptions = DISTANCE_UNIT_OPTIONS
 const temperatureUnitOptions = TEMPERATURE_UNIT_OPTIONS
+const logLevelOptions = ['ERROR', 'WARN', 'INFO', 'DEBUG']
+const loggingStatus = ref(null)
 
 const updateCheckKeys = [
   'system.version-check.github-api-url',
@@ -162,7 +196,8 @@ const waterDatasetKeys = [
 const baseSystemSettings = computed(() =>
   systemSettings.value.filter(setting =>
     !updateCheckKeys.includes(setting.key) &&
-    !waterDatasetKeys.includes(setting.key)
+    !waterDatasetKeys.includes(setting.key) &&
+    setting.key !== 'system.logging.application-level'
   )
 )
 const updateCheckSettings = computed(() =>
@@ -171,6 +206,13 @@ const updateCheckSettings = computed(() =>
 const waterDatasetSettings = computed(() =>
   waterDatasetKeys.map(key => systemSettings.value.find(setting => setting.key === key)).filter(Boolean)
 )
+const loggingSetting = computed(() =>
+  systemSettings.value.find(setting => setting.key === 'system.logging.application-level')
+)
+
+const reloadLoggingStatus = async () => {
+  loggingStatus.value = await adminStore.getLoggingStatus()
+}
 
 const reloadSettings = async () => {
   const loaded = await loadSettings('system')
@@ -178,7 +220,7 @@ const reloadSettings = async () => {
 }
 
 onMounted(async () => {
-  await reloadSettings()
+  await Promise.all([reloadSettings(), reloadLoggingStatus()])
 })
 
 const handleUpdate = async (setting) => {
@@ -187,6 +229,16 @@ const handleUpdate = async (setting) => {
 
 const handleReset = async (setting) => {
   await resetSetting(setting)
+}
+
+const handleLoggingUpdate = async (setting) => {
+  await updateSetting(setting, null, reloadSettings)
+  await reloadLoggingStatus()
+}
+
+const handleLoggingReset = async () => {
+  await resetSetting(loggingSetting.value)
+  await Promise.all([reloadSettings(), reloadLoggingStatus()])
 }
 </script>
 
@@ -208,6 +260,12 @@ const handleReset = async (setting) => {
 .url-input {
   width: min(56vw, 720px);
   min-width: 420px;
+}
+
+.logging-status {
+  margin: 0.75rem 0 1rem;
+  padding: 0 1rem;
+  color: var(--text-color-secondary);
 }
 
 @media (max-width: 768px) {

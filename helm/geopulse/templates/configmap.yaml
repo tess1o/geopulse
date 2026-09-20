@@ -103,6 +103,7 @@ data:
   GEOPULSE_MQTT_BROKER_HOST: {{ include "geopulse.mosquitto.host" . | quote }}
   GEOPULSE_MQTT_BROKER_PORT: {{ .Values.mosquitto.service.port | quote }}
   GEOPULSE_MQTT_USERNAME: {{ .Values.mosquitto.username | quote }}
+  GEOPULSE_MQTT_VERBOSE_LOGGING: {{ .Values.mosquitto.verboseLogging | default false | quote }}
   {{- else }}
   GEOPULSE_MQTT_ENABLED: "false"
   {{- end }}

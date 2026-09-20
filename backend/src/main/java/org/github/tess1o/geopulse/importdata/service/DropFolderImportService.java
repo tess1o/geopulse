@@ -215,7 +215,7 @@ public class DropFolderImportService {
                     .sorted(Comparator.comparing(this::getLastModifiedSafe))
                     .collect(Collectors.toList());
         } catch (AccessDeniedException e) {
-            log.warn("Permission denied listing files in {}: {}", userDir, e.getMessage());
+            log.warn("Permission denied listing files in {}: {}", userDir, e.getMessage(), e);
             logPathPermissions(userDir, "Drop folder user directory permissions");
             return List.of();
         } catch (IOException e) {
@@ -384,7 +384,7 @@ public class DropFolderImportService {
             strategy.validateAndDetectDataTypes(probeJob);
             return new DetectionResult(format, probeJob.getFileData());
         } catch (AccessDeniedException e) {
-            log.warn("Permission denied reading drop file {}: {}", fileName, e.getMessage());
+            log.warn("Permission denied reading drop file {}: {}", fileName, e.getMessage(), e);
             logPathPermissions(file, "Drop file permissions");
             return DetectionResult.error("Permission denied reading file: " + fileName + ". " + permissionHint(file));
         } catch (Exception e) {
@@ -494,7 +494,7 @@ public class DropFolderImportService {
                 log.info("Deleted drop import file {}", file);
             }
         } catch (IOException e) {
-            log.warn("Failed to delete drop import file {}: {}", file, e.getMessage());
+            log.warn("Failed to delete drop import file {}: {}", file, e.getMessage(), e);
         }
     }
 
@@ -545,7 +545,7 @@ public class DropFolderImportService {
         try {
             objectMapper.writeValue(errorFile.toFile(), errorInfo);
         } catch (IOException e) {
-            log.warn("Failed to write error file {}: {}", errorFile, e.getMessage());
+            log.warn("Failed to write error file {}: {}", errorFile, e.getMessage(), e);
         }
     }
 
@@ -630,7 +630,7 @@ public class DropFolderImportService {
         } catch (UnsupportedOperationException e) {
             log.warn("{}: path={} (POSIX attributes not supported)", context, path);
         } catch (Exception e) {
-            log.warn("{}: path={} (failed to read permissions: {})", context, path, e.getMessage());
+            log.warn("{}: path={} (failed to read permissions: {})", context, path, e.getMessage(), e);
         }
     }
 

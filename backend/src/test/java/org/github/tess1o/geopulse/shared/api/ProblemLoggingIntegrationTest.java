@@ -76,15 +76,13 @@ class ProblemLoggingIntegrationTest {
     }
 
     @Test
-    void rawApiTokenChallengeLogsOnceAtInfo() {
+    void rawApiTokenChallengeDoesNotAddAnApplicationDuplicate() {
         List<LogRecord> records = capture(ApiTokenAuthenticationMechanism.class.getName(), () -> given()
                 .header("X-API-Key", ApiTokenSecretService.TOKEN_PREFIX + "invalid")
                 .when().get("/api/v1/users/me")
                 .then().statusCode(401));
 
-        assertThat(records).hasSize(1);
-        assertThat(records.getFirst().getLevel()).isEqualTo(Level.INFO);
-        assertThat(records.getFirst().getThrown()).isNull();
+        assertThat(records).isEmpty();
     }
 
     private List<LogRecord> capture(String category, Runnable request) {

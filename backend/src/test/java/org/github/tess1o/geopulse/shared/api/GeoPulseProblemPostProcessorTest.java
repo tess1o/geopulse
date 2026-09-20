@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.shared.api;
 import io.quarkiverse.httpproblem.HttpProblem;
 import io.quarkiverse.httpproblem.postprocessing.ProblemContext;
 import io.vertx.ext.web.RoutingContext;
+import org.jboss.logging.MDC;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,11 @@ class GeoPulseProblemPostProcessorTest {
         RoutingContext routingContext = mock(RoutingContext.class);
         when(routingContext.get(RequestCorrelationHandler.REQUEST_ID)).thenReturn("request-1");
         processor.routingContext = routingContext;
+    }
+
+    @AfterEach
+    void clearMdc() {
+        MDC.remove(RequestCorrelationHandler.ERROR_ID);
     }
 
     @Test
@@ -77,6 +84,8 @@ class GeoPulseProblemPostProcessorTest {
         assertThat(result.getInstance()).hasToString("/api/v1/nope");
         assertThat(result.getParameters().get("requestId")).isEqualTo("request-1");
         assertThat(result.getParameters().get("errorId")).isNotNull();
+        assertThat(MDC.get(RequestCorrelationHandler.ERROR_ID))
+                .isEqualTo(result.getParameters().get("errorId"));
         assertThat(result.getHeaders())
                 .containsKey(RequestCorrelationHandler.ERROR_ID_HEADER);
         assertThat(result.getHeaders().get(RequestCorrelationHandler.ERROR_ID_HEADER))

@@ -47,8 +47,6 @@ public class StreamingDataGapService {
         boolean exceedsThreshold = exceedsGapThreshold(config, gapDuration);
 
         if (!exceedsThreshold) {
-            log.trace("Gap from {} to {} ({} seconds = {}min) does not exceed threshold",
-                    startTime, endTime, gapDuration.getSeconds(), gapDuration.toMinutes());
             return false;
         }
 
@@ -56,8 +54,6 @@ public class StreamingDataGapService {
         boolean meetsMinDuration = meetsMinimumDuration(config, gapDuration);
 
         if (!meetsMinDuration) {
-            log.trace("Gap from {} to {} ({} seconds = {}min) does not meet minimum duration",
-                    startTime, endTime, gapDuration.getSeconds(), gapDuration.toMinutes());
             return false;
         }
 
@@ -75,8 +71,6 @@ public class StreamingDataGapService {
      */
     @Transactional
     public void checkAndCreateOngoingDataGap(UUID userId, TimelineConfig config) {
-        log.trace("Checking for ongoing data gap for user {}", userId);
-
         // Get the latest GPS point for this user
         Optional<GpsPointEntity> lastGpsPoint = gpsPointRepository.find("user.id = :userId order by timestamp desc",
                 Parameters.with("userId", userId)).firstResultOptional();

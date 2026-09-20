@@ -199,7 +199,7 @@ public class UserService {
                 .build();
 
         persist(user);
-        log.info("User {} registered via invitation token {}", email, invitationToken.substring(0, 8) + "...");
+        log.info("User {} registered via invitation", user.getId());
         return user;
     }
 

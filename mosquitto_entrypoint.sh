@@ -37,16 +37,10 @@ allow_anonymous false
 persistence true
 persistence_location /mosquitto/data/
 
-# Logging
-log_dest file /mosquitto/log/mosquitto.log
-log_type all
-connection_messages true
 log_timestamp true
 
 # Load the go-auth plugin
 auth_plugin /mosquitto/go-auth.so
-auth_opt_log_dest stdout
-auth_opt_log_level debug
 
 # Backend configuration
 auth_opt_backends files,postgres
@@ -116,6 +110,25 @@ EOF
 
     echo "--- CONFIGURATION GENERATED SUCCESSFULLY ---"
 fi
+
+# Reconcile managed logging settings on every start so persisted configurations
+# receive safe defaults during upgrades.
+sed -i '/^[[:space:]]*log_dest[[:space:]]/d; /^[[:space:]]*log_type[[:space:]]/d; /^[[:space:]]*connection_messages[[:space:]]/d; /^[[:space:]]*auth_opt_log_dest[[:space:]]/d; /^[[:space:]]*auth_opt_log_level[[:space:]]/d' "$CONF_FILE"
+{
+    echo "log_dest stdout"
+    echo "auth_opt_log_dest stdout"
+    if [ "${GEOPULSE_MQTT_VERBOSE_LOGGING:-false}" = "true" ]; then
+        echo "log_type all"
+        echo "connection_messages true"
+        echo "auth_opt_log_level debug"
+    else
+        echo "log_type error"
+        echo "log_type warning"
+        echo "log_type notice"
+        echo "connection_messages false"
+        echo "auth_opt_log_level warn"
+    fi
+} >> "$CONF_FILE"
 
 # --- Start Mosquitto ---
 # exec "$@" runs the command passed to the entrypoint script.

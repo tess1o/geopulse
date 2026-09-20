@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +50,31 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.GPS_POINT_NOT_F
 @ApplicationScoped
 @Slf4j
 public class GpsPointService {
+
+    public record GpsIngestSummary(int accepted, int saved, int duplicate, int filtered) {
+        public static GpsIngestSummary of(GpsIngestOutcome outcome) {
+            return new GpsIngestSummary(1, outcome == GpsIngestOutcome.SAVED ? 1 : 0,
+                    outcome == GpsIngestOutcome.DUPLICATE ? 1 : 0,
+                    outcome == GpsIngestOutcome.FILTERED ? 1 : 0);
+        }
+
+        public GpsIngestSummary plus(GpsIngestSummary other) {
+            if (other == null) return this;
+            return new GpsIngestSummary(accepted + other.accepted, saved + other.saved,
+                    duplicate + other.duplicate, filtered + other.filtered);
+        }
+
+        public void logCompletion(GpsSourceType source, long startedNanos) {
+            log.info("GPS ingestion completed: source={}, accepted={}, saved={}, duplicate={}, filtered={}, durationMs={}",
+                    source, accepted, saved, duplicate, filtered,
+                    (System.nanoTime() - startedNanos) / 1_000_000);
+        }
+    }
+
+    public enum GpsIngestOutcome { SAVED, DUPLICATE, FILTERED }
+
+    private record PersistResult(GpsIngestOutcome outcome, GpsPointEntity point) {
+    }
     private final GpsPointMapper gpsPointMapper;
     private final GpsPointRepository gpsPointRepository;
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
@@ -98,7 +124,7 @@ public class GpsPointService {
      * @param config The GPS source configuration containing filter settings
      * @return saved point if persisted, otherwise empty when rejected by filters or duplicate detection
      */
-    private Optional<GpsPointEntity> filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
+    private PersistResult filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
         GpsSourceType sourceType = entity.getSourceType();
         long stageStart = metricsStart();
         var filterResult = filteringService.filter(entity, config);
@@ -106,7 +132,7 @@ public class GpsPointService {
         if (filterResult.isRejected()) {
             // Already logged in filtering service
             countGpsPoint(sourceType, "filtered");
-            return Optional.empty();
+            return new PersistResult(GpsIngestOutcome.FILTERED, null);
         }
 
         // Check for existing point with the same unique key
@@ -120,9 +146,8 @@ public class GpsPointService {
 
         if (existingPoint.isPresent()) {
             // It's a duplicate, reject it
-            log.info("Skipping duplicate GPS point for user {} at timestamp {} with same coordinates", entity.getUser().getId(), entity.getTimestamp());
             countGpsPoint(sourceType, "duplicate");
-            return Optional.empty();
+            return new PersistResult(GpsIngestOutcome.DUPLICATE, null);
         } else {
             // Persist the new entity
             stageStart = metricsStart();
@@ -131,10 +156,26 @@ public class GpsPointService {
             stageStart = metricsStart();
             geofenceEvaluationService.handlePersistedPoint(entity);
             recordGpsStage(stageStart, sourceType, "geofence", "success");
-            log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
             countGpsPoint(sourceType, "saved");
-            return Optional.of(entity);
+            return new PersistResult(GpsIngestOutcome.SAVED, entity);
         }
+    }
+
+    private GpsIngestSummary finishSingle(PersistResult result, UUID userId) {
+        if (result.point() != null) {
+            enrichSavedGpsPointsIfBoatReady(userId, List.of(result.point()));
+        }
+        return GpsIngestSummary.of(result.outcome());
+    }
+
+    private GpsIngestSummary countAndSummarize(GpsSourceType sourceType, GpsIngestOutcome outcome) {
+        countGpsPoint(sourceType, outcome == GpsIngestOutcome.DUPLICATE ? "duplicate" : "filtered");
+        return GpsIngestSummary.of(outcome);
+    }
+
+    private PersistResult countAndReject(GpsSourceType sourceType, GpsIngestOutcome outcome) {
+        countGpsPoint(sourceType, outcome == GpsIngestOutcome.DUPLICATE ? "duplicate" : "filtered");
+        return new PersistResult(outcome, null);
     }
 
     private void enrichSavedGpsPointsIfBoatReady(UUID userId, Collection<GpsPointEntity> savedPoints) {
@@ -171,13 +212,12 @@ public class GpsPointService {
             }
         } catch (Exception e) {
             countBoatEnrichment("error");
-            log.warn("Failed to enrich Boat water evidence for newly saved GPS points for user {}: {}",
-                    userId, e.getMessage());
+            log.warn("Failed to enrich Boat water evidence for newly saved GPS points for user {}", userId, e);
         }
     }
 
     @Transactional
-    public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
         // Check for location-based duplicates first (before creating entity) if enabled
@@ -190,10 +230,7 @@ public class GpsPointService {
             long stageStart = metricsStart();
             if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType, threshold)) {
                 recordGpsStage(stageStart, sourceType, "duplicate_detection", "duplicate");
-                countGpsPoint(sourceType, "duplicate");
-                log.info("Skipping OwnTracks GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, message.getLat(), message.getLon(), threshold);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
             recordGpsStage(stageStart, sourceType, "duplicate_detection", "success");
         }
@@ -202,12 +239,11 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
 
-        filterAndPersistGpsPoint(entity, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
     }
 
     @Transactional
-    public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = message.getProperties().getTimestamp();
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -221,15 +257,12 @@ public class GpsPointService {
             double lat = message.getGeometry().getCoordinates()[1];
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                log.info("Skipping Overland GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, lat, lon, threshold);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             // Fallback to exact timestamp duplicate check
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, timestamp);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 
@@ -237,12 +270,11 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
-        filterAndPersistGpsPoint(entity, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
     }
 
     @Transactional
-    public void saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         UserEntity user = em.getReference(UserEntity.class, userId);
 
         // Pre-calculate threshold if duplicate detection is enabled
@@ -254,6 +286,7 @@ public class GpsPointService {
         }
 
         List<GpsPointEntity> savedPoints = new ArrayList<>();
+        GpsIngestSummary summary = new GpsIngestSummary(0, 0, 0, 0);
         for (DawarichLocation location : payload.getLocations()) {
             Instant timestamp = location.getProperties().getTimestamp();
             double lon = location.getGeometry().getCoordinates().get(0);
@@ -262,14 +295,13 @@ public class GpsPointService {
             // Check for location-based duplicates if enabled, otherwise use exact timestamp check
             if (config.isEnableDuplicateDetection()) {
                 if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                    log.info("Skipping Dawarich GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                            userId, lat, lon, threshold);
+                    summary = summary.plus(countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE));
                     continue;
                 }
             } else {
                 // Fallback to exact timestamp duplicate check
                 if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                    log.info("Skipping duplicate Dawarich GPS point for user {} at timestamp {}", userId, timestamp);
+                    summary = summary.plus(countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE));
                     continue;
                 }
             }
@@ -282,13 +314,16 @@ public class GpsPointService {
             // Map message to entity (mapper handles m/s → km/h conversion)
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
 
-            filterAndPersistGpsPoint(entity, config).ifPresent(savedPoints::add);
+            PersistResult result = filterAndPersistGpsPoint(entity, config);
+            summary = summary.plus(GpsIngestSummary.of(result.outcome()));
+            if (result.point() != null) savedPoints.add(result.point());
         }
         enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
+        return summary;
     }
 
     @Transactional
-    public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = data.getTimestamp();
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -302,15 +337,12 @@ public class GpsPointService {
             double lon = data.getLocation().getLongitude();
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                log.info("Skipping Home Assistant GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, lat, lon, threshold);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             // Fallback to exact timestamp duplicate check
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 
@@ -318,12 +350,11 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
 
-        filterAndPersistGpsPoint(entity, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
     }
 
     @Transactional
-    public void saveColotaGpsPoint(ColotaLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveColotaGpsPoint(ColotaLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -333,14 +364,11 @@ public class GpsPointService {
                 : globalDuplicateDetectionThresholdMinutes;
 
             if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType, threshold)) {
-                log.info("Skipping Colota GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, message.getLat(), message.getLon(), threshold);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Colota GPS point for user {} at timestamp {}", userId, timestamp);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 
@@ -348,27 +376,26 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
-        filterAndPersistGpsPoint(entity, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
     }
 
     @Transactional
-    public void saveTraccarGpsPoint(TraccarPositionData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveTraccarGpsPoint(TraccarPositionData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         if (data == null || data.getPosition() == null) {
             log.warn("Skipping Traccar payload for user {}: missing position", userId);
-            return;
+            return countAndSummarize(sourceType, GpsIngestOutcome.FILTERED);
         }
 
         var position = data.getPosition();
         if (position.getLatitude() == null || position.getLongitude() == null) {
             log.warn("Skipping Traccar payload for user {}: missing latitude/longitude", userId);
-            return;
+            return countAndSummarize(sourceType, GpsIngestOutcome.FILTERED);
         }
 
         Instant timestamp = position.resolveTimestamp();
         if (timestamp == null) {
             log.warn("Skipping Traccar payload for user {}: missing timestamp", userId);
-            return;
+            return countAndSummarize(sourceType, GpsIngestOutcome.FILTERED);
         }
 
         double lat = position.getLatitude();
@@ -380,46 +407,48 @@ public class GpsPointService {
                     : globalDuplicateDetectionThresholdMinutes;
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                log.info("Skipping Traccar GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
-                        userId, lat, lon, threshold);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Traccar GPS point for user {} at timestamp {}", userId, timestamp);
-                return;
+                return countAndSummarize(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
-        filterAndPersistGpsPoint(entity, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
     }
 
     @Transactional
-    public void saveMobileAppGpsPoints(List<GpsPointDTO> data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    public GpsIngestSummary saveMobileAppGpsPoints(List<GpsPointDTO> data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         if (data == null || data.isEmpty()) {
-            log.warn("Gps points are empty");
-            return;
+            return new GpsIngestSummary(0, 0, 0, 0);
         }
 
         List<GpsPointEntity> savedPoints = new ArrayList<>();
-        data.stream()
+        List<GpsPointDTO> validPoints = data.stream()
                 .filter(point -> point.getTimestamp() != null)
                 .sorted(Comparator.comparing(GpsPointDTO::getTimestamp))
-                .forEach(point -> saveMobileAppGpsPointInternal(point, deviceId, userId, sourceType, config)
-                        .ifPresent(savedPoints::add));
+                .toList();
+        int missingTimestampCount = data.size() - validPoints.size();
+        GpsIngestSummary summary = new GpsIngestSummary(missingTimestampCount, 0, 0, missingTimestampCount);
+        for (int i = 0; i < missingTimestampCount; i++) countGpsPoint(sourceType, "filtered");
+        for (GpsPointDTO point : validPoints) {
+            PersistResult result = saveMobileAppGpsPointInternal(point, deviceId, userId, sourceType, config);
+            summary = summary.plus(GpsIngestSummary.of(result.outcome()));
+            if (result.point() != null) savedPoints.add(result.point());
+        }
         enrichSavedGpsPointsIfBoatReady(userId, savedPoints);
+        return summary;
     }
 
     @Transactional
     public void saveMobileAppGpsPoint(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
-        saveMobileAppGpsPointInternal(data, deviceId, userId, sourceType, config)
-                .ifPresent(savedPoint -> enrichSavedGpsPointsIfBoatReady(userId, List.of(savedPoint)));
+        finishSingle(saveMobileAppGpsPointInternal(data, deviceId, userId, sourceType, config), userId);
     }
 
-    private Optional<GpsPointEntity> saveMobileAppGpsPointInternal(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+    private PersistResult saveMobileAppGpsPointInternal(GpsPointDTO data, String deviceId, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = data.getTimestamp();
 
         double lat = data.getCoordinates().getLat();
@@ -431,13 +460,11 @@ public class GpsPointService {
                     : globalDuplicateDetectionThresholdMinutes;
 
             if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
-                log.info("Skipping Mobile App GPS point for user {} and device id {} at coordinates ({}, {}): duplicate location detected within {} minutes window", userId, deviceId, lat, lon, threshold);
-                return Optional.empty();
+                return countAndReject(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         } else {
             if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-                log.info("Skipping duplicate Mobile App GPS point for user {} and device id {} at timestamp {}", userId, deviceId, timestamp);
-                return Optional.empty();
+                return countAndReject(sourceType, GpsIngestOutcome.DUPLICATE);
             }
         }
 

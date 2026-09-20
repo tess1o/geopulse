@@ -49,7 +49,7 @@ public class OwnTracksTagService {
         String tagValue = message.getTag();
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
-        log.debug("Processing OwnTracks tag: {} for user {} at {}", tagValue, userId, timestamp);
+        log.debug("Processing OwnTracks tag for user {}", userId);
 
         // Get current active tag for user
         Optional<PeriodTagEntity> activeTagOpt = periodTagRepository.findActiveByUserId(userId);
@@ -69,14 +69,14 @@ public class OwnTracksTagService {
                               Optional<PeriodTagEntity> activeTagOpt) {
         // If there's an active tag with the same name, do nothing
         if (activeTagOpt.isPresent() && tagName.equals(activeTagOpt.get().getTagName())) {
-            log.debug("Tag '{}' is already active for user {}", tagName, userId);
+            log.debug("OwnTracks tag is already active for user {}", userId);
             return;
         }
 
         // End the current active tag if exists
         if (activeTagOpt.isPresent()) {
             PeriodTagEntity currentTag = activeTagOpt.get();
-            log.info("Ending active tag '{}' for user {} at {}", currentTag.getTagName(), userId, timestamp);
+            log.info("Ending active OwnTracks tag for user {}", userId);
             endActiveTag(currentTag, timestamp);
 
             // Flush to ensure the old tag's is_active=false is committed before creating new active tag
@@ -87,7 +87,7 @@ public class OwnTracksTagService {
 
         // Create new active tag
         createActiveTag(userId, tagName, timestamp);
-        log.info("Created new active tag '{}' for user {} at {}", tagName, userId, timestamp);
+        log.info("Created new active OwnTracks tag for user {}", userId);
     }
 
     private void endActiveTag(PeriodTagEntity tag, Instant endTime) {

@@ -205,7 +205,7 @@ public class ChunkedUploadService {
                 log.debug("Deleted chunk {} for upload {}", i, uploadId);
             } catch (IOException e) {
                 // Log but don't fail - assembly was successful, cleanup is best-effort
-                log.warn("Failed to delete chunk {} for upload {}: {}", i, uploadId, e.getMessage());
+                log.warn("Failed to delete chunk {} for upload {}: {}", i, uploadId, e.getMessage(), e);
             }
         }
 

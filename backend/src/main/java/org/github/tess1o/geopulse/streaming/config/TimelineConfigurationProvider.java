@@ -53,8 +53,6 @@ public class TimelineConfigurationProvider {
      * @return effective timeline configuration
      */
     public TimelineConfig getConfigurationForUser(UUID userId) {
-        log.trace("Getting timeline configuration for user {}", userId);
-
         UserEntity user = userRepository.findById(userId);
 
         if (user == null) {

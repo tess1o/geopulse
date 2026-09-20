@@ -50,7 +50,6 @@ spec:
             - /usr/sbin/mosquitto
             - -c
             - /mosquitto/config/mosquitto.conf
-            - -v
           ports:
             - name: mqtt
               containerPort: 1883
@@ -75,8 +74,6 @@ spec:
               mountPath: /mosquitto/config
             - name: data
               mountPath: /mosquitto/data
-            - name: logs
-              mountPath: /mosquitto/log
             {{- with .Values.mosquitto.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -94,15 +91,10 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "geopulse.fullname" . }}-mosquitto-data
-        - name: logs
-          persistentVolumeClaim:
-            claimName: {{ include "geopulse.fullname" . }}-mosquitto-logs
         {{- else }}
         - name: config
           emptyDir: {}
         - name: data
-          emptyDir: {}
-        - name: logs
           emptyDir: {}
         {{- end }}
         {{- with .Values.mosquitto.extraVolumes }}

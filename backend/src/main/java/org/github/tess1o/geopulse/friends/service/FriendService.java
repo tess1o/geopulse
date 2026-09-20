@@ -140,9 +140,6 @@ public class FriendService {
         friends.forEach(f -> {
             boolean hasLocation = f.getLastLongitude() != null && f.getLastLatitude() != null;
 
-            log.info("Friend: userId={}, email={}, sharedLiveLocation={}, sharedTimelineLocation={}",
-                     f.getUserId(), f.getEmail(), f.getFriendSharesLiveLocation(), f.getFriendSharesTimeline());
-
             if (!hasLocation) {
                 f.setLastLocation("N/A");
             } else {

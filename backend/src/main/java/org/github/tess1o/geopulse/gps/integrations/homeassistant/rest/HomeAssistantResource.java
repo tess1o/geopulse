@@ -39,8 +39,7 @@ public class HomeAssistantResource {
             description = "Receives a Home Assistant location update and stores it for the matching source token.")
     @APIResponse(responseCode = "200", description = "Location accepted")
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
-        log.info("Received payload for home assistant: {}", data);
-
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
@@ -48,7 +47,8 @@ public class HomeAssistantResource {
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        gpsPointService.saveHomeAssitantGpsPoint(data, userId, GpsSourceType.HOME_ASSISTANT, config);
+        var summary = gpsPointService.saveHomeAssitantGpsPoint(data, userId, GpsSourceType.HOME_ASSISTANT, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.HOME_ASSISTANT, started);
         return Response.ok().build();
     }
 }

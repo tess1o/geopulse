@@ -11,7 +11,7 @@
         <Tag v-else-if="setting.isDefault" severity="secondary" value="Default" />
         <Button
           v-else
-          label="Reset"
+          :label="resetLabel"
           icon="pi pi-refresh"
           text
           size="small"
@@ -30,6 +30,10 @@ defineProps({
   setting: {
     type: Object,
     required: true
+  },
+  resetLabel: {
+    type: String,
+    default: 'Reset'
   }
 })
 

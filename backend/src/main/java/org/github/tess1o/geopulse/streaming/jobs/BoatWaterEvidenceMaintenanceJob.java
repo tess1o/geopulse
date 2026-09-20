@@ -74,7 +74,7 @@ public class BoatWaterEvidenceMaintenanceJob {
             } catch (Exception e) {
                 result = "error";
                 countUsers("error", 1);
-                log.warn("Failed to repair Boat water evidence for user {}: {}", userId, e.getMessage());
+                log.warn("Failed to repair Boat water evidence for user {}: {}", userId, e.getMessage(), e);
             }
         }
         recordMaintenance(startedAtNanos, result);

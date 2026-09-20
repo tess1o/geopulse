@@ -69,21 +69,19 @@ public class MapboxGeocodingService {
         double longitude = requestCoordinates.getX();
         double latitude = requestCoordinates.getY();
 
-        log.debug("Calling Mapbox for coordinates: lon={}, lat={}", longitude, latitude);
+        log.debug("Calling Mapbox reverse geocoding");
 
         return mapboxClient.reverseGeocode(longitude, latitude, accessToken, "poi,address")
                 .map(response -> {
-                    String summary = response.getFeatures().isEmpty() ? "No features" :
-                            response.getFeatures().get(0).getPlaceName();
-                    log.debug("Mapbox response received: type={}, firstFeature={}", response.getType(), summary);
+                    log.debug("Mapbox response received: type={}, features={}", response.getType(), response.getFeatures().size());
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
                 .onItem().ifNull().failWith(() -> {
-                    log.error("Mapbox adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    log.error("Mapbox adapter returned a null result");
                     return new GeocodingException("Mapbox adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
-                    log.error("Mapbox API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
+                    log.error("Mapbox API call failed", failure);
                     return new GeocodingException("Mapbox geocoding failed", failure);
                 });
     }

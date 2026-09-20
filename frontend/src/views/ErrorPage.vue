@@ -34,8 +34,7 @@
                   <div class="detail-item">
                     <span class="detail-label">Status:</span>
                     <span class="detail-value status" :class="getStatusClass(parsedErrorDetails.status)">
-                      {{ parsedErrorDetails.status || 'N/A' }} 
-                      {{ parsedErrorDetails.statusText ? `(${parsedErrorDetails.statusText})` : '' }}
+                      {{ parsedErrorDetails.status || 'N/A' }}
                     </span>
                   </div>
                   <div class="detail-item">
@@ -45,58 +44,20 @@
                 </div>
               </div>
               
-              <div v-if="parsedErrorDetails.data" class="error-detail-section">
-                <h4>Response Data</h4>
-                <pre class="response-data">{{ formatResponseData(parsedErrorDetails.data) }}</pre>
-              </div>
-              
               <div class="error-detail-section">
                 <h4>Error Information</h4>
                 <div class="detail-grid">
                   <div class="detail-item">
-                    <span class="detail-label">Message:</span>
-                    <span class="detail-value">{{ parsedErrorDetails.message || 'N/A' }}</span>
-                  </div>
-                  <div v-if="parsedErrorDetails.userMessage" class="detail-item">
-                    <span class="detail-label">User Message:</span>
-                    <span class="detail-value">{{ parsedErrorDetails.userMessage }}</span>
+                    <span class="detail-label">Request ID:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.requestId || 'N/A' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Connection Error:</span>
-                    <span class="detail-value">{{ parsedErrorDetails.isConnectionError ? 'Yes' : 'No' }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Can Retry:</span>
-                    <span class="detail-value">{{ parsedErrorDetails.canRetry ? 'Yes' : 'No' }}</span>
+                    <span class="detail-label">Error ID:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.errorId || 'N/A' }}</span>
                   </div>
                 </div>
-              </div>
-              
-              <div v-if="parsedErrorDetails.headers" class="error-detail-section">
-                <h4>Request Headers</h4>
-                <pre class="headers-data">{{ formatHeaders(parsedErrorDetails.headers) }}</pre>
-              </div>
-              
-              <div class="error-detail-section">
-                <h4>Browser Information</h4>
-                <div class="detail-grid">
-                  <div class="detail-item">
-                    <span class="detail-label">User Agent:</span>
-                    <span class="detail-value user-agent">{{ parsedErrorDetails.userAgent || 'N/A' }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div v-if="parsedErrorDetails.stack" class="error-detail-section">
-                <details>
-                  <summary>Stack Trace</summary>
-                  <pre class="stack-trace">{{ parsedErrorDetails.stack }}</pre>
-                </details>
               </div>
             </div>
-            
-            <!-- Fallback to raw details if parsing fails -->
-            <pre v-else class="raw-details">{{ errorDetails }}</pre>
           </details>
         </div>
 
@@ -179,10 +140,6 @@ const props = defineProps({
     default: ''
   },
   message: {
-    type: String,
-    default: ''
-  },
-  details: {
     type: String,
     default: ''
   },
@@ -354,17 +311,23 @@ const errorMessage = computed(() => {
   }
 })
 
-const errorDetails = computed(() => props.details || detailsFromSession.value)
+const errorDetails = computed(() => detailsFromSession.value)
 
 const parsedErrorDetails = computed(() => {
-  const details = props.details || detailsFromSession.value
+  const details = detailsFromSession.value
   if (!details) return null
   
   try {
-    // Try to parse as JSON first
-    return JSON.parse(details)
+    const parsed = JSON.parse(details)
+    return {
+      timestamp: parsed.timestamp,
+      method: parsed.method,
+      url: parsed.url?.split('?')[0],
+      status: parsed.status,
+      requestId: parsed.requestId,
+      errorId: parsed.errorId
+    }
   } catch (error) {
-    // If JSON parsing fails, return null to show raw details
     return null
   }
 })
@@ -469,28 +432,6 @@ const formatTimestamp = (timestamp) => {
   }
 }
 
-const formatResponseData = (data) => {
-  if (!data) return 'No response data'
-  if (typeof data === 'string') return data
-  return JSON.stringify(data, null, 2)
-}
-
-const formatHeaders = (headers) => {
-  if (!headers) return 'No headers'
-  if (typeof headers === 'string') return headers
-  
-  // Filter out sensitive headers
-  const sanitizedHeaders = { ...headers }
-  const sensitiveKeys = ['authorization', 'cookie', 'x-csrf-token', 'bearer']
-  
-  Object.keys(sanitizedHeaders).forEach(key => {
-    if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
-      sanitizedHeaders[key] = '[REDACTED]'
-    }
-  })
-  
-  return JSON.stringify(sanitizedHeaders, null, 2)
-}
 </script>
 
 <style scoped>

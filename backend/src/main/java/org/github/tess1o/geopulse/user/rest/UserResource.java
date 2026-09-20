@@ -90,7 +90,7 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     public UserResponse updateProfile(@Valid UpdateProfileRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Updating profile with {}", request);
+        log.info("Updating user profile");
         return userMapper.toResponse(userService.updateProfile(userId, request));
     }
 
@@ -171,7 +171,7 @@ public class UserResource {
     public Response updateTimelinePreferences(@Valid UpdateTimelinePreferencesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline preferences for user {}", userId);
-        log.debug("Timeline preferences: {}", request);
+        log.debug("Updating timeline preferences");
 
         // Update preferences within transaction
         String changeType = userService.updateTimelinePreferences(userId, request);
@@ -233,7 +233,7 @@ public class UserResource {
     public Response updateTimelineDisplayPreferences(@Valid UpdateTimelineDisplayPreferencesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline display preferences for user {}", userId);
-        log.debug("Timeline display preferences: {}", request);
+        log.debug("Updating timeline display preferences");
 
         try {
             userService.updateTimelineDisplayPreferences(userId, request);

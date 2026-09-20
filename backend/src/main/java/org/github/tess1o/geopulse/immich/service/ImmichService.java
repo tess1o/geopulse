@@ -52,7 +52,7 @@ public class ImmichService {
     double geonamesNormalizationMaxDistanceMeters;
 
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
-        log.debug("Searching photos for user {} with params: {}", userId, searchRequest);
+        log.debug("Searching Immich photos for user {}", userId);
         return loadAllFilteredPhotos(userId, searchRequest)
                 .thenApply(allFilteredPhotos -> buildSearchResponse(allFilteredPhotos, searchRequest.getLimit()));
     }
@@ -167,7 +167,7 @@ public class ImmichService {
 
     @Transactional
     public void updateUserImmichConfig(UUID userId, UpdateImmichConfigRequest request) {
-        log.debug("Updating Immich config for user {} and request {}", userId, request);
+        log.debug("Updating Immich config for user {}", userId);
 
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
@@ -179,8 +179,6 @@ public class ImmichService {
                 .apiKey(request.getApiKey())
                 .enabled(request.getEnabled())
                 .build();
-
-        log.debug("Immich config for user {}: {}", userId, immichPrefs);
 
         user.setImmichPreferences(immichPrefs);
         userRepository.persist(user);
@@ -377,8 +375,7 @@ public class ImmichService {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to resolve GeoNames normalization for coordinates [{}, {}]: {}",
-                    searchRequest.getLatitude(), searchRequest.getLongitude(), e.getMessage());
+            log.warn("Failed to resolve GeoNames normalization", e);
         }
 
         if (countryOnlySearch) {

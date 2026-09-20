@@ -194,7 +194,7 @@ public class MapMatchingService {
             matchRepository.markMatched(targetId, json);
             recordOutcome(target, "completed");
         } catch (Exception e) {
-            log.warn("Failed to map-match target {}: {}", targetId, e.getMessage());
+            log.warn("Failed to map-match target {}: {}", targetId, e.getMessage(), e);
             if (isRetryableFailure(e)) {
                 matchRepository.markFailedOrRetry(targetId, e.getMessage(), configuration.getMaxAttempts());
                 recordOutcome(target, "failed_or_retrying");

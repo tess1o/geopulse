@@ -84,13 +84,13 @@ public class RealTimeTimelineJob {
                     processUser(user);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    log.warn("Interrupted while waiting for semaphore for user {}", user.getEmail());
+                    log.warn("Interrupted while waiting for semaphore for user {}", user.getId());
                 } finally {
                     semaphore.release();
                 }
             }, executorService)
                     .exceptionally(throwable -> {
-                        log.error("Failed to process user {}: {}", user.getEmail(), throwable.getMessage(), throwable);
+                        log.error("Failed to process user {}: {}", user.getId(), throwable.getMessage(), throwable);
                     return null;
                     });
         }

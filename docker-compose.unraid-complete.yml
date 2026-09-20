@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   geopulse-keygen:
     image: alpine:latest
@@ -32,6 +38,7 @@ services:
     mem_limit: 512m
     mem_reservation: 128m
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -46,7 +53,7 @@ services:
       geopulse-postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/system/health || exit 1"]
       interval: 3s
       timeout: 2s
       retries: 20
@@ -57,6 +64,7 @@ services:
     # image: ghcr.io/tess1o/geopulse-ui:${GEOPULSE_VERSION}
     container_name: geopulse-ui
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     ports:
@@ -72,6 +80,7 @@ services:
     image: postgis/postgis:17-3.5
     container_name: geopulse-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
@@ -104,6 +113,7 @@ services:
     image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
     container_name: geopulse-mosquitto
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     ports:
@@ -111,7 +121,6 @@ services:
     volumes:
       - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/config:/mosquitto/config
       - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/data:/mosquitto/data
-      - ${GEOPULSE_APPDATA:-/mnt/user/appdata/geopulse}/mosquitto/log:/mosquitto/log
     entrypoint:
       - /bin/sh
       - -ec
@@ -135,13 +144,8 @@ services:
         allow_anonymous false
         persistence true
         persistence_location /mosquitto/data/
-        log_dest file /mosquitto/log/mosquitto.log
-        log_type all
-        connection_messages true
         log_timestamp true
         auth_plugin /mosquitto/go-auth.so
-        auth_opt_log_dest stdout
-        auth_opt_log_level debug
         auth_opt_backends files,postgres
         auth_opt_files_acl_path $${ADMIN_ACL_FILE}
         auth_opt_check_prefix false
@@ -181,7 +185,24 @@ services:
         EOF
         fi
 
-        exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
+        sed -i '/^[[:space:]]*log_dest[[:space:]]/d; /^[[:space:]]*log_type[[:space:]]/d; /^[[:space:]]*connection_messages[[:space:]]/d; /^[[:space:]]*auth_opt_log_dest[[:space:]]/d; /^[[:space:]]*auth_opt_log_level[[:space:]]/d' "$$CONF_FILE"
+        {
+          echo "log_dest stdout"
+          echo "auth_opt_log_dest stdout"
+          if [ "$${GEOPULSE_MQTT_VERBOSE_LOGGING:-false}" = "true" ]; then
+            echo "log_type all"
+            echo "connection_messages true"
+            echo "auth_opt_log_level debug"
+          else
+            echo "log_type error"
+            echo "log_type warning"
+            echo "log_type notice"
+            echo "connection_messages false"
+            echo "auth_opt_log_level warn"
+          fi
+        } >> "$$CONF_FILE"
+
+        exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
     depends_on:
       geopulse-postgres:
         condition: service_healthy

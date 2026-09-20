@@ -255,6 +255,7 @@ import ViewerLocationMarker from '@/components/maps/ViewerLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
+import { productionErrorContext } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
 
@@ -545,7 +546,7 @@ const refreshLocationData = async () => {
         }
       }
     } else {
-      console.error('Failed to refresh shared location:', err)
+      console.error('Failed to refresh shared location:', import.meta.env.DEV ? err : productionErrorContext(err))
     }
   } finally {
     refreshing.value = false

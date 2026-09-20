@@ -248,13 +248,7 @@ public class StreamingTimelineProcessor {
         double distance = centroid.distanceTo(point);
         double stayRadius = getStayRadius(config);
 
-        log.trace("POTENTIAL_STAY: point={}, centroid={}, distance={}, stayRadius={}",
-                point.getTimestamp(), centroid.getTimestamp(), distance, stayRadius);
-
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
-            log.trace("Distance {} > stayRadius {} (+ epsilon {}) - checking favorite areas before transitioning to trip",
-                    distance, stayRadius, DISTANCE_EPSILON_METERS);
-
             // Before transitioning to trip, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
             FavoriteAreaDto centroidArea = findContainingFavoriteArea(centroid, userFavoriteAreas);
@@ -262,7 +256,6 @@ public class StreamingTimelineProcessor {
             if (currentPointArea != null && centroidArea != null &&
                     currentPointArea.getId() == centroidArea.getId()) {
                 // Both points within same favorite area - continue stay detection despite distance
-                log.trace("Points within same favorite area '{}' - continuing stay detection", currentPointArea.getName());
                 userState.addActivePoint(point);
 
                 // Check duration for confirmation as normal
@@ -270,14 +263,12 @@ public class StreamingTimelineProcessor {
                 Duration minStayDuration = getMinStayDuration(config);
 
                 if (stayDuration.compareTo(minStayDuration) >= 0) {
-                    log.trace("CONFIRMED_STAY in favorite area: Duration {} >= min duration {}", stayDuration, minStayDuration);
                     userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
                 }
 
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - transition to trip as before
-                log.trace("Points not in same favorite area - transitioning to trip");
                 return transitionToTrip(point, userState);
             }
         } else {
@@ -288,11 +279,7 @@ public class StreamingTimelineProcessor {
             Duration stayDuration = calculateCurrentStayDuration(userState);
             Duration minStayDuration = getMinStayDuration(config);
 
-            log.trace("POTENTIAL_STAY: stayDuration={}, minStayDuration={}, activePoints={}",
-                    stayDuration, minStayDuration, userState.getActivePoints().size());
-
             if (stayDuration.compareTo(minStayDuration) >= 0) {
-                log.trace("CONFIRMED_STAY: Duration {} >= min duration {}", stayDuration, minStayDuration);
                 userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
             }
 
@@ -310,9 +297,6 @@ public class StreamingTimelineProcessor {
         double stayRadius = getStayRadius(config);
 
         if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
-            log.trace("Distance {} > stayRadius {} (+ epsilon {}) in CONFIRMED_STAY - checking favorite areas",
-                    distance, stayRadius, DISTANCE_EPSILON_METERS);
-
             // Before finalizing stay, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
             FavoriteAreaDto centroidArea = findContainingFavoriteArea(centroid, userFavoriteAreas);
@@ -320,12 +304,10 @@ public class StreamingTimelineProcessor {
             if (currentPointArea != null && centroidArea != null &&
                     currentPointArea.getId() == centroidArea.getId()) {
                 // Both points within same favorite area - continue stay despite distance
-                log.trace("Still within same favorite area '{}' - continuing stay", currentPointArea.getName());
                 userState.addActivePoint(point);
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - finalize stay and start trip as before
-                log.trace("User has moved out of favorite area - finalizing stay");
                 TimelineEvent finalizedStay = finalizationService.finalizeStayWithoutLocation(userState, config);
 
                 // Start new trip

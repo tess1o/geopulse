@@ -201,7 +201,6 @@ public class AdminUserService {
             }
         }
 
-        String email = user.getEmail();
 
         // Delete in order due to foreign key constraints
         // Note: Some entities have cascade delete, but we'll be explicit
@@ -276,7 +275,7 @@ public class AdminUserService {
         // Finally delete the user
         userRepository.deleteById(userId);
 
-        log.info("User {} ({}) deleted with all associated data", userId, email);
+        log.info("User {} deleted with all associated data", userId);
     }
 
     private String generateTemporaryPassword() {

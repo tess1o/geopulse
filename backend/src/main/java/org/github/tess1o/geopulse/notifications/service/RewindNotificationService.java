@@ -59,7 +59,7 @@ public class RewindNotificationService {
                         "Your " + period.getMonth().getDisplayName(TextStyle.FULL, Locale.getDefault()) + " Rewind is ready", "Your completed monthly location story is ready to explore.",
                         metadata, "rewind:" + user.getId() + ":" + period, preferences.getRewind());
             } catch (Exception exception) {
-                log.warn("Rewind notification check failed for user {}: {}", user.getId(), exception.getMessage());
+                log.warn("Rewind notification check failed for user {}: {}", user.getId(), exception.getMessage(), exception);
             }
         }
     }

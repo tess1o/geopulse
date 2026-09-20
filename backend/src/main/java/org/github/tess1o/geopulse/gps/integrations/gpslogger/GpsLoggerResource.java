@@ -57,8 +57,7 @@ public class GpsLoggerResource {
     public Response handleGpsLogger(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String authHeader,
                                     @RestHeader("X-Limit-D") String deviceId) {
-        log.info("Received GPSLogger payload: {}, device: {}", payload, deviceId);
-
+        long started = System.nanoTime();
         if (!"location".equals(payload.get("_type"))) {
             return Response.ok().build();
         }
@@ -72,7 +71,8 @@ public class GpsLoggerResource {
         var config = authResult.get().getConfig();
         OwnTracksLocationMessage locationMessage = MAPPER.convertValue(payload, OwnTracksLocationMessage.class);
 
-        gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.GPSLOGGER, config);
+        var summary = gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.GPSLOGGER, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.GPSLOGGER, started);
         return Response.ok("[]").build();
     }
 }

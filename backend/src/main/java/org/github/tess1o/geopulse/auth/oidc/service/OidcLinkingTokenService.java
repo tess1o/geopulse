@@ -44,7 +44,7 @@ public class OidcLinkingTokenService {
         );
         
         linkingTokens.put(token, tokenData);
-        log.debug("Generated linking token for email: {} and provider: {}", email, newProvider);
+        log.debug("Generated OIDC linking token for provider {}", newProvider);
         
         // Clean up expired tokens periodically
         cleanupExpiredTokens();
@@ -70,11 +70,11 @@ public class OidcLinkingTokenService {
         }
         
         if (tokenData.expiresAt().isBefore(Instant.now())) {
-            log.warn("Expired linking token attempted for email: {}", tokenData.email());
+            log.warn("Expired OIDC linking token attempted");
             return null;
         }
         
-        log.debug("Successfully validated linking token for email: {}", tokenData.email());
+        log.debug("Successfully validated OIDC linking token");
         return tokenData;
     }
 

@@ -61,7 +61,7 @@ public class BackupHealthMonitoringService {
         try {
             latestBackupAt = backupService.getLatestLocalBackupAt();
         } catch (IOException exception) {
-            log.warn("Backup health check could not list local backups: {}", exception.getMessage());
+            log.warn("Backup health check could not list local backups: {}", exception.getMessage(), exception);
             return;
         }
 

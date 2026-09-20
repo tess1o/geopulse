@@ -409,8 +409,7 @@ const routes = [
         props: route => ({
           errorType: route.query.type || 'generic',
           title: route.query.title,
-          message: route.query.message,
-          details: route.query.details
+          message: route.query.message
         })
     },
     // Admin routes

@@ -228,7 +228,7 @@ public class LocationPointResolver {
             java.util.Optional<Long> individualId = cacheGeocodingService.getCachedGeocodingResultId(userId, point);
 
             if (individualResult.isPresent()) {
-                log.debug("Batch missed but individual found cache for user {} at: {}", userId, coordKey);
+                log.debug("Batch missed but individual lookup found cached location for user {}", userId);
                 Long normalizedId = normalizeGeocodingReference(userId, individualId.orElse(null));
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
                     individualResult.get().getFormattedDisplayName(), normalizedId));
@@ -261,7 +261,7 @@ public class LocationPointResolver {
         for (Point point : uniqueCoordinates) {
             String coordKey = point.getX() + "," + point.getY();
             if (!results.containsKey(coordKey)) {
-                log.warn("No result found for coordinate {}, using fallback", coordKey);
+                log.warn("No geocoding result found; using fallback");
                 results.put(coordKey, LocationResolutionResult.fromGeocoding("Unknown Location", null));
                 fallbackCount++;
             }
@@ -326,7 +326,7 @@ public class LocationPointResolver {
                     geocodingResult = geocodingService.getLocationName(point);
                 } catch (Exception geocodingError) {
                     // Geocoding failed - use fallback to prevent transaction rollback
-                    log.warn("Geocoding failed for {}, using fallback: {}", coordKey, geocodingError.getMessage());
+                    log.warn("Geocoding failed; using fallback", geocodingError);
                     geocodingResult = org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult.builder()
                             .requestCoordinates(point)
                             .resultCoordinates(point)
@@ -337,9 +337,9 @@ public class LocationPointResolver {
                     // Cache the fallback result to prevent retry loops on subsequent runs
                     try {
                         cacheGeocodingService.cacheGeocodingResult(geocodingResult);
-                        log.debug("Cached fallback result for {}", coordKey);
+                        log.debug("Cached fallback geocoding result");
                     } catch (Exception cacheError) {
-                        log.warn("Failed to cache fallback result for {}: {}", coordKey, cacheError.getMessage());
+                        log.warn("Failed to cache fallback geocoding result", cacheError);
                     }
                 }
 
@@ -354,7 +354,7 @@ public class LocationPointResolver {
                 break;
             } catch (Exception e) {
                 // Log error but continue processing other coordinates
-                log.warn("Failed to process coordinates {}: {}", coordKey, e.getMessage());
+                log.warn("Failed to process geocoding location", e);
                 results.put(coordKey, LocationResolutionResult.fromGeocoding("Unknown Location", null));
             }
         }

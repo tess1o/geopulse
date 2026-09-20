@@ -47,8 +47,7 @@ public class ColotaResource {
                     schema = @Schema(type = SchemaType.ARRAY)))
     public Response handleColota(ColotaLocationMessage payload,
                                  @HeaderParam("Authorization") String authHeader) {
-        log.info("Received Colota payload: {}", payload);
-
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.COLOTA, authHeader);
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
@@ -57,7 +56,8 @@ public class ColotaResource {
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
 
-        gpsPointService.saveColotaGpsPoint(payload, userId, GpsSourceType.COLOTA, config);
+        var summary = gpsPointService.saveColotaGpsPoint(payload, userId, GpsSourceType.COLOTA, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.COLOTA, started);
         return Response.ok("[]").build();
     }
 }

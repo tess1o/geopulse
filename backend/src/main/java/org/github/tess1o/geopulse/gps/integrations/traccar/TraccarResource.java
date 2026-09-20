@@ -48,8 +48,7 @@ public class TraccarResource {
     @APIResponse(responseCode = "200", description = "Position accepted or ignored")
     public Response handleTraccar(TraccarPositionData payload,
                                   @HeaderParam("Authorization") String authHeader) {
-        log.info("Received Traccar payload: {}", payload);
-
+        long started = System.nanoTime();
         String token;
         try {
             token = extractBearerToken(authHeader);
@@ -64,13 +63,15 @@ public class TraccarResource {
 
         List<GpsSourceConfigEntity> matchedConfigs = resolveMatchedConfigs(payload, tokenConfigs);
         if (matchedConfigs.isEmpty()) {
-            log.info("No eligible Traccar config route for token and incoming device id");
+            log.debug("No eligible Traccar config route for incoming device id");
             return Response.ok().build();
         }
 
+        var summary = new GpsPointService.GpsIngestSummary(0, 0, 0, 0);
         for (GpsSourceConfigEntity config : matchedConfigs) {
-            gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config);
+            summary = summary.plus(gpsPointService.saveTraccarGpsPoint(payload, config.getUser().getId(), GpsSourceType.TRACCAR, config));
         }
+        summary.logCompletion(GpsSourceType.TRACCAR, started);
         return Response.ok().build();
     }
 

@@ -72,8 +72,7 @@ public class DebugExportService {
         log.info("Starting debug export for user {} from {} to {}",
                 userId, request.getStartDate(), request.getEndDate());
 
-        log.info("Using coordinate shift: lat={}, lon={}",
-                request.getLatitudeShift(), request.getLongitudeShift());
+        log.info("Applying configured coordinate shift to debug export");
 
         // Validate shift won't push coordinates too far out of bounds
         validateCoordinateShift(userId, request);
@@ -239,8 +238,7 @@ public class DebugExportService {
             );
         }
 
-        log.info("Coordinate shift validation passed. Data range: [{}, {}], shifted range: [{}, {}]",
-                minLat, maxLat, shiftedMinLat, shiftedMaxLat);
+        log.info("Coordinate shift validation passed");
     }
 
     /**

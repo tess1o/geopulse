@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **321** distinct env vars.
+Backend runtime currently includes **325** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -40,6 +40,15 @@ Notes:
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
 | `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
+
+### Logging (4)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_LOG_LEVEL` | `(unset)` | Fallback application log level when no Admin override exists. Property: `geopulse.log.level`. | `ERROR`, `WARN`, `INFO`, or `DEBUG`; case-insensitive. TRACE is not available in production. | Backend restart |
+| `GEOPULSE_LOG_JSON_ENABLED` | `true` in production | Emit backend console records as JSON. MDC fields are flattened (`requestId`, `errorId`) on Quarkus 3.37+; on 3.35.x they are nested under `mdc`. | `true` or `false`. | Backend restart |
+| `GEOPULSE_HTTP_ACCESS_LOG_ENABLED` | `true` in production | Emit one sanitized backend request record, excluding health, metrics, invitation, and public share-token paths. | `true` or `false`. | Backend restart |
+| `GEOPULSE_MQTT_VERBOSE_LOGGING` | `false` | Enables verbose Mosquitto and authentication-plugin diagnostics. Debug output may expose credential material; enable only temporarily. | `true` or `false`. | Mosquitto restart |
 
 ### Version Update Check (5)
 

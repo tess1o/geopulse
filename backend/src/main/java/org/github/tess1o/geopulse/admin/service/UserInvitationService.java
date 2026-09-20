@@ -147,7 +147,6 @@ public class UserInvitationService {
         // Log to audit
         Map<String, Object> details = new HashMap<>();
         details.put("invitationId", invitationId.toString());
-        details.put("token", invitation.getToken().substring(0, 8) + "...");
         auditLogService.logAction(
                 adminUserId,
                 ActionType.INVITATION_REVOKED,

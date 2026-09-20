@@ -365,7 +365,7 @@ public class GeoPulseExportService {
         UserInfoDataDto userInfoData = exportDataMapper.toUserInfoDataDto(user);
         streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.USER_INFO, userInfoData);
 
-        log.debug("Exported user info for user {}", user.getEmail());
+        log.debug("Exported user info for user {}", user.getId());
     }
 
     private void addLocationSourcesData(ZipOutputStream zos, ExportJob job) throws IOException {

@@ -344,7 +344,7 @@ public class OidcAuthenticationService {
                 try {
                     sessionStateRepository.delete(sessionState);
                 } catch (Exception cleanupError) {
-                    log.warn("Failed to clean up session state for state token: {}", request.getState(), cleanupError);
+                    log.warn("Failed to clean up OIDC session state", cleanupError);
                 }
             }
         }
@@ -376,12 +376,11 @@ public class OidcAuthenticationService {
 
             // If auto-link is enabled, automatically link the OIDC account
             if (authConfigurationService.isAutoLinkAccountsEnabled()) {
-                log.warn("Auto-linking OIDC account - Provider: {}, Email: {}, User ID: {}. " +
-                        "This bypasses verification. Ensure you trust your OIDC provider.",
-                        sessionState.getProviderName(), userInfo.getEmail(), user.getId());
+                log.warn("Auto-linking OIDC account for provider {} and user {}. Ensure this provider is trusted.",
+                        sessionState.getProviderName(), user.getId());
 
                 linkOrUpdateConnectionForUser(user, sessionState.getProviderName(), userInfo);
-                log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getEmail());
+                log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getId());
                 return user;
             }
 
@@ -499,7 +498,7 @@ public class OidcAuthenticationService {
 
         // Link the ORIGINAL provider, not the verification provider.
         linkOrUpdateConnectionForUser(user, tokenData.newProvider(), tokenData.originalUserInfo());
-        log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getEmail());
+        log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getId());
         return user;
     }
 
@@ -576,9 +575,8 @@ public class OidcAuthenticationService {
                 .post(Entity.form(form))) {
 
             if (response.getStatus() != 200) {
-                String errorBody = response.readEntity(String.class);
-                log.error("Failed to exchange code for token. Provider: {}, Status: {}, Body: {}",
-                        provider.getName(), response.getStatus(), errorBody);
+                log.error("Failed to exchange code for token. Provider: {}, status={}",
+                        provider.getName(), response.getStatus());
                 throw new OidcExchangeCodeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
             }
 
@@ -635,12 +633,11 @@ public class OidcAuthenticationService {
 
             // Nonce
             if (sessionState.getNonce() == null || !sessionState.getNonce().equals(claims.getClaim("nonce"))) {
-                log.error("ID token nonce mismatch. Provider: {}, Expected: {}, Got: {}",
-                        provider.getName(), sessionState.getNonce(), claims.getClaim("nonce"));
+                log.error("ID token nonce mismatch for provider {}", provider.getName());
                 throw new SecurityException("ID token nonce mismatch. Possible replay attack.");
             }
 
-            log.info("ID token validated successfully for subject: {}", claims.getSubject());
+            log.debug("ID token validated successfully for provider {}", provider.getName());
 
             // 4. Extract user info from claims
             String email = claims.getStringClaim("email");

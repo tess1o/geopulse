@@ -255,7 +255,7 @@ public class BoatSetupService {
         try {
             ensureReadyForUser(userId, TimelineConfig.builder().boatEnabled(true).build(), null);
         } catch (Exception e) {
-            log.warn("Background Boat setup failed for user {}: {}", userId, e.getMessage());
+            log.warn("Background Boat setup failed for user {}: {}", userId, e.getMessage(), e);
         }
     }
 

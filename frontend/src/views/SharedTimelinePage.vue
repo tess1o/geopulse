@@ -280,6 +280,7 @@ import Select from 'primevue/select'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
+import { productionErrorContext } from '@/utils/apiErrorDetail'
 
 const route = useRoute()
 const router = useRouter()
@@ -499,7 +500,7 @@ async function loadShareInfo() {
       await handlePasswordSubmit()
     }
   } catch (err) {
-    console.error('Failed to load share info:', err)
+    console.error('Failed to load share info:', import.meta.env.DEV ? err : productionErrorContext(err))
     error.value = err.userMessage || err.message || 'Link not found or expired'
   } finally {
     loading.value = false
@@ -529,7 +530,7 @@ async function handlePasswordSubmit() {
     await loadTimelineData()
     ensureAutoRefresh()
   } catch (err) {
-    console.error('Password verification failed:', err)
+    console.error('Password verification failed:', import.meta.env.DEV ? err : productionErrorContext(err))
     passwordError.value = err.userMessage || 'Invalid password'
   } finally {
     verifying.value = false
@@ -584,7 +585,7 @@ async function loadTimelineData({silent = false} = {}) {
     }
     error.value = null
   } catch (err) {
-    console.error('Failed to load timeline data:', err)
+    console.error('Failed to load timeline data:', import.meta.env.DEV ? err : productionErrorContext(err))
     if (isAccessError(err)) {
       localStorage.removeItem(`shareLink_${linkId}`)
       if (shareInfo.value.has_password) {

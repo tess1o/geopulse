@@ -39,7 +39,7 @@ public class ExternalIntegrationHealthService {
                     Instant circuitOpenUntil = health.getCircuitOpenUntil();
                     boolean blocked = circuitOpenUntil != null && circuitOpenUntil.isAfter(effectiveNow);
                     if (!blocked) {
-                        log.info("External integration {} provider {} is {} but circuit backoff is not active "
+                        log.debug("External integration {} provider {} is {} but circuit backoff is not active "
                                         + "(circuitOpenUntil={}, now={}); allowing fetch retry",
                                 integrationType, providerKey, health.getStatus(), circuitOpenUntil, effectiveNow);
                     }
@@ -142,16 +142,8 @@ public class ExternalIntegrationHealthService {
         health.setNextProbeAt(nextProbeAt);
         health.setFailureCount(health.getFailureCount() + 1);
 
-        log.error("External integration failure recorded: integration={}, provider={}, status={}, errorCode={}, "
-                        + "message={}, circuitOpenUntil={}, nextProbeAt={}, failureCount={}",
-                integrationType,
-                providerKey,
-                quotaStatus,
-                limitedErrorCode,
-                limitedErrorMessage,
-                circuitOpenUntil,
-                nextProbeAt,
-                health.getFailureCount());
+        logFailure(previousStatus, integrationType, providerKey, quotaStatus, limitedErrorCode,
+                circuitOpenUntil, nextProbeAt, health.getFailureCount());
 
         if (newIncident) {
             healthEvents.fire(new ExternalIntegrationHealthEvent(
@@ -182,6 +174,7 @@ public class ExternalIntegrationHealthService {
                                  Instant nextProbeAt) {
         ExternalIntegrationHealthEntity health = healthRepository.getOrCreate(integrationType, providerKey);
         Instant now = Instant.now();
+        ExternalIntegrationHealthStatus previousStatus = health.getStatus();
         if (health.getStatus() != status || health.getIncidentStartedAt() == null) {
             health.setIncidentStartedAt(now);
         }
@@ -193,17 +186,26 @@ public class ExternalIntegrationHealthService {
         health.setNextProbeAt(nextProbeAt);
         health.setFailureCount(health.getFailureCount() + 1);
 
-        log.error("External integration failure recorded: integration={}, provider={}, status={}, errorCode={}, "
-                        + "message={}, circuitOpenUntil={}, nextProbeAt={}, failureCount={}",
-                integrationType,
-                providerKey,
-                status,
-                health.getLastErrorCode(),
-                health.getLastErrorMessage(),
-                circuitOpenUntil,
-                nextProbeAt,
-                health.getFailureCount());
+        logFailure(previousStatus, integrationType, providerKey, status, health.getLastErrorCode(),
+                circuitOpenUntil, nextProbeAt, health.getFailureCount());
         return circuitOpenUntil;
+    }
+
+    private void logFailure(ExternalIntegrationHealthStatus previousStatus,
+                            ExternalIntegrationType integrationType,
+                            String providerKey,
+                            ExternalIntegrationHealthStatus status,
+                            String errorCode,
+                            Instant circuitOpenUntil,
+                            Instant nextProbeAt,
+                            int failureCount) {
+        String message = "External integration state: integration={}, provider={}, status={}, errorCode={}, "
+                + "circuitOpenUntil={}, nextProbeAt={}, failureCount={}";
+        if (previousStatus == ExternalIntegrationHealthStatus.HEALTHY) {
+            log.error(message, integrationType, providerKey, status, errorCode, circuitOpenUntil, nextProbeAt, failureCount);
+        } else {
+            log.debug(message, integrationType, providerKey, status, errorCode, circuitOpenUntil, nextProbeAt, failureCount);
+        }
     }
 
     public ExternalIntegrationHealthDto toDto(ExternalIntegrationHealthEntity health) {

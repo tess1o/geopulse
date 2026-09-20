@@ -71,27 +71,23 @@ public class GoogleMapsGeocodingService {
 
         String language = configService.getGoogleMapsLanguage().orElse(null);
         if (language != null) {
-            log.debug("Calling Google Maps for coordinates: lon={}, lat={}, language={}",
-                    longitude, latitude, language);
+            log.debug("Calling Google Maps reverse geocoding with language={}", language);
         } else {
-            log.debug("Calling Google Maps for coordinates: lon={}, lat={} (default language behavior)",
-                    longitude, latitude);
+            log.debug("Calling Google Maps reverse geocoding with default language behavior");
         }
 
         String latlng = String.format("%.6f,%.6f", latitude, longitude);
         return googleMapsClient.reverseGeocode(latlng, apiKey, "street_address|establishment", language)
                 .map(response -> {
-                    String summary = response.getResults().isEmpty() ? "No results" :
-                            response.getResults().getFirst().getFormattedAddress();
-                    log.debug("Google Maps response received: status={}, firstResult={}", response.getStatus(), summary);
+                    log.debug("Google Maps response received: status={}, results={}", response.getStatus(), response.getResults().size());
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
                 .onItem().ifNull().failWith(() -> {
-                    log.error("Google Maps adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    log.error("Google Maps adapter returned a null result");
                     return new GeocodingException("Google Maps adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
-                    log.error("Google Maps API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
+                    log.error("Google Maps API call failed", failure);
                     return new GeocodingException("Google Maps geocoding failed", failure);
                 });
     }

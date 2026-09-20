@@ -46,8 +46,7 @@ public class OverlandResource {
             responseDescription = "Locations accepted")
     public Response handleOverland(OverlandLocations overlandLocations,
                                    @HeaderParam("Authorization") String overlandAuth) {
-        log.info("Received payload for overland:{}", overlandLocations);
-
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.OVERLAND, overlandAuth);
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
@@ -55,13 +54,15 @@ public class OverlandResource {
 
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        saveToDb(overlandLocations, userId, config);
+        saveToDb(overlandLocations, userId, config).logCompletion(GpsSourceType.OVERLAND, started);
         return Response.ok(new OverlandResultResponse("ok")).build();
     }
 
-    private void saveToDb(OverlandLocations overlandLocations, UUID userId, org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity config) {
+    private GpsPointService.GpsIngestSummary saveToDb(OverlandLocations overlandLocations, UUID userId, org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity config) {
+        var summary = new GpsPointService.GpsIngestSummary(0, 0, 0, 0);
         for (OverlandLocationMessage locationMessage : overlandLocations.getLocations()) {
-            gpsPointService.saveOverlandGpsPoint(locationMessage, userId, GpsSourceType.OVERLAND, config);
+            summary = summary.plus(gpsPointService.saveOverlandGpsPoint(locationMessage, userId, GpsSourceType.OVERLAND, config));
         }
+        return summary;
     }
 }

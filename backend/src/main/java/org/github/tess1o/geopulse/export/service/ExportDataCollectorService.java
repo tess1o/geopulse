@@ -236,7 +236,7 @@ public class ExportDataCollectorService {
             throw new IllegalStateException("User not found: " + userId);
         }
 
-        log.debug("Collected user info for {}", user.getEmail());
+        log.debug("Collected user info for {}", user.getId());
         return user;
     }
 

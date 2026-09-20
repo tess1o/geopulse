@@ -108,6 +108,10 @@ const actions = {
         return apiService.get(`/admin/settings/categories/${category}`);
     },
 
+    async getLoggingStatus() {
+        return apiService.get('/admin/settings/logging-status');
+    },
+
     /**
      * Update a setting value
      * @param {string} key - Setting key

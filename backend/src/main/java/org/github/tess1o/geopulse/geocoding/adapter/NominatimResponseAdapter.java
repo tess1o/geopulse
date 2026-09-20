@@ -34,7 +34,7 @@ public class NominatimResponseAdapter implements GeocodingResponseAdapter<Nomina
 
     @Override
     public FormattableGeocodingResult adapt(NominatimResponse nominatimResponse, Point requestCoordinates, String providerName) {
-        log.debug("Adapting Nominatim response: {}", nominatimResponse.getDisplayName());
+        log.debug("Adapting Nominatim response");
 
         SimpleFormattableResult.SimpleFormattableResultBuilder builder = SimpleFormattableResult.builder()
                 .requestCoordinates(requestCoordinates)
@@ -48,8 +48,7 @@ public class NominatimResponseAdapter implements GeocodingResponseAdapter<Nomina
                 Point resultCoordinates = GeoUtils.createPoint(lon, lat);
                 builder.resultCoordinates(resultCoordinates);
             } catch (NumberFormatException e) {
-                log.warn("Failed to parse coordinates from Nominatim response: lat={}, lon={}",
-                        nominatimResponse.getLat(), nominatimResponse.getLon());
+                log.warn("Failed to parse coordinates from Nominatim response");
                 builder.resultCoordinates(requestCoordinates); // Fallback to request coordinates
             }
         } else {

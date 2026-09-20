@@ -54,7 +54,7 @@ public class DawarichResource {
             content = @Content(mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(type = SchemaType.OBJECT)))
     public Response handleDawarichHealth(Request request, @HeaderParam("Authorization") String authHeader) {
-        log.info("Received health request");
+        log.debug("Received Dawarich health request");
         var authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         String dawarichResponse = authenticated.isPresent() ? "Hey, I'm alive and authenticated!" : "Hey, I'm alive!";
         return Response
@@ -71,14 +71,15 @@ public class DawarichResource {
             description = "Receives Dawarich point payloads and stores them for the matching source token.")
     @APIResponse(responseCode = "200", description = "Points accepted")
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
+        long started = System.nanoTime();
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");
         }
-        log.info("Received payload: {}", payload);
         UUID userId = authResult.get().getUserId();
         var config = authResult.get().getConfig();
-        gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
+        var summary = gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
+        if (summary != null) summary.logCompletion(GpsSourceType.DAWARICH, started);
         return Response.ok().build();
     }
 
@@ -89,9 +90,6 @@ public class DawarichResource {
     @APIResponseSchema(value = DawarichStatsResponse.class, responseCode = "200",
             responseDescription = "Dawarich-compatible statistics")
     public Response handleDawarichStats(@QueryParam("api_key") String apiKey) {
-        log.info("Received stats request with api_key: {}", apiKey);
-
-
         var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, apiKey);
         if (authResult.isEmpty()) {
             throw new GeoPulseException(AUTHENTICATION_REQUIRED, "Authentication required");

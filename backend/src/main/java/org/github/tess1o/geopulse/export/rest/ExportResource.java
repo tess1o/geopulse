@@ -189,7 +189,6 @@ public class ExportResource {
 
         java.nio.file.Path exportFile = Paths.get(job.getTempFilePath());
         if (!Files.exists(exportFile)) {
-            log.error("Export file not found on disk: {}", job.getTempFilePath());
             throw new GeoPulseException(EXPORT_FILE_MISSING, "Export file not found");
         }
 

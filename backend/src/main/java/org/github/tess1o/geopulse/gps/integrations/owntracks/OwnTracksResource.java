@@ -77,7 +77,6 @@ public class OwnTracksResource {
                                     @RestHeader("X-Limit-D") String deviceId) {
         long requestStart = metricsStart();
         String result = "success";
-        log.info("Received OwnTracks HTTP payload type: {}, device: {}", payload.get("_type"), deviceId);
 
         try {
             if (!"location".equals(payload.get("_type")) && !payloadDecryptionService.isEncryptedPayload(payload)) {
@@ -146,7 +145,9 @@ public class OwnTracksResource {
                 recordStage(stageStart, "tag", tagResult);
             }
 
-            gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
+            var summary = gpsPointService.saveOwnTracksGpsPoint(
+                    ownTracksLocationMessage, userId, resolvedDeviceId, GpsSourceType.OWNTRACKS, config);
+            if (summary != null) summary.logCompletion(GpsSourceType.OWNTRACKS, requestStart);
             return Response.ok(EMPTY_JSON_ARRAY).build();
         } catch (Exception e) {
             result = "error";

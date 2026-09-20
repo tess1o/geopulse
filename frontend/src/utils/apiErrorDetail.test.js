@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatApiErrorDetail, formatViolationField } from './apiErrorDetail'
+import { formatApiErrorDetail, formatViolationField, productionErrorContext } from './apiErrorDetail'
 
 describe('apiErrorDetail', () => {
   it('formats nested violation field names for display', () => {
@@ -92,5 +92,25 @@ describe('apiErrorDetail', () => {
 
   it('falls back to caller-provided text when no response detail exists', () => {
     expect(formatApiErrorDetail({}, 'Failed to save custom provider')).toBe('Failed to save custom provider')
+  })
+
+  it('keeps production logging context free of headers and response bodies', () => {
+    const error = {
+      name: 'AxiosError',
+      config: { headers: { Authorization: 'Bearer secret' } },
+      response: {
+        status: 401,
+        headers: { 'x-request-id': 'req-1' },
+        data: { code: 'AUTHENTICATION_REQUIRED', errorId: 'err-1', secret: 'do-not-log' }
+      }
+    }
+
+    expect(productionErrorContext(error)).toEqual({
+      name: 'AxiosError',
+      status: 401,
+      code: 'AUTHENTICATION_REQUIRED',
+      requestId: 'req-1',
+      errorId: 'err-1'
+    })
   })
 })

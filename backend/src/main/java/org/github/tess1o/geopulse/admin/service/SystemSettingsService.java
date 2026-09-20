@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.github.tess1o.geopulse.admin.event.LoggingSettingsChangedEvent;
 import org.github.tess1o.geopulse.admin.model.*;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
@@ -34,10 +35,13 @@ public class SystemSettingsService {
     private final AIEncryptionService encryptionService;
     private final Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent;
     private final Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent;
+    private final Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent;
 
     private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
     private static final String DEFAULT_DISTANCE_UNIT_KEY = "system.user.default-distance-unit";
     private static final String DEFAULT_TEMPERATURE_UNIT_KEY = "system.user.default-temperature-unit";
+    public static final String APPLICATION_LOG_LEVEL_KEY = "system.logging.application-level";
+    private static final String APPRISE_DESTINATION_KEY = "backup.health.apprise.destination";
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -401,6 +405,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.notifications.user-notifications.cleanup.enabled", "true", ValueType.BOOLEAN, "system", "Enable scheduled cleanup of old user inbox notifications"));
         SETTING_DEFINITIONS.put("system.notifications.user-notifications.retention-days",
                 new SettingDefinition("geopulse.notifications.user-notifications.retention-days", "90", ValueType.INTEGER, "system", "Delete user inbox notifications older than N days"));
+        SETTING_DEFINITIONS.put(APPLICATION_LOG_LEVEL_KEY,
+                new SettingDefinition("geopulse.log.level", "inherit", ValueType.STRING, "system", "Application log level: ERROR, WARN, INFO, or DEBUG; reset to inherit the environment/default"));
 
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",
@@ -418,11 +424,13 @@ public class SystemSettingsService {
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
-            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
+            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent,
+            Event<LoggingSettingsChangedEvent> loggingSettingsChangedEvent) {
         this.repository = repository;
         this.encryptionService = encryptionService;
         this.weatherSettingsChangedEvent = weatherSettingsChangedEvent;
         this.mapMatchingSettingsChangedEvent = mapMatchingSettingsChangedEvent;
+        this.loggingSettingsChangedEvent = loggingSettingsChangedEvent;
         this.config = ConfigProvider.getConfig();
     }
 
@@ -432,7 +440,15 @@ public class SystemSettingsService {
             SystemSettingsRepository repository,
             AIEncryptionService encryptionService,
             Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent) {
-        this(repository, encryptionService, weatherSettingsChangedEvent, null);
+        this(repository, encryptionService, weatherSettingsChangedEvent, null, null);
+    }
+
+    public SystemSettingsService(
+            SystemSettingsRepository repository,
+            AIEncryptionService encryptionService,
+            Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent,
+            Event<MapMatchingSettingsChangedEvent> mapMatchingSettingsChangedEvent) {
+        this(repository, encryptionService, weatherSettingsChangedEvent, mapMatchingSettingsChangedEvent, null);
     }
 
     /**
@@ -470,10 +486,19 @@ public class SystemSettingsService {
         return Collections.unmodifiableMap(SETTING_DEFINITIONS);
     }
 
+    public boolean isSensitiveForAudit(String key) {
+        SettingDefinition definition = SETTING_DEFINITIONS.get(key);
+        return APPRISE_DESTINATION_KEY.equals(key)
+                || (definition != null && definition.valueType() == ValueType.ENCRYPTED);
+    }
+
     public void validateValueForImport(String key, String value) {
         SettingDefinition def = SETTING_DEFINITIONS.get(key);
         if (def == null) {
             throw new IllegalArgumentException("Unknown setting key: " + key);
+        }
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            value = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
         }
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
@@ -495,7 +520,6 @@ public class SystemSettingsService {
                             entity.getValue(),
                             entity.getEncryptionKeyId()
                     );
-                    log.trace("Using decrypted DB value for setting: {}", key);
                     return decrypted;
                 } catch (Exception e) {
                     log.error("Failed to decrypt setting {}: {}", key, e.getMessage());
@@ -503,7 +527,6 @@ public class SystemSettingsService {
                 }
             }
 
-            log.trace("Using DB value for setting: {}", key);
             return entity.getValue();
         }
 
@@ -519,7 +542,6 @@ public class SystemSettingsService {
             if (DEFAULT_TEMPERATURE_UNIT_KEY.equals(key)) {
                 envValue = parseTemperatureUnitOrDefault(envValue).name();
             }
-            log.trace("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
         }
 
@@ -574,6 +596,10 @@ public class SystemSettingsService {
             throw new IllegalArgumentException("Unknown setting key: " + key);
         }
 
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            value = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+        }
+
         // Validate value type
         validateValue(value, def.valueType());
         validateSettingConstraints(key, value);
@@ -616,6 +642,7 @@ public class SystemSettingsService {
         log.info("Setting {} updated by user {}", key, updatedBy);
         fireWeatherSettingsChanged(key);
         fireMapMatchingSettingsChanged(key);
+        fireLoggingSettingsChanged(key);
     }
 
     /**
@@ -627,6 +654,7 @@ public class SystemSettingsService {
         log.info("Setting {} reset to default", key);
         fireWeatherSettingsChanged(key);
         fireMapMatchingSettingsChanged(key);
+        fireLoggingSettingsChanged(key);
     }
 
     private void fireWeatherSettingsChanged(String key) {
@@ -640,6 +668,12 @@ public class SystemSettingsService {
             if (mapMatchingSettingsChangedEvent != null) {
                 mapMatchingSettingsChangedEvent.fire(new MapMatchingSettingsChangedEvent(key));
             }
+        }
+    }
+
+    private void fireLoggingSettingsChanged(String key) {
+        if (key != null && key.startsWith("system.logging.") && loggingSettingsChangedEvent != null) {
+            loggingSettingsChangedEvent.fire(new LoggingSettingsChangedEvent(key));
         }
     }
 
@@ -730,6 +764,10 @@ public class SystemSettingsService {
     }
 
     private void validateSettingConstraints(String key, String value) {
+        if (APPLICATION_LOG_LEVEL_KEY.equals(key)
+                && !Set.of("ERROR", "WARN", "INFO", "DEBUG").contains(value.toUpperCase(Locale.ROOT))) {
+            throw new IllegalArgumentException("Setting " + key + " must be ERROR, WARN, INFO, or DEBUG; use reset to inherit");
+        }
         if ("system.notifications.geofence-events.retention-days".equals(key)) {
             int parsed = Integer.parseInt(value);
             if (parsed < 1) {

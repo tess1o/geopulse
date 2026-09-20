@@ -1,7 +1,14 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   apprise-api:
     image: caronc/apprise:latest
     container_name: geopulse-apprise
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "8000:8000"

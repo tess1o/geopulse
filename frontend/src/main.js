@@ -21,7 +21,9 @@ import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
+import { installProductionConsoleSanitizer } from '@/utils/productionConsoleSanitizer'
 
+installProductionConsoleSanitizer()
 initializeThemeMode()
 
 if (import.meta.env.DEV) {

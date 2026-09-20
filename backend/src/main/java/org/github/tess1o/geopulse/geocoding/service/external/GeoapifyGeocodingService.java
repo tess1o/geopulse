@@ -59,7 +59,7 @@ public class GeoapifyGeocodingService {
                 .map(response -> adapter.adapt(response, requestCoordinates, getProviderName()))
                 .onItem().ifNull().failWith(() -> new GeocodingException("Geoapify adapter returned null result"))
                 .onFailure().transform(failure -> {
-                    log.error("Geoapify API call failed for coordinates: lon={}, lat={}, failure={}", longitude, latitude, failure);
+                    log.error("Geoapify API call failed", failure);
                     return new GeocodingException("Geoapify geocoding failed", failure);
                 });
     }

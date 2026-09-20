@@ -2,7 +2,7 @@ import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import dayjs from 'dayjs';
 import {useTimezone} from "@/composables/useTimezone";
-import {normalizeApiError} from '@/utils/apiErrorDetail'
+import {normalizeApiError, productionErrorContext} from '@/utils/apiErrorDetail'
 
 export const useShareLinksStore = defineStore('shareLinks', {
     state: () => ({
@@ -88,7 +88,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 const isExpired = (link) => link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false;
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length;
             } catch (error) {
-                console.error('Failed to fetch share links:', error);
+                console.error('Failed to fetch share links:', import.meta.env.DEV ? error : productionErrorContext(error));
                 this.setError(normalizeApiError(error, 'Failed to fetch share links'));
                 throw error;
             } finally {
@@ -211,7 +211,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedAccessToken = response.access_token
                 return response
             } catch (error) {
-                console.error('Failed to verify shared link:', error)
+                console.error('Failed to verify shared link:', import.meta.env.DEV ? error : productionErrorContext(error))
                 this.setError(normalizeApiError(error, 'Access denied'))
                 throw error
             } finally {
@@ -372,7 +372,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedPathData = pathData
                 return pathData
             } catch (error) {
-                console.error('Failed to fetch path data:', error)
+                console.error('Failed to fetch path data:', import.meta.env.DEV ? error : productionErrorContext(error))
                 throw error
             }
         },

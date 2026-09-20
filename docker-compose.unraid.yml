@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   geopulse-keygen:
     image: alpine:latest
@@ -32,6 +38,7 @@ services:
     mem_limit: 512m
     mem_reservation: 128m
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     environment:
@@ -57,6 +64,7 @@ services:
     # image: ghcr.io/tess1o/geopulse-ui:${GEOPULSE_VERSION}
     container_name: geopulse-ui
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env
     ports:
@@ -72,6 +80,7 @@ services:
     image: postgis/postgis:17-3.5
     container_name: geopulse-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}

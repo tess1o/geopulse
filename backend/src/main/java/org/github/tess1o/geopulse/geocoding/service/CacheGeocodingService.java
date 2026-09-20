@@ -73,20 +73,17 @@ public class CacheGeocodingService {
             );
 
             if (match != null) {
-                log.debug("Cache hit for user {} at coordinates: lon={}, lat={} (tolerance: {}m), provider: {}, isUserSpecific: {}",
-                        userId, requestCoordinates.getX(), requestCoordinates.getY(), spatialToleranceMeters,
-                        match.getProviderName(), match.getUser() != null);
+                log.debug("Geocoding cache hit for user {}: provider={}, isUserSpecific={}",
+                        userId, match.getProviderName(), match.getUser() != null);
 
                 return Optional.of(entityMapper.toResult(match));
             }
 
-            log.debug("Cache miss for user {} at coordinates: lon={}, lat={}",
-                    userId, requestCoordinates.getX(), requestCoordinates.getY());
+            log.debug("Geocoding cache miss for user {}", userId);
             return Optional.empty();
 
         } catch (Exception e) {
-            log.error("Error retrieving cached result for user {} at coordinates: lon={}, lat={}",
-                    userId, requestCoordinates.getX(), requestCoordinates.getY(), e);
+            log.error("Error retrieving cached geocoding result for user {}", userId, e);
             throw new GeocodingCacheException("Failed to retrieve cached result", e);
         }
     }
@@ -111,17 +108,15 @@ public class CacheGeocodingService {
             );
 
             if (match != null) {
-                log.debug("Found cached entity ID {} for user {} at coordinates: lon={}, lat={}, isUserSpecific: {}",
-                        match.getId(), userId, requestCoordinates.getX(), requestCoordinates.getY(),
-                        match.getUser() != null);
+                log.debug("Found cached geocoding entity ID {} for user {}: isUserSpecific={}",
+                        match.getId(), userId, match.getUser() != null);
                 return Optional.of(match.getId());
             }
 
             return Optional.empty();
 
         } catch (Exception e) {
-            log.error("Error retrieving cached entity ID for user {} at coordinates: lon={}, lat={}",
-                    userId, requestCoordinates.getX(), requestCoordinates.getY(), e);
+            log.error("Error retrieving cached geocoding entity ID for user {}", userId, e);
             return Optional.empty();
         }
     }
@@ -168,8 +163,7 @@ public class CacheGeocodingService {
             if (existing != null) {
                 // Update existing original entry (we know existing.getUser() == null)
                 updateExistingOriginal(existing, entity);
-                log.debug("Updated cached original for coordinates: lon={}, lat={}",
-                        requestCoordinates.getX(), requestCoordinates.getY());
+                log.debug("Updated cached original geocoding result");
             } else {
                 // Create new original entry
                 Instant now = Instant.now();
@@ -178,28 +172,23 @@ public class CacheGeocodingService {
 
                 try {
                     repository.persist(entity);
-                    log.debug("Cached new original for coordinates: lon={}, lat={}",
-                            requestCoordinates.getX(), requestCoordinates.getY());
+                    log.debug("Cached new original geocoding result");
                 } catch (jakarta.persistence.PersistenceException e) {
                     // Check if this is a unique constraint violation
                     if (isUniqueConstraintViolation(e)) {
                         // Another transaction created the original while we were working
                         // Query again to get the existing entry and update it
-                        log.debug("Unique constraint violation - original was created concurrently. " +
-                                "Querying again and updating for coordinates: lon={}, lat={}",
-                                requestCoordinates.getX(), requestCoordinates.getY());
+                        log.debug("Original geocoding result was created concurrently; querying and updating it");
 
                         ReverseGeocodingLocationEntity existingAfterRetry =
                             repository.findOriginalByExactCoordinates(requestCoordinates);
 
                         if (existingAfterRetry != null) {
                             updateExistingOriginal(existingAfterRetry, entity);
-                            log.debug("Updated existing original after constraint violation for coordinates: lon={}, lat={}",
-                                    requestCoordinates.getX(), requestCoordinates.getY());
+                            log.debug("Updated existing original after geocoding constraint violation");
                         } else {
                             // Should never happen - we got constraint violation but can't find the entry
-                            log.error("Unique constraint violation but cannot find existing original for coordinates: lon={}, lat={}",
-                                    requestCoordinates.getX(), requestCoordinates.getY());
+                            log.error("Unique constraint violation but existing original geocoding result was not found");
                             throw new GeocodingCacheException("Constraint violation but existing entry not found", e);
                         }
                     } else {
@@ -213,8 +202,7 @@ public class CacheGeocodingService {
             // Re-throw our own exceptions
             throw e;
         } catch (Exception e) {
-            log.error("Error caching geocoding result for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY(), e);
+            log.error("Error caching geocoding result", e);
             throw new GeocodingCacheException("Failed to cache geocoding result", e);
         }
     }

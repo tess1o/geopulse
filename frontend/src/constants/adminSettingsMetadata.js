@@ -4,6 +4,10 @@
  */
 
 export const SETTING_METADATA = {
+  'system.logging.application-level': {
+    label: 'Application Log Level',
+    description: 'ERROR, WARN, INFO, or DEBUG. Reset to use GEOPULSE_LOG_LEVEL or the application default; TRACE is unavailable in production.'
+  },
   // Authentication Settings
   'auth.registration.enabled': {
     label: 'Registration Enabled',

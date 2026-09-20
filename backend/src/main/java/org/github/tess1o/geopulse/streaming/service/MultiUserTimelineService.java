@@ -132,13 +132,11 @@ public class MultiUserTimelineService {
 
             // Check friendship exists
             if (!friendshipRepository.existsFriendship(requestingUserId, targetUserId)) {
-                log.warn("User {} attempted to access timeline of non-friend {}", requestingUserId, targetUserId);
                 throw new GeoPulseException(ACCESS_DENIED, "Not authorized to view this timeline");
             }
 
             // Check timeline permission
             if (!permissionRepository.hasTimelinePermission(targetUserId, requestingUserId)) {
-                log.warn("User {} attempted to access timeline of {} without permission", requestingUserId, targetUserId);
                 throw new GeoPulseException(ACCESS_DENIED, "Not authorized to view this timeline");
             }
         }

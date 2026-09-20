@@ -43,6 +43,18 @@ export const normalizeApiError = (error, fallback) => {
   }
 }
 
+export const productionErrorContext = (error) => {
+  const data = error?.response?.data || {}
+  const headers = error?.response?.headers || {}
+  return {
+    name: error?.name || 'Error',
+    status: error?.response?.status ?? data?.status ?? null,
+    code: data?.code ?? null,
+    requestId: data?.requestId ?? headers['x-request-id'] ?? null,
+    errorId: data?.errorId ?? headers['x-error-id'] ?? null
+  }
+}
+
 export const formatApiErrorDetail = (error, fallback) => {
   const problem = normalizeApiError(error, fallback)
   if (problem.violations.length > 0) {

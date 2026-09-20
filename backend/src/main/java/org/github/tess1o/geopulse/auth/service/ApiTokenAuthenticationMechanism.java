@@ -120,8 +120,9 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
         String requestId = context.get(RequestCorrelationHandler.REQUEST_ID);
         if (requestId == null) {
             requestId = UUID.randomUUID().toString();
-            context.put(RequestCorrelationHandler.REQUEST_ID, requestId);
+            RequestCorrelationHandler.attachRequestId(context, requestId);
         }
+        RequestCorrelationHandler.attachErrorId(context, errorId);
         String instance = context.request().path();
         String type = code.typeUri().toString();
         String responseBody = new JsonObject()
@@ -134,9 +135,6 @@ public class ApiTokenAuthenticationMechanism implements HttpAuthenticationMechan
                 .put("errorId", errorId)
                 .put("requestId", requestId)
                 .encode();
-
-        log.info("status={}, title=\"{}\", detail=\"{}\", instance=\"{}\", type={}, code={}, errorId={}, requestId={}",
-                code.statusCode(), code.title(), detail, instance, type, code, errorId, requestId);
 
         String finalRequestId = requestId;
         return Uni.createFrom().emitter(emitter -> context.response()

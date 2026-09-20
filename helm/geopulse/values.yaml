@@ -311,6 +311,7 @@ externalPostgres:
 mosquitto:
   # Set to true to enable MQTT broker
   enabled: false
+  verboseLogging: false
 
   image:
     repository: iegomez/mosquitto-go-auth
@@ -342,11 +343,6 @@ mosquitto:
 
     # Data persistence
     data:
-      accessMode: ReadWriteOnce
-      size: 1Gi
-
-    # Log persistence
-    logs:
       accessMode: ReadWriteOnce
       size: 1Gi
 

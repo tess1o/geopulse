@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.admin.service;
 
 import jakarta.enterprise.event.Event;
 import org.github.tess1o.geopulse.admin.model.SettingInfo;
+import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 import org.github.tess1o.geopulse.user.model.DistanceUnit;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -282,6 +284,26 @@ class SystemSettingsServiceGeocodingEnvFallbackTest {
                 () -> service.setValue("system.user.default-distance-unit", "yards", null));
         assertThrows(IllegalArgumentException.class,
                 () -> service.setValue("system.user.default-temperature-unit", "kelvin", null));
+    }
+
+    @Test
+    void shouldValidateAndNormalizeApplicationLogLevel() {
+        SystemSettingsRepository repository = Mockito.mock(SystemSettingsRepository.class);
+        AIEncryptionService encryptionService = Mockito.mock(AIEncryptionService.class);
+        @SuppressWarnings("unchecked")
+        Event<WeatherSettingsChangedEvent> weatherSettingsChangedEvent = Mockito.mock(Event.class);
+        when(repository.findByKey(anyString())).thenReturn(Optional.empty());
+        SystemSettingsService service = new SystemSettingsService(repository, encryptionService, weatherSettingsChangedEvent);
+
+        service.setValue(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, " debug ", null);
+
+        ArgumentCaptor<SystemSettingsEntity> setting = ArgumentCaptor.forClass(SystemSettingsEntity.class);
+        verify(repository).persist(setting.capture());
+        assertEquals("DEBUG", setting.getValue().getValue());
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setValue(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "TRACE", null));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setValue(SystemSettingsService.APPLICATION_LOG_LEVEL_KEY, "inherit", null));
     }
 
     @Test

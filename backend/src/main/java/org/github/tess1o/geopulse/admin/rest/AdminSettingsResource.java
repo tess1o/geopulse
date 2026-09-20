@@ -23,6 +23,7 @@ import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
+import org.github.tess1o.geopulse.admin.service.LogLevelService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.admin.service.WeatherValidationService;
 import org.github.tess1o.geopulse.auth.security.SecurityRoles;
@@ -105,6 +106,9 @@ public class AdminSettingsResource {
     @Inject
     ExternalIntegrationHealthService integrationHealthService;
 
+    @Inject
+    LogLevelService logLevelService;
+
     /**
      * Get all settings grouped by category.
      */
@@ -124,6 +128,13 @@ public class AdminSettingsResource {
         return settingsService.getSettingsByCategory(category);
     }
 
+    @GET
+    @Path("/logging-status")
+    @RolesAllowed({SecurityRoles.ADMIN, SecurityRoles.DEMO_ADMIN_READ})
+    public LogLevelService.LoggingStatus getLoggingStatus() {
+        return logLevelService.getStatus();
+    }
+
     /**
      * Update a setting value.
      * <p>
@@ -137,13 +148,20 @@ public class AdminSettingsResource {
     public void updateSetting(@PathParam("key") String key, UpdateSettingRequest request) {
 
         UUID adminId = currentUserService.getCurrentUserId();
-        String oldValue = settingsService.getString(key);
+        boolean redactValues = settingsService.isSensitiveForAudit(key)
+                || SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(key);
+        String oldValue = redactValues ? "[redacted]" : settingsService.getString(key);
 
-        settingsService.setValue(key, request.getValue(), adminId);
+        try {
+            settingsService.setValue(key, request.getValue(), adminId);
+        } catch (IllegalArgumentException e) {
+            // Validation failures are client errors (400), not unmapped 500s.
+            throw new GeoPulseException(INVALID_ADMIN_SETTINGS, e.getMessage(), e);
+        }
 
         // Audit log
         String ipAddress = UserIpAddress.resolve(httpRequest);
-        auditLogService.logSettingChange(adminId, key, oldValue, request.getValue(), ipAddress);
+        auditSettingChange(adminId, key, oldValue, request.getValue(), redactValues, ipAddress);
 
     }
 
@@ -156,13 +174,15 @@ public class AdminSettingsResource {
     public SettingResetResponse resetSetting(@PathParam("key") String key) {
 
         UUID adminId = currentUserService.getCurrentUserId();
-        String oldValue = settingsService.getString(key);
+        boolean redactValues = settingsService.isSensitiveForAudit(key)
+                || SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(key);
+        String oldValue = redactValues ? "[redacted]" : settingsService.getString(key);
 
         settingsService.resetToDefault(key);
 
         // Audit log
         String ipAddress = UserIpAddress.resolve(httpRequest);
-        auditLogService.logSettingReset(adminId, key, oldValue, ipAddress);
+        auditSettingReset(adminId, key, oldValue, redactValues, ipAddress);
 
         return new SettingResetResponse(settingsService.getDefaultValue(key));
     }
@@ -242,20 +262,42 @@ public class AdminSettingsResource {
         orderedSettings.addAll(otherSettings);
 
         for (UpdateSettingRequest settingUpdate : orderedSettings) {
-            String oldValue = settingsService.getString(settingUpdate.getKey());
-            settingsService.setValue(settingUpdate.getKey(), settingUpdate.getValue(), adminId);
+            boolean redactValues = settingsService.isSensitiveForAudit(settingUpdate.getKey())
+                    || SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(settingUpdate.getKey());
+            String oldValue = redactValues ? "[redacted]" : settingsService.getString(settingUpdate.getKey());
+            try {
+                settingsService.setValue(settingUpdate.getKey(), settingUpdate.getValue(), adminId);
+            } catch (IllegalArgumentException e) {
+                // Validation failures are client errors (400), not unmapped 500s.
+                throw new GeoPulseException(INVALID_ADMIN_SETTINGS, e.getMessage(), e);
+            }
 
             // Audit log each change
-            auditLogService.logSettingChange(
-                    adminId,
-                    settingUpdate.getKey(),
-                    oldValue,
-                    settingUpdate.getValue(),
-                    ipAddress
-            );
+            auditSettingChange(adminId, settingUpdate.getKey(), oldValue, settingUpdate.getValue(),
+                    redactValues, ipAddress);
         }
 
         // Transaction commits when this method returns.
+    }
+
+    private void auditSettingChange(UUID adminId, String key, String oldValue, String newValue,
+                                    boolean redactValues, String ipAddress) {
+        if (SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            auditLogService.logAction(adminId, ActionType.SETTING_CHANGED, TargetType.SETTING,
+                    key, Map.of(), ipAddress);
+            return;
+        }
+        auditLogService.logSettingChange(adminId, key, oldValue, newValue, redactValues, ipAddress);
+    }
+
+    private void auditSettingReset(UUID adminId, String key, String oldValue,
+                                   boolean redactValues, String ipAddress) {
+        if (SystemSettingsService.APPLICATION_LOG_LEVEL_KEY.equals(key)) {
+            auditLogService.logAction(adminId, ActionType.SETTING_RESET, TargetType.SETTING,
+                    key, Map.of(), ipAddress);
+            return;
+        }
+        auditLogService.logSettingReset(adminId, key, oldValue, redactValues, ipAddress);
     }
 
     /**

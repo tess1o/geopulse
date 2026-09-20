@@ -90,8 +90,7 @@ public class GeocodingProviderFactory {
      */
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         String primaryProvider = configService.getPrimaryProvider();
-        log.debug("Reverse geocoding coordinates: lon={}, lat={} using primary provider: {}",
-                requestCoordinates.getX(), requestCoordinates.getY(), primaryProvider);
+        log.debug("Reverse geocoding using primary provider {}", primaryProvider);
 
         // Try primary provider
         Uni<FormattableGeocodingResult> primaryResult = callProvider(primaryProvider, requestCoordinates);
@@ -199,8 +198,7 @@ public class GeocodingProviderFactory {
      * @return Structured geocoding result
      */
     public Uni<FormattableGeocodingResult> reconcileWithProvider(String providerName, Point requestCoordinates) {
-        log.debug("Reconciling coordinates with provider {}: lon={}, lat={}",
-                providerName, requestCoordinates.getX(), requestCoordinates.getY());
+        log.debug("Reconciling location with provider {}", providerName);
 
         return callProvider(providerName, requestCoordinates);
     }

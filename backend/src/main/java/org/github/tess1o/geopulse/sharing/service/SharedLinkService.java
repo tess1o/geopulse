@@ -267,7 +267,6 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
-            log.warn("Share link not found or access denied: linkId={}, userId={}", linkId, userId);
             throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found");
         }
 
@@ -291,7 +290,6 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            log.warn("Link not found or expired for verification: {}", linkId);
             throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 
@@ -299,7 +297,6 @@ public class SharedLinkService {
 
         if (entity.getPassword() != null) {
             if (password == null || !passwordUtils.isPasswordValid(password, entity.getPassword())) {
-                log.warn("Invalid password attempt for linkId: {}", linkId);
                 throw new GeoPulseException(SHARED_LINK_PASSWORD_INVALID, "Invalid password");
             }
         }
@@ -319,7 +316,6 @@ public class SharedLinkService {
 
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
-            log.warn("Link not found or expired for location access: {}", linkId);
             throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
         }
 

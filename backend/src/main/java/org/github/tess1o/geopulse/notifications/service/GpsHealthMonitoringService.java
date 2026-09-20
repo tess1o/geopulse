@@ -49,7 +49,7 @@ public class GpsHealthMonitoringService {
             try {
                 checkUser(user, now);
             } catch (Exception exception) {
-                log.warn("GPS health check failed for user {}: {}", user.getId(), exception.getMessage());
+                log.warn("GPS health check failed for user {}: {}", user.getId(), exception.getMessage(), exception);
             }
         }
     }
