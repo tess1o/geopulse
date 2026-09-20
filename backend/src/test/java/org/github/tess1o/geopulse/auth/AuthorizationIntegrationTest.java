@@ -194,8 +194,8 @@ public class AuthorizationIntegrationTest {
                 .cookie("token_expires_at", notNullValue());
     }
     /**
-     * Test DELETE operations require authentication
-     * Expected: 401 Unauthorized without token, 403/404 with valid token
+     * Test DELETE operations require authentication.
+     * Authenticated not-found and ownership contracts are covered by FavoritesResourceContractTest.
      */
     @Test
     public void testDeleteOperationsRequireAuth() {
@@ -205,14 +205,6 @@ public class AuthorizationIntegrationTest {
                 .delete("/api/v1/favorites/1")
                 .then()
                 .statusCode(401);
-        // With valid authentication (but non-existent resource)
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + validJwtToken)
-                .when()
-                .delete("/api/v1/favorites/999999")
-                .then()
-                .statusCode(anyOf(is(404), is(403))); // Not found or forbidden
     }
     @Test
     public void testPostOperationsRequireAuth() {

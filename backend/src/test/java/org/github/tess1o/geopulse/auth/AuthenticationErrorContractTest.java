@@ -20,6 +20,7 @@ import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assertProblemEnvelope;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -45,21 +46,21 @@ class AuthenticationErrorContractTest {
         Response missingUser = login(TestIds.uniqueEmail("missing-user"), "wrong-password");
         Response wrongPassword = login(email, "wrong-password");
 
-        assertProblem(missingUser, 401, "INVALID_CREDENTIALS");
-        assertProblem(wrongPassword, 401, "INVALID_CREDENTIALS");
+        assertProblemEnvelope(missingUser, 401, "INVALID_CREDENTIALS");
+        assertProblemEnvelope(wrongPassword, 401, "INVALID_CREDENTIALS");
         assertThat(stableBody(missingUser)).isEqualTo(stableBody(wrongPassword));
         assertThat(missingUser.path("detail").toString()).isEqualTo("Invalid email or password");
     }
 
     @Test
     void frameworkProblemsUseTheSameEnvelope() {
-        assertProblem(authenticated().when().get("/api/v1/route-that-does-not-exist"), 404, "NOT_FOUND");
-        assertProblem(authenticated().when().get("/api/v1/auth/sessions"), 405, "METHOD_NOT_ALLOWED");
-        assertProblem(given()
+        assertProblemEnvelope(authenticated().when().get("/api/v1/route-that-does-not-exist"), 404, "NOT_FOUND");
+        assertProblemEnvelope(authenticated().when().get("/api/v1/auth/sessions"), 405, "METHOD_NOT_ALLOWED");
+        assertProblemEnvelope(given()
                 .contentType(ContentType.JSON)
                 .body(Map.of())
                 .when().post("/api/v1/registrations"), 400, "VALIDATION_FAILED");
-        assertProblem(given().when().get("/api/v1/friends"), 401, "AUTHENTICATION_REQUIRED");
+        assertProblemEnvelope(given().when().get("/api/v1/friends"), 401, "AUTHENTICATION_REQUIRED");
     }
 
     private io.restassured.specification.RequestSpecification authenticated() {
@@ -71,18 +72,6 @@ class AuthenticationErrorContractTest {
                 .contentType(ContentType.JSON)
                 .body(Map.of("email", loginEmail, "password", password))
                 .when().post("/api/v1/auth/sessions");
-    }
-
-    private void assertProblem(Response response, int status, String code) {
-        assertThat(response.statusCode()).isEqualTo(status);
-        assertThat(response.contentType()).startsWith("application/problem+json");
-        assertThat(response.getHeader("X-Request-Id")).isNotBlank();
-        assertThat(response.getHeader("X-Error-Id")).isNotBlank();
-        assertThat(response.jsonPath().getString("code")).isEqualTo(code);
-        assertThat(response.jsonPath().getString("type")).isEqualTo("urn:geopulse:error:" + code);
-        assertThat(response.jsonPath().getString("instance")).isNotBlank();
-        assertThat(response.jsonPath().getString("requestId")).isEqualTo(response.getHeader("X-Request-Id"));
-        assertThat(response.jsonPath().getString("errorId")).isEqualTo(response.getHeader("X-Error-Id"));
     }
 
     private Map<String, Object> stableBody(Response response) {

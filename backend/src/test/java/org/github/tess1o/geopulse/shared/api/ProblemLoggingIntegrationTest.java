@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -27,6 +28,7 @@ import java.util.logging.Logger;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assertProblemEnvelope;
 
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -60,15 +62,14 @@ class ProblemLoggingIntegrationTest {
 
     @Test
     void problemLoggerEmitsOneErrorWithOriginalCauseFor5xx() {
-        List<LogRecord> records = capture("http-problem", () -> given()
+        AtomicReference<io.restassured.response.Response> response = new AtomicReference<>();
+        List<LogRecord> records = capture("http-problem", () -> response.set(given()
                 .contentType("application/json")
                 .body(Map.of("email", corruptHashEmail, "password", "password"))
-                .when().post("/api/v1/auth/sessions")
-                .then()
-                .statusCode(500)
-                .body("code", org.hamcrest.Matchers.equalTo("INTERNAL_ERROR"))
-                .body("detail", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bcrypt"))));
+                .when().post("/api/v1/auth/sessions")));
 
+        assertProblemEnvelope(response.get(), 500, "INTERNAL_ERROR");
+        assertThat(response.get().body().asString()).doesNotContain("bcrypt");
         assertThat(records).hasSize(1);
         assertThat(records.getFirst().getLevel()).isEqualTo(Level.SEVERE);
         assertThat(causeChain(records.getFirst().getThrown()))
