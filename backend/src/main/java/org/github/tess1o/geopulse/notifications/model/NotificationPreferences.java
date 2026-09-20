@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.notifications.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,6 +17,7 @@ import java.io.Serializable;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode
 public class NotificationPreferences implements Serializable {
     @Builder.Default
     private boolean gpsHealthEnabled = false;
@@ -36,6 +38,7 @@ public class NotificationPreferences implements Serializable {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @EqualsAndHashCode
     public static class Channel implements Serializable {
         @Builder.Default
         private boolean inAppEnabled = true;

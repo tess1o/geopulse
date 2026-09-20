@@ -11,10 +11,9 @@ import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
-import { productionErrorContext } from '@/utils/apiErrorDetail';
+import { getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
-console.log(API_BASE_URL);
 let maintenanceAbortController = new AbortController();
 
 async function parseBlobProblem(error) {
@@ -565,7 +564,7 @@ const apiService = {
                 url: rawUrl.split(/[?#]/, 1)[0] || null,
                 status: error.response?.status,
                 requestId: responseData.requestId || responseHeaders['x-request-id'] || null,
-                errorId: responseData.errorId || responseHeaders['x-error-id'] || null
+                errorId: getErrorReferenceId(error)
             };
 
             try {

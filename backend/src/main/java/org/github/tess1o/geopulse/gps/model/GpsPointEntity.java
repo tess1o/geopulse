@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
@@ -50,6 +52,7 @@ public class GpsPointEntity implements GpsPoint, Serializable {
     private Instant createdAt;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "telemetry", columnDefinition = "jsonb")
     private LinkedHashMap<String, Object> telemetry;
 

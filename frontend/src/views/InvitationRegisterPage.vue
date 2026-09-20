@@ -117,6 +117,7 @@
     </div>
 
     <Toast />
+    <ErrorReferenceToast />
   </div>
 </template>
 
@@ -129,6 +130,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'

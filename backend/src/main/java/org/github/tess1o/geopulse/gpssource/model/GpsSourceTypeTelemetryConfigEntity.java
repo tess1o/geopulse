@@ -3,8 +3,10 @@ package org.github.tess1o.geopulse.gpssource.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 
 import java.util.List;
@@ -38,6 +40,7 @@ public class GpsSourceTypeTelemetryConfigEntity {
     private GpsSourceType sourceType;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "mapping", columnDefinition = "jsonb", nullable = false)
     private List<GpsTelemetryMappingEntry> mapping;
 }

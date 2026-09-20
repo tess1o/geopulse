@@ -1,6 +1,7 @@
 <template>
   <div class="gp-app-layout" :class="layoutClasses">
     <Toast />
+    <ErrorReferenceToast />
     <Toast group="gps-delete" position="top-right">
       <template #message="slotProps">
         <div class="gp-action-toast">
@@ -71,6 +72,7 @@ import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
+import ErrorReferenceToast from './ErrorReferenceToast.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 

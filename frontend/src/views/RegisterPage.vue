@@ -142,6 +142,7 @@
     </div>
 
     <Toast/>
+    <ErrorReferenceToast />
   </div>
 </template>
 
@@ -152,6 +153,7 @@ import {useToast} from 'primevue/usetoast'
 import {useAuthStore} from '@/stores/auth'
 import {getBrowserTimezone} from '@/utils/timezoneUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 
 // Composables
 const router = useRouter()

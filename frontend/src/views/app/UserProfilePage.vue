@@ -241,7 +241,7 @@ const selectTab = (tab) => {
 }
 
 const getErrorMessage = (error) => {
-  if (error?.isApiError) {
+  if (error?.isApiError || error?.response?.data?.detail) {
     return formatApiErrorDetail(error)
   }
 

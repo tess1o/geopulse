@@ -92,7 +92,20 @@
               <!-- Error Display -->
               <div v-if="loginError && !shouldShowPasswordForm" class="login-error">
                 <i class="pi pi-exclamation-triangle"></i>
-                <span>{{ loginError }}</span>
+                <span>
+                  {{ loginError }}
+                  <small v-if="loginErrorReference" class="error-reference">
+                    Check backend logs for ID: {{ loginErrorReference }}
+                    <Button
+                      icon="pi pi-copy"
+                      text
+                      size="small"
+                      class="error-reference-copy"
+                      aria-label="Copy error reference id"
+                      @click="copyErrorReference"
+                    />
+                  </small>
+                </span>
               </div>
 
               <!-- Login Form (show if password login enabled OR admin override) -->
@@ -155,7 +168,20 @@
                 <!-- Error Display -->
                 <div v-if="loginError" class="login-error">
                   <i class="pi pi-exclamation-triangle"></i>
-                  <span>{{ loginError }}</span>
+                  <span>
+                    {{ loginError }}
+                    <small v-if="loginErrorReference" class="error-reference">
+                      Check backend logs for ID: {{ loginErrorReference }}
+                      <Button
+                        icon="pi pi-copy"
+                        text
+                        size="small"
+                        class="error-reference-copy"
+                        aria-label="Copy error reference id"
+                        @click="copyErrorReference"
+                      />
+                    </small>
+                  </span>
                 </div>
               </form>
 
@@ -183,6 +209,7 @@
     </div>
 
     <Toast />
+    <ErrorReferenceToast />
   </div>
 </template>
 
@@ -192,7 +219,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { formatError } from '@/utils/errorHandler'
+import { getErrorReferenceId, hasErrorReference } from '@/utils/apiErrorDetail'
+import { copyToClipboard } from '@/utils/clipboardUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 
 // Composables
 const router = useRouter()
@@ -203,6 +233,7 @@ const authStore = useAuthStore()
 // State
 const isLoading = ref(false)
 const loginError = ref('')
+const loginErrorReference = ref('')
 const demoLoginPersonaId = ref(null)
 
 const oidcProviders = ref([])
@@ -304,6 +335,24 @@ const clearFieldError = (field) => {
   if (loginError.value) {
     loginError.value = ''
   }
+  loginErrorReference.value = ''
+}
+
+// Only a server-side failure carries a reference worth quoting back to support. A rejected
+// credential is the user's to fix, so it must not read like an internal error.
+const setLoginErrorReference = (error) => {
+  loginErrorReference.value = hasErrorReference(error) ? getErrorReferenceId(error) : ''
+}
+
+const copyErrorReference = async () => {
+  const copied = await copyToClipboard(loginErrorReference.value)
+
+  toast.add({
+    severity: copied ? 'success' : 'warn',
+    summary: copied ? 'Copied' : 'Copy failed',
+    detail: copied ? 'Reference id copied to clipboard' : 'Select the id and copy it manually',
+    life: 2500
+  })
 }
 
 const handleSubmit = async () => {
@@ -311,7 +360,8 @@ const handleSubmit = async () => {
   
   isLoading.value = true
   loginError.value = ''
-  
+  loginErrorReference.value = ''
+
   try {
     await authStore.login(formData.value.email.trim(), formData.value.password)
     
@@ -334,6 +384,7 @@ const handleSubmit = async () => {
     
     // Always show custom error message in the form
     loginError.value = getLoginErrorMessage(error, formattedError)
+    setLoginErrorReference(error)
   } finally {
     isLoading.value = false
   }
@@ -345,6 +396,7 @@ const handleDemoLogin = async (persona) => {
   isLoading.value = true
   demoLoginPersonaId.value = persona.id
   loginError.value = ''
+  loginErrorReference.value = ''
 
   try {
     await authStore.demoLogin(persona.id)
@@ -362,6 +414,7 @@ const handleDemoLogin = async (persona) => {
     console.error('Demo login error:', error)
     const formattedError = formatError(error)
     loginError.value = getDemoLoginErrorMessage(error, formattedError)
+    setLoginErrorReference(error)
 
     toast.add({
       severity: 'error',
@@ -751,6 +804,21 @@ onMounted(() => {
   color: var(--gp-danger);
   font-size: 0.9rem;
   margin-top: -0.5rem;
+}
+
+.login-error .error-reference {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  word-break: break-all;
+}
+
+.login-error .error-reference-copy {
+  flex: 0 0 auto;
+  opacity: 1;
 }
 
 

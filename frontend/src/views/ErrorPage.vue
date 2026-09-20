@@ -116,6 +116,7 @@
       </div>
     </div>
     <Toast />
+    <ErrorReferenceToast />
   </div>
 </template>
 
@@ -125,6 +126,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Toast from 'primevue/toast'
+import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()

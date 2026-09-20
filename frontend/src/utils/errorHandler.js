@@ -2,7 +2,7 @@
  * Error handling utilities for GeoPulse frontend
  */
 
-import { formatApiErrorDetail, normalizeApiError } from './apiErrorDetail'
+import { formatApiErrorDetail, getErrorReferenceId, hasErrorReference, normalizeApiError, withErrorReference } from './apiErrorDetail'
 
 function getErrorText(value) {
   if (!value) return ''
@@ -112,7 +112,7 @@ export function formatError(error) {
 
       case 500:
         formattedError.title = 'Server Error'
-        formattedError.message = 'GeoPulse servers are experiencing issues. Please try again in a few minutes.'
+        formattedError.message = 'Internal Server Error'
         formattedError.canRetry = true
         break
 
@@ -168,6 +168,38 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
 }
 
 /**
+ * A server error stays up longer than an ordinary toast, so the reference id can be read and
+ * copied, but it still closes on its own -- a toast that has to be dismissed is an interruption.
+ */
+const REFERENCE_TOAST_LIFE = 8000
+
+/**
+ * How long a toast should stay up.
+ */
+function defaultToastLife(formattedError, error) {
+  if (hasErrorReference(error)) {
+    return REFERENCE_TOAST_LIFE
+  }
+  if (formattedError.isConnectionError) {
+    return 6000
+  }
+  return 4000
+}
+
+/**
+ * Toast fields for a hand-built error toast.
+ *
+ * A server error carrying a reference belongs in the gp-error group, which renders the id with a
+ * copy button, and gets longer on screen so the id can be taken to the backend logs.
+ */
+export function errorToastOptions(error, life = 4000) {
+  if (!hasErrorReference(error)) {
+    return { life }
+  }
+  return { life: REFERENCE_TOAST_LIFE, group: 'gp-error', data: { errorId: getErrorReferenceId(error) } }
+}
+
+/**
  * Create a toast notification from an error
  * @param {Function} toastAdd - The toast.add function from PrimeVue
  * @param {Error} error - The error to display
@@ -176,18 +208,42 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
  */
 export function showErrorToast(toastAdd, error, options = {}) {
   const formattedError = formatError(error)
-  
+  const hasReference = hasErrorReference(error)
+
   const toastConfig = {
     severity: formattedError.severity,
     summary: formattedError.title,
-    detail: formattedError.message,
-    life: options.life || (formattedError.isConnectionError ? 6000 : 4000),
+    detail: withErrorReference(formattedError.message, error),
+    life: options.life ?? defaultToastLife(formattedError, error),
+    // The gp-error group renders the reference as its own row with a copy button; other groups
+    // fall back to the plain detail text, which already carries the hint and the id.
+    ...(hasReference ? { group: 'gp-error', data: { errorId: getErrorReferenceId(error) } } : {}),
     ...options
   }
 
   toastAdd(toastConfig)
   
   return formattedError
+}
+
+/**
+ * Detect a GeoPulse problem document (RFC 7807): the backend answered the request itself.
+ *
+ * GeoPulseProblemPostProcessor stamps every problem the application emits -- 4xx and 5xx alike --
+ * with type "urn:geopulse:error:<CODE>", code and errorId, so their presence proves the backend
+ * produced the response, not a proxy. A 500 carrying one is a failure of a live backend, never an
+ * outage, and must not send the user to the error page.
+ */
+function isGeoPulseProblemResponse(error) {
+  const data = error.response?.data
+  if (!data || typeof data !== 'object') {
+    return false
+  }
+  if (typeof data.type === 'string' && data.type.startsWith('urn:geopulse:error:')) {
+    return true
+  }
+  // A problem that reached us without type was still only ever produced by the backend.
+  return typeof data.code === 'string' && typeof data.errorId === 'string'
 }
 
 /**
@@ -225,7 +281,7 @@ export function isBackendDown(error) {
     requestUrl.includes('/auth/sessions') ||
     requestUrl.includes('/auth/oidc/providers')
   const isLocalProxy500ForBackendDown =
-    responseStatus === 500 && (
+    responseStatus === 500 && !isGeoPulseProblemResponse(error) && (
       upstreamConnectionFailurePattern.test(combinedText) ||
       isHealthOrPublicAuthProbe
     )

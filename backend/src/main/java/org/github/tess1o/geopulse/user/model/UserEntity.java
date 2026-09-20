@@ -12,8 +12,10 @@ import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.github.tess1o.geopulse.notes.model.MemosPreferences;
 import org.github.tess1o.geopulse.notifications.model.NotificationPreferences;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
@@ -75,18 +77,22 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     private String timezone = "UTC";
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "timeline_preferences")
     public TimelinePreferences timelinePreferences;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "immich_preferences")
     public ImmichPreferences immichPreferences;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "memos_preferences")
     public MemosPreferences memosPreferences;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(columnDefinition = "jsonb", name = "notification_preferences")
     public NotificationPreferences notificationPreferences;
 
@@ -176,6 +182,7 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     private Boolean timelineDisplayMapMatchingEnabled = false;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "timeline_display_map_matching_excluded_movement_types", columnDefinition = "jsonb", nullable = false)
     @Builder.Default
     private List<TripType> timelineDisplayMapMatchingExcludedMovementTypes = List.of();

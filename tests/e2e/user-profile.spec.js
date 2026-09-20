@@ -392,6 +392,16 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isPasswordFormEmpty()).toBe(true);
     });
 
+    test('should show the API error for an incorrect current password', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
+      await profilePage.switchToSecurityTab();
+      await profilePage.fillPasswordForm('IncorrectPassword123!', 'NewPassword123!', 'NewPassword123!');
+      await profilePage.changePassword();
+      await profilePage.waitForErrorToast();
+
+      expect(await profilePage.getToastMessage()).toContain('Invalid password');
+    });
+
     test('should cancel password change', async ({page, isolatedUsers, dbManager}) => {
       const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 

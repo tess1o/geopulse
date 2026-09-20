@@ -3,8 +3,10 @@ package org.github.tess1o.geopulse.notifications.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
@@ -62,6 +64,7 @@ public class UserNotificationEntity implements Serializable {
     private String objectRef;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "metadata", columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 

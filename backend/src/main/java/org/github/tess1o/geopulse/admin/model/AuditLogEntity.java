@@ -3,7 +3,9 @@ package org.github.tess1o.geopulse.admin.model;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import lombok.*;
+import org.github.tess1o.geopulse.shared.persistence.JacksonJsonMutabilityPlan;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
 
 import java.io.Serializable;
@@ -46,6 +48,7 @@ public class AuditLogEntity extends PanacheEntityBase implements Serializable {
     private String targetId;
 
     @JdbcTypeCode(SqlTypes.JSON)
+    @Mutability(JacksonJsonMutabilityPlan.class)
     @Column(name = "details", columnDefinition = "jsonb")
     private Map<String, Object> details;
 

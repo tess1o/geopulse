@@ -160,6 +160,7 @@ import { useTimelineMapMatching } from '@/composables/useTimelineMapMatching'
 import { getWeatherQueryRange, padWeatherBounds } from '@/utils/timelineWeatherQuery'
 import { showDemoModeToast } from '@/utils/demoMode'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
+import { errorToastOptions } from '@/utils/errorHandler'
 
 const timezone = useTimezone()
 import { useAuthStore } from '@/stores/auth'
@@ -455,7 +456,7 @@ const fetchLocationData = async (startDate, endDate) => {
       severity: 'error',
       summary: 'Failed to fetch location data',
       detail: formatApiErrorDetail(error, 'Failed to fetch location data'),
-      life: 3000
+      ...errorToastOptions(error, 3000)
     })
   } finally {
     mapDataLoading.value = false
@@ -509,7 +510,7 @@ const fetchTimelineData = async (startDate, endDate) => {
       severity: 'error',
       summary: 'Failed to fetch timeline',
       detail: formatApiErrorDetail(error, 'Failed to load timeline'),
-      life: 3000
+      ...errorToastOptions(error, 8000)
     })
     timelineNoData.value = true
   } finally {

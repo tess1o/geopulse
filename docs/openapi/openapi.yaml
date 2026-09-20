@@ -3798,6 +3798,15 @@ components:
         totalDistanceTraveled:
           format: int64
           type: integer
+    LoggingStatus:
+      type: object
+      properties:
+        configuredLevel:
+          type: string
+        effectiveLevel:
+          type: string
+        source:
+          $ref: "#/components/schemas/Source"
     LoginRequest:
       type: object
       properties:
@@ -5407,6 +5416,12 @@ components:
           type: integer
         hasNext:
           type: boolean
+    Source:
+      enum:
+      - ADMIN
+      - ENVIRONMENT
+      - DEFAULT
+      type: string
     Status:
       enum:
       - HEALTHY
@@ -9280,6 +9295,29 @@ paths:
       security:
       - jwt:
         - ADMIN
+  /api/v1/admin/settings/logging-status:
+    get:
+      operationId: AdminSettingsResource_getLoggingStatus
+      tags:
+      - "Admin: System Settings"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoggingStatus"
+        "401":
+          description: Authentication is required or the provided credentials are
+            invalid.
+        "403":
+          description: The authenticated user does not have permission to access this
+            resource.
+      summary: Get Logging Status
+      security:
+      - jwt:
+        - ADMIN
+        - DEMO_ADMIN_READ
   /api/v1/admin/settings/map-matching/rebuilds:
     post:
       operationId: AdminSettingsResource_rebuildMapMatching
