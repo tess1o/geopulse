@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.Map;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.github.tess1o.geopulse.testsupport.ApiProblemAssertions.assertProblemEnvelope;
 import static org.hamcrest.Matchers.*;
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
@@ -412,6 +413,107 @@ class NotificationResourceIntegrationTest {
             }
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    void shouldReadAndUpdatePreferences() {
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/v1/notifications/preferences")
+                .then()
+                .statusCode(200)
+                .body("gpsSilenceMinutes", notNullValue())
+                .body("gpsHealth", notNullValue());
+
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .contentType(ContentType.JSON)
+                .body(Map.of(
+                        "gpsHealthEnabled", true,
+                        "gpsSilenceMinutes", 120,
+                        "rewindEnabled", false,
+                        "whatsNewEnabled", true))
+                .when()
+                .put("/api/v1/notifications/preferences")
+                .then()
+                .statusCode(200)
+                .body("gpsHealthEnabled", equalTo(true))
+                .body("gpsSilenceMinutes", equalTo(120));
+
+        // Round-trips: the change is persisted, not just echoed.
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .when()
+                .get("/api/v1/notifications/preferences")
+                .then()
+                .statusCode(200)
+                .body("gpsSilenceMinutes", equalTo(120));
+    }
+
+    @Test
+    void shouldRejectOutOfRangeSilenceThreshold() {
+        // Bounds are 1..10080 minutes.
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(ContentType.JSON)
+                        .body(Map.of("gpsSilenceMinutes", 0, "gpsHealthEnabled", false,
+                                "rewindEnabled", false, "whatsNewEnabled", true))
+                        .when().put("/api/v1/notifications/preferences"),
+                400, "INVALID_NOTIFICATION_PREFERENCES");
+
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(ContentType.JSON)
+                        .body(Map.of("gpsSilenceMinutes", 10081, "gpsHealthEnabled", false,
+                                "rewindEnabled", false, "whatsNewEnabled", true))
+                        .when().put("/api/v1/notifications/preferences"),
+                400, "INVALID_NOTIFICATION_PREFERENCES");
+    }
+
+    @Test
+    void shouldRequireAnAppriseDestinationWhenExternalDeliveryIsEnabled() {
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(ContentType.JSON)
+                        .body(Map.of(
+                                "gpsHealthEnabled", true,
+                                "gpsSilenceMinutes", 60,
+                                "gpsHealth", Map.of("appriseEnabled", true),
+                                "rewindEnabled", false,
+                                "whatsNewEnabled", true))
+                        .when().put("/api/v1/notifications/preferences"),
+                400, "INVALID_NOTIFICATION_PREFERENCES");
+    }
+
+    @Test
+    void shouldRejectOutOfRangePagingParameters() {
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .when().get("/api/v1/notifications?page=-1"),
+                400, "VALIDATION_FAILED");
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .when().get("/api/v1/notifications?size=0"),
+                400, "VALIDATION_FAILED");
+        assertProblemEnvelope(given()
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .when().get("/api/v1/notifications?size=101"),
+                400, "VALIDATION_FAILED");
+    }
+
+    @Test
+    void shouldServeTheCurrentReleaseAnnouncement() {
+        // The resource is @Consumes(APPLICATION_JSON), so even a bodyless POST needs the header —
+        // omitting it is a 415, not a 200.
+        given()
+                .header("Authorization", "Bearer " + ownerToken)
+                .contentType(ContentType.JSON)
+                .when()
+                .post("/api/v1/notifications/release/current")
+                .then()
+                .statusCode(200)
+                .body("show", notNullValue());
     }
 
     private GeofenceRuleEntity createRule(UserEntity owner, String name) {

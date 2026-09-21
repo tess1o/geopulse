@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.geocoding.service.GeocodingProviderFactory;
 import org.locationtech.jts.geom.Point;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -20,12 +21,22 @@ public final class GeocodingTestMocks {
         GeocodingProviderFactory provider = mock(GeocodingProviderFactory.class);
         when(provider.reverseGeocode(any(Point.class)))
                 .thenAnswer(invocation -> Uni.createFrom().item(result(invocation.getArgument(0))));
+        // Reconciliation uses a different entry point than reverseGeocode. Without this stub Mockito
+        // returns a null Uni and the reconciler NPEs.
+        when(provider.reconcileWithProvider(anyString(), any(Point.class)))
+                .thenAnswer(invocation -> Uni.createFrom().item(result(invocation.getArgument(1))));
         QuarkusMock.installMockForType(provider, GeocodingProviderFactory.class);
         return provider;
     }
 
     public static void failWith(GeocodingProviderFactory provider, RuntimeException failure) {
         doReturn(Uni.createFrom().failure(failure)).when(provider).reverseGeocode(any(Point.class));
+    }
+
+    /** Makes reconciliation fail, independently of {@link #failWith}. */
+    public static void failReconcileWith(GeocodingProviderFactory provider, RuntimeException failure) {
+        doReturn(Uni.createFrom().failure(failure)).when(provider)
+                .reconcileWithProvider(anyString(), any(Point.class));
     }
 
     public static SimpleFormattableResult result(Point point) {

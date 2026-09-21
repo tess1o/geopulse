@@ -13,24 +13,21 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.testsupport.TimelineTestFixtures;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import static org.assertj.core.api.Assertions.assertThat;
 @QuarkusTest
 @QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class StreamingTimelineIntegrationTest {
-    private static final AtomicLong COORD_SEED = new AtomicLong(0);
     private static final double HOME_LAT = 40.7589;
     private static final double HOME_LON = -73.9851;
     private static final double OFFICE_LAT = 40.7505;
@@ -49,18 +46,12 @@ class StreamingTimelineIntegrationTest {
     TimelineDataGapRepository timelineDataGapRepository;
     @Inject
     EntityManager entityManager;
-    private final GeometryFactory geometryFactory = new GeometryFactory();
+    private final TimelineTestFixtures fixtures = TimelineTestFixtures.newScope();
     private UserEntity testUserEnabled;
     private UserEntity testUserDisabled;
-    private double coordOffsetLat;
-    private double coordOffsetLon;
     @BeforeEach
     @Transactional
     void setUp() {
-        long seed = COORD_SEED.incrementAndGet();
-        coordOffsetLat = seed * 0.0002;
-        coordOffsetLon = seed * 0.0001;
-
         // Create test user
         testUserEnabled = createTestUser(TestIds.uniqueEmail("streaming-enabled-user"), true);
         testUserDisabled = createTestUser(TestIds.uniqueEmail("streaming-disabled-user"), false);
@@ -304,8 +295,7 @@ class StreamingTimelineIntegrationTest {
         assertThat(hasStayCoveringGapWindow).isTrue();
     }
     // Helper methods for creating test data
-    private UserEntity createTestUser(String email, boolean enabled) {
-        UserEntity user = new UserEntity();
+    private UserEntity createTestUser(String email, boolean enabled) {        UserEntity user = new UserEntity();
         user.setEmail(email);
         user.setFullName("Test User");
         user.setPasswordHash("test");
@@ -320,47 +310,19 @@ class StreamingTimelineIntegrationTest {
     }
     private List<GpsPointEntity> createStationaryPoints(UserEntity user, double lat, double lon,
                                                         String startTime, String endTime, int intervalMinutes) {
-        List<GpsPointEntity> points = new ArrayList<>();
-        Instant start = Instant.parse(startTime);
-        Instant end = Instant.parse(endTime);
-        Instant current = start;
-        while (current.isBefore(end) || current.equals(end)) {
-            GpsPointEntity point = new GpsPointEntity();
-            point.setUser(user);
-            point.setTimestamp(current);
-            point.setCoordinates(createPoint(lon, lat)); // PostGIS uses lon, lat order
-            point.setAccuracy(5.0);
-            point.setVelocity(0.0); // Stationary
-            points.add(point);
-            current = current.plusSeconds(intervalMinutes * 60L);
-        }
-        return points;
+        return fixtures.stationaryPoints(user, lat, lon,
+                Instant.parse(startTime), Instant.parse(endTime), intervalMinutes);
     }
+
     private List<GpsPointEntity> createMovingPoints(UserEntity user,
                                                     double startLat, double startLon,
                                                     double endLat, double endLon,
                                                     String startTime, String endTime) {
-        List<GpsPointEntity> points = new ArrayList<>();
-        Instant start = Instant.parse(startTime);
-        Instant end = Instant.parse(endTime);
-        long totalMinutes = java.time.Duration.between(start, end).toMinutes();
-        int numPoints = Math.max(2, (int) (totalMinutes / 2)); // Point every 2 minutes
-        for (int i = 0; i < numPoints; i++) {
-            double progress = (double) i / (numPoints - 1);
-            double lat = startLat + (endLat - startLat) * progress;
-            double lon = startLon + (endLon - startLon) * progress;
-            Instant timestamp = start.plusSeconds((long) (totalMinutes * 60 * progress));
-            GpsPointEntity point = new GpsPointEntity();
-            point.setUser(user);
-            point.setTimestamp(timestamp);
-            point.setCoordinates(createPoint(lon, lat));
-            point.setAccuracy(8.0);
-            point.setVelocity(10.0); // Moving at 10 m/s
-            points.add(point);
-        }
-        return points;
+        return fixtures.movingPoints(user, startLat, startLon, endLat, endLon,
+                Instant.parse(startTime), Instant.parse(endTime));
     }
+
     private Point createPoint(double lon, double lat) {
-        return geometryFactory.createPoint(new Coordinate(lon + coordOffsetLon, lat + coordOffsetLat));
+        return fixtures.point(lon, lat);
     }
 }

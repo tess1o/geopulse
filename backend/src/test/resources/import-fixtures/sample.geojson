@@ -1,0 +1,31 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [30.5234, 50.4501]
+      },
+      "properties": {
+        "timestamp": "2024-08-15T08:00:00Z",
+        "accuracy": 5.0,
+        "velocity": 0.0,
+        "altitude": 120.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [30.5244, 50.4511]
+      },
+      "properties": {
+        "timestamp": "2024-08-15T08:10:00Z",
+        "accuracy": 5.0,
+        "velocity": 0.0,
+        "altitude": 121.0
+      }
+    }
+  ]
+}
