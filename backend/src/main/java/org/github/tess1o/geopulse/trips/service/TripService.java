@@ -5,8 +5,8 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripCollaboratorDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripDto;
@@ -31,31 +31,31 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PERIOD_TAG_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_LABEL_NOT_FOUND;
 
 @ApplicationScoped
 @Slf4j
 public class TripService {
 
-    private static final String TRIP_PERIOD_SOURCE = "trip";
+    private static final String TRIP_LABEL_SOURCE = "trip";
     private static final String OWNTRACKS_SOURCE = "owntracks";
 
     private final TripRepository tripRepository;
     private final TripCollaboratorRepository tripCollaboratorRepository;
-    private final PeriodTagRepository periodTagRepository;
+    private final TimelineLabelRepository timelineLabelRepository;
     private final UserRepository userRepository;
     private final TripAccessService tripAccessService;
     private final FriendshipRepository friendshipRepository;
 
     public TripService(TripRepository tripRepository,
                        TripCollaboratorRepository tripCollaboratorRepository,
-                       PeriodTagRepository periodTagRepository,
+                       TimelineLabelRepository timelineLabelRepository,
                        UserRepository userRepository,
                        TripAccessService tripAccessService,
                        FriendshipRepository friendshipRepository) {
         this.tripRepository = tripRepository;
         this.tripCollaboratorRepository = tripCollaboratorRepository;
-        this.periodTagRepository = periodTagRepository;
+        this.timelineLabelRepository = timelineLabelRepository;
         this.userRepository = userRepository;
         this.tripAccessService = tripAccessService;
         this.friendshipRepository = friendshipRepository;
@@ -101,17 +101,17 @@ public class TripService {
     }
 
     @Transactional
-    public TripDto createTripFromPeriodTag(UUID userId, Long periodTagId) {
-        PeriodTagEntity tag = periodTagRepository.findByIdAndUserId(periodTagId, userId)
-                .orElseThrow(() -> new GeoPulseException(PERIOD_TAG_NOT_FOUND, "Period tag not found"));
+    public TripDto createTripFromTimelineLabel(UUID userId, Long timelineLabelId) {
+        TimelineLabelEntity timelineLabel = timelineLabelRepository.findByIdAndUserId(timelineLabelId, userId)
+                .orElseThrow(() -> new GeoPulseException(TIMELINE_LABEL_NOT_FOUND, "Timeline label not found"));
 
-        if (tag.getEndTime() == null) {
-            throw new IllegalArgumentException("Cannot convert active period tag without end time");
+        if (timelineLabel.getEndTime() == null) {
+            throw new IllegalArgumentException("Cannot convert active timeline label without end time");
         }
 
-        tripRepository.findByPeriodTagIdAndUserId(periodTagId, userId)
+        tripRepository.findByTimelineLabelIdAndUserId(timelineLabelId, userId)
                 .ifPresent(existing -> {
-                    throw new IllegalArgumentException("This period tag is already linked to a trip");
+                    throw new IllegalArgumentException("This timeline label is already linked to a trip");
                 });
 
         UserEntity user = userRepository.findById(userId);
@@ -121,17 +121,17 @@ public class TripService {
 
         TripEntity entity = TripEntity.builder()
                 .user(user)
-                .periodTag(tag)
-                .name(tag.getTagName())
-                .startTime(tag.getStartTime())
-                .endTime(tag.getEndTime())
-                .status(deriveTemporalStatus(tag.getStartTime(), tag.getEndTime()))
-                .color(tag.getColor())
+                .timelineLabel(timelineLabel)
+                .name(timelineLabel.getName())
+                .startTime(timelineLabel.getStartTime())
+                .endTime(timelineLabel.getEndTime())
+                .status(deriveTemporalStatus(timelineLabel.getStartTime(), timelineLabel.getEndTime()))
+                .color(timelineLabel.getColor())
                 .notes(null)
                 .build();
 
         tripRepository.persist(entity);
-        log.info("Created trip {} from period tag {} for user {}", entity.getId(), periodTagId, userId);
+        log.info("Created trip {} from timeline label {} for user {}", entity.getId(), timelineLabelId, userId);
         return toDto(entity, true, "OWNER");
     }
 
@@ -152,7 +152,7 @@ public class TripService {
         if (!hasBothDates(startTime, endTime)) {
             entity = TripEntity.builder()
                     .user(user)
-                    .periodTag(null)
+                    .timelineLabel(null)
                     .name(tripName)
                     .startTime(null)
                     .endTime(null)
@@ -163,11 +163,11 @@ public class TripService {
         } else {
             validateTripRange(startTime, endTime);
 
-            PeriodTagEntity periodTag = createManagedPeriodTag(user, tripName, startTime, endTime, dto.getColor());
+            TimelineLabelEntity timelineLabel = createManagedTimelineLabel(user, tripName, startTime, endTime, dto.getColor());
 
             entity = TripEntity.builder()
                     .user(user)
-                    .periodTag(periodTag)
+                    .timelineLabel(timelineLabel)
                     .name(tripName)
                     .startTime(startTime)
                     .endTime(endTime)
@@ -204,8 +204,8 @@ public class TripService {
                 entity.setStartTime(null);
                 entity.setEndTime(null);
                 entity.setStatus(TripStatus.UNPLANNED);
-                if (entity.getPeriodTag() != null) {
-                    entity.setPeriodTag(null);
+                if (entity.getTimelineLabel() != null) {
+                    entity.setTimelineLabel(null);
                 }
 
                 tripRepository.persist(entity);
@@ -218,15 +218,15 @@ public class TripService {
             entity.setStartTime(startTime);
             entity.setEndTime(endTime);
 
-            if (entity.getPeriodTag() == null) {
-                PeriodTagEntity periodTag = createManagedPeriodTag(
+            if (entity.getTimelineLabel() == null) {
+                TimelineLabelEntity timelineLabel = createManagedTimelineLabel(
                         entity.getUser(),
                         entity.getName(),
                         entity.getStartTime(),
                         entity.getEndTime(),
                         entity.getColor()
                 );
-                entity.setPeriodTag(periodTag);
+                entity.setTimelineLabel(timelineLabel);
             }
 
             if (dto.getStatus() == TripStatus.CANCELLED) {
@@ -235,7 +235,7 @@ public class TripService {
                 entity.setStatus(deriveTemporalStatus(entity.getStartTime(), entity.getEndTime()));
             }
 
-            syncLinkedPeriodTag(entity);
+            syncLinkedTimelineLabel(entity);
             tripRepository.persist(entity);
             log.info("Scheduled previously unplanned trip {} for user {}", tripId, userId);
             return toDto(entity, true, "OWNER");
@@ -256,19 +256,19 @@ public class TripService {
             entity.setStatus(deriveTemporalStatus(entity.getStartTime(), entity.getEndTime()));
         }
 
-        syncLinkedPeriodTag(entity);
+        syncLinkedTimelineLabel(entity);
         tripRepository.persist(entity);
         log.info("Updated trip {} for user {}", tripId, userId);
         return toDto(entity, true, "OWNER");
     }
 
     @Transactional
-    public TripDto unlinkTripFromPeriodTag(UUID userId, Long tripId) {
+    public TripDto unlinkTripFromTimelineLabel(UUID userId, Long tripId) {
         TripEntity entity = tripAccessService.requireOwnerAccess(userId, tripId).trip();
 
-        entity.setPeriodTag(null);
+        entity.setTimelineLabel(null);
         tripRepository.persist(entity);
-        log.info("Unlinked period tag from trip {} for user {}", tripId, userId);
+        log.info("Unlinked timeline label from trip {} for user {}", tripId, userId);
         return toDto(entity, true, "OWNER");
     }
 
@@ -276,12 +276,12 @@ public class TripService {
     public void deleteTrip(UUID userId, Long tripId, boolean deleteBoth) {
         TripEntity entity = tripAccessService.requireOwnerAccess(userId, tripId).trip();
 
-        PeriodTagEntity linkedTag = entity.getPeriodTag();
-        entity.setPeriodTag(null);
+        TimelineLabelEntity linkedLabel = entity.getTimelineLabel();
+        entity.setTimelineLabel(null);
 
         tripRepository.delete(entity);
-        if (deleteBoth && linkedTag != null) {
-            periodTagRepository.delete(linkedTag);
+        if (deleteBoth && linkedLabel != null) {
+            timelineLabelRepository.delete(linkedLabel);
         }
 
         log.info("Deleted trip {} for user {}", tripId, userId);
@@ -291,25 +291,25 @@ public class TripService {
         return tripAccessService.requireReadAccess(userId, tripId).trip();
     }
 
-    private PeriodTagEntity createManagedPeriodTag(UserEntity user, String tripName, Instant startTime, Instant endTime, String color) {
-        PeriodTagEntity tag = PeriodTagEntity.builder()
+    private TimelineLabelEntity createManagedTimelineLabel(UserEntity user, String tripName, Instant startTime, Instant endTime, String color) {
+        TimelineLabelEntity timelineLabel = TimelineLabelEntity.builder()
                 .user(user)
-                .tagName(tripName)
+                .name(tripName)
                 .startTime(startTime)
                 .endTime(endTime)
-                .source(TRIP_PERIOD_SOURCE)
+                .source(TRIP_LABEL_SOURCE)
                 .isActive(false)
                 .color(color)
                 .showAsPreset(true)
                 .build();
 
-        periodTagRepository.persist(tag);
-        return tag;
+        timelineLabelRepository.persist(timelineLabel);
+        return timelineLabel;
     }
 
-    private void syncLinkedPeriodTag(TripEntity trip) {
-        PeriodTagEntity periodTag = trip.getPeriodTag();
-        if (periodTag == null) {
+    private void syncLinkedTimelineLabel(TripEntity trip) {
+        TimelineLabelEntity timelineLabel = trip.getTimelineLabel();
+        if (timelineLabel == null) {
             return;
         }
 
@@ -321,21 +321,21 @@ public class TripService {
             throw new IllegalArgumentException("Linked trips require start and end time");
         }
 
-        if (isOwntracksActive(periodTag)) {
+        if (isOwntracksActive(timelineLabel)) {
             throw new IllegalArgumentException("Cannot update linked active OwnTracks timeline label");
         }
 
-        periodTag.setTagName(trip.getName());
-        periodTag.setStartTime(trip.getStartTime());
-        periodTag.setEndTime(trip.getEndTime());
-        periodTag.setColor(trip.getColor());
-        periodTagRepository.persist(periodTag);
+        timelineLabel.setName(trip.getName());
+        timelineLabel.setStartTime(trip.getStartTime());
+        timelineLabel.setEndTime(trip.getEndTime());
+        timelineLabel.setColor(trip.getColor());
+        timelineLabelRepository.persist(timelineLabel);
     }
 
-    private boolean isOwntracksActive(PeriodTagEntity periodTag) {
-        return periodTag != null
-                && OWNTRACKS_SOURCE.equalsIgnoreCase(periodTag.getSource())
-                && Boolean.TRUE.equals(periodTag.getIsActive());
+    private boolean isOwntracksActive(TimelineLabelEntity timelineLabel) {
+        return timelineLabel != null
+                && OWNTRACKS_SOURCE.equalsIgnoreCase(timelineLabel.getSource())
+                && Boolean.TRUE.equals(timelineLabel.getIsActive());
     }
 
     private TripStatus parseStatusFilter(String statusFilter) {
@@ -467,7 +467,7 @@ public class TripService {
                 .id(entity.getId())
                 .userId(entity.getUser().getId())
                 .ownerFullName(entity.getUser().getFullName())
-                .periodTagId(entity.getPeriodTag() != null ? entity.getPeriodTag().getId() : null)
+                .timelineLabelId(entity.getTimelineLabel() != null ? entity.getTimelineLabel().getId() : null)
                 .name(entity.getName())
                 .startTime(entity.getStartTime())
                 .endTime(entity.getEndTime())

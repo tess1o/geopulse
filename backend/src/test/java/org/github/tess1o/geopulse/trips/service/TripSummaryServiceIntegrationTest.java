@@ -7,7 +7,7 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -46,7 +46,7 @@ class TripSummaryServiceIntegrationTest {
     @Inject
     FavoritesRepository favoritesRepository;
     @Inject
-    PeriodTagRepository periodTagRepository;
+    TimelineLabelRepository timelineLabelRepository;
     @Inject
     UserRepository userRepository;
     @Inject

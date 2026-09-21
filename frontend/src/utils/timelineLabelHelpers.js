@@ -46,28 +46,35 @@ const selectBestTag = (matchingTags) => {
   })[0]
 }
 
-export const normalizePeriodTagColor = (color) => {
+export const normalizeTimelineLabelColor = (color) => {
   if (!color || typeof color !== 'string') return FALLBACK_TAG_COLOR
   return color.startsWith('#') ? color : `#${color}`
 }
 
-export const buildTimelineQueryForPeriodTag = (tag) => {
+export const buildTimelineQueryForTimelineLabel = (tag) => {
   if (!tag?.startTime) return null
 
+  // A label may be planned entirely in the future, but the timeline holds no data
+  // beyond "now": clamp the window to the present, and treat a label that has not
+  // started yet as having nothing to show.
+  const now = Date.now()
+  if (new Date(tag.startTime).getTime() > now) return null
+
   const start = formatDateForTimelineQuery(tag.startTime)
-  const end = formatDateForTimelineQuery(tag.endTime || new Date())
+  const endMs = tag.endTime ? new Date(tag.endTime).getTime() : now
+  const end = formatDateForTimelineQuery(new Date(Math.min(endMs, now)))
   if (!start || !end) return null
 
   return { start, end }
 }
 
-export const findMatchingPeriodTagForInterval = (startTime, endTime, periodTags = []) => {
+export const findMatchingTimelineLabelForInterval = (startTime, endTime, timelineLabels = []) => {
   const visitStartMs = toEpochMs(startTime)
   if (visitStartMs === null) return null
 
   const visitEndMs = toEpochMs(endTime) ?? visitStartMs
 
-  const matches = periodTags.filter((tag) => {
+  const matches = timelineLabels.filter((tag) => {
     const tagRange = getTagRange(tag)
     if (!tagRange) return false
     return visitStartMs <= tagRange.endMs && visitEndMs >= tagRange.startMs
@@ -76,11 +83,11 @@ export const findMatchingPeriodTagForInterval = (startTime, endTime, periodTags 
   return selectBestTag(matches)
 }
 
-export const findMatchingPeriodTagForTimestamp = (timestamp, periodTags = []) => {
-  return findMatchingPeriodTagForInterval(timestamp, timestamp, periodTags)
+export const findMatchingTimelineLabelForTimestamp = (timestamp, timelineLabels = []) => {
+  return findMatchingTimelineLabelForInterval(timestamp, timestamp, timelineLabels)
 }
 
-export const findMatchingPeriodTagForVisit = (visit, periodTags = []) => {
+export const findMatchingTimelineLabelForVisit = (visit, timelineLabels = []) => {
   if (!visit?.timestamp) return null
 
   const startMs = toEpochMs(visit.timestamp)
@@ -89,7 +96,7 @@ export const findMatchingPeriodTagForVisit = (visit, periodTags = []) => {
   const durationSeconds = Number(visit.stayDuration || 0)
   const endMs = durationSeconds > 0 ? startMs + (durationSeconds * 1000) : startMs
 
-  return findMatchingPeriodTagForInterval(startMs, endMs, periodTags)
+  return findMatchingTimelineLabelForInterval(startMs, endMs, timelineLabels)
 }
 
 export const getEpochMs = toEpochMs

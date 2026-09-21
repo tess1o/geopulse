@@ -107,7 +107,6 @@ export const buildPageIndex = (routes, isAdmin) => {
     .filter((route) => route.path?.startsWith('/app'))
     .filter((route) => !route.path.includes(':'))
     .filter((route) => route.path !== '/app')
-    .filter((route) => route.path !== '/app/period-tags')
     .filter((route) => !!(route.meta?.title || route.name))
     .filter((route) => {
       if (!route.path.startsWith('/app/admin')) return true

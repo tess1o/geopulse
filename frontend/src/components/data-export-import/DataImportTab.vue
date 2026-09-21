@@ -527,7 +527,7 @@ const importOptions = ref({
     'reversegeocodinglocation',
     'locationsources',
     'userinfo',
-    'periodtags',
+    'timelinelabels',
     'timelineoverrides',
     'tripworkspace',
     'notificationtemplates',
@@ -571,9 +571,9 @@ const availableDataTypes = ref([
     icon: 'pi pi-user'
   },
   {
-    key: 'periodtags',
+    key: 'timelinelabels',
     label: 'Timeline Labels',
-    description: 'Period tags and timeline labels',
+    description: 'Timeline labels and their date ranges',
     icon: 'pi pi-tags'
   },
   {

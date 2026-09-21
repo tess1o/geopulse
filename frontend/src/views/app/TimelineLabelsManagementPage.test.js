@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTripsStore } from '@/stores/trips'
 
 vi.hoisted(() => {
@@ -39,38 +39,38 @@ const stubs = {
   AppLayout: passthrough,
   PageContainer: passthrough,
   BaseCard: passthrough,
-  CreatePeriodTagDialog: true,
-  EditPeriodTagDialog: true,
+  CreateTimelineLabelDialog: true,
+  EditTimelineLabelDialog: true,
   ConfirmDialog: true,
   Dialog: true,
   Menu
 }
 
 describe('Timeline Labels action menu', () => {
-  let PeriodTagsManagementPage
+  let TimelineLabelsManagementPage
   let pinia
 
   beforeEach(async () => {
     pinia = createPinia()
     setActivePinia(pinia)
 
-    const periodTags = usePeriodTagsStore()
-    periodTags.$patch({
-      periodTags: [
-        { id: 1, tagName: 'Active', source: 'owntracks', isActive: true, startTime: '2026-01-01', endTime: null },
-        { id: 2, tagName: 'Linked', source: 'manual', startTime: '2026-02-01', endTime: '2026-02-02' },
-        { id: 3, tagName: 'Completed', source: 'manual', startTime: '2026-03-01', endTime: '2026-03-02' }
+    const timelineLabels = useTimelineLabelsStore()
+    timelineLabels.$patch({
+      timelineLabels: [
+        { id: 1, name: 'Active', source: 'owntracks', isActive: true, startTime: '2026-01-01', endTime: null },
+        { id: 2, name: 'Linked', source: 'manual', startTime: '2026-02-01', endTime: '2026-02-02' },
+        { id: 3, name: 'Completed', source: 'manual', startTime: '2026-03-01', endTime: '2026-03-02' }
       ],
-      activeTag: { id: 1, tagName: 'Active', source: 'owntracks', isActive: true, startTime: '2026-01-01' }
+      activeLabel: { id: 1, name: 'Active', source: 'owntracks', isActive: true, startTime: '2026-01-01' }
     })
-    vi.spyOn(periodTags, 'fetchPeriodTags').mockResolvedValue()
-    vi.spyOn(periodTags, 'fetchActiveTag').mockResolvedValue()
+    vi.spyOn(timelineLabels, 'fetchTimelineLabels').mockResolvedValue()
+    vi.spyOn(timelineLabels, 'fetchActiveLabel').mockResolvedValue()
 
     const trips = useTripsStore()
-    trips.$patch({ trips: [{ id: 7, name: 'Linked plan', periodTagId: 2, startTime: '2026-02-01', endTime: '2026-02-02' }] })
+    trips.$patch({ trips: [{ id: 7, name: 'Linked plan', timelineLabelId: 2, startTime: '2026-02-01', endTime: '2026-02-02' }] })
     vi.spyOn(trips, 'fetchTrips').mockResolvedValue()
 
-    PeriodTagsManagementPage = (await import('./PeriodTagsManagementPage.vue')).default
+    TimelineLabelsManagementPage = (await import('./TimelineLabelsManagementPage.vue')).default
   })
 
   const menuItemsFor = async (wrapper, name) => {
@@ -79,7 +79,7 @@ describe('Timeline Labels action menu', () => {
   }
 
   it('adapts actions for linked, unlinked, and protected labels', async () => {
-    const wrapper = mount(PeriodTagsManagementPage, {
+    const wrapper = mount(TimelineLabelsManagementPage, {
       global: { plugins: [pinia, PrimeVue], stubs, directives: { tooltip: () => {} } }
     })
 

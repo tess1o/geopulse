@@ -620,8 +620,8 @@ const handleTagClicked = (tag) => {
 
   toast.add({
     severity: 'info',
-    summary: `Viewing ${tag.tagName}`,
-    detail: `Timeline updated to show ${tag.tagName} period`,
+    summary: `Viewing ${tag.name}`,
+    detail: `Timeline updated to show ${tag.name} period`,
     life: 3000
   })
 }

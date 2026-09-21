@@ -16,20 +16,20 @@
     </Message>
 
     <div v-if="form" class="grid">
-      <!-- Tag Name -->
+      <!-- Label Name -->
       <div class="col-12">
-        <label for="tagName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Tag Name *
+        <label for="labelName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
+          Label Name *
         </label>
         <InputText
-          id="tagName"
-          v-model="form.tagName"
+          id="labelName"
+          v-model="form.name"
           placeholder="e.g., Spain Vacation, Work Trip to NYC"
           class="w-full gp-input"
-          :class="{ 'p-invalid': errors.tagName }"
+          :class="{ 'p-invalid': errors.labelName }"
           :disabled="isActiveOwnTracksTag"
         />
-        <small v-if="errors.tagName" class="p-error">{{ errors.tagName }}</small>
+        <small v-if="errors.labelName" class="p-error">{{ errors.labelName }}</small>
       </div>
 
       <!-- Date Range -->
@@ -63,7 +63,7 @@
             :style="{ backgroundColor: displayColor }"
             style="font-size: 0.75rem"
           >
-            {{ form.tagName || 'Preview' }}
+            {{ form.name || 'Preview' }}
           </div>
           <Button
             label="Random"
@@ -104,7 +104,7 @@
       <Button
         label="Update"
         icon="pi pi-check"
-        @click="updatePeriodTag"
+        @click="updateTimelineLabel"
         :loading="isLoading"
         :disabled="isActiveOwnTracksTag"
       />
@@ -115,8 +115,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import { usePeriodTagsStore } from '@/stores/periodTags'
-import { usePeriodTag } from '@/composables/usePeriodTag'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
+import { useTimelineLabel } from '@/composables/useTimelineLabel'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -127,7 +127,7 @@ import Checkbox from 'primevue/checkbox'
 
 const props = defineProps({
   visible: Boolean,
-  periodTag: {
+  timelineLabel: {
     type: Object,
     default: null
   }
@@ -136,17 +136,17 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'updated'])
 
 const toast = useToast()
-const store = usePeriodTagsStore()
+const store = useTimelineLabelsStore()
 
-// Use period tag composable
+// Use timeline label composable
 const {
   getRandomColor,
   formatColorWithHash,
   createDisplayColor,
-  validateTagName,
+  validateLabelName,
   validateDateRange,
   normalizeDateRangeForPayload
-} = usePeriodTag()
+} = useTimelineLabel()
 
 // State
 const dialogVisible = computed({
@@ -161,34 +161,34 @@ const errors = ref({})
 
 // Computed
 const isActiveOwnTracksTag = computed(() => {
-  return props.periodTag?.source === 'owntracks' && props.periodTag?.isActive === true
+  return props.timelineLabel?.source === 'owntracks' && props.timelineLabel?.isActive === true
 })
 
 const dialogHeader = computed(() => {
   if (isActiveOwnTracksTag.value) {
-    return 'View Period Tag (Read-Only)'
+    return 'View Timeline Label (Read-Only)'
   }
-  return 'Edit Period Tag'
+  return 'Edit Timeline Label'
 })
 
 const displayColor = createDisplayColor(computed(() => form.value?.color))
 
 // Methods
 const loadForm = () => {
-  if (!props.periodTag) return
+  if (!props.timelineLabel) return
 
   // Load form data
   form.value = {
-    tagName: props.periodTag.tagName,
-    color: props.periodTag.color || '#FF6B6B',
-    showAsPreset: props.periodTag.showAsPreset !== false
+    name: props.timelineLabel.name,
+    color: props.timelineLabel.color || '#FF6B6B',
+    showAsPreset: props.timelineLabel.showAsPreset !== false
   }
 
   // Set date range
-  if (props.periodTag.startTime && props.periodTag.endTime) {
+  if (props.timelineLabel.startTime && props.timelineLabel.endTime) {
     dateRange.value = [
-      new Date(props.periodTag.startTime),
-      new Date(props.periodTag.endTime)
+      new Date(props.timelineLabel.startTime),
+      new Date(props.timelineLabel.endTime)
     ]
   }
 }
@@ -196,9 +196,9 @@ const loadForm = () => {
 const validate = () => {
   errors.value = {}
 
-  const tagNameError = validateTagName(form.value.tagName)
-  if (tagNameError) {
-    errors.value.tagName = tagNameError
+  const nameError = validateLabelName(form.value.name)
+  if (nameError) {
+    errors.value.labelName = nameError
   }
 
   const dateRangeError = validateDateRange(dateRange.value)
@@ -209,7 +209,7 @@ const validate = () => {
   return Object.keys(errors.value).length === 0
 }
 
-const updatePeriodTag = async () => {
+const updateTimelineLabel = async () => {
   if (!validate()) return
 
   isLoading.value = true
@@ -217,19 +217,19 @@ const updatePeriodTag = async () => {
   try {
     const normalizedRange = normalizeDateRangeForPayload(dateRange.value)
     const data = {
-      tagName: form.value.tagName.trim(),
+      name: form.value.name.trim(),
       startTime: normalizedRange.start,
       endTime: normalizedRange.end,
       color: formatColorWithHash(form.value.color),
       showAsPreset: form.value.showAsPreset !== false
     }
 
-    await store.updatePeriodTag(props.periodTag.id, data)
+    await store.updateTimelineLabel(props.timelineLabel.id, data)
 
     toast.add({
       severity: 'success',
       summary: 'Updated',
-      detail: 'Period tag updated successfully',
+      detail: 'Timeline label updated successfully',
       life: 3000
     })
 
@@ -238,7 +238,7 @@ const updatePeriodTag = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to update period tag',
+      detail: error.message || 'Failed to update timeline label',
       life: 3000
     })
   } finally {
@@ -246,8 +246,8 @@ const updatePeriodTag = async () => {
   }
 }
 
-// Watch for periodTag changes
-watch(() => props.periodTag, (newVal) => {
+// Watch for timelineLabel changes
+watch(() => props.timelineLabel, (newVal) => {
   if (newVal && props.visible) {
     loadForm()
   }

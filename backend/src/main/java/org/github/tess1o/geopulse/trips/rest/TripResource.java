@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.INVALID_TRIP_REQUEST;
-import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.PERIOD_TAG_NOT_FOUND;
+import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TIMELINE_LABEL_NOT_FOUND;
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 
 @Path("/trips")
@@ -42,7 +42,7 @@ import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.TRIP_NOT_FOUND;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @RolesAllowed({"USER", "ADMIN"})
-@Tag(name = "User: Trips", description = "Manage trips, collaborators, and period-tag links.")
+@Tag(name = "User: Trips", description = "Manage trips, collaborators, and timeline-label links.")
 public class TripResource {
 
     private final TripService tripService;
@@ -84,13 +84,13 @@ public class TripResource {
     }
 
     @POST
-    @Path("/from-period-tag/{periodTagId}")
-    public RestResponse<TripDto> createTripFromPeriodTag(@PathParam("periodTagId") Long periodTagId) {
+    @Path("/from-timeline-label/{timelineLabelId}")
+    public RestResponse<TripDto> createTripFromTimelineLabel(@PathParam("timelineLabelId") Long timelineLabelId) {
         try {
             return RestResponse.status(Response.Status.CREATED,
-                    tripService.createTripFromPeriodTag(currentUserService.getCurrentUserId(), periodTagId));
+                    tripService.createTripFromTimelineLabel(currentUserService.getCurrentUserId(), timelineLabelId));
         } catch (NotFoundException e) {
-            throw new GeoPulseException(PERIOD_TAG_NOT_FOUND, "Period tag not found", Map.of("periodTagId", periodTagId), e);
+            throw new GeoPulseException(TIMELINE_LABEL_NOT_FOUND, "Timeline label not found", Map.of("timelineLabelId", timelineLabelId), e);
         } catch (IllegalArgumentException e) {
             throw invalid(e);
         }
@@ -125,10 +125,10 @@ public class TripResource {
     }
 
     @DELETE
-    @Path("/{id}/period-tags")
-    public TripDto unlinkTripFromPeriodTag(@PathParam("id") Long id) {
+    @Path("/{id}/timeline-label")
+    public TripDto unlinkTripFromTimelineLabel(@PathParam("id") Long id) {
         try {
-            return tripService.unlinkTripFromPeriodTag(currentUserService.getCurrentUserId(), id);
+            return tripService.unlinkTripFromTimelineLabel(currentUserService.getCurrentUserId(), id);
         } catch (NotFoundException e) {
             throw notFound(id, e);
         }

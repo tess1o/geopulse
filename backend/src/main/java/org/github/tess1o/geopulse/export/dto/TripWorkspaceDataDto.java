@@ -25,7 +25,7 @@ public class TripWorkspaceDataDto {
     @Builder
     public static class TripDto {
         private Long id;
-        private Long periodTagId;
+        private Long timelineLabelId;
         private String name;
         private Instant startTime;
         private Instant endTime;

@@ -11,7 +11,7 @@
           label="From Timeline Label"
           icon="pi pi-tag"
           outlined
-          @click="openFromPeriodTagDialog"
+          @click="openFromTimelineLabelDialog"
         />
         <Button
           label="Create Trip Plan"
@@ -260,20 +260,20 @@
     </Dialog>
 
     <Dialog
-      v-model:visible="showFromPeriodTagDialog"
+      v-model:visible="showFromTimelineLabelDialog"
       modal
       header="Create Trip Plan from Timeline Label"
       class="gp-dialog-md"
-      @hide="selectedPeriodTagId = null"
+      @hide="selectedTimelineLabelId = null"
     >
-      <div class="from-tag-dialog-content">
+      <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
-          Select a completed timeline label to create a Trip Plan.
+          Select a timeline label with an end date to create a Trip Plan.
         </p>
 
         <Select
-          v-model="selectedPeriodTagId"
-          :options="periodTagOptions"
+          v-model="selectedTimelineLabelId"
+          :options="timelineLabelOptions"
           optionLabel="label"
           optionValue="value"
           class="w-full"
@@ -281,19 +281,19 @@
           filter
         />
 
-        <Message v-if="periodTagOptions.length === 0" severity="warn" :closable="false" class="no-period-tags-warning">
-          No completed timeline labels available.
+        <Message v-if="timelineLabelOptions.length === 0" severity="warn" :closable="false" class="no-timeline-labels-warning">
+          No timeline labels with an end date available.
         </Message>
       </div>
 
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" outlined @click="showFromPeriodTagDialog = false" />
+        <Button label="Cancel" icon="pi pi-times" outlined @click="showFromTimelineLabelDialog = false" />
         <Button
           label="Create Trip Plan"
           icon="pi pi-check"
-          :disabled="!selectedPeriodTagId"
+          :disabled="!selectedTimelineLabelId"
           :loading="isCreatingFromTag"
-          @click="createFromPeriodTag"
+          @click="createFromTimelineLabel"
         />
       </template>
     </Dialog>
@@ -307,7 +307,7 @@
       class="gp-dialog-md"
       @hide="linkedTripDeleteTarget = null"
     >
-      <div class="from-tag-dialog-content">
+      <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
           This trip plan is linked to timeline label
           <strong>"{{ linkedTripDeleteTargetLabel }}"</strong>.
@@ -350,11 +350,11 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
-import { usePeriodTag } from '@/composables/usePeriodTag'
+import { useTimelineLabel } from '@/composables/useTimelineLabel'
 import { formatTripRangeDuration } from '@/utils/tripHelpers'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { useTripsStore } from '@/stores/trips'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -375,25 +375,25 @@ const route = useRoute()
 const toast = useToast()
 const confirm = useConfirm()
 const timezone = useTimezone()
-const { getRandomColor, formatColorWithHash } = usePeriodTag()
+const { getRandomColor, formatColorWithHash } = useTimelineLabel()
 const tripsStore = useTripsStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const TRIP_PLANS_HELP_DISMISSED_KEY = 'gp.trip-plans.help.dismissed'
 
 const { trips } = storeToRefs(tripsStore)
-const { periodTags } = storeToRefs(periodTagsStore)
+const { timelineLabels } = storeToRefs(timelineLabelsStore)
 
 const searchTerm = ref('')
 const statusFilter = ref('ALL')
 const accessFilter = ref('ALL')
 const showTripDialog = ref(false)
-const showFromPeriodTagDialog = ref(false)
+const showFromTimelineLabelDialog = ref(false)
 const isEditMode = ref(false)
 const editingTripId = ref(null)
 const editingTripWasUnplanned = ref(false)
 const isSubmittingTrip = ref(false)
 const isCreatingFromTag = ref(false)
-const selectedPeriodTagId = ref(null)
+const selectedTimelineLabelId = ref(null)
 const showTripPlansHelpMessage = ref(true)
 const showLinkedTripDeleteDialog = ref(false)
 const linkedTripDeleteTarget = ref(null)
@@ -475,17 +475,17 @@ const filteredTrips = computed(() => {
 })
 
 const linkedTripDeleteTargetLabel = computed(() => {
-  if (!linkedTripDeleteTarget.value?.periodTagId) return 'Unknown'
-  const tag = (periodTags.value || []).find((item) => Number(item.id) === Number(linkedTripDeleteTarget.value.periodTagId))
-  return tag?.tagName || `#${linkedTripDeleteTarget.value.periodTagId}`
+  if (!linkedTripDeleteTarget.value?.timelineLabelId) return 'Unknown'
+  const tag = (timelineLabels.value || []).find((item) => Number(item.id) === Number(linkedTripDeleteTarget.value.timelineLabelId))
+  return tag?.name || `#${linkedTripDeleteTarget.value.timelineLabelId}`
 })
 
-const periodTagOptions = computed(() => {
-  const options = (periodTags.value || [])
+const timelineLabelOptions = computed(() => {
+  const options = (timelineLabels.value || [])
     .filter((tag) => !!tag.endTime)
     .map((tag) => ({
       value: tag.id,
-      label: `${tag.tagName} (${timezone.formatDateDisplay(tag.startTime)} - ${timezone.formatDateDisplay(tag.endTime)})`
+      label: `${tag.name} (${timezone.formatDateDisplay(tag.startTime)} - ${timezone.formatDateDisplay(tag.endTime)})`
     }))
 
   return options.sort((a, b) => String(a.label).localeCompare(String(b.label)))
@@ -557,11 +557,11 @@ const openWorkspace = (trip) => {
 }
 
 const isLinkedToLabel = (trip) => {
-  return !!trip?.periodTagId
+  return !!trip?.timelineLabelId
 }
 
 const openLinkedLabel = (trip) => {
-  if (!trip?.periodTagId) return
+  if (!trip?.timelineLabelId) return
   router.push({
     path: '/app/timeline-labels'
   })
@@ -580,15 +580,15 @@ const guardOwnerAction = (trip, message = 'Only trip owner can perform this acti
 
 const unlinkTripFromLabel = (trip) => {
   if (!guardOwnerAction(trip)) return
-  if (!trip?.id || !trip?.periodTagId) return
+  if (!trip?.id || !trip?.timelineLabelId) return
   confirm.require({
     message: `Unlink trip plan "${trip.name}" from its timeline label?`,
     header: 'Unlink Trip Plan',
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await tripsStore.unlinkTripFromPeriodTag(trip.id)
-        await periodTagsStore.fetchPeriodTags()
+        await tripsStore.unlinkTripFromTimelineLabel(trip.id)
+        await timelineLabelsStore.fetchTimelineLabels()
         toast.add({
           severity: 'success',
           summary: 'Unlinked',
@@ -719,7 +719,7 @@ const performDeleteTrip = async (trip, mode) => {
   if (!guardOwnerAction(trip, 'You can delete trip plans only if you own this trip.')) return
   try {
     await tripsStore.deleteTrip(trip.id, mode)
-    await periodTagsStore.fetchPeriodTags()
+    await timelineLabelsStore.fetchTimelineLabels()
     toast.add({
       severity: 'success',
       summary: 'Trip Plan Deleted',
@@ -769,10 +769,10 @@ const confirmDeleteTrip = (trip) => {
   })
 }
 
-const openFromPeriodTagDialog = async () => {
+const openFromTimelineLabelDialog = async () => {
   try {
-    if (!periodTags.value || periodTags.value.length === 0) {
-      await periodTagsStore.fetchPeriodTags()
+    if (!timelineLabels.value || timelineLabels.value.length === 0) {
+      await timelineLabelsStore.fetchTimelineLabels()
     }
   } catch (error) {
     toast.add({
@@ -782,18 +782,18 @@ const openFromPeriodTagDialog = async () => {
       life: 4000
     })
   }
-  selectedPeriodTagId.value = null
-  showFromPeriodTagDialog.value = true
+  selectedTimelineLabelId.value = null
+  showFromTimelineLabelDialog.value = true
 }
 
-const createFromPeriodTag = async () => {
-  if (!selectedPeriodTagId.value) return
+const createFromTimelineLabel = async () => {
+  if (!selectedTimelineLabelId.value) return
 
   isCreatingFromTag.value = true
   try {
-    const created = await tripsStore.createTripFromPeriodTag(selectedPeriodTagId.value)
-    showFromPeriodTagDialog.value = false
-    selectedPeriodTagId.value = null
+    const created = await tripsStore.createTripFromTimelineLabel(selectedTimelineLabelId.value)
+    showFromTimelineLabelDialog.value = false
+    selectedTimelineLabelId.value = null
     toast.add({
       severity: 'success',
       summary: 'Trip Plan Created',
@@ -875,7 +875,7 @@ onMounted(async () => {
 
   await Promise.all([
     tripsStore.fetchTrips(),
-    periodTagsStore.fetchPeriodTags()
+    timelineLabelsStore.fetchTimelineLabels()
   ]).catch(() => {
     // Errors are handled in UI actions/toasts
   })
@@ -1017,13 +1017,13 @@ onMounted(async () => {
   color: var(--gp-surface-white);
 }
 
-.from-tag-dialog-content {
+.from-label-dialog-content {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-md);
 }
 
-.no-period-tags-warning {
+.no-timeline-labels-warning {
   margin-top: var(--gp-spacing-xs);
 }
 

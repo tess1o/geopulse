@@ -20,7 +20,7 @@ import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
 import GeofencesPage from "@/views/app/GeofencesPage.vue";
-import PeriodTagsManagementPage from "@/views/app/PeriodTagsManagementPage.vue";
+import TimelineLabelsManagementPage from "@/views/app/TimelineLabelsManagementPage.vue";
 import TripsManagementPage from "@/views/app/TripsManagementPage.vue";
 import TripWorkspacePage from "@/views/app/TripWorkspacePage.vue";
 import CoverageExplorerPage from "@/views/app/CoverageExplorerPage.vue";
@@ -322,14 +322,9 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
-        path: '/app/period-tags',
-        redirect: '/app/timeline-labels',
-        beforeEnter: requireAuth
-    },
-    {
         path: '/app/timeline-labels',
         name: 'Timeline Labels',
-        component: PeriodTagsManagementPage,
+        component: TimelineLabelsManagementPage,
         meta: {title: 'Timeline Labels'},
         beforeEnter: requireAuth
     },

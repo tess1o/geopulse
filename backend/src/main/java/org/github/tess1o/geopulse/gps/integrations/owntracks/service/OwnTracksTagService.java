@@ -6,8 +6,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -17,26 +17,26 @@ import java.util.UUID;
 
 /**
  * Service for handling OwnTracks tag messages.
- * Manages automatic period tag lifecycle based on OwnTracks tag changes.
+ * Manages automatic timeline label lifecycle based on OwnTracks tag changes.
  */
 @ApplicationScoped
 @Slf4j
 public class OwnTracksTagService {
 
-    private final PeriodTagRepository periodTagRepository;
+    private final TimelineLabelRepository timelineLabelRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
 
-    public OwnTracksTagService(PeriodTagRepository periodTagRepository,
+    public OwnTracksTagService(TimelineLabelRepository timelineLabelRepository,
                                UserRepository userRepository,
                                EntityManager entityManager) {
-        this.periodTagRepository = periodTagRepository;
+        this.timelineLabelRepository = timelineLabelRepository;
         this.userRepository = userRepository;
         this.entityManager = entityManager;
     }
 
     /**
-     * Handle OwnTracks tag by managing period tag lifecycle.
+     * Handle OwnTracks tag by managing timeline label lifecycle.
      * This method can be called from MQTT callback threads (non-CDI managed), so it needs
      * both transaction and request context activation.
      *
@@ -52,7 +52,7 @@ public class OwnTracksTagService {
         log.debug("Processing OwnTracks tag for user {}", userId);
 
         // Get current active tag for user
-        Optional<PeriodTagEntity> activeTagOpt = periodTagRepository.findActiveByUserId(userId);
+        Optional<TimelineLabelEntity> activeTagOpt = timelineLabelRepository.findActiveByUserId(userId);
 
         // Case 1: New tag value arrives (non-empty)
         if (tagValue != null && !tagValue.trim().isEmpty()) {
@@ -66,21 +66,21 @@ public class OwnTracksTagService {
     }
 
     private void handleNewTag(UUID userId, String tagName, Instant timestamp,
-                              Optional<PeriodTagEntity> activeTagOpt) {
+                              Optional<TimelineLabelEntity> activeTagOpt) {
         // If there's an active tag with the same name, do nothing
-        if (activeTagOpt.isPresent() && tagName.equals(activeTagOpt.get().getTagName())) {
+        if (activeTagOpt.isPresent() && tagName.equals(activeTagOpt.get().getName())) {
             log.debug("OwnTracks tag is already active for user {}", userId);
             return;
         }
 
         // End the current active tag if exists
         if (activeTagOpt.isPresent()) {
-            PeriodTagEntity currentTag = activeTagOpt.get();
+            TimelineLabelEntity currentTag = activeTagOpt.get();
             log.info("Ending active OwnTracks tag for user {}", userId);
             endActiveTag(currentTag, timestamp);
 
             // Flush to ensure the old tag's is_active=false is committed before creating new active tag
-            // This prevents unique constraint violation on idx_period_tags_user_active
+            // This prevents unique constraint violation on idx_timeline_labels_user_active
             entityManager.flush();
             log.debug("Flushed entity manager after ending active tag");
         }
@@ -90,10 +90,10 @@ public class OwnTracksTagService {
         log.info("Created new active OwnTracks tag for user {}", userId);
     }
 
-    private void endActiveTag(PeriodTagEntity tag, Instant endTime) {
+    private void endActiveTag(TimelineLabelEntity tag, Instant endTime) {
         tag.setEndTime(endTime);
         tag.setIsActive(false);
-        periodTagRepository.persist(tag);
+        timelineLabelRepository.persist(tag);
     }
 
     private void createActiveTag(UUID userId, String tagName, Instant startTime) {
@@ -102,9 +102,9 @@ public class OwnTracksTagService {
             throw new IllegalArgumentException("User not found: " + userId);
         }
 
-        PeriodTagEntity newTag = PeriodTagEntity.builder()
+        TimelineLabelEntity newTag = TimelineLabelEntity.builder()
                 .user(user)
-                .tagName(tagName)
+                .name(tagName)
                 .startTime(startTime)
                 .endTime(null)  // Active tag has no end time
                 .isActive(true)
@@ -113,6 +113,6 @@ public class OwnTracksTagService {
                 .showAsPreset(true)
                 .build();
 
-        periodTagRepository.persist(newTag);
+        timelineLabelRepository.persist(newTag);
     }
 }

@@ -1049,13 +1049,13 @@ test.describe('Timeline Page', () => {
     });
   });
 
-  test.describe('Period Tags Display on Timeline', () => {
-    test('should display period tag banner when viewing tagged period', async ({ page, isolatedUsers, dbManager}) => {
-      await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+  test.describe('Timeline Labels Display on Timeline', () => {
+    test('should display timeline label banner when viewing tagged period', async ({ page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
-        periodTag: {
-          tagName: 'Summer Vacation 2025',
+        timelineLabel: {
+          name: 'Summer Vacation 2025',
           startTime: TestDates.PERIOD_TAG.START_DATE,
           endTime: TestDates.PERIOD_TAG.END_DATE,
           source: 'manual'
@@ -1064,27 +1064,27 @@ test.describe('Timeline Page', () => {
         endDate: TestDates.PERIOD_TAG.END_DATE
       });
 
-      // Verify period tag banner is visible
-      await TestSetupHelper.assertPeriodTagVisibility(page, 'Summer Vacation 2025', true, expect);
+      // Verify timeline label banner is visible
+      await TestSetupHelper.assertTimelineLabelVisibility(page, 'Summer Vacation 2025', true, expect);
     });
 
-    test('should display multiple period tags when viewing overlapping periods', async ({ page, isolatedUsers, dbManager}) => {
-      const { user } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should display multiple timeline labels when viewing overlapping periods', async ({ page, isolatedUsers, dbManager}) => {
+      const { user } = await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         skipNavigation: true
       });
 
-      // Create multiple period tags with some overlap
-      await TestSetupHelper.createMultiplePeriodTagsForTimeline(dbManager, user.id, [
+      // Create multiple timeline labels with some overlap
+      await TestSetupHelper.createMultipleTimelineLabelsForTimeline(dbManager, user.id, [
         {
-          tagName: 'Business Trip',
+          name: 'Business Trip',
           startTime: TestDates.PERIOD_TAG.START_DATE,
           endTime: TestDates.PERIOD_TAG.MIDDLE_DATE,
           source: 'manual'
         },
         {
-          tagName: 'Conference',
+          name: 'Conference',
           startTime: TestDates.PERIOD_TAG.MIDDLE_DATE,
           endTime: TestDates.PERIOD_TAG.END_DATE,
           source: 'manual'
@@ -1097,17 +1097,17 @@ test.describe('Timeline Page', () => {
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
-      // Verify at least one period tag is displayed
-      const periodTagBanners = page.locator('.gp-period-badge, .p-message:has-text("Business Trip"), .p-message:has-text("Conference")');
-      expect(await periodTagBanners.count()).toBeGreaterThan(0);
+      // Verify at least one timeline label is displayed
+      const timelineLabelBanners = page.locator('.gp-period-badge, .p-message:has-text("Business Trip"), .p-message:has-text("Conference")');
+      expect(await timelineLabelBanners.count()).toBeGreaterThan(0);
     });
 
-    test('should not display period tag banner when viewing non-tagged period', async ({ page, isolatedUsers, dbManager}) => {
-      await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should not display timeline label banner when viewing non-tagged period', async ({ page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
-        periodTag: {
-          tagName: 'Different Period',
+        timelineLabel: {
+          name: 'Different Period',
           startTime: TestDates.PERIOD_TAG.OUTSIDE_RANGE,
           endTime: new Date('2025-08-07T00:00:00Z'),
           source: 'manual'
@@ -1116,15 +1116,15 @@ test.describe('Timeline Page', () => {
         endDate: TestDates.PERIOD_TAG.MIDDLE_DATE
       });
 
-      // Verify period tag banner is not visible
-      await TestSetupHelper.assertPeriodTagVisibility(page, 'Different Period', false, expect);
+      // Verify timeline label banner is not visible
+      await TestSetupHelper.assertTimelineLabelVisibility(page, 'Different Period', false, expect);
     });
 
-    test('should display active period tag for current date', async ({ page, isolatedUsers, dbManager}) => {
-      const { timelinePage } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should display active timeline label for current date', async ({ page, isolatedUsers, dbManager}) => {
+      const { timelinePage } = await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
-        periodTag: {
-          tagName: 'Ongoing Trip',
+        timelineLabel: {
+          name: 'Ongoing Trip',
           startTime: TestDates.daysAgo(3),
           endTime: null,
           source: 'owntracks'
@@ -1138,7 +1138,7 @@ test.describe('Timeline Page', () => {
       await timelinePage.navigateWithDateRange(TestDates.today(), TestDates.today());
       await timelinePage.waitForPageLoad();
 
-      // Wait a bit for any period tag banners to render
+      // Wait a bit for any timeline label banners to render
       await page.waitForTimeout(1000);
 
       // Verify active tag is displayed or check for timeline content
@@ -1146,12 +1146,12 @@ test.describe('Timeline Page', () => {
       expect(await timelineContent.isVisible()).toBe(true);
     });
 
-    test('should handle period tag with partial overlap on timeline date range', async ({ page, isolatedUsers, dbManager}) => {
-      await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should handle timeline label with partial overlap on timeline date range', async ({ page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
-        periodTag: {
-          tagName: 'Partial Overlap Tag',
+        timelineLabel: {
+          name: 'Partial Overlap Tag',
           startTime: new Date('2025-09-19T00:00:00Z'),
           endTime: new Date('2025-09-21T12:00:00Z'), // Ends mid-day
           source: 'manual'
@@ -1160,16 +1160,16 @@ test.describe('Timeline Page', () => {
         endDate: TestDates.PERIOD_TAG.END_DATE
       });
 
-      // Verify period tag is displayed for the overlapping portion
-      await TestSetupHelper.assertPeriodTagVisibility(page, 'Partial Overlap Tag', true, expect);
+      // Verify timeline label is displayed for the overlapping portion
+      await TestSetupHelper.assertTimelineLabelVisibility(page, 'Partial Overlap Tag', true, expect);
     });
 
-    test('should display OwnTracks source badge on period tag banner', async ({ page, isolatedUsers, dbManager}) => {
-      await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should display OwnTracks source badge on timeline label banner', async ({ page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
-        periodTag: {
-          tagName: 'OwnTracks Trip',
+        timelineLabel: {
+          name: 'OwnTracks Trip',
           startTime: TestDates.PERIOD_TAG.START_DATE,
           endTime: TestDates.PERIOD_TAG.END_DATE,
           source: 'owntracks'
@@ -1179,33 +1179,33 @@ test.describe('Timeline Page', () => {
       });
 
       // Verify OwnTracks badge is displayed
-      const periodTagBanner = page.locator('.gp-period-badge, .p-message:has-text("OwnTracks Trip")');
-      if (await periodTagBanner.isVisible()) {
-        const bannerText = await periodTagBanner.textContent();
+      const timelineLabelBanner = page.locator('.gp-period-badge, .p-message:has-text("OwnTracks Trip")');
+      if (await timelineLabelBanner.isVisible()) {
+        const bannerText = await timelineLabelBanner.textContent();
         expect(bannerText).toContain('OwnTracks');
       }
     });
 
-    test('should update period tag display when changing date range', async ({ page, isolatedUsers, dbManager}) => {
-      const { user, timelinePage } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+    test('should update timeline label display when changing date range', async ({ page, isolatedUsers, dbManager}) => {
+      const { user, timelinePage } = await TestSetupHelper.setupTimelineWithLabel(page, dbManager, {
         userData: createTimelineUser(isolatedUsers),
         skipNavigation: true
       });
 
-      // Insert timeline data for multiple dates so we can navigate and see period tags
+      // Insert timeline data for multiple dates so we can navigate and see timeline labels
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id); // Sept 21
       await TimelineTestData.insertRegularTripsTestData(dbManager, user.id); // Sept 21
 
-      // Create two period tags for different date ranges
-      await TestSetupHelper.createMultiplePeriodTagsForTimeline(dbManager, user.id, [
+      // Create two timeline labels for different date ranges
+      await TestSetupHelper.createMultipleTimelineLabelsForTimeline(dbManager, user.id, [
         {
-          tagName: 'Tag A',
+          name: 'Tag A',
           startTime: new Date('2025-09-20T00:00:00Z'),
           endTime: new Date('2025-09-21T23:59:59Z'), // Covers Sept 21
           source: 'manual'
         },
         {
-          tagName: 'Tag B',
+          name: 'Tag B',
           startTime: new Date('2025-09-21T00:00:00Z'), // Also covers Sept 21
           endTime: new Date('2025-09-23T00:00:00Z'),
           source: 'manual'
@@ -1218,23 +1218,23 @@ test.describe('Timeline Page', () => {
       await timelinePage.waitForTimelineContent();
 
       // Check if both Tag A and Tag B are visible (both cover Sept 21)
-      const isTagAVisible = await TestSetupHelper.isPeriodTagVisible(page, 'Tag A');
-      const isTagBVisible = await TestSetupHelper.isPeriodTagVisible(page, 'Tag B');
+      const isTagAVisible = await TestSetupHelper.isTimelineLabelVisible(page, 'Tag A');
+      const isTagBVisible = await TestSetupHelper.isTimelineLabelVisible(page, 'Tag B');
 
       // At least one tag should be visible on Sept 21
       expect(isTagAVisible || isTagBVisible).toBe(true);
     });
 
-    test('should link to period tags management page from timeline', async ({ page, isolatedUsers, dbManager}) => {
+    test('should link to timeline labels management page from timeline', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
 
       const user = await dbManager.getUserByEmail(testUser.email);
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
 
-      // Create a period tag
-      await TestSetupHelper.createPeriodTag(dbManager, user.id, {
-        tagName: 'Test Tag',
+      // Create a timeline label
+      await TestSetupHelper.createTimelineLabel(dbManager, user.id, {
+        name: 'Test Tag',
         startTime: new Date('2025-09-20T00:00:00Z'),
         endTime: new Date('2025-09-22T00:00:00Z'),
         source: 'manual'
@@ -1245,16 +1245,16 @@ test.describe('Timeline Page', () => {
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
 
-      // Look for any link to period tags management (if implemented in UI)
-      const periodTagsLink = page.locator('a[href*="period-tags"]');
+      // Look for any link to timeline labels management (if implemented in UI)
+      const timelineLabelsLink = page.locator('a[href*="timeline-labels"]');
 
-      if (await periodTagsLink.count() > 0) {
+      if (await timelineLabelsLink.count() > 0) {
         // Click the link
-        await periodTagsLink.first().click();
+        await timelineLabelsLink.first().click();
 
-        // Verify navigation to period tags page
-        await page.waitForURL('**/app/period-tags', { timeout: 5000 });
-        expect(page.url()).toContain('/app/period-tags');
+        // Verify navigation to timeline labels page
+        await page.waitForURL('**/app/timeline-labels', { timeout: 5000 });
+        expect(page.url()).toContain('/app/timeline-labels');
       } else {
         // If no link exists yet, just verify the page renders correctly
         expect(true).toBe(true);

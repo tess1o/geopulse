@@ -12,24 +12,24 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class PeriodTagsDataDto {
+public class TimelineLabelsDataDto {
     private String dataType;
     private Instant exportDate;
     private Instant startDate;
     private Instant endDate;
-    private List<PeriodTagDto> periodTags;
+    private List<TimelineLabelDto> timelineLabels;
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     @Builder
-    public static class PeriodTagDto {
+    public static class TimelineLabelDto {
         private Long id;
-        private String tagName;
+        private String name;
         private Instant startTime;
         private Instant endTime;
         private String source;
-        private Boolean active;
+        private Boolean isActive;
         private String color;
         private Boolean showAsPreset;
         private Instant createdAt;

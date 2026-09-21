@@ -2,24 +2,24 @@
   <Dialog
     v-model:visible="dialogVisible"
     modal
-    header="Create Period Tag"
+    header="Create Timeline Label"
     class="gp-dialog-md"
     @hide="resetForm"
   >
     <div class="grid">
-      <!-- Tag Name -->
+      <!-- Label Name -->
       <div class="col-12">
-        <label for="tagName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Tag Name *
+        <label for="labelName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
+          Label Name *
         </label>
         <InputText
-          id="tagName"
-          v-model="form.tagName"
+          id="labelName"
+          v-model="form.name"
           placeholder="e.g., Spain Vacation, Work Trip to NYC"
           class="w-full gp-input"
-          :class="{ 'p-invalid': errors.tagName }"
+          :class="{ 'p-invalid': errors.labelName }"
         />
-        <small v-if="errors.tagName" class="p-error">{{ errors.tagName }}</small>
+        <small v-if="errors.labelName" class="p-error">{{ errors.labelName }}</small>
       </div>
 
       <!-- Date Range -->
@@ -52,7 +52,7 @@
             :style="{ backgroundColor: displayColor }"
             style="font-size: 0.75rem"
           >
-            {{ form.tagName || 'Preview' }}
+            {{ form.name || 'Preview' }}
           </div>
           <Button
             label="Random"
@@ -92,7 +92,7 @@
       <Button
         label="Create"
         icon="pi pi-check"
-        @click="createPeriodTag"
+        @click="createTimelineLabel"
         :loading="isLoading"
       />
     </template>
@@ -103,8 +103,8 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { usePeriodTagsStore } from '@/stores/periodTags'
-import { usePeriodTag } from '@/composables/usePeriodTag'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
+import { useTimelineLabel } from '@/composables/useTimelineLabel'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -120,17 +120,17 @@ const emit = defineEmits(['update:visible', 'created'])
 
 const toast = useToast()
 const confirm = useConfirm()
-const store = usePeriodTagsStore()
+const store = useTimelineLabelsStore()
 
-// Use period tag composable
+// Use timeline label composable
 const {
   getRandomColor,
   formatColorWithHash,
   createDisplayColor,
-  validateTagName,
+  validateLabelName,
   validateDateRange,
   normalizeDateRangeForPayload
-} = usePeriodTag()
+} = useTimelineLabel()
 
 // State
 const dialogVisible = computed({
@@ -139,7 +139,7 @@ const dialogVisible = computed({
 })
 
 const form = ref({
-  tagName: '',
+  name: '',
   color: getRandomColor(),
   showAsPreset: true
 })
@@ -155,9 +155,9 @@ const displayColor = createDisplayColor(computed(() => form.value.color))
 const validateForm = () => {
   errors.value = {}
 
-  const tagNameError = validateTagName(form.value.tagName)
-  if (tagNameError) {
-    errors.value.tagName = tagNameError
+  const nameError = validateLabelName(form.value.name)
+  if (nameError) {
+    errors.value.labelName = nameError
   }
 
   const dateRangeError = validateDateRange(dateRange.value)
@@ -168,7 +168,7 @@ const validateForm = () => {
   return Object.keys(errors.value).length === 0
 }
 
-const createPeriodTag = async () => {
+const createTimelineLabel = async () => {
   if (!validateForm()) {
     return
   }
@@ -179,20 +179,20 @@ const createPeriodTag = async () => {
     const normalizedRange = normalizeDateRangeForPayload(dateRange.value)
 
     // Check for overlaps first
-    const overlappingTags = await store.checkOverlaps(
+    const overlappingLabels = await store.checkOverlaps(
       normalizedRange.start,
       normalizedRange.end
     )
 
     // If overlaps found, show confirmation dialog
-    if (overlappingTags && overlappingTags.length > 0) {
-      const overlappingNames = overlappingTags.map(t => t.tagName).join(', ')
+    if (overlappingLabels && overlappingLabels.length > 0) {
+      const overlappingNames = overlappingLabels.map(t => t.name).join(', ')
 
       isLoading.value = false
 
       confirm.require({
-        message: `This period overlaps with: ${overlappingNames}. Do you want to create it anyway?`,
-        header: 'Overlapping Periods Detected',
+        message: `This label overlaps with: ${overlappingNames}. Do you want to create it anyway?`,
+        header: 'Overlapping Labels Detected',
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: 'Create Anyway',
         rejectLabel: 'Cancel',
@@ -221,19 +221,19 @@ const performCreate = async (normalizedRange) => {
 
   try {
     const payload = {
-      tagName: form.value.tagName.trim(),
+      name: form.value.name.trim(),
       startTime: normalizedRange.start,
       endTime: normalizedRange.end,
       color: formatColorWithHash(form.value.color),
       showAsPreset: form.value.showAsPreset !== false
     }
 
-    await store.createPeriodTag(payload)
+    await store.createTimelineLabel(payload)
 
     toast.add({
       severity: 'success',
       summary: 'Created',
-      detail: 'Period tag created successfully',
+      detail: 'Timeline label created successfully',
       life: 3000
     })
 
@@ -243,7 +243,7 @@ const performCreate = async (normalizedRange) => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.response?.data?.message || 'Failed to create period tag',
+      detail: error.response?.data?.message || 'Failed to create timeline label',
       life: 3000
     })
   } finally {
@@ -253,7 +253,7 @@ const performCreate = async (normalizedRange) => {
 
 const resetForm = () => {
   form.value = {
-    tagName: '',
+    name: '',
     color: getRandomColor(),
     showAsPreset: true
   }

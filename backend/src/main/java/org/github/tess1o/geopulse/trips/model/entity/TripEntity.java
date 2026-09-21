@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.trips.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
@@ -27,9 +27,9 @@ public class TripEntity {
     private UserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "period_tag_id")
+    @JoinColumn(name = "timeline_label_id")
     @ToString.Exclude
-    private PeriodTagEntity periodTag;
+    private TimelineLabelEntity timelineLabel;
 
     @Column(name = "name", nullable = false, length = 150)
     private String name;

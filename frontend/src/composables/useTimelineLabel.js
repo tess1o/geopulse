@@ -2,12 +2,12 @@ import { computed } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
 
 /**
- * Composable for shared period tag functionality
+ * Composable for shared timeline label functionality
  */
-export function usePeriodTag() {
+export function useTimelineLabel() {
   const timezone = useTimezone()
 
-  // Color palette for period tags
+  // Color palette for timeline labels
   const COLOR_PALETTE = [
     '#FF6B6B',  // Coral Red
     '#4ECDC4',  // Teal
@@ -50,8 +50,8 @@ export function usePeriodTag() {
   }
 
   // Validation helpers
-  const validateTagName = (tagName) => {
-    if (!tagName || tagName.trim() === '') {
+  const validateLabelName = (name) => {
+    if (!name || name.trim() === '') {
       return 'Tag name is required'
     }
     return null
@@ -77,7 +77,7 @@ export function usePeriodTag() {
     getRandomColor,
     formatColorWithHash,
     createDisplayColor,
-    validateTagName,
+    validateLabelName,
     validateDateRange,
     normalizeDateRangeForPayload
   }

@@ -59,18 +59,18 @@
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
           <template v-if="showTimelineLabels">
             <span
-              v-for="tag in getPeriodsForDate(dateGroup.date)"
+              v-for="tag in getTimelineLabelsForDate(dateGroup.date)"
               :key="tag.id"
               class="gp-period-badge gp-period-badge--clickable"
               :style="{ backgroundColor: tag.color }"
               @click.stop="handleTagClick(tag)"
               role="button"
-              :aria-label="`View ${tag.tagName} period`"
+              :aria-label="`View ${tag.name} period`"
               tabindex="0"
               @keydown.enter="handleTagClick(tag)"
               @keydown.space.prevent="handleTagClick(tag)"
             >
-              {{ tag.tagName }}
+              {{ tag.name }}
             </span>
           </template>
           <div class="date-separator-line"></div>
@@ -240,7 +240,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useImmichStore } from '@/stores/immich'
 import { useNotesStore } from '@/stores/notes'
 import StayCard from './StayCard.vue'
@@ -274,7 +274,7 @@ const TripMapMatchingDetailsDialog = defineAsyncComponent(() =>
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const immichStore = useImmichStore()
 const notesStore = useNotesStore()
 
@@ -389,12 +389,12 @@ const showReadOnlyToast = () => {
   showDemoModeToast(toast)
 }
 
-// Get period tags for a specific date
-const getPeriodsForDate = (dateString) => {
+// Get timeline labels for a specific date
+const getTimelineLabelsForDate = (dateString) => {
   if (!props.showTimelineLabels) {
     return []
   }
-  return periodTagsStore.getPeriodsForDate(dateString)
+  return timelineLabelsStore.getTimelineLabelsForDate(dateString)
 }
 
 const selectedSingleDayDate = computed(() => {
@@ -707,14 +707,14 @@ const handleMovementTypeUpdated = (updated) => {
   }
 }
 
-// Load period tags when dateRange changes
-const loadPeriodTags = async () => {
+// Load timeline labels when dateRange changes
+const loadTimelineLabels = async () => {
   if (!props.showTimelineLabels) {
     return
   }
   if (props.dateRange && props.dateRange.length === 2) {
     try {
-      await periodTagsStore.fetchPeriodTagsForTimeRange(
+      await timelineLabelsStore.fetchTimelineLabelsForTimeRange(
         props.dateRange[0],
         props.dateRange[1]
       )
@@ -782,7 +782,7 @@ const loadNotesForCards = async (forceRefresh = false) => {
 
 // Watch for date range changes
 watch(() => props.dateRange, () => {
-  loadPeriodTags()
+  loadTimelineLabels()
   loadImmichPhotosForCards()
   loadNotesForCards()
 }, { deep: true, immediate: true })

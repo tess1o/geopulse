@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.periods.model.dto;
+package org.github.tess1o.geopulse.timelinelabels.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,10 +12,10 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class PeriodTagDto {
+public class TimelineLabelDto {
     private Long id;
     private UUID userId;
-    private String tagName;
+    private String name;
     private Instant startTime;
     private Instant endTime;
     private String source;

@@ -26,8 +26,8 @@ import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
 import org.github.tess1o.geopulse.notes.repository.TimelineNoteRepository;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapStayOverrideEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripMovementOverrideEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapStayOverrideRepository;
@@ -93,7 +93,7 @@ public class ExportDataCollectorService {
     SystemSettingsService settingsService;
 
     @Inject
-    PeriodTagRepository periodTagRepository;
+    TimelineLabelRepository timelineLabelRepository;
 
     @Inject
     TimelineTripMovementOverrideRepository tripMovementOverrideRepository;
@@ -285,10 +285,10 @@ public class ExportDataCollectorService {
         return locations;
     }
 
-    public List<PeriodTagEntity> collectPeriodTags(ExportJob job) {
+    public List<TimelineLabelEntity> collectTimelineLabels(ExportJob job) {
         var startDate = job.getDateRange().getStartDate();
         var endDate = job.getDateRange().getEndDate();
-        return periodTagRepository.findByUserId(job.getUserId()).stream()
+        return timelineLabelRepository.findByUserId(job.getUserId()).stream()
                 .filter(tag -> !tag.getStartTime().isAfter(endDate))
                 .filter(tag -> tag.getEndTime() == null || !tag.getEndTime().isBefore(startDate))
                 .toList();

@@ -111,21 +111,21 @@
                 <div class="map-place-timeline">
                   Last visit: {{ formatLastVisitFull(place.lastVisit) }}
                 </div>
-                <div v-if="getMapPlacePeriodTag(place) || getMapPlaceTrip(place)" class="map-place-trip">
+                <div v-if="getMapPlaceTimelineLabel(place) || getMapPlaceTrip(place)" class="map-place-trip">
                   <span
-                    v-if="getMapPlacePeriodTag(place)"
+                    v-if="getMapPlaceTimelineLabel(place)"
                     class="map-place-tag-chip"
-                    :style="{ '--tag-color': getPeriodTagColor(getMapPlacePeriodTag(place)) }"
+                    :style="{ '--tag-color': getTimelineLabelColor(getMapPlaceTimelineLabel(place)) }"
                     title="Timeline label match. Click to open timeline range."
                     role="button"
                     tabindex="0"
                     aria-label="Open timeline label range"
-                    @click.stop="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
-                    @keydown.enter="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
-                    @keydown.space.prevent="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
+                    @click.stop="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
+                    @keydown.enter="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
+                    @keydown.space.prevent="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
                   >
                     <span class="map-place-tag-dot"></span>
-                    {{ getMapPlacePeriodTagLabel(getMapPlacePeriodTag(place)) }}
+                    {{ getMapPlaceTimelineLabelLabel(getMapPlaceTimelineLabel(place)) }}
                   </span>
                   <Button
                     v-if="showSecondaryTripAction(place)"
@@ -276,7 +276,7 @@ import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 import LocationAnalyticsMap from '@/components/location-analytics/LocationAnalyticsMap.vue'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTripsStore } from '@/stores/trips'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import {
@@ -284,16 +284,16 @@ import {
   normalizeTripColor
 } from '@/utils/tripHelpers'
 import {
-  buildTimelineQueryForPeriodTag,
-  findMatchingPeriodTagForTimestamp,
-  normalizePeriodTagColor
-} from '@/utils/periodTagHelpers'
+  buildTimelineQueryForTimelineLabel,
+  findMatchingTimelineLabelForTimestamp,
+  normalizeTimelineLabelColor
+} from '@/utils/timelineLabelHelpers'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const store = useLocationAnalyticsStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const tripsStore = useTripsStore()
 const timezone = useTimezone()
 
@@ -305,7 +305,7 @@ const {
   citiesLoading,
   countriesLoading
 } = storeToRefs(store)
-const { periodTags } = storeToRefs(periodTagsStore)
+const { timelineLabels } = storeToRefs(timelineLabelsStore)
 
 const TAB_MAP = 'map'
 const TAB_CITIES = 'cities'
@@ -391,11 +391,11 @@ const mapPlaceTripsByKey = computed(() => {
   }
   return result
 })
-const mapPlacePeriodTagsByKey = computed(() => {
+const mapPlaceTimelineLabelsByKey = computed(() => {
   const result = new Map()
-  const tags = Array.isArray(periodTags.value) ? periodTags.value : []
+  const tags = Array.isArray(timelineLabels.value) ? timelineLabels.value : []
   for (const place of mapPlacesPreview.value) {
-    result.set(getPlaceKey(place), findMatchingPeriodTagForTimestamp(place?.lastVisit, tags))
+    result.set(getPlaceKey(place), findMatchingTimelineLabelForTimestamp(place?.lastVisit, tags))
   }
   return result
 })
@@ -409,8 +409,8 @@ const getMapPlaceTrip = (place) => {
   return mapPlaceTripsByKey.value.get(getPlaceKey(place)) || null
 }
 
-const getMapPlacePeriodTag = (place) => {
-  return mapPlacePeriodTagsByKey.value.get(getPlaceKey(place)) || null
+const getMapPlaceTimelineLabel = (place) => {
+  return mapPlaceTimelineLabelsByKey.value.get(getPlaceKey(place)) || null
 }
 
 const getMapPlaceTripLabel = (trip) => {
@@ -418,31 +418,31 @@ const getMapPlaceTripLabel = (trip) => {
   return trip.name || `Trip #${trip.id}`
 }
 
-const getMapPlacePeriodTagLabel = (tag) => {
+const getMapPlaceTimelineLabelLabel = (tag) => {
   if (!tag) return ''
-  return tag.tagName || `Label #${tag.id}`
+  return tag.name || `Label #${tag.id}`
 }
 
 const isLinkedPair = (tag, trip) => {
   if (!tag || !trip) return false
-  return Number(trip.periodTagId) === Number(tag.id)
+  return Number(trip.timelineLabelId) === Number(tag.id)
 }
 
 const showStandaloneTripChip = (place) => {
-  const tag = getMapPlacePeriodTag(place)
+  const tag = getMapPlaceTimelineLabel(place)
   const trip = getMapPlaceTrip(place)
   if (!trip) return false
   return !isLinkedPair(tag, trip)
 }
 
 const showSecondaryTripAction = (place) => {
-  const tag = getMapPlacePeriodTag(place)
+  const tag = getMapPlaceTimelineLabel(place)
   const trip = getMapPlaceTrip(place)
   return isLinkedPair(tag, trip)
 }
 
 const getTripColor = (trip) => normalizeTripColor(trip?.color)
-const getPeriodTagColor = (tag) => normalizePeriodTagColor(tag?.color)
+const getTimelineLabelColor = (tag) => normalizeTimelineLabelColor(tag?.color)
 
 const handleMapPlaceTripClick = (trip) => {
   if (!trip?.id) return
@@ -457,9 +457,9 @@ const handleMapPlaceTripClick = (trip) => {
   newWindow.opener = null
 }
 
-const handleMapPlacePeriodTagClick = (tag) => {
+const handleMapPlaceTimelineLabelClick = (tag) => {
   if (!tag) return
-  const timelineQuery = buildTimelineQueryForPeriodTag(tag)
+  const timelineQuery = buildTimelineQueryForTimelineLabel(tag)
   const resolvedRoute = timelineQuery
     ? router.resolve({ path: '/app/timeline', query: timelineQuery })
     : router.resolve('/app/timeline-labels')
@@ -492,11 +492,11 @@ const ensureTripsLoaded = async () => {
   }
 }
 
-const ensurePeriodTagsLoaded = async () => {
-  if (Array.isArray(periodTags.value) && periodTags.value.length > 0) return
-  if (periodTagsStore.isLoading) return
+const ensureTimelineLabelsLoaded = async () => {
+  if (Array.isArray(timelineLabels.value) && timelineLabels.value.length > 0) return
+  if (timelineLabelsStore.isLoading) return
   try {
-    await periodTagsStore.fetchPeriodTags()
+    await timelineLabelsStore.fetchTimelineLabels()
   } catch (error) {
     console.error('Failed to load timeline labels for location analytics associations:', error)
   }
@@ -707,7 +707,7 @@ onMounted(() => {
   window.addEventListener('resize', updateRailScrollState, { passive: true })
   void prefetchTabCounts()
   void ensureTripsLoaded()
-  void ensurePeriodTagsLoaded()
+  void ensureTimelineLabelsLoaded()
 })
 
 onBeforeUnmount(() => {

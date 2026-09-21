@@ -131,8 +131,8 @@ public class GeoPulseExportService {
                         addLocationSourcesData(zos, job);
                         currentProgress += progressPerType;
                         break;
-                    case ExportImportConstants.DataTypes.PERIOD_TAGS:
-                        addPeriodTagsData(zos, job, currentProgress);
+                    case ExportImportConstants.DataTypes.TIMELINE_LABELS:
+                        addTimelineLabelsData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.TIMELINE_OVERRIDES:
@@ -405,15 +405,15 @@ public class GeoPulseExportService {
         log.debug("Exported {} reverse geocoding locations", geocodingLocations.size());
     }
 
-    private void addPeriodTagsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting period tags...");
-        var tags = dataCollectorService.collectPeriodTags(job);
+    private void addTimelineLabelsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
+        job.updateProgress(progressStart, "Exporting timeline labels...");
+        var tags = dataCollectorService.collectTimelineLabels(job);
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
-                ExportImportConstants.FileNames.PERIOD_TAGS,
-                exportDataMapper.toPeriodTagsDataDto(tags, job)
+                ExportImportConstants.FileNames.TIMELINE_LABELS,
+                exportDataMapper.toTimelineLabelsDataDto(tags, job)
         );
-        log.debug("Exported {} period tags", tags.size());
+        log.debug("Exported {} timeline labels", tags.size());
     }
 
     private void addTimelineOverridesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {

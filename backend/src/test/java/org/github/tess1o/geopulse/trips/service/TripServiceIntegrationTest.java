@@ -5,7 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.timelinelabels.repository.TimelineLabelRepository;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripDto;
 import org.github.tess1o.geopulse.trips.model.dto.TripDto;
@@ -37,7 +37,7 @@ class TripServiceIntegrationTest {
     TripRepository tripRepository;
 
     @Inject
-    PeriodTagRepository periodTagRepository;
+    TimelineLabelRepository timelineLabelRepository;
 
     @Inject
     UserService userService;
@@ -65,16 +65,16 @@ class TripServiceIntegrationTest {
         assertThat(created.getStatus()).isEqualTo(TripStatus.UNPLANNED);
         assertThat(created.getStartTime()).isNull();
         assertThat(created.getEndTime()).isNull();
-        assertThat(created.getPeriodTagId()).isNull();
+        assertThat(created.getTimelineLabelId()).isNull();
 
         TripEntity persisted = tripRepository.findById(created.getId());
         assertThat(persisted.getStatus()).isEqualTo(TripStatus.UNPLANNED);
-        assertThat(persisted.getPeriodTag()).isNull();
+        assertThat(persisted.getTimelineLabel()).isNull();
     }
 
     @Test
     @Transactional
-    void createTrip_shouldCreateScheduledTripWithLinkedPeriodTagWhenDatesPresent() {
+    void createTrip_shouldCreateScheduledTripWithLinkedTimelineLabelWhenDatesPresent() {
         CreateTripDto dto = new CreateTripDto();
         dto.setName("Berlin 2099");
         dto.setStartTime(Instant.parse("2099-06-01T00:00:00Z"));
@@ -86,8 +86,8 @@ class TripServiceIntegrationTest {
         assertThat(created.getStatus()).isEqualTo(TripStatus.UPCOMING);
         assertThat(created.getStartTime()).isNotNull();
         assertThat(created.getEndTime()).isNotNull();
-        assertThat(created.getPeriodTagId()).isNotNull();
-        assertThat(periodTagRepository.findById(created.getPeriodTagId())).isNotNull();
+        assertThat(created.getTimelineLabelId()).isNotNull();
+        assertThat(timelineLabelRepository.findById(created.getTimelineLabelId())).isNotNull();
     }
 
     @Test
@@ -111,7 +111,7 @@ class TripServiceIntegrationTest {
         assertThat(updated.getStatus()).isEqualTo(TripStatus.UPCOMING);
         assertThat(updated.getStartTime()).isEqualTo(updateDto.getStartTime());
         assertThat(updated.getEndTime()).isEqualTo(updateDto.getEndTime());
-        assertThat(updated.getPeriodTagId()).isNotNull();
+        assertThat(updated.getTimelineLabelId()).isNotNull();
     }
 
     @Test

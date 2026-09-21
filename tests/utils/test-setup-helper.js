@@ -9,7 +9,6 @@ import {FriendsPage} from "../pages/FriendsPage.js";
 import {UserProfilePage} from "../pages/UserProfilePage.js";
 import {FavoritesManagementPage} from "../pages/FavoritesManagementPage.js";
 import {GeocodingManagementPage} from "../pages/GeocodingManagementPage.js";
-import {PeriodTagsManagementPage} from "../pages/PeriodTagsManagementPage.js";
 import {TimelineLabelsManagementPage} from "../pages/TimelineLabelsManagementPage.js";
 import {TripsManagementPage} from "../pages/TripsManagementPage.js";
 import {TripWorkspacePage} from "../pages/TripWorkspacePage.js";
@@ -889,19 +888,7 @@ export class TestSetupHelper {
     return result.rows[0].id;
   }
 
-  // ==================== PERIOD TAGS TEST HELPERS ====================
-
-  /**
-   * Login user and navigate to Period Tags Management page
-   * @returns {Promise<{periodTagsPage, user, testUser}>}
-   */
-  static async loginAndNavigateToPeriodTagsPage(page, dbManager, userData = null) {
-    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
-    const periodTagsPage = new PeriodTagsManagementPage(page);
-    await periodTagsPage.navigate();
-    await periodTagsPage.waitForPageLoad();
-    return {periodTagsPage, user, testUser};
-  }
+  // ==================== TIMELINE LABEL TEST HELPERS ====================
 
   /**
    * Login user and navigate to Timeline Labels page
@@ -940,20 +927,20 @@ export class TestSetupHelper {
   }
 
   /**
-   * Create a period tag for a user
+   * Create a timeline label for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
    * @param {Object} options - Period tag options
-   * @param {string} options.tagName - Tag name
+   * @param {string} options.name - Label name
    * @param {Date} options.startTime - Start time
    * @param {Date} options.endTime - End time (optional, null for active tags)
    * @param {string} options.source - Source ('manual' or 'owntracks')
    * @param {boolean} options.isActive - Whether the tag is active (default: false)
    * @returns {Promise<number>} - Period tag ID
    */
-  static async createPeriodTag(dbManager, userId, options) {
+  static async createTimelineLabel(dbManager, userId, options) {
     const {
-      tagName,
+      name,
       startTime,
       endTime = null,
       source = 'manual',
@@ -962,23 +949,23 @@ export class TestSetupHelper {
     } = options;
 
     const result = await dbManager.client.query(`
-      INSERT INTO period_tags (user_id, tag_name, start_time, end_time, source, is_active, color, created_at)
+      INSERT INTO timeline_labels (user_id, name, start_time, end_time, source, is_active, color, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       RETURNING id
-    `, [userId, tagName, startTime, endTime, source, isActive, color]);
+    `, [userId, name, startTime, endTime, source, isActive, color]);
 
     return result.rows[0].id;
   }
 
   /**
-   * Create multiple period tags for testing
+   * Create multiple timeline labels for testing
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
-   * @param {number} count - Number of period tags to create
+   * @param {number} count - Number of timeline labels to create
    * @param {string} source - Source ('manual' or 'owntracks')
-   * @returns {Promise<Array<number>>} - Array of period tag IDs
+   * @returns {Promise<Array<number>>} - Array of timeline label IDs
    */
-  static async createMultiplePeriodTags(dbManager, userId, count = 3, source = 'manual') {
+  static async createMultipleTimelineLabels(dbManager, userId, count = 3, source = 'manual') {
     const tagIds = [];
     const baseDate = new Date('2024-01-01T00:00:00Z');
 
@@ -989,8 +976,8 @@ export class TestSetupHelper {
       const endTime = new Date(startTime);
       endTime.setDate(startTime.getDate() + 3); // 3-day duration
 
-      const tagId = await this.createPeriodTag(dbManager, userId, {
-        tagName: `Test Tag ${i + 1}`,
+      const tagId = await this.createTimelineLabel(dbManager, userId, {
+        name: `Test Tag ${i + 1}`,
         startTime,
         endTime,
         source
@@ -1002,21 +989,21 @@ export class TestSetupHelper {
   }
 
   /**
-   * Create an active period tag (no end time)
+   * Create an active timeline label (no end time)
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
    * @param {Object} options - Period tag options
    * @returns {Promise<number>} - Period tag ID
    */
-  static async createActivePeriodTag(dbManager, userId, options = {}) {
+  static async createActiveTimelineLabel(dbManager, userId, options = {}) {
     const {
-      tagName = 'Active Tag',
+      name = 'Active Tag',
       startTime = new Date(Date.now() - 86400000), // 1 day ago
       source = 'owntracks'
     } = options;
 
-    return await this.createPeriodTag(dbManager, userId, {
-      tagName,
+    return await this.createTimelineLabel(dbManager, userId, {
+      name,
       startTime,
       endTime: null,
       source,
@@ -1025,15 +1012,15 @@ export class TestSetupHelper {
   }
 
   /**
-   * Get period tag by ID
+   * Get timeline label by ID
    * @param {Object} dbManager - Database manager
    * @param {number} tagId - Period tag ID
    * @returns {Promise<Object>} - Period tag data
    */
-  static async getPeriodTagById(dbManager, tagId) {
+  static async getTimelineLabelById(dbManager, tagId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, tag_name, start_time, end_time, source, is_active, color, created_at
-      FROM period_tags
+      SELECT id, user_id, name, start_time, end_time, source, is_active, color, created_at
+      FROM timeline_labels
       WHERE id = $1
     `, [tagId]);
 
@@ -1041,15 +1028,15 @@ export class TestSetupHelper {
   }
 
   /**
-   * Get all period tags for a user
+   * Get all timeline labels for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
-   * @returns {Promise<Array<Object>>} - Array of period tags
+   * @returns {Promise<Array<Object>>} - Array of timeline labels
    */
-  static async getPeriodTagsByUser(dbManager, userId) {
+  static async getTimelineLabelsByUser(dbManager, userId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, tag_name, start_time, end_time, source, is_active, color, created_at
-      FROM period_tags
+      SELECT id, user_id, name, start_time, end_time, source, is_active, color, created_at
+      FROM timeline_labels
       WHERE user_id = $1
       ORDER BY start_time DESC
     `, [userId]);
@@ -1058,14 +1045,14 @@ export class TestSetupHelper {
   }
 
   /**
-   * Count period tags for a user
+   * Count timeline labels for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
    * @param {string} source - Optional source filter ('manual' or 'owntracks')
    * @returns {Promise<number>}
    */
-  static async countPeriodTags(dbManager, userId, source = null) {
-    let query = 'SELECT COUNT(*) as count FROM period_tags WHERE user_id = $1';
+  static async countTimelineLabels(dbManager, userId, source = null) {
+    let query = 'SELECT COUNT(*) as count FROM timeline_labels WHERE user_id = $1';
     const params = [userId];
 
     if (source) {
@@ -1078,15 +1065,15 @@ export class TestSetupHelper {
   }
 
   /**
-   * Get active period tag for a user
+   * Get active timeline label for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
-   * @returns {Promise<Object>} - Active period tag or null
+   * @returns {Promise<Object>} - Active timeline label or null
    */
-  static async getActivePeriodTag(dbManager, userId) {
+  static async getActiveTimelineLabel(dbManager, userId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
-      FROM period_tags
+      SELECT id, user_id, name, start_time, end_time, source, created_at
+      FROM timeline_labels
       WHERE user_id = $1 AND end_time IS NULL
       ORDER BY start_time DESC
       LIMIT 1
@@ -1096,20 +1083,20 @@ export class TestSetupHelper {
   }
 
   /**
-   * Update period tag
+   * Update timeline label
    * @param {Object} dbManager - Database manager
    * @param {number} tagId - Period tag ID
    * @param {Object} updates - Fields to update
    * @returns {Promise<void>}
    */
-  static async updatePeriodTag(dbManager, tagId, updates) {
+  static async updateTimelineLabel(dbManager, tagId, updates) {
     const fields = [];
     const values = [];
     let paramIndex = 1;
 
-    if (updates.tagName !== undefined) {
-      fields.push(`tag_name = $${paramIndex++}`);
-      values.push(updates.tagName);
+    if (updates.name !== undefined) {
+      fields.push(`name = $${paramIndex++}`);
+      values.push(updates.name);
     }
     if (updates.startTime !== undefined) {
       fields.push(`start_time = $${paramIndex++}`);
@@ -1123,51 +1110,51 @@ export class TestSetupHelper {
     if (fields.length === 0) return;
 
     values.push(tagId);
-    const query = `UPDATE period_tags SET ${fields.join(', ')} WHERE id = $${paramIndex}`;
+    const query = `UPDATE timeline_labels SET ${fields.join(', ')} WHERE id = $${paramIndex}`;
     await dbManager.client.query(query, values);
   }
 
   /**
-   * Delete period tag
+   * Delete timeline label
    * @param {Object} dbManager - Database manager
    * @param {number} tagId - Period tag ID
    * @returns {Promise<void>}
    */
-  static async deletePeriodTag(dbManager, tagId) {
-    await dbManager.client.query('DELETE FROM period_tags WHERE id = $1', [tagId]);
+  static async deleteTimelineLabel(dbManager, tagId) {
+    await dbManager.client.query('DELETE FROM timeline_labels WHERE id = $1', [tagId]);
   }
 
   /**
-   * Delete all period tags for a user
+   * Delete all timeline labels for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
    * @returns {Promise<void>}
    */
-  static async deleteAllPeriodTags(dbManager, userId) {
-    await dbManager.client.query('DELETE FROM period_tags WHERE user_id = $1', [userId]);
+  static async deleteAllTimelineLabels(dbManager, userId) {
+    await dbManager.client.query('DELETE FROM timeline_labels WHERE user_id = $1', [userId]);
   }
 
   /**
-   * Setup timeline with period tag: login, create timeline data, create period tag, navigate to date range
+   * Setup timeline with timeline label: login, create timeline data, create timeline label, navigate to date range
    * @param {Object} page - Playwright page object
    * @param {Object} dbManager - Database manager
    * @param {Object} options - Setup options
    * @param {Object} options.userData - User data (optional, uses TestData.users.existing by default)
    * @param {Function} options.timelineDataFn - Function to insert timeline data (e.g., TimelineTestData.insertRegularStaysTestData)
-   * @param {Object} options.periodTag - Period tag options {tagName, startTime, endTime, source}
+   * @param {Object} options.timelineLabel - Period tag options {name, startTime, endTime, source}
    * @param {Date} options.startDate - Start date for navigation
    * @param {Date} options.endDate - End date for navigation
    * @param {boolean} options.skipNavigation - Skip navigation to timeline (default: false)
-   * @returns {Promise<{timelinePage, user, testUser, periodTagId}>}
+   * @returns {Promise<{timelinePage, user, testUser, timelineLabelId}>}
    */
-  static async setupTimelineWithPeriodTag(page, dbManager, options) {
+  static async setupTimelineWithLabel(page, dbManager, options) {
     const TimelinePage = (await import('../pages/TimelinePage.js')).TimelinePage;
     const TestData = (await import('../fixtures/test-data.js')).TestData;
 
     const {
       userData = TestData.users.existing,
       timelineDataFn = null,
-      periodTag,
+      timelineLabel,
       startDate,
       endDate,
       skipNavigation = false
@@ -1185,10 +1172,10 @@ export class TestSetupHelper {
       await timelineDataFn(dbManager, user.id);
     }
 
-    // Create period tag if provided
-    let periodTagId = null;
-    if (periodTag) {
-      periodTagId = await this.createPeriodTag(dbManager, user.id, periodTag);
+    // Create timeline label if provided
+    let timelineLabelId = null;
+    if (timelineLabel) {
+      timelineLabelId = await this.createTimelineLabel(dbManager, user.id, timelineLabel);
     }
 
     // Navigate to date range if not skipped
@@ -1198,48 +1185,48 @@ export class TestSetupHelper {
       await timelinePage.waitForTimelineContent();
     }
 
-    return { timelinePage, user, testUser, periodTagId };
+    return { timelinePage, user, testUser, timelineLabelId };
   }
 
   /**
-   * Check if period tag is visible on timeline
+   * Check if timeline label is visible on timeline
    * @param {Object} page - Playwright page object
-   * @param {string} tagName - Tag name to check
+   * @param {string} name - Label name to check
    * @returns {Promise<boolean>} - True if visible
    */
-  static async isPeriodTagVisible(page, tagName) {
-    const periodTagBanner = page.locator(`.gp-period-badge:has-text("${tagName}"), .p-message:has-text("${tagName}")`);
-    return await periodTagBanner.isVisible();
+  static async isTimelineLabelVisible(page, name) {
+    const timelineLabelBanner = page.locator(`.gp-period-badge:has-text("${name}"), .p-message:has-text("${name}")`);
+    return await timelineLabelBanner.isVisible();
   }
 
   /**
-   * Assert period tag visibility on timeline
+   * Assert timeline label visibility on timeline
    * @param {Object} page - Playwright page object
-   * @param {string} tagName - Tag name to check
+   * @param {string} name - Label name to check
    * @param {boolean} shouldBeVisible - Expected visibility (default: true)
    * @param {Object} expect - Playwright expect object
    * @returns {Promise<void>}
    */
-  static async assertPeriodTagVisibility(page, tagName, shouldBeVisible = true, expect) {
-    const periodTagBanner = page.locator(`.gp-period-badge:has-text("${tagName}"), .p-message:has-text("${tagName}")`);
+  static async assertTimelineLabelVisibility(page, name, shouldBeVisible = true, expect) {
+    const timelineLabelBanner = page.locator(`.gp-period-badge:has-text("${name}"), .p-message:has-text("${name}")`);
     if (shouldBeVisible) {
-      await expect(periodTagBanner.first()).toBeVisible({ timeout: 10000 });
+      await expect(timelineLabelBanner.first()).toBeVisible({ timeout: 10000 });
     } else {
-      await expect(periodTagBanner).toBeHidden({ timeout: 5000 });
+      await expect(timelineLabelBanner).toBeHidden({ timeout: 5000 });
     }
   }
 
   /**
-   * Create multiple period tags for timeline testing
+   * Create multiple timeline labels for timeline testing
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
-   * @param {Array<Object>} periodTags - Array of period tag options
-   * @returns {Promise<Array<number>>} - Array of period tag IDs
+   * @param {Array<Object>} timelineLabels - Array of timeline label options
+   * @returns {Promise<Array<number>>} - Array of timeline label IDs
    */
-  static async createMultiplePeriodTagsForTimeline(dbManager, userId, periodTags) {
+  static async createMultipleTimelineLabelsForTimeline(dbManager, userId, timelineLabels) {
     const tagIds = [];
-    for (const periodTag of periodTags) {
-      const tagId = await this.createPeriodTag(dbManager, userId, periodTag);
+    for (const timelineLabel of timelineLabels) {
+      const tagId = await this.createTimelineLabel(dbManager, userId, timelineLabel);
       tagIds.push(tagId);
     }
     return tagIds;
@@ -1580,16 +1567,16 @@ export class TestSetupHelper {
       status = 'UPCOMING',
       color = '#3B82F6',
       notes = null,
-      periodTagId = null
+      timelineLabelId = null
     } = options;
 
     const result = await dbManager.client.query(`
       INSERT INTO trips (
-        user_id, period_tag_id, name, start_time, end_time, status, color, notes, created_at, updated_at
+        user_id, timeline_label_id, name, start_time, end_time, status, color, notes, created_at, updated_at
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING id
-    `, [userId, periodTagId, name, startTime, endTime, status, color, notes]);
+    `, [userId, timelineLabelId, name, startTime, endTime, status, color, notes]);
 
     return result.rows[0].id;
   }
@@ -1599,7 +1586,7 @@ export class TestSetupHelper {
    */
   static async getTripById(dbManager, tripId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      SELECT id, user_id, timeline_label_id, name, start_time, end_time, status, color, notes
       FROM trips
       WHERE id = $1
     `, [tripId]);
@@ -1612,7 +1599,7 @@ export class TestSetupHelper {
    */
   static async getTripByName(dbManager, userId, name) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      SELECT id, user_id, timeline_label_id, name, start_time, end_time, status, color, notes
       FROM trips
       WHERE user_id = $1 AND name = $2
       ORDER BY id DESC
@@ -1636,16 +1623,16 @@ export class TestSetupHelper {
   }
 
   /**
-   * Get trip by linked period tag id
+   * Get trip by linked timeline label id
    */
-  static async getTripByPeriodTagId(dbManager, periodTagId) {
+  static async getTripByTimelineLabelId(dbManager, timelineLabelId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      SELECT id, user_id, timeline_label_id, name, start_time, end_time, status, color, notes
       FROM trips
-      WHERE period_tag_id = $1
+      WHERE timeline_label_id = $1
       ORDER BY id DESC
       LIMIT 1
-    `, [periodTagId]);
+    `, [timelineLabelId]);
 
     return result.rows[0] || null;
   }
@@ -1803,14 +1790,14 @@ export class TestSetupHelper {
     const name = options.name || 'Linked Trip';
     const color = options.color || '#7C3AED';
 
-    const periodTagId = await this.createPeriodTag(dbManager, userId, {
-      tagName: name,
+    const timelineLabelId = await this.createTimelineLabel(dbManager, userId, {
+      name: name,
       startTime,
       endTime,
-      source: options.periodTagSource || 'manual'
+      source: options.timelineLabelSource || 'manual'
     });
 
-    await dbManager.client.query('UPDATE period_tags SET color = $1 WHERE id = $2', [color, periodTagId]);
+    await dbManager.client.query('UPDATE timeline_labels SET color = $1 WHERE id = $2', [color, timelineLabelId]);
 
     const tripId = await this.createTrip(dbManager, userId, {
       name,
@@ -1819,9 +1806,9 @@ export class TestSetupHelper {
       status: options.tripStatus || 'COMPLETED',
       color,
       notes: options.notes || null,
-      periodTagId
+      timelineLabelId
     });
 
-    return { periodTagId, tripId };
+    return { timelineLabelId, tripId };
   }
 }

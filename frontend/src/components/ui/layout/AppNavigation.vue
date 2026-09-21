@@ -181,7 +181,7 @@ const navigationSections = computed(() => [
     items: [
       { label: 'Timeline', icon: 'pi pi-calendar', to: '/app/timeline', key: 'timeline' },
       { label: 'Dashboard', icon: 'pi pi-chart-bar', to: '/app/dashboard', key: 'dashboard' },
-      { label: 'Timeline Labels', icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'period-tags' },
+      { label: 'Timeline Labels', icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'timeline-labels' },
       { label: 'Trip Plans', icon: 'pi pi-briefcase', to: '/app/trips', key: 'trips' }
     ]
   },

@@ -26,12 +26,12 @@
         Optionally link a label to a Trip Plan for places, progress, and visit tracking.
       </Message>
 
-      <div v-if="activeTag" class="active-label-card" role="status">
+      <div v-if="activeLabel" class="active-label-card" role="status">
         <span class="active-label-icon"><i class="pi pi-tag" aria-hidden="true" /></span>
-        <div class="active-tag-banner">
+        <div class="active-label-banner">
           <span class="active-label-kicker">Active label</span>
-          <strong>{{ activeTag.tagName }}</strong>
-          <span class="active-tag-date">Since {{ formatDate(activeTag.startTime) }}</span>
+          <strong>{{ activeLabel.name }}</strong>
+          <span class="active-label-date">Since {{ formatDate(activeLabel.startTime) }}</span>
         </div>
         <Tag severity="success" value="OwnTracks" />
       </div>
@@ -81,7 +81,7 @@
 
         <!-- Desktop Table View -->
         <DataTable
-          :value="filteredPeriodTags"
+          :value="filteredTimelineLabels"
           :paginator="true"
           :rows="10"
           :rowsPerPageOptions="[10, 25, 50]"
@@ -97,12 +97,12 @@
         >
           <Column selectionMode="multiple" class="selection-column" />
 
-          <Column field="tagName" header="Label" sortable>
+          <Column field="name" header="Label" sortable>
             <template #body="{ data }">
               <div class="label-cell">
                 <span class="label-color" :style="{ backgroundColor: data.color || 'var(--gp-primary)' }" />
                 <div>
-                  <strong>{{ data.tagName }}</strong>
+                  <strong>{{ data.name }}</strong>
                   <div class="label-badges">
                     <Tag v-if="data.isActive" severity="success" value="Active" />
                     <Tag :severity="data.source === 'owntracks' ? 'info' : 'secondary'">
@@ -162,7 +162,7 @@
                   text
                   rounded
                   size="small"
-                  :aria-label="`More actions for ${data.tagName}`"
+                  :aria-label="`More actions for ${data.name}`"
                   aria-haspopup="menu"
                   @click="openActionsMenu($event, data)"
                 />
@@ -180,12 +180,12 @@
 
         <!-- Mobile Card View -->
         <div class="mobile-cards">
-          <div v-if="filteredPeriodTags.length === 0" class="empty-state">
+          <div v-if="filteredTimelineLabels.length === 0" class="empty-state">
             <i class="pi pi-calendar"></i>
             <p>No timeline labels found. Create your first one to get started!</p>
           </div>
 
-          <div v-for="tag in filteredPeriodTags" :key="tag.id" class="period-tag-card">
+          <div v-for="tag in filteredTimelineLabels" :key="tag.id" class="timeline-label-card">
             <!-- Card Header -->
             <div class="card-header">
               <div class="card-header-left">
@@ -194,14 +194,14 @@
                   :checked="selectedTags.includes(tag)"
                   @change="toggleTagSelection(tag)"
                   class="tag-checkbox"
-                  :aria-label="`Select ${tag.tagName}`"
+                  :aria-label="`Select ${tag.name}`"
                 />
                 <div
                   class="color-indicator"
                   :style="{ backgroundColor: tag.color || 'var(--gp-primary)' }"
                 ></div>
                 <div class="card-title-section">
-                  <div class="card-title">{{ tag.tagName }}</div>
+                  <div class="card-title">{{ tag.name }}</div>
                   <div class="card-badges">
                     <Tag v-if="tag.isActive" severity="success" value="Active" />
                     <Tag
@@ -267,7 +267,7 @@
                 icon-pos="right"
                 size="small"
                 outlined
-                :aria-label="`More actions for ${tag.tagName}`"
+                :aria-label="`More actions for ${tag.name}`"
                 aria-haspopup="menu"
                 @click="openActionsMenu($event, tag)"
               />
@@ -275,9 +275,9 @@
           </div>
 
           <!-- Mobile Pagination (if needed) -->
-          <div v-if="filteredPeriodTags.length > 10" class="mobile-pagination">
+          <div v-if="filteredTimelineLabels.length > 10" class="mobile-pagination">
             <p class="mobile-count">
-              Showing {{ filteredPeriodTags.length }} labels
+              Showing {{ filteredTimelineLabels.length }} labels
             </p>
           </div>
         </div>
@@ -286,15 +286,15 @@
     </PageContainer>
 
     <!-- Dialogs -->
-    <CreatePeriodTagDialog
+    <CreateTimelineLabelDialog
       v-model:visible="showCreateDialog"
-      @created="onPeriodTagCreated"
+      @created="onTimelineLabelCreated"
     />
 
-    <EditPeriodTagDialog
+    <EditTimelineLabelDialog
       v-model:visible="showEditDialog"
-      :periodTag="editingTag"
-      @updated="onPeriodTagUpdated"
+      :timelineLabel="editingTag"
+      @updated="onTimelineLabelUpdated"
     />
 
     <ConfirmDialog />
@@ -306,7 +306,7 @@
       class="gp-dialog-md"
       @hide="linkedDeleteTarget = null"
     >
-      <div class="from-tag-dialog-content">
+      <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
           This label is linked to trip plan
           <strong>"{{ linkedDeleteTargetTripName }}"</strong>.
@@ -347,14 +347,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
-import CreatePeriodTagDialog from '@/components/dialogs/CreatePeriodTagDialog.vue'
-import EditPeriodTagDialog from '@/components/dialogs/EditPeriodTagDialog.vue'
+import CreateTimelineLabelDialog from '@/components/dialogs/CreateTimelineLabelDialog.vue'
+import EditTimelineLabelDialog from '@/components/dialogs/EditTimelineLabelDialog.vue'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -369,7 +369,7 @@ import Dialog from 'primevue/dialog'
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
-const store = usePeriodTagsStore()
+const store = useTimelineLabelsStore()
 const tripsStore = useTripsStore()
 const timezone = useTimezone()
 const LABELS_HELP_DISMISSED_KEY = 'gp.timeline-labels.help.dismissed'
@@ -405,9 +405,9 @@ const linkStateOptions = [
 ]
 
 // Computed
-const activeTag = computed(() => store.getActiveTag)
+const activeLabel = computed(() => store.getActiveLabel)
 const totalCount = computed(() => store.totalCount)
-const totalDays = computed(() => store.getTotalDaysTagged)
+const totalDays = computed(() => store.getTotalDaysLabeled)
 
 const pageSubtitle = computed(() => {
   const parts = []
@@ -416,13 +416,13 @@ const pageSubtitle = computed(() => {
   return parts.join(' • ') || 'Advanced timeline labels (used by timeline chips and imports)'
 })
 
-const filteredPeriodTags = computed(() => {
+const filteredTimelineLabels = computed(() => {
   store.setFilters({
     searchTerm: searchTerm.value,
     source: selectedSource.value
   })
 
-  let filtered = store.getFilteredPeriodTags
+  let filtered = store.getFilteredTimelineLabels
 
   if (selectedLinkState.value === 'linked') {
     filtered = filtered.filter((tag) => isLinkedToTrip(tag))
@@ -460,11 +460,11 @@ const labelActionItems = computed(() => {
 })
 
 const canEditFromLabelsPage = (tag) => {
-  return store.isTagEditable(tag)
+  return store.isLabelEditable(tag)
 }
 
 const canDeleteFromLabelsPage = (tag) => {
-  return store.isTagEditable(tag)
+  return store.isLabelEditable(tag)
 }
 
 // Methods
@@ -513,7 +513,7 @@ const viewTimeline = (tag) => {
 
 const getLinkedTrip = (tag) => {
   const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
-  return trips.find((trip) => Number(trip.periodTagId) === Number(tag.id)) || null
+  return trips.find((trip) => Number(trip.timelineLabelId) === Number(tag.id)) || null
 }
 
 const isLinkedToTrip = (tag) => {
@@ -544,14 +544,14 @@ const unlinkTagFromTrip = (tag) => {
   if (!linkedTrip) return
 
   confirm.require({
-    message: `Unlink timeline label "${tag.tagName}" from trip plan "${linkedTrip.name}"?`,
+    message: `Unlink timeline label "${tag.name}" from trip plan "${linkedTrip.name}"?`,
     header: 'Unlink Timeline Label',
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await tripsStore.unlinkTripFromPeriodTag(linkedTrip.id)
+        await tripsStore.unlinkTripFromTimelineLabel(linkedTrip.id)
         await Promise.all([
-          store.fetchPeriodTags(),
+          store.fetchTimelineLabels(),
           tripsStore.fetchTrips()
         ])
         toast.add({
@@ -582,7 +582,7 @@ const deleteLinkedTag = async (mode) => {
 
   isDeletingLinkedTag.value = true
   try {
-    await store.deletePeriodTag(linkedDeleteTarget.value.id, mode)
+    await store.deleteTimelineLabel(linkedDeleteTarget.value.id, mode)
     await tripsStore.fetchTrips()
     showLinkedDeleteDialog.value = false
     linkedDeleteTarget.value = null
@@ -618,11 +618,11 @@ const createTripWorkspace = async (tag) => {
   }
 
   try {
-    const created = await tripsStore.createTripFromPeriodTag(tag.id)
+    const created = await tripsStore.createTripFromTimelineLabel(tag.id)
     toast.add({
       severity: 'success',
       summary: 'Trip Plan Created',
-      detail: `Trip plan created from "${tag.tagName}"`,
+      detail: `Trip plan created from "${tag.name}"`,
       life: 3000
     })
 
@@ -646,7 +646,7 @@ const createTripWorkspace = async (tag) => {
 }
 
 const editTag = (tag) => {
-  if (!store.isTagEditable(tag)) {
+  if (!store.isLabelEditable(tag)) {
     toast.add({
       severity: 'warn',
       summary: 'Cannot Edit',
@@ -666,7 +666,7 @@ const deleteTag = (tag) => {
     return
   }
 
-  if (!store.isTagEditable(tag)) {
+  if (!store.isLabelEditable(tag)) {
     toast.add({
       severity: 'warn',
       summary: 'Cannot Delete',
@@ -677,13 +677,13 @@ const deleteTag = (tag) => {
   }
 
   confirm.require({
-    message: `Are you sure you want to delete timeline label "${tag.tagName}"?`,
+    message: `Are you sure you want to delete timeline label "${tag.name}"?`,
     header: 'Delete Timeline Label',
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
       try {
-        await store.deletePeriodTag(tag.id, 'unlink_only')
+        await store.deleteTimelineLabel(tag.id, 'unlink_only')
         toast.add({
           severity: 'success',
           summary: 'Deleted',
@@ -726,7 +726,7 @@ const bulkDelete = () => {
     accept: async () => {
       try {
         for (const tag of selectedTags.value) {
-          await store.deletePeriodTag(tag.id, 'unlink_only')
+          await store.deleteTimelineLabel(tag.id, 'unlink_only')
         }
         selectedTags.value = []
         toast.add({
@@ -752,19 +752,19 @@ const onSelectAllChange = (event) => {
 }
 
 const onRowSelect = () => {
-  selectAll.value = selectedTags.value.length === filteredPeriodTags.value.length
+  selectAll.value = selectedTags.value.length === filteredTimelineLabels.value.length
 }
 
 const onRowUnselect = () => {
   selectAll.value = false
 }
 
-const onPeriodTagCreated = () => {
+const onTimelineLabelCreated = () => {
   showCreateDialog.value = false
   loadData()
 }
 
-const onPeriodTagUpdated = () => {
+const onTimelineLabelUpdated = () => {
   showEditDialog.value = false
   loadData()
 }
@@ -782,8 +782,8 @@ const loadData = async () => {
   isLoading.value = true
   try {
     await Promise.all([
-      store.fetchPeriodTags(),
-      store.fetchActiveTag(),
+      store.fetchTimelineLabels(),
+      store.fetchActiveLabel(),
       tripsStore.fetchTrips()
     ])
   } catch (error) {
@@ -836,7 +836,7 @@ onMounted(() => {
   color: white;
 }
 
-.active-tag-banner {
+.active-label-banner {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -853,13 +853,13 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.active-tag-banner strong {
+.active-label-banner strong {
   color: var(--gp-text-primary);
   font-size: 1.05rem;
   overflow-wrap: anywhere;
 }
 
-.active-tag-date {
+.active-label-date {
   color: var(--gp-text-secondary);
   font-size: .85rem;
 }
@@ -1066,8 +1066,8 @@ onMounted(() => {
   display: block;
 }
 
-/* Period Tag Card */
-.period-tag-card {
+/* Timeline Label Card */
+.timeline-label-card {
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border);
   border-radius: var(--gp-radius-medium);
@@ -1075,7 +1075,7 @@ onMounted(() => {
   margin-bottom: var(--gp-spacing-md);
 }
 
-.p-dark .period-tag-card {
+.p-dark .timeline-label-card {
   background: var(--gp-surface-dark);
   border-color: var(--gp-border-dark);
 }

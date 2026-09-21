@@ -525,7 +525,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 reversegeocodinglocation: 'Reverse Geocoding Data',
                 locationsources: 'Location Sources',
                 userinfo: 'User Information',
-                periodtags: 'Timeline Labels',
+                timelinelabels: 'Timeline Labels',
                 timelineoverrides: 'Timeline Overrides',
                 tripworkspace: 'Trip Plans',
                 notificationtemplates: 'Notification Templates',

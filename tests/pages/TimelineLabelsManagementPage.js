@@ -8,10 +8,10 @@ export class TimelineLabelsManagementPage {
       pageTitle: 'h1:has-text("Timeline Labels")',
       createButton: 'button:has-text("Create Label")',
       tableRows: '.p-datatable-tbody tr',
-      createDialog: '.p-dialog:has-text("Create Period Tag")',
-      editDialog: '.p-dialog:has-text("Edit Period Tag")',
+      createDialog: '.p-dialog:has-text("Create Timeline Label")',
+      editDialog: '.p-dialog:has-text("Edit Timeline Label")',
       dateRangeInput: '.p-dialog:visible input[id="dateRange_input"], .p-dialog:visible #dateRange input, .p-dialog:visible #dateRange',
-      tagNameInput: '.p-dialog:visible input#tagName',
+      labelNameInput: '.p-dialog:visible input#labelName',
       confirmAccept: '.p-confirmdialog-accept-button',
       tripPlanLink: '.trip-plan-link',
       // Row actions live in a popup Menu opened from the overflow trigger
@@ -154,7 +154,7 @@ export class TimelineLabelsManagementPage {
 
   async createLabel({ name, startIndex = 2, endIndex = 6 }) {
     await this.openCreateDialog();
-    await this.page.fill(this.selectors.tagNameInput, name);
+    await this.page.fill(this.selectors.labelNameInput, name);
     await this.selectDateRangeByIndex(startIndex, endIndex);
     await this.closeDatePickerPanelIfOpen();
     await this.page.locator('.p-dialog:visible button:has-text("Create")').click();
@@ -167,7 +167,7 @@ export class TimelineLabelsManagementPage {
     await this.page.waitForSelector(this.selectors.editDialog, { timeout: 5000 });
 
     if (newName) {
-      await this.page.fill(this.selectors.tagNameInput, newName);
+      await this.page.fill(this.selectors.labelNameInput, newName);
     }
 
     await this.selectDateRangeByIndex(startIndex, endIndex);

@@ -28,7 +28,7 @@ import org.github.tess1o.geopulse.mapmatching.model.TimelineTripPathMatchEntity;
 import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
 import org.github.tess1o.geopulse.notes.model.NoteLocationSource;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
-import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
+import org.github.tess1o.geopulse.timelinelabels.model.entity.TimelineLabelEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -148,8 +148,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     case ExportImportConstants.FileNames.REVERSE_GEOCODING:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION);
                         break;
-                    case ExportImportConstants.FileNames.PERIOD_TAGS:
-                        detectedDataTypes.add(ExportImportConstants.DataTypes.PERIOD_TAGS);
+                    case ExportImportConstants.FileNames.TIMELINE_LABELS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_LABELS);
                         break;
                     case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE_OVERRIDES);
@@ -320,8 +320,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        if (fileContents.containsKey(ExportImportConstants.FileNames.PERIOD_TAGS)) {
-            importPeriodTagsData(fileContents.get(ExportImportConstants.FileNames.PERIOD_TAGS), job, referenceMaps);
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_LABELS)) {
+            importTimelineLabelsData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_LABELS), job, referenceMaps);
         }
 
         if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_OVERRIDES)) {
@@ -392,8 +392,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.LOCATION_SOURCES;
             case ExportImportConstants.FileNames.REVERSE_GEOCODING:
                 return ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION;
-            case ExportImportConstants.FileNames.PERIOD_TAGS:
-                return ExportImportConstants.DataTypes.PERIOD_TAGS;
+            case ExportImportConstants.FileNames.TIMELINE_LABELS:
+                return ExportImportConstants.DataTypes.TIMELINE_LABELS;
             case ExportImportConstants.FileNames.TIMELINE_OVERRIDES:
                 return ExportImportConstants.DataTypes.TIMELINE_OVERRIDES;
             case ExportImportConstants.FileNames.TRIP_WORKSPACE:
@@ -1182,26 +1182,26 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     @Transactional
-    public void importPeriodTagsData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
-        PeriodTagsDataDto data = objectMapper.readValue(content, PeriodTagsDataDto.class);
+    public void importTimelineLabelsData(byte[] content, ImportJob job, ImportReferenceMaps referenceMaps) throws IOException {
+        TimelineLabelsDataDto data = objectMapper.readValue(content, TimelineLabelsDataDto.class);
         UserEntity user = getImportingUser(job);
 
         int imported = 0;
         int updated = 0;
-        List<PeriodTagsDataDto.PeriodTagDto> periodTags = emptyIfNull(data.getPeriodTags());
-        for (PeriodTagsDataDto.PeriodTagDto dto : periodTags) {
-            if (dto.getTagName() == null || dto.getStartTime() == null || shouldSkipDueToDateFilter(dto.getStartTime(), job)) {
+        List<TimelineLabelsDataDto.TimelineLabelDto> timelineLabels = emptyIfNull(data.getTimelineLabels());
+        for (TimelineLabelsDataDto.TimelineLabelDto dto : timelineLabels) {
+            if (dto.getName() == null || dto.getStartTime() == null || shouldSkipDueToDateFilter(dto.getStartTime(), job)) {
                 continue;
             }
 
-            PeriodTagEntity entity = entityManager.createQuery("""
-                            SELECT tag FROM PeriodTagEntity tag
+            TimelineLabelEntity entity = entityManager.createQuery("""
+                            SELECT tag FROM TimelineLabelEntity tag
                             WHERE tag.user.id = :userId
-                              AND tag.tagName = :name
+                              AND tag.name = :name
                               AND tag.startTime = :startTime
-                            """, PeriodTagEntity.class)
+                            """, TimelineLabelEntity.class)
                     .setParameter("userId", job.getUserId())
-                    .setParameter("name", dto.getTagName())
+                    .setParameter("name", dto.getName())
                     .setParameter("startTime", dto.getStartTime())
                     .getResultStream()
                     .findFirst()
@@ -1209,16 +1209,16 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
             boolean isNew = entity == null;
             if (isNew) {
-                entity = new PeriodTagEntity();
+                entity = new TimelineLabelEntity();
                 entity.setUser(user);
                 entity.setCreatedAt(defaultInstant(dto.getCreatedAt()));
             }
 
-            entity.setTagName(dto.getTagName());
+            entity.setName(dto.getName());
             entity.setStartTime(dto.getStartTime());
             entity.setEndTime(dto.getEndTime());
             entity.setSource(dto.getSource());
-            entity.setIsActive(Boolean.TRUE.equals(dto.getActive()));
+            entity.setIsActive(Boolean.TRUE.equals(dto.getIsActive()));
             entity.setColor(dto.getColor());
             entity.setShowAsPreset(dto.getShowAsPreset() == null ? Boolean.TRUE : dto.getShowAsPreset());
             entity.setUpdatedAt(defaultInstant(dto.getUpdatedAt()));
@@ -1226,7 +1226,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             entityManager.flush();
 
             if (dto.getId() != null) {
-                referenceMaps.periodTagIds.put(dto.getId(), entity.getId());
+                referenceMaps.timelineLabelIds.put(dto.getId(), entity.getId());
             }
             if (isNew) {
                 imported++;
@@ -1234,7 +1234,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 updated++;
             }
         }
-        log.info("Imported {} and updated {} period tags for user {}", imported, updated, job.getUserId());
+        log.info("Imported {} and updated {} timeline labels for user {}", imported, updated, job.getUserId());
     }
 
     @Transactional
@@ -1386,8 +1386,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     .orElseGet(TripEntity::new);
 
             entity.setUser(user);
-            Long mappedPeriodTagId = dto.getPeriodTagId() == null ? null : referenceMaps.periodTagIds.get(dto.getPeriodTagId());
-            entity.setPeriodTag(mappedPeriodTagId == null ? null : entityManager.getReference(PeriodTagEntity.class, mappedPeriodTagId));
+            Long mappedTimelineLabelId = dto.getTimelineLabelId() == null ? null : referenceMaps.timelineLabelIds.get(dto.getTimelineLabelId());
+            entity.setTimelineLabel(mappedTimelineLabelId == null ? null : entityManager.getReference(TimelineLabelEntity.class, mappedTimelineLabelId));
             entity.setName(dto.getName());
             entity.setStartTime(dto.getStartTime());
             entity.setEndTime(dto.getEndTime());
@@ -1894,7 +1894,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     private static class ImportReferenceMaps {
-        private final Map<Long, Long> periodTagIds = new HashMap<>();
+        private final Map<Long, Long> timelineLabelIds = new HashMap<>();
         private final Map<Long, Long> favoriteIds = new HashMap<>();
         private final Map<Long, Long> geocodingIds = new HashMap<>();
         private final Map<Long, Long> timelineStayIds = new HashMap<>();

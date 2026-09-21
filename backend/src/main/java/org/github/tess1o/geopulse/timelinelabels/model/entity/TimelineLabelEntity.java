@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.periods.model.entity;
+package org.github.tess1o.geopulse.timelinelabels.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,14 +7,14 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import java.time.Instant;
 
 @Entity
-@Table(name = "period_tags")
+@Table(name = "timeline_labels")
 @Getter
 @Setter
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class PeriodTagEntity {
+public class TimelineLabelEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +25,8 @@ public class PeriodTagEntity {
     @ToString.Exclude
     private UserEntity user;
 
-    @Column(name = "tag_name", nullable = false, length = 100)
-    private String tagName;
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
 
     @Column(name = "start_time", nullable = false)
     private Instant startTime;

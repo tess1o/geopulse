@@ -70,13 +70,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDateRangeStore } from '@/stores/dateRange'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTimezone } from '@/composables/useTimezone'
-import { normalizePeriodTagColor } from '@/utils/periodTagHelpers'
+import { normalizeTimelineLabelColor } from '@/utils/timelineLabelHelpers'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import DateRangePresetSelect from '@/components/ui/DateRangePresetSelect.vue'
-import { shouldShowPeriodTagAsPreset } from '@/utils/dateRangePresetOptions'
+import { shouldShowTimelineLabelAsPreset } from '@/utils/dateRangePresetOptions'
 
 const props = defineProps({
   variant: {
@@ -144,7 +144,7 @@ const emit = defineEmits(['date-change', 'validation-error'])
 
 const timezone = useTimezone()
 const dateRangeStore = useDateRangeStore()
-const periodTagsStore = usePeriodTagsStore()
+const timelineLabelsStore = useTimelineLabelsStore()
 const { dateRange: storeDateRange } = storeToRefs(dateRangeStore)
 
 const selectedPreset = ref()
@@ -157,9 +157,9 @@ const maxDate = computed(() => new Date())
 const periodPresetPrefix = 'period:'
 const maxPresetNameLength = 32
 
-const periodTagById = computed(() => {
+const timelineLabelById = computed(() => {
   const map = new Map()
-  for (const tag of periodTagsStore.periodTags || []) {
+  for (const tag of timelineLabelsStore.timelineLabels || []) {
     if (tag && tag.id !== null && tag.id !== undefined) {
       map.set(String(tag.id), tag)
     }
@@ -168,20 +168,20 @@ const periodTagById = computed(() => {
 })
 
 const periodPresets = computed(() => {
-  const tags = periodTagsStore.periodTags || []
+  const tags = timelineLabelsStore.timelineLabels || []
   if (!tags.length) return []
 
   const sorted = [...tags]
       .filter((tag) => tag && tag.startTime)
-      .filter(shouldShowPeriodTagAsPreset)
+      .filter(shouldShowTimelineLabelAsPreset)
       .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
 
   return sorted.map((tag) => ({
     label: formatPeriodPresetLabel(tag),
-    nameLabel: truncatePresetName(tag.tagName || 'Period'),
+    nameLabel: truncatePresetName(tag.name || 'Period'),
     value: `${periodPresetPrefix}${tag.id}`,
-    kind: 'period-tag',
-    color: normalizePeriodTagColor(tag.color),
+    kind: 'timeline-label',
+    color: normalizeTimelineLabelColor(tag.color),
     dateLabel: formatPeriodPresetDateLabel(tag)
   }))
 })
@@ -261,7 +261,7 @@ function setPresetByValue(presetValue) {
 
   if (typeof presetValue === 'string' && presetValue.startsWith(periodPresetPrefix)) {
     const periodId = presetValue.slice(periodPresetPrefix.length)
-    const tag = periodTagById.value.get(periodId)
+    const tag = timelineLabelById.value.get(periodId)
     if (tag) {
       const { start, end } = getPeriodDateRange(tag)
       dateRangeStore.setDateRange([start, end])
@@ -302,9 +302,9 @@ function getPeriodDateRange(tag) {
 }
 
 function formatPeriodPresetLabel(tag) {
-  const tagName = truncatePresetName(tag.tagName || 'Label')
+  const name = truncatePresetName(tag.name || 'Label')
   const dateRangeLabel = formatPeriodPresetDateLabel(tag)
-  return `${tagName} (${dateRangeLabel})`
+  return `${name} (${dateRangeLabel})`
 }
 
 function formatPeriodPresetDateLabel(tag) {
@@ -331,7 +331,7 @@ function truncatePresetName(name) {
 
 onMounted(async () => {
   try {
-    await periodTagsStore.fetchPeriodTags()
+    await timelineLabelsStore.fetchTimelineLabels()
   } catch (error) {
     console.warn('Failed to load timeline labels for presets:', error)
   }

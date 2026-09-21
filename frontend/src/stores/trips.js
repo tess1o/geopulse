@@ -177,10 +177,10 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
-    async unlinkTripFromPeriodTag(tripId) {
+    async unlinkTripFromTimelineLabel(tripId) {
       this.error = null
       try {
-        const updated = await apiService.delete(`/trips/${tripId}/period-tags`)
+        const updated = await apiService.delete(`/trips/${tripId}/timeline-label`)
         if (updated) {
           this.trips = this.trips.map((trip) => (trip.id === updated.id ? updated : trip))
           if (this.currentTrip?.id === updated.id) this.currentTrip = updated
@@ -191,10 +191,10 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
-    async createTripFromPeriodTag(periodTagId) {
+    async createTripFromTimelineLabel(timelineLabelId) {
       this.error = null
       try {
-        const created = await apiService.post(`/trips/from-period-tag/${periodTagId}`)
+        const created = await apiService.post(`/trips/from-timeline-label/${timelineLabelId}`)
         if (created) this.trips = [created, ...this.trips.filter((trip) => trip.id !== created.id)]
         return created
       } catch (error) {

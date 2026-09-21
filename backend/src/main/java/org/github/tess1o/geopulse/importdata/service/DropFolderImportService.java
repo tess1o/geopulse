@@ -422,7 +422,7 @@ public class DropFolderImportService {
                     ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION,
                     ExportImportConstants.DataTypes.LOCATION_SOURCES,
                     ExportImportConstants.DataTypes.USER_INFO,
-                    ExportImportConstants.DataTypes.PERIOD_TAGS,
+                    ExportImportConstants.DataTypes.TIMELINE_LABELS,
                     ExportImportConstants.DataTypes.TIMELINE_OVERRIDES,
                     ExportImportConstants.DataTypes.TRIP_WORKSPACE,
                     ExportImportConstants.DataTypes.NOTIFICATION_TEMPLATES,

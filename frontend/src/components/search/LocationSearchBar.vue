@@ -34,7 +34,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AutoComplete from 'primevue/autocomplete'
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
-import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import { buildPageIndex, buildSettingsIndex } from '@/constants/globalSearchRegistry'
@@ -42,7 +42,7 @@ import { searchAndRankItems } from '@/utils/globalSearchScoring'
 
 const router = useRouter()
 const store = useLocationAnalyticsStore()
-const tagsStore = usePeriodTagsStore()
+const tagsStore = useTimelineLabelsStore()
 const authStore = useAuthStore()
 const timezone = useTimezone()
 
@@ -87,7 +87,7 @@ const settingItems = computed(() => {
 
 const ensureTagsLoaded = async () => {
   if (tagsLoaded.value) return
-  await tagsStore.fetchPeriodTags()
+  await tagsStore.fetchTimelineLabels()
   tagsLoaded.value = true
 }
 
@@ -109,7 +109,7 @@ const toLocationSuggestion = (result) => {
 
   switch (result.type) {
     case 'tag':
-      displayName = result.tagName
+      displayName = result.name
       metaLine = formatTagDate(result)
       break
     case 'place':
@@ -127,7 +127,7 @@ const toLocationSuggestion = (result) => {
   }
 
   return {
-    id: `location:${result.type}:${result.id || result.name || result.tagName}`,
+    id: `location:${result.type}:${result.id || result.name || result.name}`,
     resultType: result.type,
     displayName,
     metaLine,
@@ -148,7 +148,7 @@ const toLocationSuggestion = (result) => {
     visitCount: Number(result.visitCount || 0),
     startTime: result.startTime,
     endTime: result.endTime,
-    keywords: [result.country, result.category, result.type, result.tagName].filter(Boolean)
+    keywords: [result.country, result.category, result.type, result.name].filter(Boolean)
   }
 }
 
@@ -193,8 +193,8 @@ const handleSearch = async (event) => {
     if (token !== requestToken.value) return
 
     const apiLocationItems = (searchResults.value || []).map((result) => toLocationSuggestion(result))
-    const tagItems = (tagsStore.periodTags || [])
-      .filter((tag) => tag.tagName?.toLowerCase().includes(query.toLowerCase()))
+    const tagItems = (tagsStore.timelineLabels || [])
+      .filter((tag) => tag.name?.toLowerCase().includes(query.toLowerCase()))
       .map((tag) => toLocationSuggestion({ ...tag, type: 'tag' }))
 
     locations = searchAndRankItems(query, [...tagItems, ...apiLocationItems], { minScore: 90 })
