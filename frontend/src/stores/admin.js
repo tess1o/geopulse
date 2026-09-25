@@ -147,6 +147,10 @@ const actions = {
         return apiService.post(`/admin/settings/map-matching/rebuilds?mode=${mode}`);
     },
 
+    async testPoiConnection() {
+      return apiService.post('/admin/settings/poi/connection-tests');
+    },
+
     async testPanoramaxConnection() {
         return apiService.post('/admin/settings/panoramax/connection-tests');
     },

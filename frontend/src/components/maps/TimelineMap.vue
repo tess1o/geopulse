@@ -2270,6 +2270,14 @@ defineExpose({
   pointer-events: none;
 }
 
+/* Both overlays below were written against the light theme only, so on a dark map they
+   showed up as white pills with dark text. */
+.p-dark .map-matching-status {
+  border-color: var(--gp-border-medium);
+  background: var(--gp-surface-dark);
+  color: var(--gp-text-primary);
+}
+
 .map-matching-status-icon {
   animation: mapMatchingPulse 1.4s ease-in-out infinite;
   color: #2563eb;
@@ -2298,6 +2306,12 @@ defineExpose({
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(4px);
   pointer-events: auto;
+}
+
+.p-dark .mobile-trip-summary {
+  border-color: var(--gp-border-medium);
+  background: var(--gp-surface-dark);
+  color: var(--gp-text-primary);
 }
 
 .mobile-trip-summary--above-replay {

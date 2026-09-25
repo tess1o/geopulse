@@ -368,6 +368,48 @@ export const SETTING_METADATA = {
     description: 'Public Panoramax STAC API endpoint used for coverage and imagery'
   },
 
+  // Place discovery (POIs worth visiting, with photos)
+  'poi.enabled': {
+    label: 'Enable Place Discovery',
+    description: 'Suggest places worth visiting, with photos, when planning a trip'
+  },
+  'poi.user-agent': {
+    label: 'User-Agent',
+    description: 'Sent to Wikidata and Commons. Keep it identifying: an anonymous client is the one that gets rate-limited or blocked'
+  },
+  'poi.language': {
+    label: 'Preferred Language',
+    description: 'Language for place names and descriptions (e.g. en, de, uk)'
+  },
+  'poi.attribution.enabled': {
+    label: 'Show Attribution',
+    description: 'Display photo credits and data attribution. Required by the Wikimedia licences'
+  },
+  'poi.wikidata.endpoint': {
+    label: 'Wikidata Endpoint',
+    description: 'Wikidata Query Service base URL. Point at a self-hosted instance to avoid the public rate limits'
+  },
+  'poi.commons.endpoint': {
+    label: 'Commons Endpoint',
+    description: 'Wikimedia Commons API base URL, used to resolve photo credits'
+  },
+  'poi.max-results': {
+    label: 'Max Results Per Area',
+    description: 'Upper limit on places fetched from Wikidata for one area'
+  },
+  'poi.commons.thumb-width': {
+    label: 'Photo Thumbnail Width',
+    description: 'Requested thumbnail width in pixels. Commons does the resizing, so larger means slower'
+  },
+  'poi.cache.ttl-days': {
+    label: 'Place Cache TTL (days)',
+    description: 'How long cached place data is reused before refetching. Longer is kinder to the shared API'
+  },
+  'poi.cache.image-ttl-days': {
+    label: 'Photo Cache TTL (days)',
+    description: 'How long cached photo bytes are reused before refetching'
+  },
+
   // Import Settings
   'import.bulk-insert-batch-size': {
     label: 'Bulk Insert Batch Size',

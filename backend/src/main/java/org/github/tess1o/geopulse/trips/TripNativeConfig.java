@@ -40,6 +40,8 @@ import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
         TripVisitOverrideRequestDto.class,
         PlanSuggestionDto.class,
         PlanSearchResultDto.class,
+        PlanSearchResponseDto.class,
+        PlanSearchExternalStatus.class,
         TripReconstructionPreviewDto.class,
         TripReconstructionRequestDto.class,
         TripReconstructionSegmentDto.class,

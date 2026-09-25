@@ -8,11 +8,44 @@
           <div class="workspace-page-title-wrap">
             <h1 class="workspace-page-title">{{ pageTitle }}</h1>
             <p class="workspace-page-subtitle">{{ pageSubtitle }}</p>
+            <p class="workspace-page-subtitle workspace-page-subtitle--compact">{{ pageSubtitleCompact }}</p>
           </div>
         </div>
       </template>
       <template #actions>
         <div class="workspace-header-actions">
+          <!-- Left to right: the range you are looking at, the control that resets it, then the
+               trip-level actions. Source order is the visual order on every viewport. -->
+          <Button
+            v-if="isUnplannedTrip && isOwner"
+            icon="pi pi-calendar-plus"
+            label="Set Trip Dates"
+            class="gp-btn-primary"
+            @click="openTripScheduling"
+          />
+          <!-- Available to everyone, owner included. It used to render only for
+               non-owners, so an owner could not re-scope their own trip, and a
+               non-owner on an unplanned trip got a picker with no bounds. -->
+          <DatePicker
+            v-if="!isUnplannedTrip"
+            v-model="selectedDateRange"
+            selectionMode="range"
+            :manualInput="false"
+            :dateFormat="timezone.getPrimeVueDatePickerFormat()"
+            :minDate="tripMinDate"
+            :maxDate="tripMaxDate"
+            @update:model-value="handleDateRangeChange"
+            class="workspace-date-picker"
+          />
+          <Button
+            v-if="!isUnplannedTrip"
+            icon="pi pi-history"
+            text
+            rounded
+            aria-label="Reset to full trip range"
+            @click="resetToTripRange"
+            v-tooltip.bottom="'Reset to full trip range'"
+          />
           <Button
             v-if="canReconstructTrip"
             icon="pi pi-map"
@@ -21,38 +54,12 @@
             @click="openReconstructionDialog"
           />
           <Button
-            v-if="isUnplannedTrip && isOwner"
-            icon="pi pi-calendar-plus"
-            label="Set Trip Dates"
-            class="gp-btn-primary"
-            @click="openTripScheduling"
-          />
-          <Button
             v-if="isOwner"
             icon="pi pi-users"
             outlined
             label="Collaborators"
             @click="openCollaboratorsDialog"
           />
-          <template v-else>
-            <DatePicker
-              v-model="selectedDateRange"
-              selectionMode="range"
-              :manualInput="false"
-              :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              :minDate="tripMinDate"
-              :maxDate="tripMaxDate"
-              @update:model-value="handleDateRangeChange"
-              class="workspace-date-picker"
-            />
-            <Button
-              icon="pi pi-history"
-              text
-              rounded
-              @click="resetToTripRange"
-              v-tooltip.bottom="'Reset to full trip range'"
-            />
-          </template>
         </div>
       </template>
 
@@ -65,17 +72,6 @@
       </Message>
 
       <template v-else>
-        <div class="workspace-tabs">
-          <Button
-            v-for="tab in workspaceTabs"
-            :key="tab.key"
-            :label="tab.label"
-            :icon="tab.icon"
-            :class="{ 'active-workspace-tab': activeWorkspaceTab === tab.key }"
-            @click="selectWorkspaceTab(tab.key)"
-          />
-        </div>
-
         <Message v-if="isUnplannedTrip" severity="info" :closable="false" class="unplanned-trip-banner">
           This trip is unplanned. Add planned stops now, then set trip dates to enable timeline, path, and analytics.
         </Message>
@@ -83,30 +79,27 @@
           {{ accessModeBannerText }}
         </Message>
 
-        <div v-if="showOverviewSection" class="summary-strip">
-          <div class="summary-chip">
-            <span>Completion</span>
-            <strong>{{ summaryCompletion }}</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Visited</span>
-            <strong>{{ summaryVisitedCount }} / {{ summaryPlanTotal }}</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Must visits</span>
-            <strong>{{ mustVisitedCount }} / {{ mustPlanTotal }} ({{ mustCompletionLabel }})</strong>
-          </div>
-          <div class="summary-chip">
-            <span>Distance / Duration</span>
-            <strong>{{ formatDistance(tripSummary?.totalDistanceMeters || 0) }} • {{ formatDuration(tripSummary?.totalTripDurationSeconds || 0) }}</strong>
-          </div>
-        </div>
+        <!-- Always visible. These metrics used to live inside the Overview tab, so they
+             disappeared on the Plan tab and were absent entirely for future trips. -->
+        <TripSummaryBar
+          :completion-rate="summaryCompletion"
+          :visited-count="summaryVisitedCount"
+          :total-count="summaryPlanTotal"
+          :must-visited="mustVisitedCount"
+          :must-total="mustPlanTotal"
+          :distance-label="formatDistance(tripSummary?.totalDistanceMeters || 0)"
+          :duration-label="formatDuration(tripSummary?.totalTripDurationSeconds || 0)"
+        />
 
-        <BaseCard v-if="showOverviewSection || showPlanningPanelMode" class="workspace-card">
+        <!-- One layout, in every trip state. Nothing here appears or disappears based on
+             trip status; only the rail's contents change. -->
+        <BaseCard class="workspace-card">
           <TimelineSplitLayout
-            v-if="showOverviewSection"
             ref="timelineSplitLayoutRef"
             class="workspace-timeline-split"
+            collapsed-label="Stops"
+            expanded-label="Stops"
+            handle-mobile-only
             @layout-resize="triggerWorkspaceMapResize"
           >
             <template #map>
@@ -114,8 +107,8 @@
                 <ProgressSpinner />
               </div>
               <TimelineMap
-                ref="timelineMapRef"
                 v-else
+                ref="timelineMapRef"
                 class="workspace-timeline-map"
                 :style="workspaceTimelineMapStyle"
                 :pathData="hasPathData ? workspacePath : null"
@@ -129,6 +122,7 @@
                 :showHeatmapControl="false"
                 :enableFavoriteContextMenu="canEditPlanItems"
                 :showCurrentLocation="false"
+                :read-only="demoReadOnly"
                 @timeline-marker-click="handleWorkspaceTimelineMarkerClick"
                 @highlighted-path-click="handleWorkspaceHighlightedPathClick"
                 @plan-to-visit="handlePlanToVisit"
@@ -138,161 +132,51 @@
             </template>
 
             <template #side>
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <TimelineContainer
-                v-else
-                ref="timelineContainerRef"
-                :timeline-data="workspaceTimeline"
-                :timelineNoData="!workspaceTimeline.length"
-                :timelineDataLoading="workspaceLoading"
-                :dateRange="activeDateRangeArray"
-                :loadImmichPhotos="false"
-                :weather-samples="weatherSamples"
-                :showTimelineLabels="false"
-                @timeline-item-click="handleWorkspaceTimelineItemClick"
-                @rename-stay="handleWorkspaceRenameStay"
-                @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
-                @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
-                @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
-              />
+              <TripStopsRail
+                :stops="sortedTripPlanItems"
+                :loading="workspaceLoading"
+                :can-edit="canEditPlanItems"
+                :has-actual-data="hasTimelineData || hasPathData"
+                :lens="railLens"
+                :selected-id="focusedPlanItemId"
+                @update:lens="railLens = $event"
+                @add-stop="handleAddStopFromRail"
+                @focus-stop="focusPlannedItemOnMap"
+                @edit-stop="openEditPlanItemDialog"
+                @delete-stop="confirmDeletePlanItem"
+                @mark-visited="handleMarkVisitedFromRail"
+              >
+                <template #actual>
+                  <div class="trip-actual-lens">
+                    <TimelineContainer
+                      ref="timelineContainerRef"
+                      :timeline-data="workspaceTimeline"
+                      :timelineNoData="!workspaceTimeline.length"
+                      :timelineDataLoading="workspaceLoading"
+                      :dateRange="activeDateRangeArray"
+                      :loadImmichPhotos="false"
+                      :weather-samples="weatherSamples"
+                      :showTimelineLabels="false"
+                      @timeline-item-click="handleWorkspaceTimelineItemClick"
+                      @rename-stay="handleWorkspaceRenameStay"
+                      @timeline-refresh-requested="handleWorkspaceTimelineRefreshRequested"
+                      @reset-data-gap-override="handleWorkspaceResetDataGapOverride"
+                      @reset-trip-split-override="handleWorkspaceResetTripSplitOverride"
+                    />
+
+                    <ImmichLatestPhotosSection
+                      v-if="showTripPhotosSection"
+                      title="Trip Photos"
+                      :search-params="tripImmichSearchParams"
+                      :use-store-photos="true"
+                      empty-message="No Immich photos found for this trip range."
+                      @show-on-map="handleTripPhotoShowOnMap"
+                    />
+                  </div>
+                </template>
+              </TripStopsRail>
             </template>
           </TimelineSplitLayout>
-
-          <div v-else class="workspace-layout">
-            <div class="workspace-map">
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <TimelineMap
-                ref="timelineMapRef"
-                v-else
-                class="workspace-timeline-map"
-                :style="workspaceTimelineMapStyle"
-                :pathData="hasPathData ? workspacePath : null"
-                :timelineData="workspaceTimeline"
-                :weather-samples="weatherSamples"
-                :plannedItemsData="tripPlanMapItems"
-                :showFavoritesByDefault="false"
-                :showImmichByDefault="true"
-                :showPlanToVisitAction="canEditPlanItems"
-                :showFavoritesContextActions="false"
-                :showHeatmapControl="false"
-                :enableFavoriteContextMenu="canEditPlanItems"
-                :showCurrentLocation="false"
-                @plan-to-visit="handlePlanToVisit"
-                @plan-item-edit="handlePlanItemEditFromMap"
-                @plan-item-delete="handlePlanItemDeleteFromMap"
-              />
-            </div>
-
-            <div class="workspace-timeline">
-              <div v-if="workspaceLoading" class="pane-loading">
-                <ProgressSpinner />
-              </div>
-              <div v-else-if="showPlanningPanelMode" class="planning-panel">
-                <div class="planning-callout">
-                  <i class="pi pi-calendar planning-panel-icon"></i>
-                  <div class="planning-callout-content">
-                    <h4>{{ planningPanelTitle }}</h4>
-                    <p>{{ planningPanelPrimaryText }}</p>
-                    <p>{{ planningPanelHintText }}</p>
-                  </div>
-                </div>
-                <div v-if="planningPanelItems.length > 0" class="planning-list">
-                  <div class="planning-list-header">
-                    Planned places ({{ planningPanelItems.length }})
-                  </div>
-                  <div
-                    v-for="item in planningPanelItems"
-                    :key="item.id"
-                    class="planning-list-item"
-                  >
-                    <button
-                      type="button"
-                      class="planning-list-main"
-                      @click="focusPlannedItemOnMap(item)"
-                    >
-                      <span class="planning-list-title-row">
-                        <Tag
-                          :value="item.priority || 'OPTIONAL'"
-                          :severity="getPrioritySeverity(item.priority)"
-                        />
-                        <span class="planning-list-title">{{ item.title }}</span>
-                      </span>
-                      <small v-if="item.notes" class="planning-list-notes">{{ item.notes }}</small>
-                      <small>{{ formatPlannedDay(item.plannedDay) }}</small>
-                    </button>
-                    <div class="planning-list-actions">
-                      <Button
-                        v-if="canEditPlanItems"
-                        icon="pi pi-pencil"
-                        text
-                        rounded
-                        size="small"
-                        v-tooltip.top="'Edit item'"
-                        @click.stop="openEditPlanItemDialog(item)"
-                      />
-                      <Button
-                        v-if="canEditPlanItems"
-                        icon="pi pi-trash"
-                        text
-                        rounded
-                        size="small"
-                        severity="danger"
-                        v-tooltip.top="'Delete item'"
-                        @click.stop="confirmDeletePlanItem(item)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </BaseCard>
-
-        <ImmichLatestPhotosSection
-          v-if="showTripPhotosSection"
-          title="Trip Photos"
-          :search-params="tripImmichSearchParams"
-          :use-store-photos="true"
-          empty-message="No Immich photos found for this trip range."
-          @show-on-map="handleTripPhotoShowOnMap"
-        />
-
-        <BaseCard v-if="showPlanSection || isPlanningMode" class="plan-card" :title="comparisonCardTitle">
-          <template #header>
-            <div class="workspace-card-header">
-              <h3 class="workspace-title">{{ comparisonCardTitle }}</h3>
-              <div class="workspace-header-actions">
-                <Button
-                  v-if="canEditPlanItems && hasPlanItems"
-                  icon="pi pi-plus"
-                  label="Add Place"
-                  class="gp-btn-primary"
-                  @click="openCreatePlanItemDialog"
-                />
-              </div>
-            </div>
-          </template>
-
-          <div class="plan-content">
-            <div class="plan-content-table">
-              <TripPlanItemsTable
-                :items="sortedTripPlanItems"
-                :isPlanningMode="isPlanningWorkspace"
-                :isActiveTrip="isActiveTrip"
-                :visitSuggestions="visitSuggestions"
-                :canEdit="canEditPlanItems"
-                @focus-item="focusPlannedItemOnMap"
-                @override="handlePlanItemOverrideFromTable"
-                @edit-item="openEditPlanItemDialog"
-                @delete-item="confirmDeletePlanItem"
-                @add-item="openCreatePlanItemDialog"
-              />
-            </div>
-          </div>
         </BaseCard>
 
       </template>
@@ -381,6 +265,12 @@
                 <span v-else>Not selected yet</span>
               </div>
             </div>
+
+            <PlanItemPoiImages
+              :latitude="planItemForm.latitude"
+              :longitude="planItemForm.longitude"
+              @select="handlePoiSuggestionSelect"
+            />
           </div>
         </div>
 
@@ -632,7 +522,9 @@ import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 import TimelineLocationEditDialogs from '@/components/timeline/TimelineLocationEditDialogs.vue'
 import TimelineSplitLayout from '@/components/timeline/TimelineSplitLayout.vue'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
-import TripPlanItemsTable from '@/components/trips/TripPlanItemsTable.vue'
+import TripStopsRail from '@/components/trips/workspace/TripStopsRail.vue'
+import PlanItemPoiImages from '@/components/trips/workspace/PlanItemPoiImages.vue'
+import TripSummaryBar from '@/components/trips/workspace/TripSummaryBar.vue'
 import TripReconstructionDialog from '@/components/trips/TripReconstructionDialog.vue'
 import L from 'leaflet'
 import maplibregl from 'maplibre-gl'
@@ -812,12 +704,32 @@ const pageSubtitle = computed(() => {
   return `${statusLabel} • ${formatDateTime(currentTrip.value.startTime)} - ${formatDateTime(currentTrip.value.endTime)}`
 })
 
+/**
+ * Mobile-only subtitle. The date picker in the action row already shows the trip range, so
+ * repeating "01/10/2026 00:00 - 04/10/2026 23:59" here costs two lines and adds nothing.
+ * What the picker cannot show is where the trip stands and how long it runs.
+ */
+const pageSubtitleCompact = computed(() => {
+  if (!currentTrip.value) return 'Workspace'
+  if (isUnplannedTrip.value) return 'Unplanned • Dates not set'
+
+  const status = String(currentTrip.value.status || '').toLowerCase()
+  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'
+
+  const start = currentTrip.value.startTime ? timezone.fromUtc(currentTrip.value.startTime) : null
+  const end = currentTrip.value.endTime ? timezone.fromUtc(currentTrip.value.endTime) : null
+  const days = start && end
+    ? Math.max(1, end.startOf('day').diff(start.startOf('day'), 'day') + 1)
+    : null
+
+  return days ? `${statusLabel} • ${days} day${days === 1 ? '' : 's'}` : statusLabel
+})
+
 const summaryPlanTotal = computed(() => tripSummary.value?.planItemsTotal || 0)
 const summaryVisitedCount = computed(() => tripSummary.value?.planItemsVisited || 0)
-const summaryCompletion = computed(() => {
-  const raw = tripSummary.value?.planCompletionRate || 0
-  return `${Math.round(raw)}%`
-})
+// Numeric, not pre-formatted: TripSummaryBar renders the unit so the bar stays the
+// single place that decides how a metric is displayed.
+const summaryCompletion = computed(() => Math.round(tripSummary.value?.planCompletionRate || 0))
 const mustPlanTotal = computed(() => (tripPlanItems.value || []).filter((item) => item?.priority === 'MUST').length)
 const mustVisitedCount = computed(() => (tripPlanItems.value || []).filter((item) => item?.priority === 'MUST' && item?.isVisited).length)
 const mustCompletionLabel = computed(() => {
@@ -845,10 +757,15 @@ const isPlanningWorkspace = computed(() => isUnplannedTrip.value || isPlanningMo
 const isActiveTrip = computed(() => String(currentTrip.value?.status || '').toUpperCase() === 'ACTIVE')
 const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value && !isUnplannedTrip.value)
 const showPlanSection = computed(() => activeWorkspaceTab.value === 'plan')
+const showDiscoverSection = computed(() => activeWorkspaceTab.value === 'discover')
 const showPlanningPanelMode = computed(() => isPlanningWorkspace.value || (showPlanSection.value && isActiveTrip.value))
 const workspaceTabs = computed(() => {
+  // Discovery is offered for trips that have not happened yet - the case where the user
+  // has never been there and needs ideas. It is the same trip type that has no Overview.
+  const discover = { key: 'discover', label: 'Discover', icon: 'pi pi-compass' }
+
   if (isUnplannedTrip.value) {
-    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }]
+    return [{ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' }, discover]
   }
 
   const tabs = []
@@ -856,6 +773,7 @@ const workspaceTabs = computed(() => {
     tabs.push({ key: 'overview', label: 'Overview', icon: 'pi pi-chart-line' })
   }
   tabs.push({ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' })
+  tabs.push(discover)
   return tabs
 })
 const comparisonCardTitle = computed(() => ((isPlanningWorkspace.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
@@ -950,7 +868,14 @@ const tripPlanMapItems = computed(() => {
       planItemId: item.id,
       priority: item.priority || 'OPTIONAL',
       latitude: item.latitude,
-      longitude: item.longitude
+      longitude: item.longitude,
+      // Carried through for the marker's hover card, which otherwise had nothing to
+      // show beyond a name and always reported "no day" / "not visited".
+      plannedDay: item.plannedDay || null,
+      notes: item.notes || '',
+      isVisited: Boolean(item.isVisited),
+      visitConfidence: item.visitConfidence ?? null,
+      manualOverrideState: item.manualOverrideState || null
     }))
 })
 const workspaceFallbackCenter = computed(() => {
@@ -1818,7 +1743,14 @@ const handlePlanToVisit = async (event) => {
   await openPlanItemDialogFromCoordinates(lat, lon, 'context-menu')
 }
 
+// Which stop the map is currently focused on, so the rail can highlight it.
+const focusedPlanItemId = ref(null)
+
+// The rail's lens. 'plan' = the stops you intended; 'actual' = what happened.
+const railLens = ref('plan')
+
 const focusPlannedItemOnMap = (item) => {
+  focusedPlanItemId.value = item?.id ?? null
   if (!item || typeof item.latitude !== 'number' || typeof item.longitude !== 'number') {
     return
   }
@@ -1958,6 +1890,73 @@ const validatePlanItem = () => {
   }
 
   return Object.keys(planItemErrors.value).length === 0
+}
+
+/**
+ * Names the stop from a suggested POI. Only fills fields the user has not already set, so
+ * clicking a photo can never overwrite typing they have done.
+ */
+const handlePoiSuggestionSelect = (poi) => {
+  if (!poi) return
+
+  // The title is set unconditionally: the dialog pre-fills it from reverse geocoding, so
+  // a fill-if-empty rule meant clicking a photo appeared to do nothing. An explicit click
+  // is an explicit choice - it outranks the automatic suggestion.
+  planItemForm.value.title = poi.name
+
+  // Notes are only filled when blank, so a click cannot discard something the user wrote.
+  if (!planItemForm.value.notes?.trim() && poi.description) {
+    planItemForm.value.notes = poi.description
+  }
+
+  if (Number.isFinite(poi.latitude) && Number.isFinite(poi.longitude)) {
+    planItemForm.value.latitude = poi.latitude
+    planItemForm.value.longitude = poi.longitude
+    // Move the dialog's map too, otherwise the pin stays behind while the coordinates
+    // underneath it change.
+    syncPlanItemDialogMapLocation({ recenter: true, zoom: 15 })
+  }
+}
+
+/**
+ * Adds a stop from the rail's add panel, whether it came from a name search or from
+ * discovery. Deliberately one click: the full plan-item dialog asks for day, priority and
+ * order, which is too much ceremony for "add this museum". It is refined afterwards in the
+ * rail, where the stop appears immediately with its day group.
+ */
+const handleAddStopFromRail = async (place) => {
+  if (!place?.title || !ensurePlanEditAccess()) return
+
+  try {
+    await tripsStore.createTripPlanItem(tripId.value, {
+      title: place.title,
+      notes: place.description || null,
+      latitude: place.latitude ?? null,
+      longitude: place.longitude ?? null,
+      plannedDay: null,
+      priority: 'OPTIONAL',
+      orderIndex: (tripPlanItems.value || []).length
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Added to plan',
+      detail: `"${place.title}" was added to your stops`,
+      life: 2500
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Could not add place',
+      detail: error?.userMessage || error?.message || 'Failed to add this place',
+      life: 3000
+    })
+  }
+}
+
+/** Mark a stop visited from the rail, through the same override path used everywhere else. */
+const handleMarkVisitedFromRail = (stop) => {
+  if (!stop || !ensurePlanEditAccess()) return
+  applyVisitOverride(stop, 'CONFIRM_VISITED')
 }
 
 const submitPlanItem = async () => {
@@ -2228,46 +2227,9 @@ watch(showPlanItemDialog, async (nextVisible) => {
   line-height: 1.4;
 }
 
-.workspace-tabs {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-sm);
-  margin-top: var(--gp-spacing-sm);
-  margin-bottom: var(--gp-spacing-sm);
-  position: relative;
-  z-index: 2;
-}
-
-.workspace-tabs .p-button {
-  min-width: 108px;
-  background: transparent;
-  border: 1px solid var(--gp-border-light);
-  color: var(--gp-text-secondary);
-  box-shadow: none;
-  position: relative;
-  z-index: 1;
-}
-
-.workspace-tabs .active-workspace-tab {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: var(--gp-surface-white);
-}
-
-.workspace-tabs .p-button:not(.active-workspace-tab):hover {
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-primary);
-  color: var(--gp-text-primary);
-  box-shadow: none;
-}
-
-.workspace-tabs .p-button:not(.active-workspace-tab):focus,
-.workspace-tabs .p-button:not(.active-workspace-tab):focus-visible,
-.workspace-tabs .active-workspace-tab:hover,
-.workspace-tabs .active-workspace-tab:focus,
-.workspace-tabs .active-workspace-tab:focus-visible {
-  border: 1px solid var(--gp-primary);
-  box-shadow: none;
+/* Desktop shows the full datetime subtitle; the compact status line takes over at <=768px. */
+.workspace-page-subtitle--compact {
+  display: none;
 }
 
 .unplanned-trip-banner {
@@ -2278,75 +2240,11 @@ watch(showPlanItemDialog, async (nextVisible) => {
   margin-bottom: var(--gp-spacing-sm);
 }
 
-.summary-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--gp-spacing-sm);
-  margin-bottom: var(--gp-spacing-sm);
-}
-
-.summary-chip {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-sm);
-  min-height: 0;
-}
-
-.summary-chip span {
-  color: var(--gp-text-secondary);
-  font-size: 0.74rem;
-  line-height: 1.1;
-}
-
-.summary-chip strong {
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-
-.workspace-card,
-.plan-card {
+.workspace-card {
   margin-bottom: var(--gp-spacing-md);
-}
-
-.plan-content {
-  display: block;
-}
-
-.plan-content-table {
-  min-width: 0;
-}
-
-.workspace-card :deep(.p-card-body) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.workspace-card :deep(.p-card-content) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.workspace-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gp-spacing-md);
-  width: 100%;
-  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
-  border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-light);
-}
-
-.workspace-title {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--gp-text-primary);
+  /* Grows into the space the summary strip leaves. Only takes effect once the page frame has
+     a definite height - see the mobile block at the end of this sheet. */
+  flex: 1 1 auto;
 }
 
 .workspace-header-actions {
@@ -2414,17 +2312,14 @@ watch(showPlanItemDialog, async (nextVisible) => {
   color: var(--gp-text-secondary);
 }
 
-.workspace-layout {
-  --workspace-map-height: clamp(550px, 70vh, 760px);
-  display: flex;
-  gap: 0;
-  height: var(--workspace-map-height);
-  min-height: 0;
-}
-
 .workspace-card .workspace-timeline-split {
   --workspace-map-height: clamp(550px, 70vh, 760px);
   --timeline-split-side-width: clamp(360px, 22vw, 460px);
+  /* The component ships `flex: 1`, i.e. flex-basis: 0%, and this element is the only child of
+     the card's auto-height flex column. In a flex column the base size is what decides the
+     main size, so with `0%` the `height` below is ignored and only `min-height` holds the card
+     up. `auto` puts the declared height back in charge; the min-height stays as the backstop. */
+  flex: 1 1 auto;
   height: calc(var(--workspace-map-height) + 0.5rem);
   min-height: calc(550px + 0.5rem);
 }
@@ -2446,158 +2341,24 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 .workspace-timeline-split :deep(.map-container-wrapper),
-.workspace-timeline-split :deep(.base-map),
-.workspace-map :deep(.map-container-wrapper),
-.workspace-map :deep(.base-map) {
+.workspace-timeline-split :deep(.base-map) {
   height: 100%;
 }
 
+/* Desktop only. The rail inside the pane is absolutely positioned, so the pane has to be
+   the containing block and carry a definite height - otherwise the rail grows with its
+   content and the whole page scrolls. On mobile that same declaration fights the
+   component's bottom sheet, so it is undone by the media block at the end of this sheet. */
 .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
   max-height: none;
   background: var(--gp-surface-white);
-}
-
-.workspace-map,
-.workspace-timeline {
-  border: 0;
-  border-radius: 0;
-  overflow: hidden;
-  height: 100%;
+  position: relative;
   min-height: 0;
-  background: var(--gp-surface-white);
-}
-
-.workspace-map {
-  flex: 5;
-  margin-top: 0.5rem;
-  margin-left: 0.5rem;
-  margin-right: 1rem;
-  max-height: none;
-  min-height: var(--workspace-map-height);
-  min-width: 0;
-}
-
-.workspace-timeline {
-  flex: 1;
-  margin-top: 0.5rem;
-  margin-right: 0.5rem;
-  min-width: 0;
-  max-width: none;
-  max-height: none;
-  overflow-y: auto;
-}
-
-.planning-panel {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
-  gap: var(--gp-spacing-sm);
-  padding: var(--gp-spacing-lg);
-  color: var(--gp-text-secondary);
-}
-
-.planning-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--gp-spacing-sm);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-}
-
-.planning-callout-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.planning-panel h4 {
-  margin: 0;
-  color: var(--gp-text-primary);
-}
-
-.planning-panel p {
-  margin: 0;
-}
-
-.planning-panel-icon {
-  font-size: 2rem;
-  color: var(--gp-text-muted);
-}
-
-.planning-list {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gp-spacing-xs);
-  margin-top: var(--gp-spacing-sm);
-}
-
-.planning-list-header {
-  font-size: 0.8rem;
-  color: var(--gp-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.planning-list-item {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gp-spacing-xs);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-small);
-  background: var(--gp-surface-light);
-  padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
-}
-
-.planning-list-main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-  border: 0;
-  background: transparent;
-  color: var(--gp-text-primary);
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  flex: 1;
-}
-
-.planning-list-main:hover {
-  color: var(--gp-primary, #1a56db);
-}
-
-.planning-list-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--gp-spacing-xs);
-}
-
-.planning-list-title {
-  font-weight: 600;
-}
-
-.planning-list-item small {
-  color: var(--gp-text-secondary);
-}
-
-.planning-list-notes {
-  display: block;
-  max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.planning-list-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.1rem;
+.p-dark .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
+  background: var(--gp-surface-dark);
 }
 
 .pane-loading {
@@ -2701,20 +2462,8 @@ watch(showPlanItemDialog, async (nextVisible) => {
 }
 
 @media (max-width: 1279px) {
-  .summary-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .workspace-card .workspace-timeline-split {
     --timeline-split-side-width: clamp(340px, 30vw, 420px);
-  }
-
-  .workspace-map {
-    flex: 5;
-  }
-
-  .workspace-timeline {
-    flex: 2;
   }
 }
 
@@ -2722,39 +2471,16 @@ watch(showPlanItemDialog, async (nextVisible) => {
   .workspace-card .workspace-timeline-split {
     --timeline-split-side-width: clamp(360px, 24vw, 440px);
   }
-
-  .workspace-map {
-    flex: 5;
-  }
-
-  .workspace-timeline {
-    flex: 2;
-  }
 }
 
 @media (min-width: 1600px) {
-  .workspace-layout,
   .workspace-card .workspace-timeline-split {
     --workspace-map-height: clamp(580px, 75vh, 860px);
     --timeline-split-side-width: clamp(380px, 20vw, 460px);
   }
-
-  .workspace-map {
-    flex: 4;
-  }
-
-  .workspace-timeline {
-    flex: 1;
-  }
 }
 
 @media (max-width: 1024px) {
-  .workspace-layout {
-    flex-direction: column;
-    height: auto;
-    min-height: auto;
-  }
-
   .workspace-card .workspace-timeline-split {
     --workspace-map-height: clamp(500px, 70vh, 640px);
     height: calc(var(--workspace-map-height) + 0.5rem);
@@ -2765,50 +2491,102 @@ watch(showPlanItemDialog, async (nextVisible) => {
     grid-template-columns: 1fr;
   }
 
-  .workspace-map,
-  .workspace-timeline {
-    max-height: none;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .workspace-map {
-    min-height: var(--workspace-map-height);
-  }
-
-  .workspace-timeline {
-    min-height: 460px;
-  }
-
 }
 
 @media (max-width: 768px) {
   .workspace-card .workspace-timeline-split {
-    --workspace-map-height: clamp(460px, calc(100dvh - 240px), 560px);
+    /* Budget measured from the top of the viewport, after the chrome below was compacted:
+         60 navbar + 8 padding + 43 title/subtitle + 12 gap + 44 action row
+       + 12 header margin + 60 summary strip = ~239px, plus the card's own padding and the
+       0.5rem the split adds. env() is subtracted because 100dvh includes the safe areas
+       and both the navbar height and .gp-app-layout's bottom padding already claim them. */
+    --workspace-map-height: clamp(
+      260px,
+      calc(100dvh - 288px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      560px
+    );
     height: calc(var(--workspace-map-height) + 0.5rem);
-    min-height: calc(460px + 0.5rem);
+    /* The height above is this element's flex base size (flex-basis is `auto` here), so it is
+       what the card is sized by, and the mobile frame normally stretches it past this value.
+       260px is a floor for the frame being shorter than the clamp, not the card's height: at 0
+       the card collapsed to its own padding (18px) and took the map and the sheet with it,
+       because on mobile both panes are out of flow and contribute no height. */
+    min-height: 260px;
   }
 
-  .workspace-tabs {
-    flex-wrap: wrap;
+  .workspace-page-title {
+    font-size: 1.25rem;
+    line-height: 1.25;
   }
 
-  .summary-strip {
-    grid-template-columns: 1fr;
+  /* The picker in the action row already shows the range, so the full "Upcoming •
+     01/10/2026 00:00 - 04/10/2026 23:59" line is replaced by status + trip length.
+     Swapped in CSS rather than behind a JS flag so it cannot disagree with the media
+     query that actually positions the sheet. */
+  .workspace-page-subtitle:not(.workspace-page-subtitle--compact) {
+    display: none;
   }
 
-  .workspace-card-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .workspace-page-subtitle--compact {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  /* The dense map is the point of the card; 16px of card padding on each side was chrome. */
+  .workspace-card :deep(.gp-card-content) {
+    padding: var(--gp-spacing-sm);
+  }
+
+  /* ~60px of roll-up numbers that are only read, never acted on, and on a future trip are all
+     zeros. The map is the page on a phone, and per-stop visited state already lives in the
+     Stops list. Desktop keeps the strip. Same trade-off as the landscape block below, which
+     still covers wide-but-short windows this query does not match. */
+  .trip-summary-bar {
+    display: none;
+  }
+
+  /* One 44px row: the picker flexes, the rest are icon-only square buttons. This replaces
+     a wrap that produced three rows (Add Missing / picker / reset + Collaborators). */
+  .workspace-header-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--gp-spacing-xs);
   }
 
   .workspace-date-picker {
-    min-width: 100%;
-    width: 100%;
+    /* The picker is the primary control and leads the row in the template, so it needs no
+       `order` override - it used to sit between two icon buttons and was pulled to the front
+       from here. */
+    flex: 1 1 auto;
+    /* Load-bearing: the base rule sets min-width: 260px, which would force a second row. */
+    min-width: 0;
+    width: auto;
+    max-width: none;
   }
 
-  .workspace-header-actions {
+  .workspace-date-picker :deep(.p-datepicker-input) {
+    min-height: 2.75rem;
     width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  /* Icon-only. The label is hidden visually only - PrimeVue derives aria-label from the
+     `label` prop, so the accessible name survives. Because `label` is still set PrimeVue
+     never adds `p-button-icon-only`, hence the explicit 44px sizing. */
+  .workspace-header-actions :deep(.p-button-label) {
+    display: none;
+  }
+
+  .workspace-header-actions :deep(.p-button) {
+    flex: 0 0 2.75rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
   }
 
   .collaborator-add-row {
@@ -2821,6 +2599,91 @@ watch(showPlanItemDialog, async (nextVisible) => {
 
   .plan-item-dialog-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile sheet mode. The rule further up this file (which desktop needs, because the rail
+   inside the pane is absolutely positioned and would otherwise anchor to
+   .timeline-split-main) also matched here and turned the pane back into an in-flow flex
+   child, so it landed at the top of the card with the map painted behind it. Identical
+   selector, later in the sheet -> this wins; media queries add no specificity.
+   Deliberately the same query the component uses, so landscape phones
+   (max-height: 520px + coarse pointer) are covered - a max-width-only block is not. */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .workspace-timeline-split :deep(.timeline-split-side-pane:not(.timeline-sheet--compact)) {
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    /* The desktop rule above sets `max-height: none` at (0,4,0), which beats the
+       component's mobile `max-height: calc(100% - 24px)` at (0,2,0). Restore it, or the
+       sheet can grow past the card. */
+    max-height: calc(100% - 24px);
+  }
+}
+
+/* Landscape phones and short windows. The component is in sheet mode here too, so the card
+   has to shrink with it. The max-width guard keeps a wide-but-short desktop window out. */
+@media (max-height: 520px) and (max-width: 1024px) {
+  .workspace-page-subtitle,
+  .workspace-page-subtitle--compact {
+    display: none;
+  }
+
+  .workspace-page-title {
+    font-size: 1rem;
+  }
+
+  .workspace-card .workspace-timeline-split {
+    --workspace-map-height: clamp(
+      180px,
+      calc(100dvh - 184px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+      340px
+    );
+    height: calc(var(--workspace-map-height) + 0.5rem);
+    /* Base size again, not a target: the mobile frame stretches this to fill the screen. */
+    min-height: 180px;
+  }
+
+  /* Landscape phones, and wide-but-short windows where the portrait mobile block above does
+     not match. Same trade-off there: metrics are unavailable until the user rotates back or
+     widens the window. */
+  .trip-summary-bar {
+    display: none;
+  }
+}
+
+/* Mobile: give the frame a definite height so the card can take whatever the navbar, page
+   padding, title, action row and summary strip leave over. Deliberately last in this sheet:
+   the clamp blocks above become the flex base size rather than the final height, so the card
+   keeps a sane minimum but is no longer capped - the 560px ceiling is what left the bottom of
+   the screen empty while the map stayed short.
+
+   Scoped to this page by the header class rather than applied to AppLayout/PageContainer
+   globally: a `.gp-app-layout` rule alone would tie on specificity with the
+   `min-height: 100vh` AppLayout itself sets, and lose or win by stylesheet order. */
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .gp-app-layout:has(.workspace-page-header) {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  /* Each of these is a flex item with the default `min-height: auto`, which would refuse to
+     shrink and push the overflow out of the frame instead of giving the card a smaller share. */
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-app-main),
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-page-container),
+  .gp-app-layout:has(.workspace-page-header) :deep(.gp-page-content) {
+    min-height: 0;
+  }
+
+  /* The card has no height of its own to give the split - it is a block wrapping a flex
+     column - so it has to hand its resolved height down explicitly. */
+  .workspace-card :deep(.gp-card-content) {
+    height: 100%;
+  }
+
+  /* 16px of page background under a card that is meant to reach the bottom of the screen. */
+  .workspace-card {
+    margin-bottom: 0;
   }
 }
 </style>

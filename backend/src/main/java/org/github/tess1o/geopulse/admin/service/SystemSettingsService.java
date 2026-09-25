@@ -121,6 +121,32 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("geocoding.geoapify.language",
                 new SettingDefinition("geocoding.provider.geoapify.language", "", ValueType.STRING, "geocoding", "Geoapify language preference (optional)"));
 
+        // Place discovery (POIs worth visiting) and their photos (Wikimedia Commons).
+        // Keys follow the geopulse.poi.* convention so the env vars are GEOPULSE_POI_*.
+        // The endpoint entries must NOT point at quarkus.rest-client.*.url: those bind at
+        // startup, so an Admin UI change would be saved and silently ignored. The clients
+        // are built per call from these properties instead (see PoiRestClientFactory).
+        SETTING_DEFINITIONS.put("poi.enabled",
+                new SettingDefinition("geopulse.poi.enabled", "true", ValueType.BOOLEAN, "poi", "Enable place discovery"));
+        SETTING_DEFINITIONS.put("poi.wikidata.endpoint",
+                new SettingDefinition("geopulse.poi.wikidata.endpoint", "https://query.wikidata.org", ValueType.STRING, "poi", "Wikidata Query Service base URL (self-hostable)"));
+        SETTING_DEFINITIONS.put("poi.commons.endpoint",
+                new SettingDefinition("geopulse.poi.commons.endpoint", "https://commons.wikimedia.org", ValueType.STRING, "poi", "Wikimedia Commons API base URL"));
+        SETTING_DEFINITIONS.put("poi.user-agent",
+                new SettingDefinition("geopulse.poi.user-agent", "GeoPulse/1.39.0 (+https://github.com/tess1o/geopulse)", ValueType.STRING, "poi", "User-Agent sent to Wikidata and Commons (identify your instance!)"));
+        SETTING_DEFINITIONS.put("poi.language",
+                new SettingDefinition("geopulse.poi.language", "en", ValueType.STRING, "poi", "Preferred language for place names and descriptions"));
+        SETTING_DEFINITIONS.put("poi.max-results",
+                new SettingDefinition("geopulse.poi.max-results", "40", ValueType.INTEGER, "poi", "Maximum places fetched per area"));
+        SETTING_DEFINITIONS.put("poi.commons.thumb-width",
+                new SettingDefinition("geopulse.poi.commons.thumb-width", "640", ValueType.INTEGER, "poi", "Photo thumbnail width in pixels"));
+        SETTING_DEFINITIONS.put("poi.cache.ttl-days",
+                new SettingDefinition("geopulse.poi.cache.ttl-days", "30", ValueType.INTEGER, "poi", "Days to cache place data before refetching"));
+        SETTING_DEFINITIONS.put("poi.cache.image-ttl-days",
+                new SettingDefinition("geopulse.poi.cache.image-ttl-days", "90", ValueType.INTEGER, "poi", "Days to cache photos before refetching"));
+        SETTING_DEFINITIONS.put("poi.attribution.enabled",
+                new SettingDefinition("geopulse.poi.attribution.enabled", "true", ValueType.BOOLEAN, "poi", "Show photo and data attribution (required by the Wikimedia licences)"));
+
         SETTING_DEFINITIONS.put("geocoding.chibigeo.enabled",
                 new SettingDefinition("geocoding.provider.chibigeo.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable ChibiGeo geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.chibigeo.url",
@@ -735,7 +761,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "weather", "map-matching", "panoramax", "ai", "gps", "import", "export", "system")) {
+        for (String category : List.of("auth", "geocoding", "weather", "poi", "map-matching", "panoramax", "ai", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 

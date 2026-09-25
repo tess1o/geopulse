@@ -168,6 +168,35 @@ public class GeocodingProviderFactory {
     /**
      * Get available enabled providers for informational purposes.
      */
+    /**
+     * Whether any enabled provider can currently answer forward (place-name) searches.
+     *
+     * <p>Distinct from {@link #getEnabledProviders()}: a provider may be enabled and
+     * serving reverse geocoding while being unable to do forward search — Nominatim on
+     * the public host is exactly that case.
+     */
+    public boolean isForwardSearchAvailable() {
+        if (nominatimService.isEnabled() && nominatimService.isForwardSearchAvailable()) {
+            return true;
+        }
+        if (googleMapsService.isEnabled() || mapboxService.isEnabled()
+                || photonService.isEnabled() || geoapifyService.isEnabled()
+                || chibiGeoService.isEnabled()) {
+            return true;
+        }
+        return !customProviderService.listEnabledEntities().isEmpty();
+    }
+
+    /** Configured primary forward-search provider name. */
+    public String getPrimaryProvider() {
+        return configService.getPrimaryProvider();
+    }
+
+    /** Configured fallback forward-search provider name, or empty when none is set. */
+    public String getFallbackProvider() {
+        return configService.getFallbackProvider();
+    }
+
     public List<String> getEnabledProviders() {
         List<String> enabled = new ArrayList<>();
         if (nominatimService.isEnabled()) enabled.add("Nominatim");
@@ -212,8 +241,9 @@ public class GeocodingProviderFactory {
         Uni<List<GeocodingSearchResult>> primaryResult = callProviderForward(primaryProvider, query, biasCenter, limit);
 
         String fallbackProvider = configService.getFallbackProvider();
+        Uni<List<GeocodingSearchResult>> result;
         if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(primaryProvider)) {
-            return primaryResult.onFailure().recoverWithUni(failure -> {
+            result = primaryResult.onFailure().recoverWithUni(failure -> {
                 log.warn("Primary provider '{}' forward search failed, trying fallback provider '{}'",
                         primaryProvider, fallbackProvider, failure);
                 log.warn("Forward search failure details: type={}, message={}",
@@ -221,9 +251,23 @@ public class GeocodingProviderFactory {
                         failure.getMessage());
                 return callProviderForward(fallbackProvider, query, biasCenter, limit);
             });
+        } else {
+            result = primaryResult;
         }
 
-        return primaryResult;
+        // Mirror the health reporting that callProvider() already does. Without this,
+        // forward-search failures never reached the admin integration-health dashboard.
+        return result
+                .emitOn(Infrastructure.getDefaultWorkerPool())
+                .onItem().invoke(ignored -> integrationHealthService.recordSuccess(ExternalIntegrationType.GEOCODING, primaryProvider))
+                .onFailure().invoke(failure -> integrationHealthService.recordFailure(
+                        ExternalIntegrationType.GEOCODING,
+                        primaryProvider,
+                        isCircuitOpen(failure) ? ExternalIntegrationHealthStatus.CIRCUIT_OPEN : ExternalIntegrationHealthStatus.PROVIDER_UNAVAILABLE,
+                        isCircuitOpen(failure) ? "CIRCUIT_OPEN" : failure.getClass().getSimpleName(),
+                        failure.getMessage(),
+                        null,
+                        null));
     }
 
     private Uni<List<GeocodingSearchResult>> callProviderForward(String providerName, String query, Point biasCenter, int limit) {

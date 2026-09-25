@@ -90,12 +90,15 @@ export const useTripPlanLocationSearch = (options = {}) => {
   const isLoading = ref(false)
   const error = ref('')
   const requestToken = ref(0)
+  // Outcome of the external provider leg: 'OK' | 'DISABLED' | 'FAILED'
+  const externalStatus = ref('OK')
 
   const reset = () => {
     query.value = ''
     suggestions.value = []
     isLoading.value = false
     error.value = ''
+    externalStatus.value = 'OK'
     requestToken.value += 1
   }
 
@@ -117,7 +120,7 @@ export const useTripPlanLocationSearch = (options = {}) => {
 
     try {
       const bias = options.getBias?.()
-      const results = await tripsStore.searchPlanLocations(searchQuery, {
+      const response = await tripsStore.searchPlanLocations(searchQuery, {
         lat: bias?.lat,
         lon: bias?.lon,
         limit: options.limit || 12
@@ -127,9 +130,21 @@ export const useTripPlanLocationSearch = (options = {}) => {
         return
       }
 
-      suggestions.value = (Array.isArray(results) ? results : [])
+      const results = Array.isArray(response?.results)
+        ? response.results
+        : (Array.isArray(response) ? response : [])
+
+      suggestions.value = results
         .filter((result) => !(options.excludeSavedFavorites && isTripPlanSavedFavoriteSource(result?.sourceType)))
         .map((result) => normalizeTripPlanSearchResult(result, options))
+
+      externalStatus.value = response?.externalStatus || 'OK'
+
+      // An unavailable provider used to look identical to "nothing matched". Say which
+      // it is, but only when there is nothing else to show — local matches still win.
+      if (suggestions.value.length === 0 && externalStatus.value !== 'OK' && response?.externalMessage) {
+        error.value = response.externalMessage
+      }
     } catch (searchError) {
       if (currentRequestToken !== requestToken.value) {
         return
@@ -148,6 +163,7 @@ export const useTripPlanLocationSearch = (options = {}) => {
     suggestions,
     isLoading,
     error,
+    externalStatus,
     search,
     reset
   }

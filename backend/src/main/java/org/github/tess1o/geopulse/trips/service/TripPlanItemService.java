@@ -84,13 +84,13 @@ public class TripPlanItemService {
         if (dto.getOrderIndex() != null) {
             entity.setOrderIndex(dto.getOrderIndex());
         }
-        if (dto.getIsVisited() != null) {
-            entity.setIsVisited(dto.getIsVisited());
-        }
-        entity.setVisitConfidence(dto.getVisitConfidence());
-        entity.setVisitSource(dto.getVisitSource());
-        entity.setVisitedAt(dto.getVisitedAt());
-        entity.setManualOverrideState(dto.getManualOverrideState());
+
+        // Visit evidence (isVisited, visitConfidence, visitSource, visitedAt,
+        // manualOverrideState) is deliberately NOT touched here. It is owned by the
+        // auto-matcher and by the visit-override endpoint; an edit that only renames a
+        // stop must not erase how it was matched, and must not silently clear a user's
+        // manual override (which would re-arm the matcher to overwrite their decision).
+        // Those fields are no longer part of UpdateTripPlanItemDto at all.
 
         tripPlanItemRepository.persist(entity);
         log.info("Updated trip plan item {} for trip {} and user {}", itemId, tripId, userId);

@@ -195,6 +195,18 @@ public class NominatimGeocodingService {
                 });
     }
 
+    /**
+     * Whether forward search can actually run with the current configuration.
+     *
+     * <p>Forward search is a separate capability from reverse geocoding: on the public
+     * Nominatim host reverse geocoding works while forward search is blocked unless
+     * explicitly enabled. A configuration can therefore be valid for geocoding yet
+     * unable to answer place-name searches.
+     */
+    public boolean isForwardSearchAvailable() {
+        return configService.isNominatimPublicHostForwardSearchEnabled() || !isPublicNominatimHost();
+    }
+
     private boolean isPublicNominatimHost() {
         String url = configService.getNominatimUrl().orElse(defaultUrl);
         try {

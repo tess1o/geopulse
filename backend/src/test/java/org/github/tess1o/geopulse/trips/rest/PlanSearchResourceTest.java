@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.trips.rest;
 
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.trips.model.dto.PlanSearchExternalStatus;
+import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResponseDto;
 import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResultDto;
 import org.github.tess1o.geopulse.trips.service.TripPlanSearchService;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +18,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,19 +51,42 @@ class PlanSearchResourceTest {
     }
 
     @Test
-    void search_shouldReturnServiceResults() {
+    void search_shouldReturnServiceResultsWithExternalStatus() {
         UUID userId = UUID.randomUUID();
         when(currentUserService.getCurrentUserId()).thenReturn(userId);
         when(tripPlanSearchService.search(eq(userId), eq("berlin"), eq(52.52), eq(13.40), eq(12)))
-                .thenReturn(List.of(PlanSearchResultDto.builder()
-                        .sourceType("external-search")
-                        .title("Berlin")
-                        .latitude(52.52)
-                        .longitude(13.40)
-                        .build()));
+                .thenReturn(PlanSearchResponseDto.builder()
+                        .results(List.of(PlanSearchResultDto.builder()
+                                .sourceType("external-search")
+                                .title("Berlin")
+                                .latitude(52.52)
+                                .longitude(13.40)
+                                .build()))
+                        .externalStatus(PlanSearchExternalStatus.OK)
+                        .build());
 
-        List<PlanSearchResultDto> response = resource.search("berlin", 52.52, 13.40, 12);
+        PlanSearchResponseDto response = resource.search("berlin", 52.52, 13.40, 12);
 
-        assertThat(response).hasSize(1);
+        assertThat(response.getResults()).hasSize(1);
+        assertThat(response.getExternalStatus()).isEqualTo(PlanSearchExternalStatus.OK);
+    }
+
+    @Test
+    void search_shouldPassThroughTheDisabledReason() {
+        UUID userId = UUID.randomUUID();
+        when(currentUserService.getCurrentUserId()).thenReturn(userId);
+        when(tripPlanSearchService.search(eq(userId), eq("paris"), isNull(), isNull(), isNull()))
+                .thenReturn(PlanSearchResponseDto.builder()
+                        .results(List.of())
+                        .externalStatus(PlanSearchExternalStatus.DISABLED)
+                        .externalMessage("No geocoding provider is available for place search.")
+                        .build());
+
+        PlanSearchResponseDto response = resource.search("paris", null, null, null);
+
+        // An empty result set must be accompanied by the reason, not silently empty.
+        assertThat(response.getResults()).isEmpty();
+        assertThat(response.getExternalStatus()).isEqualTo(PlanSearchExternalStatus.DISABLED);
+        assertThat(response.getExternalMessage()).isNotBlank();
     }
 }

@@ -423,7 +423,14 @@ export const useTripsStore = defineStore('trips', {
         }
 
         const response = await apiService.get('/trip-planning/searches', params)
-        return Array.isArray(response) ? response : []
+
+        // The endpoint returns an envelope carrying the external provider outcome, so a
+        // failed or unconfigured provider is distinguishable from a genuine empty result.
+        if (response && Array.isArray(response.results)) {
+          return response
+        }
+
+        return { results: Array.isArray(response) ? response : [], externalStatus: 'OK' }
       } catch (error) {
         this.error = normalizeApiError(error, 'Failed to search locations')
         throw this.error

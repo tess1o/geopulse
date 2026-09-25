@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **325** distinct env vars.
+Backend runtime currently includes **335** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -387,6 +387,25 @@ Weather feature/provider/sampling/quota settings can also be managed from **Admi
 | `GEOPULSE_WEATHER_TARGETS_COMPLETED_RETENTION_DAYS` | `7` | Retention for completed and skipped weather target queue records. Stored weather samples are not removed by this cleanup. Property: \`geopulse.weather.targets.completed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_FAILED_RETENTION_DAYS` | `30` | Retention for failed weather target queue records. Property: \`geopulse.weather.targets.failed-retention-days\`. | Positive integer days. | Backend restart |
 | `GEOPULSE_WEATHER_TARGETS_IN_PROGRESS_TIMEOUT_MINUTES` | `60` | Age after which locked in-progress weather targets are recovered for retry. Property: \`geopulse.weather.targets.in-progress-timeout-minutes\`. | Positive integer minutes. | Backend restart |
+
+### Place Discovery (POI) (10)
+
+Place discovery suggests notable places worth visiting, with photos, when planning a trip. It reads Wikidata for the places and Wikimedia Commons for the images. Settings can also be managed from **Admin Dashboard > System Settings > Place discovery**. Saved Admin Settings values are stored in the database and take precedence over these environment defaults.
+
+Both endpoints are shared public infrastructure. The place and photo caches are what keep the request volume polite, so prefer longer cache lifetimes unless you are self-hosting. Photo and data attribution is a licence obligation (ODbL for OpenStreetMap-adjacent data, per-file CC licences for Commons media) and should stay enabled.
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_POI_ENABLED` | `true` | Master switch for place discovery and photo suggestions. Property: \`geopulse.poi.enabled\`. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_USER_AGENT` | `GeoPulse/<version> (+https://github.com/tess1o/geopulse)` | User-Agent sent to Wikidata and Commons. Property: \`geopulse.poi.user-agent\`. Keep it identifying your instance; an anonymous client is the one that gets rate-limited. | Non-empty string. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_LANGUAGE` | `en` | Preferred language for place names and descriptions. Property: \`geopulse.poi.language\`. | Simple language tag (e.g. `en`, `de`, `uk`). Invalid values fall back to `en`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_ATTRIBUTION_ENABLED` | `true` | Display photo credits and data attribution. Property: \`geopulse.poi.attribution.enabled\`. Disabling it in your own deployment means you take on the licence obligation yourself. | \`true\` or \`false\`. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_WIKIDATA_ENDPOINT` | `https://query.wikidata.org` | Wikidata Query Service base URL. Property: \`geopulse.poi.wikidata.endpoint\`. Point at a self-hosted instance to avoid public rate limits. Query is made with a bounded radius. | Absolute URL, no trailing slash. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_COMMONS_ENDPOINT` | `https://commons.wikimedia.org` | Wikimedia Commons API base URL, used to resolve per-file credits. Property: \`geopulse.poi.commons.endpoint\`. | Absolute URL, no trailing slash. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_MAX_RESULTS` | `40` | Upper limit on places fetched from Wikidata for one area. Property: \`geopulse.poi.max-results\`. Higher values cost more upstream time per uncached area. | Positive integer. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_THUMB_WIDTH` | `640` | Requested photo thumbnail width in pixels. Property: \`geopulse.poi.commons.thumb-width\`. Commons performs the resize, so larger values mean slower fetches and more disk. | Positive integer pixels. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_CACHE_TTL_DAYS` | `30` | Days place data is cached before refetching. Property: \`geopulse.poi.cache.ttl-days\`. The cache is global rather than per user, so one fetch serves everyone. | Positive integer days. | Backend restart for env changes; Admin UI changes apply through system settings |
+| `GEOPULSE_POI_IMAGE_CACHE_TTL_DAYS` | `90` | Days cached photo bytes are reused before refetching. Property: \`geopulse.poi.cache.image-ttl-days\`. | Positive integer days. | Backend restart for env changes; Admin UI changes apply through system settings |
 
 ### Map Matching (18)
 

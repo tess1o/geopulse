@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.admin.dto.BulkUpdateRequest;
 import org.github.tess1o.geopulse.admin.dto.MapMatchingProviderTestResponse;
 import org.github.tess1o.geopulse.admin.dto.MapMatchingRebuildResponse;
 import org.github.tess1o.geopulse.admin.dto.PanoramaxTestResponse;
+import org.github.tess1o.geopulse.admin.dto.PoiTestResponse;
 import org.github.tess1o.geopulse.admin.dto.SettingResetResponse;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
 import org.github.tess1o.geopulse.admin.model.ActionType;
@@ -36,6 +37,7 @@ import org.github.tess1o.geopulse.mapmatching.service.MapMatchingWorker;
 import org.github.tess1o.geopulse.mapmatching.dto.MapMatchingAdminStatusDTO;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildMode;
 import org.github.tess1o.geopulse.mapmatching.model.MapMatchingRebuildResult;
+import org.github.tess1o.geopulse.poi.service.PoiConfigurationService;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationHealthStatus;
 import org.github.tess1o.geopulse.integration.model.ExternalIntegrationType;
 import org.github.tess1o.geopulse.integration.service.ExternalIntegrationHealthService;
@@ -45,9 +47,11 @@ import org.github.tess1o.geopulse.weather.service.WeatherService;
 import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestResponse;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,6 +112,9 @@ public class AdminSettingsResource {
 
     @Inject
     LogLevelService logLevelService;
+
+    @Inject
+    PoiConfigurationService poiConfigurationService;
 
     /**
      * Get all settings grouped by category.
@@ -344,6 +351,78 @@ public class AdminSettingsResource {
         } catch (Exception exception) {
             return new PanoramaxTestResponse(false, endpoint,
                     "Could not reach Panoramax endpoint: " + exception.getMessage());
+        }
+    }
+
+    /**
+     * Probes the configured place-discovery endpoints.
+     *
+     * <p>Reads the effective configuration and calls it, so an admin editing a URL gets
+     * immediate feedback. Never throws - a failure is data in the response, matching the
+     * other connection tests.
+     */
+    @POST
+    @Path("/poi/connection-tests")
+    @RolesAllowed(SecurityRoles.ADMIN)
+    public PoiTestResponse testPoiConnection() {
+        // Read through PoiConfigurationService, never by raw settings key: the keys are the short
+        // poi.* names, and going through the service means a blank setting falls back to the same
+        // default here as it does for the real clients.
+        String wikidataEndpoint = poiConfigurationService.getWikidataEndpoint();
+        String commonsEndpoint = poiConfigurationService.getCommonsEndpoint();
+        String userAgent = poiConfigurationService.getUserAgent();
+
+        PoiEndpointProbe wikidata = probeWikidata(wikidataEndpoint, userAgent);
+        PoiEndpointProbe commons = probeCommons(commonsEndpoint, userAgent);
+
+        return new PoiTestResponse(wikidata.ok() && commons.ok(),
+                wikidata.ok(), wikidataEndpoint, wikidata.detail(),
+                commons.ok(), commonsEndpoint, commons.detail());
+    }
+
+    private record PoiEndpointProbe(boolean ok, String detail) {
+    }
+
+    private PoiEndpointProbe probeWikidata(String endpoint, String userAgent) {
+        try {
+            // Deliberately the smallest possible query: this runs against shared public
+            // infrastructure and must not be a load source.
+            String body = "query=" + URLEncoder.encode(
+                    "SELECT ?item WHERE { ?item wdt:P31 wd:Q5 } LIMIT 1", StandardCharsets.UTF_8);
+            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint + "/sparql"))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("User-Agent", userAgent)
+                    .header("Accept", "application/sparql-results+json")
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+            boolean ok = response.statusCode() >= 200 && response.statusCode() < 300;
+            return new PoiEndpointProbe(ok, ok ? null : "Wikidata returned HTTP " + response.statusCode());
+        } catch (Exception exception) {
+            return new PoiEndpointProbe(false, "Could not reach Wikidata: " + exception.getMessage());
+        }
+    }
+
+    private PoiEndpointProbe probeCommons(String endpoint, String userAgent) {
+        try {
+            // siteinfo rather than imageinfo: it proves the API answers without depending
+            // on any particular file still existing.
+            URI uri = URI.create(endpoint + "/w/api.php?action=query&meta=siteinfo&format=json");
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .timeout(Duration.ofSeconds(15))
+                    .header("User-Agent", userAgent)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+            boolean ok = response.statusCode() >= 200 && response.statusCode() < 300
+                    && objectMapper.readTree(response.body()).path("query").path("general").isObject();
+            return new PoiEndpointProbe(ok, ok ? null : "Commons did not return API metadata (HTTP "
+                    + response.statusCode() + ")");
+        } catch (Exception exception) {
+            return new PoiEndpointProbe(false, "Could not reach Commons: " + exception.getMessage());
         }
     }
 

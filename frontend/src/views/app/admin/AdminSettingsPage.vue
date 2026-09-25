@@ -68,6 +68,7 @@ import GeocodingSettingsTab from '@/components/admin/settings/tabs/GeocodingSett
 import WeatherSettingsTab from '@/components/admin/settings/tabs/WeatherSettingsTab.vue'
 import MapMatchingSettingsTab from '@/components/admin/settings/tabs/MapMatchingSettingsTab.vue'
 import PanoramaxSettingsTab from '@/components/admin/settings/tabs/PanoramaxSettingsTab.vue'
+import PoiSettingsTab from '@/components/admin/settings/tabs/PoiSettingsTab.vue'
 import AISettingsTab from '@/components/admin/settings/tabs/AISettingsTab.vue'
 import GPSProcessingSettingsTab from '@/components/admin/settings/tabs/GPSProcessingSettingsTab.vue'
 import ImportSettingsTab from '@/components/admin/settings/tabs/ImportSettingsTab.vue'
@@ -109,6 +110,7 @@ const settingsGroups = ref([
     { label: 'Weather', icon: 'pi pi-cloud', key: 'weather' },
     { label: 'Map Matching', icon: 'pi pi-map', key: 'map-matching' },
     { label: 'Panoramax', icon: 'pi pi-images', key: 'panoramax' },
+    { label: 'Place discovery', icon: 'pi pi-compass', key: 'poi' },
     { label: 'AI Assistant', icon: 'pi pi-sparkles', key: 'ai' }
   ] },
   { label: 'System', items: [{ label: 'System', icon: 'pi pi-server', key: 'system' }] }
@@ -123,7 +125,7 @@ const normalizeTabKey = (tabKey) => {
   return legacyTabAliases[tabKey] || tabKey
 }
 
-const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'panoramax', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
+const validTabs = ['authentication', 'geocoding', 'weather', 'map-matching', 'panoramax', 'poi', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
 
 const currentTabComponent = computed(() => {
   const components = {
@@ -132,6 +134,7 @@ const currentTabComponent = computed(() => {
     weather: WeatherSettingsTab,
     'map-matching': MapMatchingSettingsTab,
     panoramax: PanoramaxSettingsTab,
+    poi: PoiSettingsTab,
     ai: AISettingsTab,
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,

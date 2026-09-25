@@ -11,7 +11,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResultDto;
+import org.github.tess1o.geopulse.trips.model.dto.PlanSearchResponseDto;
 import org.github.tess1o.geopulse.shared.api.ApiPaths;
 import org.github.tess1o.geopulse.trips.service.TripPlanSearchService;
 
@@ -39,7 +39,7 @@ public class PlanSearchResource {
     }
 
     @GET
-    public List<PlanSearchResultDto> search(@QueryParam("q") String query,
+    public PlanSearchResponseDto search(@QueryParam("q") String query,
                            @QueryParam("latitude") Double latitude,
                            @QueryParam("longitude") Double longitude,
                            @QueryParam("limit") Integer limit) {

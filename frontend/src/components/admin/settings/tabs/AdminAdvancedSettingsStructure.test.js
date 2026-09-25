@@ -16,6 +16,7 @@ import AuthenticationSettingsTab from './AuthenticationSettingsTab.vue'
 import GeocodingSettingsTab from './GeocodingSettingsTab.vue'
 import ImportSettingsTab from './ImportSettingsTab.vue'
 import SystemSettingsTab from './SystemSettingsTab.vue'
+import PoiSettingsTab from './PoiSettingsTab.vue'
 import { buildAdminSettingsIndex } from '@/constants/globalSearchRegistry'
 import { useAuthStore } from '@/stores/auth'
 import { searchAndRankItems } from '@/utils/globalSearchScoring'
@@ -103,6 +104,18 @@ const settingsByCategory = {
     setting('import.geonames.countries.url', 'STRING', 'https://download.example/countryInfo.txt'),
     setting('import.geonames.countries.batch-size')
   ],
+  poi: [
+    setting('poi.enabled', 'BOOLEAN', true),
+    setting('poi.user-agent', 'STRING', 'GeoPulse/test'),
+    setting('poi.language', 'STRING', 'en'),
+    setting('poi.attribution.enabled', 'BOOLEAN', true),
+    setting('poi.wikidata.endpoint', 'STRING', 'https://query.wikidata.org'),
+    setting('poi.commons.endpoint', 'STRING', 'https://commons.wikimedia.org'),
+    setting('poi.max-results'),
+    setting('poi.commons.thumb-width'),
+    setting('poi.cache.ttl-days'),
+    setting('poi.cache.image-ttl-days')
+  ],
   system: [
     setting('system.user.default-distance-unit', 'STRING', 'KILOMETERS'),
     setting('system.version-check.github-api-url', 'STRING', 'https://api.example/releases/latest'),
@@ -181,6 +194,13 @@ describe('Admin advanced settings structure', () => {
     expect(system.text()).toContain('Update Check')
     expect(system.text()).toContain('Water Dataset')
     expect(system.text()).toContain('system.water-dataset.url')
+
+    const poi = await mountTab(PoiSettingsTab)
+    expect(poi.text()).toContain('Advanced settings')
+    // The user-agent must stay in the basic section: burying it is how a self-hoster ends
+    // up rate-limited without ever seeing the setting that controls it.
+    expect(poi.text()).toContain('poi.user-agent')
+    expect(poi.text()).toContain('poi.wikidata.endpoint')
   })
 
   it('adds promoted settings to admin settings search metadata', () => {
@@ -193,10 +213,20 @@ describe('Admin advanced settings structure', () => {
     expect(indexedSettings.has('import.geonames.countries.url')).toBe(true)
     expect(indexedSettings.has('system.version-check.github-api-url')).toBe(true)
     expect(indexedSettings.has('backup.local.path')).toBe(true)
+    expect(indexedSettings.has('poi.wikidata.endpoint')).toBe(true)
 
     const backupResults = searchAndRankItems('backup', index, { minScore: 120 }).map(entry => entry.item)
     expect(backupResults.length).toBeGreaterThan(0)
     expect(backupResults.every(item => item.tab === 'backup')).toBe(true)
     expect(backupResults.map(item => item.setting)).toContain('backup.local.path')
+
+    // Guards ADMIN_TAB_BY_PREFIX: without a poi. entry these would deep-link to the
+    // wrong tab rather than fail.
+    // Asserted from the index rather than through a search: searching "poi" also matches
+    // "endpoint" (en-poi-nt), so unrelated settings legitimately rank in.
+    const poiItems = index.filter(item => item.setting.startsWith('poi.'))
+    expect(poiItems.length).toBeGreaterThan(0)
+    expect(poiItems.every(item => item.tab === 'poi')).toBe(true)
+    expect(poiItems.map(item => item.setting)).toContain('poi.wikidata.endpoint')
   })
 })

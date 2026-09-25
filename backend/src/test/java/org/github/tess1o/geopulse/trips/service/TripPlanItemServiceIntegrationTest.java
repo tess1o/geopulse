@@ -81,15 +81,22 @@ class TripPlanItemServiceIntegrationTest {
     }
     @Test
     @Transactional
-    void updateTripPlanItem_shouldPersistManualOverrideState() {
+    void updateTripPlanItem_shouldPreserveVisitEvidenceAndManualOverride() {
+        Instant visitedAt = Instant.parse("2026-02-02T12:30:00Z");
         TripPlanItemEntity item = TripPlanItemEntity.builder()
                 .trip(tripRepository.findById(tripId))
                 .title("Old title")
                 .priority(TripPlanItemPriority.OPTIONAL)
                 .orderIndex(0)
+                // Evidence as the auto-matcher or a user's manual override would leave it.
+                .isVisited(true)
+                .visitConfidence(0.93)
+                .visitSource(TripPlanItemVisitSource.MANUAL)
+                .visitedAt(visitedAt)
+                .manualOverrideState(TripPlanItemOverrideState.CONFIRMED)
                 .build();
         tripPlanItemRepository.persist(item);
-        Instant visitedAt = Instant.parse("2026-02-02T12:30:00Z");
+
         UpdateTripPlanItemDto updateDto = new UpdateTripPlanItemDto();
         updateDto.setTitle("  New title  ");
         updateDto.setNotes("Updated notes");
@@ -98,15 +105,17 @@ class TripPlanItemServiceIntegrationTest {
         updateDto.setPlannedDay(LocalDate.of(2026, 2, 2));
         updateDto.setPriority(TripPlanItemPriority.MUST);
         updateDto.setOrderIndex(5);
-        updateDto.setIsVisited(true);
-        updateDto.setVisitConfidence(0.93);
-        updateDto.setVisitSource(TripPlanItemVisitSource.MANUAL);
-        updateDto.setVisitedAt(visitedAt);
-        updateDto.setManualOverrideState(TripPlanItemOverrideState.CONFIRMED);
+
         TripPlanItemDto updated = tripPlanItemService.updateTripPlanItem(userId, tripId, item.getId(), updateDto);
+
+        // The editable fields change...
         assertThat(updated.getTitle()).isEqualTo("New title");
         assertThat(updated.getPriority()).isEqualTo(TripPlanItemPriority.MUST);
         assertThat(updated.getOrderIndex()).isEqualTo(5);
+
+        // ...but renaming a stop must not erase how it was matched, nor clear the user's
+        // manual override. Clearing the override would re-arm the auto-matcher to
+        // overwrite the decision they made explicitly.
         assertThat(updated.getIsVisited()).isTrue();
         assertThat(updated.getVisitSource()).isEqualTo(TripPlanItemVisitSource.MANUAL);
         assertThat(updated.getVisitConfidence()).isEqualTo(0.93);

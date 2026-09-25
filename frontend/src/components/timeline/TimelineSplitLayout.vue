@@ -14,6 +14,7 @@
         <div
           v-if="collapsible"
           class="timeline-sheet-handle"
+          :class="{ 'timeline-sheet-handle--mobile-only': handleMobileOnly }"
           @pointerdown="handlePointerDown"
         >
           <span class="timeline-sheet-grip"></span>
@@ -69,6 +70,15 @@ const props = defineProps({
   collapsible: {
     type: Boolean,
     default: true
+  },
+  /**
+   * Show the drag handle only in sheet mode (mobile / landscape phone). On desktop the
+   * handle is a visible bar above the side pane, which is redundant when the pane already
+   * renders its own heading. Off by default so the Timeline page is unaffected.
+   */
+  handleMobileOnly: {
+    type: Boolean,
+    default: false
   },
   collapsedLabel: {
     type: String,
@@ -196,14 +206,25 @@ const stopDragging = () => {
   window.removeEventListener('pointermove', handlePointerMove)
   window.removeEventListener('pointerup', handlePointerUp)
   window.removeEventListener('pointercancel', handlePointerUp)
+  // A drag leaves `didDrag` set, and `cycleSheetState` spends that flag on the click the
+  // browser fires straight after the drag - which is the intent. Letting it live any longer
+  // swallowed the *next*, unrelated tap on the toggle button instead. A task boundary is
+  // enough: the drag's own click has run by then, and cycleSheetState clears the flag itself
+  // when it consumes one.
+  setTimeout(() => {
+    didDrag.value = false
+  }, 0)
 }
 
 const handlePointerUp = () => {
   if (!isDragging.value) return
 
-  if (!didDrag.value && sheetState.value === 'collapsed') {
+  // A press that never moved is a tap, and a tap walks the sheet to its next state from
+  // wherever it is. This used to be a collapsed -> half special case, so a tap did nothing at
+  // all once the sheet was mid or fully open and half was only reachable by dragging to it.
+  if (!didDrag.value) {
     stopDragging()
-    setSheetState('half')
+    cycleSheetState()
     return
   }
 
@@ -377,6 +398,18 @@ defineExpose({
 
 .timeline-sheet-handle:hover {
   background: var(--gp-surface-light);
+}
+
+/* Opt-in: the handle is a sheet affordance, so on desktop it is hidden rather than
+   stacked above a side pane that already has its own heading. */
+.timeline-sheet-handle--mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px), (max-height: 520px) and (pointer: coarse) {
+  .timeline-sheet-handle--mobile-only {
+    display: flex;
+  }
 }
 
 .timeline-sheet-toggle-button {
@@ -605,7 +638,13 @@ defineExpose({
     transform: none;
   }
 
-  .timeline-sheet--compact {
+  /* The collapsed state is matched by two rules: this one, and
+     `.timeline-main--sheet-collapsed .timeline-split-side-pane` above (two classes + the scope
+     attribute) which pins the pane full-width to the bottom edge. At one class + attribute the
+     pill geometry below lost on specificity whatever the source order, so the collapsed sheet
+     rendered as a full-width bar. Matching that specificity here lets order decide - this block
+     is later - and the floating pill is what renders. */
+  .timeline-main--sheet-collapsed .timeline-sheet--compact {
     left: 50%;
     right: auto;
     bottom: calc(0.55rem + env(safe-area-inset-bottom));
