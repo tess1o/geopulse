@@ -7,18 +7,20 @@
       variant="fullwidth"
     >
       <template #actions>
-        <Button
-          label="From Timeline Label"
-          icon="pi pi-tag"
-          outlined
-          @click="openFromTimelineLabelDialog"
-        />
-        <Button
-          label="Create Trip Plan"
-          icon="pi pi-plus"
-          class="gp-btn-primary"
-          @click="openCreateDialog"
-        />
+        <div class="trips-page-actions">
+          <Button
+            label="From Timeline Label"
+            icon="pi pi-tag"
+            outlined
+            @click="openFromTimelineLabelDialog"
+          />
+          <Button
+            label="Create Trip Plan"
+            icon="pi pi-plus"
+            class="gp-btn-primary"
+            @click="openCreateDialog"
+          />
+        </div>
       </template>
 
       <Message
@@ -44,14 +46,14 @@
               :options="statusOptions"
               optionLabel="label"
               optionValue="value"
-              class="status-select"
+              class="status-select trip-status-filter"
             />
             <Select
               v-model="accessFilter"
               :options="accessOptions"
               optionLabel="label"
               optionValue="value"
-              class="status-select"
+              class="status-select trip-access-filter"
             />
           </div>
 
@@ -59,11 +61,14 @@
             icon="pi pi-refresh"
             label="Refresh"
             outlined
+            class="refresh-button"
             @click="refreshTrips"
           />
         </div>
 
         <DataTable
+          v-if="!isMobile"
+          class="desktop-table"
           :value="filteredTrips"
           :paginator="true"
           :rows="10"
@@ -170,7 +175,90 @@
             </div>
           </template>
         </DataTable>
+
+        <div v-else class="mobile-trip-plan-panel">
+          <div v-if="filteredTrips.length === 0" class="empty-state">
+            <i class="pi pi-briefcase empty-state-icon"></i>
+            <p>No trip plans found.</p>
+            <small>Create your first trip plan to start planning.</small>
+          </div>
+
+          <template v-else>
+            <div class="mobile-trip-plan-list" role="list">
+              <article
+                v-for="trip in paginatedTrips"
+                :key="trip.id"
+                class="mobile-trip-plan-card"
+                role="listitem"
+              >
+                <header class="mobile-trip-plan-header">
+                  <span :style="{ backgroundColor: trip.color || 'var(--gp-primary)' }" class="trip-color-dot"></span>
+                  <button
+                    type="button"
+                    class="trip-name-link mobile-trip-plan-name"
+                    @click="openWorkspace(trip)"
+                  >
+                    {{ trip.name }}
+                  </button>
+                  <Button
+                    icon="pi pi-ellipsis-v"
+                    severity="secondary"
+                    text
+                    rounded
+                    size="small"
+                    class="mobile-trip-plan-actions-button"
+                    aria-haspopup="true"
+                    aria-controls="mobile-trip-plan-action-menu"
+                    :aria-label="`Actions for ${trip.name}`"
+                    @click="openMobileActionMenu($event, trip)"
+                  />
+                </header>
+
+                <p v-if="trip.notes" class="mobile-trip-plan-notes">{{ trip.notes }}</p>
+
+                <div class="mobile-trip-plan-tags">
+                  <Tag :severity="getStatusSeverity(trip.status)" :value="getStatusLabel(trip.status)" />
+                  <Tag :severity="getAccessSeverity(trip)" :value="getAccessLabel(trip)" />
+                </div>
+
+                <div class="mobile-trip-plan-meta">
+                  <span class="mobile-trip-plan-meta-item">
+                    <i class="pi pi-calendar"></i>
+                    <span>{{ formatTripDateRange(trip) }}</span>
+                  </span>
+                  <span class="mobile-trip-plan-meta-item">
+                    <i class="pi pi-clock"></i>
+                    <span>{{ formatDurationLabel(trip.startTime, trip.endTime) }}</span>
+                  </span>
+                </div>
+              </article>
+            </div>
+
+            <Paginator
+              v-if="mobileTotalPages > 1"
+              :first="mobilePage * MOBILE_TRIP_ROWS"
+              :rows="MOBILE_TRIP_ROWS"
+              :total-records="filteredTrips.length"
+              class="mobile-trip-plan-paginator"
+              @page="onMobilePageChange"
+            >
+              <template #start>
+                <span class="mobile-paginator-info">Page {{ mobilePage + 1 }} of {{ mobileTotalPages }}</span>
+              </template>
+              <template #end>
+                <span class="mobile-paginator-info">{{ filteredTrips.length }} total</span>
+              </template>
+            </Paginator>
+          </template>
+        </div>
       </BaseCard>
+
+      <Menu
+        id="mobile-trip-plan-action-menu"
+        ref="mobileActionMenu"
+        :model="mobileActionMenuItems"
+        popup
+      />
     </PageContainer>
 
     <Dialog
@@ -344,7 +432,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -369,6 +457,8 @@ import DatePicker from 'primevue/datepicker'
 import Textarea from 'primevue/textarea'
 import ColorPicker from 'primevue/colorpicker'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Menu from 'primevue/menu'
+import Paginator from 'primevue/paginator'
 
 const router = useRouter()
 const route = useRoute()
@@ -379,6 +469,7 @@ const { getRandomColor, formatColorWithHash } = useTimelineLabel()
 const tripsStore = useTripsStore()
 const timelineLabelsStore = useTimelineLabelsStore()
 const TRIP_PLANS_HELP_DISMISSED_KEY = 'gp.trip-plans.help.dismissed'
+const MOBILE_TRIP_ROWS = 10
 
 const { trips } = storeToRefs(tripsStore)
 const { timelineLabels } = storeToRefs(timelineLabelsStore)
@@ -398,6 +489,10 @@ const showTripPlansHelpMessage = ref(true)
 const showLinkedTripDeleteDialog = ref(false)
 const linkedTripDeleteTarget = ref(null)
 const isDeletingLinkedTrip = ref(false)
+const isMobile = ref(typeof window !== 'undefined' && window.innerWidth <= 768)
+const mobilePage = ref(0)
+const mobileActionMenu = ref()
+const mobileActionTrip = ref(null)
 
 const tripForm = ref({
   name: '',
@@ -474,6 +569,13 @@ const filteredTrips = computed(() => {
   return items
 })
 
+const mobileTotalPages = computed(() => Math.max(1, Math.ceil(filteredTrips.value.length / MOBILE_TRIP_ROWS)))
+
+const paginatedTrips = computed(() => {
+  const start = mobilePage.value * MOBILE_TRIP_ROWS
+  return filteredTrips.value.slice(start, start + MOBILE_TRIP_ROWS)
+})
+
 const linkedTripDeleteTargetLabel = computed(() => {
   if (!linkedTripDeleteTarget.value?.timelineLabelId) return 'Unknown'
   const tag = (timelineLabels.value || []).find((item) => Number(item.id) === Number(linkedTripDeleteTarget.value.timelineLabelId))
@@ -528,6 +630,14 @@ const formatDateTime = (value) => {
 
 const formatDurationLabel = (startTime, endTime) => {
   return formatTripRangeDuration(startTime, endTime)
+}
+
+const formatTripDateRange = (trip) => {
+  const startTime = trip?.startTime
+  const endTime = trip?.endTime
+  if (!startTime && !endTime) return 'No date range'
+  if (!startTime || !endTime) return formatDateTime(startTime || endTime)
+  return `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`
 }
 
 const refreshTrips = async () => {
@@ -769,6 +879,37 @@ const confirmDeleteTrip = (trip) => {
   })
 }
 
+const onMobilePageChange = (event) => {
+  mobilePage.value = event.page
+}
+
+const mobileActionMenuItems = computed(() => {
+  const trip = mobileActionTrip.value
+  if (!trip) return []
+
+  const isOwner = isTripOwner(trip)
+  const items = [
+    { label: 'Open trip planner', icon: 'pi pi-briefcase', command: () => openWorkspace(trip) }
+  ]
+
+  if (isLinkedToLabel(trip) && isOwner) {
+    items.push({ label: 'Open timeline label', icon: 'pi pi-tag', command: () => openLinkedLabel(trip) })
+    items.push({ label: 'Unlink timeline label', icon: 'pi pi-link', command: () => unlinkTripFromLabel(trip) })
+  }
+
+  if (isOwner) {
+    items.push({ label: 'Edit trip plan', icon: 'pi pi-pencil', command: () => openEditDialog(trip) })
+    items.push({ label: 'Delete trip plan', icon: 'pi pi-trash', command: () => confirmDeleteTrip(trip) })
+  }
+
+  return items
+})
+
+const openMobileActionMenu = (event, trip) => {
+  mobileActionTrip.value = trip
+  mobileActionMenu.value?.toggle(event)
+}
+
 const openFromTimelineLabelDialog = async () => {
   try {
     if (!timelineLabels.value || timelineLabels.value.length === 0) {
@@ -866,7 +1007,21 @@ const handleRouteTripAction = async () => {
   await clearRouteTripActionQuery()
 }
 
+const handleResize = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+watch(() => filteredTrips.value.length, () => {
+  const lastPage = Math.max(0, mobileTotalPages.value - 1)
+  if (mobilePage.value > lastPage) {
+    mobilePage.value = lastPage
+  }
+})
+
 onMounted(async () => {
+  handleResize()
+  window.addEventListener('resize', handleResize)
+
   try {
     showTripPlansHelpMessage.value = localStorage.getItem(TRIP_PLANS_HELP_DISMISSED_KEY) !== '1'
   } catch (error) {
@@ -881,6 +1036,10 @@ onMounted(async () => {
   })
 
   await handleRouteTripAction()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -963,6 +1122,121 @@ onMounted(async () => {
   max-width: 420px;
 }
 
+/* Mobile trip plan card list */
+.mobile-trip-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-trip-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-md);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  background: var(--gp-surface-light);
+}
+
+.mobile-trip-plan-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.mobile-trip-plan-header .trip-color-dot {
+  margin-top: 0;
+}
+
+.mobile-trip-plan-name {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.mobile-trip-plan-actions-button {
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  padding: 0 !important;
+}
+
+.mobile-trip-plan-notes {
+  margin: 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.mobile-trip-plan-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gp-spacing-xs);
+}
+
+.mobile-trip-plan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gp-spacing-xs) var(--gp-spacing-md);
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+}
+
+.mobile-trip-plan-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.mobile-trip-plan-meta-item i {
+  color: var(--gp-text-muted);
+  font-size: 0.8rem;
+}
+
+.mobile-trip-plan-paginator {
+  margin-top: var(--gp-spacing-md);
+  border-top: 1px solid var(--gp-border-light);
+  padding-top: var(--gp-spacing-sm);
+}
+
+.mobile-trip-plan-paginator :deep(.p-paginator) {
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-page),
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-next),
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-prev),
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-first),
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-last) {
+  min-width: 2rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  padding: 0 !important;
+  margin: 0 1px !important;
+  font-size: 0.8rem !important;
+}
+
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-first),
+.mobile-trip-plan-paginator :deep(.p-paginator .p-paginator-last) {
+  display: none !important;
+}
+
+.mobile-paginator-info {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+}
+
 .empty-state {
   text-align: center;
   padding: var(--gp-spacing-xl);
@@ -1027,20 +1301,72 @@ onMounted(async () => {
   margin-top: var(--gp-spacing-xs);
 }
 
+/* Both header actions stay on one row instead of the stacked column PageContainer uses. */
+.trips-page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+}
+
 @media (max-width: 768px) {
-  .trips-filters {
-    flex-direction: column;
-    align-items: stretch;
+  /* Full-width search on its own row, then status, access and refresh share one row. */
+  .trips-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--gp-spacing-sm);
   }
 
-  .search-input,
+  .trips-filters {
+    display: contents;
+  }
+
+  .search-input {
+    grid-area: 1 / 1 / 2 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .trip-status-filter {
+    grid-area: 2 / 1 / 3 / 2;
+  }
+
+  .trip-access-filter {
+    grid-area: 2 / 2 / 3 / 3;
+  }
+
+  .refresh-button {
+    grid-area: 2 / 3 / 3 / 4;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+  }
+
+  .refresh-button :deep(.p-button-label) {
+    display: none;
+  }
+
   .status-select {
-    min-width: 100%;
+    min-width: 0;
     width: 100%;
   }
 
   .trip-note {
     max-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .trips-page-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gp-spacing-sm);
+  }
+
+  .trips-page-actions :deep(.p-button) {
+    padding: 0.55rem var(--gp-spacing-sm);
+    font-size: 0.85rem;
+    white-space: nowrap;
   }
 }
 </style>
