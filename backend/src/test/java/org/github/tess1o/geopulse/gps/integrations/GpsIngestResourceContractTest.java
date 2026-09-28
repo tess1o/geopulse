@@ -18,11 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -118,6 +114,33 @@ class GpsIngestResourceContractTest {
                                 "speed", 1.0,
                                 "altitude", 104)
                 ))))
+                .when().post(INGEST + "/overland")
+                .then().statusCode(200).body("result", equalTo("ok"));
+
+
+        Map<String, String> emptyMessage = new HashMap<>();
+        emptyMessage.put("type", null);
+        emptyMessage.put("geometry", null);
+        emptyMessage.put("properties", null);
+
+        given()
+                .header("Authorization", "Bearer " + overlandToken)
+                .contentType(ContentType.JSON)
+                .body(Map.of("locations",
+                        List.of(
+                                Map.of(
+                                        "type", "Feature",
+                                        "geometry", Map.of("type", "Point", "coordinates", List.of(30.4, 50.4)),
+                                        "properties", Map.of(
+                                                "timestamp", "2026-05-27T20:53:24Z",
+                                                "device_id", "overland-device",
+                                                "horizontal_accuracy", 5.0,
+                                                "battery_level", 0.84,
+                                                "speed", 1.0,
+                                                "altitude", 104)
+                                ),
+                                emptyMessage
+                        )))
                 .when().post(INGEST + "/overland")
                 .then().statusCode(200).body("result", equalTo("ok"));
 

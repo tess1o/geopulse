@@ -244,6 +244,9 @@ public class GpsPointService {
 
     @Transactional
     public GpsIngestSummary saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (!isValidMessage(message)) {
+            return countAndSummarize(sourceType, GpsIngestOutcome.FILTERED);
+        }
         Instant timestamp = message.getProperties().getTimestamp();
 
         // Check for location-based duplicates if enabled, otherwise use exact timestamp check
@@ -271,6 +274,16 @@ public class GpsPointService {
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
         return finishSingle(filterAndPersistGpsPoint(entity, config), userId);
+    }
+
+    private boolean isValidMessage(OverlandLocationMessage message) {
+        return message != null &&
+                message.getProperties() != null &&
+                message.getProperties().getTimestamp() != null &&
+                message.getGeometry() != null &&
+                message.getGeometry().getCoordinates() != null &&
+                message.getType() != null;
+
     }
 
     @Transactional
