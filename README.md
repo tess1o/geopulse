@@ -11,6 +11,7 @@
   <a href="#deployment-options"><img src="https://img.shields.io/badge/Install-Options-blue.svg" alt="Installation options"></a>
   <img src="https://img.shields.io/badge/Self--Hosted-Yes-green.svg" alt="Self-Hosted">
   <img src="https://img.shields.io/badge/Privacy-First-green.svg" alt="Privacy First">
+  <img src="https://img.shields.io/badge/Locales-EN%20%7C%20UK-blue.svg" alt="Supported Locales">
 </p>
 
 GeoPulse transforms raw GPS data from OwnTracks, Overland, Dawarich, GPSLogger, Home Assistant, Traccar, Colota and other sources into a
@@ -49,6 +50,7 @@ Need MQTT support for OwnTracks, Kubernetes, Unraid, Proxmox or bare-metal insta
 - **Open ecosystem:** Works with popular GPS apps (OwnTracks, Overland, GPSLogger, Home Assistant, Colota, Traccar) and tools like Immich, Memos, and Weather.
 - **Full data ownership:** Import historical data and export your data in standard formats anytime.
 - **Lightweight runtime:** Typically under 100MB RAM and under 1% CPU in regular usage.
+- **Accessible & Localized:** Currently available in English and Ukrainian, ensuring an inclusive experience across different regions.
 
 ---
 

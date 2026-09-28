@@ -57,6 +57,55 @@ export default {
         engineFatal: 'Не вдалося ініціалізувати картографічний рушій. Перехід у растровий режим.',
         genericWarning: 'Попередження карти'
     },
+    timelineMap: {
+        contextMenu: {
+            wasIHere: 'Чи був я тут?',
+            planToVisitHere: 'Запланувати відвідування',
+            addToFavorites: 'Додати до обраного',
+            addAreaToFavorites: 'Додати зону до обраного',
+            viewAllVisits: 'Переглянути всі відвідування',
+            edit: 'Редагувати',
+            delete: 'Видалити',
+            editPlannedItem: 'Редагувати заплановане',
+            deletePlannedItem: 'Видалити заплановане'
+        },
+        addFavoriteDialog: {
+            pointHeader: 'Додати до обраного',
+            areaHeader: 'Додати зону до обраного'
+        },
+        clearTripSelection: 'Очистити вибір поїздки',
+        zoomControl: {
+            currentLocation: 'Наблизити до поточного місцезнаходження',
+            data: 'Наблизити до даних'
+        },
+        immichError: {
+            genericTitle: 'Помилка фото Immich',
+            genericDetail: 'Не вдалося завантажити фото з Immich',
+            fetchTitle: 'Не вдалося завантажити фото',
+            fetchDetailFallback: "Не вдалося отримати фото з вашого сервера Immich. Перевірте налаштування.",
+            refreshTitle: 'Помилка оновлення',
+            refreshDetailFallback: 'Не вдалося оновити фото з Immich. Спробуйте ще раз.',
+            configTitle: 'Помилка конфігурації',
+            configDetailFallback: 'Конфігурація Immich недійсна. Перевірте налаштування сервера.'
+        },
+        notesError: {
+            genericTitle: 'Помилка нотаток',
+            genericDetail: 'Не вдалося завантажити нотатки',
+            fetchTitle: 'Не вдалося завантажити нотатки',
+            fetchDetailFallback: 'Не вдалося отримати нотатки для цього діапазону дат.',
+            refreshTitle: 'Помилка оновлення',
+            refreshDetailFallback: 'Не вдалося оновити нотатки. Спробуйте ще раз.'
+        },
+        addFavoriteFailed: 'Не вдалося додати обране. Дані про місцезнаходження відсутні. Спробуйте ще раз.',
+        rawGpsLimited: {
+            summary: 'Кількість необроблених GPS-точок обмежено',
+            detail: 'Показано {returnedCount} з {totalCount} точок. Звузьте діапазон дат для точного перегляду.'
+        },
+        rawGpsLoadFailed: {
+            summary: 'Необроблені GPS-точки',
+            detail: 'Не вдалося завантажити необроблені GPS-точки для цього діапазону дат.'
+        }
+    },
     popups: {
         common: {
             unknown: 'Невідомо',
@@ -128,6 +177,7 @@ export default {
             user: 'Користувач',
             stay: 'Зупинка',
             tripFallback: 'Поїздка',
+            eventsAtLocation: '{count} подій у цьому місці',
             hoverTooltip: {
                 speedPrefix: 'Швидкість: {speed}',
                 exactGpsPoint: 'Точна GPS-точка',

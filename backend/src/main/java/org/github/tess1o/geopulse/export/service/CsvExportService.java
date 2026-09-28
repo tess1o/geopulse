@@ -91,7 +91,7 @@ public class CsvExportService {
     public void generateCsvExport(ExportJob job) throws IOException {
         log.info("Starting streaming CSV export for user {}", job.getUserId());
 
-        job.updateProgress(5, "Initializing CSV export...");
+        job.updateProgress(5, "initializingCsv", "Initializing CSV export...");
 
         int batchSize = settingsService.getInteger("export.batch-size");
 
@@ -104,7 +104,7 @@ public class CsvExportService {
             // Write CSV header
             writer.write("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type,telemetry\n");
 
-            job.updateProgress(10, "Starting to stream GPS data...");
+            job.updateProgress(10, "startingStreamGps", "Starting to stream GPS data...");
 
             int[] totalWritten = {0};
             int[] batchCount = {0};
@@ -139,7 +139,7 @@ public class CsvExportService {
 
                             int progress = 10 + (int) (80.0 * totalWritten[0] / Math.max(totalWritten[0] + batchSize, 1));
                             progress = Math.min(progress, 90);
-                            job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten[0]));
+                            job.updateProgress(progress, "exportingGpsPointsCount", String.format("Exporting GPS points: %d records", totalWritten[0]), Map.of("count", totalWritten[0]));
 
                             if (batchCount[0] % 10 == 0) {
                                 log.debug("Streamed {} records in {} batches", totalWritten[0], batchCount[0]);
@@ -158,8 +158,8 @@ public class CsvExportService {
         job.setContentType("text/csv");
         job.setFileSizeBytes(Files.size(tempFile));
 
-        job.updateProgress(95, "Finalizing CSV export...");
-        job.updateProgress(100, "Export completed");
+        job.updateProgress(95, "finalizingCsv", "Finalizing CSV export...");
+        job.updateProgress(100, "exportCompleted", "Export completed");
     }
 
     private String formatCsvRow(Object... values) {

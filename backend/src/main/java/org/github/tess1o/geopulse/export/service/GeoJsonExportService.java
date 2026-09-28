@@ -40,7 +40,7 @@ public class GeoJsonExportService {
     public void generateGeoJsonExport(ExportJob job) throws IOException {
         log.info("Starting streaming GeoJSON export for user {}", job.getUserId());
 
-        job.updateProgress(5, "Initializing GeoJSON export...");
+        job.updateProgress(5, "initializingGeoJson", "Initializing GeoJSON export...");
 
         // Create temp file
         java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".geojson");
@@ -53,7 +53,7 @@ public class GeoJsonExportService {
             // For now, we'll estimate based on batches
             int totalRecords = -1; // Unknown, will update progress based on batches
 
-            job.updateProgress(10, "Starting to stream GPS data...");
+            job.updateProgress(10, "startingStreamGps", "Starting to stream GPS data...");
 
             int batchSize = streamingExportService.getBatchSize();
 
@@ -88,8 +88,8 @@ public class GeoJsonExportService {
         job.setContentType("application/geo+json");
         job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
-        job.updateProgress(95, "Finalizing GeoJSON export...");
-        job.updateProgress(100, "Export completed");
+        job.updateProgress(95, "finalizingGeoJson", "Finalizing GeoJSON export...");
+        job.updateProgress(100, "exportCompleted", "Export completed");
     }
 
     /**

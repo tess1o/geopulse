@@ -30,7 +30,7 @@
           </div>
 
           <div class="progress-header">
-            <span class="progress-step">{{ jobProgress.currentStep }}</span>
+            <span class="progress-step">{{ formatMessageDescriptor(jobProgress.currentStep) }}</span>
             <span class="progress-percentage">{{ jobProgress.progressPercentage }}%</span>
           </div>
 
@@ -116,6 +116,7 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import ProgressBar from 'primevue/progressbar'

@@ -10,6 +10,7 @@
 <script setup>
 import { ref, watch, computed, readonly, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -32,6 +33,7 @@ import {
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
+const { t } = useI18n()
 
 const props = defineProps({
   map: {
@@ -121,7 +123,7 @@ const createStackPopupElement = (marker, markerItems) => {
 
   const header = document.createElement('div')
   header.className = 'stack-popup-header'
-  header.textContent = `${markerItems.length} events at this location`
+  header.textContent = t('maps.popups.timeline.eventsAtLocation', { count: markerItems.length })
   popupRoot.appendChild(header)
 
   const list = document.createElement('div')

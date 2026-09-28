@@ -58,6 +58,55 @@ export default {
         engineFatal: 'Map engine failed to initialize. Falling back to raster mode.',
         genericWarning: 'Map warning'
     },
+    timelineMap: {
+        contextMenu: {
+            wasIHere: 'Was I here?',
+            planToVisitHere: 'Plan to visit here',
+            addToFavorites: 'Add to Favorites',
+            addAreaToFavorites: 'Add an area to Favorites',
+            viewAllVisits: 'View all visits',
+            edit: 'Edit',
+            delete: 'Delete',
+            editPlannedItem: 'Edit planned item',
+            deletePlannedItem: 'Delete planned item'
+        },
+        addFavoriteDialog: {
+            pointHeader: 'Add To Favorites',
+            areaHeader: 'Add Area To Favorites'
+        },
+        clearTripSelection: 'Clear trip selection',
+        zoomControl: {
+            currentLocation: 'Zoom to Current Location',
+            data: 'Zoom to Data'
+        },
+        immichError: {
+            genericTitle: 'Immich Photos Error',
+            genericDetail: 'Failed to load photos from Immich',
+            fetchTitle: 'Failed to Load Photos',
+            fetchDetailFallback: 'Unable to fetch photos from your Immich server. Please check your configuration.',
+            refreshTitle: 'Refresh Failed',
+            refreshDetailFallback: 'Unable to refresh photos from Immich. Please try again.',
+            configTitle: 'Configuration Error',
+            configDetailFallback: 'Immich configuration is invalid. Please check your server settings.'
+        },
+        notesError: {
+            genericTitle: 'Notes Error',
+            genericDetail: 'Failed to load notes',
+            fetchTitle: 'Failed to Load Notes',
+            fetchDetailFallback: 'Unable to fetch notes for this date range.',
+            refreshTitle: 'Refresh Failed',
+            refreshDetailFallback: 'Unable to refresh notes. Please try again.'
+        },
+        addFavoriteFailed: 'Could not add favorite. Location data was missing. Please try again.',
+        rawGpsLimited: {
+            summary: 'Raw GPS points limited',
+            detail: 'Showing {returnedCount} of {totalCount} points. Narrow the date range for exact inspection.'
+        },
+        rawGpsLoadFailed: {
+            summary: 'Raw GPS Points',
+            detail: 'Failed to load raw GPS points for this date range.'
+        }
+    },
     popups: {
         common: {
             unknown: 'Unknown',
@@ -129,6 +178,7 @@ export default {
             user: 'User',
             stay: 'Stay',
             tripFallback: 'Trip',
+            eventsAtLocation: '{count} events at this location',
             hoverTooltip: {
                 speedPrefix: 'Speed: {speed}',
                 exactGpsPoint: 'Exact GPS point',

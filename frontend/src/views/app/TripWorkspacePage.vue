@@ -543,6 +543,7 @@ import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import {
   getTripPlanSuggestionCoordinates,
   useTripPlanLocationSearch
@@ -994,7 +995,7 @@ const timelineJobStatusSeverity = computed(() => {
   }
 })
 const timelineJobCurrentStep = computed(() => (
-  timelineJobProgress.value?.currentStep
+  formatMessageDescriptor(timelineJobProgress.value?.currentStep)
   || (timelineJobStatus.value === 'FAILED'
     ? t('trips.workspacePage.timelineGenerationDialog.stepFailed')
     : t('trips.workspacePage.timelineGenerationDialog.stepPreparing'))

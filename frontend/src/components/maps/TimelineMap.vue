@@ -258,7 +258,7 @@
         <AddFavoriteDialog
           v-if="addToFavoritesDialogVisible"
           :visible="addToFavoritesDialogVisible"
-          :header="'Add To Favorites'"
+          :header="t('maps.timelineMap.addFavoriteDialog.pointHeader')"
           @add-to-favorites="onFavoritePointSubmit"
           @close="closeAddFavoritePoint"
         />
@@ -266,7 +266,7 @@
         <AddFavoriteDialog
           v-if="addAreaShowDialog"
           :visible="addAreaShowDialog"
-          :header="'Add Area To Favorites'"
+          :header="t('maps.timelineMap.addFavoriteDialog.areaHeader')"
           @add-to-favorites="onFavoriteAreaSubmit"
           @close="closeAddFavoriteArea"
         />
@@ -341,8 +341,8 @@
       <button
         type="button"
         class="mobile-trip-summary-close"
-        title="Clear trip selection"
-        aria-label="Clear trip selection"
+        :title="t('maps.timelineMap.clearTripSelection')"
+        :aria-label="t('maps.timelineMap.clearTripSelection')"
         @click="clearAllMapHighlights"
       >
         <i class="pi pi-times"></i>
@@ -376,6 +376,7 @@
 <script setup>
 import {computed, markRaw, nextTick, onMounted, onUnmounted, readonly, ref, shallowRef, watch} from 'vue'
 import {useRouter} from 'vue-router'
+import {useI18n} from 'vue-i18n'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
@@ -594,6 +595,7 @@ const emit = defineEmits([
 
 // Router
 const router = useRouter()
+const { t, te } = useI18n()
 const MOBILE_TRIP_SELECTION_MEDIA = '(max-width: 768px), (pointer: coarse)'
 const TIMELINE_SINGLE_LOCATION_ZOOM = 14
 const TIMELINE_FIT_BOUNDS_MAX_ZOOM = 16
@@ -894,7 +896,7 @@ const canZoomToCurrentLocation = computed(() => (
 ))
 
 const zoomControlTitle = computed(() => (
-  canZoomToCurrentLocation.value ? 'Zoom to Current Location' : 'Zoom to Data'
+  canZoomToCurrentLocation.value ? t('maps.timelineMap.zoomControl.currentLocation') : t('maps.timelineMap.zoomControl.data')
 ))
 
 const zoomControlIcon = computed(() => (
@@ -987,16 +989,11 @@ const highlightedTripHasMatchedPath = computed(() => (
 ))
 
 const formatTripMovementTitle = (movementType) => {
-  const normalized = String(movementType || 'Movement')
-    .replace(/[_-]+/g, ' ')
-    .trim()
-    .toLowerCase()
+  const label = movementType && te(`movementTypes.${movementType}`)
+    ? t(`movementTypes.${movementType}`)
+    : t('maps.popups.timeline.unknownMovement')
 
-  const label = normalized
-    ? normalized.replace(/\b\w/g, (letter) => letter.toUpperCase())
-    : 'Movement'
-
-  return `${label} Trip`
+  return t('maps.popups.timeline.movementTrip', { movementType: label })
 }
 
 const mobileTripSummary = computed(() => {
@@ -1059,7 +1056,7 @@ const showReadOnlyToast = () => {
 const mapMenuItems = computed(() => {
   const items = [
     {
-      label: 'Was I here?',
+      label: t('maps.timelineMap.contextMenu.wasIHere'),
       icon: 'pi pi-clock',
       command: () => openLocationLookup(dialogState.value.addToFavoritesLatLng)
     }
@@ -1067,7 +1064,7 @@ const mapMenuItems = computed(() => {
 
   if (props.showPlanToVisitAction) {
     items.push({
-      label: 'Plan to visit here',
+      label: t('maps.timelineMap.contextMenu.planToVisitHere'),
       icon: 'pi pi-map-marker',
       disabled: props.readOnly,
       command: () => {
@@ -1086,7 +1083,7 @@ const mapMenuItems = computed(() => {
   if (props.showFavoritesContextActions) {
     items.push(
       {
-        label: 'Add to Favorites',
+        label: t('maps.timelineMap.contextMenu.addToFavorites'),
         icon: 'pi pi-star',
         disabled: props.readOnly,
         command: () => {
@@ -1098,7 +1095,7 @@ const mapMenuItems = computed(() => {
         }
       },
       {
-        label: 'Add an area to Favorites',
+        label: t('maps.timelineMap.contextMenu.addAreaToFavorites'),
         icon: 'pi pi-star',
         disabled: props.readOnly,
         command: () => {
@@ -1118,7 +1115,7 @@ const mapMenuItems = computed(() => {
 // Favorite context menu items
 const favoriteMenuItems = computed(() => [
   {
-    label: 'View all visits',
+    label: t('maps.timelineMap.contextMenu.viewAllVisits'),
     icon: 'pi pi-chart-line',
     command: () => {
       if (dialogState.value.selectedFavorite) {
@@ -1130,7 +1127,7 @@ const favoriteMenuItems = computed(() => [
     separator: true
   },
   {
-    label: 'Edit',
+    label: t('maps.timelineMap.contextMenu.edit'),
     icon: 'pi pi-pencil',
     disabled: props.readOnly,
     command: () => {
@@ -1144,7 +1141,7 @@ const favoriteMenuItems = computed(() => [
     }
   },
   {
-    label: 'Delete',
+    label: t('maps.timelineMap.contextMenu.delete'),
     icon: 'pi pi-trash',
     disabled: props.readOnly,
     command: () => {
@@ -1161,7 +1158,7 @@ const favoriteMenuItems = computed(() => [
 
 const stayMenuItems = computed(() => [
   {
-    label: 'View all visits',
+    label: t('maps.timelineMap.contextMenu.viewAllVisits'),
     icon: 'pi pi-chart-line',
     command: () => {
       if (dialogState.value.selectedStay) {
@@ -1171,9 +1168,9 @@ const stayMenuItems = computed(() => [
   }
 ])
 
-const plannedItemMenuItems = ref([
+const plannedItemMenuItems = computed(() => [
   {
-    label: 'Edit planned item',
+    label: t('maps.timelineMap.contextMenu.editPlannedItem'),
     icon: 'pi pi-pencil',
     command: () => {
       if (dialogState.value.selectedPlannedItem) {
@@ -1182,7 +1179,7 @@ const plannedItemMenuItems = ref([
     }
   },
   {
-    label: 'Delete planned item',
+    label: t('maps.timelineMap.contextMenu.deletePlannedItem'),
     icon: 'pi pi-trash',
     command: () => {
       if (dialogState.value.selectedPlannedItem) {
@@ -1463,23 +1460,23 @@ const focusOnPhoto = (photo) => {
 }
 
 const handleImmichError = (event) => {
-  
-  let title = 'Immich Photos Error'
-  let detail = 'Failed to load photos from Immich'
-  
+
+  let title = t('maps.timelineMap.immichError.genericTitle')
+  let detail = t('maps.timelineMap.immichError.genericDetail')
+
   // Customize error messages based on error type
   switch (event.type) {
     case 'fetch':
-      title = 'Failed to Load Photos'
-      detail = event.message || 'Unable to fetch photos from your Immich server. Please check your configuration.'
+      title = t('maps.timelineMap.immichError.fetchTitle')
+      detail = event.message || t('maps.timelineMap.immichError.fetchDetailFallback')
       break
     case 'refresh':
-      title = 'Refresh Failed'
-      detail = event.message || 'Unable to refresh photos from Immich. Please try again.'
+      title = t('maps.timelineMap.immichError.refreshTitle')
+      detail = event.message || t('maps.timelineMap.immichError.refreshDetailFallback')
       break
     case 'config':
-      title = 'Configuration Error'
-      detail = event.message || 'Immich configuration is invalid. Please check your server settings.'
+      title = t('maps.timelineMap.immichError.configTitle')
+      detail = event.message || t('maps.timelineMap.immichError.configDetailFallback')
       break
     default:
       detail = event.message || detail
@@ -1494,17 +1491,17 @@ const handleImmichError = (event) => {
 }
 
 const handleNotesError = (event) => {
-  let title = 'Notes Error'
-  let detail = 'Failed to load notes'
+  let title = t('maps.timelineMap.notesError.genericTitle')
+  let detail = t('maps.timelineMap.notesError.genericDetail')
 
   switch (event.type) {
     case 'fetch':
-      title = 'Failed to Load Notes'
-      detail = event.message || 'Unable to fetch notes for this date range.'
+      title = t('maps.timelineMap.notesError.fetchTitle')
+      detail = event.message || t('maps.timelineMap.notesError.fetchDetailFallback')
       break
     case 'refresh':
-      title = 'Refresh Failed'
-      detail = event.message || 'Unable to refresh notes. Please try again.'
+      title = t('maps.timelineMap.notesError.refreshTitle')
+      detail = event.message || t('maps.timelineMap.notesError.refreshDetailFallback')
       break
     default:
       detail = event.message || detail
@@ -1703,8 +1700,8 @@ const onFavoritePointSubmit = (favoriteData) => {
   if (!pointLatLng) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Could not add favorite. Location data was missing. Please try again.',
+      summary: t('common.error'),
+      detail: t('maps.timelineMap.addFavoriteFailed'),
       life: 4000
     })
     closeAddFavoritePoint()
@@ -1926,8 +1923,8 @@ const loadRawGpsPoints = async () => {
       rawGpsLimitWarningKeys.add(key)
       toast.add({
         severity: 'warn',
-        summary: 'Raw GPS points limited',
-        detail: `Showing ${meta.returnedCount} of ${meta.totalCount} points. Narrow the date range for exact inspection.`,
+        summary: t('maps.timelineMap.rawGpsLimited.summary'),
+        detail: t('maps.timelineMap.rawGpsLimited.detail', { returnedCount: meta.returnedCount, totalCount: meta.totalCount }),
         life: 5000
       })
     }
@@ -1937,8 +1934,8 @@ const loadRawGpsPoints = async () => {
     console.error('Failed to load raw GPS points:', error)
     toast.add({
       severity: 'error',
-      summary: 'Raw GPS Points',
-      detail: 'Failed to load raw GPS points for this date range.',
+      summary: t('maps.timelineMap.rawGpsLoadFailed.summary'),
+      detail: t('maps.timelineMap.rawGpsLoadFailed.detail'),
       life: 5000
     })
   } finally {

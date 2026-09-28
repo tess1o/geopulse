@@ -42,7 +42,6 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -279,12 +278,7 @@ public class ExportResource {
         response.setExportJobId(job.getJobId());
         response.setStatus(job.getStatus().name().toLowerCase());
         response.setProgress(job.getProgress());
-        if (job.getProgressMessage() != null) {
-            response.setProgressMessage(new MessageDescriptor(
-                    "export.progress." + job.getStatus().name().toLowerCase(Locale.ROOT),
-                    Map.of("progress", job.getProgress()),
-                    job.getProgressMessage()));
-        }
+        response.setProgressMessage(job.getProgressMessage());
         response.setCreatedAt(job.getCreatedAt());
         response.setCompletedAt(job.getCompletedAt());
         response.setDataTypes(job.getDataTypes());

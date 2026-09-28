@@ -160,7 +160,7 @@ class StreamingExportServiceTest {
         assertTrue(job.getProgress() >= 10 && job.getProgress() <= 90,
             "Progress should be between 10 and 90, got: " + job.getProgress());
         assertNotNull(job.getProgressMessage());
-        assertTrue(job.getProgressMessage().contains("Testing"));
+        assertTrue(job.getProgressMessage().fallback().contains("Testing"));
     }
     @Test
     void testStreamJsonObjectWithArray_EmptyData() throws Exception {
@@ -341,8 +341,8 @@ class StreamingExportServiceTest {
         );
         // Assert
         assertNotNull(job.getProgressMessage());
-        assertTrue(job.getProgressMessage().contains("Exporting GPS points:"));
-        assertTrue(job.getProgressMessage().contains("/ 100 records"));
+        assertTrue(job.getProgressMessage().fallback().contains("Exporting GPS points:"));
+        assertTrue(job.getProgressMessage().fallback().contains("/ 100 records"));
         log.info("Final progress message: {}", job.getProgressMessage());
     }
     // ========================================

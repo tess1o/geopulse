@@ -30,6 +30,7 @@ export default {
         continuedFrom: 'Continued from {time}'
     },
     card: {
+        showGpsPoints: 'Show GPS points',
         viewAllVisits: 'View all visits to this place',
         renamePlace: 'Rename place...',
         resetDataGap: 'Reset to automatic data gap',

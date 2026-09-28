@@ -29,6 +29,7 @@ export default {
         continuedFrom: 'Продовження з {time}'
     },
     card: {
+        showGpsPoints: 'Показати GPS-точки',
         viewAllVisits: 'Переглянути всі відвідування цього місця',
         renamePlace: 'Перейменувати місце...',
         resetDataGap: 'Скинути до автоматичної прогалини в даних',

@@ -37,6 +37,7 @@ import favoritesGeocodingDialogs from './favoritesGeocodingDialogs.js'
 import tripDialogs from './tripDialogs.js'
 import miscDialogs from './miscDialogs.js'
 import imports from './imports.js'
+import exports_ from './exports.js'
 
 /**
  * English catalog.
@@ -84,4 +85,5 @@ export default {
     tripDialogs,
     miscDialogs,
     imports,
+    exports: exports_,
 }

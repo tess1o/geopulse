@@ -74,7 +74,7 @@ public class GeoPulseExportService {
     public void generateGeoPulseNativeExport(ExportJob job) throws IOException {
         log.info("Starting GeoPulse native format export for user {}", job.getUserId());
 
-        job.updateProgress(5, "Initializing export...");
+        job.updateProgress(5, "initializingExport", "Initializing export...");
 
         // Create temp file
         java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".zip");
@@ -82,7 +82,7 @@ public class GeoPulseExportService {
         try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
              ZipOutputStream zos = new ZipOutputStream(os)) {
 
-            job.updateProgress(10, "Adding metadata...");
+            job.updateProgress(10, "addingMetadata", "Adding metadata...");
 
             // Add metadata file (small, no streaming needed)
             addMetadataFile(zos, job);
@@ -180,7 +180,7 @@ public class GeoPulseExportService {
                 }
             }
 
-            job.updateProgress(90, "Finalizing ZIP archive...");
+            job.updateProgress(90, "finalizingZip", "Finalizing ZIP archive...");
 
             zos.finish();
 
@@ -190,7 +190,7 @@ public class GeoPulseExportService {
             job.setContentType("application/zip");
             job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
-            job.updateProgress(95, "Export completed");
+            job.updateProgress(95, "exportCompleted", "Export completed");
             log.info("Completed GeoPulse native format export");
         }
     }
@@ -211,7 +211,7 @@ public class GeoPulseExportService {
             throws IOException {
         log.debug("Streaming raw GPS data export for user {}", job.getUserId());
 
-        job.updateProgress(progressStart, "Exporting GPS data...");
+        job.updateProgress(progressStart, "exportingGpsData", "Exporting GPS data...");
 
         int batchSize = streamingExportService.getBatchSize();
 
@@ -257,7 +257,7 @@ public class GeoPulseExportService {
             throws IOException {
         log.debug("Streaming timeline data export for user {}", job.getUserId());
 
-        job.updateProgress(progressStart, "Exporting timeline data...");
+        job.updateProgress(progressStart, "exportingTimelineData", "Exporting timeline data...");
 
         // Timeline data is already aggregated/simplified, so it's usually small enough
         // But we'll still stream it for consistency
@@ -322,7 +322,7 @@ public class GeoPulseExportService {
             throws IOException {
         log.debug("Exporting data gaps for user {}", job.getUserId());
 
-        job.updateProgress(progressStart, "Exporting data gaps...");
+        job.updateProgress(progressStart, "exportingDataGaps", "Exporting data gaps...");
 
         var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
                 job.getUserId(),
@@ -348,7 +348,7 @@ public class GeoPulseExportService {
             throws IOException {
         log.debug("Exporting favorites data for user {}", job.getUserId());
 
-        job.updateProgress(progressStart, "Exporting favorites...");
+        job.updateProgress(progressStart, "exportingFavorites", "Exporting favorites...");
 
         var favorites = dataCollectorService.collectFavorites(job.getUserId());
         FavoritesDataDto favoritesData = exportDataMapper.toFavoritesDataDto(favorites);
@@ -383,7 +383,7 @@ public class GeoPulseExportService {
             throws IOException {
         log.debug("Exporting reverse geocoding data for user {}", job.getUserId());
 
-        job.updateProgress(progressStart, "Exporting reverse geocoding data...");
+        job.updateProgress(progressStart, "exportingReverseGeocodingData", "Exporting reverse geocoding data...");
 
         var stays = timelineStayRepository.findByUserAndDateRange(
                 job.getUserId(),
@@ -406,7 +406,7 @@ public class GeoPulseExportService {
     }
 
     private void addTimelineLabelsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting timeline labels...");
+        job.updateProgress(progressStart, "exportingTimelineLabels", "Exporting timeline labels...");
         var tags = dataCollectorService.collectTimelineLabels(job);
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -417,7 +417,7 @@ public class GeoPulseExportService {
     }
 
     private void addTimelineOverridesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting timeline overrides...");
+        job.updateProgress(progressStart, "exportingTimelineOverrides", "Exporting timeline overrides...");
         var tripOverrides = dataCollectorService.collectTripMovementOverrides(job.getUserId());
         var gapOverrides = dataCollectorService.collectDataGapStayOverrides(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
@@ -430,7 +430,7 @@ public class GeoPulseExportService {
     }
 
     private void addTripWorkspaceData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting trip workspace...");
+        job.updateProgress(progressStart, "exportingTripWorkspace", "Exporting trip workspace...");
         var trips = dataCollectorService.collectTrips(job.getUserId());
         List<Long> tripIds = trips.stream().map(trip -> trip.getId()).toList();
         Map<Long, List<org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity>> planItemsByTripId =
@@ -449,7 +449,7 @@ public class GeoPulseExportService {
     }
 
     private void addNotificationTemplatesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting notification templates...");
+        job.updateProgress(progressStart, "exportingNotificationTemplates", "Exporting notification templates...");
         var templates = dataCollectorService.collectNotificationTemplates(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -460,7 +460,7 @@ public class GeoPulseExportService {
     }
 
     private void addGeofencingData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting geofencing rules...");
+        job.updateProgress(progressStart, "exportingGeofencingRules", "Exporting geofencing rules...");
         var rules = dataCollectorService.collectGeofenceRules(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -471,7 +471,7 @@ public class GeoPulseExportService {
     }
 
     private void addNotesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting notes...");
+        job.updateProgress(progressStart, "exportingNotes", "Exporting notes...");
         var notes = dataCollectorService.collectNotes(job);
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -482,7 +482,7 @@ public class GeoPulseExportService {
     }
 
     private void addWeatherSamplesData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting weather samples...");
+        job.updateProgress(progressStart, "exportingWeatherSamples", "Exporting weather samples...");
         var samples = dataCollectorService.collectWeatherSamples(job);
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -493,7 +493,7 @@ public class GeoPulseExportService {
     }
 
     private void addMapMatchingData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting map matching data...");
+        job.updateProgress(progressStart, "exportingMapMatchingData", "Exporting map matching data...");
         var pathMatches = dataCollectorService.collectMapMatchingPathMatches(job);
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -504,7 +504,7 @@ public class GeoPulseExportService {
     }
 
     private void addFriendsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting friends...");
+        job.updateProgress(progressStart, "exportingFriends", "Exporting friends...");
         var friends = dataCollectorService.collectFriends(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,
@@ -515,7 +515,7 @@ public class GeoPulseExportService {
     }
 
     private void addFriendPermissionsData(ZipOutputStream zos, ExportJob job, int progressStart) throws IOException {
-        job.updateProgress(progressStart, "Exporting friend permissions...");
+        job.updateProgress(progressStart, "exportingFriendPermissions", "Exporting friend permissions...");
         var permissions = dataCollectorService.collectFriendPermissions(job.getUserId());
         streamingZipExportService.addSimpleJsonFileToZip(
                 zos,

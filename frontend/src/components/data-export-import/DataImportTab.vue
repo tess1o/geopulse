@@ -874,7 +874,7 @@ const timelineDisplayStep = computed(() => {
   if (isCoverageRecalculationPhase.value) {
     return t('data.importTab.timelineGenerationCompleted')
   }
-  return timelineJobProgress.value?.currentStep || ''
+  return formatMessageDescriptor(timelineJobProgress.value?.currentStep) || ''
 })
 
 // Watch for timeline job ID changes to start/stop polling

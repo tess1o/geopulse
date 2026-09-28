@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -105,7 +106,9 @@ public class StreamingExportService {
                         int currentProgress = progressStart + (int) ((double) totalWritten[0] / totalRecords * progressRange);
                         job.updateProgress(
                                 Math.min(currentProgress, progressEnd),
-                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords)
+                                "streamingRecordsProgress",
+                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords),
+                                Map.of("written", totalWritten[0], "total", totalRecords)
                         );
                     }
 
@@ -197,7 +200,9 @@ public class StreamingExportService {
                         int currentProgress = progressStart + (int) ((double) totalWritten[0] / totalRecords * progressRange);
                         job.updateProgress(
                                 Math.min(currentProgress, progressEnd),
-                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords)
+                                "streamingRecordsProgress",
+                                String.format("%s %d / %d records", progressPrefix, totalWritten[0], totalRecords),
+                                Map.of("written", totalWritten[0], "total", totalRecords)
                         );
                     }
 

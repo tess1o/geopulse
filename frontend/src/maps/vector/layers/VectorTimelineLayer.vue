@@ -3,6 +3,7 @@
 <script setup>
 import { onBeforeUnmount, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import maplibregl from 'maplibre-gl'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
@@ -25,6 +26,7 @@ import {
 const authStore = useAuthStore()
 const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
+const { t } = useI18n()
 
 const props = defineProps({
   map: {
@@ -159,7 +161,7 @@ const createStackPopupElement = (items, onSelect, onStayContextMenu) => {
 
   const header = document.createElement('div')
   header.className = 'stack-popup-header'
-  header.textContent = `${items.length} events at this location`
+  header.textContent = t('maps.popups.timeline.eventsAtLocation', { count: items.length })
   popupRoot.appendChild(header)
 
   const list = document.createElement('div')
