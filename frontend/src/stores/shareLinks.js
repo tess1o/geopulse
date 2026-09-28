@@ -117,6 +117,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                     end_date: response.end_date ?? linkData.end_date ?? null,
                     show_current_location: response.show_current_location ?? linkData.show_current_location ?? true,
                     show_photos: response.show_photos ?? linkData.show_photos ?? false,
+                    immich_album_id: response.immich_album_id ?? linkData.immich_album_id ?? null,
                     show_notes: response.show_notes ?? linkData.show_notes ?? false,
                     custom_map_tile_url: response.custom_map_tile_url ?? linkData.custom_map_tile_url ?? null,
                     custom_map_style_url: response.custom_map_style_url ?? linkData.custom_map_style_url ?? null,

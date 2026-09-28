@@ -5,6 +5,8 @@
     :map="map"
     :visible="visible"
     :marker-options="markerOptions"
+    :photos="photos"
+    :auth-token="authToken"
     @photo-click="(payload) => emit('photo-click', payload)"
     @cluster-click="(payload) => emit('cluster-click', payload)"
     @photo-hover="(payload) => emit('photo-hover', payload)"
@@ -30,6 +32,14 @@ const props = defineProps({
   markerOptions: {
     type: Object,
     default: () => ({})
+  },
+  photos: {
+    type: Array,
+    default: null
+  },
+  authToken: {
+    type: String,
+    default: null
   }
 })
 

@@ -24,6 +24,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.immich.model.ImmichAlbum;
 import org.github.tess1o.geopulse.immich.model.ImmichConfigResponse;
 import org.github.tess1o.geopulse.immich.model.ImmichPhotoMapMarkersResponse;
 import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchRequest;
@@ -37,6 +38,7 @@ import org.jboss.resteasy.reactive.RestResponse;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -123,6 +125,13 @@ public class ImmichResource {
         return photosForMapMarkerForUser(currentUserService.getCurrentUserId(), startDate, endDate,
                 latitude, longitude, radiusMeters, city, country, markerLatitude, markerLongitude,
                 coordinatePrecision, limit);
+    }
+
+    @GET
+    @Path("/albums")
+    @Blocking
+    public CompletableFuture<List<ImmichAlbum>> listAlbums() {
+        return immichService.listAlbums(currentUserService.getCurrentUserId());
     }
 
     @POST

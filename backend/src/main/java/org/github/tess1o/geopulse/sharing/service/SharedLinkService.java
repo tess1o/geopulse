@@ -14,6 +14,10 @@ import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoDto;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchRequest;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
+import org.github.tess1o.geopulse.immich.service.ImmichService;
 import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.notes.service.TimelineNoteService;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -31,11 +35,13 @@ import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.SHARED_LINK_ACCESS_DENIED;
@@ -69,6 +75,9 @@ public class SharedLinkService {
 
     @Inject
     TimelineNoteService timelineNoteService;
+
+    @Inject
+    ImmichService immichService;
 
     @Inject
     PathSimplificationService pathSimplificationService;
@@ -173,6 +182,7 @@ public class SharedLinkService {
                 updateDto.getEndDate(),
                 updateDto.getShowCurrentLocation(),
                 updateDto.getShowPhotos(),
+                updateDto.getImmichAlbumId(),
                 updateDto.getShowNotes(),
                 updateDto.getCustomMapTileUrl(),
                 updateDto.getCustomMapStyleUrl(),
@@ -483,6 +493,102 @@ public class SharedLinkService {
                 null,
                 null,
                 null
+        );
+    }
+
+    /**
+     * Get Immich photos for timeline share, restricted to the link's album if one is set
+     */
+    public CompletableFuture<ImmichPhotoSearchResponse> getSharedPhotos(UUID linkId, String tempToken, Instant startTime, Instant endTime, Integer limit) {
+        log.debug("Shared photos access attempt for linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        if (!Boolean.TRUE.equals(entity.getShowPhotos())) {
+            return CompletableFuture.completedFuture(ImmichPhotoSearchResponse.builder()
+                    .photos(List.of())
+                    .totalCount(0)
+                    .build());
+        }
+
+        TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
+
+        ImmichPhotoSearchRequest request = new ImmichPhotoSearchRequest();
+        request.setStartDate(effectiveRange.start().atOffset(ZoneOffset.UTC));
+        request.setEndDate(effectiveRange.end().atOffset(ZoneOffset.UTC));
+        request.setAlbumId(entity.getImmichAlbumId());
+        request.setLimit(limit);
+
+        return immichService.searchPhotos(entity.getUser().getId(), request)
+                .thenApply(response -> rewritePhotoUrlsForShare(response, linkId));
+    }
+
+    /**
+     * Get bytes for a photo referenced by a timeline share, restricted to the link's album if one is set
+     */
+    public CompletableFuture<byte[]> getSharedPhotoBytes(UUID linkId, String tempToken, String photoId, SharedPhotoVariant variant) {
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+        if (entity.getShareType() != ShareType.TIMELINE || !Boolean.TRUE.equals(entity.getShowPhotos())) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied");
+        }
+
+        UUID ownerId = entity.getUser().getId();
+        return switch (variant) {
+            case THUMBNAIL -> immichService.getPhotoThumbnail(ownerId, photoId);
+            case PREVIEW -> immichService.getPhotoPreview(ownerId, photoId);
+            case ORIGINAL -> immichService.getPhotoOriginal(ownerId, photoId);
+        };
+    }
+
+    public enum SharedPhotoVariant {
+        THUMBNAIL,
+        PREVIEW,
+        ORIGINAL
+    }
+
+    private ImmichPhotoSearchResponse rewritePhotoUrlsForShare(ImmichPhotoSearchResponse response, UUID linkId) {
+        if (response == null || response.getPhotos() == null) {
+            return response;
+        }
+
+        List<ImmichPhotoDto> rewrittenPhotos = response.getPhotos().stream()
+                .map(photo -> photo.toBuilder()
+                        .thumbnailUrl(rewritePhotoUrl(photo.getThumbnailUrl(), linkId))
+                        .previewUrl(rewritePhotoUrl(photo.getPreviewUrl(), linkId))
+                        .downloadUrl(rewritePhotoUrl(photo.getDownloadUrl(), linkId))
+                        .build())
+                .collect(Collectors.toList());
+
+        return ImmichPhotoSearchResponse.builder()
+                .photos(rewrittenPhotos)
+                .totalCount(response.getTotalCount())
+                .build();
+    }
+
+    private String rewritePhotoUrl(String originalUrl, UUID linkId) {
+        if (originalUrl == null) {
+            return null;
+        }
+        return originalUrl.replaceFirst(
+                "/api/v1/integrations/immich/photos/",
+                "/api/v1/public/share-links/" + linkId + "/photos/"
         );
     }
 

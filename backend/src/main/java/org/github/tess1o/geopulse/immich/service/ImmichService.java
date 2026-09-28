@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -187,6 +188,20 @@ public class ImmichService {
         log.info("Updated Immich config for user {}", userId);
     }
 
+    public CompletableFuture<List<ImmichAlbum>> listAlbums(UUID userId) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        ImmichPreferences immichPrefs = user.getImmichPreferences();
+        if (immichPrefs == null || !Boolean.TRUE.equals(immichPrefs.getEnabled())) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        return immichClient.listAlbums(immichPrefs.getServerUrl(), immichPrefs.getApiKey());
+    }
+
     public CompletableFuture<TestImmichConnectionResponse> testImmichConnection(UUID userId, TestImmichConnectionRequest request) {
         log.debug("Testing Immich connection for user {} with server URL: {}", userId, request.getServerUrl());
 
@@ -303,14 +318,19 @@ public class ImmichService {
             return CompletableFuture.completedFuture(cachedPhotos);
         }
 
-        CompletableFuture<List<ImmichPhotoDto>> searchFuture = inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
-                immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
-                        .thenApply(response -> {
-                            List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest);
-                            cacheSearchResult(cacheKey, allFilteredPhotos);
-                            return allFilteredPhotos;
-                        })
-        );
+        CompletableFuture<List<ImmichPhotoDto>> searchFuture = inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored -> {
+            CompletableFuture<ImmichSearchResponse> searchResponseFuture =
+                    immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest);
+            CompletableFuture<Set<String>> albumAssetIdsFuture = searchRequest.getAlbumId() != null
+                    ? immichClient.getAlbumAssetIds(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), searchRequest.getAlbumId())
+                    : CompletableFuture.completedFuture(null);
+
+            return searchResponseFuture.thenCombine(albumAssetIdsFuture, (response, albumAssetIds) -> {
+                List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest, albumAssetIds);
+                cacheSearchResult(cacheKey, allFilteredPhotos);
+                return allFilteredPhotos;
+            });
+        });
         return searchFuture.whenComplete((ignoredResult, throwable) -> {
             inFlightPhotoSearches.remove(cacheKey, searchFuture);
             if (throwable != null) {
@@ -402,6 +422,13 @@ public class ImmichService {
         return distance <= searchRequest.getRadiusMeters();
     }
 
+    private boolean filterByAlbum(ImmichAsset asset, Set<String> albumAssetIds) {
+        if (albumAssetIds == null) {
+            return true;
+        }
+        return albumAssetIds.contains(asset.getId());
+    }
+
     private ImmichPhotoDto mapToPhotoDto(ImmichAsset asset) {
         ImmichExifInfo exifInfo = asset.getExifInfo();
         Integer width = asset.getWidth() != null ? asset.getWidth() : exifInfo != null ? exifInfo.getExifImageWidth() : null;
@@ -470,13 +497,14 @@ public class ImmichService {
         return first.getTakenAt().isAfter(second.getTakenAt()) ? first : second;
     }
 
-    private List<ImmichPhotoDto> extractAndFilterPhotos(ImmichSearchResponse response, ImmichPhotoSearchRequest searchRequest) {
+    private List<ImmichPhotoDto> extractAndFilterPhotos(ImmichSearchResponse response, ImmichPhotoSearchRequest searchRequest, Set<String> albumAssetIds) {
         List<ImmichAsset> assets = response.getAssets() != null && response.getAssets().getItems() != null
                 ? response.getAssets().getItems()
                 : List.of();
 
         return assets.stream()
                 .filter(asset -> filterByLocation(asset, searchRequest))
+                .filter(asset -> filterByAlbum(asset, albumAssetIds))
                 .map(asset -> mapToPhotoDto(asset))
                 .collect(Collectors.toMap(
                         ImmichPhotoDto::getId,
@@ -632,7 +660,8 @@ public class ImmichService {
             Double longitude,
             Double radiusMeters,
             String city,
-            String country
+            String country,
+            String albumId
     ) {
         static PhotoSearchCacheKey from(UUID userId, ImmichPhotoSearchRequest request, ImmichSearchRequest immichRequest) {
             return new PhotoSearchCacheKey(
@@ -643,7 +672,8 @@ public class ImmichService {
                     request.getLongitude(),
                     request.getRadiusMeters(),
                     trim(immichRequest.getCity()),
-                    trim(immichRequest.getCountry())
+                    trim(immichRequest.getCountry()),
+                    trim(request.getAlbumId())
             );
         }
 

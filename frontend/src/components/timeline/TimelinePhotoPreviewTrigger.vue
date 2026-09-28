@@ -26,6 +26,7 @@
     :initial-photo-index="photoViewerIndex"
     :allow-show-on-map="allowShowOnMap"
     :preloaded-blob-url-resolver="resolvePreloadedBlobUrl"
+    :auth-token="authToken"
     @show-on-map="handlePhotoShowOnMap"
     @close="closePhotoViewer"
   />
@@ -55,6 +56,10 @@ const props = defineProps({
   hoverBgColor: {
     type: String,
     default: 'var(--gp-primary-light)'
+  },
+  authToken: {
+    type: String,
+    default: null
   }
 })
 
@@ -94,7 +99,8 @@ watch(
     }
 
     try {
-      const blobUrl = await getPhotoThumbnailBlobUrl(photo)
+      const extraHeaders = props.authToken ? { 'Authorization': `Bearer ${props.authToken}` } : {}
+      const blobUrl = await getPhotoThumbnailBlobUrl(photo, extraHeaders)
       if (loadToken === thumbnailLoadToken && blobUrl) {
         singlePhotoThumbnailBlobUrl.value = blobUrl
       }

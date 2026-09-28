@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -139,6 +140,47 @@ class ImmichServiceTest {
         ArgumentCaptor<ImmichSearchRequest> searchCaptor = ArgumentCaptor.forClass(ImmichSearchRequest.class);
         verify(immichClient).searchAssetsAllPages(any(), any(), searchCaptor.capture());
         assertThat(searchCaptor.getValue().isWithExif()).isTrue();
+    }
+
+    @Test
+    void searchPhotosFiltersByAlbumWhenAlbumIdProvided() {
+        UUID userId = UUID.randomUUID();
+        ImmichSearchResponse searchResponse = searchResponse(List.of(
+                asset("in-album", "in-album.jpg", "2026-01-10T12:00:00Z", 10.1, 20.1),
+                asset("not-in-album", "not-in-album.jpg", "2026-01-11T12:00:00Z", 11.1, 21.1)
+        ));
+
+        ImmichPhotoSearchRequest request = searchRequest();
+        request.setAlbumId("album-1");
+
+        when(userRepository.findById(userId)).thenReturn(configuredUser(userId));
+        when(immichClient.searchAssetsAllPages(any(), any(), any(ImmichSearchRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(searchResponse));
+        when(immichClient.getAlbumAssetIds(eq("https://immich.example.test"), eq("test-api-key"), eq("album-1")))
+                .thenReturn(CompletableFuture.completedFuture(Set.of("in-album")));
+
+        var photos = service.searchPhotos(userId, request).join().getPhotos();
+
+        assertThat(photos).hasSize(1);
+        assertThat(photos.getFirst().getId()).isEqualTo("in-album");
+        verify(immichClient).getAlbumAssetIds(any(), any(), eq("album-1"));
+    }
+
+    @Test
+    void searchPhotosDoesNotCallAlbumsApiWhenNoAlbumIdProvided() {
+        UUID userId = UUID.randomUUID();
+        ImmichSearchResponse searchResponse = searchResponse(List.of(
+                asset("photo-1", "photo-1.jpg", "2026-01-10T12:00:00Z", 10.1, 20.1)
+        ));
+
+        when(userRepository.findById(userId)).thenReturn(configuredUser(userId));
+        when(immichClient.searchAssetsAllPages(any(), any(), any(ImmichSearchRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(searchResponse));
+
+        var photos = service.searchPhotos(userId, searchRequest()).join().getPhotos();
+
+        assertThat(photos).hasSize(1);
+        verify(immichClient, org.mockito.Mockito.never()).getAlbumAssetIds(any(), any(), any());
     }
 
     private UserEntity configuredUser(UUID userId) {

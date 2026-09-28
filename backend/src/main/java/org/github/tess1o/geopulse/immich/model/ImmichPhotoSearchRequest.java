@@ -18,5 +18,6 @@ public class ImmichPhotoSearchRequest {
     private Double radiusMeters;
     private String city;
     private String country;
+    private String albumId;
     private Integer limit;
 }

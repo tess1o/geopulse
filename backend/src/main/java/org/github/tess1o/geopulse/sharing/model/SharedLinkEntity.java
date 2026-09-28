@@ -66,6 +66,9 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Builder.Default
     private Boolean showPhotos = false;
 
+    @Column(name = "immich_album_id")
+    private String immichAlbumId;
+
     @Column(name = "show_notes")
     @Builder.Default
     private Boolean showNotes = false;

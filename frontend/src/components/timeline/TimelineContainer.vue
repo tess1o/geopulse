@@ -100,6 +100,7 @@
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -117,6 +118,7 @@
               v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -136,6 +138,7 @@
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -156,6 +159,7 @@
               :trip-item="slotProps.item"
               :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
               :notes="notesForCards"
               :weather-samples="getWeatherSamplesForItem(slotProps.item)"
               :allow-note-creation="!isPublicView"
@@ -327,6 +331,14 @@ const props = defineProps({
     type: Array,
     default: null
   },
+  photos: {
+    type: Array,
+    default: null
+  },
+  photoAuthToken: {
+    type: String,
+    default: null
+  },
   weatherSamples: {
     type: Array,
     default: () => []
@@ -474,6 +486,10 @@ const groupedTimelineData = computed(() => {
 })
 
 const immichPhotosForCards = computed(() => {
+  if (Array.isArray(props.photos)) {
+    return props.photos
+  }
+
   if (!immichStore.isConfigured) {
     return []
   }
@@ -727,7 +743,7 @@ const loadTimelineLabels = async () => {
 }
 
 const loadImmichPhotosForCards = async () => {
-  if (!props.loadImmichPhotos) {
+  if (!props.loadImmichPhotos || props.isPublicView) {
     return
   }
 

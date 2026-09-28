@@ -8,7 +8,7 @@ import lombok.Data;
 import java.time.OffsetDateTime;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ImmichPhotoDto {
     private String id;

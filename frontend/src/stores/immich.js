@@ -97,6 +97,30 @@ export const useImmichStore = defineStore('immich', {
       }
     },
 
+    async listAlbums() {
+      try {
+        return await apiService.get('/integrations/immich/albums')
+      } catch (error) {
+        throw this.fail(error, 'Failed to load Immich albums')
+      }
+    },
+
+    async fetchSharedPhotos(linkId, token, startTime = null, endTime = null) {
+      try {
+        const params = {}
+        if (startTime) params.from = startTime
+        if (endTime) params.to = endTime
+        const response = await apiService.getWithCustomHeaders(
+          `/public/share-links/${linkId}/photos`,
+          { 'Authorization': `Bearer ${token}` },
+          params
+        )
+        return (response?.photos || []).map(normalizePhoto)
+      } catch (error) {
+        throw this.fail(error, 'Failed to load shared photos')
+      }
+    },
+
     async searchPhotos(params) {
       try {
         return await apiService.get('/integrations/immich/photos/search', toApiParams(params))

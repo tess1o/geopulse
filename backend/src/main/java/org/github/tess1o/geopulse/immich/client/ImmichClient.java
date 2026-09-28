@@ -9,14 +9,19 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.immich.model.ImmichAlbum;
+import org.github.tess1o.geopulse.immich.model.ImmichAlbumDetail;
 import org.github.tess1o.geopulse.immich.model.ImmichAsset;
 import org.github.tess1o.geopulse.immich.model.ImmichSearchRequest;
 import org.github.tess1o.geopulse.immich.model.ImmichSearchResponse;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -193,6 +198,90 @@ public class ImmichClient {
                 .page(nextPage)
                 .size(pageSize)
                 .build();
+    }
+
+    public CompletableFuture<List<ImmichAlbum>> listAlbums(String baseUrl, String apiKey) {
+        CompletableFuture<List<ImmichAlbum>> future = new CompletableFuture<>();
+
+        try {
+            WebClient client = WebClient.create(vertx);
+            URI uri = URI.create(baseUrl);
+
+            client
+                    .get(uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort(),
+                            uri.getHost(), "/api/albums")
+                    .ssl(uri.getScheme().equals("https"))
+                    .putHeader("x-api-key", apiKey)
+                    .send()
+                    .onComplete(ar -> {
+                        client.close();
+                        if (ar.succeeded()) {
+                            HttpResponse<Buffer> response = ar.result();
+                            if (response.statusCode() != 200) {
+                                future.completeExceptionally(new RuntimeException("Immich API error: " + response.statusCode() + " - " + response.bodyAsString()));
+                                return;
+                            }
+                            try {
+                                List<ImmichAlbum> albums = objectMapper.readValue(response.bodyAsString(),
+                                        objectMapper.getTypeFactory().constructCollectionType(List.class, ImmichAlbum.class));
+                                future.complete(albums);
+                            } catch (Exception e) {
+                                future.completeExceptionally(new RuntimeException("Failed to parse Immich albums response", e));
+                            }
+                        } else {
+                            future.completeExceptionally(ar.cause());
+                        }
+                    });
+
+        } catch (Exception e) {
+            log.error("Failed to list albums from Immich server {}: {}", baseUrl, e.getMessage(), e);
+            future.completeExceptionally(e);
+        }
+
+        return future;
+    }
+
+    public CompletableFuture<Set<String>> getAlbumAssetIds(String baseUrl, String apiKey, String albumId) {
+        CompletableFuture<Set<String>> future = new CompletableFuture<>();
+
+        try {
+            WebClient client = WebClient.create(vertx);
+            URI uri = URI.create(baseUrl);
+
+            client
+                    .get(uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort(),
+                            uri.getHost(), "/api/albums/" + albumId)
+                    .ssl(uri.getScheme().equals("https"))
+                    .putHeader("x-api-key", apiKey)
+                    .send()
+                    .onComplete(ar -> {
+                        client.close();
+                        if (ar.succeeded()) {
+                            HttpResponse<Buffer> response = ar.result();
+                            if (response.statusCode() != 200) {
+                                future.completeExceptionally(new RuntimeException("Immich API error: " + response.statusCode() + " - " + response.bodyAsString()));
+                                return;
+                            }
+                            try {
+                                ImmichAlbumDetail album = objectMapper.readValue(response.bodyAsString(), ImmichAlbumDetail.class);
+                                Set<String> assetIds = album.getAssets() == null
+                                        ? Collections.emptySet()
+                                        : album.getAssets().stream().map(ImmichAsset::getId).collect(Collectors.toSet());
+                                future.complete(assetIds);
+                            } catch (Exception e) {
+                                future.completeExceptionally(new RuntimeException("Failed to parse Immich album response", e));
+                            }
+                        } else {
+                            future.completeExceptionally(ar.cause());
+                        }
+                    });
+
+        } catch (Exception e) {
+            log.error("Failed to get album {} from Immich server {}: {}", albumId, baseUrl, e.getMessage(), e);
+            future.completeExceptionally(e);
+        }
+
+        return future;
     }
 
     public CompletableFuture<byte[]> getThumbnail(String baseUrl, String apiKey, String assetId) {

@@ -224,6 +224,9 @@
                 :show-viewer-location-control="true"
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
+                :show-immich-by-default="shareInfo.show_photos || false"
+                :photos="sharedPhotos"
+                :photo-auth-token="shareLinksStore.sharedAccessToken"
                 :show-notes="shareInfo.show_notes || false"
                 :notes="sharedNotes"
                 :custom-tile-url="shareInfo.custom_map_tile_url"
@@ -250,6 +253,9 @@
                 :is-public-view="true"
                 :load-notes="false"
                 :notes="sharedNotes"
+                :load-immich-photos="false"
+                :photos="sharedPhotos"
+                :photo-auth-token="shareLinksStore.sharedAccessToken"
                 @timeline-item-click="handleTimelineItemClick"
             />
           </div>
@@ -265,6 +271,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useNotesStore } from '@/stores/notes'
+import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
@@ -288,6 +295,7 @@ const route = useRoute()
 const router = useRouter()
 const shareLinksStore = useShareLinksStore()
 const notesStore = useNotesStore()
+const immichStore = useImmichStore()
 const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
 const tripsStore = useTripsStore()
@@ -318,6 +326,7 @@ const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
 const sharedNotes = ref([])
+const sharedPhotos = ref([])
 const timelineMapRef = ref(null)
 const shouldCenterViewerLocation = ref(false)
 const isMapOnlyEmbed = computed(() => route.query.embed === 'map')
@@ -568,16 +577,21 @@ async function loadTimelineData({silent = false} = {}) {
     const notesPromise = shareInfo.value.show_notes
       ? notesStore.fetchSharedNotes(linkId, shareLinksStore.sharedAccessToken, startTime, endTime)
       : Promise.resolve([])
+    const photosPromise = shareInfo.value.show_photos
+      ? immichStore.fetchSharedPhotos(linkId, shareLinksStore.sharedAccessToken, startTime, endTime)
+      : Promise.resolve([])
 
-    const [timeline, path, notes] = await Promise.all([
+    const [timeline, path, notes, photos] = await Promise.all([
       shareLinksStore.fetchSharedTimeline(linkId, startTime, endTime),
       shareLinksStore.fetchSharedPath(linkId, startTime, endTime),
-      notesPromise
+      notesPromise,
+      photosPromise
     ])
 
     timelineData.value = timeline
     pathData.value = path
     sharedNotes.value = notes
+    sharedPhotos.value = photos
 
     // Load current location if available
     if (shareInfo.value.show_current_location &&

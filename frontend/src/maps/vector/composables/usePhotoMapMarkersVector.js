@@ -46,7 +46,7 @@ function createFocusedMarkerElement() {
   return wrapper
 }
 
-export function usePhotoMapMarkersVector({ emit } = {}) {
+export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}) } = {}) {
   const focusMarker = ref(null)
   const state = {
     token: nextLayerToken('gp-immich-photos'),
@@ -334,7 +334,7 @@ export function usePhotoMapMarkersVector({ emit } = {}) {
         return
       }
 
-      const request = createCircularPhotoThumbnailImageData(photo)
+      const request = createCircularPhotoThumbnailImageData(photo, { extraHeaders: getThumbnailHeaders() })
       state.thumbnailImageRequests.set(imageId, request)
 
       try {

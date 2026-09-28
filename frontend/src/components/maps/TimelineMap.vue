@@ -180,6 +180,8 @@
           ref="immichLayerRef"
           :map="map"
           :visible="showImmich"
+          :photos="photosForLayer"
+          :auth-token="props.photoAuthToken"
           @photo-click="handlePhotoClick"
           @photo-hover="handlePhotoHover"
           @error="handleImmichError"
@@ -276,6 +278,7 @@
           v-model:visible="photoViewerVisible"
           :photos="photoViewerPhotos"
           :initial-photo-index="photoViewerIndex"
+          :auth-token="props.photoAuthToken"
           @show-on-map="handlePhotoShowOnMap"
           @close="closePhotoViewer"
         />
@@ -911,7 +914,14 @@ const controlsProps = computed(() => ({
 }))
 
 // Immich computed properties
-const immichConfigured = computed(() => immichStore.isConfigured)
+// For public views, "configured" means the share allows photos (there's no authenticated
+// immichStore session to check), so the map-controls toggle button stays reachable.
+const immichConfigured = computed(() => {
+  if (props.isPublicView) {
+    return shouldShowImmich.value
+  }
+  return immichStore.isConfigured
+})
 const immichLoading = computed(() => immichStore.photosLoading || immichStore.configLoading)
 const notesLoading = computed(() => notesStore.notesLoading)
 

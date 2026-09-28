@@ -58,6 +58,20 @@
         <label for="show-photos">{{ t('sharing.timelineDialog.fields.showPhotos') }}</label>
       </div>
 
+      <div v-if="formData.show_photos && immichAlbumOptions.length > 1" class="field">
+        <label for="immich-album">{{ t('sharing.timelineDialog.fields.immichAlbum') }}</label>
+        <Dropdown
+          id="immich-album"
+          v-model="formData.immich_album_id"
+          :options="immichAlbumOptions"
+          optionLabel="label"
+          optionValue="value"
+          :loading="immichAlbumsLoading"
+          class="w-full"
+        />
+        <small class="p-text-secondary">{{ t('sharing.timelineDialog.fields.immichAlbumHelp') }}</small>
+      </div>
+
       <div class="field-checkbox">
         <Checkbox id="show-notes" v-model="formData.show_notes" :binary="true" />
         <label for="show-notes">{{ t('sharing.timelineDialog.fields.showNotes') }}</label>
@@ -165,6 +179,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useShareLinksStore } from '@/stores/shareLinks'
+import { useImmichStore } from '@/stores/immich'
 import { useTimezone } from '@/composables/useTimezone'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -197,6 +212,7 @@ const emit = defineEmits(['update:visible', 'created', 'updated'])
 const { t } = useI18n()
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
+const immichStore = useImmichStore()
 const timezone = useTimezone()
 
 const dialogVisible = computed({
@@ -222,6 +238,7 @@ const formData = ref({
   map_render_mode: 'VECTOR',
   show_current_location: true,
   show_photos: false,
+  immich_album_id: null,
   show_notes: false,
   has_password: false,
   password: '',
@@ -243,9 +260,30 @@ const mapRenderModeOptions = computed(() => [
   { label: t('sharing.timelineDialog.mapRenderModeOptions.raster'), value: 'RASTER' }
 ])
 
+const immichAlbums = ref([])
+const immichAlbumsLoading = ref(false)
+const immichAlbumOptions = computed(() => [
+  { label: t('sharing.timelineDialog.fields.immichAlbumAll'), value: null },
+  ...immichAlbums.value.map(album => ({ label: album.albumName, value: album.id }))
+])
+
+async function loadImmichAlbums() {
+  if (immichAlbumsLoading.value) return
+  immichAlbumsLoading.value = true
+  try {
+    immichAlbums.value = await immichStore.listAlbums()
+  } catch (error) {
+    console.error('Failed to load Immich albums:', error)
+    immichAlbums.value = []
+  } finally {
+    immichAlbumsLoading.value = false
+  }
+}
+
 // Initialize form data when dialog opens
 watch(() => props.visible, (visible) => {
   if (visible) {
+    loadImmichAlbums()
     if (props.editingShare) {
       const [calendarStart, calendarEnd] = timezone.convertUtcRangeToCalendarDates(
         props.editingShare.start_date,
@@ -259,6 +297,7 @@ watch(() => props.visible, (visible) => {
         expires_at: props.editingShare.expires_at ? new Date(props.editingShare.expires_at) : null,
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
+        immich_album_id: props.editingShare.immich_album_id ?? null,
         show_notes: props.editingShare.show_notes ?? false,
         map_render_mode: props.editingShare.map_render_mode || 'VECTOR',
         has_password: props.editingShare.has_password || false,
@@ -282,6 +321,7 @@ watch(() => props.visible, (visible) => {
         expires_at: expiresAt,
         show_current_location: true,
         show_photos: false,
+        immich_album_id: null,
         show_notes: false,
         map_render_mode: 'VECTOR',
         has_password: false,
@@ -307,6 +347,7 @@ function resetForm() {
     expires_at: null,
     show_current_location: true,
     show_photos: false,
+    immich_album_id: null,
     show_notes: false,
     map_render_mode: 'VECTOR',
     has_password: false,
@@ -447,6 +488,7 @@ async function handleSubmit() {
       expires_at: formData.value.expires_at ? formData.value.expires_at.toISOString() : null,
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
+      immich_album_id: formData.value.show_photos ? formData.value.immich_album_id : null,
       show_notes: formData.value.show_notes,
       map_render_mode: formData.value.map_render_mode || 'VECTOR',
       password: formData.value.has_password ? formData.value.password : null,

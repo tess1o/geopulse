@@ -8,8 +8,14 @@ import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.immich.model.ImmichPhotoSearchResponse;
 import org.github.tess1o.geopulse.notes.model.NoteSearchResponse;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
@@ -20,6 +26,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import static org.github.tess1o.geopulse.shared.api.ApiErrorCode.*;
@@ -112,6 +119,95 @@ public class PublicSharedLinkResource {
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
         }
+    }
+
+    @GET
+    @Path("/{linkId}/photos")
+    @Blocking
+    public CompletableFuture<ImmichPhotoSearchResponse> getSharedPhotos(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("from") String startTime,
+            @QueryParam("to") String endTime,
+            @QueryParam("limit") Integer limit) {
+        try {
+            Instant startInstant = parseOptionalInstant(startTime, "startTime");
+            Instant endInstant = parseOptionalInstant(endTime, "endTime");
+            validateRange(startInstant, endInstant);
+            return sharedLinkService.getSharedPhotos(
+                    linkId, bearerToken(authHeader), startInstant, endInstant, limit);
+        } catch (NotFoundException e) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
+        } catch (ForbiddenException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        } catch (IllegalArgumentException e) {
+            throw new GeoPulseException(INVALID_SHARED_TIME_RANGE, INVALID_SHARED_TIME_RANGE.title(), e);
+        }
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/thumbnail")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Shared Immich photo thumbnail",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> getSharedPhotoThumbnail(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.THUMBNAIL);
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/preview")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Shared Immich photo preview",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> getSharedPhotoPreview(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.PREVIEW);
+    }
+
+    @GET
+    @Path("/{linkId}/photos/{photoId}/download")
+    @Produces("image/jpeg")
+    @Blocking
+    @APIResponse(responseCode = "200", description = "Original shared Immich photo",
+            content = @Content(mediaType = "image/jpeg",
+                    schema = @Schema(type = SchemaType.STRING, format = "binary")))
+    public CompletableFuture<Response> downloadSharedPhoto(
+            @PathParam("linkId") UUID linkId,
+            @PathParam("photoId") String photoId,
+            @HeaderParam("Authorization") String authHeader) {
+        return sharedPhotoBytes(linkId, photoId, authHeader, SharedLinkService.SharedPhotoVariant.ORIGINAL);
+    }
+
+    private CompletableFuture<Response> sharedPhotoBytes(
+            UUID linkId, String photoId, String authHeader, SharedLinkService.SharedPhotoVariant variant) {
+        CompletableFuture<byte[]> bytes;
+        try {
+            bytes = sharedLinkService.getSharedPhotoBytes(linkId, bearerToken(authHeader), photoId, variant);
+        } catch (NotFoundException e) {
+            throw new GeoPulseException(SHARED_LINK_NOT_FOUND, "Link not found or expired", e);
+        } catch (ForbiddenException e) {
+            throw new GeoPulseException(SHARED_LINK_ACCESS_DENIED, "Access denied", e);
+        }
+
+        return bytes.thenApply(image -> {
+            Response.ResponseBuilder response = Response.ok(image).header("Cache-Control", "max-age=3600");
+            if (variant == SharedLinkService.SharedPhotoVariant.ORIGINAL) {
+                response.header("Content-Disposition", "attachment; filename=\"photo_" + photoId + ".jpg\"");
+            }
+            return response.build();
+        }).exceptionally(throwable -> {
+            throw new GeoPulseException(IMMICH_PHOTO_NOT_FOUND, "Immich photo could not be retrieved",
+                    Map.of("photoId", photoId));
+        });
     }
 
     @GET

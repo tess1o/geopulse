@@ -68,7 +68,7 @@ const createFocusedPhotoMarkerIcon = () => {
   })
 }
 
-export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500 } = {}) => {
+export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500, getThumbnailHeaders = () => ({}) } = {}) => {
   const photoMarkers = ref([])
   const markerClusterGroup = ref(null)
   const focusMarker = ref(null)
@@ -134,7 +134,7 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     }
 
     try {
-      const thumbnailBlobUrl = await getPhotoThumbnailBlobUrl(photo)
+      const thumbnailBlobUrl = await getPhotoThumbnailBlobUrl(photo, getThumbnailHeaders())
       if (!thumbnailBlobUrl || currentRenderCycle !== renderCycle || !photoMarkers.value.includes(marker)) {
         return
       }

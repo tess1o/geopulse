@@ -357,11 +357,19 @@ const props = defineProps({
   preloadedBlobUrlResolver: {
     type: Function,
     default: null
+  },
+  authToken: {
+    type: String,
+    default: null
   }
 })
 
 const emit = defineEmits(['update:visible', 'close', 'show-on-map'])
 const toast = useToast()
+
+const imageAuthHeaders = computed(() => (
+  props.authToken ? { 'Authorization': `Bearer ${props.authToken}` } : {}
+))
 
 const currentIndex = ref(0)
 const imageLoading = ref(false)
@@ -719,7 +727,7 @@ const ensurePhotoLoaded = async (photo) => {
   const loadPromise = (async () => {
     markPhotoLoading(photoId, true)
     try {
-      const blobUrl = await imageService.loadAuthenticatedImage(photo.thumbnailUrl)
+      const blobUrl = await imageService.loadAuthenticatedImage(photo.thumbnailUrl, imageAuthHeaders.value)
       const owned = new Set(ownedBlobUrls.value)
       owned.add(blobUrl)
       ownedBlobUrls.value = owned
@@ -768,7 +776,7 @@ const ensureDisplayPhotoLoaded = async (photo) => {
 
   const loadPromise = (async () => {
     try {
-      const blobUrl = await imageService.loadAuthenticatedImage(displayEndpoint)
+      const blobUrl = await imageService.loadAuthenticatedImage(displayEndpoint, imageAuthHeaders.value)
       const owned = new Set(ownedBlobUrls.value)
       owned.add(blobUrl)
       ownedBlobUrls.value = owned
@@ -965,7 +973,8 @@ const downloadPhoto = async () => {
     // Use imageService for authenticated download
     await imageService.downloadImage(
       currentPhoto.value.downloadUrl,
-      currentPhoto.value.originalFileName || `photo_${currentPhoto.value.id}.jpg`
+      currentPhoto.value.originalFileName || `photo_${currentPhoto.value.id}.jpg`,
+      imageAuthHeaders.value
     )
     
     toast.add({

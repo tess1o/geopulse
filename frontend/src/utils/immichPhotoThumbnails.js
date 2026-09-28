@@ -9,7 +9,7 @@ const thumbnailBlobUrlCache = new Map()
 const thumbnailBlobUrlRequests = new Map()
 const failedThumbnailKeys = new Set()
 
-export const getPhotoThumbnailBlobUrl = async (photo) => {
+export const getPhotoThumbnailBlobUrl = async (photo, extraHeaders = {}) => {
   const key = getPhotoThumbnailKey(photo)
   if (!key || failedThumbnailKeys.has(key)) {
     return null
@@ -23,7 +23,7 @@ export const getPhotoThumbnailBlobUrl = async (photo) => {
     return thumbnailBlobUrlRequests.get(key)
   }
 
-  const request = imageService.loadAuthenticatedImage(photo.thumbnailUrl)
+  const request = imageService.loadAuthenticatedImage(photo.thumbnailUrl, extraHeaders)
     .then((blobUrl) => {
       thumbnailBlobUrlCache.set(key, blobUrl)
       return blobUrl
@@ -69,8 +69,8 @@ const drawImageCover = (ctx, image, size) => {
   ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
 }
 
-export const createCircularPhotoThumbnailImageData = async (photo, { size = 64, borderWidth = 5 } = {}) => {
-  const blobUrl = await getPhotoThumbnailBlobUrl(photo)
+export const createCircularPhotoThumbnailImageData = async (photo, { size = 64, borderWidth = 5, extraHeaders = {} } = {}) => {
+  const blobUrl = await getPhotoThumbnailBlobUrl(photo, extraHeaders)
   if (!blobUrl) {
     return null
   }

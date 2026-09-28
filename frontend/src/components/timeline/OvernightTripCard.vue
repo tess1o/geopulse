@@ -15,6 +15,7 @@
           <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
           <TimelinePhotoPreviewTrigger
             :photos="matchingPhotos"
+            :auth-token="immichPhotoAuthToken"
             @photo-show-on-map="handlePhotoShowOnMap"
           />
         </div>
@@ -120,6 +121,10 @@ const props = defineProps({
   immichPhotos: {
     type: Array,
     default: () => []
+  },
+  immichPhotoAuthToken: {
+    type: String,
+    default: null
   },
   notes: {
     type: Array,
