@@ -35,6 +35,7 @@ services:
     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
     # image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
     container_name: geopulse-backend
+    init: true
     mem_limit: 512m
     mem_reservation: 128m
     restart: unless-stopped
@@ -53,7 +54,7 @@ services:
       geopulse-postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/system/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/system/health"]
       interval: 3s
       timeout: 2s
       retries: 20
@@ -81,6 +82,7 @@ services:
     container_name: geopulse-postgres
     restart: unless-stopped
     logging: *default-logging
+    shm_size: 256mb
     environment:
       POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
