@@ -199,6 +199,14 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private List<TripType> timelineDisplayMapMatchingExcludedMovementTypes = List.of();
 
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Default path color must be a hex color, e.g. #007bff")
+    @Column(name = "timeline_display_default_path_color", length = 7)
+    private String timelineDisplayDefaultPathColor;
+
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Active path color must be a hex color, e.g. #ef4444")
+    @Column(name = "timeline_display_active_path_color", length = 7)
+    private String timelineDisplayActivePathColor;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

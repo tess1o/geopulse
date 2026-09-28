@@ -37,6 +37,8 @@ public class BrowserAuthResponseMapper {
                 .mapMatchingEnabled(authResponse.getMapMatchingEnabled())
                 .mapMatchingExcludedMovementTypes(authResponse.getMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(authResponse.getMapMatchingAvailable())
+                .defaultPathColor(authResponse.getDefaultPathColor())
+                .activePathColor(authResponse.getActivePathColor())
                 .build();
 
         return BrowserAuthResponse.builder()

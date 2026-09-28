@@ -162,6 +162,8 @@ public class AuthenticationService {
                 .mapMatchingExcludedMovementTypes(user.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
                         ? List.of() : user.getTimelineDisplayMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(userService.isMapMatchingAvailable())
+                .defaultPathColor(user.getTimelineDisplayDefaultPathColor())
+                .activePathColor(user.getTimelineDisplayActivePathColor())
                 .build();
     }
 

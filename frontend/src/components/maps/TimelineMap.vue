@@ -110,6 +110,7 @@
           :highlighted-trip="activeTimelineHighlight"
           :visible="showPath"
           :path-options="normalPathOptions"
+          :highlighted-path-color="highlightedPathColor"
           :replay-state="pathReplayState"
           :show-highlighted-trip-popup="showHighlightedTripPopup"
           @path-click="handlePathClick"
@@ -506,6 +507,14 @@ const props = defineProps({
     type: Array,
     default: null
   },
+  photos: {
+    type: Array,
+    default: null
+  },
+  photoAuthToken: {
+    type: String,
+    default: null
+  },
   weatherSamples: {
     type: Array,
     default: () => []
@@ -519,6 +528,14 @@ const props = defineProps({
     default: null
   },
   mapRenderMode: {
+    type: String,
+    default: null
+  },
+  defaultPathColor: {
+    type: String,
+    default: null
+  },
+  activePathColor: {
     type: String,
     default: null
   },
@@ -706,12 +723,13 @@ const rawGpsLocationCache = new Map()
 const rawGpsLimitWarningKeys = new Set()
 let mapContextMenuShowTimeoutId = null
 
-const normalPathOptions = {
-  color: '#007bff',
+const normalPathOptions = computed(() => ({
+  color: props.defaultPathColor || '#007bff',
   weight: 4,
   opacity: 0.8,
   smoothFactor: 1
-}
+}))
+const highlightedPathColor = computed(() => props.activePathColor || '#ef4444')
 
 const rawComparisonPathOptions = {
   color: '#a855f7',
@@ -932,6 +950,10 @@ const shouldShowImmich = computed(() => {
   }
   return true // For non-public views, always allow (controlled by toggle)
 })
+
+const photosForLayer = computed(() => (
+  Array.isArray(props.photos) ? props.photos : null
+))
 
 const shouldShowNotesLayer = computed(() => {
   if (props.isPublicView) {

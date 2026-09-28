@@ -47,4 +47,6 @@ public class AuthResponse {
     private Boolean mapMatchingEnabled;
     private List<TripType> mapMatchingExcludedMovementTypes;
     private Boolean mapMatchingAvailable;
+    private String defaultPathColor;
+    private String activePathColor;
 }

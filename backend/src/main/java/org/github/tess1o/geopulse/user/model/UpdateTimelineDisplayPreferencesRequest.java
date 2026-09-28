@@ -102,4 +102,18 @@ public class UpdateTimelineDisplayPreferencesRequest {
      * Null leaves the existing value unchanged; an empty list clears it.
      */
     private List<String> mapMatchingExcludedMovementTypes;
+
+    /**
+     * Hex color (#rrggbb) for the normal (non-highlighted) timeline path.
+     * Null leaves the existing value unchanged; an empty string resets it to the app default.
+     */
+    @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "Default path color must be a hex color like #007bff, or empty to reset to default")
+    private String defaultPathColor;
+
+    /**
+     * Hex color (#rrggbb) for the highlighted/selected trip path.
+     * Null leaves the existing value unchanged; an empty string resets it to the app default.
+     */
+    @Pattern(regexp = "^(#[0-9A-Fa-f]{6})?$", message = "Active path color must be a hex color like #ef4444, or empty to reset to default")
+    private String activePathColor;
 }

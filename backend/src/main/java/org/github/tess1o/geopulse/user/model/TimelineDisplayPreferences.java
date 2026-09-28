@@ -104,6 +104,18 @@ public class TimelineDisplayPreferences {
     private List<TripType> mapMatchingExcludedMovementTypes;
 
     /**
+     * Hex color (#rrggbb) for the normal (non-highlighted) timeline path.
+     * Default: null (app default #007bff).
+     */
+    private String defaultPathColor;
+
+    /**
+     * Hex color (#rrggbb) for the highlighted/selected trip path.
+     * Default: null (app default #ef4444).
+     */
+    private String activePathColor;
+
+    /**
      * Whether map matching is enabled globally and configured by an administrator.
      */
     private Boolean mapMatchingAvailable;

@@ -162,6 +162,20 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['adaptive', 'path simplification', 'auto'],
     visibilityHint: 'Enable "Path Simplification" to edit this setting.'
   },
+  {
+    id: 'defaultPathColor',
+    title: 'Default Path Color',
+    tab: 'timelineDisplay',
+    subtitle: 'Display',
+    keywords: ['path color', 'default color', 'trip line', 'appearance']
+  },
+  {
+    id: 'activePathColor',
+    title: 'Active Path Color',
+    tab: 'timelineDisplay',
+    subtitle: 'Display',
+    keywords: ['path color', 'highlighted', 'active', 'colorblind', 'color blind', 'accessibility', 'red', 'yellow']
+  },
 
   {
     id: 'ai-enabled',

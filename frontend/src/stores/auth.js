@@ -61,6 +61,8 @@ function normalizeUser(source) {
             ? [...raw.mapMatchingExcludedMovementTypes]
             : [],
         mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
+        defaultPathColor: raw.defaultPathColor || '',
+        activePathColor: raw.activePathColor || '',
         demoMode: !!raw.demoMode,
         canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
         adminReadOnly: !!raw.adminReadOnly,
@@ -108,6 +110,8 @@ export const useAuthStore = defineStore('auth', {
         mapMatchingEnabled: (state) => state.user?.mapMatchingEnabled ?? false,
         mapMatchingExcludedMovementTypes: (state) => state.user?.mapMatchingExcludedMovementTypes ?? [],
         mapMatchingAvailable: (state) => state.user?.mapMatchingAvailable ?? false,
+        defaultPathColor: (state) => state.user?.defaultPathColor || '',
+        activePathColor: (state) => state.user?.activePathColor || '',
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
         demoMode: (state) => !!state.user?.demoMode,
@@ -324,6 +328,12 @@ export const useAuthStore = defineStore('auth', {
                     userPatch.mapMatchingExcludedMovementTypes = Array.isArray(updatedPreferences.mapMatchingExcludedMovementTypes)
                         ? [...updatedPreferences.mapMatchingExcludedMovementTypes]
                         : []
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultPathColor')) {
+                    userPatch.defaultPathColor = updatedPreferences.defaultPathColor || ''
+                }
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'activePathColor')) {
+                    userPatch.activePathColor = updatedPreferences.activePathColor || ''
                 }
                 if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingAvailable')) {
                     userPatch.mapMatchingAvailable = updatedPreferences.mapMatchingAvailable ?? false

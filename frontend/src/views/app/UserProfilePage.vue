@@ -536,7 +536,9 @@ const loadTimelineDisplayPreferences = async () => {
         mapMatchingExcludedMovementTypes: Array.isArray(data.mapMatchingExcludedMovementTypes)
           ? data.mapMatchingExcludedMovementTypes
           : [],
-        mapMatchingAvailable: data.mapMatchingAvailable ?? false
+        mapMatchingAvailable: data.mapMatchingAvailable ?? false,
+        defaultPathColor: data.defaultPathColor || '',
+        activePathColor: data.activePathColor || ''
       }
     }
   } catch (error) {

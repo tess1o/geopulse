@@ -7,6 +7,7 @@
     :visible="visible"
     :highlighted-trip="highlightedTrip"
     :path-options="pathOptions"
+    :highlighted-path-color="highlightedPathColor"
     :replay-state="replayState"
     :focus-highlighted-trip="focusHighlightedTrip"
     :inspection-enabled="inspectionEnabled"
@@ -51,6 +52,10 @@ const props = defineProps({
       opacity: 0.8,
       smoothFactor: 1
     })
+  },
+  highlightedPathColor: {
+    type: String,
+    default: '#ef4444'
   },
   replayState: {
     type: Object,

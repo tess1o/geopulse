@@ -37,6 +37,8 @@ export function writeCachedUserProfile(user) {
             ? user.mapMatchingExcludedMovementTypes
             : [],
         mapMatchingAvailable: user.mapMatchingAvailable ?? false,
+        defaultPathColor: user.defaultPathColor || '',
+        activePathColor: user.activePathColor || '',
         demoMode: !!user.demoMode,
         canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',
         adminReadOnly: !!user.adminReadOnly,

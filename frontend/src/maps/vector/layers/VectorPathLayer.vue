@@ -92,6 +92,10 @@ const props = defineProps({
   showHighlightedTripPopup: {
     type: Boolean,
     default: true
+  },
+  highlightedPathColor: {
+    type: String,
+    default: '#ef4444'
   }
 })
 
@@ -147,7 +151,6 @@ const replayController = createVectorPathReplayController({
 
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
-const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
 const HIGHLIGHTED_TRIP_NON_CAR_DASH = [0.6, 1.8]
 const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
 
@@ -665,7 +668,7 @@ const renderLayer = () => {
   const highlightedTripUsesSpeedBands = isCarMovementType(highlightedTrip?.movementType)
   const highlightedLineColor = highlightedTripUsesSpeedBands
     ? highlightedLineColorExpression
-    : HIGHLIGHTED_TRIP_NON_CAR_COLOR
+    : props.highlightedPathColor
   const highlightedLineDashArray = highlightedTripUsesSpeedBands
     ? HIGHLIGHTED_TRIP_CAR_SOLID_DASH
     : HIGHLIGHTED_TRIP_NON_CAR_DASH

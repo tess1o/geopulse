@@ -63,6 +63,8 @@ public class UserMapper {
                 .mapMatchingExcludedMovementTypes(entity.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
                         ? java.util.List.of() : entity.getTimelineDisplayMapMatchingExcludedMovementTypes())
                 .mapMatchingAvailable(mapMatchingAvailable)
+                .defaultPathColor(entity.getTimelineDisplayDefaultPathColor())
+                .activePathColor(entity.getTimelineDisplayActivePathColor())
                 .build();
     }
 }

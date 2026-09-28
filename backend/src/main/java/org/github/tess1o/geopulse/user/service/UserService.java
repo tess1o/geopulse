@@ -945,6 +945,12 @@ public class UserService {
             user.setTimelineDisplayMapMatchingExcludedMovementTypes(
                     validateMapMatchingExcludedMovementTypes(request.getMapMatchingExcludedMovementTypes()));
         }
+        if (request.getDefaultPathColor() != null) {
+            user.setTimelineDisplayDefaultPathColor(request.getDefaultPathColor().trim().isEmpty() ? null : request.getDefaultPathColor().trim());
+        }
+        if (request.getActivePathColor() != null) {
+            user.setTimelineDisplayActivePathColor(request.getActivePathColor().trim().isEmpty() ? null : request.getActivePathColor().trim());
+        }
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
@@ -988,6 +994,8 @@ public class UserService {
                 .mapMatchingAvailable(mapMatchingAvailable)
                 .panoramaxAvailable(panoramaxAvailable)
                 .panoramaxEndpoint(panoramaxAvailable ? systemSettingsService.getString("panoramax.endpoint").trim() : null)
+                .defaultPathColor(user.getTimelineDisplayDefaultPathColor())
+                .activePathColor(user.getTimelineDisplayActivePathColor())
                 .build();
     }
 

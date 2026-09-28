@@ -72,6 +72,65 @@
           </div>
         </section>
 
+        <section class="settings-group" aria-labelledby="map-appearance-heading">
+          <div class="settings-group-header">
+            <h3 id="map-appearance-heading">{{ t('profile.timeline.appearance.heading') }}</h3>
+            <p>{{ t('profile.timeline.appearance.description') }}</p>
+          </div>
+
+          <div class="settings-panel">
+            <SettingCard
+              :title="t('profile.timeline.appearance.defaultPathColor.title')"
+              :description="t('profile.timeline.appearance.defaultPathColor.description')"
+              :details="t('profile.timeline.appearance.defaultPathColor.details')"
+              setting-id="defaultPathColor"
+            >
+              <template #control>
+                <div class="field-control color-field-control">
+                  <ColorPicker v-model="defaultPathColorPickerModel" format="hex" :disabled="readOnly" />
+                  <span class="color-value-label">
+                    {{ form.defaultPathColor || t('profile.timeline.appearance.usingDefault') }}
+                  </span>
+                  <Button
+                    v-if="form.defaultPathColor"
+                    :label="t('profile.timeline.appearance.resetColor')"
+                    icon="pi pi-refresh"
+                    size="small"
+                    text
+                    :disabled="readOnly"
+                    @click="form.defaultPathColor = ''"
+                  />
+                </div>
+              </template>
+            </SettingCard>
+
+            <SettingCard
+              :title="t('profile.timeline.appearance.activePathColor.title')"
+              :description="t('profile.timeline.appearance.activePathColor.description')"
+              :details="t('profile.timeline.appearance.activePathColor.details')"
+              setting-id="activePathColor"
+            >
+              <template #control>
+                <div class="field-control color-field-control">
+                  <ColorPicker v-model="activePathColorPickerModel" format="hex" :disabled="readOnly" />
+                  <span class="color-value-label">
+                    {{ form.activePathColor || t('profile.timeline.appearance.usingDefault') }}
+                  </span>
+                  <Button
+                    v-if="form.activePathColor"
+                    :label="t('profile.timeline.appearance.resetColor')"
+                    icon="pi pi-refresh"
+                    size="small"
+                    text
+                    :disabled="readOnly"
+                    @click="form.activePathColor = ''"
+                  />
+                </div>
+              </template>
+            </SettingCard>
+          </div>
+        </section>
+
         <section class="settings-group" aria-labelledby="map-display-heading">
           <div class="settings-group-header">
             <h3 id="map-display-heading">{{ t('profile.timeline.sources.heading') }}</h3>
@@ -308,6 +367,7 @@ import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import MultiSelect from 'primevue/multiselect'
 import ToggleSwitch from 'primevue/toggleswitch'
+import ColorPicker from 'primevue/colorpicker'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import { movementTypeOptions } from '@/composables/useTripReconstructionSegments'
@@ -342,7 +402,28 @@ const form = ref({
   enable3dBuildingsByDefault: false,
   mapMatchingEnabled: false,
   mapMatchingExcludedMovementTypes: [],
-  mapMatchingAvailable: false
+  mapMatchingAvailable: false,
+  defaultPathColor: '',
+  activePathColor: ''
+})
+
+// Fallback colors used when a preference is unset (empty string) -- kept in sync with the
+// hardcoded defaults in TimelineMap.vue / VectorPathLayer.vue / RasterPathLayer.vue.
+const DEFAULT_PATH_COLOR = '007bff'
+const DEFAULT_ACTIVE_PATH_COLOR = 'ef4444'
+const stripHash = (color) => String(color || '').replace('#', '')
+const normalizeHexColor = (color) => {
+  const hex = stripHash(color).toLowerCase()
+  return hex ? `#${hex}` : ''
+}
+// PrimeVue's ColorPicker model is a hex string without a leading '#'; the form stores it with one.
+const defaultPathColorPickerModel = computed({
+  get: () => stripHash(form.value.defaultPathColor) || DEFAULT_PATH_COLOR,
+  set: (value) => { form.value.defaultPathColor = normalizeHexColor(value) }
+})
+const activePathColorPickerModel = computed({
+  get: () => stripHash(form.value.activePathColor) || DEFAULT_ACTIVE_PATH_COLOR,
+  set: (value) => { form.value.activePathColor = normalizeHexColor(value) }
 })
 
 const errors = ref({
@@ -416,7 +497,9 @@ const editablePreferenceKeys = [
   'autoShowTripReplayControls',
   'enable3dBuildingsByDefault',
   'mapMatchingEnabled',
-  'mapMatchingExcludedMovementTypes'
+  'mapMatchingExcludedMovementTypes',
+  'defaultPathColor',
+  'activePathColor'
 ]
 
 const normalizePreferences = (preferences = {}) => ({
@@ -433,7 +516,9 @@ const normalizePreferences = (preferences = {}) => ({
   enable3dBuildingsByDefault: preferences.enable3dBuildingsByDefault ?? false,
   mapMatchingEnabled: preferences.mapMatchingEnabled ?? false,
   mapMatchingExcludedMovementTypes: normalizeMovementTypeList(preferences.mapMatchingExcludedMovementTypes),
-  mapMatchingAvailable: preferences.mapMatchingAvailable ?? false
+  mapMatchingAvailable: preferences.mapMatchingAvailable ?? false,
+  defaultPathColor: normalizeHexColor(preferences.defaultPathColor),
+  activePathColor: normalizeHexColor(preferences.activePathColor)
 })
 
 const mapMatchingAvailable = computed(() => form.value.mapMatchingAvailable === true)
@@ -572,7 +657,9 @@ const handleSubmit = async () => {
       autoShowTripReplayControls: form.value.autoShowTripReplayControls,
       enable3dBuildingsByDefault: form.value.enable3dBuildingsByDefault,
       mapMatchingEnabled: mapMatchingAvailable.value ? form.value.mapMatchingEnabled : false,
-      mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes)
+      mapMatchingExcludedMovementTypes: normalizeMovementTypeList(form.value.mapMatchingExcludedMovementTypes),
+      defaultPathColor: form.value.defaultPathColor,
+      activePathColor: form.value.activePathColor
     })
   } finally {
     loading.value = false
@@ -595,7 +682,9 @@ const handleReset = () => {
     enable3dBuildingsByDefault: false,
     mapMatchingEnabled: false,
     mapMatchingExcludedMovementTypes: [],
-    mapMatchingAvailable: mapMatchingAvailable.value
+    mapMatchingAvailable: mapMatchingAvailable.value,
+    defaultPathColor: '',
+    activePathColor: ''
   }
   errors.value = {
     customMapTileUrl: null,
@@ -604,3 +693,17 @@ const handleReset = () => {
 }
 
 </script>
+
+<style scoped>
+.color-field-control {
+  flex-direction: row !important;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.color-value-label {
+  color: var(--gp-text-secondary);
+  font-size: 0.85rem;
+  font-family: var(--gp-font-mono, monospace);
+}
+</style>

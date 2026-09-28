@@ -27,6 +27,22 @@ export default {
             details: 'When disabled, trip replay remains available from a compact Replay button.'
         }
     },
+    appearance: {
+        heading: 'Path colors',
+        description: 'Customize the colors used to draw trips on the map, e.g. for better visibility against satellite imagery or color vision differences.',
+        usingDefault: 'Using app default',
+        resetColor: 'Reset',
+        defaultPathColor: {
+            title: 'Default path color',
+            description: 'Color used for a trip line that is not currently selected.',
+            details: 'Leave unset to use the app default (blue).'
+        },
+        activePathColor: {
+            title: 'Active path color',
+            description: 'Color used for the highlighted line when you select a trip.',
+            details: 'Leave unset to use the app default (red). Does not affect the speed-based coloring shown for driving trips.'
+        }
+    },
     sources: {
         heading: 'Map display & sources',
         description: 'Choose how maps are rendered and where their visual data comes from.',

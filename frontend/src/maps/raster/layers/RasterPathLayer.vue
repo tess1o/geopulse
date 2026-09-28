@@ -48,7 +48,6 @@ const { distanceUnit } = storeToRefs(authStore)
 const timezone = useTimezone()
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
 const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
-const HIGHLIGHTED_TRIP_NON_CAR_COLOR = '#ef4444'
 const HIGHLIGHTED_TRIP_NON_CAR_DASH = '1 8'
 const RASTER_TOUCH_INSPECTION_HIT_TOLERANCE_PX = 28
 const RASTER_TOUCH_INSPECTION_LISTENER_OPTIONS = { passive: false, capture: true }
@@ -114,6 +113,10 @@ const props = defineProps({
   showHighlightedTripPopup: {
     type: Boolean,
     default: true
+  },
+  highlightedPathColor: {
+    type: String,
+    default: '#ef4444'
   }
 })
 
@@ -209,7 +212,7 @@ const clearPaths = () => {
 const highlightPath = (pathIndex) => {
   if (pathLayers.value[pathIndex]) {
     pathLayers.value[pathIndex].setStyle({
-      color: '#ff6b6b',
+      color: props.highlightedPathColor,
       weight: props.pathOptions.weight + 2,
       opacity: 1
     })
@@ -620,7 +623,7 @@ const renderHighlightedTrip = (newTrip) => {
       }))
     } else {
       tripVisualPathLayers.value = tripCoordinateSegments.map(segment => L.polyline(segment, {
-        color: HIGHLIGHTED_TRIP_NON_CAR_COLOR,
+        color: props.highlightedPathColor,
         dashArray: HIGHLIGHTED_TRIP_NON_CAR_DASH,
         weight: HIGHLIGHTED_TRIP_LINE_WEIGHT,
         opacity: 1,
