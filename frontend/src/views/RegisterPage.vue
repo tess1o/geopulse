@@ -3,6 +3,11 @@
     <div class="register-layout">
       <!-- Main Content -->
       <div class="register-content">
+        <!-- Locale Switcher -->
+        <div class="locale-switcher-corner">
+          <LocaleSwitcher />
+        </div>
+
         <!-- Logo Section -->
         <div class="logo-section">
           <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo"/>
@@ -10,8 +15,8 @@
 
         <div v-if="!registrationStatus.passwordRegistrationEnabled" class="signup-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
-          <span v-if="oidcProviders?.length !== 0">Sign up using email/password is currently disabled. Use OIDC for registration</span>
-          <span v-else>Sign up using email/password is currently disabled.</span>
+          <span v-if="oidcProviders?.length !== 0">{{ t('auth.register.disabledMessage') }}</span>
+          <span v-else>{{ t('auth.register.disabledMessageShort') }}</span>
         </div>
 
         <!-- Register Form -->
@@ -20,8 +25,8 @@
             <div class="register-form-content">
               <!-- Form Header -->
               <div class="form-header">
-                <h2 class="form-title">Create Account</h2>
-                <p class="form-subtitle">Join GeoPulse to start tracking and analyzing your location journey</p>
+                <h2 class="form-title">{{ t('auth.register.title') }}</h2>
+                <p class="form-subtitle">{{ t('auth.register.subtitle') }}</p>
               </div>
 
               <!-- Register Form -->
@@ -29,12 +34,12 @@
                     v-if="registrationStatus.passwordRegistrationEnabled">
                 <!-- Email Field -->
                 <div class="form-field">
-                  <label for="email" class="field-label">Email Address</label>
+                  <label for="email" class="field-label">{{ t('auth.register.emailLabel') }}</label>
                   <InputText
                       id="email"
                       v-model="formData.email"
                       type="email"
-                      placeholder="Enter your email"
+                      :placeholder="t('auth.register.emailPlaceholder')"
                       :invalid="!!formErrors.email"
                       class="form-input"
                       autocomplete="email"
@@ -47,12 +52,12 @@
 
                 <!-- Full Name Field -->
                 <div class="form-field">
-                  <label for="fullName" class="field-label">Full Name</label>
+                  <label for="fullName" class="field-label">{{ t('auth.register.fullNameLabel') }}</label>
                   <InputText
                       id="fullName"
                       v-model="formData.fullName"
                       type="text"
-                      placeholder="Enter your full name"
+                      :placeholder="t('auth.register.fullNamePlaceholder')"
                       :invalid="!!formErrors.fullName"
                       class="form-input"
                       autocomplete="name"
@@ -65,11 +70,11 @@
 
                 <!-- Password Field -->
                 <div class="form-field">
-                  <label for="password" class="field-label">Password</label>
+                  <label for="password" class="field-label">{{ t('auth.register.passwordLabel') }}</label>
                   <Password
                       id="password"
                       v-model="formData.password"
-                      placeholder="Create a password"
+                      :placeholder="t('auth.register.passwordPlaceholder')"
                       :feedback="false"
                       toggleMask
                       :invalid="!!formErrors.password"
@@ -84,11 +89,11 @@
 
                 <!-- Confirm Password Field -->
                 <div class="form-field">
-                  <label for="confirmPassword" class="field-label">Confirm Password</label>
+                  <label for="confirmPassword" class="field-label">{{ t('auth.register.confirmPasswordLabel') }}</label>
                   <Password
                       id="confirmPassword"
                       v-model="formData.confirmPassword"
-                      placeholder="Confirm your password"
+                      :placeholder="t('auth.register.confirmPasswordPlaceholder')"
                       :feedback="false"
                       toggleMask
                       :invalid="!!formErrors.confirmPassword"
@@ -104,7 +109,7 @@
                 <!-- Submit Button -->
                 <Button
                     type="submit"
-                    label="Create Account"
+                    :label="t('auth.register.createAccount')"
                     icon="pi pi-user-plus"
                     :loading="isLoading"
                     :disabled="isLoading || !isFormValid || !registrationStatus.passwordRegistrationEnabled"
@@ -129,9 +134,9 @@
 
               <!-- Login Link -->
               <div class="login-section">
-                <span class="login-text">Already have an account?</span>
+                <span class="login-text">{{ t('auth.register.alreadyHaveAccount') }}</span>
                 <router-link to="/login" class="login-link">
-                  Sign in
+                  {{ t('auth.register.signIn') }}
                 </router-link>
               </div>
             </div>
@@ -148,17 +153,22 @@
 
 <script setup>
 import {ref, computed, onMounted} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRouter} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useAuthStore} from '@/stores/auth'
+import {useLocale} from '@/composables/useLocale'
 import {getBrowserTimezone} from '@/utils/timezoneUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 
 // Composables
+const {t} = useI18n()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+const {locale} = useLocale()
 
 // State
 const isLoading = ref(false)
@@ -191,30 +201,30 @@ const validateForm = () => {
 
   // Email validation
   if (!formData.value.email?.trim()) {
-    formErrors.value.email = 'Email is required'
+    formErrors.value.email = t('auth.validation.emailRequired')
   } else if (!isValidEmail(formData.value.email)) {
-    formErrors.value.email = 'Please enter a valid email address'
+    formErrors.value.email = t('auth.validation.emailInvalid')
   }
 
   // Full name validation
   if (!formData.value.fullName?.trim()) {
-    formErrors.value.fullName = 'Full name is required'
+    formErrors.value.fullName = t('auth.register.validation.fullNameRequired')
   } else if (formData.value.fullName.trim().length < 2) {
-    formErrors.value.fullName = 'Full name must be at least 2 characters'
+    formErrors.value.fullName = t('auth.register.validation.fullNameTooShort')
   }
 
   // Password validation
   if (!formData.value.password) {
-    formErrors.value.password = 'Password is required'
+    formErrors.value.password = t('auth.validation.passwordRequired')
   } else if (formData.value.password.length < 6) {
-    formErrors.value.password = 'Password must be at least 6 characters'
+    formErrors.value.password = t('auth.register.validation.passwordTooShort')
   }
 
   // Confirm password validation
   if (!formData.value.confirmPassword) {
-    formErrors.value.confirmPassword = 'Please confirm your password'
+    formErrors.value.confirmPassword = t('auth.validation.confirmRequired')
   } else if (formData.value.password !== formData.value.confirmPassword) {
-    formErrors.value.confirmPassword = 'Passwords do not match'
+    formErrors.value.confirmPassword = t('auth.validation.mismatch')
   }
 
   return Object.keys(formErrors.value).length === 0
@@ -248,13 +258,14 @@ const handleSubmit = async () => {
         formData.value.email.trim(),
         formData.value.password,
         formData.value.fullName.trim(),
-        detectedTimezone
+        detectedTimezone,
+        locale.value
     )
 
     toast.add({
       severity: 'success',
-      summary: 'Welcome to GeoPulse!',
-      detail: 'Your account has been created successfully',
+      summary: t('auth.register.toasts.created.title'),
+      detail: t('auth.register.toasts.created.detail'),
       life: 3000
     })
 
@@ -276,15 +287,15 @@ const getErrorMessage = (error) => {
 
   switch (error.response?.status) {
     case 409:
-      return 'An account with this email already exists'
+      return t('auth.register.errors.emailExists')
     case 400:
-      return 'Please check your information and try again'
+      return t('auth.register.errors.checkInformation')
     case 422:
-      return 'Invalid registration data provided'
+      return t('auth.register.errors.invalidData')
     case 500:
-      return 'Server error. Please try again later'
+      return t('auth.register.errors.serverError')
     default:
-      return error.message || 'An unexpected error occurred. Please try again.'
+      return error.message || t('errors.generic.message')
   }
 }
 
@@ -296,8 +307,8 @@ const handleOidcLogin = async (providerName) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Registration Failed',
-      detail: `Failed to initialize registration with ${providerName}. Please try again.`,
+      summary: t('auth.register.toasts.failed'),
+      detail: t('auth.register.toasts.oidcInitFailed', {provider: providerName}),
       life: 5000
     });
     isLoading.value = false;
@@ -329,8 +340,8 @@ onMounted(async () => {
     if (!status.passwordRegistrationEnabled && !status.oidcRegistrationEnabled) {
       toast.add({
         severity: 'error',
-        summary: 'Registration Disabled',
-        detail: 'New user registration is currently disabled.',
+        summary: t('auth.toasts.registrationDisabled'),
+        detail: t('auth.toasts.registrationDisabledDetail'),
         life: 5000
       });
       router.push({path: '/login', query: {reason: 'registration_disabled'}});
@@ -344,8 +355,8 @@ onMounted(async () => {
     console.error('Failed to load registration status or OIDC providers', error)
     toast.add({
       severity: 'error',
-      summary: 'Could not load registration options',
-      detail: 'Failed to retrieve registration configuration.',
+      summary: t('auth.register.toasts.optionsLoadFailed'),
+      detail: t('auth.register.toasts.optionsLoadFailedDetail'),
       life: 5000
     });
   }
@@ -398,6 +409,13 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+}
+
+.locale-switcher-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 3;
 }
 
 /* Logo Section */

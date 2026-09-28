@@ -24,7 +24,7 @@
     <template #subtitle>
       <div class="timeline-subtitle">
         <p class="transition-title">
-          🔄 Transition to new place
+          🔄 {{ t('timeline.trip.transitionToNewPlace') }}
         </p>
       </div>
     </template>
@@ -32,26 +32,26 @@
     <template #content>
       <div class="trip-content">
         <p class="trip-detail">
-          📈 Total duration: <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
+          📈 {{ t('timeline.dataGap.totalDuration') }} <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
         </p>
         <p class="trip-detail">
-          ⏱️ On this day:
+          ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="font-bold"> {{ getOnThisDayText() }}</span>
         </p>
         <p v-if="tripItem.distanceMeters" class="trip-detail">
-          📏 Distance: <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
+          📏 {{ t('timeline.trip.distanceLabel') }} <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
         </p>
         <p class="trip-detail">
-          🚦 Movement:
+          🚦 {{ t('timeline.trip.movementLabel') }}
           <span class="font-bold">
             {{ getMovementIcon() }}
             {{ formatMovementType(tripItem.movementType) }}
-            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">(Manual)</span>
+            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
             <button
               v-if="showInlineEditIcon"
               class="movement-edit-icon-btn"
-              aria-label="Edit movement type"
-              :title="readOnly ? 'Movement type edits are disabled in demo mode' : 'Edit movement type'"
+              :aria-label="t('timeline.trip.editMovementType')"
+              :title="readOnly ? t('timeline.trip.movementEditDisabledDemo') : t('timeline.trip.editMovementType')"
               :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
@@ -63,12 +63,12 @@
               :disabled="readOnly"
               @click.stop="handleEditMovementType"
             >
-              Set movement type
+              {{ t('timeline.trip.setMovementType') }}
             </button>
           </span>
         </p>
         <p v-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
-          Algorithm did not recognize this trip.
+          {{ t('timeline.trip.unrecognizedHint') }}
         </p>
       </div>
     </template>
@@ -91,6 +91,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
@@ -104,6 +105,7 @@ import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
 
+const { t, te } = useI18n()
 const notesStore = useNotesStore()
 
 const props = defineProps({
@@ -169,7 +171,7 @@ const isMapMatchingProblem = computed(() => (
 const contextMenuItems = computed(() => {
   const items = [
     {
-      label: 'Change movement type...',
+      label: t('timeline.trip.changeMovementType'),
       icon: 'pi pi-pencil',
       disabled: props.readOnly,
       command: () => {
@@ -178,14 +180,14 @@ const contextMenuItems = computed(() => {
       }
     },
     {
-      label: 'Why this classification?',
+      label: t('timeline.trip.whyThisClassification'),
       icon: 'pi pi-question-circle',
       command: () => {
         emit('show-classification', props.tripItem)
       }
     },
     {
-      label: 'Split trip with stay...',
+      label: t('timeline.trip.splitTripWithStay'),
       icon: 'pi pi-directions-alt',
       disabled: props.readOnly,
       command: () => {
@@ -207,7 +209,7 @@ const contextMenuItems = computed(() => {
 
   if (props.allowNoteCreation) {
     items.push({
-      label: 'Add note...',
+      label: t('timeline.card.addNote'),
       icon: 'pi pi-file-edit',
       command: () => {
         noteEditorVisible.value = true
@@ -219,7 +221,7 @@ const contextMenuItems = computed(() => {
 
   if (props.mapMatchingInfo) {
     items.push({
-      label: 'Map matching details...',
+      label: t('timeline.trip.mapMatchingDetails'),
       icon: isMapMatchingProblem.value ? 'pi pi-exclamation-triangle' : 'pi pi-info-circle',
       command: () => {
         emit('show-map-matching-details', props.tripItem)
@@ -228,7 +230,7 @@ const contextMenuItems = computed(() => {
   }
 
   items.push({
-    label: 'Export as GPX',
+    label: t('timeline.card.exportGpx'),
     icon: 'pi pi-download',
     command: () => {
       emit('export-gpx', props.tripItem)
@@ -282,19 +284,7 @@ const getOnThisDayText = () => {
 }
 
 const formatMovementType = (type) => {
-  const movementTypeMap = {
-    WALK: 'Walk',
-    BICYCLE: 'Bicycle',
-    RUNNING: 'Running',
-    CAR: 'Car',
-    MOTORCYCLE: 'Motorcycle',
-    PUBLIC_TRANSPORT: 'Public Transportation',
-    TRAIN: 'Train',
-    FLIGHT: 'Flight',
-    BOAT: 'Boat',
-    UNKNOWN: 'Unknown'
-  }
-  return movementTypeMap[type] || type
+  return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
 }
 
 const movementTypeSource = computed(() => props.tripItem.movementTypeSource || 'AUTO')
@@ -326,9 +316,13 @@ const openNotesViewer = () => {
 
 const getViewNotesLabel = () => {
   if (canManageMatchingNotes.value) {
-    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+    return matchingNotes.value.length === 1
+      ? t('timeline.card.manageNoteSingle')
+      : t('timeline.card.manageNotesMultiple', { count: matchingNotes.value.length })
   }
-  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
+  return matchingNotes.value.length === 1
+    ? t('timeline.card.viewNoteSingle')
+    : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
 }
 
 const handleEditMovementType = () => {

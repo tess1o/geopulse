@@ -1,7 +1,7 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Trip Plans"
+      :title="t('trips.managementPage.title')"
       :subtitle="pageSubtitle"
       :loading="tripsStore.loading.trips"
       variant="fullwidth"
@@ -9,13 +9,13 @@
       <template #actions>
         <div class="trips-page-actions">
           <Button
-            label="From Timeline Label"
+            :label="t('trips.managementPage.fromTimelineLabel')"
             icon="pi pi-tag"
             outlined
             @click="openFromTimelineLabelDialog"
           />
           <Button
-            label="Create Trip Plan"
+            :label="t('trips.managementPage.createTripPlan')"
             icon="pi pi-plus"
             class="gp-btn-primary"
             @click="openCreateDialog"
@@ -30,7 +30,7 @@
         style="margin-bottom: var(--gp-spacing-md)"
         @close="dismissTripPlansHelpMessage"
       >
-        Trip Plans are planning workspaces for places, progress, and visit tracking.
+        {{ t('trips.managementPage.helpMessage') }}
       </Message>
 
       <BaseCard>
@@ -38,7 +38,7 @@
           <div class="trips-filters">
             <InputText
               v-model="searchTerm"
-              placeholder="Search trips..."
+              :placeholder="t('trips.managementPage.searchPlaceholder')"
               class="gp-input search-input"
             />
             <Select
@@ -59,7 +59,7 @@
 
           <Button
             icon="pi pi-refresh"
-            label="Refresh"
+            :label="t('trips.managementPage.refresh')"
             outlined
             class="refresh-button"
             @click="refreshTrips"
@@ -74,10 +74,10 @@
           :rows="10"
           :rowsPerPageOptions="[10, 25, 50]"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} plans"
+          :currentPageReportTemplate="t('trips.managementPage.currentPageReport')"
           stripedRows
         >
-          <Column field="name" header="Trip Plan" sortable>
+          <Column field="name" :header="t('trips.managementPage.columnTripPlan')" sortable>
             <template #body="{ data }">
               <div class="trip-name-cell">
                 <span class="trip-color-dot" :style="{ backgroundColor: data.color || 'var(--gp-primary)' }"></span>
@@ -95,65 +95,65 @@
             </template>
           </Column>
 
-          <Column field="status" header="Status" sortable style="width: 9rem">
+          <Column field="status" :header="t('trips.managementPage.columnStatus')" sortable style="width: 9rem">
             <template #body="{ data }">
               <Tag :severity="getStatusSeverity(data.status)" :value="getStatusLabel(data.status)" />
             </template>
           </Column>
 
-          <Column header="Access" sortable style="width: 8rem">
+          <Column :header="t('trips.managementPage.columnAccess')" sortable style="width: 8rem">
             <template #body="{ data }">
               <Tag :severity="getAccessSeverity(data)" :value="getAccessLabel(data)" />
             </template>
           </Column>
 
-          <Column field="startTime" header="Start" sortable>
+          <Column field="startTime" :header="t('trips.managementPage.columnStart')" sortable>
             <template #body="{ data }">
               {{ formatDateTime(data.startTime) }}
             </template>
           </Column>
 
-          <Column field="endTime" header="End" sortable>
+          <Column field="endTime" :header="t('trips.managementPage.columnEnd')" sortable>
             <template #body="{ data }">
               {{ formatDateTime(data.endTime) }}
             </template>
           </Column>
 
-          <Column header="Duration">
+          <Column :header="t('trips.managementPage.columnDuration')">
             <template #body="{ data }">
               {{ formatDurationLabel(data.startTime, data.endTime) }}
             </template>
           </Column>
 
-          <Column header="Actions" style="width: 14rem">
+          <Column :header="t('trips.managementPage.columnActions')" style="width: 14rem">
             <template #body="{ data }">
               <div class="trip-actions-row">
                 <Button
                   icon="pi pi-briefcase"
                   class="p-button-text p-button-sm"
                   @click="openWorkspace(data)"
-                  v-tooltip.top="'Open trip planner'"
+                  v-tooltip.top="t('trips.managementPage.openTripPlanner')"
                 />
                 <Button
                   v-if="isLinkedToLabel(data) && isTripOwner(data)"
                   icon="pi pi-tag"
                   class="p-button-text p-button-sm"
                   @click="openLinkedLabel(data)"
-                  v-tooltip.top="'Open timeline label'"
+                  v-tooltip.top="t('trips.managementPage.openTimelineLabel')"
                 />
                 <Button
                   v-if="isLinkedToLabel(data) && isTripOwner(data)"
                   icon="pi pi-link"
                   class="p-button-text p-button-sm"
                   @click="unlinkTripFromLabel(data)"
-                  v-tooltip.top="'Unlink timeline label'"
+                  v-tooltip.top="t('trips.managementPage.unlinkTimelineLabel')"
                 />
                 <Button
                   v-if="isTripOwner(data)"
                   icon="pi pi-pencil"
                   class="p-button-text p-button-sm"
                   @click="openEditDialog(data)"
-                  v-tooltip.top="'Edit trip plan'"
+                  v-tooltip.top="t('trips.managementPage.editTripPlan')"
                 />
                 <Button
                   v-if="isTripOwner(data)"
@@ -161,7 +161,7 @@
                   class="p-button-text p-button-sm"
                   severity="danger"
                   @click="confirmDeleteTrip(data)"
-                  v-tooltip.top="'Delete trip plan'"
+                  v-tooltip.top="t('trips.managementPage.deleteTripPlan')"
                 />
               </div>
             </template>
@@ -170,8 +170,8 @@
           <template #empty>
             <div class="empty-state">
               <i class="pi pi-briefcase empty-state-icon"></i>
-              <p>No trip plans found.</p>
-              <small>Create your first trip plan to start planning.</small>
+              <p>{{ t('trips.managementPage.emptyTitle') }}</p>
+              <small>{{ t('trips.managementPage.emptyHint') }}</small>
             </div>
           </template>
         </DataTable>
@@ -179,8 +179,8 @@
         <div v-else class="mobile-trip-plan-panel">
           <div v-if="filteredTrips.length === 0" class="empty-state">
             <i class="pi pi-briefcase empty-state-icon"></i>
-            <p>No trip plans found.</p>
-            <small>Create your first trip plan to start planning.</small>
+            <p>{{ t('trips.managementPage.emptyTitle') }}</p>
+            <small>{{ t('trips.managementPage.emptyHint') }}</small>
           </div>
 
           <template v-else>
@@ -209,7 +209,7 @@
                     class="mobile-trip-plan-actions-button"
                     aria-haspopup="true"
                     aria-controls="mobile-trip-plan-action-menu"
-                    :aria-label="`Actions for ${trip.name}`"
+                    :aria-label="t('trips.managementPage.actionsFor', { name: trip.name })"
                     @click="openMobileActionMenu($event, trip)"
                   />
                 </header>
@@ -243,10 +243,10 @@
               @page="onMobilePageChange"
             >
               <template #start>
-                <span class="mobile-paginator-info">Page {{ mobilePage + 1 }} of {{ mobileTotalPages }}</span>
+                <span class="mobile-paginator-info">{{ t('trips.managementPage.mobilePage', { page: mobilePage + 1, total: mobileTotalPages }) }}</span>
               </template>
               <template #end>
-                <span class="mobile-paginator-info">{{ filteredTrips.length }} total</span>
+                <span class="mobile-paginator-info">{{ t('trips.managementPage.mobileTotal', { count: filteredTrips.length }) }}</span>
               </template>
             </Paginator>
           </template>
@@ -264,18 +264,18 @@
     <Dialog
       v-model:visible="showTripDialog"
       modal
-      :header="isEditMode ? 'Edit Trip Plan' : 'Create Trip Plan'"
+      :header="isEditMode ? t('trips.managementPage.dialog.editHeader') : t('trips.managementPage.dialog.createHeader')"
       class="gp-dialog-lg"
       @hide="resetTripForm"
     >
       <div class="grid">
         <div class="col-12">
-          <label for="tripName" class="field-label">Plan Name *</label>
+          <label for="tripName" class="field-label">{{ t('trips.managementPage.dialog.planNameLabel') }}</label>
           <InputText
             id="tripName"
             v-model="tripForm.name"
             class="w-full"
-            placeholder="e.g., Vacation in Spain"
+            :placeholder="t('trips.managementPage.dialog.planNamePlaceholder')"
             :class="{ 'p-invalid': formErrors.name }"
           />
           <small v-if="formErrors.name" class="p-error">{{ formErrors.name }}</small>
@@ -300,24 +300,24 @@
             <small v-if="formErrors.dateRange" class="p-error">{{ formErrors.dateRange }}</small>
             <template v-else>
               <small class="field-hint">{{ tripDateRangeHint }}</small>
-              <small class="field-hint field-hint-strong">Tip: click month or year in the calendar header to jump faster.</small>
+              <small class="field-hint field-hint-strong">{{ t('trips.managementPage.dialog.dateRangeTip') }}</small>
             </template>
           </div>
         </div>
 
         <div class="col-12">
-          <label class="field-label">Color</label>
+          <label class="field-label">{{ t('trips.managementPage.dialog.colorLabel') }}</label>
           <div class="color-row">
             <ColorPicker v-model="tripForm.color" format="hex" />
             <Button
               icon="pi pi-refresh"
-              label="Random"
+              :label="t('trips.managementPage.dialog.random')"
               size="small"
               text
               @click="tripForm.color = getRandomColor()"
             />
             <Tag
-              :value="tripForm.name || 'Preview'"
+              :value="tripForm.name || t('trips.managementPage.dialog.colorPreviewFallback')"
               :style="{ backgroundColor: normalizedTripColor }"
               class="preview-tag"
             />
@@ -325,21 +325,21 @@
         </div>
 
         <div class="col-12">
-          <label for="tripNotes" class="field-label">Notes</label>
+          <label for="tripNotes" class="field-label">{{ t('trips.managementPage.dialog.notesLabel') }}</label>
           <Textarea
             id="tripNotes"
             v-model="tripForm.notes"
             rows="4"
             class="w-full"
-            placeholder="Optional notes, goals, links, packing reminders..."
+            :placeholder="t('trips.managementPage.dialog.notesPlaceholder')"
           />
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" outlined @click="showTripDialog = false" />
+        <Button :label="t('trips.managementPage.dialog.cancel')" icon="pi pi-times" outlined @click="showTripDialog = false" />
         <Button
-          :label="isEditMode ? 'Update Trip' : 'Create Trip'"
+          :label="isEditMode ? t('trips.managementPage.dialog.updateTrip') : t('trips.managementPage.dialog.createTrip')"
           icon="pi pi-check"
           :loading="isSubmittingTrip"
           @click="submitTrip"
@@ -350,13 +350,13 @@
     <Dialog
       v-model:visible="showFromTimelineLabelDialog"
       modal
-      header="Create Trip Plan from Timeline Label"
+      :header="t('trips.managementPage.fromLabelDialog.header')"
       class="gp-dialog-md"
       @hide="selectedTimelineLabelId = null"
     >
       <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
-          Select a timeline label with an end date to create a Trip Plan.
+          {{ t('trips.managementPage.fromLabelDialog.description') }}
         </p>
 
         <Select
@@ -365,19 +365,19 @@
           optionLabel="label"
           optionValue="value"
           class="w-full"
-          placeholder="Choose timeline label"
+          :placeholder="t('trips.managementPage.fromLabelDialog.placeholder')"
           filter
         />
 
         <Message v-if="timelineLabelOptions.length === 0" severity="warn" :closable="false" class="no-timeline-labels-warning">
-          No timeline labels with an end date available.
+          {{ t('trips.managementPage.fromLabelDialog.noOptions') }}
         </Message>
       </div>
 
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" outlined @click="showFromTimelineLabelDialog = false" />
+        <Button :label="t('trips.managementPage.dialog.cancel')" icon="pi pi-times" outlined @click="showFromTimelineLabelDialog = false" />
         <Button
-          label="Create Trip Plan"
+          :label="t('trips.managementPage.createTripPlan')"
           icon="pi pi-check"
           :disabled="!selectedTimelineLabelId"
           :loading="isCreatingFromTag"
@@ -391,36 +391,36 @@
     <Dialog
       v-model:visible="showLinkedTripDeleteDialog"
       modal
-      header="Delete Linked Trip Plan"
+      :header="t('trips.managementPage.linkedDeleteDialog.header')"
       class="gp-dialog-md"
       @hide="linkedTripDeleteTarget = null"
     >
       <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
-          This trip plan is linked to timeline label
+          {{ t('trips.managementPage.linkedDeleteDialog.linkedTo') }}
           <strong>"{{ linkedTripDeleteTargetLabel }}"</strong>.
         </p>
         <p class="gp-text-secondary">
-          Choose what to delete:
+          {{ t('trips.managementPage.linkedDeleteDialog.chooseWhatToDelete') }}
         </p>
       </div>
 
       <template #footer>
         <Button
-          label="Cancel"
+          :label="t('trips.managementPage.dialog.cancel')"
           icon="pi pi-times"
           outlined
           @click="showLinkedTripDeleteDialog = false"
         />
         <Button
-          label="Delete Trip Plan Only"
+          :label="t('trips.managementPage.linkedDeleteDialog.deletePlanOnly')"
           icon="pi pi-trash"
           severity="warn"
           :loading="isDeletingLinkedTrip"
           @click="deleteLinkedTrip('unlink_only')"
         />
         <Button
-          label="Delete Trip Plan + Label"
+          :label="t('trips.managementPage.linkedDeleteDialog.deletePlanAndLabel')"
           icon="pi pi-trash"
           severity="danger"
           :loading="isDeletingLinkedTrip"
@@ -433,6 +433,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -460,6 +461,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import Menu from 'primevue/menu'
 import Paginator from 'primevue/paginator'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -502,38 +504,38 @@ const tripForm = ref({
 const tripDateRange = ref(null)
 const formErrors = ref({})
 
-const statusOptions = [
-  { label: 'All statuses', value: 'ALL' },
-  { label: 'Unplanned', value: 'UNPLANNED' },
-  { label: 'Upcoming', value: 'UPCOMING' },
-  { label: 'Active', value: 'ACTIVE' },
-  { label: 'Completed', value: 'COMPLETED' },
-  { label: 'Cancelled', value: 'CANCELLED' }
-]
+const statusOptions = computed(() => [
+  { label: t('trips.managementPage.status.all'), value: 'ALL' },
+  { label: t('trips.managementPage.status.unplanned'), value: 'UNPLANNED' },
+  { label: t('trips.managementPage.status.upcoming'), value: 'UPCOMING' },
+  { label: t('trips.managementPage.status.active'), value: 'ACTIVE' },
+  { label: t('trips.managementPage.status.completed'), value: 'COMPLETED' },
+  { label: t('trips.managementPage.status.cancelled'), value: 'CANCELLED' }
+])
 
-const accessOptions = [
-  { label: 'All access', value: 'ALL' },
-  { label: 'Owned by me', value: 'OWNED' },
-  { label: 'Shared with me', value: 'SHARED' }
-]
+const accessOptions = computed(() => [
+  { label: t('trips.managementPage.access.all'), value: 'ALL' },
+  { label: t('trips.managementPage.access.owned'), value: 'OWNED' },
+  { label: t('trips.managementPage.access.shared'), value: 'SHARED' }
+])
 
 const pageSubtitle = computed(() => {
   const total = trips.value.length
   if (total === 0) {
-    return 'Plan upcoming trips, track visit completion, and analyze outcomes.'
+    return t('trips.managementPage.subtitleEmpty')
   }
-  return `${total} plan${total > 1 ? 's' : ''} available`
+  return t('trips.managementPage.subtitleCount', { count: total }, total)
 })
 
 const normalizedTripColor = computed(() => formatColorWithHash(tripForm.value.color) || 'var(--gp-primary)')
 const tripDateRangeLabel = computed(() => {
-  if (!isEditMode.value) return 'Date Range (optional)'
-  return editingTripWasUnplanned.value ? 'Date Range (optional)' : 'Date Range *'
+  if (!isEditMode.value) return t('trips.managementPage.dialog.dateRangeLabelOptional')
+  return editingTripWasUnplanned.value ? t('trips.managementPage.dialog.dateRangeLabelOptional') : t('trips.managementPage.dialog.dateRangeLabelRequired')
 })
 const tripDateRangeHint = computed(() => {
-  if (!isEditMode.value) return 'Leave empty to create this plan as unplanned.'
-  if (editingTripWasUnplanned.value) return 'Add both dates to schedule this trip.'
-  return 'Date range is required for scheduled trips.'
+  if (!isEditMode.value) return t('trips.managementPage.dialog.dateRangeHintCreate')
+  if (editingTripWasUnplanned.value) return t('trips.managementPage.dialog.dateRangeHintUnplanned')
+  return t('trips.managementPage.dialog.dateRangeHintRequired')
 })
 const tripDateRangePlaceholder = computed(() => {
   const dateTokenByFormat = {
@@ -577,7 +579,7 @@ const paginatedTrips = computed(() => {
 })
 
 const linkedTripDeleteTargetLabel = computed(() => {
-  if (!linkedTripDeleteTarget.value?.timelineLabelId) return 'Unknown'
+  if (!linkedTripDeleteTarget.value?.timelineLabelId) return t('trips.managementPage.status.unknown')
   const tag = (timelineLabels.value || []).find((item) => Number(item.id) === Number(linkedTripDeleteTarget.value.timelineLabelId))
   return tag?.name || `#${linkedTripDeleteTarget.value.timelineLabelId}`
 })
@@ -595,8 +597,14 @@ const timelineLabelOptions = computed(() => {
 
 const getStatusLabel = (status) => {
   const value = String(status || '').toUpperCase()
-  if (!value) return 'Unknown'
-  return value.charAt(0) + value.slice(1).toLowerCase()
+  const labelKeys = {
+    UNPLANNED: 'trips.managementPage.status.unplanned',
+    UPCOMING: 'trips.managementPage.status.upcoming',
+    ACTIVE: 'trips.managementPage.status.active',
+    COMPLETED: 'trips.managementPage.status.completed',
+    CANCELLED: 'trips.managementPage.status.cancelled'
+  }
+  return t(labelKeys[value] || 'trips.managementPage.status.unknown')
 }
 
 const getStatusSeverity = (status) => {
@@ -612,9 +620,9 @@ const getStatusSeverity = (status) => {
 const isTripOwner = (trip) => Boolean(trip?.isOwner) || String(trip?.accessRole || '').toUpperCase() === 'OWNER'
 
 const getAccessLabel = (trip) => {
-  if (isTripOwner(trip)) return 'Owner'
+  if (isTripOwner(trip)) return t('trips.managementPage.access.owner')
   const role = String(trip?.accessRole || '').toUpperCase()
-  return role === 'EDIT' ? 'Editor' : 'Viewer'
+  return role === 'EDIT' ? t('trips.managementPage.access.editor') : t('trips.managementPage.access.viewer')
 }
 
 const getAccessSeverity = (trip) => {
@@ -635,7 +643,7 @@ const formatDurationLabel = (startTime, endTime) => {
 const formatTripDateRange = (trip) => {
   const startTime = trip?.startTime
   const endTime = trip?.endTime
-  if (!startTime && !endTime) return 'No date range'
+  if (!startTime && !endTime) return t('trips.managementPage.noDateRange')
   if (!startTime || !endTime) return formatDateTime(startTime || endTime)
   return `${formatDateTime(startTime)} → ${formatDateTime(endTime)}`
 }
@@ -646,8 +654,8 @@ const refreshTrips = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Load Trips',
-      detail: formatApiErrorDetail(error, 'Could not load trips'),
+      summary: t('trips.managementPage.toasts.loadFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.loadFailedFallback')),
       life: 4000
     })
   }
@@ -677,12 +685,12 @@ const openLinkedLabel = (trip) => {
   })
 }
 
-const guardOwnerAction = (trip, message = 'Only trip owner can perform this action.') => {
+const guardOwnerAction = (trip, message) => {
   if (isTripOwner(trip)) return true
   toast.add({
     severity: 'warn',
-    summary: 'Owner Access Required',
-    detail: message,
+    summary: t('trips.managementPage.toasts.ownerRequiredSummary'),
+    detail: message || t('trips.managementPage.toasts.ownerOnlyGeneric'),
     life: 3500
   })
   return false
@@ -692,8 +700,8 @@ const unlinkTripFromLabel = (trip) => {
   if (!guardOwnerAction(trip)) return
   if (!trip?.id || !trip?.timelineLabelId) return
   confirm.require({
-    message: `Unlink trip plan "${trip.name}" from its timeline label?`,
-    header: 'Unlink Trip Plan',
+    message: t('trips.managementPage.unlinkConfirm.message', { name: trip.name }),
+    header: t('trips.managementPage.unlinkConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -701,15 +709,15 @@ const unlinkTripFromLabel = (trip) => {
         await timelineLabelsStore.fetchTimelineLabels()
         toast.add({
           severity: 'success',
-          summary: 'Unlinked',
-          detail: 'Trip plan and timeline label are now unlinked',
+          summary: t('trips.managementPage.toasts.unlinkedSummary'),
+          detail: t('trips.managementPage.toasts.unlinkedDetail'),
           life: 3000
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Failed to Unlink',
-          detail: formatApiErrorDetail(error, 'Unlink failed'),
+          summary: t('trips.managementPage.toasts.unlinkFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.unlinkFailedFallback')),
           life: 4000
         })
       }
@@ -736,7 +744,7 @@ const openCreateDialog = () => {
 }
 
 const openEditDialog = (trip) => {
-  if (!guardOwnerAction(trip, 'You can edit trip metadata only if you own this trip.')) return
+  if (!guardOwnerAction(trip, t('trips.managementPage.toasts.ownerOnlyEdit'))) return
   resetTripForm()
   isEditMode.value = true
   editingTripId.value = trip.id
@@ -758,13 +766,13 @@ const validateTripForm = () => {
   const hasAnyDateValue = Boolean(tripDateRange.value && (tripDateRange.value[0] || tripDateRange.value[1]))
 
   if (!tripForm.value.name || !tripForm.value.name.trim()) {
-    formErrors.value.name = 'Plan name is required'
+    formErrors.value.name = t('trips.managementPage.dialog.nameRequired')
   }
 
   if (!hasAnyDateValue && isEditMode.value && !editingTripWasUnplanned.value) {
-    formErrors.value.dateRange = 'Date range is required'
+    formErrors.value.dateRange = t('trips.managementPage.dialog.dateRangeRequired')
   } else if (hasAnyDateValue && !hasCompleteDateRange) {
-    formErrors.value.dateRange = 'Select both start and end dates'
+    formErrors.value.dateRange = t('trips.managementPage.dialog.dateRangeIncomplete')
   }
 
   return Object.keys(formErrors.value).length === 0
@@ -797,16 +805,16 @@ const submitTrip = async () => {
       await tripsStore.updateTrip(editingTripId.value, payload)
       toast.add({
         severity: 'success',
-        summary: 'Trip Plan Updated',
-        detail: 'Trip plan updated successfully',
+        summary: t('trips.managementPage.toasts.updatedSummary'),
+        detail: t('trips.managementPage.toasts.updatedDetail'),
         life: 3000
       })
     } else {
       await tripsStore.createTrip(payload)
       toast.add({
         severity: 'success',
-        summary: 'Trip Plan Created',
-        detail: 'Trip plan created successfully',
+        summary: t('trips.managementPage.toasts.createdSummary'),
+        detail: t('trips.managementPage.toasts.createdDetail'),
         life: 3000
       })
     }
@@ -816,8 +824,8 @@ const submitTrip = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: isEditMode.value ? 'Failed to Update Trip Plan' : 'Failed to Create Trip Plan',
-      detail: formatApiErrorDetail(error, 'Request failed'),
+      summary: isEditMode.value ? t('trips.managementPage.toasts.updateFailedSummary') : t('trips.managementPage.toasts.createFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.requestFailedFallback')),
       life: 5000
     })
   } finally {
@@ -826,23 +834,23 @@ const submitTrip = async () => {
 }
 
 const performDeleteTrip = async (trip, mode) => {
-  if (!guardOwnerAction(trip, 'You can delete trip plans only if you own this trip.')) return
+  if (!guardOwnerAction(trip, t('trips.managementPage.toasts.ownerOnlyDelete'))) return
   try {
     await tripsStore.deleteTrip(trip.id, mode)
     await timelineLabelsStore.fetchTimelineLabels()
     toast.add({
       severity: 'success',
-      summary: 'Trip Plan Deleted',
+      summary: t('trips.managementPage.toasts.deletedSummary'),
       detail: mode === 'delete_both'
-        ? 'Trip plan and timeline label removed'
-        : 'Trip plan removed and timeline label unlinked',
+        ? t('trips.managementPage.toasts.deletedBothDetail')
+        : t('trips.managementPage.toasts.deletedUnlinkOnlyDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Delete Trip Plan',
-      detail: formatApiErrorDetail(error, 'Delete failed'),
+      summary: t('trips.managementPage.toasts.deleteFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.deleteFailedFallback')),
       life: 5000
     })
   }
@@ -861,7 +869,7 @@ const deleteLinkedTrip = async (mode) => {
 }
 
 const confirmDeleteTrip = (trip) => {
-  if (!guardOwnerAction(trip, 'You can delete trip plans only if you own this trip.')) return
+  if (!guardOwnerAction(trip, t('trips.managementPage.toasts.ownerOnlyDelete'))) return
   if (isLinkedToLabel(trip)) {
     linkedTripDeleteTarget.value = trip
     showLinkedTripDeleteDialog.value = true
@@ -869,8 +877,8 @@ const confirmDeleteTrip = (trip) => {
   }
 
   confirm.require({
-    message: `Delete trip plan "${trip.name}"?`,
-    header: 'Delete Trip Plan',
+    message: t('trips.managementPage.deleteConfirm.message', { name: trip.name }),
+    header: t('trips.managementPage.deleteConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
@@ -889,17 +897,17 @@ const mobileActionMenuItems = computed(() => {
 
   const isOwner = isTripOwner(trip)
   const items = [
-    { label: 'Open trip planner', icon: 'pi pi-briefcase', command: () => openWorkspace(trip) }
+    { label: t('trips.managementPage.openTripPlanner'), icon: 'pi pi-briefcase', command: () => openWorkspace(trip) }
   ]
 
   if (isLinkedToLabel(trip) && isOwner) {
-    items.push({ label: 'Open timeline label', icon: 'pi pi-tag', command: () => openLinkedLabel(trip) })
-    items.push({ label: 'Unlink timeline label', icon: 'pi pi-link', command: () => unlinkTripFromLabel(trip) })
+    items.push({ label: t('trips.managementPage.openTimelineLabel'), icon: 'pi pi-tag', command: () => openLinkedLabel(trip) })
+    items.push({ label: t('trips.managementPage.unlinkTimelineLabel'), icon: 'pi pi-link', command: () => unlinkTripFromLabel(trip) })
   }
 
   if (isOwner) {
-    items.push({ label: 'Edit trip plan', icon: 'pi pi-pencil', command: () => openEditDialog(trip) })
-    items.push({ label: 'Delete trip plan', icon: 'pi pi-trash', command: () => confirmDeleteTrip(trip) })
+    items.push({ label: t('trips.managementPage.editTripPlan'), icon: 'pi pi-pencil', command: () => openEditDialog(trip) })
+    items.push({ label: t('trips.managementPage.deleteTripPlan'), icon: 'pi pi-trash', command: () => confirmDeleteTrip(trip) })
   }
 
   return items
@@ -918,8 +926,8 @@ const openFromTimelineLabelDialog = async () => {
   } catch (error) {
     toast.add({
       severity: 'warn',
-      summary: 'Timeline Labels Unavailable',
-      detail: 'Could not refresh timeline labels, but you can still create plans manually.',
+      summary: t('trips.managementPage.toasts.labelsUnavailableSummary'),
+      detail: t('trips.managementPage.toasts.labelsUnavailableDetail'),
       life: 4000
     })
   }
@@ -937,8 +945,8 @@ const createFromTimelineLabel = async () => {
     selectedTimelineLabelId.value = null
     toast.add({
       severity: 'success',
-      summary: 'Trip Plan Created',
-      detail: 'Trip plan created from timeline label',
+      summary: t('trips.managementPage.toasts.createdSummary'),
+      detail: t('trips.managementPage.toasts.createdFromLabelDetail'),
       life: 3000
     })
     if (created?.id) {
@@ -947,8 +955,8 @@ const createFromTimelineLabel = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Create from Timeline Label',
-      detail: formatApiErrorDetail(error, 'Conversion failed'),
+      summary: t('trips.managementPage.toasts.createFromLabelFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.conversionFailedFallback')),
       life: 5000
     })
   } finally {
@@ -990,8 +998,8 @@ const handleRouteTripAction = async () => {
   if (!trip) {
     toast.add({
       severity: 'warn',
-      summary: 'Trip Plan Not Found',
-      detail: 'The linked trip plan could not be found.',
+      summary: t('trips.managementPage.toasts.notFoundSummary'),
+      detail: t('trips.managementPage.toasts.notFoundDetail'),
       life: 3500
     })
     await clearRouteTripActionQuery()

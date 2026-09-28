@@ -7,14 +7,14 @@
           <span class="logo-text">GeoPulse</span>
         </div>
         <div class="nav-actions">
-          <div class="nav-resource-links" aria-label="Project resources">
+          <div class="nav-resource-links" :aria-label="t('ui.home.nav.resourcesAriaLabel')">
             <a
                 href="https://geopulse.cc/docs/getting-started/introduction"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="nav-link-pill">
               <i class="pi pi-book"></i>
-              <span>Documentation</span>
+              <span>{{ t('ui.home.nav.documentation') }}</span>
             </a>
             <a
                 href="https://github.com/tess1o/geopulse"
@@ -22,9 +22,9 @@
                 rel="noopener noreferrer"
                 class="nav-link-pill">
               <i class="pi pi-github"></i>
-              <span>GitHub</span>
+              <span>{{ t('ui.home.nav.github') }}</span>
             </a>
-            <button class="nav-version-badge" aria-label="What's new" @click="toggleVersionPopover">{{ navVersionBadge }} <i class="pi pi-chevron-down" style="font-size:0.55rem;opacity:0.55;margin-left:2px;"></i></button>
+            <button class="nav-version-badge" :aria-label="t('ui.home.nav.whatsNewAriaLabel')" @click="toggleVersionPopover">{{ navVersionBadge }} <i class="pi pi-chevron-down" style="font-size:0.55rem;opacity:0.55;margin-left:2px;"></i></button>
             <a
                 v-if="showUpdateBadge"
                 :href="releaseUrl"
@@ -32,13 +32,13 @@
                 rel="noopener noreferrer"
                 class="nav-update-pill">
               <i class="pi pi-arrow-circle-up"></i>
-              <span>New: {{ latestVersion }} available</span>
+              <span>{{ t('ui.home.nav.updateAvailable', { version: latestVersion }) }}</span>
             </a>
           </div>
           <button
               v-if="!showUpdateBadge"
               class="nav-version-badge nav-version-badge-mobile"
-              aria-label="What's new"
+              :aria-label="t('ui.home.nav.whatsNewAriaLabel')"
               @click="toggleVersionPopover">{{ navVersionBadge }}</button>
           <a
               v-if="showUpdateBadge"
@@ -47,13 +47,13 @@
               rel="noopener noreferrer"
               class="nav-update-pill nav-update-pill-mobile">
             <i class="pi pi-arrow-circle-up"></i>
-            <span>New: {{ latestVersion }}</span>
+            <span>{{ t('ui.home.nav.updateAvailableShort', { version: latestVersion }) }}</span>
           </a>
 
           <Popover ref="versionPopover" class="home-wn-popover">
             <div class="home-wn-header">
               <i class="pi pi-sparkles home-wn-icon"></i>
-              <span class="home-wn-title">What's New in {{ navVersionBadge }}</span>
+              <span class="home-wn-title">{{ t('ui.home.nav.whatsNewTitle', { version: navVersionBadge }) }}</span>
             </div>
             <ul v-if="whatsNewHighlights.length > 0" class="home-wn-list">
               <li v-for="item in whatsNewHighlights" :key="item">
@@ -62,7 +62,7 @@
               </li>
             </ul>
             <p v-else class="home-wn-empty">
-              No release notes are available for this version yet.
+              {{ t('ui.home.nav.whatsNewEmpty') }}
             </p>
             <a
                 :href="matchedWhatsNewUrl"
@@ -71,18 +71,19 @@
                 class="home-wn-link"
             >
               <i class="pi pi-github"></i>
-              <span>Full release notes on GitHub</span>
+              <span>{{ t('ui.home.nav.releaseNotesLink') }}</span>
               <i class="pi pi-arrow-right"></i>
             </a>
           </Popover>
+          <LocaleSwitcher class="theme-button" />
           <DarkModeSwitcher class="theme-button" />
           <div class="auth-actions" v-if="!isResolvingAuth">
             <template v-if="authStore.isAuthenticated">
-              <Button label="Timeline" as="router-link" to="/app/timeline" class="nav-btn-primary" size="small" />
+              <Button :label="t('nav.items.timeline')" as="router-link" to="/app/timeline" class="nav-btn-primary" size="small" />
               <Button icon="pi pi-sign-out" severity="secondary" text @click="handleSignOut" />
             </template>
             <template v-else>
-              <Button v-if="isLoginAvailable" label="Sign In" icon="pi pi-sign-in" as="router-link" to="/login" severity="secondary" text class="nav-signin" />
+              <Button v-if="isLoginAvailable" :label="t('auth.login.signIn')" icon="pi pi-sign-in" as="router-link" to="/login" severity="secondary" text class="nav-signin" />
             </template>
           </div>
         </div>
@@ -93,9 +94,9 @@
       <section class="hero-section">
         <div class="hero-container">
           <div class="hero-content">
-            <div class="hero-eyebrow">Privacy-first Google Timeline alternative</div>
+            <div class="hero-eyebrow">{{ t('ui.home.hero.eyebrow') }}</div>
             <h1 class="hero-title" v-html="heroTitle"></h1>
-            <p class="hero-subtitle" v-if="!isMobileViewport">GeoPulse turns raw GPS points into a private location timeline with stays, trips, maps, and insights, all under your control.</p>
+            <p class="hero-subtitle" v-if="!isMobileViewport">{{ t('ui.home.hero.subtitle') }}</p>
 
             <div class="hero-visual mobile-orbit" v-if="isMobileViewport">
               <div class="visual-showcase">
@@ -103,13 +104,13 @@
                 <div class="orbit-ring ring-2"></div>
                 <!--                <div class="orbit-ring ring-3"></div>-->
                 <img src="/geopulse-logo.svg" alt="GeoPulse logo" class="massive-logo" />
-                <div class="feature-chip chip-1"><div class="chip-icon"><i class="pi pi-send"></i></div><span>Live Tracking</span></div>
-                <div class="feature-chip chip-2"><div class="chip-icon"><i class="pi pi-download"></i></div><span>Smart Import</span></div>
-                <div class="feature-chip chip-3"><div class="chip-icon"><i class="pi pi-calendar"></i></div><span>Auto-Timeline</span></div>
-                <div class="feature-chip chip-4"><div class="chip-icon"><i class="pi pi-chart-line"></i></div><span>Deep Insights</span></div>
-                <div class="feature-chip chip-5"><div class="chip-icon"><i class="pi pi-images"></i></div><span>Immich Integration</span></div>
-                <div class="feature-chip chip-6"><div class="chip-icon"><i class="pi pi-users"></i></div><span>Friends</span></div>
-                <div class="feature-chip chip-7"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>Geofences</span></div>
+                <div class="feature-chip chip-1"><div class="chip-icon"><i class="pi pi-send"></i></div><span>{{ t('ui.home.features.liveTracking') }}</span></div>
+                <div class="feature-chip chip-2"><div class="chip-icon"><i class="pi pi-download"></i></div><span>{{ t('ui.home.features.smartImport') }}</span></div>
+                <div class="feature-chip chip-3"><div class="chip-icon"><i class="pi pi-calendar"></i></div><span>{{ t('ui.home.features.autoTimeline') }}</span></div>
+                <div class="feature-chip chip-4"><div class="chip-icon"><i class="pi pi-chart-line"></i></div><span>{{ t('ui.home.features.deepInsights') }}</span></div>
+                <div class="feature-chip chip-5"><div class="chip-icon"><i class="pi pi-images"></i></div><span>{{ t('ui.home.features.immichIntegration') }}</span></div>
+                <div class="feature-chip chip-6"><div class="chip-icon"><i class="pi pi-users"></i></div><span>{{ t('ui.home.features.friends') }}</span></div>
+                <div class="feature-chip chip-7"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>{{ t('ui.home.features.geofences') }}</span></div>
               </div>
             </div>
 
@@ -117,19 +118,19 @@
               <template v-if="!authStore.isAuthenticated">
                 <div v-if="!isLoginAvailable && !isRegistrationAvailable" class="access-status access-status-warning">
                   <i class="pi pi-lock"></i>
-                  <span>Login and registration are currently disabled by the administrator.</span>
+                  <span>{{ t('ui.home.hero.accessDisabled') }}</span>
                 </div>
 
                 <template v-else>
                   <div v-if="showRegistrationDisabledNotice" class="access-status access-status-info">
                     <i class="pi pi-info-circle"></i>
-                    <span>Registration is disabled. Existing users can still sign in.</span>
+                    <span>{{ t('ui.home.hero.registrationDisabled') }}</span>
                   </div>
 
                   <div class="hero-actions">
-                    <Button v-if="isDemoModeEnabled" label="Try Demo" icon="pi pi-play" iconPos="right" as="router-link" to="/login" size="large" class="btn-hero-primary btn-hero-static" />
-                    <Button v-if="!isDemoModeEnabled && isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
-                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                    <Button v-if="isDemoModeEnabled" :label="t('ui.home.hero.tryDemo')" icon="pi pi-play" iconPos="right" as="router-link" to="/login" size="large" class="btn-hero-primary btn-hero-static" />
+                    <Button v-if="!isDemoModeEnabled && isRegistrationAvailable" :label="t('ui.home.hero.startJourney')" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
+                    <Button v-if="!isDemoModeEnabled && isLoginAvailable" :label="t('auth.login.signIn')" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
                   </div>
                 </template>
 
@@ -137,22 +138,22 @@
                   <a href="https://github.com/tess1o/geopulse" target="_blank" rel="noopener noreferrer" class="github-badge">
                     <div class="github-icon"><i class="pi pi-github"></i></div>
                     <div class="github-stats">
-                      <span class="star-count"><i class="pi pi-star-fill"></i> {{ githubStarsLabel }} Stars</span>
+                      <span class="star-count"><i class="pi pi-star-fill"></i> {{ githubStarsLabel }} {{ t('ui.home.hero.stars') }}</span>
                       <span class="separator">•</span>
-                      <span class="fork-count"><i class="pi pi-share-alt"></i> {{ githubForksLabel }} Forks</span>
+                      <span class="fork-count"><i class="pi pi-share-alt"></i> {{ githubForksLabel }} {{ t('ui.home.hero.forks') }}</span>
                     </div>
                   </a>
-                  <p class="social-proof-text">The privacy-first, open-source alternative to Google Timeline.</p>
+                  <p class="social-proof-text">{{ t('ui.home.hero.socialProofText') }}</p>
                 </div>
               </template>
               <template v-else>
                 <div class="hero-actions">
-                  <Button label="Go to Timeline" icon="pi pi-arrow-right" iconPos="right" as="router-link" :to="continueDestination.path" size="large" class="btn-hero-primary" />
+                  <Button :label="t('ui.home.hero.goToTimeline')" icon="pi pi-arrow-right" iconPos="right" as="router-link" :to="continueDestination.path" size="large" class="btn-hero-primary" />
                 </div>
               </template>
             </div>
             <div v-else class="loading-auth">
-              <i class="pi pi-spin pi-spinner"></i> Loading workspace...
+              <i class="pi pi-spin pi-spinner"></i> {{ t('ui.home.hero.loadingWorkspace') }}
             </div>
 
           </div>
@@ -163,23 +164,23 @@
               <div class="orbit-ring ring-2"></div>
               <!--              <div class="orbit-ring ring-3"></div>-->
               <img src="/geopulse-logo.svg" alt="GeoPulse logo" class="massive-logo" />
-              <div class="feature-chip chip-1"><div class="chip-icon"><i class="pi pi-send"></i></div><span>Live Tracking</span></div>
-              <div class="feature-chip chip-2"><div class="chip-icon"><i class="pi pi-download"></i></div><span>Smart Import</span></div>
-              <div class="feature-chip chip-3"><div class="chip-icon"><i class="pi pi-calendar"></i></div><span>Auto-Timeline</span></div>
-              <div class="feature-chip chip-4"><div class="chip-icon"><i class="pi pi-chart-line"></i></div><span>Deep Insights</span></div>
-              <div class="feature-chip chip-5"><div class="chip-icon"><i class="pi pi-images"></i></div><span>Immich Integration</span></div>
-              <div class="feature-chip chip-6"><div class="chip-icon"><i class="pi pi-users"></i></div><span>Friends</span></div>
-              <div class="feature-chip chip-7"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>Geofences</span></div>
-              <div class="feature-chip chip-8"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>AI</span></div>
+              <div class="feature-chip chip-1"><div class="chip-icon"><i class="pi pi-send"></i></div><span>{{ t('ui.home.features.liveTracking') }}</span></div>
+              <div class="feature-chip chip-2"><div class="chip-icon"><i class="pi pi-download"></i></div><span>{{ t('ui.home.features.smartImport') }}</span></div>
+              <div class="feature-chip chip-3"><div class="chip-icon"><i class="pi pi-calendar"></i></div><span>{{ t('ui.home.features.autoTimeline') }}</span></div>
+              <div class="feature-chip chip-4"><div class="chip-icon"><i class="pi pi-chart-line"></i></div><span>{{ t('ui.home.features.deepInsights') }}</span></div>
+              <div class="feature-chip chip-5"><div class="chip-icon"><i class="pi pi-images"></i></div><span>{{ t('ui.home.features.immichIntegration') }}</span></div>
+              <div class="feature-chip chip-6"><div class="chip-icon"><i class="pi pi-users"></i></div><span>{{ t('ui.home.features.friends') }}</span></div>
+              <div class="feature-chip chip-7"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>{{ t('ui.home.features.geofences') }}</span></div>
+              <div class="feature-chip chip-8"><div class="chip-icon"><i class="pi pi-map-marker"></i></div><span>{{ t('ui.home.features.ai') }}</span></div>
             </div>
           </div>
         </div>
 
         <div class="feature-panel-wrapper" v-if="!isResolvingAuth">
           <template v-if="isMobileViewport">
-            <section class="feature-panel mobile-combined-panel" aria-label="Explore GeoPulse and tips">
+            <section class="feature-panel mobile-combined-panel" :aria-label="t('ui.home.panel.exploreAriaLabel')">
               <div class="feature-panel-header mobile-panel-header">
-                <div class="mobile-panel-tab-switch" role="tablist" aria-label="Mobile section tabs">
+                <div class="mobile-panel-tab-switch" role="tablist" :aria-label="t('ui.home.panel.tabsAriaLabel')">
                   <button
                       type="button"
                       class="mobile-panel-tab"
@@ -187,7 +188,7 @@
                       :aria-selected="mobileShowcaseTab === 'features'"
                       @click="mobileShowcaseTab = 'features'">
                     <i class="pi pi-compass"></i>
-                    <span>Features</span>
+                    <span>{{ t('ui.home.panel.featuresTab') }}</span>
                   </button>
                   <button
                       type="button"
@@ -196,7 +197,7 @@
                       :aria-selected="mobileShowcaseTab === 'guide'"
                       @click="mobileShowcaseTab = 'guide'">
                     <i class="pi pi-lightbulb"></i>
-                    <span>Tip</span>
+                    <span>{{ t('ui.home.panel.tipTab') }}</span>
                   </button>
                 </div>
               </div>
@@ -209,7 +210,7 @@
                 <div class="ctx-panel-body mobile-ctx-body">
                   <TipOfDayCard
                       :tip="activeTip"
-                      title="Tip of the day"
+                      :title="t('ui.home.panel.tipOfDayTitle')"
                       :show-next="showNextTipButton"
                       :on-next="showNextTip"
                   />
@@ -219,11 +220,11 @@
           </template>
 
           <template v-else>
-            <aside class="ctx-panel" aria-label="Tip of the day">
+            <aside class="ctx-panel" :aria-label="t('ui.home.panel.tipOfDayAriaLabel')">
               <div class="ctx-panel-body">
                 <TipOfDayCard
                     :tip="activeTip"
-                    title="Tip of the day"
+                    :title="t('ui.home.panel.tipOfDayTitle')"
                     :show-next="showNextTipButton"
                     :on-next="showNextTip"
                 />
@@ -240,7 +241,7 @@
 
     <footer class="landing-footer" v-if="!authStore.isAuthenticated">
       <div class="content-wrapper">
-        <p>&copy; GeoPulse. All rights reserved.</p>
+        <p>{{ t('ui.home.footer.copyright') }}</p>
       </div>
     </footer>
   </div>
@@ -248,11 +249,13 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useHomeStore } from '@/stores/home'
 import { storeToRefs } from 'pinia'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 import TipOfDayCard from '@/components/common/TipOfDayCard.vue'
 import ExploreGeoPulsePanel from '@/components/home/ExploreGeoPulsePanel.vue'
 import Button from 'primevue/button'
@@ -264,6 +267,7 @@ import {
   getRandomTipIndex,
 } from '@/utils/homeContentHelpers'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -342,7 +346,7 @@ const whatsNewHighlights = computed(() => matchedWhatsNewEntry.value?.highlights
 const matchedWhatsNewUrl = computed(() => matchedWhatsNewEntry.value?.releaseUrl || defaultReleaseNotesUrl)
 
 const heroTitle = computed(() => {
-  return authStore.isAuthenticated ? 'Welcome back' : 'Own Your Location Timeline'
+  return authStore.isAuthenticated ? t('ui.home.hero.titleWelcomeBack') : t('ui.home.hero.titleDefault')
 })
 
 const navVersionBadge = computed(() => {
@@ -350,7 +354,7 @@ const navVersionBadge = computed(() => {
     return 'v...'
   }
   if (appVersion.value === 'Unknown') {
-    return 'Unknown'
+    return t('common.unknown')
   }
   return `v${appVersion.value}`
 })
@@ -451,6 +455,12 @@ const fetchHomeContent = async () => {
     // The store keeps the safe empty-content fallback.
   }
 }
+
+// Tips (Tip of the Day) come from the backend already translated for the requested locale -- unlike
+// vue-i18n catalog text, they don't re-render themselves on a language switch, so re-fetch explicitly.
+watch(locale, () => {
+  void fetchHomeContent()
+})
 
 onMounted(async () => {
   updateViewportState()

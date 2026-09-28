@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    :header="title || 'Place Location'"
+    :header="title || t('maps.popups.placesMap.defaultTitle')"
     :modal="true"
     :style="dialogStyle"
     class="places-map-dialog"
@@ -33,8 +33,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Dialog } from 'primevue'
 import { MapContainer, FavoritesLayer } from '@/components/maps'
+
+const { t } = useI18n()
 
 const props = defineProps({
   coordinates: {
@@ -48,7 +51,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Place Location'
+    default: ''
   },
   markerType: {
     type: String,
@@ -74,7 +77,7 @@ const favoriteData = computed(() => {
   
   return [{
     id: 'place-marker',
-    name: props.title || 'Selected Place',
+    name: props.title || t('maps.popups.placesMap.defaultMarkerName'),
     latitude: props.coordinates[0],
     longitude: props.coordinates[1],
     type: 'point',

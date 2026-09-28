@@ -1,10 +1,10 @@
 <template>
   <div class="user-selection-panel">
     <div class="panel-header">
-      <h3>Select Friends</h3>
+      <h3>{{ t('friends.selection.title') }}</h3>
       <div class="selection-controls">
-        <Button label="All" outlined size="small" @click="$emit('select-all')" />
-        <Button label="None" outlined size="small" @click="$emit('deselect-all')" />
+        <Button :label="t('friends.filters.all')" outlined size="small" @click="$emit('select-all')" />
+        <Button :label="t('friends.filters.none')" outlined size="small" @click="$emit('deselect-all')" />
       </div>
     </div>
 
@@ -29,7 +29,7 @@
         <div class="user-info">
           <span class="user-name">
             {{ user.fullName }}
-            <span v-if="user.userId === requestingUserId" class="you-label">(You)</span>
+            <span v-if="user.userId === requestingUserId" class="you-label">{{ t('friends.selection.youLabel') }}</span>
           </span>
         </div>
         <Badge :value="user.itemCount" severity="info" class="item-badge" />
@@ -40,6 +40,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useFriendsTimelineStore } from '@/stores/friendsTimeline'
 import Checkbox from 'primevue/checkbox'
@@ -47,6 +48,7 @@ import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
 import Badge from 'primevue/badge'
 
+const { t } = useI18n()
 const friendsTimelineStore = useFriendsTimelineStore()
 const { selectedUserIds } = storeToRefs(friendsTimelineStore)
 

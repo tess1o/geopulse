@@ -1,7 +1,7 @@
 <template>
   <div v-if="previewResult" class="preview-box">
     <div class="preview-header">
-      <Tag value="Validation Summary" severity="contrast" />
+      <Tag :value="t('trips.reconstruction.previewSummary.validationSummary')" severity="contrast" />
       <span class="preview-range">
         {{ formatDateTime(previewResult.startTime) }} → {{ formatDateTime(previewResult.endTime) }}
       </span>
@@ -9,20 +9,20 @@
 
     <div class="preview-metrics">
       <div class="preview-metric">
-        <span class="preview-metric-label">Segments</span>
-        <strong>{{ previewSummary.stays }} stays · {{ previewSummary.trips }} trips</strong>
+        <span class="preview-metric-label">{{ t('trips.reconstruction.previewSummary.segments') }}</span>
+        <strong>{{ t('trips.reconstruction.previewSummary.segmentsValue', { stays: previewSummary.stays, trips: previewSummary.trips }) }}</strong>
       </div>
       <div class="preview-metric">
-        <span class="preview-metric-label">Generated GPS points</span>
+        <span class="preview-metric-label">{{ t('trips.reconstruction.previewSummary.generatedPoints') }}</span>
         <strong>{{ previewResult.estimatedPoints }}</strong>
       </div>
       <div class="preview-metric">
-        <span class="preview-metric-label">Covered</span>
+        <span class="preview-metric-label">{{ t('trips.reconstruction.previewSummary.covered') }}</span>
         <strong>{{ formatDurationMinutes(previewSummary.coveredMinutes) }}</strong>
       </div>
       <div class="preview-metric">
-        <span class="preview-metric-label">Uncovered intervals</span>
-        <strong>{{ previewSummary.gapCount }} ({{ formatDurationMinutes(previewSummary.gapMinutes) }})</strong>
+        <span class="preview-metric-label">{{ t('trips.reconstruction.previewSummary.uncoveredIntervals') }}</span>
+        <strong>{{ t('trips.reconstruction.previewSummary.uncoveredValue', { count: previewSummary.gapCount, duration: formatDurationMinutes(previewSummary.gapMinutes) }) }}</strong>
       </div>
     </div>
 
@@ -40,7 +40,10 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
+
+const { t } = useI18n()
 
 defineProps({
   previewResult: {

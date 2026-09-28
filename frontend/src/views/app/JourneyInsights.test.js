@@ -20,7 +20,13 @@ vi.mock('@/composables/useErrorHandler', () => ({
   useErrorHandler: () => ({ handleErrorWithRetry: vi.fn() })
 }))
 vi.mock('@/components/ui/layout/AppLayout.vue', () => ({ default: { template: '<div><slot /></div>' } }))
-vi.mock('@/components/ui/layout/PageContainer.vue', () => ({ default: { template: '<main><slot /></main>' } }))
+vi.mock('@/components/ui/layout/PageContainer.vue', () => ({
+  default: {
+    name: 'PageContainer',
+    props: ['title', 'subtitle'],
+    template: '<main><h1>{{ title }}</h1><p>{{ subtitle }}</p><slot /></main>'
+  }
+}))
 vi.mock('@/components/ui/base/BaseCard.vue', () => ({ default: { template: '<section><slot /></section>' } }))
 
 let JourneyInsights
@@ -121,5 +127,68 @@ describe('JourneyInsights', () => {
 
     const wrapper = mountPage()
     expect(wrapper.text()).toContain('Building your journey insights…')
+  })
+
+  describe('Ukrainian locale', () => {
+    beforeEach(async () => {
+      const { setLocale } = await import('@/composables/useLocale')
+      await setLocale('uk', { persist: false })
+    })
+
+    it('translates the page chrome and movement breakdown', () => {
+      const wrapper = mountPage()
+
+      // PageContainer is stubbed in this suite, so its title/subtitle are asserted as props rather
+      // than as rendered text.
+      expect(wrapper.findComponent({ name: 'PageContainer' }).props('title')).toBe('Статистика подорожей')
+      expect(wrapper.findComponent({ name: 'PageContainer' }).props('subtitle')).toBe('Ваша історія переміщень в одному місці.')
+      expect(wrapper.text()).toContain('Де ви були')
+      expect(wrapper.text()).toContain('Часові закономірності')
+      expect(wrapper.text()).toContain('12 км переміщень.')
+      // Movement labels come from the same key table the tabs use.
+      expect(wrapper.text()).toContain('Автомобіль')
+      expect(wrapper.text()).toContain('Громадський транспорт')
+      expect(wrapper.text()).toContain('Нерозпізнано 3%')
+      // Achievement-group titles are page chrome, so they translate...
+      expect(wrapper.text()).toContain('Віхи відстані')
+      expect(wrapper.text()).toContain('Серії активності')
+    })
+
+    it('leaves badge titles and descriptions in English', () => {
+      const wrapper = mountPage()
+
+      // The deliberate carve-out: badges are served and persisted by the backend, so with no catalog
+      // entry the te() guard keeps the API's own text rather than leaking a dotted key.
+      expect(wrapper.text()).toContain('Planet Circler')
+      expect(wrapper.text()).toContain('Travel 500,000+ km total')
+      expect(wrapper.text()).toContain('Daily Habit Starter')
+      expect(wrapper.text()).not.toContain('badges.')
+      // The surrounding status chip is chrome and does translate.
+      expect(wrapper.text()).toContain('Отримано')
+    })
+
+    it('selects the right Ukrainian plural form for each visit count', () => {
+      // Ukrainian has three plural forms where English has two; a count of 21 must not read as "many"
+      // and 2 must not read as "one".
+      useJourneyInsightsStore().$patch({
+        insights: {
+          ...insights,
+          geographic: {
+            ...insights.geographic,
+            cities: [
+              { name: 'Kyiv', visits: 1 },
+              { name: 'Lviv', visits: 3 },
+              { name: 'Odesa', visits: 8 }
+            ]
+          }
+        }
+      })
+
+      const text = mountPage().text()
+
+      expect(text).toContain('1 візит')
+      expect(text).toContain('3 візити')
+      expect(text).toContain('8 візитів')
+    })
   })
 })

@@ -5,12 +5,12 @@
 
       <div class="page-header">
         <div>
-          <h1>User Management</h1>
-          <p class="text-muted">Manage user accounts</p>
+          <h1>{{ t('admin.usersPage.title') }}</h1>
+          <p class="text-muted">{{ t('admin.usersPage.subtitle') }}</p>
         </div>
         <router-link to="/app/admin/invitations" class="no-underline">
           <Button
-            label="User Invitations"
+            :label="t('admin.usersPage.userInvitations')"
             icon="pi pi-send"
             severity="secondary"
             outlined
@@ -24,7 +24,7 @@
     <div class="search-container">
       <InputText
         v-model="searchQuery"
-        placeholder="Search users..."
+        :placeholder="t('admin.usersPage.searchPlaceholder')"
         @input="onSearch"
         class="w-full"
       />
@@ -45,9 +45,9 @@
         responsiveLayout="scroll"
         :rowsPerPageOptions="[10, 25, 50]"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
+        :currentPageReportTemplate="t('admin.usersPage.currentPageReport')"
       >
-        <Column field="email" header="Email" sortable>
+        <Column field="email" :header="t('admin.usersPage.columnEmail')" sortable>
           <template #body="{ data }">
             <router-link :to="`/app/admin/users/${data.id}`" class="text-primary no-underline">
               {{ data.email }}
@@ -55,33 +55,33 @@
           </template>
         </Column>
 
-        <Column field="fullName" header="Name" sortable />
+        <Column field="fullName" :header="t('admin.usersPage.columnName')" sortable />
 
-        <Column field="role" header="Role" sortable>
+        <Column field="role" :header="t('admin.usersPage.columnRole')" sortable>
           <template #body="{ data }">
             <Tag :severity="data.role === 'ADMIN' ? 'warning' : 'info'" :value="data.role" />
           </template>
         </Column>
 
-        <Column field="active" header="Status" sortable>
+        <Column field="active" :header="t('admin.usersPage.columnStatus')" sortable>
           <template #body="{ data }">
-            <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? 'Active' : 'Disabled'" />
+            <Tag :severity="data.active ? 'success' : 'danger'" :value="data.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
           </template>
         </Column>
 
-        <Column field="gpsPointsCount" header="GPS Points">
+        <Column field="gpsPointsCount" :header="t('admin.usersPage.columnGpsPoints')">
           <template #body="{ data }">
             {{ formatNumber(data.gpsPointsCount) }}
           </template>
         </Column>
 
-        <Column field="createdAt" header="Created" sortable>
+        <Column field="createdAt" :header="t('admin.usersPage.columnCreated')" sortable>
           <template #body="{ data }">
             {{ formatDate(data.createdAt) }}
           </template>
         </Column>
 
-        <Column header="Actions" :exportable="false" style="min-width: 150px">
+        <Column :header="t('admin.usersPage.columnActions')" :exportable="false" style="min-width: 150px">
           <template #body="{ data }">
             <div class="flex gap-2">
               <Button
@@ -90,7 +90,7 @@
                 text
                 severity="info"
                 @click="viewUser(data)"
-                v-tooltip="'View Details'"
+                v-tooltip="t('admin.usersPage.viewDetails')"
               />
               <Button
                 :icon="data.active ? 'pi pi-ban' : 'pi pi-check'"
@@ -98,7 +98,7 @@
                 text
                 :severity="data.active ? 'warning' : 'success'"
                 @click="toggleUserStatus(data)"
-                v-tooltip="data.active ? 'Disable User' : 'Enable User'"
+                v-tooltip="data.active ? t('admin.usersPage.disableUser') : t('admin.usersPage.enableUser')"
                 :disabled="adminReadOnly || data.id === currentUserId"
               />
               <Button
@@ -107,7 +107,7 @@
                 text
                 severity="danger"
                 @click="confirmDelete(data)"
-                v-tooltip="'Delete User'"
+                v-tooltip="t('admin.usersPage.deleteUser')"
                 :disabled="adminReadOnly || data.id === currentUserId"
               />
             </div>
@@ -116,7 +116,7 @@
 
         <template #empty>
           <div class="text-center p-4">
-            No users found.
+            {{ t('admin.usersPage.noUsersFound') }}
           </div>
         </template>
       </DataTable>
@@ -129,7 +129,7 @@
       </div>
 
       <div v-else-if="users.length === 0" class="text-center p-4 card">
-        No users found.
+        {{ t('admin.usersPage.noUsersFound') }}
       </div>
 
       <div v-else class="user-cards">
@@ -141,17 +141,17 @@
             </div>
             <div class="user-badges">
               <Tag :severity="user.role === 'ADMIN' ? 'warning' : 'info'" :value="user.role" />
-              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? 'Active' : 'Disabled'" />
+              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? t('admin.usersPage.statusActive') : t('admin.usersPage.statusDisabled')" />
             </div>
           </div>
 
           <div class="user-card-body">
             <div class="user-stat">
-              <span class="stat-label">GPS Points</span>
+              <span class="stat-label">{{ t('admin.usersPage.columnGpsPoints') }}</span>
               <span class="stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
             </div>
             <div class="user-stat">
-              <span class="stat-label">Created</span>
+              <span class="stat-label">{{ t('admin.usersPage.columnCreated') }}</span>
               <span class="stat-value">{{ formatDate(user.createdAt) }}</span>
             </div>
           </div>
@@ -202,7 +202,7 @@
           :disabled="page === 0"
         />
         <span class="pagination-info">
-          Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+          {{ t('admin.usersPage.pageOf', { page: page + 1, total: Math.ceil(totalRecords / pageSize) }) }}
         </span>
         <Button
           icon="pi pi-angle-right"
@@ -222,21 +222,23 @@
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="deleteDialogVisible"
-      header="Confirm Delete"
+      :header="t('admin.usersPage.confirmDeleteHeader')"
       :modal="true"
       :style="{ width: '450px' }"
     >
       <div class="flex align-items-center gap-3 mb-3">
         <i class="pi pi-exclamation-triangle text-4xl text-red-500"></i>
         <span>
-          Are you sure you want to delete user <strong>{{ userToDelete?.email }}</strong>?
+          <i18n-t keypath="admin.usersPage.confirmDeleteMessage" tag="span">
+            <template #email><strong>{{ userToDelete?.email }}</strong></template>
+          </i18n-t>
           <br><br>
-          This will permanently delete all their data including GPS points, timeline, and settings.
+          {{ t('admin.usersPage.confirmDeleteDetail') }}
         </span>
       </div>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" />
+        <Button :label="t('admin.usersPage.cancel')" icon="pi pi-times" text @click="deleteDialogVisible = false" />
+        <Button :label="t('admin.usersPage.delete')" icon="pi pi-trash" severity="danger" @click="deleteUser" :loading="deleting" />
       </template>
     </Dialog>
 
@@ -247,6 +249,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -265,6 +268,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useAdminStore } from '@/stores/admin'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
@@ -276,12 +280,12 @@ const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'Users' }
+  { label: t('admin.usersPage.breadcrumbTitle') }
 ])
 
 const users = ref([])
@@ -321,8 +325,8 @@ const loadUsers = async () => {
     console.error('Failed to load users:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load users',
+      summary: t('common.error'),
+      detail: t('admin.usersPage.toasts.loadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -365,16 +369,16 @@ const toggleUserStatus = async (user) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: `User ${user.active ? 'enabled' : 'disabled'}`,
+      summary: t('common.success'),
+      detail: user.active ? t('admin.usersPage.toasts.userEnabled') : t('admin.usersPage.toasts.userDisabled'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to update user status:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to update user status'),
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.updateStatusFailedFallback')),
       life: 3000
     })
   }
@@ -394,8 +398,8 @@ const deleteUser = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'User deleted successfully',
+      summary: t('common.success'),
+      detail: t('admin.usersPage.toasts.deletedDetail'),
       life: 3000
     })
 
@@ -406,8 +410,8 @@ const deleteUser = async () => {
     console.error('Failed to delete user:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to delete user'),
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('admin.usersPage.toasts.deleteFailedFallback')),
       life: 3000
     })
   } finally {

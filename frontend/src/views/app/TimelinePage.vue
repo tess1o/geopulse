@@ -3,11 +3,11 @@
     <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
       <div class="trip-workspace-banner-content">
         <span>
-          Current date range matches trip plan:
+          {{ t('timeline.page.workspaceBanner.lead') }}
           <strong>{{ matchingTripWorkspace.name }}</strong>
         </span>
         <Button
-          label="Open Trip Planner"
+          :label="t('timeline.page.workspaceBanner.openPlanner')"
           icon="pi pi-briefcase"
           size="small"
           outlined
@@ -32,12 +32,14 @@
         ref="timelineSplitLayoutRef"
         :show-date-navigation="isSingleDaySelected"
         :date-label="selectedDateLabel"
+        :collapsed-label="t('timeline.layout.collapsedLabel')"
+        :expanded-label="t('timeline.layout.expandedLabel')"
         @navigate-date="navigateTimelineDay"
         @layout-resize="triggerMapResize"
       >
         <template #map>
           <div v-if="mapNoData" class="loading-messages">
-            No data to show on the map. Try to select different date range.
+            {{ t('timeline.page.map.noData') }}
           </div>
           <div v-if="mapDataLoading" class="loading-messages">
             <ProgressSpinner />
@@ -138,6 +140,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -172,6 +175,7 @@ import { useHighlightStore } from '@/stores/highlight'
 import { useTripsStore } from '@/stores/trips'
 
 const toast = useToast()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -415,16 +419,16 @@ const handleFavoriteDelete = (favorite) => {
   }
 
   confirm.require({
-    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
-    header: 'Delete Favorite',
+    message: t('timeline.page.favorite.deleteConfirm.message'),
+    header: t('timeline.page.favorite.deleteConfirm.header'),
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
       const action = () => favoritesStore.deleteFavorite(favorite.id)
 
       withTimelineRegeneration(action, {
         modalType: 'favorite-delete',
-        successMessage: `Favorite "${favorite.name}" deleted successfully. Timeline is regenerating.`,
-        errorMessage: 'Failed to delete favorite location.',
+        successMessage: t('timeline.page.favorite.deleteSuccess', { name: favorite.name }),
+        errorMessage: t('timeline.page.favorite.deleteFailed'),
         onSuccess: () => {
           favoritesStore.fetchFavoritePlaces()
         }
@@ -444,7 +448,7 @@ const fetchLocationData = async (startDate, endDate) => {
     if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
       toast.add({
         severity: 'info',
-        detail: 'No location data for given date range',
+        detail: t('timeline.page.toasts.noLocationData'),
         life: 3000
       })
       mapNoData.value = true
@@ -454,8 +458,8 @@ const fetchLocationData = async (startDate, endDate) => {
     mapNoData.value = true
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch location data',
-      detail: formatApiErrorDetail(error, 'Failed to fetch location data'),
+      summary: t('timeline.page.toasts.locationFetchFailed'),
+      detail: formatApiErrorDetail(error, t('timeline.page.toasts.locationFetchFailed')),
       ...errorToastOptions(error, 3000)
     })
   } finally {
@@ -499,7 +503,7 @@ const fetchTimelineData = async (startDate, endDate) => {
     if (timelineData.value == null || timelineData.value.length === 0) {
       toast.add({
         severity: 'info',
-        detail: 'No timeline data for given date range',
+        detail: t('timeline.page.toasts.noTimelineData'),
         life: 3000
       })
       timelineNoData.value = true
@@ -508,8 +512,8 @@ const fetchTimelineData = async (startDate, endDate) => {
     console.error('Error fetching timeline data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Failed to fetch timeline',
-      detail: formatApiErrorDetail(error, 'Failed to load timeline'),
+      summary: t('timeline.page.toasts.timelineFetchFailed'),
+      detail: formatApiErrorDetail(error, t('timeline.page.toasts.timelineLoadFailed')),
       ...errorToastOptions(error, 8000)
     })
     timelineNoData.value = true
@@ -620,8 +624,8 @@ const handleTagClicked = (tag) => {
 
   toast.add({
     severity: 'info',
-    summary: `Viewing ${tag.name}`,
-    detail: `Timeline updated to show ${tag.name} period`,
+    summary: t('timeline.page.toasts.viewingTag', { name: tag.name }),
+    detail: t('timeline.page.toasts.tagPeriod', { name: tag.name }),
     life: 3000
   })
 }
@@ -649,8 +653,8 @@ const handleResetDataGapOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Reset Manual Stay Override',
-    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    header: t('timeline.page.resetDataGapOverride.confirmHeader'),
+    message: t('timeline.page.resetDataGapOverride.confirmMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -658,15 +662,15 @@ const handleResetDataGapOverride = (stayItem) => {
         await reloadCurrentRange()
         toast.add({
           severity: 'success',
-          summary: 'Override Reset',
-          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          summary: t('timeline.page.resetDataGapOverride.successSummary'),
+          detail: t('timeline.page.resetDataGapOverride.successDetail'),
           life: 3000
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: formatApiErrorDetail(error, 'Failed to reset manual override'),
+          summary: t('timeline.page.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('timeline.page.resetDataGapOverride.failedDetail')),
           life: 5000
         })
       }
@@ -681,8 +685,8 @@ const handleResetTripSplitOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Undo Manual Trip Split',
-    message: 'Undo this manual trip split and regenerate timeline segments?',
+    header: t('timeline.page.resetTripSplitOverride.confirmHeader'),
+    message: t('timeline.page.resetTripSplitOverride.confirmMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -690,15 +694,15 @@ const handleResetTripSplitOverride = (stayItem) => {
         await reloadCurrentRange()
         toast.add({
           severity: 'success',
-          summary: 'Split Reset',
-          detail: 'Manual trip split was reset to automatic behavior.',
+          summary: t('timeline.page.resetTripSplitOverride.successSummary'),
+          detail: t('timeline.page.resetTripSplitOverride.successDetail'),
           life: 3000
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: formatApiErrorDetail(error, 'Failed to reset manual trip split'),
+          summary: t('timeline.page.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('timeline.page.resetTripSplitOverride.failedDetail')),
           life: 5000
         })
       }
@@ -747,23 +751,23 @@ const handleReconstructionCommitted = async (result) => {
       await reloadCurrentRange()
       toast.add({
         severity: 'success',
-        summary: 'Timeline Updated',
-        detail: 'Missing timeline data has been added.',
+        summary: t('timeline.page.reconstruction.updatedSummary'),
+        detail: t('timeline.page.reconstruction.updatedDetail'),
         life: 3200
       })
     },
     onFailed: (progress) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Generation Failed',
-        detail: progress?.errorMessage || 'Timeline generation job failed.',
+        summary: t('timeline.page.reconstruction.failedSummary'),
+        detail: progress?.errorMessage || t('timeline.page.reconstruction.failedDetail'),
         life: 5000
       })
     },
     onTrackingError: (error) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Job Tracking Failed',
+        summary: t('timeline.page.reconstruction.trackingFailedSummary'),
         detail: error,
         life: 5000
       })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { errorToastOptions, isBackendDown, showErrorToast } from './errorHandler'
+import { createAuthExpiredError } from './apiErrorDetail'
+import { errorToastOptions, formatError, isBackendDown, showErrorToast } from './errorHandler'
 
 // A problem document as the backend actually emits it: type/code/errorId are stamped centrally by
 // GeoPulseProblemPostProcessor for every 4xx and 5xx alike.
@@ -135,5 +136,36 @@ describe('errorToastOptions', () => {
   it('leaves an error without a reference on its own lifetime', () => {
     expect(errorToastOptions(axiosError(400, { detail: 'Bad request' }, '/api/v1/timeline'), 3000))
       .toEqual({ life: 3000 })
+  })
+})
+
+describe('auth expiry', () => {
+  // The refresh-token path has no HTTP response to classify, so apiService signals an ended session
+  // with AUTH_EXPIRED_CODE. The regression this guards: the branch used to match on the error's
+  // message text, which is translatable and therefore free to change without warning.
+  it('classifies the refresh-token failure as an expired session', () => {
+    expect(formatError(createAuthExpiredError())).toMatchObject({
+      title: 'Session Expired',
+      message: 'Your session has expired. Please sign in again.',
+      canRetry: false,
+      isAuthExpired: true
+    })
+  })
+
+  it('no longer classifies by message text', () => {
+    // Same words, no code: must NOT be treated as an expired session, or rewording the copy would
+    // silently re-enable a match that is meant to be code-driven.
+    const reshaped = formatError({ message: 'Authentication expired. Please login again.' })
+
+    expect(reshaped.isAuthExpired).toBeUndefined()
+    expect(reshaped.canRetry).toBe(true)
+  })
+
+  it('still honours a 401 that carries a problem document', () => {
+    // A 401 answered by the backend is classified by status, independently of the refresh path.
+    expect(formatError(axiosError(401, geopulseProblem(401, 'INVALID_CREDENTIALS'), '/api/v1/users'))).toMatchObject({
+      title: 'Authentication Required',
+      canRetry: false
+    })
   })
 })

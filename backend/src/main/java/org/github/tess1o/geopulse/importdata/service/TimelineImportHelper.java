@@ -106,7 +106,7 @@ public class TimelineImportHelper {
         UUID userId = job.getUserId();
         try {
             // Badge recalculation (99%)
-            jobProgressService.updateProgress(timelineJobId, "Recalculating achievement badges", 9, 99, null);
+            jobProgressService.updateProgress(timelineJobId, TimelineJobProgressService.step("recalculatingBadges", "Recalculating achievement badges", null), 9, 99, null);
 
             // Note: BadgeRecalculationService has its own @Transactional
             badgeRecalculationService.recalculateAllBadgesForUser(userId);
@@ -118,7 +118,7 @@ public class TimelineImportHelper {
         }
 
         // Mark as completed (100%)
-        jobProgressService.updateProgress(timelineJobId, "Timeline generation completed", 9, 100, null);
+        jobProgressService.updateProgress(timelineJobId, TimelineJobProgressService.step("completed", "Timeline generation completed", null), 9, 100, null);
         jobProgressService.completeJob(timelineJobId);
     }
 

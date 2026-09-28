@@ -2,9 +2,9 @@
   <BaseCard v-if="shouldRenderSection" class="immich-photos-card" :class="{ 'immich-photos-card--rewind': isRewind }">
     <div class="immich-photos-header">
       <div>
-        <p v-if="isRewind" class="rewind-eyebrow"><i class="pi pi-images"></i> Photo moments</p>
+        <p v-if="isRewind" class="rewind-eyebrow"><i class="pi pi-images"></i> {{ t('analytics.immichPhotos.photoMoments') }}</p>
         <h3 class="section-title">{{ title }}</h3>
-        <p v-if="isRewind" class="rewind-description">A small selection from this period.</p>
+        <p v-if="isRewind" class="rewind-description">{{ t('analytics.immichPhotos.rewindDescription') }}</p>
       </div>
       <div class="immich-photos-header-right">
         <span v-if="!isRewind && latestPhotos.length > 0" class="immich-photos-count">
@@ -13,7 +13,7 @@
         </span>
         <Button
           v-if="canLoadMore"
-          label="Load 20 more"
+          :label="t('analytics.immichPhotos.loadMore', { count: DEFAULT_LIMIT })"
           icon="pi pi-plus"
           size="small"
           text
@@ -22,7 +22,7 @@
         />
         <Button
           v-if="isRewind && latestPhotos.length > 0"
-          label="Show random memories"
+          :label="t('analytics.immichPhotos.showRandomMemories')"
           icon="pi pi-refresh"
           size="small"
           text
@@ -41,8 +41,7 @@
       </div>
     </div>
     <div v-if="showLatestCoverageHint" class="immich-photos-coverage-hint">
-      Showing newest {{ latestPhotos.length }} of {{ totalPhotos }}.
-      Open full gallery for complete browsing.
+      {{ t('analytics.immichPhotos.coverageHint', { shown: latestPhotos.length, total: totalPhotos }) }}
     </div>
 
     <div v-if="latestPhotosLoading && latestPhotos.length === 0" class="immich-photos-loading">
@@ -70,7 +69,7 @@
           <img
             v-if="getPhotoBlobUrl(item.photo.id)"
             :src="getPhotoBlobUrl(item.photo.id)"
-            :alt="item.photo.originalFileName || 'Photo'"
+            :alt="item.photo.originalFileName || t('analytics.immichPhotos.photoAltFallback')"
             @load="captureRewindThumbnailDimensions(item.photo, $event)"
           />
           <div v-else class="immich-photo-placeholder">
@@ -95,7 +94,7 @@
           <img
             v-if="getPhotoBlobUrl(photo.id)"
             :src="getPhotoBlobUrl(photo.id)"
-            :alt="photo.originalFileName || 'Photo'"
+            :alt="photo.originalFileName || t('analytics.immichPhotos.photoAltFallback')"
           />
           <div v-else class="immich-photo-placeholder">
             <i class="pi pi-image"></i>
@@ -108,7 +107,7 @@
     </div>
     <div v-if="latestPhotosLoading && latestPhotos.length > 0" class="immich-photos-loading-inline">
       <ProgressSpinner stroke-width="6" />
-      <span>Loading more photos...</span>
+      <span>{{ t('analytics.immichPhotos.loadingMore') }}</span>
     </div>
     <div v-if="photosError" class="immich-photos-error">
       {{ photosError }}
@@ -128,14 +127,14 @@
   <Dialog
     v-model:visible="galleryVisible"
     modal
-    header="Photo Gallery"
+    :header="t('analytics.immichPhotos.galleryHeader')"
     class="gp-dialog-xl"
     :style="{ width: '90vw', maxWidth: '1200px' }"
     :content-style="{ padding: '1rem' }"
   >
     <div class="gallery-meta">
-      <span v-if="isRewind">{{ galleryPhotos.length }} photos from this period</span>
-      <span v-else>{{ galleryPhotos.length }} / {{ totalPhotos }} photos</span>
+      <span v-if="isRewind">{{ t('analytics.immichPhotos.galleryMetaRewind', { count: galleryPhotos.length }, galleryPhotos.length) }}</span>
+      <span v-else>{{ t('analytics.immichPhotos.galleryMetaDefault', { shown: galleryPhotos.length, total: totalPhotos }) }}</span>
     </div>
 
     <div v-if="galleryLoading && galleryPhotos.length === 0" class="immich-photos-loading">
@@ -143,7 +142,7 @@
     </div>
     <div v-else-if="galleryPhotos.length === 0" class="immich-photos-empty">
       <i class="pi pi-camera"></i>
-      <span>No photos available.</span>
+      <span>{{ t('analytics.immichPhotos.noPhotosAvailable') }}</span>
     </div>
     <div v-else class="immich-photos-grid gallery-grid">
       <button
@@ -157,7 +156,7 @@
           <img
             v-if="getPhotoBlobUrl(photo.id)"
             :src="getPhotoBlobUrl(photo.id)"
-            :alt="photo.originalFileName || 'Photo'"
+            :alt="photo.originalFileName || t('analytics.immichPhotos.photoAltFallback')"
           />
           <div v-else class="immich-photo-placeholder">
             <i class="pi pi-image"></i>
@@ -182,6 +181,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Dialog from 'primevue/dialog'
@@ -197,6 +197,9 @@ import { imageService } from '@/utils/imageService'
 import { useTimezone } from '@/composables/useTimezone'
 import { buildJustifiedPhotoRows } from '@/utils/justifiedPhotoLayout'
 import { getCuratedPhotoMemories, selectTimeSpreadPhotoMemories, shufflePhotoMemories } from '@/utils/photoMemoryCuration'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 const DEFAULT_LIMIT = 20
 const DEFAULT_FILTER_CACHE_TTL_MS = 60000
@@ -216,7 +219,7 @@ const props = defineProps({
   },
   emptyMessage: {
     type: String,
-    default: 'No Immich photos found.'
+    default: () => translate('analytics.immichPhotos.defaultEmptyMessage')
   },
   showOnMapEnabled: {
     type: Boolean,
@@ -336,12 +339,12 @@ const showLatestCoverageHint = computed(() =>
 )
 const loadAllButtonLabel = computed(() => {
   if (isRewind.value) {
-    return 'Browse all photos'
+    return t('analytics.immichPhotos.browseAllPhotos')
   }
   if (totalPhotos.value <= 0) {
-    return 'Open full gallery'
+    return t('analytics.immichPhotos.openFullGallery')
   }
-  return `Open full gallery (${totalPhotos.value})`
+  return t('analytics.immichPhotos.openFullGalleryCount', { count: totalPhotos.value })
 })
 const displayedPhotos = computed(() => {
   if (!isRewind.value) return latestPhotos.value
@@ -935,7 +938,7 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
       totalPhotos.value = 0
       clearPhotoBlobs()
     }
-    photosError.value = formatApiErrorDetail(err, 'Failed to load photos from Immich')
+    photosError.value = formatApiErrorDetail(err, t('analytics.immichPhotos.loadFailed'))
   } finally {
     if (requestToken === latestRequestToken) {
       latestPhotosLoading.value = false
@@ -1027,10 +1030,10 @@ const fetchAllPhotosForGallery = async () => {
       return
     }
 
-    photosError.value = formatApiErrorDetail(err, 'Failed to load full photo gallery')
+    photosError.value = formatApiErrorDetail(err, t('analytics.immichPhotos.galleryLoadFailed'))
     toast.add({
       severity: 'error',
-      summary: 'Gallery Load Failed',
+      summary: t('analytics.immichPhotos.galleryLoadFailedSummary'),
       detail: photosError.value,
       life: 5000
     })
@@ -1193,8 +1196,8 @@ const loadPhotosForMarkerGroup = async (markerGroup) => {
     console.error('Failed to load marker photos:', err)
     toast.add({
       severity: 'error',
-      summary: 'Map Preview Failed',
-      detail: formatApiErrorDetail(err, 'Failed to load photos for this map marker'),
+      summary: t('analytics.immichPhotos.mapPreviewFailedSummary'),
+      detail: formatApiErrorDetail(err, t('analytics.immichPhotos.markerPhotosLoadFailed')),
       life: 4000
     })
     return []
@@ -1241,11 +1244,11 @@ const openPhotoViewerForMarker = async (markerGroup) => {
 const getPhotoBlobUrl = (photoId) => photoBlobUrls.value.get(photoId)
 
 const formatPhotoDate = (dateValue) => {
-  if (!dateValue) return 'Unknown date'
+  if (!dateValue) return t('analytics.immichPhotos.unknownDate')
   return `${timezone.formatDateDisplay(dateValue)} ${timezone.formatTime(dateValue)}`
 }
 
-const formatRewindPhotoDate = (dateValue) => dateValue ? timezone.formatDateShort(dateValue) : 'Unknown date'
+const formatRewindPhotoDate = (dateValue) => dateValue ? timezone.formatDateShort(dateValue) : t('analytics.immichPhotos.unknownDate')
 
 onMounted(async () => {
   await ensureImmichConfig()

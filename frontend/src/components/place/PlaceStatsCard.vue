@@ -1,37 +1,37 @@
 <template>
-  <BaseCard title="Visit overview" class="place-statistics">
+  <BaseCard :title="t('place.stats.title')" class="place-statistics">
     <div class="summary-grid">
-      <MetricItem icon="pi pi-chart-line" label="Total visits" :value="statistics.totalVisits || 0" variant="card" />
-      <MetricItem icon="pi pi-clock" label="Total time" :value="formatDuration(statistics.totalDuration)" variant="card" />
-      <MetricItem icon="pi pi-chart-bar" label="Average visit" :value="formatDuration(statistics.averageDuration)" variant="card" />
-      <MetricItem v-if="hasUniquePlaces" icon="pi pi-map-marker" label="Places visited" :value="statistics.uniquePlaces" variant="card" />
+      <MetricItem icon="pi pi-chart-line" :label="t('place.stats.totalVisits')" :value="statistics.totalVisits || 0" variant="card" />
+      <MetricItem icon="pi pi-clock" :label="t('place.stats.totalTime')" :value="formatDuration(statistics.totalDuration)" variant="card" />
+      <MetricItem icon="pi pi-chart-bar" :label="t('place.stats.averageVisit')" :value="formatDuration(statistics.averageDuration)" variant="card" />
+      <MetricItem v-if="hasUniquePlaces" icon="pi pi-map-marker" :label="t('place.stats.placesVisited')" :value="statistics.uniquePlaces" variant="card" />
     </div>
 
     <div class="details-grid">
       <section class="stats-group">
-        <h3>Activity</h3>
-        <MetricItem icon="pi pi-calendar" label="This week" :value="statistics.visitsThisWeek || 0" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-calendar" label="This month" :value="statistics.visitsThisMonth || 0" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-calendar" label="This year" :value="statistics.visitsThisYear || 0" size="small" variant="minimal" />
+        <h3>{{ t('place.stats.activityHeader') }}</h3>
+        <MetricItem icon="pi pi-calendar" :label="t('place.stats.thisWeek')" :value="statistics.visitsThisWeek || 0" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar" :label="t('place.stats.thisMonth')" :value="statistics.visitsThisMonth || 0" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar" :label="t('place.stats.thisYear')" :value="statistics.visitsThisYear || 0" size="small" variant="minimal" />
       </section>
 
       <section class="stats-group">
-        <h3>Visit span</h3>
-        <MetricItem icon="pi pi-calendar-plus" label="First visit" :value="formatDate(statistics.firstVisit)" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-calendar-times" label="Last visit" :value="formatDate(statistics.lastVisit)" size="small" variant="minimal" />
+        <h3>{{ t('place.stats.visitSpanHeader') }}</h3>
+        <MetricItem icon="pi pi-calendar-plus" :label="t('place.stats.firstVisit')" :value="formatDate(statistics.firstVisit)" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-calendar-times" :label="t('place.stats.lastVisit')" :value="formatDate(statistics.lastVisit)" size="small" variant="minimal" />
       </section>
 
       <section class="stats-group">
-        <h3>Duration range</h3>
-        <MetricItem icon="pi pi-arrow-down" label="Shortest visit" :value="formatDuration(statistics.minDuration)" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-arrow-up" label="Longest visit" :value="formatDuration(statistics.maxDuration)" size="small" variant="minimal" />
+        <h3>{{ t('place.stats.durationRangeHeader') }}</h3>
+        <MetricItem icon="pi pi-arrow-down" :label="t('place.stats.shortestVisit')" :value="formatDuration(statistics.minDuration)" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-arrow-up" :label="t('place.stats.longestVisit')" :value="formatDuration(statistics.maxDuration)" size="small" variant="minimal" />
       </section>
 
       <section v-if="hasVisitPatterns" class="stats-group">
-        <h3>Visit patterns</h3>
-        <MetricItem icon="pi pi-calendar" label="Typical day" :value="visitPatterns.mostCommonDayOfWeek" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-clock" label="Arrival period" :value="visitPatterns.mostCommonArrivalPeriod" size="small" variant="minimal" />
-        <MetricItem icon="pi pi-refresh" label="Visit cadence" :value="formatCadence(visitPatterns.averageDaysBetweenVisits)" size="small" variant="minimal" />
+        <h3>{{ t('place.stats.visitPatternsHeader') }}</h3>
+        <MetricItem icon="pi pi-calendar" :label="t('place.stats.typicalDay')" :value="visitPatterns.mostCommonDayOfWeek" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-clock" :label="t('place.stats.arrivalPeriod')" :value="visitPatterns.mostCommonArrivalPeriod" size="small" variant="minimal" />
+        <MetricItem icon="pi pi-refresh" :label="t('place.stats.visitCadence')" :value="formatCadence(visitPatterns.averageDaysBetweenVisits)" size="small" variant="minimal" />
       </section>
     </div>
   </BaseCard>
@@ -39,11 +39,13 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const props = defineProps({
   statistics: { type: Object, required: true }
@@ -54,18 +56,18 @@ const hasVisitPatterns = computed(() => Boolean(visitPatterns.value))
 const hasUniquePlaces = computed(() => props.statistics?.uniquePlaces !== null && props.statistics?.uniquePlaces !== undefined)
 
 const formatDuration = (seconds) => {
-  if (seconds === null || seconds === undefined) return 'N/A'
-  if (seconds === 0) return '0 seconds'
+  if (seconds === null || seconds === undefined) return t('place.stats.notAvailable')
+  if (seconds === 0) return t('place.stats.zeroSeconds')
   return formatDurationSmart(seconds)
 }
 
-const formatDate = (timestamp) => timestamp ? timezone.format(timestamp, 'MMMM DD, YYYY') : 'N/A'
+const formatDate = (timestamp) => timestamp ? timezone.format(timestamp, 'MMMM DD, YYYY') : t('place.stats.notAvailable')
 
 const formatCadence = (days) => {
-  if (days === null || days === undefined || Number.isNaN(Number(days))) return 'N/A'
+  if (days === null || days === undefined || Number.isNaN(Number(days))) return t('place.stats.notAvailable')
   const roundedDays = Math.round(Number(days))
-  if (roundedDays < 1) return 'Less than daily'
-  return roundedDays === 1 ? 'Every day' : `Every ${roundedDays} days`
+  if (roundedDays < 1) return t('place.stats.lessThanDaily')
+  return roundedDays === 1 ? t('place.stats.everyDay') : t('place.stats.everyNDays', { count: roundedDays })
 }
 </script>
 

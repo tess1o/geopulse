@@ -13,18 +13,18 @@
             :href="slotProps.message.data.timelineJobUrl"
             @click.stop
           >
-            View timeline job
+            {{ t('ui.appLayout.viewTimelineJob') }}
           </a>
         </div>
       </template>
     </Toast>
-    <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" header="What’s new">
+    <Dialog v-model:visible="releaseDialogVisible" modal :draggable="false" :closable="false" :header="t('ui.appLayout.whatsNew')">
       <div v-if="releaseAnnouncement" class="gp-release-announcement">
         <h3>{{ releaseAnnouncement.title }}</h3>
         <ul class="gp-release-announcement-list"><li v-for="highlight in releaseAnnouncement.highlights" :key="highlight">{{ highlight }}</li></ul>
-        <a v-if="releaseAnnouncement.releaseUrl" class="gp-release-announcement-link" :href="releaseAnnouncement.releaseUrl" target="_blank" rel="noopener">Read full release notes <i class="pi pi-external-link" aria-hidden="true" /></a>
+        <a v-if="releaseAnnouncement.releaseUrl" class="gp-release-announcement-link" :href="releaseAnnouncement.releaseUrl" target="_blank" rel="noopener">{{ t('ui.appLayout.readFullReleaseNotes') }} <i class="pi pi-external-link" aria-hidden="true" /></a>
       </div>
-      <template #footer><Button label="Got it" @click="dismissReleaseAnnouncement" /></template>
+      <template #footer><Button :label="t('ui.appLayout.gotIt')" @click="dismissReleaseAnnouncement" /></template>
     </Dialog>
     <Toast group="gp-notifications" position="top-right">
       <template #message="slotProps">
@@ -67,6 +67,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Toast from 'primevue/toast'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -106,6 +107,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['invite-friend', 'toggle-location-sharing'])
+const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
@@ -122,7 +124,7 @@ const layoutClasses = computed(() => ({
 const emitNotificationToast = (payload = {}) => {
   toast.add({
     severity: payload.severity || 'info',
-    summary: payload.summary || 'Notification',
+    summary: payload.summary || t('ui.appLayout.notificationDefaultSummary'),
     detail: payload.detail || '',
     life: payload.life ?? 7000,
     group: 'gp-notifications',
@@ -143,12 +145,12 @@ const notificationToastHint = (message) => {
     return notificationsStore.notificationActionLabel(data.notification)
   }
   if (data?.action === 'open-events') {
-    return 'View all notifications'
+    return t('ui.appLayout.viewAllNotifications')
   }
   if (data?.action === 'open-notification-center') {
-    return 'View all notifications'
+    return t('ui.appLayout.viewAllNotifications')
   }
-  return 'Open Notification'
+  return t('ui.appLayout.openNotification')
 }
 
 const loadReleaseAnnouncement = async () => {

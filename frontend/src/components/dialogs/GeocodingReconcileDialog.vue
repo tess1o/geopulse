@@ -11,7 +11,7 @@
       <!-- Provider Selection -->
       <div class="form-field">
         <label for="provider" class="field-label">
-          Select Provider <span class="required">*</span>
+          {{ t('favoritesGeocodingDialogs.reconcile.selectProvider') }} <span class="required">*</span>
         </label>
         <Select
           id="provider"
@@ -19,7 +19,7 @@
           :options="providerOptions"
           optionLabel="displayName"
           optionValue="name"
-          placeholder="Choose a geocoding provider"
+          :placeholder="t('favoritesGeocodingDialogs.reconcile.providerPlaceholder')"
           class="field-input"
         >
           <template #option="slotProps">
@@ -27,49 +27,49 @@
               <span class="provider-name">{{ slotProps.option.displayName }}</span>
               <Tag
                 v-if="slotProps.option.isPrimary"
-                value="Primary"
+                :value="t('favoritesGeocodingDialogs.reconcile.primaryTag')"
                 severity="success"
                 size="small"
               />
               <Tag
                 v-else-if="slotProps.option.isFallback"
-                value="Fallback"
+                :value="t('favoritesGeocodingDialogs.reconcile.fallbackTag')"
                 severity="secondary"
                 size="small"
               />
             </div>
           </template>
         </Select>
-        <small class="field-hint">The provider will be used to fetch new geocoding data</small>
-        <small class="field-hint">Use Reconcile Selected/Reconcile All to refresh old records with the selected provider after switching providers.</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.reconcile.providerHint') }}</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.reconcile.geocoding.providerSwitchHint') }}</small>
       </div>
 
       <!-- Reconciliation Info -->
       <div class="info-section">
         <div class="info-header">
           <i class="pi pi-info-circle info-icon"></i>
-          <span class="info-title">Reconciliation Details</span>
+          <span class="info-title">{{ t('favoritesGeocodingDialogs.reconcile.detailsTitle') }}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Results to reconcile:</span>
+          <span class="info-label">{{ t('favoritesGeocodingDialogs.reconcile.geocoding.resultsToReconcileLabel') }}</span>
           <span class="info-value">
             {{ reconcileCount }}
             <span v-if="reconcileMode === 'all'" class="scope-badge">
-              {{ hasActiveFilters ? '(filtered)' : '(all)' }}
+              {{ hasActiveFilters ? t('favoritesGeocodingDialogs.reconcile.filteredBadge') : t('favoritesGeocodingDialogs.reconcile.allBadge') }}
             </span>
           </span>
         </div>
         <div v-if="reconcileMode === 'all' && hasActiveFilters" class="info-row">
-          <span class="info-label">Active filters:</span>
+          <span class="info-label">{{ t('favoritesGeocodingDialogs.reconcile.activeFiltersLabel') }}</span>
           <span class="info-value">
-            <span v-if="currentFilters.provider">Provider: {{ currentFilters.provider }}</span>
+            <span v-if="currentFilters.provider">{{ t('favoritesGeocodingDialogs.reconcile.geocoding.providerFilter', { provider: currentFilters.provider }) }}</span>
             <span v-if="currentFilters.provider && currentFilters.searchText"> • </span>
-            <span v-if="currentFilters.searchText">Search: "{{ currentFilters.searchText }}"</span>
+            <span v-if="currentFilters.searchText">{{ t('favoritesGeocodingDialogs.reconcile.searchFilter', { search: currentFilters.searchText }) }}</span>
           </span>
         </div>
         <div class="info-row">
-          <span class="info-label">Action:</span>
-          <span class="info-value">Fetch fresh data from selected provider</span>
+          <span class="info-label">{{ t('favoritesGeocodingDialogs.reconcile.actionLabel') }}</span>
+          <span class="info-value">{{ t('favoritesGeocodingDialogs.reconcile.geocoding.actionValue') }}</span>
         </div>
       </div>
 
@@ -79,13 +79,13 @@
           <i class="pi pi-exclamation-triangle"></i>
         </template>
         <div class="warning-content">
-          <strong>Important:</strong>
+          <strong>{{ t('favoritesGeocodingDialogs.reconcile.importantLabel') }}</strong>
           <ul>
-            <li>This will update the display name, city, and country fields</li>
-            <li>Changes will be synchronized across all timeline stays</li>
-            <li>If reconciliation fails, original data will be kept</li>
-            <li>Provider changes in settings do not rewrite existing cached entries automatically</li>
-            <li>This operation cannot be undone</li>
+            <li>{{ t('favoritesGeocodingDialogs.reconcile.geocoding.warnings.displayNameCityCountry') }}</li>
+            <li>{{ t('favoritesGeocodingDialogs.reconcile.geocoding.warnings.syncedAcrossStays') }}</li>
+            <li>{{ t('favoritesGeocodingDialogs.reconcile.originalKeptOnFailure') }}</li>
+            <li>{{ t('favoritesGeocodingDialogs.reconcile.geocoding.warnings.cachedEntriesNotAuto') }}</li>
+            <li>{{ t('favoritesGeocodingDialogs.reconcile.cannotBeUndone') }}</li>
           </ul>
         </div>
       </Message>
@@ -93,7 +93,7 @@
       <!-- Progress (shown during reconciliation) -->
       <div v-if="showProgress" class="progress-section">
         <div class="progress-header">
-          <span class="progress-label">Reconciliation Progress</span>
+          <span class="progress-label">{{ t('favoritesGeocodingDialogs.reconcile.progressTitle') }}</span>
           <span class="progress-percentage">{{ jobProgress.progressPercentage }}%</span>
         </div>
 
@@ -106,15 +106,15 @@
 
         <div class="progress-details">
           <div class="detail-row">
-            <span class="detail-label">Processed:</span>
+            <span class="detail-label">{{ t('favoritesGeocodingDialogs.reconcile.processedLabel') }}</span>
             <span class="detail-value">{{ jobProgress.processedItems }} / {{ jobProgress.totalItems }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Successful:</span>
+            <span class="detail-label">{{ t('favoritesGeocodingDialogs.reconcile.successfulLabel') }}</span>
             <span class="detail-value success-count">{{ jobProgress.successCount }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Errors:</span>
+            <span class="detail-label">{{ t('favoritesGeocodingDialogs.reconcile.errorsLabel') }}</span>
             <span class="detail-value" :class="{ 'failed-count': jobProgress.failedCount > 0 }">
               {{ jobProgress.failedCount }}
             </span>
@@ -123,22 +123,22 @@
 
         <div v-if="isComplete && jobProgress.failedCount === 0" class="completion-message">
           <i class="pi pi-check-circle"></i>
-          <span>Reconciliation completed successfully!</span>
+          <span>{{ t('favoritesGeocodingDialogs.reconcile.completedSuccessfully') }}</span>
         </div>
 
         <div v-if="isComplete && jobProgress.failedCount > 0" class="warning-message-box">
           <i class="pi pi-exclamation-triangle"></i>
           <span>
-            Completed with {{ jobProgress.failedCount }} error{{ jobProgress.failedCount !== 1 ? 's' : '' }}.
-            {{ jobProgress.successCount }} item{{ jobProgress.successCount !== 1 ? 's' : '' }} reconciled successfully.
+            {{ t('favoritesGeocodingDialogs.reconcile.completedWithErrors', { count: jobProgress.failedCount }, jobProgress.failedCount) }}
+            {{ t('favoritesGeocodingDialogs.reconcile.itemsReconciledSuccessfully', { count: jobProgress.successCount }, jobProgress.successCount) }}
           </span>
         </div>
 
         <div v-if="jobProgress.status === 'FAILED'" class="error-message">
           <i class="pi pi-times-circle"></i>
           <div>
-            <strong>Reconciliation job failed</strong>
-            <div class="error-details">{{ jobProgress.errorMessage || 'An unexpected error occurred' }}</div>
+            <strong>{{ t('favoritesGeocodingDialogs.reconcile.jobFailed') }}</strong>
+            <div class="error-details">{{ jobProgress.errorMessage || t('favoritesGeocodingDialogs.reconcile.unexpectedError') }}</div>
           </div>
         </div>
       </div>
@@ -147,14 +147,14 @@
     <template #footer>
       <div class="dialog-footer">
         <Button
-          label="Cancel"
+          :label="t('common.cancel')"
           severity="secondary"
           @click="handleClose"
           :disabled="showProgress && !isTerminal"
         />
         <Button
           v-if="!showProgress"
-          label="Reconcile"
+          :label="t('favoritesGeocodingDialogs.reconcile.reconcileButton')"
           severity="primary"
           icon="pi pi-refresh"
           @click="handleReconcile"
@@ -167,12 +167,15 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import ProgressBar from 'primevue/progressbar'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {
@@ -215,14 +218,14 @@ const dialogTitle = computed(() => {
   if (props.reconcileMode === 'all') {
     const hasFilters = props.currentFilters.provider || props.currentFilters.searchText
     if (hasFilters) {
-      return `Reconcile ${props.totalRecords} Filtered Results`
+      return t('favoritesGeocodingDialogs.reconcile.geocoding.dialogTitleFiltered', { count: props.totalRecords })
     }
-    return `Reconcile All ${props.totalRecords} Results`
+    return t('favoritesGeocodingDialogs.reconcile.geocoding.dialogTitleAll', { count: props.totalRecords })
   } else {
     const count = props.selectedResults.length
     return count === 1
-      ? 'Reconcile Geocoding Result'
-      : `Reconcile ${count} Selected Results`
+      ? t('favoritesGeocodingDialogs.reconcile.geocoding.dialogTitleSingle')
+      : t('favoritesGeocodingDialogs.reconcile.geocoding.dialogTitleMultiple', { count })
   }
 })
 

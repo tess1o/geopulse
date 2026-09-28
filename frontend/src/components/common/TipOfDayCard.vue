@@ -9,7 +9,7 @@
         @click="onNext?.()"
       >
         <i class="pi pi-refresh"></i>
-        <span>Next tip</span>
+        <span>{{ t('ui.tipOfDayCard.nextTip') }}</span>
       </button>
     </div>
 
@@ -37,6 +37,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 const props = defineProps({
   tip: {
@@ -45,7 +49,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Tip of the day',
+    default: () => translate('ui.home.panel.tipOfDayTitle'),
   },
   onNext: {
     type: Function,
@@ -57,8 +61,8 @@ const props = defineProps({
   },
 })
 
-const tipTitle = computed(() => props.tip?.title || 'No tip available yet')
-const tipDescription = computed(() => props.tip?.description || 'Tips will appear here when home content is available.')
+const tipTitle = computed(() => props.tip?.title || t('ui.tipOfDayCard.noTipTitle'))
+const tipDescription = computed(() => props.tip?.description || t('ui.tipOfDayCard.noTipDescription'))
 const tipIcon = computed(() => props.tip?.icon || 'pi pi-lightbulb')
 const tipLinks = computed(() => {
   if (!Array.isArray(props.tip?.links)) {

@@ -6,16 +6,16 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">Personal Settings</h1>
+              <h1 class="page-title">{{ t('profile.page.title') }}</h1>
               <p class="page-description">
-                Manage your account, preferences, and connected apps
+                {{ t('profile.page.description') }}
               </p>
-              <p v-if="activeTab === 'general'" class="account-context">Signed in as {{ userEmail }}</p>
+              <p v-if="activeTab === 'general'" class="account-context">{{ t('profile.page.signedInAs', { email: userEmail }) }}</p>
             </div>
             <div class="header-actions">
               <SettingsSearchTrigger
                 page-key="profile"
-                placeholder="Search profile settings..."
+                :placeholder="t('profile.searchPlaceholder')"
                 @navigate="handleSettingsSearchNavigate"
               />
             </div>
@@ -23,21 +23,21 @@
         </div>
 
         <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-          Demo mode: profile, security, display, AI, Immich, and Memos settings are read-only. Changes cannot be saved in this demo.
+          {{ t('profile.demoReadOnly') }}
         </Message>
 
         <!-- Profile Content -->
         <div class="profile-content">
           <div class="settings-layout">
             <label class="mobile-settings-select">
-              <span>Settings section</span>
+              <span>{{ t('profile.mobileSectionLabel') }}</span>
               <select :value="activeTab" @change="selectTab($event.target.value)">
                 <optgroup v-for="group in settingsGroups" :key="group.label" :label="group.label">
                   <option v-for="tab in group.items" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
                 </optgroup>
               </select>
             </label>
-            <nav class="settings-nav" aria-label="Personal settings sections">
+            <nav class="settings-nav" :aria-label="t('profile.sectionsAria')">
               <section v-for="group in settingsGroups" :key="group.label" class="settings-nav-group">
                 <h2>{{ group.label }}</h2>
                 <button v-for="tab in group.items" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="selectTab(tab.key)">
@@ -67,6 +67,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -97,6 +98,7 @@ import { showDemoModeToast } from '@/utils/demoMode'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 // Composables
+const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
 const route = useRoute()
@@ -107,7 +109,7 @@ const notesStore = useNotesStore()
 const aiStore = useAIStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, customMapStyleUrl, mapRenderMode, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, language, defaultDateRangePreset, autoShowTripReplayControls, enable3dBuildingsByDefault, mapMatchingAvailable, demoReadOnly } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 const { memosConfig, configLoading: memosLoading } = storeToRefs(notesStore)
 
@@ -152,15 +154,16 @@ const timelineDisplayPrefs = ref({
   mapMatchingAvailable: mapMatchingAvailable.value ?? false
 })
 
-// Tab configuration
-const settingsGroups = [
-  { label: 'Personal', items: [
-    { label: 'General', icon: 'pi pi-user', key: 'general' },
-    { label: 'Security', icon: 'pi pi-shield', key: 'security' }
+// Tab configuration. Labels resolve from the catalogs in this computed, so the navigation and the
+// mobile `select` both re-render when the language changes. `key` and `icon` are identities, not copy.
+const settingsGroups = computed(() => [
+  { label: t('profile.groups.personal'), items: [
+    { label: t('profile.tabs.general'), icon: 'pi pi-user', key: 'general' },
+    { label: t('profile.tabs.security'), icon: 'pi pi-shield', key: 'security' }
   ] },
-  { label: 'Experience', items: [{ label: 'Timeline & Map', icon: 'pi pi-map', key: 'timeline' }, { label: 'Notifications', icon: 'pi pi-bell', key: 'notifications' }] },
-  { label: 'Connected Apps', items: [{ label: 'Connected Apps', icon: 'pi pi-box', key: 'connectedApps' }] }
-]
+  { label: t('profile.groups.experience'), items: [{ label: t('profile.tabs.timeline'), icon: 'pi pi-map', key: 'timeline' }, { label: t('profile.tabs.notifications'), icon: 'pi pi-bell', key: 'notifications' }] },
+  { label: t('profile.groups.connectedApps'), items: [{ label: t('profile.tabs.connectedApps'), icon: 'pi pi-box', key: 'connectedApps' }] }
+])
 const legacyTabs = { profile: 'general', account: 'general', preferences: 'general', timelineDisplay: 'timeline', ai: 'connectedApps', immich: 'connectedApps', memos: 'connectedApps' }
 const legacyApps = { ai: 'ai', immich: 'immich', memos: 'memos' }
 
@@ -196,7 +199,8 @@ const currentTabProps = computed(() => {
       userTemperatureUnit: temperatureUnit.value || 'CELSIUS',
       userDefaultRedirectUrl: defaultRedirectUrl.value || '',
       userDateFormat: dateFormat.value || 'MDY',
-      userTimeFormat: timeFormat.value || '24h'
+      userTimeFormat: timeFormat.value || '24h',
+      userLanguage: language.value || 'en'
     },
     security: {
       readOnly: demoReadOnly.value,
@@ -220,7 +224,7 @@ const currentTabHandlers = computed(() => {
       save: handleTimelineDisplaySave,
       'dirty-change': (isDirty) => handleTabDirtyChange('timeline', isDirty)
     },
-    notifications: { saved: () => toast.add({ severity: 'success', summary: 'Notification preferences saved', life: 3000 }) },
+    notifications: { saved: () => toast.add({ severity: 'success', summary: t('profile.save.notificationsSaved'), life: 3000 }) },
     connectedApps: {
       'ai-save': handleAISave, 'immich-save': handleImmichSave, 'memos-save': handleMemosSave,
       'dirty-change': ({ key, dirty }) => handleTabDirtyChange(key, dirty),
@@ -250,18 +254,18 @@ const getErrorMessage = (error) => {
   }
 
   if (error.response?.status === 403) {
-    return 'Current password is incorrect'
+    return t('profile.errors.incorrectPassword')
   }
 
   if (error.response?.status === 400) {
-    return 'Please check your information and try again'
+    return t('profile.errors.checkInformation')
   }
 
-  return error.message || 'An unexpected error occurred'
+  return error.message || t('errors.unexpected')
 }
 
 const showDemoReadOnlyToast = () => {
-  showDemoModeToast(toast, 'Profile changes are disabled in demo mode.', { severity: 'info' })
+  showDemoModeToast(toast, t('profile.demoReadOnlyToast'), { severity: 'info' })
 }
 
 const jumpToRouteSetting = async (settingId, hintOverride = null) => {
@@ -272,8 +276,8 @@ const jumpToRouteSetting = async (settingId, hintOverride = null) => {
     onMissing: () => {
       toast.add({
         severity: 'info',
-        summary: 'Setting not visible',
-        detail: hint || 'This setting is not currently visible. Enable related options to edit it.',
+        summary: t('profile.jump.notVisibleTitle'),
+        detail: hint || t('profile.jump.notVisibleDetail'),
         life: 4000
       })
     }
@@ -324,19 +328,20 @@ const handleProfileSave = async (data) => {
       temperatureUnit: data.temperatureUnit,
       defaultRedirectUrl: data.defaultRedirectUrl,
       dateFormat: data.dateFormat,
-      timeFormat: data.timeFormat
+      timeFormat: data.timeFormat,
+      language: data.language
     })
 
     toast.add({
       severity: 'success',
-      summary: 'Profile Updated',
-      detail: 'Your profile has been updated successfully',
+      summary: t('profile.save.profileUpdated.title'),
+      detail: t('profile.save.profileUpdated.detail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
+      summary: t('profile.save.updateFailed'),
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -362,8 +367,8 @@ const handleTimelineDisplaySave = async (displayPrefs) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Display Settings Updated',
-      detail: 'Your timeline display preferences have been saved. Changes are visible immediately.',
+      summary: t('profile.save.displayUpdated.title'),
+      detail: t('profile.save.displayUpdated.detail'),
       life: 3000
     })
 
@@ -371,7 +376,7 @@ const handleTimelineDisplaySave = async (displayPrefs) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
+      summary: t('profile.save.updateFailed'),
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -394,14 +399,14 @@ const handlePasswordSave = async (data) => {
 
     toast.add({
       severity: 'success',
-      summary: hasPassword.value ? 'Password Changed' : 'Password Set',
-      detail: hasPassword.value ? 'Your password has been changed successfully' : 'Your password has been set successfully',
+      summary: hasPassword.value ? t('profile.save.passwordChanged.title') : t('profile.save.passwordSet.title'),
+      detail: hasPassword.value ? t('profile.save.passwordChanged.detail') : t('profile.save.passwordSet.detail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: hasPassword.value ? 'Password Change Failed' : 'Password Set Failed',
+      summary: hasPassword.value ? t('profile.save.passwordChangeFailed') : t('profile.save.passwordSetFailed'),
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -421,15 +426,15 @@ const handleAISave = async (payload) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'AI settings saved successfully',
+      summary: t('profile.save.aiSaved.title'),
+      detail: t('profile.save.aiSaved.detail'),
       life: 3000
     })
   } catch (error) {
     console.error('Error saving AI settings:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('profile.save.aiError'),
       life: 5000,
       detail: getErrorMessage(error)
     })
@@ -454,14 +459,14 @@ const handleImmichSave = async (configData) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Immich Settings Updated',
-      detail: 'Your Immich integration settings have been saved successfully',
+      summary: t('profile.save.immichUpdated.title'),
+      detail: t('profile.save.immichUpdated.detail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Save Failed',
+      summary: t('profile.save.saveFailed'),
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -485,14 +490,14 @@ const handleMemosSave = async (configData) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Memos Settings Updated',
-      detail: 'Your Memos integration settings have been saved successfully',
+      summary: t('profile.save.memosUpdated.title'),
+      detail: t('profile.save.memosUpdated.detail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Save Failed',
+      summary: t('profile.save.saveFailed'),
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -584,11 +589,11 @@ onBeforeRouteLeave((to, from, next) => {
 
   confirm.require({
     group: profileUnsavedConfirmGroup,
-    message: 'You have unsaved profile changes. If you leave this page, those changes will be lost.',
-    header: 'Unsaved Changes',
+    message: t('profile.unsaved.message'),
+    header: t('profile.unsaved.header'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Leave without saving',
-    rejectLabel: 'Stay',
+    acceptLabel: t('profile.unsaved.leave'),
+    rejectLabel: t('profile.unsaved.stay'),
     acceptClass: 'p-button-danger',
     rejectClass: 'p-button-secondary p-button-outlined',
     accept: () => {
@@ -625,8 +630,8 @@ onMounted(async () => {
     // Show a toast notification to inform user about using cached data
     toast.add({
       severity: 'warn',
-      summary: 'Using Cached Data',
-      detail: 'Unable to fetch latest profile data. Showing cached information.',
+      summary: t('profile.cached.title'),
+      detail: t('profile.cached.detail'),
       life: 4000
     })
   }

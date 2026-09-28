@@ -6,9 +6,9 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">Timeline Generation Jobs</h1>
+              <h1 class="page-title">{{ t('timelineJobs.listPage.title') }}</h1>
               <p class="page-description">
-                View timeline generation work that is running now or finished recently.
+                {{ t('timelineJobs.listPage.description') }}
               </p>
             </div>
           </div>
@@ -19,7 +19,7 @@
           <template #content>
             <div class="loading-content">
               <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-              <p class="loading-text">Looking for active jobs...</p>
+              <p class="loading-text">{{ t('timelineJobs.listPage.loading') }}</p>
             </div>
           </template>
         </Card>
@@ -29,21 +29,21 @@
           <template #content>
             <div class="no-job-content">
               <i class="pi pi-info-circle no-job-icon"></i>
-              <h2>No timeline jobs are running now</h2>
+              <h2>{{ t('timelineJobs.listPage.noJob.title') }}</h2>
               <p class="no-job-message">
-                If you opened this from a notification, the scheduled refresh may already be complete. Recent completed or failed jobs are shown below when available.
+                {{ t('timelineJobs.listPage.noJob.message') }}
               </p>
               <p class="info-hint">
-                Timeline jobs can be started by timeline preference changes, favorite updates, manual regeneration, or scheduled GeoPulse maintenance.
+                {{ t('timelineJobs.listPage.noJob.hint') }}
               </p>
               <div class="action-buttons">
                 <Button
-                  label="Timeline Preferences"
+                  :label="t('nav.items.preferences')"
                   icon="pi pi-cog"
                   @click="goToPreferences"
                 />
                 <Button
-                  label="View Timeline"
+                  :label="t('timelineJobs.listPage.noJob.viewTimelineButton')"
                   icon="pi pi-calendar"
                   severity="secondary"
                   outlined
@@ -57,10 +57,10 @@
         <!-- Error State -->
         <Message v-if="error" severity="error" class="error-message">
           <div class="error-content">
-            <strong>Failed to check for active jobs</strong>
+            <strong>{{ t('timelineJobs.listPage.error.title') }}</strong>
             <p>{{ error }}</p>
             <Button
-              label="Try Again"
+              :label="t('common.tryAgain')"
               size="small"
               @click="checkForActiveJob"
               class="mt-2"
@@ -71,9 +71,9 @@
         <!-- Historical Jobs Section -->
         <div v-if="!loading" class="history-section">
           <div class="section-header">
-            <h2 class="section-title">Job History</h2>
+            <h2 class="section-title">{{ t('timelineJobs.listPage.history.title') }}</h2>
             <p class="section-description">
-              Recent timeline generation jobs
+              {{ t('timelineJobs.listPage.history.description') }}
             </p>
           </div>
 
@@ -82,7 +82,7 @@
             <template #content>
               <div class="loading-content">
                 <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
-                <p class="loading-text">Loading job history...</p>
+                <p class="loading-text">{{ t('timelineJobs.listPage.history.loading') }}</p>
               </div>
             </template>
           </Card>
@@ -92,7 +92,7 @@
             <template #content>
               <div class="no-history-content">
                 <i class="pi pi-inbox"></i>
-                <p>No recent timeline jobs found.</p>
+                <p>{{ t('timelineJobs.listPage.history.empty') }}</p>
               </div>
             </template>
           </Card>
@@ -118,14 +118,14 @@
                     <span class="job-date">{{ formatDate(job.startTime) }}</span>
                   </div>
                   <div class="job-details">
-                    <span class="job-duration">Duration: {{ formatDuration(job.durationMs) }}</span>
+                    <span class="job-duration">{{ t('timelineJobs.listPage.history.duration', { duration: formatDuration(job.durationMs) }) }}</span>
                     <span v-if="job.details && job.details.totalGpsPoints" class="job-stat">
-                      {{ job.details.totalGpsPoints.toLocaleString() }} GPS points
+                      {{ t('timelineJobs.listPage.history.gpsPoints', { count: job.details.totalGpsPoints.toLocaleString() }) }}
                     </span>
                   </div>
                   <div class="job-action">
                     <i class="pi pi-arrow-right"></i>
-                    <span>View Details</span>
+                    <span>{{ t('timelineJobs.listPage.history.viewDetails') }}</span>
                   </div>
                 </div>
               </template>
@@ -140,6 +140,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -150,6 +151,7 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Message from 'primevue/message'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const timelineStore = useTimelineStore()
 const timezone = useTimezone()
@@ -180,7 +182,7 @@ const checkForActiveJob = async () => {
     }
   } catch (err) {
     console.error('Failed to check for active job:', err)
-    error.value = formatApiErrorDetail(err, 'Failed to check for active jobs')
+    error.value = formatApiErrorDetail(err, t('timelineJobs.listPage.error.title'))
     loading.value = false
   }
 }
@@ -205,20 +207,20 @@ const viewJobDetails = (jobId) => {
 }
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('timelineJobs.listPage.notAvailable')
   return `${timezone.formatDateDisplay(timestamp)} ${timezone.formatTime(timestamp)}`
 }
 
 const formatDuration = (durationMs) => {
-  if (!durationMs) return 'N/A'
+  if (!durationMs) return t('timelineJobs.listPage.notAvailable')
   const seconds = Math.floor(durationMs / 1000)
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
 
   if (minutes > 0) {
-    return `${minutes}m ${remainingSeconds}s`
+    return t('timelineJobs.listPage.durationMinutesSeconds', { minutes, seconds: remainingSeconds })
   }
-  return `${seconds}s`
+  return t('timelineJobs.listPage.durationSeconds', { seconds })
 }
 
 const goToPreferences = () => {

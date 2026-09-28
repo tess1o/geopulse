@@ -168,7 +168,7 @@ public class AsyncTimelineGenerationService {
             return;
         }
 
-        jobProgressService.updateProgress(jobId, "Timeline generation completed", 9, 100, null);
+        jobProgressService.updateProgress(jobId, TimelineJobProgressService.step("completed", "Timeline generation completed", null), 9, 100, null);
         jobProgressService.completeJob(jobId);
     }
 

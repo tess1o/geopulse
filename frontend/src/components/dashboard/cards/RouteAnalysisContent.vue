@@ -3,9 +3,9 @@
   <div v-if="noDataAvailable" class="no-data-container">
     <div class="no-data-content">
       <i class="pi pi-directions no-data-icon"></i>
-      <h3 class="no-data-title">No Route Data</h3>
+      <h3 class="no-data-title">{{ t('ui.dashboard.routeAnalysis.noDataTitle') }}</h3>
       <p class="no-data-message">
-        There are no routes analyzed for this period.
+        {{ t('ui.dashboard.routeAnalysis.noDataMessage') }}
       </p>
     </div>
   </div>
@@ -17,7 +17,7 @@
       icon="pi pi-directions"
       iconColor="primary"
       :value="stats.uniqueRoutesCount"
-      label="Unique Routes"
+      :label="t('ui.dashboard.routeAnalysis.uniqueRoutes')"
       variant="minimal"
     />
 
@@ -28,11 +28,11 @@
       </div>
       <div class="route-detail-content">
         <div class="route-name">
-          {{ stats.mostCommonRoute?.name || 'N/A' }}
+          {{ stats.mostCommonRoute?.name || t('ui.dashboard.routeAnalysis.notAvailable') }}
         </div>
-        <div class="route-label">Most Common Route</div>
+        <div class="route-label">{{ t('ui.dashboard.routeAnalysis.mostCommonRoute') }}</div>
         <div v-if="stats.mostCommonRoute?.count" class="trips-count">
-          {{ stats.mostCommonRoute.count }} trips
+          {{ t('ui.dashboard.routeAnalysis.tripsCount', { count: stats.mostCommonRoute.count }) }}
         </div>
       </div>
     </div>
@@ -42,7 +42,7 @@
       icon="pi pi-clock"
       iconColor="secondary"
       :value="stats.avgTripDurationSeconds"
-      label="Avg Trip Duration"
+      :label="t('ui.dashboard.routeAnalysis.avgTripDuration')"
       :formatter="formatDuration"
       variant="minimal"
     />
@@ -52,7 +52,7 @@
       icon="pi pi-stopwatch"
       iconColor="warning"
       :value="stats.longestTripDurationSeconds"
-      label="Longest Trip (duration)"
+      :label="t('ui.dashboard.routeAnalysis.longestTripDuration')"
       :formatter="formatDuration"
       variant="minimal"
     />
@@ -62,7 +62,7 @@
       icon="pi pi-map-marker"
       iconColor="info"
       :value="stats.longestTripDistanceMeters"
-      label="Longest Trip (distance)"
+      :label="t('ui.dashboard.routeAnalysis.longestTripDistance')"
       :formatter="formatDistance"
       variant="minimal"
     />
@@ -71,8 +71,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   stats: {

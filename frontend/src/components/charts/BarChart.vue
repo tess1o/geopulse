@@ -11,7 +11,11 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Chart from 'primevue/chart'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -30,7 +34,7 @@ const props = defineProps({
   },
   title: {
     type: String,
-    default: 'Data'
+    default: () => translate('ui.charts.barChart.defaultTitle')
   },
   color: {
     type: String,
@@ -127,7 +131,7 @@ const chartData = computed(() => {
       const variant = colorVariants[colorKey] || colorVariants.primary
       
       return {
-        label: dataset.label || dataset.title || `Series ${index + 1}`,
+        label: dataset.label || dataset.title || t('ui.charts.barChart.seriesFallback', { number: index + 1 }),
         backgroundColor: getCSSVariable(variant.bg) || '#3B82F6',
         borderColor: getCSSVariable(variant.border) || '#2563EB',
         borderWidth: 1,
@@ -213,7 +217,7 @@ const chartOptions = computed(() => {
           label: function (context) {
             const label = context.dataset.label || '';
             const value = context.parsed.y; // for bar charts
-            const formattedValue = props.valueFormatter ? props.valueFormatter(value) : `${value} km`;
+            const formattedValue = props.valueFormatter ? props.valueFormatter(value) : t('ui.charts.barChart.valueKm', { value });
             return `${label}: ${formattedValue}`;
           }
         }

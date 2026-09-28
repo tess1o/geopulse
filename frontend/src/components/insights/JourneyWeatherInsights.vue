@@ -2,7 +2,7 @@
   <section v-if="hasWeatherInsights" class="weather-insights-section">
     <h3 class="weather-insights-title">
       <i class="fas fa-cloud-sun"></i>
-      Weather Along the Way
+      {{ t('weather.insights.title') }}
     </h3>
 
     <div class="weather-insights-grid">
@@ -12,7 +12,7 @@
         </div>
         <div class="weather-card-content">
           <div class="weather-card-value">{{ formatSampleTemperature(weather.hottestTemperature) }}</div>
-          <div class="weather-card-label">Hottest Moment</div>
+          <div class="weather-card-label">{{ t('weather.insights.hottestMoment') }}</div>
           <div class="weather-card-detail">{{ formatSampleDate(weather.hottestTemperature) }}</div>
           <div v-if="formatSampleLocation(weather.hottestTemperature)" class="weather-card-detail muted">
             <i class="pi pi-map-marker"></i>
@@ -27,7 +27,7 @@
         </div>
         <div class="weather-card-content">
           <div class="weather-card-value">{{ formatSampleTemperature(weather.coldestTemperature) }}</div>
-          <div class="weather-card-label">Coldest Moment</div>
+          <div class="weather-card-label">{{ t('weather.insights.coldestMoment') }}</div>
           <div class="weather-card-detail">{{ formatSampleDate(weather.coldestTemperature) }}</div>
           <div v-if="formatSampleLocation(weather.coldestTemperature)" class="weather-card-detail muted">
             <i class="pi pi-map-marker"></i>
@@ -42,9 +42,9 @@
         </div>
         <div class="weather-card-content">
           <div class="weather-card-value">{{ formatWettestDayPrecipitation(weather.wettestDay) }}</div>
-          <div class="weather-card-label">Wettest Day</div>
+          <div class="weather-card-label">{{ t('weather.insights.wettestDay') }}</div>
           <div class="weather-card-detail">{{ formatLocalDate(weather.wettestDay?.date) }}</div>
-          <div class="weather-card-detail muted">{{ weather.rainySamplesCount || 0 }} rainy samples</div>
+          <div class="weather-card-detail muted">{{ t('weather.insights.rainySamples', { count: rainySamplesCount }, rainySamplesCount) }}</div>
         </div>
       </article>
 
@@ -53,13 +53,13 @@
           <i :class="dominantWeatherIcon"></i>
         </div>
         <div class="weather-card-content">
-          <div class="weather-card-value">{{ weather.dominantCondition?.label || 'Weather' }}</div>
-          <div class="weather-card-label">Most Common Weather</div>
+          <div class="weather-card-value">{{ dominantConditionText }}</div>
+          <div class="weather-card-label">{{ t('weather.insights.mostCommon') }}</div>
           <div class="weather-card-detail">
-            {{ weather.dominantCondition?.samplesCount || 0 }} samples &middot; Avg {{ formatAverageTemperature(weather.averageTemperature) }}
+            {{ t('weather.insights.samplesWithAverage', { count: dominantSamplesCount, temperature: formatAverageTemperature(weather.averageTemperature) }, dominantSamplesCount) }}
           </div>
           <div v-if="weather.windiestSample?.windSpeed != null" class="weather-card-detail muted">
-            Max wind {{ formatWeatherWind(weather.windiestSample.windSpeed) }}
+            {{ t('weather.insights.maxWind', { speed: formatWeatherWind(weather.windiestSample.windSpeed) }) }}
           </div>
         </div>
       </article>
@@ -69,8 +69,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { useTimezone } from '@/composables/useTimezone'
+import { te } from '@/locales'
 import {
   formatPrecipitation,
   formatTemperature,
@@ -100,11 +102,34 @@ const props = defineProps({
 })
 
 const timezone = useTimezone()
+const { t } = useI18n()
 
 const hasWeatherInsights = computed(() => Number(props.weather?.samplesCount || 0) > 0)
 const normalizedDistanceUnit = computed(() => props.distanceUnit === 'MILES' ? 'MILES' : 'KILOMETERS')
 const normalizedTemperatureUnit = computed(() => props.temperatureUnit === 'FAHRENHEIT' ? 'FAHRENHEIT' : 'CELSIUS')
 const dominantWeatherIcon = computed(() => getWeatherCodeInfo(props.weather?.dominantCondition?.weatherCode).icon)
+const rainySamplesCount = computed(() => Number(props.weather?.rainySamplesCount || 0))
+const dominantSamplesCount = computed(() => Number(props.weather?.dominantCondition?.samplesCount || 0))
+
+/**
+ * The dominant condition, translated from the locale-neutral `weatherCode`.
+ *
+ * The backend also sends an English `label`; it is used only when the payload carries no code at all,
+ * so a code we recognise always wins. `te()` guards the catalog lookup in the same way it does for
+ * backend messages, so an unmapped key degrades to the server's text rather than a dotted key.
+ */
+const dominantConditionText = computed(() => {
+  const condition = props.weather?.dominantCondition
+  if (!condition) {
+    return t('weather.conditions.unknown')
+  }
+  if (condition.weatherCode == null) {
+    return condition.label || t('weather.conditions.unknown')
+  }
+
+  const { key } = getWeatherCodeInfo(condition.weatherCode)
+  return te(key) ? t(key) : (condition.label || t('weather.conditions.unknown'))
+})
 
 const weatherIcon = (sample) => getWeatherCodeInfo(sample?.weatherCode).icon
 
@@ -129,12 +154,12 @@ const formatWettestDayPrecipitation = (wettestDay) => {
 }
 
 const formatSampleDate = (sample) => {
-  return sample?.observedAt ? timezone.formatDateDisplay(sample.observedAt) : 'Date unavailable'
+  return sample?.observedAt ? timezone.formatDateDisplay(sample.observedAt) : t('weather.insights.dateUnavailable')
 }
 
 const formatLocalDate = (date) => {
   if (!date) {
-    return 'Date unavailable'
+    return t('weather.insights.dateUnavailable')
   }
   const pattern = DATE_FORMAT_PATTERNS[timezone.getDateFormat()] || DATE_FORMAT_PATTERNS.MDY
   return dayjs(date).format(pattern)

@@ -7,15 +7,15 @@
         icon="pi pi-arrow-left"
         text
         size="small"
-        aria-label="Back to stops"
+        :aria-label="t('trips.stopsRail.backAria')"
         @click="mode = 'stops'"
       />
       <h3 class="trip-rail-title" :class="{ 'trip-rail-title--redundant': mode === 'stops' }">
-        {{ mode === 'add' ? 'Add a place' : `Stops (${stops.length})` }}
+        {{ mode === 'add' ? t('trips.stopsRail.addAPlace') : t('trips.stopsRail.stopsCount', { count: stops.length }) }}
       </h3>
       <Button
         v-if="mode === 'stops' && canEdit"
-        label="Add"
+        :label="t('trips.stopsRail.add')"
         icon="pi pi-plus"
         size="small"
         @click="mode = 'add'"
@@ -52,10 +52,10 @@
 
       <div v-else-if="stops.length === 0" class="trip-rail-state">
         <i class="pi pi-map-marker trip-rail-state-icon" />
-        <p>No stops yet.</p>
+        <p>{{ t('trips.stopsRail.noStopsYet') }}</p>
         <Button
           v-if="canEdit"
-          label="Add your first stop"
+          :label="t('trips.stopsRail.addFirstStop')"
           icon="pi pi-plus"
           size="small"
           @click="mode = 'add'"
@@ -79,7 +79,7 @@
             >
               <div class="trip-stop-title-row">
                 <Tag
-                  :value="stop.priority === 'MUST' ? 'Must' : 'Optional'"
+                  :value="stop.priority === 'MUST' ? t('trips.stopsRail.priorityMust') : t('trips.stopsRail.priorityOptional')"
                   :severity="stop.priority === 'MUST' ? 'danger' : 'secondary'"
                 />
                 <span class="trip-stop-title">{{ stop.title }}</span>
@@ -102,16 +102,16 @@
                 icon="pi pi-check-circle"
                 text
                 size="small"
-                aria-label="Mark visited"
-                v-tooltip.top="'Mark visited'"
+                :aria-label="t('trips.planItemsTable.markVisited')"
+                v-tooltip.top="t('trips.planItemsTable.markVisited')"
                 @click="$emit('mark-visited', stop)"
               />
               <Button
                 icon="pi pi-pencil"
                 text
                 size="small"
-                aria-label="Edit stop"
-                v-tooltip.top="'Edit stop'"
+                :aria-label="t('trips.stopsRail.editStop')"
+                v-tooltip.top="t('trips.stopsRail.editStop')"
                 @click="$emit('edit-stop', stop)"
               />
               <Button
@@ -119,8 +119,8 @@
                 text
                 size="small"
                 severity="danger"
-                aria-label="Delete stop"
-                v-tooltip.top="'Delete stop'"
+                :aria-label="t('trips.stopsRail.deleteStop')"
+                v-tooltip.top="t('trips.stopsRail.deleteStop')"
                 @click="$emit('delete-stop', stop)"
               />
             </div>
@@ -133,12 +133,15 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import SelectButton from 'primevue/selectbutton'
 import ProgressSpinner from 'primevue/progressspinner'
 import TripAddStopPanel from './TripAddStopPanel.vue'
 import { useTimezone } from '@/composables/useTimezone'
+
+const { t } = useI18n()
 
 const props = defineProps({
   stops: { type: Array, default: () => [] },
@@ -169,10 +172,10 @@ const timezone = useTimezone()
 
 const mode = ref(props.initialMode)
 
-const lensOptions = [
-  { label: 'Plan', value: 'plan' },
-  { label: 'Actual', value: 'actual' }
-]
+const lensOptions = computed(() => [
+  { label: t('trips.stopsRail.lensPlan'), value: 'plan' },
+  { label: t('trips.stopsRail.lensActual'), value: 'actual' }
+])
 
 const UNPLANNED_KEY = '__unscheduled__'
 
@@ -208,7 +211,7 @@ const groups = computed(() => {
   if (buckets.has(UNPLANNED_KEY)) {
     ordered.push({
       key: UNPLANNED_KEY,
-      label: 'Unscheduled',
+      label: t('trips.stopsRail.unscheduled'),
       items: sortWithinDay(buckets.get(UNPLANNED_KEY))
     })
   }
@@ -222,32 +225,32 @@ const sortWithinDay = (items) =>
 /** Visit status, mirroring the labels the plan table used. */
 const statusFor = (stop) => {
   if (stop?.manualOverrideState === 'REJECTED') {
-    return { label: 'Missed', severity: 'danger', subtext: 'Manual override' }
+    return { label: t('trips.status.missed'), severity: 'danger', subtext: t('trips.status.manualOverride') }
   }
 
   if (stop?.isVisited) {
     const confidence = stop.visitConfidence
     return {
-      label: 'Visited',
+      label: t('trips.status.visited'),
       severity: 'success',
-      subtext: Number.isFinite(confidence) ? `Confidence ${Math.round(confidence * 100)}%` : null
+      subtext: Number.isFinite(confidence) ? t('trips.status.confidence', { value: `${Math.round(confidence * 100)}%` }) : null
     }
   }
 
   const confidence = stop?.visitConfidence
   if (Number.isFinite(confidence) && confidence >= props.confidenceThresholds.medium) {
     return {
-      label: 'Needs review',
+      label: t('trips.status.needsReview'),
       severity: 'warn',
-      subtext: `Confidence ${Math.round(confidence * 100)}%`
+      subtext: t('trips.status.confidence', { value: `${Math.round(confidence * 100)}%` })
     }
   }
 
   if (!hasCoordinates(stop)) {
-    return { label: 'Planned', severity: 'info', subtext: 'Add a location to auto-match' }
+    return { label: t('trips.status.planned'), severity: 'info', subtext: t('trips.stopsRail.addLocationToAutoMatch') }
   }
 
-  return { label: 'Planned', severity: 'info', subtext: 'Not visited yet' }
+  return { label: t('trips.status.planned'), severity: 'info', subtext: t('trips.status.notVisitedYet') }
 }
 
 const handleAdded = (stop) => {

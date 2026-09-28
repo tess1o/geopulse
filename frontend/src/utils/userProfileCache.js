@@ -28,6 +28,7 @@ export function writeCachedUserProfile(user) {
         defaultRedirectUrl: user.defaultRedirectUrl,
         dateFormat: user.dateFormat,
         timeFormat: user.timeFormat,
+        language: user.language,
         defaultDateRangePreset: user.defaultDateRangePreset,
         autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: user.enable3dBuildingsByDefault ?? false,
@@ -45,4 +46,21 @@ export function writeCachedUserProfile(user) {
 
 export function clearCachedUserProfile() {
     localStorage.removeItem(USER_INFO_KEY)
+}
+
+/**
+ * Update just the language on the cached profile.
+ *
+ * A merge rather than a full write: the language can change on its own (the profile language picker)
+ * and must not blank out the rest of the cached profile, which the pre-Pinia bootstrap reads.
+ */
+export function writeCachedUserLanguage(language) {
+    try {
+        localStorage.setItem(USER_INFO_KEY, JSON.stringify({
+            ...readCachedUserProfile(),
+            language
+        }))
+    } catch (error) {
+        console.warn('[userProfileCache] Failed to cache user language:', error)
+    }
 }

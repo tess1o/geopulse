@@ -22,7 +22,7 @@
           text
           size="small"
           class="gp-error-toast-copy"
-          aria-label="Copy error reference id"
+          :aria-label="t('ui.errorReferenceToast.copyAriaLabel')"
           @click="copyReference(slotProps.message.data.errorId)"
         />
       </div>
@@ -33,9 +33,11 @@
 <script setup>
 import Toast from 'primevue/toast'
 import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
+const { t } = useI18n()
 const toast = useToast()
 
 const copyReference = async (errorId) => {
@@ -43,8 +45,8 @@ const copyReference = async (errorId) => {
 
   toast.add({
     severity: copied ? 'success' : 'warn',
-    summary: copied ? 'Copied' : 'Copy failed',
-    detail: copied ? 'Reference id copied to clipboard' : 'Select the id and copy it manually',
+    summary: copied ? t('common.clipboard.copied') : t('common.clipboard.copyFailed'),
+    detail: copied ? t('common.clipboard.referenceIdCopied') : t('common.clipboard.copyManually'),
     life: 2500
   })
 }

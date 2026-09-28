@@ -1,17 +1,17 @@
 <template>
   <div ref="timelineContainerRef" class="timeline-container">
     <div class="timeline-header">
-      <div class="timeline-title">Movement Timeline</div>
+      <div class="timeline-title">{{ t('timeline.splitLayout.defaultExpandedLabel') }}</div>
       <div
         v-if="isSingleDaySelected && selectedDateLabel"
         class="timeline-header-date-nav"
-        aria-label="Timeline day navigation"
+        :aria-label="t('timeline.splitLayout.dayNavigationAriaLabel')"
       >
         <button
           type="button"
           class="date-nav-button"
-          title="Previous day"
-          aria-label="Previous day"
+          :title="t('timeline.splitLayout.previousDay')"
+          :aria-label="t('timeline.splitLayout.previousDay')"
           @click="navigateDay(-1)"
         >
           <i class="pi pi-chevron-left"></i>
@@ -20,8 +20,8 @@
         <button
           type="button"
           class="date-nav-button"
-          title="Next day"
-          aria-label="Next day"
+          :title="t('timeline.splitLayout.nextDay')"
+          :aria-label="t('timeline.splitLayout.nextDay')"
           @click="navigateDay(1)"
         >
           <i class="pi pi-chevron-right"></i>
@@ -34,21 +34,21 @@
     </div>
 
     <div v-show="timelineNoData" class="loading-messages timeline-no-data">
-      <div>No timeline for the given date range.</div>
+      <div>{{ t('timeline.container.noData') }}</div>
     </div>
 
     <!-- Warning for large datasets -->
     <div v-if="!timelineNoData && !timelineDataLoading && timelineData && timelineData.length > displayLimit && displayLimit < timelineData.length" class="timeline-warning">
       <i class="pi pi-info-circle"></i>
-      <span>Showing {{ displayLimit }} of {{ timelineData.length }} items.</span>
+      <span>{{ t('timeline.container.showingItems', { shown: displayLimit, total: timelineData.length }) }}</span>
       <Button
-        label="Load More"
+        :label="t('timeline.container.loadMore')"
         icon="pi pi-plus"
         @click="loadMore"
         size="small"
         class="load-more-button"
       />
-      <router-link to="/app/timeline-reports" class="reports-link">Or view all in Timeline Reports</router-link>
+      <router-link to="/app/timeline-reports" class="reports-link">{{ t('timeline.container.viewAllInReports') }}</router-link>
     </div>
 
     <div v-show="!timelineNoData && !timelineDataLoading" class="timeline-content">
@@ -65,7 +65,7 @@
               :style="{ backgroundColor: tag.color }"
               @click.stop="handleTagClick(tag)"
               role="button"
-              :aria-label="`View ${tag.name} period`"
+              :aria-label="t('timeline.container.viewPeriodAria', { name: tag.name })"
               tabindex="0"
               @keydown.enter="handleTagClick(tag)"
               @keydown.space.prevent="handleTagClick(tag)"
@@ -235,6 +235,7 @@
 
 <script setup>
 import { computed, ref, defineAsyncComponent, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Timeline from 'primevue/timeline'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
@@ -272,6 +273,7 @@ const TripMapMatchingDetailsDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripMapMatchingDetailsDialog.vue')
 )
 
+const { t } = useI18n()
 const toast = useToast()
 const exportImportStore = useExportImportStore()
 const timelineLabelsStore = useTimelineLabelsStore()
@@ -592,16 +594,16 @@ const handleExportTripAsGpx = async (tripItem) => {
     await exportImportStore.exportTripAsGpx(tripItem.id)
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: 'Trip is being exported as GPX',
+      summary: t('timeline.container.exportStartedTitle'),
+      detail: t('timeline.container.tripExportingDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to export trip as GPX:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: formatApiErrorDetail(error, 'Failed to export trip'),
+      summary: t('timeline.container.exportFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.container.tripExportFailedDetail')),
       life: 5000
     })
   }
@@ -612,16 +614,16 @@ const handleExportStayAsGpx = async (stayItem) => {
     await exportImportStore.exportStayAsGpx(stayItem.id)
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: 'Stay is being exported as GPX',
+      summary: t('timeline.container.exportStartedTitle'),
+      detail: t('timeline.container.stayExportingDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to export stay as GPX:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: formatApiErrorDetail(error, 'Failed to export stay'),
+      summary: t('timeline.container.exportFailedTitle'),
+      detail: formatApiErrorDetail(error, t('timeline.container.stayExportFailedDetail')),
       life: 5000
     })
   }

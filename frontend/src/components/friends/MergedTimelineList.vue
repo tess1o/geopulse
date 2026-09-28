@@ -1,18 +1,18 @@
 <template>
   <div class="merged-timeline-list">
     <div class="list-header">
-      <h3>Timeline Items</h3>
+      <h3>{{ t('friends.mergedList.header') }}</h3>
       <Badge :value="timelineItems.length" severity="info" />
     </div>
 
     <div v-if="loading" class="loading-state">
       <ProgressSpinner size="small" />
-      <p>Loading timeline items...</p>
+      <p>{{ t('friends.mergedList.loading') }}</p>
     </div>
 
     <div v-else-if="timelineItems.length === 0" class="empty-state">
       <i class="pi pi-inbox"></i>
-      <p>No timeline data for selected date range</p>
+      <p>{{ t('friends.mergedList.empty') }}</p>
     </div>
 
     <div v-else class="timeline-items">
@@ -55,7 +55,7 @@
           </div>
           <div class="gap-content">
             <i class="pi pi-exclamation-triangle"></i>
-            <span>No data for {{ formatDuration(item.durationSeconds) }}</span>
+            <span>{{ t('friends.mergedList.noDataFor', { duration: formatDuration(item.durationSeconds) }) }}</span>
           </div>
         </div>
       </template>
@@ -63,14 +63,14 @@
       <!-- Load More Button -->
       <div v-if="timelineItems.length > displayLimit" class="load-more">
         <Button
-            label="Load More"
+            :label="t('friends.mergedList.loadMore')"
             icon="pi pi-plus"
             @click="loadMore"
             size="small"
             outlined
         />
         <span class="showing-count">
-          Showing {{ displayLimit }} of {{ timelineItems.length }} items
+          {{ t('friends.mergedList.showingCount', { shown: displayLimit, total: timelineItems.length }) }}
         </span>
       </div>
     </div>
@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -88,6 +89,7 @@ import Badge from 'primevue/badge'
 import FriendStayCard from './FriendStayCard.vue'
 import FriendTripCard from './FriendTripCard.vue'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({

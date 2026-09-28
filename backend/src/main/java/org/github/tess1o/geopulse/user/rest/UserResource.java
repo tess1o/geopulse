@@ -75,7 +75,8 @@ public class UserResource {
                     request.getEmail(),
                     request.getPassword(),
                     request.getFullName(),
-                    request.getTimezone()
+                    request.getTimezone(),
+                    request.getLanguage()
             );
             UserResponse response = userMapper.toResponse(user);
             return RestResponse.status(Response.Status.CREATED, response);

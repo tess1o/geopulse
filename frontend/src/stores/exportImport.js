@@ -3,6 +3,7 @@ import apiService from '../utils/apiService'
 import chunkedUploadService from '../utils/chunkedUploadService'
 import { isMaintenanceInterruption } from './maintenance'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 
 const TERMINAL_IMPORT_STATUSES = new Set(['completed', 'failed'])
 
@@ -519,29 +520,18 @@ export const useExportImportStore = defineStore('exportImport', {
 
         // Get data type display names
         getDataTypeDisplayName(dataType) {
-            const displayNames = {
-                rawgps: 'Raw GPS Data',
-                favorites: 'Favorite Locations',
-                reversegeocodinglocation: 'Reverse Geocoding Data',
-                locationsources: 'Location Sources',
-                userinfo: 'User Information',
-                timelinelabels: 'Timeline Labels',
-                timelineoverrides: 'Timeline Overrides',
-                tripworkspace: 'Trip Plans',
-                notificationtemplates: 'Notification Templates',
-                geofencing: 'Geofences',
-                notes: 'Timeline Notes',
-                weathersamples: 'Weather Samples',
-                mapmatching: 'Map Matching',
-                statistics: 'Statistics'
-            }
-            return displayNames[dataType] || dataType
+            const knownTypes = new Set([
+                'rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo',
+                'timelinelabels', 'timelineoverrides', 'tripworkspace', 'notificationtemplates',
+                'geofencing', 'notes', 'weathersamples', 'mapmatching', 'statistics'
+            ])
+            return knownTypes.has(dataType) ? t(`data.dataTypes.${dataType}.label`) : dataType
         },
 
         // Get file size display
         getFileSizeDisplay(bytes) {
-            if (!bytes) return 'Unknown'
-            
+            if (!bytes) return t('common.unknown')
+
             const units = ['B', 'KB', 'MB', 'GB']
             let size = bytes
             let unitIndex = 0
@@ -557,10 +547,10 @@ export const useExportImportStore = defineStore('exportImport', {
         // Get status display info
         getStatusDisplayInfo(status) {
             const statusInfo = {
-                processing: { label: 'Processing', severity: 'info', icon: 'pi pi-spin pi-spinner' },
-                validating: { label: 'Validating', severity: 'info', icon: 'pi pi-spin pi-spinner' },
-                completed: { label: 'Completed', severity: 'success', icon: 'pi pi-check' },
-                failed: { label: 'Failed', severity: 'error', icon: 'pi pi-times' }
+                processing: { label: t('data.jobStatus.processing'), severity: 'info', icon: 'pi pi-spin pi-spinner' },
+                validating: { label: t('data.jobStatus.validating'), severity: 'info', icon: 'pi pi-spin pi-spinner' },
+                completed: { label: t('data.jobStatus.completed'), severity: 'success', icon: 'pi pi-check' },
+                failed: { label: t('data.jobStatus.failed'), severity: 'error', icon: 'pi pi-times' }
             }
             return statusInfo[status] || { label: status, severity: 'secondary', icon: 'pi pi-question' }
         }

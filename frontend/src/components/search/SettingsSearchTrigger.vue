@@ -78,6 +78,7 @@ import AutoComplete from 'primevue/autocomplete'
 import { useAuthStore } from '@/stores/auth'
 import { buildSettingsIndexForPage } from '@/constants/globalSearchRegistry'
 import { searchAndRankItems } from '@/utils/globalSearchScoring'
+import { t as translate } from '@/locales'
 
 const props = defineProps({
   pageKey: {
@@ -87,7 +88,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Search settings...'
+    default: () => translate('ui.globalSearch.settingsTrigger.defaultPlaceholder')
   },
   triggerMode: {
     type: String,
@@ -96,7 +97,7 @@ const props = defineProps({
   },
   buttonLabel: {
     type: String,
-    default: 'Find Setting'
+    default: () => translate('ui.globalSearch.settingsTrigger.defaultButtonLabel')
   },
   buttonSize: {
     type: String,

@@ -1,14 +1,14 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Timeline Labels"
+      :title="t('timeline.labels.page.title')"
       :subtitle="pageSubtitle"
       :loading="isLoading"
       max-width="xlarge"
     >
       <template #actions>
         <Button
-          label="Create Label"
+          :label="t('timeline.labels.actions.create')"
           icon="pi pi-plus"
           @click="showCreateDialog = true"
           class="gp-btn-primary"
@@ -22,18 +22,17 @@
         class="labels-help"
         @close="dismissLabelsHelpMessage"
       >
-        Timeline Labels mark time ranges on your timeline (vacation, trip, event).
-        Optionally link a label to a Trip Plan for places, progress, and visit tracking.
+        {{ t('timeline.labels.help') }}
       </Message>
 
       <div v-if="activeLabel" class="active-label-card" role="status">
         <span class="active-label-icon"><i class="pi pi-tag" aria-hidden="true" /></span>
         <div class="active-label-banner">
-          <span class="active-label-kicker">Active label</span>
+          <span class="active-label-kicker">{{ t('timeline.labels.activeBanner.kicker') }}</span>
           <strong>{{ activeLabel.name }}</strong>
-          <span class="active-label-date">Since {{ formatDate(activeLabel.startTime) }}</span>
+          <span class="active-label-date">{{ t('timeline.labels.activeBanner.since', { date: formatDate(activeLabel.startTime) }) }}</span>
         </div>
-        <Tag severity="success" value="OwnTracks" />
+        <Tag severity="success" :value="t('timeline.labels.sourceNames.ownTracks')" />
       </div>
 
       <!-- Data Table with Integrated Toolbar -->
@@ -43,7 +42,7 @@
           <div class="filters-row">
             <InputText
               v-model="searchTerm"
-              placeholder="Search labels..."
+              :placeholder="t('timeline.labels.filters.search')"
               class="gp-input search-input"
             >
               <template #prefix>
@@ -55,7 +54,7 @@
               :options="sourceOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="All Sources"
+              :placeholder="t('timeline.labels.filters.source.all')"
               showClear
               class="source-select"
             />
@@ -64,13 +63,13 @@
               :options="linkStateOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="All Links"
+              :placeholder="t('timeline.labels.filters.linkState.all')"
               class="link-select"
             />
           </div>
           <div v-if="selectedTags.length > 0" class="bulk-actions">
             <Button
-              :label="`Delete (${selectedTags.length})`"
+              :label="t('timeline.labels.bulkDelete', { count: selectedTags.length })"
               icon="pi pi-trash"
               severity="danger"
               size="small"
@@ -86,7 +85,7 @@
           :rows="10"
           :rowsPerPageOptions="[10, 25, 50]"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} labels"
+          :currentPageReportTemplate="t('timeline.labels.table.pageReport')"
           stripedRows
           v-model:selection="selectedTags"
           :selectAll="selectAll"
@@ -97,16 +96,16 @@
         >
           <Column selectionMode="multiple" class="selection-column" />
 
-          <Column field="name" header="Label" sortable>
+          <Column field="name" :header="t('timeline.labels.table.columns.label')" sortable>
             <template #body="{ data }">
               <div class="label-cell">
                 <span class="label-color" :style="{ backgroundColor: data.color || 'var(--gp-primary)' }" />
                 <div>
                   <strong>{{ data.name }}</strong>
                   <div class="label-badges">
-                    <Tag v-if="data.isActive" severity="success" value="Active" />
+                    <Tag v-if="data.isActive" severity="success" :value="t('timeline.labels.badges.active')" />
                     <Tag :severity="data.source === 'owntracks' ? 'info' : 'secondary'">
-                      {{ data.source === 'owntracks' ? 'OwnTracks' : 'Manual' }}
+                      {{ data.source === 'owntracks' ? t('timeline.labels.sourceNames.ownTracks') : t('timeline.labels.sourceNames.manual') }}
                     </Tag>
                   </div>
                 </div>
@@ -114,16 +113,16 @@
             </template>
           </Column>
 
-          <Column field="startTime" header="Period" sortable>
+          <Column field="startTime" :header="t('timeline.labels.table.columns.period')" sortable>
             <template #body="{ data }">
               <div class="period-cell">
-                <span>{{ formatDate(data.startTime) }} – {{ data.endTime ? formatDate(data.endTime) : 'Now' }}</span>
+                <span>{{ formatDate(data.startTime) }} – {{ data.endTime ? formatDate(data.endTime) : t('timeline.labels.now') }}</span>
                 <small>{{ calculateDuration(data.startTime, data.endTime) }}</small>
               </div>
             </template>
           </Column>
 
-          <Column header="Trip Plan" class="trip-plan-column">
+          <Column :header="t('timeline.labels.table.columns.tripPlan')" class="trip-plan-column">
             <template #body="{ data }">
               <Button
                 v-if="isLinkedToTrip(data)"
@@ -134,24 +133,24 @@
                 class="trip-plan-link"
                 @click="openLinkedWorkspace(data)"
               />
-              <span v-else class="not-linked">Not linked</span>
+              <span v-else class="not-linked">{{ t('timeline.labels.table.notLinked') }}</span>
             </template>
           </Column>
 
-          <Column field="showAsPreset" header="Preset" sortable class="preset-column">
+          <Column field="showAsPreset" :header="t('timeline.labels.table.columns.preset')" sortable class="preset-column">
             <template #body="{ data }">
               <Tag
                 :severity="data.showAsPreset === false ? 'secondary' : 'success'"
-                :value="data.showAsPreset === false ? 'Hidden' : 'Visible'"
+                :value="data.showAsPreset === false ? t('timeline.labels.badges.hidden') : t('timeline.labels.badges.visible')"
               />
             </template>
           </Column>
 
-          <Column header="Actions" class="actions-column">
+          <Column :header="t('timeline.labels.table.columns.actions')" class="actions-column">
             <template #body="{ data }">
               <div class="actions-inline-row">
                 <Button
-                  label="Timeline"
+                  :label="t('timeline.labels.actions.timeline')"
                   icon="pi pi-calendar"
                   text
                   size="small"
@@ -162,7 +161,7 @@
                   text
                   rounded
                   size="small"
-                  :aria-label="`More actions for ${data.name}`"
+                  :aria-label="t('timeline.labels.table.actionsAria', { name: data.name })"
                   aria-haspopup="menu"
                   @click="openActionsMenu($event, data)"
                 />
@@ -173,7 +172,7 @@
           <template #empty>
             <div class="empty-state">
               <i class="pi pi-calendar" />
-              <p>No timeline labels found. Create your first one to get started!</p>
+              <p>{{ t('timeline.labels.table.empty') }}</p>
             </div>
           </template>
         </DataTable>
@@ -182,7 +181,7 @@
         <div class="mobile-cards">
           <div v-if="filteredTimelineLabels.length === 0" class="empty-state">
             <i class="pi pi-calendar"></i>
-            <p>No timeline labels found. Create your first one to get started!</p>
+            <p>{{ t('timeline.labels.table.empty') }}</p>
           </div>
 
           <div v-for="tag in filteredTimelineLabels" :key="tag.id" class="timeline-label-card">
@@ -194,7 +193,7 @@
                   :checked="selectedTags.includes(tag)"
                   @change="toggleTagSelection(tag)"
                   class="tag-checkbox"
-                  :aria-label="`Select ${tag.name}`"
+                  :aria-label="t('timeline.labels.table.selectAria', { name: tag.name })"
                 />
                 <div
                   class="color-indicator"
@@ -203,11 +202,11 @@
                 <div class="card-title-section">
                   <div class="card-title">{{ tag.name }}</div>
                   <div class="card-badges">
-                    <Tag v-if="tag.isActive" severity="success" value="Active" />
+                    <Tag v-if="tag.isActive" severity="success" :value="t('timeline.labels.badges.active')" />
                     <Tag
                       :severity="tag.source === 'owntracks' ? 'info' : 'secondary'"
                     >
-                      {{ tag.source === 'owntracks' ? 'OwnTracks' : 'Manual' }}
+                      {{ tag.source === 'owntracks' ? t('timeline.labels.sourceNames.ownTracks') : t('timeline.labels.sourceNames.manual') }}
                     </Tag>
                   </div>
                 </div>
@@ -219,15 +218,15 @@
               <div class="card-info-row">
                 <div class="info-item">
                   <i class="pi pi-calendar"></i>
-                  <span class="info-label">Period:</span>
-                  <span class="info-value">{{ formatDate(tag.startTime) }} – {{ tag.endTime ? formatDate(tag.endTime) : 'Now' }}</span>
+                  <span class="info-label">{{ t('timeline.labels.cards.period') }}</span>
+                  <span class="info-value">{{ formatDate(tag.startTime) }} – {{ tag.endTime ? formatDate(tag.endTime) : t('timeline.labels.now') }}</span>
                 </div>
               </div>
 
               <div class="card-info-row">
                 <div class="info-item">
                   <i class="pi pi-clock"></i>
-                  <span class="info-label">Duration:</span>
+                  <span class="info-label">{{ t('timeline.labels.cards.duration') }}</span>
                   <span class="info-value">{{ calculateDuration(tag.startTime, tag.endTime) }}</span>
                 </div>
               </div>
@@ -235,10 +234,10 @@
               <div class="card-info-row">
                 <div class="info-item">
                   <i class="pi pi-filter"></i>
-                  <span class="info-label">Date Preset:</span>
+                  <span class="info-label">{{ t('timeline.labels.cards.datePreset') }}</span>
                   <Tag
                     :severity="tag.showAsPreset === false ? 'secondary' : 'success'"
-                    :value="tag.showAsPreset === false ? 'Hidden' : 'Visible'"
+                    :value="tag.showAsPreset === false ? t('timeline.labels.badges.hidden') : t('timeline.labels.badges.visible')"
                   />
                 </div>
               </div>
@@ -246,7 +245,7 @@
               <div class="card-info-row" v-if="isLinkedToTrip(tag)">
                 <div class="info-item">
                   <i class="pi pi-briefcase"></i>
-                  <span class="info-label">Linked Trip Plan:</span>
+                  <span class="info-label">{{ t('timeline.labels.cards.linkedTripPlan') }}</span>
                   <span class="info-value">{{ getLinkedTrip(tag)?.name }}</span>
                 </div>
               </div>
@@ -255,19 +254,19 @@
             <!-- Card Actions -->
             <div class="card-actions">
               <Button
-                label="Timeline"
+                :label="t('timeline.labels.actions.timeline')"
                 icon="pi pi-calendar"
                 size="small"
                 @click="viewTimeline(tag)"
                 text
               />
               <Button
-                label="More"
+                :label="t('timeline.labels.actions.more')"
                 icon="pi pi-ellipsis-v"
                 icon-pos="right"
                 size="small"
                 outlined
-                :aria-label="`More actions for ${tag.name}`"
+                :aria-label="t('timeline.labels.table.actionsAria', { name: tag.name })"
                 aria-haspopup="menu"
                 @click="openActionsMenu($event, tag)"
               />
@@ -277,7 +276,7 @@
           <!-- Mobile Pagination (if needed) -->
           <div v-if="filteredTimelineLabels.length > 10" class="mobile-pagination">
             <p class="mobile-count">
-              Showing {{ filteredTimelineLabels.length }} labels
+              {{ t('timeline.labels.cards.showingCount', { count: filteredTimelineLabels.length }) }}
             </p>
           </div>
         </div>
@@ -302,36 +301,36 @@
     <Dialog
       v-model:visible="showLinkedDeleteDialog"
       modal
-      header="Delete Linked Timeline Label"
+      :header="t('timeline.labels.linkedDelete.header')"
       class="gp-dialog-md"
       @hide="linkedDeleteTarget = null"
     >
       <div class="from-label-dialog-content">
         <p class="gp-text-secondary">
-          This label is linked to trip plan
+          {{ t('timeline.labels.linkedDelete.linkedToLead') }}
           <strong>"{{ linkedDeleteTargetTripName }}"</strong>.
         </p>
         <p class="gp-text-secondary">
-          Choose what to delete:
+          {{ t('timeline.labels.linkedDelete.choose') }}
         </p>
       </div>
 
       <template #footer>
         <Button
-          label="Cancel"
+          :label="t('timeline.labels.linkedDelete.cancel')"
           icon="pi pi-times"
           outlined
           @click="showLinkedDeleteDialog = false"
         />
         <Button
-          label="Delete Label Only"
+          :label="t('timeline.labels.linkedDelete.onlyLabel')"
           icon="pi pi-trash"
           severity="warn"
           :loading="isDeletingLinkedTag"
           @click="deleteLinkedTag('unlink_only')"
         />
         <Button
-          label="Delete Label + Trip Plan"
+          :label="t('timeline.labels.linkedDelete.labelAndTripPlan')"
           icon="pi pi-trash"
           severity="danger"
           :loading="isDeletingLinkedTag"
@@ -344,6 +343,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -367,6 +367,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 
 const router = useRouter()
+const { t } = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
 const store = useTimelineLabelsStore()
@@ -392,17 +393,17 @@ const labelActionsMenuRef = ref(null)
 const actionTarget = ref(null)
 
 // Source options for filter
-const sourceOptions = [
-  { label: 'All Sources', value: null },
-  { label: 'Manual', value: 'manual' },
-  { label: 'OwnTracks', value: 'owntracks' }
-]
+const sourceOptions = computed(() => [
+  { label: t('timeline.labels.filters.source.all'), value: null },
+  { label: t('timeline.labels.sourceNames.manual'), value: 'manual' },
+  { label: t('timeline.labels.sourceNames.ownTracks'), value: 'owntracks' }
+])
 
-const linkStateOptions = [
-  { label: 'All Links', value: 'all' },
-  { label: 'Linked to Trip Plan', value: 'linked' },
-  { label: 'Not Linked', value: 'unlinked' }
-]
+const linkStateOptions = computed(() => [
+  { label: t('timeline.labels.filters.linkState.all'), value: 'all' },
+  { label: t('timeline.labels.filters.linkState.linked'), value: 'linked' },
+  { label: t('timeline.labels.filters.linkState.unlinked'), value: 'unlinked' }
+])
 
 // Computed
 const activeLabel = computed(() => store.getActiveLabel)
@@ -411,9 +412,9 @@ const totalDays = computed(() => store.getTotalDaysLabeled)
 
 const pageSubtitle = computed(() => {
   const parts = []
-  if (totalCount.value > 0) parts.push(`${totalCount.value} labels`)
-  if (totalDays.value > 0) parts.push(`${totalDays.value} days tagged`)
-  return parts.join(' • ') || 'Advanced timeline labels (used by timeline chips and imports)'
+  if (totalCount.value > 0) parts.push(t('timeline.labels.page.subtitleLabelsCount', { count: totalCount.value }, totalCount.value))
+  if (totalDays.value > 0) parts.push(t('timeline.labels.page.subtitleDaysTagged', { count: totalDays.value }, totalDays.value))
+  return parts.join(' • ') || t('timeline.labels.page.subtitleFallback')
 })
 
 const filteredTimelineLabels = computed(() => {

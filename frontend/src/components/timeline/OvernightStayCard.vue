@@ -24,14 +24,14 @@
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🏠 Stayed at
+        🏠 {{ t('timeline.stay.stayedAt') }}
         <span class="location-name">{{ stayItem.locationName }}</span>
-        <span v-if="isManualStay" class="manual-gap-indicator">(Manual)</span>
+        <span v-if="isManualStay" class="manual-gap-indicator">{{ t('timeline.stay.manualIndicator') }}</span>
         <button
           v-if="canRenameStay"
           class="location-edit-icon-btn"
-          aria-label="Rename stay place"
-          :title="readOnly ? 'Rename is disabled in demo mode' : 'Rename stay place'"
+          :aria-label="t('timeline.card.renameStayAria')"
+          :title="readOnly ? t('timeline.card.renameDisabledDemo') : t('timeline.card.renameStayAria')"
           :disabled="readOnly"
           @click.stop="handleRenameStay"
         >
@@ -41,7 +41,7 @@
           v-if="isManualStay"
           class="location-reset-icon-btn"
           :aria-label="resetManualStayLabel"
-          :title="readOnly ? 'Reset is disabled in demo mode' : resetManualStayLabel"
+          :title="readOnly ? t('timeline.card.resetDisabledDemo') : resetManualStayLabel"
           :disabled="readOnly"
           @click.stop="handleResetManualStay"
         >
@@ -53,10 +53,10 @@
     <template #content>
       <div class="overnight-stay-content">
         <p class="duration-detail">
-          📈 Total duration: <span class="duration-value">{{ formatDurationSmart(stayItem.stayDuration) }}</span>
+          📈 {{ t('timeline.dataGap.totalDuration') }} <span class="duration-value">{{ formatDurationSmart(stayItem.stayDuration) }}</span>
         </p>
         <p class="duration-detail">
-          ⏱️ On this day:
+          ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
       </div>
@@ -80,6 +80,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
@@ -95,6 +96,7 @@ import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
 import NoteEditorDialog from './NoteEditorDialog.vue'
 import TimelineWeatherSummary from './weather/TimelineWeatherSummary.vue'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const router = useRouter()
 const notesStore = useNotesStore()
@@ -162,7 +164,7 @@ const contextMenuItems = computed(() => {
 
   if (canViewPlaceDetails.value) {
     items.push({
-      label: 'View all visits to this place',
+      label: t('timeline.card.viewAllVisits'),
       icon: 'pi pi-map-marker',
       command: () => {
         navigateToPlaceDetails()
@@ -172,7 +174,7 @@ const contextMenuItems = computed(() => {
 
   if (canRenameStay.value) {
     items.push({
-      label: 'Rename place...',
+      label: t('timeline.card.renamePlace'),
       icon: 'pi pi-pencil',
       disabled: props.readOnly,
       command: () => {
@@ -183,7 +185,7 @@ const contextMenuItems = computed(() => {
 
   if (canResetDataGapOverride.value) {
     items.push({
-      label: 'Reset to automatic data gap',
+      label: t('timeline.card.resetDataGap'),
       icon: 'pi pi-refresh',
       disabled: props.readOnly,
       command: () => {
@@ -194,7 +196,7 @@ const contextMenuItems = computed(() => {
 
   if (canResetTripSplitOverride.value) {
     items.push({
-      label: 'Undo manual trip split',
+      label: t('timeline.card.undoTripSplit'),
       icon: 'pi pi-refresh',
       disabled: props.readOnly,
       command: () => {
@@ -215,7 +217,7 @@ const contextMenuItems = computed(() => {
 
   if (props.allowNoteCreation) {
     items.push({
-      label: 'Add note...',
+      label: t('timeline.card.addNote'),
       icon: 'pi pi-file-edit',
       command: () => {
         noteEditorVisible.value = true
@@ -226,7 +228,7 @@ const contextMenuItems = computed(() => {
   // Add city details option if available
   if (hasCity.value) {
     items.push({
-      label: `View ${props.stayItem.city} Details`,
+      label: t('timeline.card.viewCityDetails', { city: props.stayItem.city }),
       icon: 'pi pi-building',
       command: () => {
         navigateToCityDetails()
@@ -237,7 +239,7 @@ const contextMenuItems = computed(() => {
   // Add country details option if available
   if (hasCountry.value) {
     items.push({
-      label: `View ${props.stayItem.country} Details`,
+      label: t('timeline.card.viewCountryDetails', { country: props.stayItem.country }),
       icon: 'pi pi-globe',
       command: () => {
         navigateToCountryDetails()
@@ -252,7 +254,7 @@ const contextMenuItems = computed(() => {
       separator: true
     },
     {
-      label: 'Export as GPX',
+      label: t('timeline.card.exportGpx'),
       icon: 'pi pi-download',
       command: () => {
         emit('export-gpx', props.stayItem)
@@ -298,7 +300,7 @@ const canResetTripSplitOverride = computed(() => {
 const isManualStay = computed(() => canResetDataGapOverride.value || canResetTripSplitOverride.value)
 
 const resetManualStayLabel = computed(() => (
-  canResetTripSplitOverride.value ? 'Undo manual trip split' : 'Reset to automatic data gap'
+  canResetTripSplitOverride.value ? t('timeline.card.undoTripSplit') : t('timeline.card.resetDataGap')
 ))
 
 const canManageMatchingNotes = computed(() => {
@@ -335,9 +337,13 @@ const openNotesViewer = () => {
 
 const getViewNotesLabel = () => {
   if (canManageMatchingNotes.value) {
-    return matchingNotes.value.length === 1 ? 'Manage note...' : `Manage notes (${matchingNotes.value.length})...`
+    return matchingNotes.value.length === 1
+      ? t('timeline.card.manageNoteSingle')
+      : t('timeline.card.manageNotesMultiple', { count: matchingNotes.value.length })
   }
-  return matchingNotes.value.length === 1 ? 'View note...' : `View notes (${matchingNotes.value.length})...`
+  return matchingNotes.value.length === 1
+    ? t('timeline.card.viewNoteSingle')
+    : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
 }
 
 const handleRenameStay = () => {

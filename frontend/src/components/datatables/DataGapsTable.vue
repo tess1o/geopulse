@@ -1,11 +1,11 @@
 <template>
-  <BaseCard title="Data Gaps" class="data-gaps-table-card">
+  <BaseCard :title="t('data.tables.dataGaps.sectionTitle')" class="data-gaps-table-card">
     <!-- Table Header with Filters and Export -->
     <template #header>
       <div class="table-header">
         <div v-if="!isMobile" class="table-title-section">
-          <h3 class="table-title">Data Gaps</h3>
-          <span class="table-count">{{ filteredDataGapsData.length }} gaps</span>
+          <h3 class="table-title">{{ t('data.tables.dataGaps.sectionTitle') }}</h3>
+          <span class="table-count">{{ t('data.tables.dataGaps.count', { count: filteredDataGapsData.length }) }}</span>
         </div>
         <div class="table-actions">
           <div class="filter-controls">
@@ -14,19 +14,19 @@
                 :options="durationFilterOptions"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Duration"
+                :placeholder="t('data.tables.durationPlaceholder')"
                 showClear
                 class="duration-filter"
             />
           </div>
           <Button
-              :label="isMobile ? null : 'Export CSV'"
-              :aria-label="'Export CSV'"
+              :label="isMobile ? null : t('data.tables.exportCsv')"
+              :aria-label="t('data.tables.exportCsv')"
               icon="pi pi-download"
               @click="$emit('export')"
               outlined
               :disabled="exportDisabled"
-              v-tooltip.bottom="exportDisabled ? 'Export is disabled in demo mode' : 'Export data gaps to CSV'"
+              v-tooltip.bottom="exportDisabled ? t('data.tables.exportDisabledDemo') : t('data.tables.dataGaps.exportTooltip')"
               class="export-button"
               :class="{ 'export-button--icon': isMobile }"
           />
@@ -62,7 +62,7 @@
     >
       <Column
           field="startTime"
-          header="Start Time"
+          :header="t('data.tables.dataGaps.startTimeHeader')"
           :sortable="true"
           :style="{ 'min-width': '150px' }"
       >
@@ -76,7 +76,7 @@
 
       <Column
           field="endTime"
-          header="End Time"
+          :header="t('data.tables.dataGaps.endTimeHeader')"
           :sortable="true"
           :style="{ 'min-width': '150px' }"
       >
@@ -93,7 +93,7 @@
       <!-- Duration Column -->
       <Column
           field="duration"
-          header="Duration"
+          :header="t('data.tables.dataGaps.durationHeader')"
           :sortable="true"
           :style="{ 'min-width': '120px' }"
       >
@@ -115,17 +115,17 @@
         class="mobile-gap-card"
       >
         <header class="mobile-gap-header">
-          <h4 class="mobile-gap-title">Data Gap</h4>
+          <h4 class="mobile-gap-title">{{ t('data.tables.dataGaps.title') }}</h4>
           <span class="duration-badge mobile-gap-duration">{{ formatGapDuration(gap) }}</span>
         </header>
 
         <div class="mobile-gap-meta">
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">Start</span>
+            <span class="mobile-meta-label">{{ t('data.tables.start') }}</span>
             <span class="mobile-meta-value">{{ formatDate(gap.startTime) }} {{ formatTime(gap.startTime) }}</span>
           </div>
           <div class="mobile-meta-row">
-            <span class="mobile-meta-label">End</span>
+            <span class="mobile-meta-label">{{ t('data.tables.end') }}</span>
             <span class="mobile-meta-value">
               <template v-if="!isSameDay(gap.startTime, gap.endTime)">{{ formatDate(gap.endTime) }} </template>{{ formatTime(gap.endTime) }}
             </span>
@@ -137,10 +137,9 @@
     <!-- No Data State -->
     <div v-if="!loading && filteredDataGapsData.length === 0" class="no-data-state">
       <i class="pi pi-check-circle no-data-icon"></i>
-      <h4 class="no-data-title">No Data Gaps Found</h4>
+      <h4 class="no-data-title">{{ t('data.tables.dataGaps.noDataTitle') }}</h4>
       <p class="no-data-message">
-        Great! No data gaps found for the selected date range and filters.
-        Your GPS tracking appears to be working well.
+        {{ t('data.tables.dataGaps.noDataMessage') }}
       </p>
     </div>
   </BaseCard>
@@ -148,6 +147,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
@@ -158,6 +158,7 @@ import {useTableFilters} from '@/composables/useTableFilters'
 import {formatDurationSmart} from "@/utils/calculationsHelpers"
 import { memoizedDateTimeFormat, memoizedDurationFormat } from '@/utils/formatMemoizer'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -182,10 +183,10 @@ const {
   useDataGapsFilter
 } = useTableFilters({
   durationOptions: [
-    {label: 'Less than 1 hour', value: 'short', maxDuration: 3600},
-    {label: '1-2 hours  ', value: 'medium', minDuration: 3600, maxDuration: 7200},
-    {label: '2-8 hours', value: 'long', minDuration: 7200, maxDuration: 28800},
-    {label: 'More than 8 hours', value: 'very-long', minDuration: 28800}
+    {label: t('data.tables.dataGaps.durationOptions.lessThan1Hour'), value: 'short', maxDuration: 3600},
+    {label: t('data.tables.dataGaps.durationOptions.oneToTwoHours'), value: 'medium', minDuration: 3600, maxDuration: 7200},
+    {label: t('data.tables.dataGaps.durationOptions.twoToEightHours'), value: 'long', minDuration: 7200, maxDuration: 28800},
+    {label: t('data.tables.dataGaps.durationOptions.moreThan8Hours'), value: 'very-long', minDuration: 28800}
   ]
 })
 

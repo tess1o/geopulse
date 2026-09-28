@@ -2,12 +2,12 @@
   <section class="settings-group api-tokens-section" aria-labelledby="api-tokens-heading">
     <div class="settings-group-header has-action">
       <div>
-        <h3 id="api-tokens-heading">API tokens</h3>
-        <p>Create named tokens for bots, MCP clients, and automation.</p>
+        <h3 id="api-tokens-heading">{{ t('profile.access.apiTokens.heading') }}</h3>
+        <p>{{ t('profile.access.apiTokens.description') }}</p>
       </div>
       <div>
         <Button
-          label="Create Token"
+          :label="t('profile.access.apiTokens.create')"
           icon="pi pi-plus"
           size="small"
           :disabled="readOnly"
@@ -24,29 +24,29 @@
         responsiveLayout="scroll"
         class="tokens-table"
       >
-        <Column field="name" header="Name">
+        <Column field="name" :header="t('profile.access.apiTokens.columns.name')">
           <template #body="{ data }">
             <div class="token-name">{{ data.name }}</div>
             <div class="token-preview">{{ data.preview }}</div>
           </template>
         </Column>
-        <Column field="status" header="Status">
+        <Column field="status" :header="t('profile.access.apiTokens.columns.status')">
           <template #body="{ data }">
             <Tag :value="formatStatus(data.status)" :severity="statusSeverity(data.status)" />
           </template>
         </Column>
-        <Column field="expiresAt" header="Expires">
+        <Column field="expiresAt" :header="t('profile.access.apiTokens.columns.expires')">
           <template #body="{ data }">
-            {{ formatDateTime(data.expiresAt) || 'Never' }}
+            {{ formatDateTime(data.expiresAt) || t('profile.access.apiTokens.never') }}
           </template>
         </Column>
-        <Column field="lastUsedAt" header="Last Used">
+        <Column field="lastUsedAt" :header="t('profile.access.apiTokens.columns.lastUsed')">
           <template #body="{ data }">
-            <div>{{ formatDateTime(data.lastUsedAt) || 'Never' }}</div>
+            <div>{{ formatDateTime(data.lastUsedAt) || t('profile.access.apiTokens.never') }}</div>
             <small v-if="data.lastUsedIp" class="muted">{{ data.lastUsedIp }}</small>
           </template>
         </Column>
-        <Column header="Actions" :exportable="false">
+        <Column :header="t('profile.access.apiTokens.columns.actions')" :exportable="false">
           <template #body="{ data }">
             <div class="row-actions">
               <Button
@@ -56,7 +56,7 @@
                 severity="info"
                 :disabled="readOnly || data.status === 'REVOKED'"
                 @click="openEditDialog(data)"
-                v-tooltip="'Edit token'"
+                v-tooltip="t('profile.access.apiTokens.tooltips.edit')"
               />
               <Button
                 icon="pi pi-ban"
@@ -65,30 +65,30 @@
                 severity="danger"
                 :disabled="readOnly || data.status === 'REVOKED'"
                 @click="openRevokeDialog(data)"
-                v-tooltip="'Revoke token'"
+                v-tooltip="t('profile.access.apiTokens.tooltips.revoke')"
               />
             </div>
           </template>
         </Column>
         <template #empty>
-          <div class="empty-state">No API tokens created.</div>
+          <div class="empty-state">{{ t('profile.access.apiTokens.empty') }}</div>
         </template>
       </DataTable>
     </div>
 
     <Dialog
       v-model:visible="editDialogVisible"
-      :header="editingToken ? 'Edit API Token' : 'Create API Token'"
+      :header="editingToken ? t('profile.access.apiTokens.editDialog.editHeader') : t('profile.access.apiTokens.editDialog.createHeader')"
       :modal="true"
       :style="{ width: '440px' }"
     >
         <div class="dialog-form">
           <div class="form-field">
-            <label for="api-token-name">Name</label>
+            <label for="api-token-name">{{ t('profile.access.apiTokens.editDialog.nameLabel') }}</label>
             <InputText
               id="api-token-name"
               v-model="form.name"
-              placeholder="Automation token"
+              :placeholder="t('profile.access.apiTokens.editDialog.namePlaceholder')"
               class="w-full"
               :invalid="!!formError"
               :disabled="readOnly"
@@ -96,7 +96,7 @@
             <small v-if="formError" class="error-message">{{ formError }}</small>
           </div>
           <div class="form-field expiration-field">
-            <label for="api-token-expiry">Expiration</label>
+            <label for="api-token-expiry">{{ t('profile.access.apiTokens.editDialog.expirationLabel') }}</label>
             <DatePicker
               id="api-token-expiry"
               v-model="form.expiresAt"
@@ -105,17 +105,17 @@
               showButtonBar
               :minDate="new Date()"
               dateFormat="yy-mm-dd"
-              placeholder="No expiration"
+              :placeholder="t('profile.access.apiTokens.editDialog.expirationPlaceholder')"
               class="expiration-picker w-full"
               :disabled="readOnly"
             />
-            <small class="muted">Leave empty for no expiration.</small>
+            <small class="muted">{{ t('profile.access.apiTokens.editDialog.expirationHint') }}</small>
           </div>
         </div>
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="closeEditDialog" />
+          <Button :label="t('profile.access.apiTokens.cancel')" icon="pi pi-times" text @click="closeEditDialog" />
           <Button
-            :label="editingToken ? 'Save' : 'Create'"
+            :label="editingToken ? t('profile.access.apiTokens.editDialog.save') : t('profile.access.apiTokens.editDialog.create')"
             icon="pi pi-check"
             :loading="saving"
             :disabled="readOnly"
@@ -126,36 +126,36 @@
 
     <Dialog
       v-model:visible="createdTokenDialogVisible"
-      header="API Token Created"
+      :header="t('profile.access.apiTokens.createdDialog.header')"
       :modal="true"
       :closable="false"
       :style="{ width: '560px' }"
     >
         <div class="created-token">
-          <p>This token is shown once. Store it securely before closing this dialog.</p>
+          <p>{{ t('profile.access.apiTokens.createdDialog.message') }}</p>
           <div class="token-secret">
             <InputText :modelValue="createdToken" readonly class="w-full" />
             <Button icon="pi pi-copy" @click="copyCreatedToken" />
           </div>
         </div>
         <template #footer>
-          <Button label="I have stored this token" @click="closeCreatedTokenDialog" />
+          <Button :label="t('profile.access.apiTokens.createdDialog.confirm')" @click="closeCreatedTokenDialog" />
         </template>
     </Dialog>
 
     <Dialog
       v-model:visible="revokeDialogVisible"
-      header="Revoke API Token"
+      :header="t('profile.access.apiTokens.revokeDialog.header')"
       :modal="true"
       :style="{ width: '420px' }"
     >
         <p>
-          Revoke <strong>{{ tokenToRevoke?.name }}</strong>? Automation using this token will stop immediately.
+          {{ t('profile.access.apiTokens.revokeDialog.confirmPrefix') }}<strong>{{ tokenToRevoke?.name }}</strong>{{ t('profile.access.apiTokens.revokeDialog.confirmSuffix') }}
         </p>
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="revokeDialogVisible = false" />
+          <Button :label="t('profile.access.apiTokens.cancel')" icon="pi pi-times" text @click="revokeDialogVisible = false" />
           <Button
-            label="Revoke"
+            :label="t('profile.access.apiTokens.revokeDialog.confirm')"
             icon="pi pi-ban"
             severity="danger"
             :loading="revoking"
@@ -169,6 +169,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -181,6 +182,7 @@ import { useAuthStore } from '@/stores/auth'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
+const { t } = useI18n()
 const toast = useToast()
 const authStore = useAuthStore()
 
@@ -212,7 +214,7 @@ const loadTokens = async () => {
   try {
     tokens.value = await authStore.listApiTokens()
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load API tokens', life: 3000 })
+    toast.add({ severity: 'error', summary: t('profile.access.apiTokens.toasts.error'), detail: t('profile.access.apiTokens.toasts.loadFailed'), life: 3000 })
   } finally {
     loading.value = false
   }
@@ -247,7 +249,7 @@ const saveToken = async () => {
   if (props.readOnly) return
   const name = form.value.name.trim()
   if (!name) {
-    formError.value = 'Token name is required'
+    formError.value = t('profile.access.apiTokens.validation.nameRequired')
     return
   }
 
@@ -260,12 +262,12 @@ const saveToken = async () => {
 
     if (editingToken.value) {
       await authStore.saveApiToken(editingToken.value.id, payload)
-      toast.add({ severity: 'success', summary: 'Saved', detail: 'API token updated', life: 2500 })
+      toast.add({ severity: 'success', summary: t('profile.access.apiTokens.toasts.saved.title'), detail: t('profile.access.apiTokens.toasts.saved.detail'), life: 2500 })
     } else {
       const response = await authStore.saveApiToken(null, payload)
       createdToken.value = response?.token || ''
       createdTokenDialogVisible.value = !!createdToken.value
-      toast.add({ severity: 'success', summary: 'Created', detail: 'API token created', life: 2500 })
+      toast.add({ severity: 'success', summary: t('profile.access.apiTokens.toasts.created.title'), detail: t('profile.access.apiTokens.toasts.created.detail'), life: 2500 })
     }
 
     closeEditDialog()
@@ -273,8 +275,8 @@ const saveToken = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to save API token'),
+      summary: t('profile.access.apiTokens.toasts.error'),
+      detail: formatApiErrorDetail(error, t('profile.access.apiTokens.toasts.saveFailed')),
       life: 3500
     })
   } finally {
@@ -295,12 +297,12 @@ const revokeToken = async () => {
   revoking.value = true
   try {
     await authStore.revokeApiToken(tokenToRevoke.value.id)
-    toast.add({ severity: 'success', summary: 'Revoked', detail: 'API token revoked', life: 2500 })
+    toast.add({ severity: 'success', summary: t('profile.access.apiTokens.toasts.revoked.title'), detail: t('profile.access.apiTokens.toasts.revoked.detail'), life: 2500 })
     revokeDialogVisible.value = false
     tokenToRevoke.value = null
     await loadTokens()
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to revoke API token', life: 3000 })
+    toast.add({ severity: 'error', summary: t('profile.access.apiTokens.toasts.error'), detail: t('profile.access.apiTokens.toasts.revokeFailed'), life: 3000 })
   } finally {
     revoking.value = false
   }
@@ -310,8 +312,8 @@ const copyCreatedToken = async () => {
   const copied = await copyToClipboard(createdToken.value)
   toast.add({
     severity: copied ? 'success' : 'warn',
-    summary: copied ? 'Copied' : 'Copy failed',
-    detail: copied ? 'Token copied to clipboard' : 'Select the token and copy it manually',
+    summary: copied ? t('profile.access.apiTokens.toasts.copied.title') : t('profile.access.apiTokens.toasts.copyFailed.title'),
+    detail: copied ? t('profile.access.apiTokens.toasts.copied.detail') : t('profile.access.apiTokens.toasts.copyFailed.detail'),
     life: 2500
   })
 }
@@ -327,9 +329,19 @@ const statusSeverity = (status) => {
   return 'danger'
 }
 
+// Backend `TokenStatus` -> catalog key. The enum itself is compared in code (`statusSeverity`, the
+// row actions) and is never translated; only the rendered label is. An unknown status falls through
+// to its raw value, which is what this used to render for every status.
+const statusKeys = {
+  ACTIVE: 'active',
+  EXPIRED: 'expired',
+  REVOKED: 'revoked'
+}
+
 const formatStatus = (status) => {
   if (!status) return ''
-  return status.charAt(0) + status.slice(1).toLowerCase()
+  const key = statusKeys[status]
+  return key ? t(`profile.access.apiTokens.status.${key}`) : status
 }
 
 const formatDateTime = (value) => {

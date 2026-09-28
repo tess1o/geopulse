@@ -5,12 +5,12 @@
         <div class="settings-tab-header">
           <div class="settings-tab-icon"><i class="pi pi-box"></i></div>
           <div class="settings-tab-info">
-            <h3 class="settings-tab-title">Connected apps</h3>
-            <p class="settings-tab-description">Configure services that add AI, photos, and notes to GeoPulse.</p>
+            <h3 class="settings-tab-title">{{ t('profile.connectedApps.title') }}</h3>
+            <p class="settings-tab-description">{{ t('profile.connectedApps.description') }}</p>
           </div>
         </div>
 
-        <div class="apps-list" role="tablist" aria-label="Connected apps">
+        <div class="apps-list" role="tablist" :aria-label="t('profile.connectedApps.listAria')">
           <button
             v-for="(app, index) in apps"
             :id="`connected-app-tab-${app.key}`"
@@ -51,9 +51,12 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AIAssistantTab from './AIAssistantTab.vue'
 import ImmichTab from './ImmichTab.vue'
 import MemosTab from './MemosTab.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   readOnly: Boolean,
@@ -68,9 +71,9 @@ const activeApp = ref(['ai', 'immich', 'memos'].includes(props.activeApp) ? prop
 watch(() => props.activeApp, (app) => { activeApp.value = ['ai', 'immich', 'memos'].includes(app) ? app : 'ai' })
 const selectApp = (app) => { activeApp.value = app; emit('select-app', app) }
 const apps = computed(() => [
-  { key: 'ai', label: 'AI Assistant', icon: 'pi pi-sparkles', enabled: props.aiSettings.enabled, status: props.aiSettings.enabled ? 'Enabled' : 'Not enabled' },
-  { key: 'immich', label: 'Immich', icon: 'pi pi-images', enabled: props.immichConfig?.enabled, status: props.immichConfig?.enabled ? 'Connected' : 'Not configured' },
-  { key: 'memos', label: 'Memos', icon: 'pi pi-file-edit', enabled: props.memosConfig?.enabled, status: props.memosConfig?.enabled ? 'Connected' : 'Not configured' }
+  { key: 'ai', label: t('profile.connectedApps.apps.ai'), icon: 'pi pi-sparkles', enabled: props.aiSettings.enabled, status: props.aiSettings.enabled ? t('profile.connectedApps.status.enabled') : t('profile.connectedApps.status.notEnabled') },
+  { key: 'immich', label: t('profile.connectedApps.apps.immich'), icon: 'pi pi-images', enabled: props.immichConfig?.enabled, status: props.immichConfig?.enabled ? t('profile.connectedApps.status.connected') : t('profile.connectedApps.status.notConfigured') },
+  { key: 'memos', label: t('profile.connectedApps.apps.memos'), icon: 'pi pi-file-edit', enabled: props.memosConfig?.enabled, status: props.memosConfig?.enabled ? t('profile.connectedApps.status.connected') : t('profile.connectedApps.status.notConfigured') }
 ])
 const selectAppAt = (index) => {
   const normalizedIndex = (index + apps.value.length) % apps.value.length

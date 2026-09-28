@@ -1,14 +1,14 @@
 <template>
   <div>
-    <Dialog closable v-model:visible="inviteDialogVisible" modal header="Invite a friend" :style="{ width: '25rem' }">
-      <span class="text-surface-500 dark:text-surface-400 block mb-4">Send a friendship request</span>
+    <Dialog closable v-model:visible="inviteDialogVisible" modal :header="t('friends.invite.header')" :style="{ width: '25rem' }">
+      <span class="text-surface-500 dark:text-surface-400 block mb-4">{{ t('friends.invite.subtitle') }}</span>
       <div class="flex items-center gap-4 mb-4">
-        <label for="username" class="font-semibold w-24">Friend name</label>
+        <label for="username" class="font-semibold w-24">{{ t('friends.invite.nameLabel') }}</label>
         <InputText id="username" v-model="inviteUserName" class="flex-auto" autocomplete="off"/>
       </div>
       <div class="flex justify-end gap-2">
-        <Button type="button" label="Cancel" severity="secondary" @click="inviteDialogVisible = false"></Button>
-        <Button type="button" label="Invite!" :loading="submittingInvite" @click="handleInviteSubmit"></Button>
+        <Button type="button" :label="t('common.cancel')" severity="secondary" @click="inviteDialogVisible = false"></Button>
+        <Button type="button" :label="t('friends.invite.submit')" :loading="submittingInvite" @click="handleInviteSubmit"></Button>
       </div>
     </Dialog>
     <div
@@ -20,14 +20,14 @@
                  dataKey="name">
         <template #header>
           <div class="flex flex-wrap gap-2 items-center justify-between">
-            <span class="font-bold text-lg text-primary">👥 Friends</span>
-            <Button label="Invite Friend" icon="pi pi-plus" class="mr-2" @click="inviteDialogVisible = true"/>
+            <span class="font-bold text-lg text-primary">👥 {{ t('friends.list.header') }}</span>
+            <Button :label="t('friends.list.inviteFriend')" icon="pi pi-plus" class="mr-2" @click="inviteDialogVisible = true"/>
           </div>
         </template>
 
         <Column
             field="fullName"
-            header="Friend Name"
+            :header="t('friends.list.columns.friendName')"
             :class="['min-w-[7rem]', 'md:min-w-[10rem]']"
         >
           <template #body="slotProps">
@@ -43,7 +43,7 @@
         <Column
             v-if="isMobile"
             field="lastSeen"
-            header="Last seen"
+            :header="t('friends.list.columns.lastSeen')"
             :class="['min-w-[8rem]', 'max-w-[10rem]']"
         >
           <template #body="slotProps">
@@ -54,7 +54,7 @@
         <Column
             v-else
             field="lastSeen"
-            header="Last seen"
+            :header="t('friends.list.columns.lastSeen')"
             sortable
             :class="['min-w-[8rem]', 'max-w-[10rem]']"
         >
@@ -62,12 +62,12 @@
             {{ timezone.timeAgo(slotProps.data.lastSeen) }}
           </template>
         </Column>
-        <Column field="lastLocation" header="Last location"
+        <Column field="lastLocation" :header="t('friends.list.columns.lastLocation')"
                 style="max-width:16rem; white-space: normal; word-break: break-word;"></Column>
-        <Column header="Remove" :exportable="false" style="min-width: 6rem">
+        <Column :header="t('friends.list.columns.remove')" :exportable="false" style="min-width: 6rem">
           <template #body="slotProps">
             <Button icon="pi pi-trash" outlined rounded severity="danger"
-                    v-tooltip.top="'Remove friend'"
+                    v-tooltip.top="t('friends.list.removeTooltip')"
                     :loading="removingId === slotProps.data.id"
                     @click="handleRemoveFriend(slotProps.data)"/>
           </template>
@@ -76,37 +76,39 @@
       <div v-else
            class="flex flex-col justify-center items-center h-full text-center space-y-2 mb-4">
         <p class="text-lg font-medium text-gray-700 dark:text-gray-300 max-w-md">
-          No friends yet. Invite your first friend to start sharing locations!
+          {{ t('friends.list.empty') }}
         </p>
-        <Button label="Invite Friend" icon="pi pi-plus" @click="inviteDialogVisible = true"/>
+        <Button :label="t('friends.list.inviteFriend')" icon="pi pi-plus" @click="inviteDialogVisible = true"/>
       </div>
 
       <!-- Remove Friend Confirmation Dialog -->
       <Dialog
           v-model:visible="showRemoveDialog"
           modal
-          header="Remove Friend"
+          :header="t('friends.list.removeDialog.header')"
           :style="{ width: '25rem' }"
       >
         <div class="flex items-start gap-3 mb-4">
           <i class="pi pi-exclamation-triangle text-yellow-500 text-xl mt-1"></i>
           <div>
             <p class="text-surface-900 dark:text-surface-100 mb-2">
-              Remove <strong>{{ selectedFriend?.name }}</strong> from your friends?
+              <i18n-t keypath="friends.list.removeDialog.message" tag="span">
+                <template #name><strong>{{ selectedFriend?.name }}</strong></template>
+              </i18n-t>
             </p>
             <p class="text-sm text-surface-500">
-              You'll no longer see each other's locations. You can send a new friend request later if needed.
+              {{ t('friends.list.removeDialog.note') }}
             </p>
           </div>
         </div>
         <div class="flex justify-end gap-2">
           <Button
-              label="Cancel"
+              :label="t('common.cancel')"
               severity="secondary"
               @click="showRemoveDialog = false"
           />
           <Button
-              label="Remove Friend"
+              :label="t('friends.list.removeDialog.confirm')"
               severity="danger"
               :loading="removingId !== null"
               @click="confirmRemoveFriend"
@@ -119,8 +121,10 @@
 
 <script setup>
 import {onMounted, onUnmounted, ref} from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({

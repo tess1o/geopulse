@@ -2,7 +2,7 @@
   <div class="digest-milestones">
     <h3 class="milestones-title">
       <i class="pi pi-trophy"></i>
-      Milestones
+      {{ t('analytics.digest.milestones.title') }}
     </h3>
 
     <div class="milestones-grid" v-if="milestones && milestones.length > 0">
@@ -27,13 +27,16 @@
 
     <div class="no-milestones-placeholder" v-else>
       <i class="pi pi-trophy"></i>
-      <p>Keep exploring to unlock milestones!</p>
+      <p>{{ t('analytics.digest.milestones.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { formatMessageDescriptor } from '@/utils/messageDescriptor'
+
+const { t } = useI18n()
 
 defineProps({
   milestones: {
@@ -44,10 +47,10 @@ defineProps({
 
 const getTierLabel = (tier) => {
   const labels = {
-    bronze: 'Bronze',
-    silver: 'Silver',
-    gold: 'Gold',
-    diamond: 'Diamond'
+    bronze: t('analytics.digest.milestones.tierBronze'),
+    silver: t('analytics.digest.milestones.tierSilver'),
+    gold: t('analytics.digest.milestones.tierGold'),
+    diamond: t('analytics.digest.milestones.tierDiamond')
   }
   return labels[tier] || tier
 }

@@ -1,96 +1,96 @@
 <template>
   <Dialog
     :visible="visible"
-    :header="isEdit ? 'Edit OIDC Provider' : 'Create OIDC Provider'"
+    :header="isEdit ? t('admin.oidcProviderDialog.editHeader') : t('admin.oidcProviderDialog.createHeader')"
     :modal="true"
     class="gp-dialog-md"
     @update:visible="$emit('update:visible', $event)"
   >
     <div class="provider-form">
       <div class="field">
-        <label for="name">Provider Name *</label>
+        <label for="name">{{ t('admin.oidcProviderDialog.nameLabel') }}</label>
         <InputText
           id="name"
           v-model="formData.name"
-          placeholder="e.g., google, keycloak, okta"
+          :placeholder="t('admin.oidcProviderDialog.namePlaceholder')"
           :disabled="isEdit"
           class="w-full"
         />
-        <small class="field-hint">Lowercase alphanumeric with hyphens only</small>
+        <small class="field-hint">{{ t('admin.oidcProviderDialog.nameHint') }}</small>
       </div>
 
       <div class="field">
-        <label for="displayName">Display Name *</label>
+        <label for="displayName">{{ t('admin.oidcProviderDialog.displayNameLabel') }}</label>
         <InputText
           id="displayName"
           v-model="formData.displayName"
-          placeholder="e.g., Google, Keycloak, Okta"
+          :placeholder="t('admin.oidcProviderDialog.displayNamePlaceholder')"
           class="w-full"
         />
-        <small class="field-hint">Name shown to users on login page</small>
+        <small class="field-hint">{{ t('admin.oidcProviderDialog.displayNameHint') }}</small>
       </div>
 
       <div class="field">
-        <label for="clientId">Client ID *</label>
+        <label for="clientId">{{ t('admin.oidcProviderDialog.clientIdLabel') }}</label>
         <InputText
           id="clientId"
           v-model="formData.clientId"
-          placeholder="OAuth2 Client ID"
+          :placeholder="t('admin.oidcProviderDialog.clientIdPlaceholder')"
           class="w-full"
         />
       </div>
 
       <div class="field">
-        <label for="clientSecret">Client Secret {{ isEdit ? '' : '*' }}</label>
+        <label for="clientSecret">{{ t('admin.oidcProviderDialog.clientSecretLabel', { required: isEdit ? '' : '*' }) }}</label>
         <Password
           id="clientSecret"
           v-model="formData.clientSecret"
-          placeholder="OAuth2 Client Secret"
+          :placeholder="t('admin.oidcProviderDialog.clientSecretPlaceholder')"
           :feedback="false"
           toggleMask
           class="w-full"
         />
-        <small v-if="isEdit" class="field-hint">Leave empty to keep existing secret</small>
+        <small v-if="isEdit" class="field-hint">{{ t('admin.oidcProviderDialog.clientSecretHint') }}</small>
       </div>
 
       <div class="field">
-        <label for="discoveryUrl">Discovery URL *</label>
+        <label for="discoveryUrl">{{ t('admin.oidcProviderDialog.discoveryUrlLabel') }}</label>
         <InputText
           id="discoveryUrl"
           v-model="formData.discoveryUrl"
-          placeholder="https://provider.com/.well-known/openid-configuration"
+          :placeholder="t('admin.oidcProviderDialog.discoveryUrlPlaceholder')"
           class="w-full"
         />
-        <small class="field-hint">OIDC discovery endpoint URL</small>
+        <small class="field-hint">{{ t('admin.oidcProviderDialog.discoveryUrlHint') }}</small>
       </div>
 
       <div class="field">
-        <label for="icon">Icon</label>
+        <label for="icon">{{ t('admin.oidcProviderDialog.iconLabel') }}</label>
         <InputText
           id="icon"
           v-model="formData.icon"
-          placeholder="pi pi-google or https://cdn.example.com/icon.svg"
+          :placeholder="t('admin.oidcProviderDialog.iconPlaceholder')"
           class="w-full"
         />
         <small class="field-hint">
-          CSS class (e.g., pi pi-google), URL (https://...), or local path (/icons/...)
+          {{ t('admin.oidcProviderDialog.iconHint') }}
         </small>
         <div v-if="formData.icon || formData.name" class="icon-preview">
-          <span class="preview-label">Preview:</span>
+          <span class="preview-label">{{ t('admin.oidcProviderDialog.previewLabel') }}</span>
           <ProviderIcon
             :provider="{ name: formData.name, icon: formData.icon }"
             size="large"
-            :alt="formData.displayName || 'Provider icon'"
+            :alt="formData.displayName || t('admin.oidcProviderDialog.providerIconAltFallback')"
           />
         </div>
       </div>
 
       <div class="field">
-        <label for="scopes">OAuth Scopes</label>
+        <label for="scopes">{{ t('admin.oidcProviderDialog.scopesLabel') }}</label>
         <InputText
           id="scopes"
           v-model="formData.scopes"
-          placeholder="openid profile email"
+          :placeholder="t('admin.oidcProviderDialog.scopesPlaceholder')"
           class="w-full"
         />
       </div>
@@ -101,19 +101,19 @@
           v-model="formData.enabled"
           :binary="true"
         />
-        <label for="enabled" class="ml-2">Enable this provider</label>
+        <label for="enabled" class="ml-2">{{ t('admin.oidcProviderDialog.enableLabel') }}</label>
       </div>
     </div>
 
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('admin.oidcProviderDialog.cancel')"
         icon="pi pi-times"
         text
         @click="$emit('update:visible', false)"
       />
       <Button
-        :label="isEdit ? 'Update' : 'Create'"
+        :label="isEdit ? t('admin.oidcProviderDialog.update') : t('admin.oidcProviderDialog.create')"
         icon="pi pi-check"
         @click="handleSave"
         :disabled="!isFormValid"
@@ -125,12 +125,15 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {

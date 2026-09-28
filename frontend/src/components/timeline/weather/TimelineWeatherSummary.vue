@@ -22,27 +22,27 @@
       :breakpoints="popoverBreakpoints"
     >
       <div class="weather-details">
-        <div class="weather-details-title">{{ summary.condition }}</div>
+        <div class="weather-details-title">{{ conditionLabel }}</div>
         <div class="weather-details-grid">
-          <span>Temperature</span>
+          <span>{{ t('weather.summary.temperatureLabel') }}</span>
           <strong>{{ temperatureText }}</strong>
           <template v-if="temperatureRangeText">
-            <span>Range</span>
+            <span>{{ t('weather.summary.rangeLabel') }}</span>
             <strong>{{ temperatureRangeText }}</strong>
           </template>
           <template v-if="precipitationText">
-            <span>Precipitation</span>
+            <span>{{ t('weather.summary.precipitationLabel') }}</span>
             <strong>{{ precipitationText }}</strong>
           </template>
-          <span>Wind</span>
-          <strong>{{ windText || 'n/a' }}</strong>
+          <span>{{ t('weather.summary.windLabel') }}</span>
+          <strong>{{ windText || t('weather.summary.notAvailable') }}</strong>
         </div>
       </div>
     </Popover>
 
     <Dialog
       v-model:visible="mobileDetailsVisible"
-      header="Weather"
+      :header="t('weather.conditions.unknown')"
       modal
       append-to="body"
       class="weather-details-dialog"
@@ -52,20 +52,20 @@
       :content-style="{ maxHeight: '60dvh', overflowY: 'auto' }"
     >
       <div class="weather-details">
-        <div class="weather-details-title">{{ summary.condition }}</div>
+        <div class="weather-details-title">{{ conditionLabel }}</div>
         <div class="weather-details-grid">
-          <span>Temperature</span>
+          <span>{{ t('weather.summary.temperatureLabel') }}</span>
           <strong>{{ temperatureText }}</strong>
           <template v-if="temperatureRangeText">
-            <span>Range</span>
+            <span>{{ t('weather.summary.rangeLabel') }}</span>
             <strong>{{ temperatureRangeText }}</strong>
           </template>
           <template v-if="precipitationText">
-            <span>Precipitation</span>
+            <span>{{ t('weather.summary.precipitationLabel') }}</span>
             <strong>{{ precipitationText }}</strong>
           </template>
-          <span>Wind</span>
-          <strong>{{ windText || 'n/a' }}</strong>
+          <span>{{ t('weather.summary.windLabel') }}</span>
+          <strong>{{ windText || t('weather.summary.notAvailable') }}</strong>
         </div>
       </div>
     </Dialog>
@@ -74,6 +74,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Dialog from 'primevue/dialog'
 import Popover from 'primevue/popover'
@@ -84,6 +85,8 @@ import {
   formatWindSpeed,
   summarizeWeatherSamples
 } from '@/utils/weatherDisplay'
+
+const { t } = useI18n()
 
 const props = defineProps({
   samples: {
@@ -102,10 +105,11 @@ const popoverBreakpoints = {
 }
 
 const summary = computed(() => summarizeWeatherSamples(props.samples))
+const conditionLabel = computed(() => summary.value?.conditionKey ? t(summary.value.conditionKey) : '')
 const distance = computed(() => distanceUnit.value || 'KILOMETERS')
 const temperature = computed(() => temperatureUnit.value || 'CELSIUS')
 
-const temperatureText = computed(() => formatTemperature(summary.value?.avgTemperature, temperature.value) || 'n/a')
+const temperatureText = computed(() => formatTemperature(summary.value?.avgTemperature, temperature.value) || t('weather.summary.notAvailable'))
 const temperatureRangeText = computed(() => {
   if (!summary.value || summary.value.sampleCount <= 1) {
     return ''
@@ -120,11 +124,11 @@ const temperatureRangeText = computed(() => {
 const precipitationText = computed(() => formatPrecipitation(summary.value?.precipitationTotal, distance.value))
 const windText = computed(() => formatWindSpeed(summary.value?.maxWindSpeed, distance.value))
 const summaryTitle = computed(() => [
-  summary.value?.condition,
+  conditionLabel.value,
   temperatureText.value,
-  temperatureRangeText.value ? `range ${temperatureRangeText.value}` : null,
-  precipitationText.value ? `precipitation ${precipitationText.value}` : null,
-  windText.value ? `wind ${windText.value}` : null
+  temperatureRangeText.value ? t('weather.summary.titleRange', { range: temperatureRangeText.value }) : null,
+  precipitationText.value ? t('weather.summary.titlePrecipitation', { precipitation: precipitationText.value }) : null,
+  windText.value ? t('weather.summary.titleWind', { wind: windText.value }) : null
 ].filter(Boolean).join(' · '))
 
 const updateMobileViewport = () => {

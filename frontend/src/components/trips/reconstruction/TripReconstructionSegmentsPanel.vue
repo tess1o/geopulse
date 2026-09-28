@@ -7,20 +7,20 @@
     <div class="segments-toolbar">
       <Button
         icon="pi pi-home"
-        label="Add Stay"
+        :label="t('trips.reconstruction.segmentsPanel.addStay')"
         outlined
         @click="emit('add-segment', 'STAY')"
       />
       <Button
         icon="pi pi-directions-alt"
-        label="Add Trip"
+        :label="t('trips.reconstruction.segmentsPanel.addTrip')"
         outlined
         @click="emit('add-segment', 'TRIP')"
       />
     </div>
 
     <div v-if="segments.length === 0" class="segments-empty">
-      No segments yet.
+      {{ t('trips.reconstruction.segmentsPanel.noSegments') }}
     </div>
 
     <div v-else class="segments-list">
@@ -37,7 +37,7 @@
               :value="segment.segmentType"
               :severity="segment.segmentType === 'TRIP' ? 'info' : 'warn'"
             />
-            <strong>Segment {{ index + 1 }}</strong>
+            <strong>{{ t('trips.reconstruction.segmentsPanel.segmentTitle', { number: index + 1 }) }}</strong>
           </div>
           <div class="segment-actions">
             <Button
@@ -69,10 +69,10 @@
 
         <div class="segment-grid">
           <div class="field-row">
-            <label>Type</label>
+            <label>{{ t('trips.reconstruction.segmentsPanel.typeLabel') }}</label>
             <Select
               :model-value="segment.segmentType"
-              :options="segmentTypeOptions"
+              :options="localizedSegmentTypeOptions"
               optionLabel="label"
               optionValue="value"
               class="w-full"
@@ -81,7 +81,7 @@
           </div>
 
           <div class="field-row">
-            <label>Start Time *</label>
+            <label>{{ t('trips.reconstruction.segmentsPanel.startTimeLabel') }}</label>
             <DatePicker
               :model-value="segment.startTime"
               showTime
@@ -94,7 +94,7 @@
           </div>
 
           <div class="field-row">
-            <label>End Time *</label>
+            <label>{{ t('trips.reconstruction.segmentsPanel.endTimeLabel') }}</label>
             <DatePicker
               :model-value="segment.endTime"
               showTime
@@ -108,13 +108,13 @@
 
           <template v-if="segment.segmentType === 'STAY'">
             <div class="field-row field-row--wide">
-              <label>Location Name</label>
+              <label>{{ t('trips.reconstruction.segmentsPanel.locationNameLabel') }}</label>
               <div class="resolved-location">
                 <div class="resolved-location-main">
                   <InputText
                     :model-value="segment.locationName"
                     class="w-full"
-                    placeholder="Location will be resolved from map point"
+                    :placeholder="t('trips.reconstruction.segmentsPanel.locationNamePlaceholder')"
                     @update:model-value="emit('update-segment-field', index, 'locationName', $event)"
                   />
                   <Tag
@@ -123,12 +123,12 @@
                     severity="secondary"
                   />
                 </div>
-                <small class="field-hint">Edited name is applied to the linked location source on Commit.</small>
+                <small class="field-hint">{{ t('trips.reconstruction.segmentsPanel.locationNameHint') }}</small>
               </div>
             </div>
 
             <div class="field-row">
-              <label>Latitude *</label>
+              <label>{{ t('trips.reconstruction.segmentsPanel.latitudeLabel') }}</label>
               <InputNumber
                 :model-value="segment.latitude"
                 class="w-full"
@@ -141,7 +141,7 @@
             </div>
 
             <div class="field-row">
-              <label>Longitude *</label>
+              <label>{{ t('trips.reconstruction.segmentsPanel.longitudeLabel') }}</label>
               <InputNumber
                 :model-value="segment.longitude"
                 class="w-full"
@@ -156,10 +156,10 @@
 
           <template v-else>
             <div class="field-row">
-              <label>Movement Type</label>
+              <label>{{ t('trips.reconstruction.segmentsPanel.movementTypeLabel') }}</label>
               <Select
                 :model-value="segment.movementType"
-                :options="movementTypeOptions"
+                :options="localizedMovementTypeOptions"
                 optionLabel="label"
                 optionValue="value"
                 class="w-full"
@@ -168,8 +168,8 @@
             </div>
 
             <div class="field-row field-row--wide">
-              <label>Waypoints ({{ segment.waypoints.length }})</label>
-              <small class="field-hint">Click map to add points. Drag markers to adjust.</small>
+              <label>{{ t('trips.reconstruction.segmentsPanel.waypointsLabel', { count: segment.waypoints.length }) }}</label>
+              <small class="field-hint">{{ t('trips.reconstruction.segmentsPanel.waypointsHint') }}</small>
               <div class="waypoints-list">
                 <div
                   v-for="(waypoint, waypointIndex) in segment.waypoints"
@@ -220,6 +220,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -228,7 +230,9 @@ import DatePicker from 'primevue/datepicker'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 
-defineProps({
+const { t } = useI18n()
+
+const props = defineProps({
   reconstructionHelpMessage: {
     type: String,
     required: true
@@ -266,6 +270,21 @@ defineProps({
     required: true
   }
 })
+
+/**
+ * The options arrive keyed (`labelKey`) from `movementTypeOptions`/`segmentTypeOptions`; PrimeVue's
+ * `optionLabel` reads a field and cannot call `t()`, so labels are resolved here. Accepts a plain
+ * `label` too, so any caller still passing a pre-resolved list keeps working.
+ */
+const localizedMovementTypeOptions = computed(() => (props.movementTypeOptions || []).map(option => ({
+  label: option.labelKey ? t(option.labelKey) : option.label,
+  value: option.value
+})))
+
+const localizedSegmentTypeOptions = computed(() => (props.segmentTypeOptions || []).map(option => ({
+  label: option.labelKey ? t(option.labelKey) : option.label,
+  value: option.value
+})))
 
 const emit = defineEmits([
   'set-active-segment',

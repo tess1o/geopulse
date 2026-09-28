@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.model;
 
 import lombok.Builder;
 import lombok.Data;
+import org.github.tess1o.geopulse.shared.api.MessageDescriptor;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -32,10 +33,11 @@ public class TimelineJobProgress {
     private JobStatus status;
 
     /**
-     * Human-readable description of the current step
-     * e.g., "Loading GPS data", "Reverse geocoding locations"
+     * Translatable description of the current step. The frontend resolves {@code key} against its
+     * catalog and falls back to {@code fallback} (English) when the key is missing, e.g. for a
+     * language that has not been translated yet.
      */
-    private String currentStep;
+    private MessageDescriptor currentStep;
 
     /**
      * Index of the current step (1-9)

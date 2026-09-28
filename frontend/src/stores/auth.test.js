@@ -195,4 +195,30 @@ describe('auth store cached profile reconciliation', () => {
     expect(readCachedProfile().demoMode).toBe(true)
     expect(apiService.clearAuthData).not.toHaveBeenCalled()
   })
+
+  // Regression test: clearUser() used to hardcode the locale back to English on sign-out, which
+  // wiped a Ukrainian-speaking user's language on every public page the moment they logged out.
+  it('falls back to the guest locale choice on sign-out, not hardcoded English', async () => {
+    storeCachedProfile(user({ language: 'uk' }))
+    localStorage.setItem('guestLocale', 'uk')
+    apiService.get.mockResolvedValue(user({ language: 'uk' }))
+
+    const { i18n } = await import('@/locales')
+
+    const authStore = useAuthStore()
+    await authStore.checkAuth()
+    await vi.waitFor(() => expect(i18n.global.locale.value).toBe('uk'))
+
+    // Force a distinguishable starting point so the assertion below proves clearUser() actively
+    // re-applies 'uk' (via resolvePreferredLocale), rather than trivially observing a value that
+    // was already correct before clearUser() ran.
+    i18n.global.locale.value = 'en'
+
+    authStore.clearUser()
+
+    // Applying the fallback locale is fire-and-forget (see _applyUserState/clearUser), so poll
+    // rather than assume it has landed synchronously.
+    await vi.waitFor(() => expect(i18n.global.locale.value).toBe('uk'))
+    expect(authStore.isAuthenticated).toBe(false)
+  })
 })

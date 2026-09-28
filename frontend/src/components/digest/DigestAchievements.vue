@@ -2,7 +2,7 @@
   <div class="digest-achievements">
     <h3 class="achievements-title">
       <i class="pi pi-trophy"></i>
-      Achievements
+      {{ t('analytics.digest.achievements.title') }}
     </h3>
 
     <div class="achievements-list" v-if="achievements && achievements.length > 0">
@@ -18,12 +18,16 @@
 
     <div class="no-achievements" v-else>
       <i class="pi pi-star"></i>
-      <p>Keep exploring to unlock achievements!</p>
+      <p>{{ t('analytics.digest.achievements.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   achievements: {
     type: Array,

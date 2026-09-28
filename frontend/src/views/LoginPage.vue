@@ -1,5 +1,9 @@
 <template>
   <div class="login-page">
+    <div class="locale-switcher-corner">
+      <LocaleSwitcher />
+    </div>
+
     <div class="login-layout">
       <!-- Main Content -->
       <div class="login-content">
@@ -14,10 +18,10 @@
              class="login-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
           <div class="message-content">
-            <span>Login is currently disabled. Please contact your administrator.</span>
+            <span>{{ t('auth.login.disabledMessage') }}</span>
             <Button
               v-if="loginStatus.adminLoginBypassEnabled"
-              label="Administrator Access"
+              :label="t('auth.login.adminAccess')"
               icon="pi pi-shield"
               severity="warning"
               size="small"
@@ -33,10 +37,10 @@
              class="login-disabled-message">
           <i class="pi pi-info-circle"></i>
           <div class="message-content">
-            <span>Email/password login is disabled. Please use OIDC providers below.</span>
+            <span>{{ t('auth.login.emailDisabledMessage') }}</span>
             <Button
               v-if="loginStatus.adminLoginBypassEnabled"
-              label="Administrator Access"
+              :label="t('auth.login.adminAccess')"
               icon="pi pi-shield"
               severity="warning"
               size="small"
@@ -78,7 +82,7 @@
                 <Button
                   v-if="loginStatus.adminLoginBypassEnabled"
                   type="button"
-                  label="Administrator Access"
+                  :label="t('auth.login.adminAccess')"
                   icon="pi pi-shield"
                   severity="warning"
                   size="small"
@@ -95,13 +99,13 @@
                 <span>
                   {{ loginError }}
                   <small v-if="loginErrorReference" class="error-reference">
-                    Check backend logs for ID: {{ loginErrorReference }}
+                    {{ t('errors.reference.hint', { id: loginErrorReference }) }}
                     <Button
                       icon="pi pi-copy"
                       text
                       size="small"
                       class="error-reference-copy"
-                      aria-label="Copy error reference id"
+                      :aria-label="t('auth.login.copyReferenceAria')"
                       @click="copyErrorReference"
                     />
                   </small>
@@ -113,17 +117,17 @@
                 <!-- Admin Override Notice -->
                 <div v-if="showAdminLogin" class="admin-override-notice">
                   <i class="pi pi-shield"></i>
-                  <span>Administrator access - login restrictions bypassed</span>
+                  <span>{{ t('auth.login.adminBypassNotice') }}</span>
                 </div>
 
                 <!-- Email Field -->
                 <div class="form-field">
-                  <label for="email" class="field-label">Email Address</label>
+                  <label for="email" class="field-label">{{ t('auth.login.emailLabel') }}</label>
                   <InputText
                     id="email"
                     v-model="formData.email"
                     type="email"
-                    placeholder="Enter your email"
+                    :placeholder="t('auth.login.emailPlaceholder')"
                     :invalid="!!formErrors.email"
                     class="form-input"
                     autocomplete="email"
@@ -137,11 +141,11 @@
 
                 <!-- Password Field -->
                 <div class="form-field">
-                  <label for="password" class="field-label">Password</label>
+                  <label for="password" class="field-label">{{ t('auth.login.passwordLabel') }}</label>
                   <Password
                     id="password"
                     v-model="formData.password"
-                    placeholder="Enter your password"
+                    :placeholder="t('auth.login.passwordPlaceholder')"
                     :feedback="false"
                     toggleMask
                     :invalid="!!formErrors.password"
@@ -158,7 +162,7 @@
                 <!-- Submit Button -->
                 <Button
                   type="submit"
-                  label="Sign In"
+                  :label="t('auth.login.signIn')"
                   icon="pi pi-sign-in"
                   :loading="isLoading"
                   :disabled="isLoading || !isFormValid"
@@ -171,13 +175,13 @@
                   <span>
                     {{ loginError }}
                     <small v-if="loginErrorReference" class="error-reference">
-                      Check backend logs for ID: {{ loginErrorReference }}
+                      {{ t('errors.reference.hint', { id: loginErrorReference }) }}
                       <Button
                         icon="pi pi-copy"
                         text
                         size="small"
                         class="error-reference-copy"
-                        aria-label="Copy error reference id"
+                        :aria-label="t('auth.login.copyReferenceAria')"
                         @click="copyErrorReference"
                       />
                     </small>
@@ -196,9 +200,9 @@
 
               <!-- Register Link -->
               <div v-if="shouldShowRegisterLink" class="register-section">
-                <span class="register-text">Don't have an account?</span>
+                <span class="register-text">{{ t('auth.login.noAccount') }}</span>
                 <router-link to="/register" class="register-link">
-                  Create account
+                  {{ t('auth.login.createAccount') }}
                 </router-link>
               </div>
             </div>
@@ -215,6 +219,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
@@ -223,8 +228,10 @@ import { getErrorReferenceId, hasErrorReference } from '@/utils/apiErrorDetail'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
+import LocaleSwitcher from '@/components/LocaleSwitcher.vue'
 
 // Composables
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -274,11 +281,11 @@ const shouldShowDemoChooser = computed(() => {
 })
 
 const formTitle = computed(() => {
-  return shouldShowDemoChooser.value ? 'Try GeoPulse' : 'Welcome Back'
+  return shouldShowDemoChooser.value ? t('auth.login.demoTitle') : t('auth.login.title')
 })
 
 const formSubtitle = computed(() => {
-  return shouldShowDemoChooser.value ? 'Choose a demo profile' : 'Sign in to continue your journey'
+  return shouldShowDemoChooser.value ? t('auth.login.demoSubtitle') : t('auth.login.subtitle')
 })
 
 // Check if OIDC is actually available (enabled AND has providers configured)
@@ -310,14 +317,14 @@ const validateForm = () => {
   
   // Email validation
   if (!formData.value.email?.trim()) {
-    formErrors.value.email = 'Email is required'
+    formErrors.value.email = t('auth.validation.emailRequired')
   } else if (!isValidEmail(formData.value.email)) {
-    formErrors.value.email = 'Please enter a valid email address'
+    formErrors.value.email = t('auth.validation.emailInvalid')
   }
-  
+
   // Password validation
   if (!formData.value.password) {
-    formErrors.value.password = 'Password is required'
+    formErrors.value.password = t('auth.validation.passwordRequired')
   }
   
   return Object.keys(formErrors.value).length === 0
@@ -349,8 +356,8 @@ const copyErrorReference = async () => {
 
   toast.add({
     severity: copied ? 'success' : 'warn',
-    summary: copied ? 'Copied' : 'Copy failed',
-    detail: copied ? 'Reference id copied to clipboard' : 'Select the id and copy it manually',
+    summary: copied ? t('common.clipboard.copied') : t('common.clipboard.copyFailed'),
+    detail: copied ? t('common.clipboard.referenceIdCopied') : t('common.clipboard.copyManually'),
     life: 2500
   })
 }
@@ -367,8 +374,8 @@ const handleSubmit = async () => {
     
     toast.add({
       severity: 'success',
-      summary: 'Welcome Back!',
-      detail: 'You have successfully signed in',
+      summary: t('auth.login.toasts.signedIn.title'),
+      detail: t('auth.login.toasts.signedIn.detail'),
       life: 3000
     })
 
@@ -403,8 +410,8 @@ const handleDemoLogin = async (persona) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Welcome Back!',
-      detail: 'You have successfully signed in',
+      summary: t('auth.login.toasts.signedIn.title'),
+      detail: t('auth.login.toasts.signedIn.detail'),
       life: 3000
     })
 
@@ -418,7 +425,7 @@ const handleDemoLogin = async (persona) => {
 
     toast.add({
       severity: 'error',
-      summary: 'Demo Login Failed',
+      summary: t('auth.login.toasts.demoFailed'),
       detail: loginError.value,
       life: 5000
     })
@@ -438,13 +445,13 @@ const getLoginErrorMessage = (error, formattedError) => {
   // Login-specific error messages
   switch (error.response?.status) {
     case 401:
-      return 'Invalid email or password. Please check your credentials and try again.'
+      return t('auth.login.errors.invalidCredentials')
     case 403:
-      return 'Your account is locked or suspended. Please contact support.'
+      return t('auth.login.errors.lockedOut')
     case 429:
-      return 'Too many login attempts. Please wait a few minutes before trying again.'
+      return t('auth.login.errors.tooManyAttempts')
     case 422:
-      return 'Please check your email and password format.'
+      return t('auth.login.errors.badFormat')
     default:
       // Fall back to the formatted error message from our error handler
       return formattedError.message
@@ -458,13 +465,13 @@ const getDemoLoginErrorMessage = (error, formattedError) => {
 
   switch (error.response?.status) {
     case 400:
-      return 'Please choose a demo profile and try again.'
+      return t('auth.login.errors.chooseProfile')
     case 403:
-      return 'Demo login is currently disabled.'
+      return t('auth.login.errors.demoDisabled')
     case 404:
-      return 'This demo profile is not available right now.'
+      return t('auth.login.errors.profileUnavailable')
     default:
-      return formattedError.message || 'Demo login failed. Please try again.'
+      return formattedError.message || t('auth.login.errors.demoGeneric')
   }
 }
 
@@ -476,8 +483,8 @@ const handleOidcLogin = async (providerName) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Login Failed',
-      detail: `Failed to initialize login with ${providerName}. Please try again.`,
+      summary: t('auth.login.toasts.loginFailed'),
+      detail: t('auth.login.toasts.oidcInitFailed', { provider: providerName }),
       life: 5000
     });
     isLoading.value = false;
@@ -490,8 +497,8 @@ onMounted(() => {
   if (route.query.reason === 'registration_disabled') {
     toast.add({
       severity: 'warn',
-      summary: 'Registration Disabled',
-      detail: 'New user registration is currently disabled. Please log in if you already have an account.',
+      summary: t('auth.toasts.registrationDisabled'),
+      detail: t('auth.toasts.registrationDisabledDetail'),
       life: 7000
     });
   }
@@ -524,8 +531,8 @@ onMounted(() => {
       console.error("Failed to load OIDC providers", err);
       toast.add({
           severity: 'error',
-          summary: 'Could not load login options',
-          detail: 'Failed to retrieve external login providers. You can still log in with email and password.',
+          summary: t('auth.login.toasts.optionsLoadFailed'),
+          detail: t('auth.login.toasts.optionsLoadFailedDetail'),
           life: 5000
       });
   });
@@ -562,6 +569,13 @@ onMounted(() => {
   bottom: 0;
   background: radial-gradient(ellipse at center, rgba(26, 86, 219, 0.1) 0%, transparent 70%);
   z-index: 1;
+}
+
+.locale-switcher-corner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 3;
 }
 
 /* Layout */

@@ -2,7 +2,7 @@
   <Dialog
     v-model:visible="dialogVisible"
     modal
-    header="Create Timeline Label"
+    :header="t('miscDialogs.createTimelineLabel.header')"
     class="gp-dialog-md"
     @hide="resetForm"
   >
@@ -10,12 +10,12 @@
       <!-- Label Name -->
       <div class="col-12">
         <label for="labelName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Label Name *
+          {{ t('miscDialogs.timelineLabelForm.nameLabel') }}
         </label>
         <InputText
           id="labelName"
           v-model="form.name"
-          placeholder="e.g., Spain Vacation, Work Trip to NYC"
+          :placeholder="t('miscDialogs.timelineLabelForm.namePlaceholder')"
           class="w-full gp-input"
           :class="{ 'p-invalid': errors.labelName }"
         />
@@ -25,7 +25,7 @@
       <!-- Date Range -->
       <div class="col-12">
         <label for="dateRange" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Date Range *
+          {{ t('miscDialogs.timelineLabelForm.dateRangeLabel') }}
         </label>
         <DatePicker
           id="dateRange"
@@ -33,7 +33,7 @@
           selectionMode="range"
           :manualInput="false"
           dateFormat="M d, yy"
-          placeholder="Select start and end dates"
+          :placeholder="t('miscDialogs.timelineLabelForm.dateRangePlaceholder')"
           class="w-full"
           :class="{ 'p-invalid': errors.dateRange }"
         />
@@ -43,7 +43,7 @@
       <!-- Color Picker -->
       <div class="col-12">
         <label class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Color
+          {{ t('miscDialogs.timelineLabelForm.colorLabel') }}
         </label>
         <div style="display: flex; align-items: center; gap: var(--gp-spacing-sm)">
           <ColorPicker v-model="form.color" format="hex" />
@@ -52,10 +52,10 @@
             :style="{ backgroundColor: displayColor }"
             style="font-size: 0.75rem"
           >
-            {{ form.name || 'Preview' }}
+            {{ form.name || t('miscDialogs.timelineLabelForm.colorPreview') }}
           </div>
           <Button
-            label="Random"
+            :label="t('miscDialogs.timelineLabelForm.randomButton')"
             icon="pi pi-refresh"
             size="small"
             @click="form.color = getRandomColor()"
@@ -72,11 +72,11 @@
             :binary="true"
           />
           <label for="showAsPreset" class="gp-text-secondary">
-            Show as date preset
+            {{ t('miscDialogs.timelineLabelForm.showAsPresetLabel') }}
           </label>
         </div>
         <small class="gp-text-secondary">
-          When enabled, this label appears in DatePicker preset dropdowns.
+          {{ t('miscDialogs.timelineLabelForm.showAsPresetHint') }}
         </small>
       </div>
 
@@ -84,13 +84,13 @@
 
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('miscDialogs.timelineLabelForm.cancel')"
         icon="pi pi-times"
         @click="dialogVisible = false"
         outlined
       />
       <Button
-        label="Create"
+        :label="t('miscDialogs.createTimelineLabel.createButton')"
         icon="pi pi-check"
         @click="createTimelineLabel"
         :loading="isLoading"
@@ -101,6 +101,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
@@ -111,6 +112,8 @@ import InputText from 'primevue/inputtext'
 import DatePicker from 'primevue/datepicker'
 import ColorPicker from 'primevue/colorpicker'
 import Checkbox from 'primevue/checkbox'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean
@@ -186,16 +189,16 @@ const createTimelineLabel = async () => {
 
     // If overlaps found, show confirmation dialog
     if (overlappingLabels && overlappingLabels.length > 0) {
-      const overlappingNames = overlappingLabels.map(t => t.name).join(', ')
+      const overlappingNames = overlappingLabels.map(label => label.name).join(', ')
 
       isLoading.value = false
 
       confirm.require({
-        message: `This label overlaps with: ${overlappingNames}. Do you want to create it anyway?`,
-        header: 'Overlapping Labels Detected',
+        message: t('miscDialogs.createTimelineLabel.overlap.message', { names: overlappingNames }),
+        header: t('miscDialogs.createTimelineLabel.overlap.header'),
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Create Anyway',
-        rejectLabel: 'Cancel',
+        acceptLabel: t('miscDialogs.createTimelineLabel.overlap.acceptLabel'),
+        rejectLabel: t('miscDialogs.createTimelineLabel.overlap.rejectLabel'),
         accept: async () => {
           await performCreate(normalizedRange)
         }
@@ -208,8 +211,8 @@ const createTimelineLabel = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.message || 'Failed to check overlaps',
+      summary: t('common.error'),
+      detail: error.response?.data?.message || t('miscDialogs.createTimelineLabel.toasts.checkOverlapsFailedFallback'),
       life: 3000
     })
     isLoading.value = false
@@ -232,8 +235,8 @@ const performCreate = async (normalizedRange) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Created',
-      detail: 'Timeline label created successfully',
+      summary: t('miscDialogs.createTimelineLabel.toasts.createdSummary'),
+      detail: t('miscDialogs.createTimelineLabel.toasts.createdDetail'),
       life: 3000
     })
 
@@ -242,8 +245,8 @@ const performCreate = async (normalizedRange) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.response?.data?.message || 'Failed to create timeline label',
+      summary: t('common.error'),
+      detail: error.response?.data?.message || t('miscDialogs.createTimelineLabel.toasts.createFailedFallback'),
       life: 3000
     })
   } finally {

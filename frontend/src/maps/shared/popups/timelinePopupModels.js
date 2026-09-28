@@ -1,6 +1,12 @@
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 import { formatDuration } from '@/utils/durationFormatter'
 import { formatDistanceForUnit, formatSpeedForUnit } from '@/utils/measurementFormatters'
+import { t, te } from '@/locales'
+
+const translateMovementType = (type, fallback) => {
+  if (!type) return fallback
+  return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
+}
 
 const defaultFormatDateTimeDisplay = (value, timezone) => (
   `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
@@ -29,9 +35,9 @@ const buildTelemetrySection = (telemetryItems) => {
 
   return [
     {
-      title: 'Telemetry',
+      title: t('maps.popups.common.telemetry'),
       rows: telemetryItems.map((item) => ({
-        label: item?.label || item?.key || 'Value',
+        label: item?.label || item?.key || t('maps.popups.common.value'),
         value: formatTelemetryValue(item)
       }))
     }
@@ -43,9 +49,9 @@ const getTimelineTimestamp = (item) => item?.timestamp || item?.startTime
 export const buildStayPopupModel = (stay, deps = {}) => {
   const timestamp = getTimelineTimestamp(stay)
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
-  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : 'Unknown time'
+  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime')
   const durationText = stay?.stayDuration ? formatDuration(stay.stayDuration) : ''
-  const locationName = stay?.locationName || stay?.address || 'Unknown location'
+  const locationName = stay?.locationName || stay?.address || t('maps.popups.common.unknownLocation')
 
   return {
     title: locationName,
@@ -54,7 +60,7 @@ export const buildStayPopupModel = (stay, deps = {}) => {
     rows: durationText
       ? [
           {
-            label: 'Duration',
+            label: t('maps.popups.common.duration'),
             value: durationText
           }
         ]
@@ -67,27 +73,27 @@ export const buildStayPopupModel = (stay, deps = {}) => {
 export const buildTimelineTripPopupModel = (item, deps = {}) => {
   const timestamp = getTimelineTimestamp(item)
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
-  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : 'Unknown time'
+  const dateText = timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime')
   const durationText = item?.tripDuration ? formatDuration(item.tripDuration) : ''
   const distanceText = item?.totalDistanceMeters
     ? formatDistanceForUnit(item.totalDistanceMeters, { unit: deps.unit })
     : ''
-  const movementType = item?.movementType || 'Unknown'
+  const movementType = translateMovementType(item?.movementType, t('maps.popups.common.unknown'))
 
   return {
-    title: `Trip (${movementType})`,
+    title: t('maps.popups.timeline.trip', { movementType }),
     subtitle: dateText,
     iconClass: 'pi pi-arrow-right',
     rows: [
       durationText
         ? {
-            label: 'Duration',
+            label: t('maps.popups.common.duration'),
             value: durationText
           }
         : null,
       distanceText
         ? {
-            label: 'Distance',
+            label: t('maps.popups.common.distance'),
             value: distanceText
           }
         : null
@@ -101,8 +107,8 @@ export const buildDataGapPopupModel = (item, deps = {}) => {
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
 
   return {
-    title: 'Data Gap',
-    subtitle: timestamp ? formatDateTimeDisplay(timestamp) : 'Unknown time',
+    title: t('maps.popups.timeline.dataGap'),
+    subtitle: timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime'),
     iconClass: 'pi pi-exclamation-triangle',
     variant: 'compact'
   }
@@ -132,8 +138,8 @@ export const buildTimelineItemPopupModel = (item, deps = {}) => {
   const formatDateTimeDisplay = resolveFormatDateTimeDisplay(deps)
 
   return {
-    title: 'Timeline item',
-    subtitle: timestamp ? formatDateTimeDisplay(timestamp) : 'Unknown time',
+    title: t('maps.popups.timeline.timelineItem'),
+    subtitle: timestamp ? formatDateTimeDisplay(timestamp) : t('maps.popups.common.unknownTime'),
     variant: 'compact'
   }
 }
@@ -143,40 +149,40 @@ export const buildHighlightedTripPopupModel = (trip, deps = {}) => {
   const startMs = Date.parse(trip?.timestamp)
   const durationSeconds = Number.isFinite(Number(trip?.tripDuration)) ? Number(trip.tripDuration) : 0
   const endMs = Number.isFinite(startMs) ? startMs + Math.max(0, durationSeconds) * 1000 : null
-  const movementType = trip?.movementType || 'Movement'
+  const movementType = translateMovementType(trip?.movementType, t('maps.popups.timeline.unknownMovement'))
   const startText = Number.isFinite(startMs)
     ? formatDateTimeDisplay(new Date(startMs).toISOString())
-    : 'Unknown'
+    : t('maps.popups.common.unknown')
   const endText = Number.isFinite(endMs)
     ? formatDateTimeDisplay(new Date(endMs).toISOString())
-    : 'Unknown'
+    : t('maps.popups.common.unknown')
   const averageSpeedKmh = resolveAverageTripSpeedKmh(trip)
   const averageSpeedText = formatSpeedForUnit(averageSpeedKmh, { unit: deps.unit, fallback: '' })
 
   return {
-    title: `${movementType} Trip`,
-    description: 'Hover the highlighted route to see when you were there and how fast you were moving.',
+    title: t('maps.popups.timeline.movementTrip', { movementType }),
+    description: t('maps.popups.timeline.hoverHint'),
     iconClass: 'pi pi-compass',
     rows: [
       {
-        label: 'Start',
+        label: t('maps.popups.timeline.start'),
         value: startText
       },
       {
-        label: 'End',
+        label: t('maps.popups.timeline.end'),
         value: endText
       },
       {
-        label: 'Duration',
+        label: t('maps.popups.common.duration'),
         value: formatDuration(trip?.tripDuration)
       },
       {
-        label: 'Distance',
+        label: t('maps.popups.common.distance'),
         value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
       },
       averageSpeedText
         ? {
-            label: 'Average speed',
+            label: t('maps.popups.timeline.averageSpeed'),
             value: averageSpeedText
           }
         : null
@@ -194,27 +200,27 @@ export const buildTripEndpointPopupModel = (trip, markerType, deps = {}) => {
   const pointTime = isStart ? startMs : endMs
   const timeText = Number.isFinite(pointTime)
     ? formatDateTimeDisplay(new Date(pointTime).toISOString())
-    : 'Unknown'
+    : t('maps.popups.common.unknown')
 
   return {
-    title: isStart ? 'Trip Start' : 'Trip End',
+    title: isStart ? t('maps.popups.timeline.tripStart') : t('maps.popups.timeline.tripEnd'),
     iconClass: isStart ? 'pi pi-play' : 'pi pi-flag',
     rows: [
       {
-        label: 'Time',
+        label: t('maps.popups.timeline.time'),
         value: timeText
       },
       {
-        label: 'Duration',
+        label: t('maps.popups.common.duration'),
         value: formatDuration(durationSeconds)
       },
       {
-        label: 'Distance',
+        label: t('maps.popups.common.distance'),
         value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
       },
       {
-        label: 'Mode',
-        value: trip?.movementType || 'Unknown'
+        label: t('maps.popups.timeline.mode'),
+        value: translateMovementType(trip?.movementType, t('maps.popups.common.unknown'))
       }
     ],
     variant: 'compact'
@@ -227,25 +233,25 @@ export const buildPanoramaxCoveragePopupModel = (coverage = {}) => {
   const flat = Number(coverage.nb_flat_pictures) || 0
 
   return {
-    title: 'Panoramax coverage',
-    description: 'Zooming in for details…',
+    title: t('maps.popups.timeline.panoramaxCoverage'),
+    description: t('maps.popups.timeline.zoomingIn'),
     iconClass: 'pi pi-images',
     rows: [
-      { label: 'Photos', value: String(total) },
-      panoramic ? { label: '360° photos', value: String(panoramic) } : null,
-      flat ? { label: 'Flat photos', value: String(flat) } : null
+      { label: t('maps.popups.timeline.photos'), value: String(total) },
+      panoramic ? { label: t('maps.popups.timeline.panoramicPhotos'), value: String(panoramic) } : null,
+      flat ? { label: t('maps.popups.timeline.flatPhotos'), value: String(flat) } : null
     ].filter(Boolean),
     variant: 'compact'
   }
 }
 
 export const buildFriendTimelineStayPopupModel = (userTimeline, stay) => ({
-  title: userTimeline?.fullName || 'User',
-  subtitle: stay?.locationName || 'Stay',
+  title: userTimeline?.fullName || t('maps.popups.timeline.user'),
+  subtitle: stay?.locationName || t('maps.popups.timeline.stay'),
   iconClass: 'pi pi-user',
   rows: [
     {
-      label: 'Duration',
+      label: t('maps.popups.common.duration'),
       value: formatDuration(stay?.stayDuration)
     }
   ],
@@ -253,16 +259,16 @@ export const buildFriendTimelineStayPopupModel = (userTimeline, stay) => ({
 })
 
 export const buildFriendTimelineTripPopupModel = (trip, deps = {}) => ({
-  title: trip?.userFullName || 'Trip',
-  subtitle: trip?.movementType || 'Trip',
+  title: trip?.userFullName || t('maps.popups.timeline.tripFallback'),
+  subtitle: translateMovementType(trip?.movementType, t('maps.popups.timeline.tripFallback')),
   iconClass: 'pi pi-arrow-right',
   rows: [
     {
-      label: 'Duration',
+      label: t('maps.popups.common.duration'),
       value: formatDuration(trip?.tripDuration)
     },
     {
-      label: 'Distance',
+      label: t('maps.popups.common.distance'),
       value: formatDistanceForUnit(trip?.distanceMeters, { unit: deps.unit })
     }
   ],

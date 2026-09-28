@@ -234,7 +234,7 @@ describe('map popup models', () => {
       unit: 'KILOMETERS'
     })
 
-    expect(tripModel.title).toBe('CAR Trip')
+    expect(tripModel.title).toBe('Car Trip')
     expect(tripModel.rows.map((row) => row.label)).toContain('Distance')
 
     const friendTripModel = buildFriendTimelineTripPopupModel({

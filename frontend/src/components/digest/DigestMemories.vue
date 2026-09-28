@@ -1,7 +1,7 @@
 <template>
   <ImmichLatestPhotosSection
     class="digest-memories"
-    title="Memories along the way"
+    :title="t('analytics.digest.memories.title')"
     presentation="rewind"
     :search-params="periodParams"
     :show-on-map-enabled="false"
@@ -12,8 +12,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import { useTimezone } from '@/composables/useTimezone'
+
+const { t } = useI18n()
 
 const props = defineProps({
   viewMode: { type: String, required: true },

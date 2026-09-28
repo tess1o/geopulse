@@ -5,72 +5,72 @@
         <div class="settings-tab-header">
           <div class="settings-tab-icon"><i class="pi pi-bell"></i></div>
           <div class="settings-tab-info">
-            <h3 class="settings-tab-title">Notifications</h3>
-            <p class="settings-tab-description">Choose which events create alerts and how they are delivered.</p>
+            <h3 class="settings-tab-title">{{ t('profile.notifications.title') }}</h3>
+            <p class="settings-tab-description">{{ t('profile.notifications.description') }}</p>
           </div>
         </div>
 
         <section class="settings-group" aria-labelledby="gps-health-heading">
           <div class="settings-group-header">
-            <h3 id="gps-health-heading">GPS health</h3>
-            <p>Get alerted when every active live GPS source stops sending data.</p>
+            <h3 id="gps-health-heading">{{ t('profile.notifications.gpsHealth.heading') }}</h3>
+            <p>{{ t('profile.notifications.gpsHealth.description') }}</p>
           </div>
 
           <div class="settings-panel">
-            <SettingCard title="Monitor GPS arrivals" description="Detect extended gaps across all active live sources." setting-id="gpsHealthEnabled">
+            <SettingCard :title="t('profile.notifications.gpsHealth.monitor.title')" :description="t('profile.notifications.gpsHealth.monitor.description')" setting-id="gpsHealthEnabled">
               <template #control>
-                <InputSwitch id="gps-health" v-model="form.gpsHealthEnabled" :disabled="readOnly" aria-label="Monitor GPS arrivals" />
+                <InputSwitch id="gps-health" v-model="form.gpsHealthEnabled" :disabled="readOnly" :aria-label="t('profile.notifications.gpsHealth.monitor.title')" />
               </template>
             </SettingCard>
 
             <SettingCard
               v-if="form.gpsHealthEnabled"
-              title="Silence threshold"
-              description="Wait this many minutes before creating the first alert."
-              details="Choose a value from 1 minute to 7 days."
+              :title="t('profile.notifications.gpsHealth.silence.title')"
+              :description="t('profile.notifications.gpsHealth.silence.description')"
+              :details="t('profile.notifications.gpsHealth.silence.details')"
               setting-id="gpsSilenceMinutes"
             >
               <template #control>
-                <InputNumber id="silence" v-model="form.gpsSilenceMinutes" :min="1" :max="10080" suffix=" min" :disabled="readOnly" fluid aria-label="GPS silence threshold in minutes" />
+                <InputNumber id="silence" v-model="form.gpsSilenceMinutes" :min="1" :max="10080" :suffix="t('profile.notifications.silenceSuffix')" :disabled="readOnly" fluid :aria-label="t('profile.notifications.gpsHealth.silence.ariaLabel')" />
               </template>
             </SettingCard>
 
-            <ChannelSettings v-if="form.gpsHealthEnabled" v-model="form.gpsHealth" label="GPS health delivery" :read-only="readOnly" />
+            <ChannelSettings v-if="form.gpsHealthEnabled" v-model="form.gpsHealth" :label="t('profile.notifications.gpsHealth.channelLabel')" :read-only="readOnly" />
           </div>
         </section>
 
         <section class="settings-group" aria-labelledby="rewind-heading">
           <div class="settings-group-header">
-            <h3 id="rewind-heading">Monthly Rewind</h3>
-            <p>Get a reminder when the previous month is ready to explore.</p>
+            <h3 id="rewind-heading">{{ t('profile.notifications.rewind.heading') }}</h3>
+            <p>{{ t('profile.notifications.rewind.description') }}</p>
           </div>
 
           <div class="settings-panel">
-            <SettingCard title="Notify when Rewind is ready" description="Create an alert on the first day of each month." setting-id="rewindEnabled">
+            <SettingCard :title="t('profile.notifications.rewind.notify.title')" :description="t('profile.notifications.rewind.notify.description')" setting-id="rewindEnabled">
               <template #control>
-                <InputSwitch id="rewind" v-model="form.rewindEnabled" :disabled="readOnly" aria-label="Notify when Rewind is ready" />
+                <InputSwitch id="rewind" v-model="form.rewindEnabled" :disabled="readOnly" :aria-label="t('profile.notifications.rewind.notify.title')" />
               </template>
             </SettingCard>
-            <ChannelSettings v-if="form.rewindEnabled" v-model="form.rewind" label="Rewind delivery" :read-only="readOnly" />
+            <ChannelSettings v-if="form.rewindEnabled" v-model="form.rewind" :label="t('profile.notifications.rewind.channelLabel')" :read-only="readOnly" />
           </div>
         </section>
 
         <section class="settings-group" aria-labelledby="product-updates-heading">
           <div class="settings-group-header">
-            <h3 id="product-updates-heading">Product updates</h3>
-            <p>Control in-app announcements about new GeoPulse features.</p>
+            <h3 id="product-updates-heading">{{ t('profile.notifications.productUpdates.heading') }}</h3>
+            <p>{{ t('profile.notifications.productUpdates.description') }}</p>
           </div>
 
           <div class="settings-panel">
-            <SettingCard title="Show release highlights" description="Show What’s New once after an upgrade." details="Release highlights appear only inside GeoPulse and are never sent externally." setting-id="whatsNewEnabled">
+            <SettingCard :title="t('profile.notifications.productUpdates.whatsNew.title')" :description="t('profile.notifications.productUpdates.whatsNew.description')" :details="t('profile.notifications.productUpdates.whatsNew.details')" setting-id="whatsNewEnabled">
               <template #control>
-                <InputSwitch id="whats-new" v-model="form.whatsNewEnabled" :disabled="readOnly" aria-label="Show release highlights" />
+                <InputSwitch id="whats-new" v-model="form.whatsNewEnabled" :disabled="readOnly" :aria-label="t('profile.notifications.productUpdates.whatsNew.title')" />
               </template>
             </SettingCard>
           </div>
         </section>
 
-        <div class="settings-actions is-sticky"><Button type="submit" label="Save Changes" :loading="saving" :disabled="readOnly" /></div>
+        <div class="settings-actions is-sticky"><Button type="submit" :label="t('profile.notifications.saveChanges')" :loading="saving" :disabled="readOnly" /></div>
       </form>
     </template>
   </Card>
@@ -78,6 +78,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
@@ -86,6 +87,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import ChannelSettings from './NotificationChannelSettings.vue'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 
+const { t } = useI18n()
 const props = defineProps({ readOnly: Boolean })
 const emit = defineEmits(['saved'])
 const saving = ref(false)

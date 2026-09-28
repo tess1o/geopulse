@@ -30,6 +30,7 @@ public class BrowserAuthResponseMapper {
                 .defaultRedirectUrl(authResponse.getDefaultRedirectUrl())
                 .dateFormat(authResponse.getDateFormat())
                 .timeFormat(authResponse.getTimeFormat())
+                .language(authResponse.getLanguage())
                 .defaultDateRangePreset(authResponse.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(authResponse.getAutoShowTripReplayControls())
                 .enable3dBuildingsByDefault(authResponse.getEnable3dBuildingsByDefault())

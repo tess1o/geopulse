@@ -3,6 +3,7 @@
  */
 import { useToast } from 'primevue/usetoast'
 import { showErrorToast, createRetryableErrorHandler } from '@/utils/errorHandler'
+import { t } from '@/locales'
 
 export function useErrorHandler() {
   const toast = useToast()
@@ -51,8 +52,8 @@ export function useErrorHandler() {
   const showConnectionError = (retryFunction) => {
     toast.add({
       severity: 'error',
-      summary: 'Connection Problem',
-      detail: 'Unable to connect to GeoPulse servers. Please check your internet connection.',
+      summary: t('errors.network.title'),
+      detail: t('errors.network.shortMessage'),
       life: 6000
     })
 
@@ -60,8 +61,8 @@ export function useErrorHandler() {
       setTimeout(() => {
         toast.add({
           severity: 'info',
-          summary: 'Retry Available',
-          detail: 'Click here to try again',
+          summary: t('errors.retry.available'),
+          detail: t('errors.retry.hint'),
           life: 5000,
           onClick: retryFunction
         })

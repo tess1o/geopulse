@@ -4,23 +4,24 @@
       <div class="warning-content">
         <div class="warning-header">
           <i class="pi pi-exclamation-triangle warning-icon"></i>
-          <h2 class="warning-title">Large Date Range Selected</h2>
+          <h2 class="warning-title">{{ t('timeline.largeDataset.title') }}</h2>
         </div>
 
         <div class="warning-body">
           <p class="dataset-info">
-            This range contains <strong>{{ totalItems }}</strong> items
-            <span class="breakdown">({{ stays }} stays, {{ trips}} trips<span v-if="dataGaps > 0">, {{ dataGaps }} data gaps</span>)</span>
+            <i18n-t keypath="timeline.largeDataset.itemsCount" tag="span">
+              <template #count><strong>{{ totalItems }}</strong></template>
+            </i18n-t>
+            <span class="breakdown">{{ dataGaps > 0 ? t('timeline.largeDataset.breakdownWithGaps', { stays, trips, dataGaps }) : t('timeline.largeDataset.breakdown', { stays, trips }) }}</span>
           </p>
 
           <p class="recommendation">
-            Timeline view works best for daily/weekly browsing.
-            For analyzing large periods, use Timeline Reports:
+            {{ t('timeline.largeDataset.recommendation') }}
           </p>
 
           <div class="primary-action">
             <Button
-              label="Open Timeline Reports"
+              :label="t('timeline.largeDataset.openReports')"
               icon="pi pi-chart-bar"
               @click="navigateToReports"
               severity="primary"
@@ -30,17 +31,17 @@
           </div>
 
           <div class="secondary-actions">
-            <p class="or-text">Or view recent data:</p>
+            <p class="or-text">{{ t('timeline.largeDataset.orViewRecent') }}</p>
             <div class="quick-ranges">
               <Button
-                label="Last 7 Days"
+                :label="t('timeline.largeDataset.last7Days')"
                 icon="pi pi-calendar"
                 @click="selectLast7Days"
                 outlined
                 size="small"
               />
               <Button
-                label="Last 30 Days"
+                :label="t('timeline.largeDataset.last30Days')"
                 icon="pi pi-calendar"
                 @click="selectLast30Days"
                 outlined
@@ -56,13 +57,13 @@
               binary
             />
             <label for="force-load-checkbox" class="force-load-label">
-              Load anyway (may impact performance)
+              {{ t('timeline.largeDataset.loadAnyway') }}
             </label>
           </div>
 
           <Button
             v-if="forceLoad"
-            label="Continue with Current Range"
+            :label="t('timeline.largeDataset.continueWithRange')"
             @click="$emit('force-load')"
             severity="secondary"
             class="continue-button"
@@ -75,6 +76,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
@@ -82,6 +84,7 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const router = useRouter()
 const dateRangeStore = useDateRangeStore()
 const timezone = useTimezone()

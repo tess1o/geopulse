@@ -3,9 +3,9 @@
   <div v-if="noDataAvailable" class="no-data-container">
     <div class="no-data-content">
       <i class="pi pi-map-marker no-data-icon"></i>
-      <h3 class="no-data-title">No Places Data</h3>
+      <h3 class="no-data-title">{{ t('ui.dashboard.topPlaces.noDataTitle') }}</h3>
       <p class="no-data-message">
-        There are no places visited during this period.
+        {{ t('ui.dashboard.topPlaces.noDataMessage') }}
       </p>
     </div>
   </div>
@@ -29,8 +29,8 @@
         </div>
 
         <div class="place-stats">
-          <div class="place-visits">{{ place.visits }} visits</div>
-          <div class="place-duration">{{ formatDuration(place.duration) }} total</div>
+          <div class="place-visits">{{ t('ui.dashboard.topPlaces.visitsCount', { count: place.visits }) }}</div>
+          <div class="place-duration">{{ t('ui.dashboard.topPlaces.totalDuration', { duration: formatDuration(place.duration) }) }}</div>
         </div>
       </div>
     </div>
@@ -48,8 +48,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import PlacesMap from '@/components/maps/dialogs/PlacesMap.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   places: {
@@ -80,7 +83,7 @@ const placesArray = computed(() => {
 })
 
 // Methods
-const showPlaceOnMap = (coordinates, placeName = 'Selected Location') => {
+const showPlaceOnMap = (coordinates, placeName = t('ui.dashboard.topPlaces.defaultLocationName')) => {
   if (!coordinates || coordinates.length < 2) {
     console.warn('Invalid coordinates provided:', coordinates)
     return

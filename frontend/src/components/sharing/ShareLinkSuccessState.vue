@@ -3,8 +3,8 @@
     <div class="success-icon">
       <i class="pi pi-check-circle"></i>
     </div>
-    <h3>Share Link Created!</h3>
-    <p>Your share link is ready. Copy and share it with others:</p>
+    <h3>{{ t('sharing.linkSuccess.title') }}</h3>
+    <p>{{ t('sharing.linkSuccess.subtitle') }}</p>
 
     <div class="created-link-options">
       <div
@@ -18,7 +18,7 @@
           <Button
             icon="pi pi-copy"
             @click="copyLinkToClipboard(linkOption)"
-            v-tooltip="`Copy ${linkOption.label.toLowerCase()}`"
+            v-tooltip="t('sharing.linkSuccess.copyTooltip', { label: linkOption.label.toLowerCase() })"
             class="copy-btn"
           />
         </div>
@@ -26,19 +26,22 @@
     </div>
 
     <div class="success-actions">
-      <Button label="Create Another" icon="pi pi-plus" @click="$emit('create-another')" outlined />
-      <Button label="Done" icon="pi pi-check" @click="$emit('done')" />
+      <Button :label="t('sharing.linkSuccess.createAnother')" icon="pi pi-plus" @click="$emit('create-another')" outlined />
+      <Button :label="t('sharing.linkSuccess.done')" icon="pi pi-check" @click="$emit('done')" />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 import { buildShareLinkOptions } from '@/utils/shareLinkUrls'
+
+const { t } = useI18n()
 
 const props = defineProps({
   share: {
@@ -63,15 +66,15 @@ async function copyLinkToClipboard(linkOption) {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied!',
+      summary: t('sharing.linkSuccess.copiedSummary'),
       detail: linkOption.toastDetail,
       life: 2000
     })
   } else {
     toast.add({
       severity: 'error',
-      summary: 'Copy Failed',
-      detail: 'Could not copy to clipboard',
+      summary: t('sharing.linkSuccess.copyFailedSummary'),
+      detail: t('sharing.linkSuccess.copyFailedDetail'),
       life: 3000
     })
   }

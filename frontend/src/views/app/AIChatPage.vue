@@ -6,13 +6,13 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">AI Chat Assistant</h1>
+              <h1 class="page-title">{{ t('aiChat.page.title') }}</h1>
               <p class="page-description">
-                Ask questions about your location data and get intelligent insights
+                {{ t('aiChat.page.description') }}
               </p>
               <div class="ai-disclaimer">
                 <i class="pi pi-info-circle"></i>
-                <span>AI responses are based on data analysis but may contain errors. Please verify important information independently.</span>
+                <span>{{ t('aiChat.page.disclaimer') }}</span>
               </div>
             </div>
             <div class="header-actions" v-if="hasMessages">
@@ -21,8 +21,8 @@
                 class="p-button-text p-button-sm clear-history-btn"
                 @click="clearMessageHistory"
                 :disabled="isLoading"
-                v-tooltip="'Clear conversation history'"
-                aria-label="Clear conversation history"
+                v-tooltip="t('aiChat.page.clearHistoryTooltip')"
+                :aria-label="t('aiChat.page.clearHistoryAriaLabel')"
               />
             </div>
           </div>
@@ -39,7 +39,7 @@
                   <div class="empty-icon">
                     <i class="pi pi-spin pi-spinner text-4xl text-blue-500"></i>
                   </div>
-                  <h3 class="empty-title">Checking AI status...</h3>
+                  <h3 class="empty-title">{{ t('aiChat.status.checking') }}</h3>
                 </div>
 
                 <!-- AI Disabled State -->
@@ -47,29 +47,29 @@
                   <div class="empty-icon">
                     <i class="pi pi-exclamation-triangle text-6xl text-orange-500"></i>
                   </div>
-                  <h3 class="empty-title">AI Chat Unavailable</h3>
+                  <h3 class="empty-title">{{ t('aiChat.status.unavailable.title') }}</h3>
                   <p class="empty-description">
                     <span v-if="!aiSettings.enabled">
-                      AI Assistant is currently disabled.
+                      {{ t('aiChat.status.unavailable.disabled') }}
                     </span>
                     <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">
-                      OpenAI API key is not configured.
+                      {{ t('aiChat.status.unavailable.apiKeyMissing') }}
                     </span>
                     <span v-else>
-                      AI Assistant is not properly configured.
+                      {{ t('aiChat.status.unavailable.notConfigured') }}
                     </span>
                   </p>
                   <div class="config-actions">
                     <Button
-                      label="Configure AI Settings"
+                      :label="t('aiChat.status.unavailable.configureButton')"
                       icon="pi pi-cog"
                       class="p-button-primary"
                       :disabled="configureAISettingsDisabled"
-                      v-tooltip.bottom="configureAISettingsDisabled ? 'AI settings are read-only in demo mode' : 'Configure AI Settings'"
+                      v-tooltip.bottom="configureAISettingsDisabled ? t('aiChat.status.unavailable.demoDisabledTooltip') : t('aiChat.status.unavailable.configureButton')"
                       @click="goToAISettings"
                     />
                     <p v-if="demoReadOnly" class="demo-disabled-text">
-                      AI settings are read-only in demo mode, so this configuration action is disabled.
+                      {{ t('aiChat.status.unavailable.demoDisabledText') }}
                     </p>
                   </div>
                 </div>
@@ -79,22 +79,22 @@
                   <div class="empty-icon">
                     <i class="pi pi-sparkles text-6xl text-blue-500"></i>
                   </div>
-                  <h3 class="empty-title">Start a conversation</h3>
+                  <h3 class="empty-title">{{ t('aiChat.examples.startTitle') }}</h3>
                   <p class="empty-description">
-                    Ask me about your location data. For example:
+                    {{ t('aiChat.examples.startDescription') }}
                   </p>
                   <div class="example-questions">
-                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
-                      "Do I walk more or drive more?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.walkOrDrive'))">
+                      "{{ t('aiChat.examples.walkOrDrive') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
-                      "Which day of the week do I travel most?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.busiestDay'))">
+                      "{{ t('aiChat.examples.busiestDay') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
-                      "How many different cities did I visit this month?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.citiesVisited'))">
+                      "{{ t('aiChat.examples.citiesVisited') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
-                      "What's my most common route?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.commonRoute'))">
+                      "{{ t('aiChat.examples.commonRoute') }}"
                     </div>
                   </div>
                 </div>
@@ -104,22 +104,22 @@
                   <div class="empty-icon">
                     <i class="pi pi-refresh text-6xl text-orange-500"></i>
                   </div>
-                  <h3 class="empty-title">Ready for a new conversation!</h3>
+                  <h3 class="empty-title">{{ t('aiChat.examples.expiredTitle') }}</h3>
                   <p class="empty-description">
-                    Your previous conversation has expired. Ask me about your location data:
+                    {{ t('aiChat.examples.expiredDescription') }}
                   </p>
                   <div class="example-questions">
-                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
-                      "Do I walk more or drive more?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.walkOrDrive'))">
+                      "{{ t('aiChat.examples.walkOrDrive') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
-                      "Which day of the week do I travel most?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.busiestDay'))">
+                      "{{ t('aiChat.examples.busiestDay') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
-                      "How many different cities did I visit this month?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.citiesVisited'))">
+                      "{{ t('aiChat.examples.citiesVisited') }}"
                     </div>
-                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
-                      "What's my most common route?"
+                    <div class="example-question" @click="sendMessage(t('aiChat.examples.commonRoute'))">
+                      "{{ t('aiChat.examples.commonRoute') }}"
                     </div>
                   </div>
                 </div>
@@ -145,7 +145,7 @@
                     <div class="message-content">
                       <div v-if="isErrorMessage(message.content)" class="error-indicator">
                         <i class="pi pi-exclamation-triangle"></i>
-                        <span>Error</span>
+                        <span>{{ t('aiChat.message.error') }}</span>
                       </div>
                       <div class="whitespace-pre-wrap" v-html="sanitizeAndFormatMessage(message.content)"></div>
                       <div class="message-timestamp ai-timestamp">
@@ -179,8 +179,8 @@
                     <i class="pi pi-sparkles spinning-icon"></i>
                   </div>
                   <div class="progress-text">
-                    <span class="progress-title">AI is thinking...</span>
-                    <span class="progress-subtitle">Analyzing your request and location data</span>
+                    <span class="progress-title">{{ t('aiChat.loading.title') }}</span>
+                    <span class="progress-subtitle">{{ t('aiChat.loading.subtitle') }}</span>
                   </div>
                 </div>
                 <ProgressBar mode="indeterminate" class="ai-progress-bar" />
@@ -191,7 +191,7 @@
                 <div class="chat-input">
                   <InputText
                     v-model="currentMessage"
-                    :placeholder="isAIAvailable ? 'Ask me about your location data...' : 'AI Assistant is not available'"
+                    :placeholder="isAIAvailable ? t('aiChat.input.placeholder') : t('aiChat.input.placeholderUnavailable')"
                     class="message-input"
                     @keyup.enter="handleSendMessage"
                     :disabled="isLoading || !isAIAvailable || checkingAIStatus"
@@ -207,9 +207,9 @@
                 <div v-if="!isAIAvailable && !checkingAIStatus" class="input-warning">
                   <i class="pi pi-exclamation-triangle"></i>
                   <span>
-                    <span v-if="!aiSettings.enabled">AI Assistant is disabled.</span>
-                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">API key not configured.</span>
-                    <span v-else>AI Assistant not available.</span>
+                    <span v-if="!aiSettings.enabled">{{ t('aiChat.input.warningDisabled') }}</span>
+                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">{{ t('aiChat.input.warningApiKeyMissing') }}</span>
+                    <span v-else>{{ t('aiChat.input.warningUnavailable') }}</span>
                   </span>
                 </div>
               </div>
@@ -224,6 +224,7 @@
 <script setup>
 import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -233,6 +234,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useAIStore } from '@/stores/ai'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const router = useRouter()
@@ -283,15 +285,15 @@ const formatTimestamp = (date) => {
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   
-  if (diffMs < 60000) return 'Just now'
-  if (diffMs < 3600000) return `${diffMins}m ago`
+  if (diffMs < 60000) return t('aiChat.timestamp.justNow')
+  if (diffMs < 3600000) return t('aiChat.timestamp.minutesAgo', { count: diffMins })
 
   if (messageDate.isSame(now, 'day')) {
     return timezone.formatTime(date)
   }
 
   if (messageDate.isSame(now.subtract(1, 'day'), 'day')) {
-    return `Yesterday ${timezone.formatTime(date)}`
+    return t('aiChat.timestamp.yesterday', { time: timezone.formatTime(date) })
   }
 
   return `${timezone.formatDateDisplay(date)} ${timezone.formatTime(date)}`
@@ -345,8 +347,8 @@ const clearMessageHistory = () => {
   
   toast.add({
     severity: 'info',
-    summary: 'Chat Cleared',
-    detail: 'Your conversation history has been cleared.',
+    summary: t('aiChat.toasts.chatClearedSummary'),
+    detail: t('aiChat.toasts.chatClearedDetail'),
     life: 3000
   })
 }
@@ -403,14 +405,14 @@ const sendMessage = async (messageText) => {
   } catch (error) {
     console.error('Error sending message:', error)
     
-    const problem = normalizeApiError(error, 'Sorry, I encountered an error while processing your request.')
+    const problem = normalizeApiError(error, t('aiChat.toasts.genericError'))
     const errorContent = {
-      AI_DISABLED: 'AI Assistant is disabled. Enable it in your profile settings.',
-      AI_API_KEY_REQUIRED: 'Add your AI provider API key in your profile settings.',
-      AI_CONTEXT_TOO_LARGE: 'The conversation or data is too large. Try a narrower question or clear the chat history.',
-      AI_RATE_LIMITED: 'The AI provider rate limit was reached. Please try again later.',
-      AI_PROVIDER_AUTHENTICATION_FAILED: 'The AI provider rejected the configured credentials.',
-      INVALID_AI_REQUEST: 'The AI provider rejected this request.'
+      AI_DISABLED: t('aiChat.toasts.aiDisabledError'),
+      AI_API_KEY_REQUIRED: t('aiChat.toasts.apiKeyRequiredError'),
+      AI_CONTEXT_TOO_LARGE: t('aiChat.toasts.contextTooLargeError'),
+      AI_RATE_LIMITED: t('aiChat.toasts.rateLimitedError'),
+      AI_PROVIDER_AUTHENTICATION_FAILED: t('aiChat.toasts.authFailedError'),
+      INVALID_AI_REQUEST: t('aiChat.toasts.invalidRequestError')
     }[problem.code] || problem.detail
 
     const errorMessage = {
@@ -426,7 +428,7 @@ const sendMessage = async (messageText) => {
 
     toast.add({
       severity: 'error',
-      summary: 'Chat Error',
+      summary: t('aiChat.toasts.chatErrorSummary'),
       detail: errorContent
     })
   } finally {
@@ -646,19 +648,19 @@ onMounted(async () => {
   }
   
   if (!isAIAvailable.value) {
-    let detail = 'Please configure your AI settings in your profile to use the chat assistant.'
+    let detail = t('aiChat.toasts.unavailableDefaultDetail')
 
     if (demoReadOnly.value) {
-      detail = 'AI settings are read-only in demo mode, so they cannot be configured from this demo account.'
+      detail = t('aiChat.toasts.unavailableDemoDetail')
     } else if (!aiSettings.value.enabled) {
-      detail = 'AI Assistant is disabled. Please enable it in your profile settings.'
+      detail = t('aiChat.toasts.unavailableDisabledDetail')
     } else if (aiSettings.value.apiKeyRequired && !aiSettings.value.openaiApiKeyConfigured) {
-      detail = 'Please configure your OpenAI API key in your profile to use the chat assistant.'
+      detail = t('aiChat.toasts.unavailableApiKeyDetail')
     }
 
     toast.add({
       severity: 'warn',
-      summary: 'AI Chat Unavailable',
+      summary: t('aiChat.toasts.unavailableSummary'),
       detail,
       life: 6000
     })

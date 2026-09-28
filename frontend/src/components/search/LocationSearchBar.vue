@@ -3,7 +3,7 @@
     <AutoComplete
       v-model="searchQuery"
       :suggestions="filteredResults"
-      placeholder="Search locations, pages, settings..."
+      :placeholder="t('ui.globalSearch.bar.placeholder')"
       :loading="isSearching"
       :min-length="2"
       :delay="250"
@@ -30,6 +30,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AutoComplete from 'primevue/autocomplete'
@@ -40,6 +41,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { buildPageIndex, buildSettingsIndex } from '@/constants/globalSearchRegistry'
 import { searchAndRankItems } from '@/utils/globalSearchScoring'
 
+const { t } = useI18n()
 const router = useRouter()
 const store = useLocationAnalyticsStore()
 const tagsStore = useTimelineLabelsStore()
@@ -61,7 +63,7 @@ const pageItems = computed(() => {
     resultType: 'page',
     displayName: item.title,
     metaLine: item.subtitle,
-    groupLabel: 'Pages',
+    groupLabel: t('ui.globalSearch.bar.groupPages'),
     icon: item.icon || 'pi pi-compass',
     to: item.to,
     tab: item.tab,
@@ -76,7 +78,7 @@ const settingItems = computed(() => {
     resultType: 'setting',
     displayName: item.title,
     metaLine: item.subtitle,
-    groupLabel: 'Settings',
+    groupLabel: t('ui.globalSearch.bar.groupSettings'),
     icon: item.icon || 'pi pi-sliders-h',
     to: item.to,
     tab: item.tab,
@@ -100,7 +102,7 @@ const formatTagDate = (tag) => {
     return `${formatDate(tag.startTime)} - ${formatDate(tag.endTime)}`
   }
 
-  return `Since ${formatDate(tag.startTime)}`
+  return t('ui.globalSearch.bar.sinceDate', { date: formatDate(tag.startTime) })
 }
 
 const toLocationSuggestion = (result) => {
@@ -113,14 +115,15 @@ const toLocationSuggestion = (result) => {
       metaLine = formatTagDate(result)
       break
     case 'place':
-      metaLine = `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
       if (result.country) metaLine = `${result.country} • ${metaLine}`
       break
     case 'city':
-      metaLine = result.country ? `${result.country} • ${result.visitCount || 0} visits` : `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
+      if (result.country) metaLine = `${result.country} • ${metaLine}`
       break
     case 'country':
-      metaLine = `${result.visitCount || 0} visits`
+      metaLine = t('ui.globalSearch.bar.visitsCount', { count: result.visitCount || 0 }, result.visitCount || 0)
       break
     default:
       metaLine = ''
@@ -131,7 +134,7 @@ const toLocationSuggestion = (result) => {
     resultType: result.type,
     displayName,
     metaLine,
-    groupLabel: 'Locations',
+    groupLabel: t('ui.globalSearch.bar.groupLocations'),
     icon: result.type === 'tag'
       ? 'pi pi-tag'
       : result.type === 'city'

@@ -11,6 +11,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, readonly, ref, watch } from 'vue'
+import { t } from '@/locales'
 import maplibregl from 'maplibre-gl'
 import NotesViewerDialog from '@/components/timeline/NotesViewerDialog.vue'
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -138,7 +139,7 @@ const fetchAndRenderNotes = async (forceRefresh = false) => {
   } catch (error) {
     emit('error', {
       type: forceRefresh ? 'refresh' : 'fetch',
-      message: error.userMessage || error.message || 'Failed to load notes',
+      message: error.userMessage || error.message || t('maps.popups.notes.loadFailed'),
       error
     })
   } finally {

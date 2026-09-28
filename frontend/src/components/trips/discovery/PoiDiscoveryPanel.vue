@@ -2,9 +2,9 @@
   <div class="poi-discovery">
     <div v-if="showHeader" class="poi-discovery-header">
       <div>
-        <h3 class="poi-discovery-title">Places to visit</h3>
+        <h3 class="poi-discovery-title">{{ t('trips.discovery.title') }}</h3>
         <p class="gp-text-secondary poi-discovery-subtitle">
-          Popular places near an area, with photos. Pick an area to explore.
+          {{ t('trips.discovery.subtitle') }}
         </p>
       </div>
     </div>
@@ -15,7 +15,7 @@
         input-id="poiAreaSearch"
         v-model="areaQuery"
         :suggestions="suggestions"
-        placeholder="Search a city or area to explore..."
+        :placeholder="t('trips.discovery.searchPlaceholder')"
         :loading="isSearching"
         :error="searchError"
         class="poi-area-search"
@@ -29,13 +29,13 @@
         optionLabel="label"
         optionValue="value"
         class="poi-radius-select"
-        aria-label="Search radius"
+        :aria-label="t('trips.discovery.radiusAriaLabel')"
         @change="refresh"
       />
 
       <Button
         v-if="plannedStopsCentroid"
-        label="Use my planned stops"
+        :label="t('trips.discovery.usePlannedStops')"
         icon="pi pi-map-marker"
         severity="secondary"
         outlined
@@ -46,13 +46,13 @@
     <div v-if="store.area" class="poi-area-summary">
       <i class="pi pi-map-marker" />
       <span>{{ areaLabel }}</span>
-      <Button label="Change" link size="small" @click="resetArea" />
+      <Button :label="t('trips.discovery.change')" link size="small" @click="resetArea" />
     </div>
 
     <!-- No area chosen yet -->
     <div v-if="!store.area" class="poi-empty">
       <i class="pi pi-compass poi-empty-icon" />
-      <p>Choose a place above to see what is worth visiting there.</p>
+      <p>{{ t('trips.discovery.emptyNoArea') }}</p>
     </div>
 
     <!-- Loading: skeleton grid, so the layout does not jump -->
@@ -67,12 +67,12 @@
     <!-- Provider problem: say so rather than showing an empty list -->
     <Message v-else-if="store.error" severity="error" :closable="false">
       {{ store.error }}
-      <Button label="Retry" link size="small" @click="refresh" />
+      <Button :label="t('trips.discovery.retry')" link size="small" @click="refresh" />
     </Message>
 
     <div v-else-if="!store.hasResults" class="poi-empty">
       <i class="pi pi-search poi-empty-icon" />
-      <p>No places found in this area. Try a larger radius.</p>
+      <p>{{ t('trips.discovery.emptyNoResults') }}</p>
     </div>
 
     <template v-else>
@@ -86,19 +86,19 @@
 
             <!-- Per-image licence. Commons licences are per file, so this is not optional. -->
             <p v-if="poi.imageLicense" class="poi-card-credit">
-              Photo:
+              {{ t('trips.discovery.photoCredit') }}
               <a
                 v-if="poi.imageFilePageUrl"
                 :href="poi.imageFilePageUrl"
                 target="_blank"
                 rel="noopener noreferrer"
-              >{{ poi.imageAuthor || 'Unknown' }}</a>
-              <span v-else>{{ poi.imageAuthor || 'Unknown' }}</span>
+              >{{ poi.imageAuthor || t('common.unknown') }}</a>
+              <span v-else>{{ poi.imageAuthor || t('common.unknown') }}</span>
               · {{ poi.imageLicense }}
             </p>
 
             <Button
-              :label="isAdded(poi) ? 'Added' : 'Add to plan'"
+              :label="isAdded(poi) ? t('trips.discovery.added') : t('trips.discovery.addToPlan')"
               :icon="isAdded(poi) ? 'pi pi-check' : 'pi pi-plus'"
               :disabled="isAdded(poi)"
               size="small"
@@ -116,6 +116,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
@@ -136,6 +137,7 @@ const props = defineProps({
 
 defineEmits(['add-to-plan'])
 
+const { t } = useI18n()
 const store = usePoiDiscoveryStore()
 const radius = ref(store.radiusMeters)
 
@@ -156,7 +158,7 @@ const {
   error: searchError,
   search: runAreaSearch
 } = useTripPlanLocationSearch({
-  fallbackLabel: 'Area',
+  fallbackLabel: t('trips.discovery.areaFallback'),
   limit: 8
 })
 
@@ -182,7 +184,7 @@ const handleAreaSelect = async (suggestion) => {
   const coordinates = getTripPlanSuggestionCoordinates(suggestion)
   if (!coordinates) return
 
-  areaLabel.value = suggestion?.title || suggestion?.displayName || 'Selected area'
+  areaLabel.value = suggestion?.title || suggestion?.displayName || t('trips.discovery.selectedAreaFallback')
   const moved = store.setArea(coordinates)
   if (moved) {
     await refresh()
@@ -191,7 +193,7 @@ const handleAreaSelect = async (suggestion) => {
 
 const usePlannedStops = async () => {
   if (!plannedStopsCentroid.value) return
-  areaLabel.value = 'Your planned stops'
+  areaLabel.value = t('trips.discovery.plannedStopsLabel')
   store.setArea(plannedStopsCentroid.value)
   await refresh()
 }

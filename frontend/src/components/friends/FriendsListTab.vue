@@ -4,18 +4,18 @@
       <div class="empty-icon">
         <i class="pi pi-users"></i>
       </div>
-      <h3 class="empty-title">No Friends Yet</h3>
+      <h3 class="empty-title">{{ t('friends.listTab.empty.title') }}</h3>
       <p class="empty-description">
-        Start building your network by inviting friends to connect and share locations
+        {{ t('friends.listTab.empty.description') }}
       </p>
       <p v-if="readOnly" class="demo-disabled-text">
-        Inviting friends is disabled in demo mode.
+        {{ t('friends.listTab.empty.demoDisabled') }}
       </p>
       <Button
-          label="Invite Your First Friend"
+          :label="t('friends.listTab.empty.inviteFirst')"
           icon="pi pi-user-plus"
           :disabled="readOnly"
-          v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite Your First Friend'"
+          v-tooltip.bottom="readOnly ? t('friends.demo.invitationsTooltip') : t('friends.listTab.empty.inviteFirst')"
           @click="$emit('invite-friend')"
       />
     </div>
@@ -38,7 +38,7 @@
                     :severity="getFriendStatusSeverity(friend)"
                     class="status-badge"
                 />
-                <span class="last-seen">Last seen: {{ getLastSeenText(friend.lastSeen) }}</span>
+                <span class="last-seen">{{ t('friends.listTab.lastSeenLabel', { text: getLastSeenText(friend.lastSeen) }) }}</span>
               </div>
               <div v-if="friend.lastLocation" class="friend-location">
                 <i class="pi pi-map-marker location-icon"></i>
@@ -51,25 +51,25 @@
           <div class="friend-sharing-status">
             <div class="section-header">
               <i class="pi pi-eye"></i>
-              <span>What this friend shares with you:</span>
+              <span>{{ t('friends.listTab.sharesWithYou') }}</span>
             </div>
 
             <div class="sharing-status-items">
               <div class="status-item">
                 <i :class="['pi', friend.friendSharesLiveLocation ? 'pi-check-circle' : 'pi-times-circle']"
                    :style="{ color: friend.friendSharesLiveLocation ? 'var(--green-500)' : 'var(--red-500)' }"></i>
-                <span class="status-label">Live Location</span>
+                <span class="status-label">{{ t('friends.listTab.liveLocation') }}</span>
                 <Badge
-                  :value="friend.friendSharesLiveLocation ? 'Shared' : 'Not Shared'"
+                  :value="friend.friendSharesLiveLocation ? t('friends.listTab.shared') : t('friends.listTab.notShared')"
                   :severity="friend.friendSharesLiveLocation ? 'success' : 'secondary'"
                 />
               </div>
               <div class="status-item">
                 <i :class="['pi', friend.friendSharesTimeline ? 'pi-check-circle' : 'pi-times-circle']"
                    :style="{ color: friend.friendSharesTimeline ? 'var(--green-500)' : 'var(--red-500)' }"></i>
-                <span class="status-label">Timeline History</span>
+                <span class="status-label">{{ t('friends.listTab.timelineHistory') }}</span>
                 <Badge
-                  :value="friend.friendSharesTimeline ? 'Shared' : 'Not Shared'"
+                  :value="friend.friendSharesTimeline ? t('friends.listTab.shared') : t('friends.listTab.notShared')"
                   :severity="friend.friendSharesTimeline ? 'success' : 'secondary'"
                 />
               </div>
@@ -80,14 +80,14 @@
           <div class="friend-permissions">
             <div class="section-header">
               <i class="pi pi-lock"></i>
-              <span>What you share with this friend:</span>
+              <span>{{ t('friends.listTab.sharesWithFriend') }}</span>
             </div>
             <p v-if="readOnly" class="demo-disabled-text demo-disabled-text--inline">
-              Sharing permissions are read-only in demo mode.
+              {{ t('friends.listTab.demoPermissionsReadOnly') }}
             </p>
             <div class="permission-item">
               <i class="pi pi-map-marker permission-icon"></i>
-              <span class="permission-label">Live Location</span>
+              <span class="permission-label">{{ t('friends.listTab.liveLocation') }}</span>
               <InputSwitch
                   v-model="friend.shareLiveLocationPermission"
                   :disabled="readOnly"
@@ -95,12 +95,12 @@
                   class="permission-switch"
               />
               <i class="pi pi-info-circle info-icon"
-                 v-tooltip="'Allows this friend to see your current location in real-time'"
+                 v-tooltip="t('friends.listTab.liveLocationInfo')"
               ></i>
             </div>
             <div class="permission-item">
               <i class="pi pi-history permission-icon"></i>
-              <span class="permission-label">Timeline History</span>
+              <span class="permission-label">{{ t('friends.listTab.timelineHistory') }}</span>
               <InputSwitch
                   v-model="friend.shareTimelinePermission"
                   :disabled="readOnly"
@@ -108,7 +108,7 @@
                   class="permission-switch"
               />
               <i class="pi pi-info-circle info-icon"
-                 v-tooltip="'Allows this friend to view your complete location history'"
+                 v-tooltip="t('friends.listTab.timelineHistoryInfo')"
               ></i>
             </div>
           </div>
@@ -116,20 +116,20 @@
           <div class="friend-actions">
             <Button
                 icon="pi pi-map-marker"
-                label="Live"
+                :label="t('friends.listTab.actions.live')"
                 size="small"
                 outlined
                 @click="$emit('show-on-map', friend)"
                 :disabled="!friend.lastLatitude || !friend.lastLongitude"
-                v-tooltip.bottom="'Show friend on live map'"
+                v-tooltip.bottom="t('friends.listTab.actions.liveTooltip')"
             />
             <Button
                 icon="pi pi-history"
-                label="Timeline"
+                :label="t('friends.listTab.actions.timeline')"
                 size="small"
                 outlined
                 @click="$emit('show-timeline', friend)"
-                v-tooltip.bottom="'View friend\'s timeline history'"
+                v-tooltip.bottom="t('friends.listTab.actions.timelineTooltip')"
             />
             <Button
                 icon="pi pi-trash"
@@ -138,7 +138,7 @@
                 outlined
                 :disabled="readOnly"
                 @click="$emit('delete-friend', friend)"
-                v-tooltip.bottom="readOnly ? 'Removing friends is disabled in demo mode' : 'Remove friend'"
+                v-tooltip.bottom="readOnly ? t('friends.listTab.actions.removeTooltipDemo') : t('friends.listTab.actions.removeTooltip')"
             />
           </div>
         </template>
@@ -149,6 +149,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -157,6 +158,7 @@ import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import InputSwitch from 'primevue/inputswitch'
 import { showDemoModeToast } from '@/utils/demoMode'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const toast = useToast()
 const confirm = useConfirm()
@@ -214,16 +216,16 @@ async function handleTimelinePermissionChange(friend) {
   const newValue = friend.shareTimelinePermission
   if (props.readOnly) {
     friend.shareTimelinePermission = !newValue
-    showDemoModeToast(toast, 'Sharing permissions are read-only in demo mode.')
+    showDemoModeToast(toast, t('friends.listTab.demoPermissionsReadOnly'))
     return
   }
 
   // Show confirmation dialog
   confirm.require({
     message: newValue
-      ? `This will allow ${friend.fullName} to view your complete location history (all past stays and trips). Continue?`
-      : `This will revoke ${friend.fullName}'s access to your location history. Continue?`,
-    header: 'Confirm Permission Change',
+      ? t('friends.listTab.permissionDialog.timelineAllow', { name: friend.fullName })
+      : t('friends.listTab.permissionDialog.timelineRevoke', { name: friend.fullName }),
+    header: t('friends.listTab.permissionDialog.header'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -235,10 +237,10 @@ async function handleTimelinePermissionChange(friend) {
 
         toast.add({
           severity: 'success',
-          summary: 'Permission Updated',
+          summary: t('friends.listTab.permissionToast.updatedSummary'),
           detail: newValue
-            ? `${friend.fullName} can now view your timeline history`
-            : `${friend.fullName} can no longer view your timeline history`,
+            ? t('friends.listTab.permissionToast.timelineGranted', { name: friend.fullName })
+            : t('friends.listTab.permissionToast.timelineRevoked', { name: friend.fullName }),
           life: 3000
         })
       } catch (error) {
@@ -249,8 +251,8 @@ async function handleTimelinePermissionChange(friend) {
 
         toast.add({
           severity: 'error',
-          summary: 'Failed to Update Permission',
-          detail: formatApiErrorDetail(error, 'Could not update friend permissions'),
+          summary: t('friends.listTab.permissionToast.failedSummary'),
+          detail: formatApiErrorDetail(error, t('friends.listTab.permissionToast.timelineFailedDetail')),
           life: 5000
         })
       }
@@ -266,16 +268,16 @@ async function handleLiveLocationPermissionChange(friend) {
   const newValue = friend.shareLiveLocationPermission
   if (props.readOnly) {
     friend.shareLiveLocationPermission = !newValue
-    showDemoModeToast(toast, 'Sharing permissions are read-only in demo mode.')
+    showDemoModeToast(toast, t('friends.listTab.demoPermissionsReadOnly'))
     return
   }
 
   // Show confirmation dialog
   confirm.require({
     message: newValue
-      ? `This will allow ${friend.fullName} to see your current location in real-time. Continue?`
-      : `This will revoke ${friend.fullName}'s access to your live location. Continue?`,
-    header: 'Confirm Permission Change',
+      ? t('friends.listTab.permissionDialog.liveAllow', { name: friend.fullName })
+      : t('friends.listTab.permissionDialog.liveRevoke', { name: friend.fullName }),
+    header: t('friends.listTab.permissionDialog.header'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -287,10 +289,10 @@ async function handleLiveLocationPermissionChange(friend) {
 
         toast.add({
           severity: 'success',
-          summary: 'Permission Updated',
+          summary: t('friends.listTab.permissionToast.updatedSummary'),
           detail: newValue
-            ? `${friend.fullName} can now view your live location`
-            : `${friend.fullName} can no longer view your live location`,
+            ? t('friends.listTab.permissionToast.liveGranted', { name: friend.fullName })
+            : t('friends.listTab.permissionToast.liveRevoked', { name: friend.fullName }),
           life: 3000
         })
       } catch (error) {
@@ -301,8 +303,8 @@ async function handleLiveLocationPermissionChange(friend) {
 
         toast.add({
           severity: 'error',
-          summary: 'Failed to Update Permission',
-          detail: formatApiErrorDetail(error, 'Could not update live location permission'),
+          summary: t('friends.listTab.permissionToast.failedSummary'),
+          detail: formatApiErrorDetail(error, t('friends.listTab.permissionToast.liveFailedDetail')),
           life: 5000
         })
       }
@@ -315,24 +317,25 @@ async function handleLiveLocationPermissionChange(friend) {
 }
 
 // Utility functions
-const getFriendStatus = (friend) => {
-  if (!friend.lastSeen) return 'No Location'
+const getFriendStatusKey = (friend) => {
+  if (!friend.lastSeen) return 'noLocation'
 
   const lastSeen = timezone.fromUtc(friend.lastSeen)
   const now = timezone.now()
   const diffMinutes = now.diff(lastSeen, 'minute')
 
-  if (diffMinutes < 5) return 'Online'
-  if (diffMinutes < 60) return 'Recent'
-  return 'Offline'
+  if (diffMinutes < 5) return 'online'
+  if (diffMinutes < 60) return 'recent'
+  return 'offline'
 }
 
+const getFriendStatus = (friend) => t(`friends.listTab.status.${getFriendStatusKey(friend)}`)
+
 const getFriendStatusSeverity = (friend) => {
-  const status = getFriendStatus(friend)
-  switch (status) {
-    case 'Online':
+  switch (getFriendStatusKey(friend)) {
+    case 'online':
       return 'success'
-    case 'Recent':
+    case 'recent':
       return 'warning'
     default:
       return 'secondary'
@@ -340,16 +343,16 @@ const getFriendStatusSeverity = (friend) => {
 }
 
 const getLastSeenText = (lastSeen) => {
-  if (!lastSeen) return 'Never'
+  if (!lastSeen) return t('friends.listTab.lastSeenText.never')
 
   const date = timezone.fromUtc(lastSeen)
   const now = timezone.now()
   const diffMinutes = now.diff(date, 'minute')
 
-  if (diffMinutes < 1) return 'Just now'
-  if (diffMinutes < 60) return `${Math.floor(diffMinutes)}m ago`
-  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`
-  return `${Math.floor(diffMinutes / 1440)}d ago`
+  if (diffMinutes < 1) return t('friends.listTab.lastSeenText.justNow')
+  if (diffMinutes < 60) return t('friends.listTab.lastSeenText.minutesAgo', { count: Math.floor(diffMinutes) })
+  if (diffMinutes < 1440) return t('friends.listTab.lastSeenText.hoursAgo', { count: Math.floor(diffMinutes / 60) })
+  return t('friends.listTab.lastSeenText.daysAgo', { count: Math.floor(diffMinutes / 1440) })
 }
 </script>
 

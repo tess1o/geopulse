@@ -2,7 +2,7 @@
   <div class="digest-highlights">
     <h3 class="highlights-title">
       <i class="pi pi-star-fill"></i>
-      Highlights
+      {{ t('analytics.digest.highlights.title') }}
     </h3>
 
     <div v-if="hasHighlights" class="highlights-grid">
@@ -10,7 +10,7 @@
       <div class="highlight-card" v-if="highlights.longestTrip">
         <div class="highlight-icon">🚗</div>
         <div class="highlight-content">
-          <div class="highlight-title">Longest Trip</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.longestTrip') }}</div>
           <div class="highlight-value">
             {{ formatDistance(highlights.longestTrip.distance) }}
           </div>
@@ -22,9 +22,9 @@
       <div class="highlight-card" v-if="highlights.mostVisited">
         <div class="highlight-icon">📍</div>
         <div class="highlight-content">
-          <div class="highlight-title">Most Visited Place</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.mostVisitedPlace') }}</div>
           <div class="highlight-value">{{ highlights.mostVisited.name }}</div>
-          <div class="highlight-date">{{ highlights.mostVisited.visits }} visits</div>
+          <div class="highlight-date">{{ t('analytics.digest.highlights.visitsCount', { count: highlights.mostVisited.visits }, highlights.mostVisited.visits) }}</div>
         </div>
       </div>
 
@@ -32,8 +32,8 @@
       <div class="highlight-card" v-if="highlights.busiestDay">
         <div class="highlight-icon">⚡</div>
         <div class="highlight-content">
-          <div class="highlight-title">Busiest Day</div>
-          <div class="highlight-value">{{ highlights.busiestDay.trips }} trips</div>
+          <div class="highlight-title">{{ t('analytics.digest.highlights.busiestDay') }}</div>
+          <div class="highlight-value">{{ t('analytics.digest.highlights.tripsCount', { count: highlights.busiestDay.trips }, highlights.busiestDay.trips) }}</div>
           <div class="highlight-date">
             {{ formatDate(highlights.busiestDay.date) }} - {{ formatDistance(highlights.busiestDay.distance) }}
           </div>
@@ -42,16 +42,18 @@
     </div>
     <div v-else class="no-highlights-placeholder">
       <i class="pi pi-star"></i>
-      <p>No highlights for this period.</p>
+      <p>{{ t('analytics.digest.highlights.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { formatDistance } from '@/utils/calculationsHelpers';
 import { useTimezone } from '@/composables/useTimezone';
 
+const { t } = useI18n();
 const timezone = useTimezone();
 
 const props = defineProps({

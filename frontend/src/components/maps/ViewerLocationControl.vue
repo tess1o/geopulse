@@ -20,8 +20,8 @@
       v-if="active"
       type="button"
       class="viewer-location-stop"
-      title="Hide your location"
-      aria-label="Hide your location"
+      :title="t('maps.popups.viewerLocation.hideLocation')"
+      :aria-label="t('maps.popups.viewerLocation.hideLocation')"
       @click="$emit('stop')"
     >
       <i class="pi pi-times"></i>
@@ -34,6 +34,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   status: {
@@ -57,9 +60,9 @@ const props = defineProps({
 defineEmits(['locate', 'stop'])
 
 const buttonTitle = computed(() => {
-  if (props.status === 'requesting') return 'Finding your location'
-  if (props.active) return 'Center on your location'
-  return 'Show your location'
+  if (props.status === 'requesting') return t('maps.popups.viewerLocation.findingLocation')
+  if (props.active) return t('maps.popups.viewerLocation.centerOnLocation')
+  return t('maps.popups.viewerLocation.showLocation')
 })
 
 const buttonIcon = computed(() => {

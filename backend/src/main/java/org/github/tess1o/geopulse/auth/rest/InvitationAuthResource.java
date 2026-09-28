@@ -85,7 +85,8 @@ public class InvitationAuthResource {
                     request.getEmail(),
                     request.getPassword(),
                     request.getFullName(),
-                    request.getTimezone()
+                    request.getTimezone(),
+                    request.getLanguage()
             );
 
             // Mark invitation as used

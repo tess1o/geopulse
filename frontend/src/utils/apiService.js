@@ -11,7 +11,8 @@ import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
 import { clearCachedUserProfile, readCachedUserProfile } from '@/utils/userProfileCache';
-import { getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
+import { createAuthExpiredError, getErrorReferenceId, productionErrorContext } from '@/utils/apiErrorDetail';
+import { t } from '@/locales';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api/v1';
 let maintenanceAbortController = new AbortController();
@@ -263,7 +264,7 @@ const apiService = {
             const refreshed = await this.refreshToken();
             if (!refreshed) {
                 this.clearAuthData();
-                throw new Error('Authentication expired. Please login again.');
+                throw createAuthExpiredError();
             }
         }
     },
@@ -580,8 +581,8 @@ const apiService = {
 
             const errorParams = new URLSearchParams({
                 type: 'connection',
-                title: 'Backend Unavailable',
-                message: 'GeoPulse servers are currently unavailable. Please try again later.'
+                title: t('errors.backendUnavailable.title'),
+                message: t('errors.backendUnavailable.message')
             });
 
             window.location.replace(`/error?${errorParams.toString()}`);

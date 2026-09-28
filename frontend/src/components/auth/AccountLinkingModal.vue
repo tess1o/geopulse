@@ -1,10 +1,10 @@
 <template>
-  <Dialog 
-    v-model:visible="isVisible" 
-    modal 
-    :closable="false" 
+  <Dialog
+    v-model:visible="isVisible"
+    modal
+    :closable="false"
     :style="{ width: '450px' }"
-    header="Link Your Account"
+    :header="t('auth.linking.dialogHeader')"
   >
     <div class="account-linking-content">
       <!-- Header Information -->
@@ -12,11 +12,12 @@
         <div class="provider-icons">
           <i class="pi pi-user-plus linking-icon"></i>
         </div>
-        <h3 class="linking-title">Account Already Exists</h3>
-        <p class="linking-description">
-          An account with <strong>{{ linkingData.email }}</strong> already exists. 
-          To continue, please verify your identity and we'll link your {{ linkingData.newProvider }} account.
-        </p>
+        <h3 class="linking-title">{{ t('auth.linking.title') }}</h3>
+        <i18n-t keypath="auth.linking.description" tag="p" class="linking-description">
+          <!-- First use of i18n-t in this codebase: needed here because the sentence embeds bold markup around the email. -->
+          <template #email><strong>{{ linkingData.email }}</strong></template>
+          <template #provider>{{ linkingData.newProvider }}</template>
+        </i18n-t>
       </div>
 
       <!-- Verification Methods -->
@@ -25,13 +26,13 @@
         <div v-if="linkingData.verificationMethods.password" class="verification-option">
           <div class="verification-header">
             <i class="pi pi-lock"></i>
-            <span>Verify with Password</span>
+            <span>{{ t('auth.linking.verifyPassword') }}</span>
           </div>
           <form @submit.prevent="linkWithPassword" class="password-form">
             <div class="form-field">
-              <Password 
+              <Password
                 v-model="passwordForm.password"
-                placeholder="Enter your password"
+                :placeholder="t('auth.login.passwordPlaceholder')"
                 :feedback="false"
                 toggleMask
                 :invalid="!!passwordError"
@@ -42,9 +43,9 @@
                 {{ passwordError }}
               </small>
             </div>
-            <Button 
+            <Button
               type="submit"
-              label="Link Account & Continue"
+              :label="t('auth.linking.linkAndContinue')"
               :loading="isLinking"
               :disabled="!passwordForm.password || isLinking"
               class="w-full"
@@ -56,13 +57,13 @@
         <div v-if="linkingData.verificationMethods.oidcProviders.length > 0" class="verification-option">
           <div class="verification-header">
             <i class="pi pi-shield"></i>
-            <span>Verify with Linked Account</span>
+            <span>{{ t('auth.linking.verifyWithLinked') }}</span>
           </div>
           <div class="oidc-providers">
             <Button
               v-for="provider in linkingData.verificationMethods.oidcProviders"
               :key="provider"
-              :label="`Continue with ${formatProviderName(provider)}`"
+              :label="t('auth.oidc.continueWith', { provider: formatProviderName(provider) })"
               @click="linkWithOidc(provider)"
               :loading="isLinking"
               :disabled="isLinking"
@@ -73,16 +74,16 @@
         </div>
 
         <!-- Divider if both methods available -->
-        <div v-if="linkingData.verificationMethods.password && linkingData.verificationMethods.oidcProviders.length > 0" 
+        <div v-if="linkingData.verificationMethods.password && linkingData.verificationMethods.oidcProviders.length > 0"
              class="method-divider">
-          <span>OR</span>
+          <span>{{ t('auth.linking.or') }}</span>
         </div>
       </div>
 
       <!-- Cancel Option -->
       <div class="linking-actions">
-        <Button 
-          label="Cancel"
+        <Button
+          :label="t('auth.linking.cancel')"
           outlined
           @click="$emit('cancel')"
           :disabled="isLinking"
@@ -95,12 +96,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {
@@ -148,7 +152,7 @@ const linkWithPassword = async () => {
     
   } catch (error) {
     console.error('Password linking failed:', error)
-    passwordError.value = formatApiErrorDetail(error, 'Password verification failed')
+    passwordError.value = formatApiErrorDetail(error, t('auth.linking.errors.passwordVerificationFailed'))
   } finally {
     isLinking.value = false
   }

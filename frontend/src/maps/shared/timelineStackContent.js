@@ -1,22 +1,24 @@
 import { formatDuration } from '@/utils/durationFormatter'
 import { formatDistanceForUnit } from '@/utils/measurementFormatters'
+import { t, te } from '@/locales'
 
-export const STACK_MOVEMENT_TYPE_MAP = {
-  WALK: { label: 'Walk', icon: '🚶' },
-  BICYCLE: { label: 'Bicycle', icon: '🚴' },
-  RUNNING: { label: 'Running', icon: '🏃' },
-  CAR: { label: 'Car', icon: '🚗' },
-  MOTORCYCLE: { label: 'Motorcycle', icon: '🏍️' },
-  PUBLIC_TRANSPORT: { label: 'Public Transportation', icon: '🚌' },
-  TRAIN: { label: 'Train', icon: '🚊' },
-  FLIGHT: { label: 'Flight', icon: '✈️' },
-  BOAT: { label: 'Boat', icon: '⛵' },
-  UNKNOWN: { label: 'Unknown', icon: '❓' }
+const STACK_MOVEMENT_TYPE_ICONS = {
+  WALK: '🚶',
+  BICYCLE: '🚴',
+  RUNNING: '🏃',
+  CAR: '🚗',
+  MOTORCYCLE: '🏍️',
+  PUBLIC_TRANSPORT: '🚌',
+  TRAIN: '🚊',
+  FLIGHT: '✈️',
+  BOAT: '⛵',
+  UNKNOWN: '❓'
 }
 
-export const getMovementTypeDisplay = (movementType) => (
-  STACK_MOVEMENT_TYPE_MAP[movementType] || { label: movementType || 'Unknown', icon: '❓' }
-)
+export const getMovementTypeDisplay = (movementType) => ({
+  label: te(`movementTypes.${movementType}`) ? t(`movementTypes.${movementType}`) : (movementType || t('maps.popups.common.unknown')),
+  icon: STACK_MOVEMENT_TYPE_ICONS[movementType] || '❓'
+})
 
 export const getStackItemTypeClass = (item) => {
   if (item?.type === 'stay') return 'stack-item--stay'
@@ -27,25 +29,25 @@ export const getStackItemTypeClass = (item) => {
 
 export const getStackItemTitle = (item) => {
   if (item?.type === 'stay') {
-    return `🏠 Stayed at ${item.locationName || item.address || 'Unknown place'}`
+    return `🏠 ${t('timeline.stay.stayedAt')} ${item.locationName || item.address || t('maps.popups.common.unknownLocation')}`
   }
 
   if (item?.type === 'trip') {
-    return '🔄 Transition to new place'
+    return `🔄 ${t('timeline.trip.transitionToNewPlace')}`
   }
 
   if (item?.type === 'dataGap') {
-    return '⚠️ Data Gap'
+    return `⚠️ ${t('maps.popups.timeline.dataGap')}`
   }
 
-  return 'Timeline event'
+  return t('maps.popups.timeline.timelineItem')
 }
 
 export const getStackItemSubtitle = (item) => {
   if (item?.type === 'trip') {
     const movement = getMovementTypeDisplay(item.movementType)
-    const isManual = item.movementTypeSource === 'MANUAL' ? ' (Manual)' : ''
-    return `🚦 Movement: ${movement.icon} ${movement.label}${isManual}`
+    const isManual = item.movementTypeSource === 'MANUAL' ? ` ${t('timeline.stay.manualIndicator')}` : ''
+    return `🚦 ${t('timeline.trip.movementLabel')} ${movement.icon} ${movement.label}${isManual}`
   }
 
   return ''
@@ -53,14 +55,14 @@ export const getStackItemSubtitle = (item) => {
 
 export const getStackItemMeta = (item, deps = {}) => {
   if (item?.type === 'stay' && item.stayDuration) {
-    return `For ${formatDuration(item.stayDuration)}`
+    return `${t('timeline.stay.forDuration')} ${formatDuration(item.stayDuration)}`
   }
 
   if (item?.type === 'trip') {
-    const duration = item.tripDuration ? `Duration: ${formatDuration(item.tripDuration)}` : null
+    const duration = item.tripDuration ? `${t('timeline.trip.durationLabel')} ${formatDuration(item.tripDuration)}` : null
     const distanceValue = item.distanceMeters ?? item.totalDistanceMeters
     const distance = distanceValue
-      ? `Distance: ${formatDistanceForUnit(distanceValue, { unit: deps.unit })}`
+      ? `${t('timeline.trip.distanceLabel')} ${formatDistanceForUnit(distanceValue, { unit: deps.unit })}`
       : null
     return [duration, distance].filter(Boolean).join(' | ')
   }
@@ -76,7 +78,7 @@ export const buildTimelineStackItems = (items, deps = {}) => {
     const timestamp = item?.timestamp || item?.startTime
     const dateStr = timestamp
       ? `${formatDateDisplay(timestamp)} ${formatTime(timestamp)}`
-      : 'Unknown time'
+      : t('maps.popups.common.unknownTime')
 
     return {
       item,

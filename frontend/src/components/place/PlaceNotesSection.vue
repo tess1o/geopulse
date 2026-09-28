@@ -8,7 +8,7 @@
         </span>
         <Button
           v-if="notes.length > 0"
-          label="View all"
+          :label="t('place.notes.viewAll')"
           icon="pi pi-list"
           size="small"
           text
@@ -17,8 +17,8 @@
         <Button
           v-if="notesError"
           icon="pi pi-refresh"
-          aria-label="Reload notes"
-          v-tooltip.left="'Reload notes'"
+          :aria-label="t('place.notes.reloadAriaLabel')"
+          v-tooltip.left="t('place.notes.reloadTooltip')"
           size="small"
           text
           :loading="notesLoading"
@@ -56,21 +56,21 @@
             icon="pi pi-external-link"
             text
             rounded
-            aria-label="Open in Memos"
-            v-tooltip.left="'Open in Memos'"
+            :aria-label="t('place.notes.openInMemosAriaLabel')"
+            v-tooltip.left="t('place.notes.openInMemosTooltip')"
             @click="openExternal(note.externalUrl)"
           />
         </header>
 
         <div class="place-note-markdown" v-html="renderSafeMarkdown(noteBody(note))"></div>
         <div v-if="note.truncated" class="place-note-truncated">
-          This Memos note is large, so GeoPulse shows a truncated preview.
+          {{ t('place.notes.truncatedNotice') }}
         </div>
       </article>
     </div>
     <div v-if="notesLoading && notes.length > 0" class="place-notes-loading-inline">
       <ProgressSpinner stroke-width="6" />
-      <span>Loading notes...</span>
+      <span>{{ t('place.notes.loadingInline') }}</span>
     </div>
     <div v-if="notesError" class="place-notes-error">
       {{ notesError }}
@@ -88,6 +88,8 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -100,7 +102,7 @@ import { renderSafeMarkdown } from '@/utils/safeMarkdown'
 const props = defineProps({
   title: {
     type: String,
-    default: 'Notes'
+    default: () => translate('place.notes.defaultTitle')
   },
   searchParams: {
     type: Object,
@@ -116,9 +118,11 @@ const props = defineProps({
   },
   emptyMessage: {
     type: String,
-    default: 'No notes found for this place.'
+    default: () => translate('place.notes.defaultEmptyMessage')
   }
 })
+
+const { t } = useI18n()
 
 const emit = defineEmits(['notes-change'])
 const timezone = useTimezone()
@@ -172,15 +176,15 @@ const noteKey = (note) => {
   return `${note?.source || 'note'}-${identity}`
 }
 
-const sourceLabel = (note) => note.source === 'MEMOS' ? 'Memos' : 'GeoPulse'
+const sourceLabel = (note) => note.source === 'MEMOS' ? t('place.notes.sourceMemos') : t('place.notes.sourceGeopulse')
 const sourceClass = (note) => note.source === 'MEMOS' ? 'place-note-source-memos' : 'place-note-source-geopulse'
 const formatDateTime = (value) => value ? timezone.formatDateTimeDisplay(value) : ''
 const formatLocationSource = (source) => {
   const labels = {
-    EXPLICIT: 'Geotagged',
-    DERIVED_STAY: 'Stay location',
-    DERIVED_TRIP_GPS: 'Trip GPS',
-    DERIVED_TRIP_INTERPOLATED: 'Trip estimate'
+    EXPLICIT: t('place.notes.locationSource.explicit'),
+    DERIVED_STAY: t('place.notes.locationSource.derivedStay'),
+    DERIVED_TRIP_GPS: t('place.notes.locationSource.derivedTripGps'),
+    DERIVED_TRIP_INTERPOLATED: t('place.notes.locationSource.derivedTripInterpolated')
   }
   return labels[source] || source
 }
@@ -272,7 +276,7 @@ const refreshNotes = async () => {
     }
 
     setNotes([])
-    notesError.value = formatApiErrorDetail(error, 'Failed to load notes')
+    notesError.value = formatApiErrorDetail(error, t('place.notes.loadFailed'))
     return []
   } finally {
     if (requestId === requestSequence) {

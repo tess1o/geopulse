@@ -6,9 +6,9 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">Timeline Preferences</h1>
+              <h1 class="page-title">{{ t('timelinePreferences.page.title') }}</h1>
               <p class="page-description">
-                Fine-tune how your location timeline is generated from GPS data
+                {{ t('timelinePreferences.page.description') }}
               </p>
             </div>
 
@@ -16,11 +16,11 @@
               <SettingsSearchTrigger
                 class="timeline-search-trigger"
                 page-key="timeline"
-                placeholder="Search timeline settings..."
+                :placeholder="t('timelinePreferences.page.searchPlaceholder')"
                 @navigate="handleSettingsSearchNavigate"
               />
               <Button
-                label="Regenerate Timeline"
+                :label="t('timelinePreferences.page.regenerateButton')"
                 icon="pi pi-replay"
                 severity="danger"
                 outlined
@@ -28,7 +28,7 @@
                 :disabled="timelineRegenerationVisible || demoReadOnly"
               />
               <Button
-                label="Save Changes"
+                :label="t('timelinePreferences.page.saveButton')"
                 icon="pi pi-save"
                 @click="confirmSavePreferences"
                 :disabled="!hasUnsavedChanges || !isFormValid || timelineRegenerationVisible || demoReadOnly"
@@ -36,7 +36,7 @@
 
               <div class="toolbar-secondary-actions">
                 <Button
-                  label="More"
+                  :label="t('timelinePreferences.page.moreButton')"
                   icon="pi pi-ellipsis-h"
                   severity="secondary"
                   outlined
@@ -57,14 +57,14 @@
         <div class="timeline-preferences-content">
           <div class="settings-layout">
             <label class="mobile-settings-select">
-              <span>Settings section</span>
+              <span>{{ t('timelinePreferences.page.mobileSectionLabel') }}</span>
               <select :value="activeTab" @change="selectTab($event.target.value)">
                 <optgroup v-for="group in settingsGroups" :key="group.label" :label="group.label">
                   <option v-for="tab in group.items" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
                 </optgroup>
               </select>
             </label>
-            <nav class="settings-nav" aria-label="Timeline preference sections">
+            <nav class="settings-nav" :aria-label="t('timelinePreferences.page.navAriaLabel')">
               <section v-for="group in settingsGroups" :key="group.label" class="settings-nav-group">
                 <h2>{{ group.label }}</h2>
                 <button v-for="tab in group.items" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="selectTab(tab.key)">
@@ -78,10 +78,10 @@
                   <div class="banner-content">
                     <div class="banner-icon"><i class="pi pi-info-circle" /></div>
                     <div class="banner-text">
-                      <h3 class="banner-title">How Timeline Processing Works</h3>
+                      <h3 class="banner-title">{{ t('timelinePreferences.page.infoBanner.title') }}</h3>
                       <p class="banner-description">
-                        Your GPS data is processed to identify meaningful stays and trips. These settings control the sensitivity of this detection and apply only to your account. Some changes (like speed thresholds) quickly update trip classifications, while others require full timeline re-generation depending on your GPS data volume.
-                        <a href="https://geopulse.cc/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">Learn more in the documentation <i class="pi pi-external-link" /></a>
+                        {{ t('timelinePreferences.page.infoBanner.description') }}
+                        <a href="https://geopulse.cc/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">{{ t('timelinePreferences.page.infoBanner.learnMore') }} <i class="pi pi-external-link" /></a>
                       </p>
                     </div>
                   </div>
@@ -89,15 +89,15 @@
               </Card>
 
               <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-                Demo mode: all timeline preference settings are read-only. Saving changes, importing config, resetting defaults, and regenerating the timeline are disabled.
+                {{ t('timelinePreferences.page.demoReadOnlyMessage') }}
               </Message>
 
               <Message v-if="hasUnsavedChanges" severity="warn" class="unsaved-warning">
                 <div class="warning-content">
-                  <div class="warning-text"><i class="pi pi-exclamation-triangle mr-2" />You have unsaved changes</div>
+                  <div class="warning-text"><i class="pi pi-exclamation-triangle mr-2" />{{ t('timelinePreferences.page.unsavedWarning.message') }}</div>
                   <div class="warning-actions">
-                    <Button label="Discard" size="small" severity="secondary" outlined @click="discardChanges" />
-                    <Button label="Save Now" size="small" @click="confirmSavePreferences" :disabled="timelineRegenerationVisible || demoReadOnly" />
+                    <Button :label="t('timelinePreferences.page.unsavedWarning.discard')" size="small" severity="secondary" outlined @click="discardChanges" />
+                    <Button :label="t('timelinePreferences.page.unsavedWarning.saveNow')" size="small" @click="confirmSavePreferences" :disabled="timelineRegenerationVisible || demoReadOnly" />
                   </div>
                 </div>
               </Message>
@@ -123,12 +123,12 @@
           modal
           :closable="!isImportApplying"
           :dismissableMask="!isImportApplying"
-          header="Import Timeline Configuration"
+          :header="t('timelinePreferences.page.importDialog.header')"
           class="import-preview-dialog"
         >
           <div class="import-preview-content">
             <p class="import-preview-description">
-              Review all detected changes before applying this configuration.
+              {{ t('timelinePreferences.page.importDialog.description') }}
             </p>
 
             <Message :severity="importImpactSeverity">
@@ -136,7 +136,7 @@
             </Message>
 
             <div class="import-preview-summary">
-              <span class="summary-label">Detected changes:</span>
+              <span class="summary-label">{{ t('timelinePreferences.page.importDialog.detectedChanges') }}</span>
               <span class="summary-value">{{ importPreviewChanges.length }}</span>
             </div>
 
@@ -144,9 +144,9 @@
               <table class="import-preview-table">
                 <thead>
                   <tr>
-                    <th>Setting</th>
-                    <th>Current</th>
-                    <th>Imported</th>
+                    <th>{{ t('timelinePreferences.page.importDialog.settingColumn') }}</th>
+                    <th>{{ t('timelinePreferences.page.importDialog.currentColumn') }}</th>
+                    <th>{{ t('timelinePreferences.page.importDialog.importedColumn') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -165,14 +165,14 @@
 
           <template #footer>
             <Button
-              label="Cancel"
+              :label="t('timelinePreferences.page.importDialog.cancel')"
               severity="secondary"
               outlined
               @click="closeImportPreview"
               :disabled="isImportApplying"
             />
             <Button
-              label="Apply Import"
+              :label="t('timelinePreferences.page.importDialog.apply')"
               icon="pi pi-check"
               @click="applyImportedPreferences"
               :loading="isImportApplying"
@@ -186,7 +186,7 @@
           modal
           :closable="!boatSetupRunning"
           :dismissableMask="!boatSetupRunning"
-          header="Boat Setup"
+          :header="t('timelinePreferences.page.boatSetupDialog.header')"
           class="boat-setup-dialog"
         >
           <div class="boat-setup-dialog-content">
@@ -203,19 +203,19 @@
               v-if="boatSetupStatus?.datasetStatus === 'DOWNLOADING' && boatSetupStatus?.downloadedBytes"
               class="boat-setup-secondary"
             >
-              Downloaded {{ formatBytes(boatSetupStatus.downloadedBytes) }}
+              {{ t('timelinePreferences.page.boatSetupDialog.downloaded', { downloaded: formatBytes(boatSetupStatus.downloadedBytes) }) }}
               <template v-if="boatSetupStatus.totalBytes">
                 / {{ formatBytes(boatSetupStatus.totalBytes) }}
               </template>
             </div>
             <div v-if="boatSetupStatus?.totalGpsPoints" class="boat-setup-secondary">
-              GPS points processed:
+              {{ t('timelinePreferences.page.boatSetupDialog.gpsPointsProcessed') }}
               {{ (boatSetupStatus.processedGpsPoints || 0).toLocaleString() }}
               / {{ boatSetupStatus.totalGpsPoints.toLocaleString() }}
             </div>
             <Message v-if="boatSetupStatus?.status === 'FAILED'" severity="error">
               <div>
-                <strong>{{ boatSetupStatus.errorCode || 'Boat setup failed' }}</strong>
+                <strong>{{ boatSetupStatus.errorCode || t('timelinePreferences.page.boatSetupDialog.defaultErrorCode') }}</strong>
                 <div>{{ formatBoatSetupError(boatSetupStatus.error) }}</div>
                 <a
                   v-if="boatSetupStatus.docsUrl"
@@ -223,14 +223,14 @@
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Use an offline dataset file <i class="pi pi-external-link"></i>
+                  {{ t('timelinePreferences.page.boatSetupDialog.useOfflineDataset') }} <i class="pi pi-external-link"></i>
                 </a>
               </div>
             </Message>
           </div>
           <template #footer>
             <Button
-              label="Close"
+              :label="t('timelinePreferences.page.boatSetupDialog.close')"
               severity="secondary"
               outlined
               :disabled="boatSetupRunning"
@@ -259,6 +259,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -417,6 +418,7 @@ const PREFERENCE_UNITS = {
 }
 
 // Store
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -452,18 +454,18 @@ const { demoReadOnly } = storeToRefs(authStore)
 const activeTab = ref(route.query.tab || 'staypoints')
 
 // Tab configuration
-const settingsGroups = [
-  { label: 'Timeline', items: [
-    { label: 'Stay Point Detection', icon: 'pi pi-map-marker', key: 'staypoints' },
-    { label: 'Trip Classification', icon: 'pi pi-route', key: 'trips' }
+const settingsGroups = computed(() => [
+  { label: t('timelinePreferences.page.groups.timeline'), items: [
+    { label: t('timelinePreferences.page.tabs.staypoints'), icon: 'pi pi-map-marker', key: 'staypoints' },
+    { label: t('timelinePreferences.page.tabs.trips'), icon: 'pi pi-route', key: 'trips' }
   ] },
-  { label: 'Data Quality', items: [
-    { label: 'GPS Gaps Detection', icon: 'pi pi-exclamation-circle', key: 'gpsgaps' },
-    { label: 'Stay Point Merging', icon: 'pi pi-sitemap', key: 'merging' }
+  { label: t('timelinePreferences.page.groups.dataQuality'), items: [
+    { label: t('timelinePreferences.page.tabs.gpsgaps'), icon: 'pi pi-exclamation-circle', key: 'gpsgaps' },
+    { label: t('timelinePreferences.page.tabs.merging'), icon: 'pi pi-sitemap', key: 'merging' }
   ] }
-]
+])
 
-const validTabs = settingsGroups.flatMap((group) => group.items.map((tab) => tab.key))
+const validTabs = ['staypoints', 'trips', 'gpsgaps', 'merging']
 
 const prefs = ref({})
 const importFileInput = ref(null)
@@ -512,27 +514,27 @@ const boatSetupNeedsAction = computed(() => {
 
 const boatSetupModalIntro = computed(() => {
   if (boatSetupStatus.value?.datasetStatus === 'READY') {
-    return 'Boat detection needs a one-time GPS water evidence pre-calculation for your account.'
+    return t('timelinePreferences.page.boatSetupDialog.introReady')
   }
 
-  return 'Boat detection needs a global water dataset of about 800-900 MB and a one-time GPS pre-calculation for your account.'
+  return t('timelinePreferences.page.boatSetupDialog.introDefault')
 })
 
 const headerSecondaryActionsMenu = computed(() => {
   const items = [
     {
-      label: 'Export Config',
+      label: t('timelinePreferences.page.menu.exportConfig'),
       icon: 'pi pi-download',
       command: () => exportPreferences()
     },
     {
-      label: 'Import Config',
+      label: t('timelinePreferences.page.menu.importConfig'),
       icon: 'pi pi-upload',
       disabled: timelineRegenerationVisible.value || demoReadOnly.value,
       command: () => openImportPicker()
     },
     {
-      label: 'Reset to Defaults',
+      label: t('timelinePreferences.page.menu.resetToDefaults'),
       icon: 'pi pi-refresh',
       disabled: timelineRegenerationVisible.value || demoReadOnly.value,
       command: () => confirmResetDefaults()
@@ -544,7 +546,7 @@ const headerSecondaryActionsMenu = computed(() => {
       separator: true
     })
     items.push({
-      label: 'View Active Job',
+      label: t('timelinePreferences.page.menu.viewActiveJob'),
       icon: 'pi pi-eye',
       command: () => goToActiveJob()
     })
@@ -596,23 +598,23 @@ const importImpactSeverity = computed(() => {
 
 const importImpactMessage = computed(() => {
   if (importSaveType.value === 'classification') {
-    return 'This import will update classification parameters only and recalculate trip movement types.'
+    return t('timelinePreferences.page.importDialog.impactClassification')
   }
-  return 'This import includes structural settings and will trigger full timeline regeneration after save.'
+  return t('timelinePreferences.page.importDialog.impactStructural')
 })
 
 const formatPreferenceValue = (key, value) => {
   if (value === null || value === undefined) {
-    return 'Not set'
+    return t('timelinePreferences.page.formatValue.notSet')
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'Enabled' : 'Disabled'
+    return value ? t('timelinePreferences.page.formatValue.enabled') : t('timelinePreferences.page.formatValue.disabled')
   }
 
   if (key === 'tripDetectionAlgorithm') {
-    if (value === 'single') return 'Single trip'
-    if (value === 'multiple') return 'Multiple trips'
+    if (value === 'single') return t('timelinePreferences.page.formatValue.singleTrip')
+    if (value === 'multiple') return t('timelinePreferences.page.formatValue.multipleTrips')
   }
 
   if (key === 'staypointMinAccuracyRatio' && typeof value === 'number') {
@@ -643,7 +645,7 @@ const toggleActionsMenu = (event) => {
 }
 
 const showDemoTimelineReadOnlyToast = () => {
-  showDemoModeToast(toast, 'Timeline preference changes are disabled in demo mode.', { severity: 'info' })
+  showDemoModeToast(toast, t('timelinePreferences.page.demoToast'), { severity: 'info' })
 }
 
 const openImportPicker = () => {
@@ -666,8 +668,8 @@ const exportPreferences = () => {
   if (Object.keys(effectivePrefs).length === 0) {
     toast.add({
       severity: 'warn',
-      summary: 'Nothing to Export',
-      detail: 'No timeline preferences are currently available.',
+      summary: t('timelinePreferences.page.toasts.nothingToExportSummary'),
+      detail: t('timelinePreferences.page.toasts.nothingToExportDetail'),
       life: 3000
     })
     return
@@ -696,8 +698,8 @@ const exportPreferences = () => {
 
   toast.add({
     severity: 'success',
-    summary: 'Export Complete',
-    detail: 'Timeline configuration exported successfully.',
+    summary: t('timelinePreferences.page.toasts.exportCompleteSummary'),
+    detail: t('timelinePreferences.page.toasts.exportCompleteDetail'),
     life: 3000
   })
 }
@@ -733,18 +735,18 @@ const handleImportFileChange = async (event) => {
     const parsed = JSON.parse(raw)
 
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('Invalid import file format.')
+      throw new Error(t('timelinePreferences.page.toasts.invalidFileFormat'))
     }
     if (parsed.schemaVersion !== TIMELINE_PREFERENCES_SCHEMA_VERSION) {
-      throw new Error(`Unsupported schema version. Expected ${TIMELINE_PREFERENCES_SCHEMA_VERSION}.`)
+      throw new Error(t('timelinePreferences.page.toasts.unsupportedSchemaVersion', { version: TIMELINE_PREFERENCES_SCHEMA_VERSION }))
     }
     if (!parsed.preferences || typeof parsed.preferences !== 'object' || Array.isArray(parsed.preferences)) {
-      throw new Error('Import file does not contain a valid preferences object.')
+      throw new Error(t('timelinePreferences.page.toasts.noPreferencesObject'))
     }
 
     const importedManaged = sanitizeImportedPreferences(parsed.preferences)
     if (Object.keys(importedManaged).length === 0) {
-      throw new Error('Import file contains no compatible timeline preference fields.')
+      throw new Error(t('timelinePreferences.page.toasts.noCompatibleFields'))
     }
 
     const effectivePrefs = originalPrefs.value || {}
@@ -752,7 +754,7 @@ const handleImportFileChange = async (event) => {
       .filter(([key, importedValue]) => effectivePrefs[key] !== importedValue)
       .map(([key, importedValue]) => ({
         key,
-        label: TIMELINE_PREFERENCE_LABELS[key] || key,
+        label: key in TIMELINE_PREFERENCE_LABELS ? t(`timelinePreferences.page.settings.${key}`) : key,
         currentValue: effectivePrefs[key],
         importedValue
       }))
@@ -761,8 +763,8 @@ const handleImportFileChange = async (event) => {
     if (changedEntries.length === 0) {
       toast.add({
         severity: 'info',
-        summary: 'No Changes',
-        detail: 'Imported configuration matches your current effective settings.',
+        summary: t('timelinePreferences.page.toasts.noChangesSummary'),
+        detail: t('timelinePreferences.page.toasts.importNoChangesDetail'),
         life: 3500
       })
       return
@@ -778,8 +780,8 @@ const handleImportFileChange = async (event) => {
     console.error('Failed to import timeline preferences file:', error)
     toast.add({
       severity: 'error',
-      summary: 'Import Failed',
-      detail: error.message || 'Failed to parse imported configuration file.',
+      summary: t('timelinePreferences.page.toasts.importFailedSummary'),
+      detail: error.message || t('timelinePreferences.page.toasts.importFailedFallback'),
       life: 5000
     })
   }
@@ -819,8 +821,8 @@ const loadPreferences = async () => {
     console.error('Error loading preferences:', error)
     toast.add({
       severity: 'error',
-      summary: 'Loading Failed',
-      detail: 'Failed to load timeline preferences',
+      summary: t('timelinePreferences.page.toasts.loadingFailedSummary'),
+      detail: t('timelinePreferences.page.toasts.loadingFailedDetail'),
       life: 5000
     })
   }
@@ -860,15 +862,15 @@ const startBoatSetupPolling = () => {
         await loadPreferences()
         toast.add({
           severity: 'success',
-          summary: 'Boat Setup Ready',
-          detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+          summary: t('timelinePreferences.page.toasts.boatSetupReadySummary'),
+          detail: t('timelinePreferences.page.toasts.boatSetupReadyDetail'),
           life: 5000
         })
       } else if (status?.status === 'FAILED') {
         boatSetupVisible.value = true
         toast.add({
           severity: 'error',
-          summary: 'Boat Setup Failed',
+          summary: t('timelinePreferences.page.toasts.boatSetupFailedSummary'),
           detail: formatBoatSetupError(status.error),
           life: 9000
         })
@@ -878,8 +880,8 @@ const startBoatSetupPolling = () => {
       boatSetupVisible.value = true
       toast.add({
         severity: 'error',
-        summary: 'Boat Setup Status Failed',
-        detail: formatApiErrorDetail(error, 'Could not refresh Boat setup status.'),
+        summary: t('timelinePreferences.page.toasts.boatSetupStatusFailedSummary'),
+        detail: formatApiErrorDetail(error, t('timelinePreferences.page.toasts.boatSetupStatusFailedFallback')),
         life: 7000
       })
     }
@@ -911,22 +913,22 @@ const confirmStartBoatSetup = () => {
   const setupReady = boatSetupStatus.value?.status === 'READY'
   const datasetReady = boatSetupStatus.value?.datasetStatus === 'READY'
   const message = setupReady
-    ? 'Boat setup is already ready. Cached water evidence is available for timeline generation.'
+    ? t('timelinePreferences.page.confirm.boatSetup.readyMessage')
     : datasetReady
-      ? 'Boat setup will pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.'
-      : 'Boat setup will download or read the water dataset and pre-calculate water evidence for your GPS points. Timeline generation will wait until this setup is complete.'
+      ? t('timelinePreferences.page.confirm.boatSetup.datasetReadyMessage')
+      : t('timelinePreferences.page.confirm.boatSetup.datasetMissingMessage')
 
   confirm.require({
     message,
-    header: boatSetupStatus.value?.status === 'FAILED' ? 'Retry Boat Setup' : 'Start Boat Setup',
+    header: boatSetupStatus.value?.status === 'FAILED' ? t('timelinePreferences.page.confirm.boatSetup.retryHeader') : t('timelinePreferences.page.confirm.boatSetup.startHeader'),
     icon: 'pi pi-download',
     rejectProps: {
-      label: 'Cancel',
+      label: t('timelinePreferences.page.confirm.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: boatSetupStatus.value?.status === 'FAILED' ? 'Retry Setup' : 'Start Setup',
+      label: boatSetupStatus.value?.status === 'FAILED' ? t('timelinePreferences.page.confirm.boatSetup.retryAccept') : t('timelinePreferences.page.confirm.boatSetup.startAccept'),
       severity: 'primary'
     },
     accept: startBoatSetup
@@ -946,8 +948,8 @@ const startBoatSetup = async () => {
       await loadPreferences()
       toast.add({
         severity: 'success',
-        summary: 'Boat Setup Ready',
-        detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+        summary: t('timelinePreferences.page.toasts.boatSetupReadySummary'),
+        detail: t('timelinePreferences.page.toasts.boatSetupReadyDetail'),
         life: 4000
       })
       return
@@ -962,8 +964,8 @@ const startBoatSetup = async () => {
       await loadPreferences()
       toast.add({
         severity: 'success',
-        summary: 'Boat Setup Ready',
-        detail: 'Boat detection is ready. Timeline generation can now use cached water evidence.',
+        summary: t('timelinePreferences.page.toasts.boatSetupReadySummary'),
+        detail: t('timelinePreferences.page.toasts.boatSetupReadyDetail'),
         life: 4000
       })
       return
@@ -972,8 +974,8 @@ const startBoatSetup = async () => {
     startBoatSetupPolling()
     toast.add({
       severity: 'info',
-      summary: 'Boat Setup Started',
-      detail: 'Water dataset setup and GPS pre-calculation are running.',
+      summary: t('timelinePreferences.page.toasts.boatSetupStartedSummary'),
+      detail: t('timelinePreferences.page.toasts.boatSetupStartedDetail'),
       life: 4000
     })
   } catch (error) {
@@ -981,8 +983,8 @@ const startBoatSetup = async () => {
     boatSetupVisible.value = true
     toast.add({
       severity: 'error',
-      summary: 'Boat Setup Failed',
-      detail: formatApiErrorDetail(error, 'Failed to start Boat setup.'),
+      summary: t('timelinePreferences.page.toasts.boatSetupFailedSummary'),
+      detail: formatApiErrorDetail(error, t('timelinePreferences.page.toasts.boatSetupStartFailedFallback')),
       life: 7000
     })
   }
@@ -992,27 +994,27 @@ const getBoatEnablementConfirmation = (status, hasStructuralChanges) => {
   if (status?.status === 'READY') {
     return {
       message: hasStructuralChanges
-        ? 'Boat setup is already ready. Saving these preferences will regenerate your timeline with Boat detection enabled.'
-        : 'Boat setup is already ready. Saving this preference will update existing trip classifications with Boat detection enabled.',
+        ? t('timelinePreferences.page.confirm.boatEnablement.readyStructuralMessage')
+        : t('timelinePreferences.page.confirm.boatEnablement.readyClassificationMessage'),
       icon: 'pi pi-check-circle',
-      label: hasStructuralChanges ? 'Enable & Regenerate' : 'Enable Boat',
+      label: hasStructuralChanges ? t('timelinePreferences.page.confirm.boatEnablement.enableAndRegenerate') : t('timelinePreferences.page.confirm.boatEnablement.enableBoat'),
       saveType: hasStructuralChanges ? 'full' : 'classification'
     }
   }
 
   if (status?.datasetStatus === 'READY') {
     return {
-      message: 'Boat detection requires a one-time GPS water evidence pre-calculation for your account. The global water dataset is already installed, so no large download is needed. Timeline generation will wait until setup is complete.',
+      message: t('timelinePreferences.page.confirm.boatEnablement.datasetReadyMessage'),
       icon: 'pi pi-database',
-      label: 'Enable & Start Setup',
+      label: t('timelinePreferences.page.confirm.boatEnablement.enableAndStartSetup'),
       saveType: hasStructuralChanges ? 'full' : 'boat-setup'
     }
   }
 
   return {
-    message: 'Boat detection requires downloading a global water dataset of about 800-900 MB and running a one-time GPS pre-calculation for your account. Timeline generation will wait until this setup is complete.',
+    message: t('timelinePreferences.page.confirm.boatEnablement.datasetMissingMessage'),
     icon: 'pi pi-download',
-    label: 'Enable & Start Setup',
+    label: t('timelinePreferences.page.confirm.boatEnablement.enableAndStartSetup'),
     saveType: hasStructuralChanges ? 'full' : 'boat-setup'
   }
 }
@@ -1035,8 +1037,8 @@ const confirmSavePreferences = async () => {
     }
     toast.add({
       severity: 'info',
-      summary: 'No Changes',
-      detail: 'No preferences were modified',
+      summary: t('timelinePreferences.page.toasts.noChangesSummary'),
+      detail: t('timelinePreferences.page.toasts.noChangesDetail'),
       life: 3000
     })
     return
@@ -1058,10 +1060,10 @@ const confirmSavePreferences = async () => {
     const confirmation = getBoatEnablementConfirmation(currentBoatSetupStatus, hasStructuralChanges)
     confirm.require({
       message: confirmation.message,
-      header: 'Enable Boat Detection',
+      header: t('timelinePreferences.page.confirm.boatEnablement.header'),
       icon: confirmation.icon,
       rejectProps: {
-        label: 'Cancel',
+        label: t('timelinePreferences.page.confirm.cancel'),
         severity: 'secondary',
         outlined: true
       },
@@ -1073,20 +1075,20 @@ const confirmSavePreferences = async () => {
     })
     return
   }
-  
+
   if (hasClassificationChanges && !hasStructuralChanges) {
     // Fast path - classification only
     confirm.require({
-      message: 'These changes will recalculate movement types for your existing trips. Do you want to proceed?',
-      header: 'Update Trip Classifications',
+      message: t('timelinePreferences.page.confirm.classificationOnly.message'),
+      header: t('timelinePreferences.page.confirm.classificationOnly.header'),
       icon: 'pi pi-refresh',
       rejectProps: {
-        label: 'Cancel',
+        label: t('timelinePreferences.page.confirm.cancel'),
         severity: 'secondary',
         outlined: true
       },
       acceptProps: {
-        label: 'Update Classifications',
+        label: t('timelinePreferences.page.confirm.classificationOnly.accept'),
         severity: 'success'
       },
       accept: () => savePreferences('classification', changes)
@@ -1094,16 +1096,16 @@ const confirmSavePreferences = async () => {
   } else {
     // Full regeneration path (current behavior)
     confirm.require({
-      message: 'Changing these timeline preferences will trigger a complete re-generation of all your timeline data according to the new settings. This process may take some time depending on the volume of your GPS data. Do you want to proceed?',
-      header: 'Save Timeline Preferences', 
+      message: t('timelinePreferences.page.confirm.fullRegeneration.message'),
+      header: t('timelinePreferences.page.confirm.fullRegeneration.header'),
       icon: 'pi pi-exclamation-triangle',
       rejectProps: {
-        label: 'Cancel',
+        label: t('timelinePreferences.page.confirm.cancel'),
         severity: 'secondary',
         outlined: true
       },
       acceptProps: {
-        label: 'Save & Regenerate',
+        label: t('timelinePreferences.page.confirm.fullRegeneration.accept'),
         severity: 'primary'
       },
       accept: () => savePreferences('full', changes)
@@ -1137,8 +1139,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
   if (!changes || Object.keys(changes).length === 0) {
     toast.add({
       severity: 'info',
-      summary: 'No Changes',
-      detail: 'No preferences were modified',
+      summary: t('timelinePreferences.page.toasts.noChangesSummary'),
+      detail: t('timelinePreferences.page.toasts.noChangesDetail'),
       life: 3000
     })
     return
@@ -1163,8 +1165,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
         boatSetupVisible.value = false
         toast.add({
           severity: 'success',
-          summary: 'Boat Detection Enabled',
-          detail: 'Boat setup is ready and the preference has been saved.',
+          summary: t('timelinePreferences.page.toasts.boatDetectionEnabledSummary'),
+          detail: t('timelinePreferences.page.toasts.boatDetectionEnabledDetail'),
           life: 4000
         })
         return
@@ -1179,8 +1181,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
           boatSetupVisible.value = false
           toast.add({
             severity: 'success',
-            summary: 'Boat Detection Enabled',
-            detail: 'Boat setup is ready and the preference has been saved.',
+            summary: t('timelinePreferences.page.toasts.boatDetectionEnabledSummary'),
+            detail: t('timelinePreferences.page.toasts.boatDetectionEnabledDetail'),
             life: 4000
           })
           return
@@ -1190,16 +1192,16 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       startBoatSetupPolling()
       toast.add({
         severity: 'info',
-        summary: 'Boat Setup Started',
-        detail: 'Water dataset setup and GPS pre-calculation are running.',
+        summary: t('timelinePreferences.page.toasts.boatSetupStartedSummary'),
+        detail: t('timelinePreferences.page.toasts.boatSetupStartedDetail'),
         life: 4000
       })
     } catch (error) {
       console.error('Failed to start Boat setup:', error)
       toast.add({
         severity: 'error',
-        summary: 'Boat Setup Failed',
-        detail: error.message || 'Failed to enable Boat setup.',
+        summary: t('timelinePreferences.page.toasts.boatSetupFailedSummary'),
+        detail: error.message || t('timelinePreferences.page.toasts.boatSetupEnableFailedFallback'),
         life: 7000
       })
     }
@@ -1209,8 +1211,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       await timelinePreferencesStore.updateTimelinePreferences(changes)
       toast.add({
         severity: 'success',
-        summary: 'Success',
-        detail: 'Trip classifications updated successfully.',
+        summary: t('timelinePreferences.page.toasts.classificationUpdatedSummary'),
+        detail: t('timelinePreferences.page.toasts.classificationUpdatedDetail'),
         life: 3000
       })
       await loadPreferences()
@@ -1218,8 +1220,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       console.error('Failed to save preferences:', error)
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: error.message || 'Failed to save preferences.',
+        summary: t('common.error'),
+        detail: error.message || t('timelinePreferences.page.toasts.saveFailedFallback'),
         life: 5000
       })
     }
@@ -1233,8 +1235,8 @@ const savePreferences = async (saveType = 'full', explicitChanges = null) => {
       action,
       {
         modalType: 'preferences',
-        successMessage: 'Preferences saved and timeline regeneration started.',
-        errorMessage: 'Failed to save preferences.',
+        successMessage: t('timelinePreferences.page.toasts.regenerationSuccessDetail'),
+        errorMessage: t('timelinePreferences.page.toasts.saveFailedFallback'),
         onSuccess: loadPreferences
       }
     )
@@ -1248,16 +1250,16 @@ const confirmResetDefaults = () => {
   }
 
   confirm.require({
-    message: 'This will reset all settings to their default values. Are you sure?',
-    header: 'Reset to Defaults',
+    message: t('timelinePreferences.page.confirm.resetDefaults.message'),
+    header: t('timelinePreferences.page.confirm.resetDefaults.header'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('timelinePreferences.page.confirm.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Reset',
+      label: t('timelinePreferences.page.confirm.resetDefaults.accept'),
       severity: 'danger'
     },
     accept: resetDefaults
@@ -1274,8 +1276,8 @@ const resetDefaults = () => {
     () => timelinePreferencesStore.resetTimelinePreferencesToDefaults(),
     {
       modalType: 'preferences',
-      successMessage: 'Preferences reset and timeline regeneration started.',
-      errorMessage: 'Failed to reset preferences.',
+      successMessage: t('timelinePreferences.page.toasts.resetSuccessDetail'),
+      errorMessage: t('timelinePreferences.page.toasts.resetFailedFallback'),
       onSuccess: loadPreferences
     }
   )
@@ -1286,8 +1288,8 @@ const discardChanges = () => {
     prefs.value = { ...originalPrefs.value }
     toast.add({
       severity: 'info',
-      summary: 'Changes Discarded',
-      detail: 'All unsaved changes have been discarded',
+      summary: t('timelinePreferences.page.toasts.changesDiscardedSummary'),
+      detail: t('timelinePreferences.page.toasts.changesDiscardedDetail'),
       life: 3000
     })
   }
@@ -1300,16 +1302,16 @@ const confirmRegenerateTimeline = () => {
   }
 
   confirm.require({
-    message: 'This will completely delete your current timeline data and regenerate it from scratch.\n\nThis operation may take several minutes depending on your GPS data volume.\n\nDo you want to proceed?',
-    header: 'Regenerate Complete Timeline',
+    message: t('timelinePreferences.page.confirm.regenerateTimeline.message'),
+    header: t('timelinePreferences.page.confirm.regenerateTimeline.header'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('timelinePreferences.page.confirm.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Regenerate Timeline',
+      label: t('timelinePreferences.page.confirm.regenerateTimeline.accept'),
       severity: 'danger'
     },
     accept: regenerateTimeline
@@ -1326,8 +1328,8 @@ const regenerateTimeline = () => {
     () => timelineStore.regenerateAllTimeline(),
     {
       modalType: 'general',
-      successMessage: 'Timeline regeneration started.',
-      errorMessage: 'Failed to start timeline regeneration.'
+      successMessage: t('timelinePreferences.page.toasts.regenerationStartedDetail'),
+      errorMessage: t('timelinePreferences.page.toasts.regenerationFailedFallback')
     }
   )
 }
@@ -1350,8 +1352,8 @@ const jumpToRouteSetting = async (settingKey, hintOverride = null) => {
     onMissing: () => {
       toast.add({
         severity: 'info',
-        summary: 'Setting not visible',
-        detail: hint || 'This setting is not currently visible. Enable related options to edit it.',
+        summary: t('timelinePreferences.page.toasts.settingNotVisibleSummary'),
+        detail: hint || t('timelinePreferences.page.toasts.settingNotVisibleFallback'),
         life: 4000
       })
     }
@@ -1444,11 +1446,11 @@ onBeforeRouteLeave((to, from, next) => {
 
   confirm.require({
     group: timelinePreferencesUnsavedConfirmGroup,
-    message: 'You have unsaved timeline preference changes. If you leave this page, those changes will be lost.',
-    header: 'Unsaved Changes',
+    message: t('timelinePreferences.page.confirm.unsavedChanges.message'),
+    header: t('timelinePreferences.page.confirm.unsavedChanges.header'),
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Leave without saving',
-    rejectLabel: 'Stay',
+    acceptLabel: t('timelinePreferences.page.confirm.unsavedChanges.accept'),
+    rejectLabel: t('timelinePreferences.page.confirm.unsavedChanges.reject'),
     acceptClass: 'p-button-danger',
     rejectClass: 'p-button-secondary p-button-outlined',
     accept: () => {

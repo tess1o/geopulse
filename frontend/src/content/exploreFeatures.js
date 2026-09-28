@@ -1,14 +1,9 @@
-export const EXPLORE_FEATURES = [
+// Non-translatable metadata for the "Explore GeoPulse" home panel. The `id` here doubles as the
+// key segment under `ui.exploreFeatures.<id>` in the locale catalogs (tabLabel/title/description/
+// highlights) -- see ExploreGeoPulsePanel.vue, which merges this metadata with the translated copy.
+export const EXPLORE_FEATURES_META = [
   {
-    id: 'live-tracking',
-    tabLabel: 'Live Tracking',
-    title: 'Real-time Source Integrations',
-    description: 'Connect OwnTracks, Overland, Traccar, GPSLogger, Dawarich, Home Assistant, and Colota into one timeline.',
-    highlights: [
-      'Supports HTTP and MQTT ingestion across supported trackers',
-      'Per-source GPS filtering improves timeline quality',
-      'Combine multiple devices/sources into a single history',
-    ],
+    id: 'liveTracking',
     icon: 'pi pi-send',
     colorClass: 'chip-1-color',
     learnMoreUrl: 'https://geopulse.cc/docs/user-guide/gps-sources/overview',
@@ -16,14 +11,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'imports',
-    tabLabel: 'Imports',
-    title: 'Import & Migrate History',
-    description: 'Import legacy and backup data with background processing and timeline regeneration.',
-    highlights: [
-      'Supports GeoPulse, OwnTracks, Google Timeline, GPX, GeoJSON, and CSV',
-      'Date-range filtering for partial imports',
-      'Replace-or-merge workflow for safe reimports',
-    ],
     icon: 'pi pi-download',
     colorClass: 'chip-2-color',
     learnMoreUrl: 'https://geopulse.cc/docs/user-guide/interacting-with-data/import-export',
@@ -31,15 +18,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'timeline',
-    tabLabel: 'Timeline',
-    title: 'Stays, Trips, and Gaps',
-    description: 'GeoPulse turns raw points into timeline events, then lets you refine routes and correct missed stops.',
-    highlights: [
-      'Automatic stay/trip/gap detection',
-      'Configurable travel modes from walking and cycling to motorcycle, train, flight, and boat',
-      'Split a missed stop into Trip → Stay → Trip; the correction survives regeneration',
-      'Optional Valhalla Map Matching follows roads while raw GPS remains authoritative',
-    ],
     icon: 'pi pi-calendar',
     colorClass: 'chip-3-color',
     learnMoreUrl: 'https://geopulse.cc/docs/user-guide/core-features/timeline',
@@ -47,27 +25,11 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'insight',
-    tabLabel: 'Insights',
-    title: 'Dashboard & Journey Insights && Location Analytics  ',
-    description: 'Track movement patterns, places, routes, and achievements across multiple time windows.',
-    highlights: [
-      'Selected period + 7-day + 30-day overviews',
-      'Top places, route analysis, and activity breakdowns',
-      'Journey Insights for countries/cities/travel milestones',
-    ],
     icon: 'pi pi-chart-line',
     colorClass: 'chip-4-color',
   },
   {
     id: 'friends',
-    tabLabel: 'Friends',
-    title: 'Friends & Sharing Controls',
-    description: 'Connect with friends and control exactly what you share.',
-    highlights: [
-      'Invite, accept, reject, and cancel friend requests',
-      'Separate permissions for live location and timeline history',
-      'Live map and shared timeline views, including embeddable shared locations',
-    ],
     icon: 'pi pi-users',
     colorClass: 'chip-6-color',
     learnMoreUrl: '/app/friends',
@@ -75,14 +37,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'geofences',
-    tabLabel: 'Geofences',
-    title: 'Geofence Rules & Events',
-    description: 'Create enter/leave rules with in-app notifications and optional external delivery.',
-    highlights: [
-      'Track selected subjects with configurable rule conditions',
-      'Template-based notifications with macro support',
-      'Events tab with unread filtering and seen management',
-    ],
     icon: 'pi pi-map-marker',
     colorClass: 'chip-7-color',
     learnMoreUrl: 'https://geopulse.cc/docs/user-guide/core-features/geofences',
@@ -90,14 +44,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'immich',
-    tabLabel: 'Immich',
-    title: 'Immich Photo Overlay',
-    description: 'Display Immich photos directly on the timeline map for the selected date range.',
-    highlights: [
-      'Configure URL + API key in Profile',
-      'Toggle photo layer on Timeline map',
-      'Open photos in-app and download originals',
-    ],
     icon: 'pi pi-images',
     colorClass: 'chip-5-color',
     learnMoreUrl: 'https://geopulse.cc/docs/user-guide/personalization/immich-integration',
@@ -105,14 +51,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'weather',
-    tabLabel: 'Weather',
-    title: 'Weather Along Your Timeline',
-    description: 'Add local conditions to the places and journeys in your location history.',
-    highlights: [
-      'See temperature, precipitation, wind, and conditions on stays, trips, and Timeline maps',
-      'Compare weather patterns in Journey Insights and earn weather-related badges',
-      'Ongoing collection uses Open-Meteo by default; admins can opt into historical backfill',
-    ],
     icon: 'pi pi-cloud',
     colorClass: 'chip-1-color',
     learnMoreUrl: 'https://geopulse.cc/docs/system-administration/configuration/weather',
@@ -120,14 +58,6 @@ export const EXPLORE_FEATURES = [
   },
   {
     id: 'ai',
-    tabLabel: 'AI',
-    title: 'AI Assistant & MCP',
-    description: 'Ask natural-language questions or connect an AI client to your personal movement history.',
-    highlights: [
-      'Bring your own OpenAI-compatible API key/model with encrypted per-user settings',
-      'Query stays, trips, places, and travel patterns',
-      'MCP is enabled by default for API-token-authenticated, read-only AI tools',
-    ],
     icon: 'pi pi-sparkles',
     colorClass: 'chip-8-color',
     learnMoreUrl: 'https://geopulse.cc/docs/api/mcp',
@@ -135,4 +65,4 @@ export const EXPLORE_FEATURES = [
   },
 ]
 
-export default EXPLORE_FEATURES
+export default EXPLORE_FEATURES_META

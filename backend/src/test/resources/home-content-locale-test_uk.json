@@ -1,0 +1,11 @@
+{
+  "tips": [
+    {
+      "id": "locale-test-tip",
+      "title": "Український заголовок",
+      "description": "Український опис",
+      "icon": "pi pi-lightbulb",
+      "audiences": ["all"]
+    }
+  ]
+}

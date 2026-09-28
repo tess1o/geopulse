@@ -5,68 +5,68 @@
       v-if="showWelcomeMessage"
       class="welcome-message"
     >
-      <h4 class="welcome-title">🎉 Welcome to GeoPulse!</h4>
-      <p class="welcome-description">Ready to start tracking your location journey? Let's set up your first location source.</p>
+      <h4 class="welcome-title">{{ t('ui.onboardingTour.welcomeTitle') }}</h4>
+      <p class="welcome-description">{{ t('ui.onboardingTour.welcomeDescription') }}</p>
       <div class="welcome-actions">
-        <button 
+        <button
           @click="startTour"
           class="btn btn-primary"
         >
-          🚀 Start Tour
+          {{ t('ui.onboardingTour.startTour') }}
         </button>
-        <button 
+        <button
           @click="dismissWelcomeMessage"
           class="btn btn-secondary"
         >
-          I'll explore myself
+          {{ t('ui.onboardingTour.exploreOnMyOwn') }}
         </button>
       </div>
     </div>
 
     <!-- Tour Steps -->
-    <div 
+    <div
       v-if="showTourStep"
       :style="tourStepStyle"
       class="tour-step-container"
     >
       <div class="tour-step-card">
         <!-- Close button -->
-        <button 
+        <button
           @click="finishTour"
           class="tour-close-btn"
-          title="Close tour"
+          :title="t('ui.onboardingTour.closeTour')"
         >
           ×
         </button>
-        
+
         <h4 class="tour-step-title">{{ currentStep.title }}</h4>
         <p class="tour-step-description">{{ currentStep.description }}</p>
-        
+
         <!-- Progress indicator -->
         <div class="tour-progress">
-          <div 
-            v-for="(step, index) in tourSteps" 
+          <div
+            v-for="(step, index) in tourSteps"
             :key="index"
             class="tour-progress-bar"
             :class="{ 'tour-progress-active': index <= currentStepIndex }"
           ></div>
         </div>
-        
+
         <div class="tour-step-footer">
-          <span class="tour-step-counter">{{ currentStepIndex + 1 }} of {{ tourSteps.length }}</span>
+          <span class="tour-step-counter">{{ t('ui.onboardingTour.stepCounter', { current: currentStepIndex + 1, total: tourSteps.length }) }}</span>
           <div class="tour-step-actions">
-            <button 
+            <button
               v-if="currentStepIndex > 0"
               @click="previousStep"
               class="btn btn-outline"
             >
-              Previous
+              {{ t('ui.onboardingTour.previous') }}
             </button>
-            <button 
+            <button
               @click="nextStep"
               class="btn btn-primary"
             >
-              {{ currentStepIndex === tourSteps.length - 1 ? 'Get Started!' : 'Next' }}
+              {{ currentStepIndex === tourSteps.length - 1 ? t('ui.onboardingTour.getStarted') : t('ui.onboardingTour.next') }}
             </button>
           </div>
         </div>
@@ -77,8 +77,11 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 // Stores
 const onboardingStore = useOnboardingStore()
@@ -90,31 +93,31 @@ const showTourStep = ref(false)
 const currentStepIndex = ref(0)
 
 // Tour steps
-const tourSteps = [
+const tourSteps = computed(() => [
   {
-    title: 'Welcome to GeoPulse!',
-    description: 'First, let\'s set up your location sources so we can start tracking your journey.',
+    title: t('ui.onboardingTour.steps.welcome.title'),
+    description: t('ui.onboardingTour.steps.welcome.description'),
     target: '.location-sources-header'
   },
   {
-    title: 'Add Your First Location Source',
-    description: 'Click the "Add New Source" button to add OwnTracks or Overland as your location source.',
+    title: t('ui.onboardingTour.steps.addSource.title'),
+    description: t('ui.onboardingTour.steps.addSource.description'),
     target: '[data-tour="add-source-btn"]'
   },
   {
-    title: 'Follow Setup Instructions',
-    description: 'Once you add a source, you\'ll see detailed setup instructions with your unique endpoint and token.',
+    title: t('ui.onboardingTour.steps.followInstructions.title'),
+    description: t('ui.onboardingTour.steps.followInstructions.description'),
     target: '.quick-setup-guide'
   },
   {
-    title: 'You\'re All Set!',
-    description: 'Once your location source is configured, visit your Timeline to see your location history and explore GeoPulse!',
+    title: t('ui.onboardingTour.steps.allSet.title'),
+    description: t('ui.onboardingTour.steps.allSet.description'),
     target: '.location-sources-header'
   }
-]
+])
 
 // Computed
-const currentStep = computed(() => tourSteps[currentStepIndex.value])
+const currentStep = computed(() => tourSteps.value[currentStepIndex.value])
 
 const tourStepStyle = computed(() => {
   const target = document.querySelector(currentStep.value.target)
@@ -144,7 +147,7 @@ const startTour = () => {
 }
 
 const nextStep = () => {
-  if (currentStepIndex.value < tourSteps.length - 1) {
+  if (currentStepIndex.value < tourSteps.value.length - 1) {
     currentStepIndex.value++
   } else {
     finishTour()

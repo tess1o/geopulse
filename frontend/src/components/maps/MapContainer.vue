@@ -43,6 +43,7 @@
 
 <script setup>
 import { markRaw, onUnmounted, readonly, ref, shallowRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BaseMap from './BaseMap.vue'
 import MapControls from './controls/MapControls.vue'
 
@@ -114,6 +115,8 @@ const emit = defineEmits([
   'map-move'
 ])
 
+const { t } = useI18n()
+
 // Reactive state
 const mapRef = ref(null)
 const map = shallowRef(null)
@@ -137,7 +140,7 @@ const handleMapContextMenu = (event) => {
 }
 
 const handleMapWarning = (warning) => {
-  const message = warning?.message || 'Map warning'
+  const message = warning?.message || t('maps.messages.genericWarning')
   mapWarningMessage.value = message
   emit('map-warning', warning)
 

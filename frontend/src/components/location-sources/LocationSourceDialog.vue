@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="visible"
-    :header="isEditMode ? 'Edit Location Source' : 'Add Location Source'"
+    :header="isEditMode ? t('locationSources.dialog.editHeader') : t('locationSources.dialog.addHeader')"
     @hide="handleDialogHide"
     modal
     class="source-dialog"
@@ -9,14 +9,14 @@
     <div class="dialog-content">
       <Stepper v-if="!isEditMode" v-model:value="addWizardStep" class="add-source-stepper">
         <StepList>
-          <Step :value="1">Choose Source</Step>
-          <Step :value="2">Configure</Step>
+          <Step :value="1">{{ t('locationSources.dialog.stepChooseSource') }}</Step>
+          <Step :value="2">{{ t('locationSources.dialog.stepConfigure') }}</Step>
         </StepList>
       </Stepper>
 
       <div v-if="!isEditMode && addWizardStep === 1" class="source-type-selection">
-        <label class="form-label">Choose Source Type</label>
-        <small class="text-muted">Pick the source first. Configuration fields appear in the next step.</small>
+        <label class="form-label">{{ t('locationSources.dialog.chooseSourceType') }}</label>
+        <small class="text-muted">{{ t('locationSources.dialog.chooseSourceHint') }}</small>
 
         <div class="source-types source-type-grid">
           <div
@@ -28,7 +28,7 @@
             <i :class="type.icon"></i>
             <div>
               <div class="type-name">{{ type.label }}</div>
-              <div class="type-description type-description-compact">{{ type.description }}</div>
+              <div class="type-description type-description-compact">{{ t(type.descriptionKey) }}</div>
             </div>
           </div>
         </div>
@@ -36,10 +36,10 @@
 
       <div v-else-if="isEditMode || addWizardStep === 2" class="source-summary">
         <div class="source-summary-header">
-          <label class="form-label">{{ isEditMode ? 'Source' : 'Selected Source' }}</label>
+          <label class="form-label">{{ isEditMode ? t('locationSources.dialog.source') : t('locationSources.dialog.selectedSource') }}</label>
           <Button
             v-if="!isEditMode"
-            label="Change Source"
+            :label="t('locationSources.dialog.changeSource')"
             icon="pi pi-arrow-left"
             text
             size="small"
@@ -65,13 +65,13 @@
           </div>
         </div>
 
-        <small v-if="isEditMode" class="text-muted">Source type cannot be changed while editing. Create a new source to switch type.</small>
+        <small v-if="isEditMode" class="text-muted">{{ t('locationSources.dialog.sourceTypeCannotChange') }}</small>
       </div>
 
       <template v-if="isEditMode || addWizardStep === 2">
         <div v-if="formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER' || formData.type === 'COLOTA'" class="form-section">
           <div v-if="formData.type === 'OWNTRACKS'" class="form-field">
-            <label for="connectionType" class="form-label">Connection Type</label>
+            <label for="connectionType" class="form-label">{{ t('locationSources.dialog.connectionType') }}</label>
             <div class="connection-type-selection">
               <div
                 :class="['connection-type-option', { active: formData.connectionType === 'HTTP' }]"
@@ -79,8 +79,8 @@
               >
                 <i class="pi pi-globe"></i>
                 <div>
-                  <div class="connection-type-name">HTTP</div>
-                  <div class="connection-type-description">Standard HTTP endpoint</div>
+                  <div class="connection-type-name">{{ t('locationSources.dialog.connectionTypeHttpName') }}</div>
+                  <div class="connection-type-description">{{ t('locationSources.dialog.connectionTypeHttpDescription') }}</div>
                 </div>
               </div>
               <div
@@ -89,34 +89,34 @@
               >
                 <i class="pi pi-send"></i>
                 <div>
-                  <div class="connection-type-name">MQTT</div>
-                  <div class="connection-type-description">MQTT broker connection</div>
+                  <div class="connection-type-name">{{ t('locationSources.dialog.connectionTypeMqttName') }}</div>
+                  <div class="connection-type-description">{{ t('locationSources.dialog.connectionTypeMqttDescription') }}</div>
                 </div>
               </div>
             </div>
           </div>
 
           <div v-if="formData.type === 'GPSLOGGER'" class="step-value">
-            GPSLogger uses HTTP only and sends an OwnTracks-compatible payload.
+            {{ t('locationSources.dialog.gpsLoggerHttpOnlyNote') }}
           </div>
 
           <div class="form-field">
-            <label for="location-source-username" class="form-label">Username</label>
+            <label for="location-source-username" class="form-label">{{ t('locationSources.dialog.username') }}</label>
             <InputText
               id="location-source-username"
               v-model="formData.username"
-              placeholder="Enter username"
+              :placeholder="t('locationSources.dialog.usernamePlaceholder')"
               :invalid="!!formErrors.username"
             />
             <small v-if="formErrors.username" class="error-message">{{ formErrors.username }}</small>
           </div>
 
           <div class="form-field">
-            <label for="location-source-password" class="form-label">Password</label>
+            <label for="location-source-password" class="form-label">{{ t('locationSources.dialog.password') }}</label>
             <Password
               id="location-source-password"
               v-model="formData.password"
-              :placeholder="isEditMode ? 'Enter new password (leave empty to keep current)' : 'Enter password'"
+              :placeholder="isEditMode ? t('locationSources.dialog.passwordPlaceholderEdit') : t('locationSources.dialog.passwordPlaceholderAdd')"
               :feedback="false"
               toggleMask
               :invalid="!!formErrors.password"
@@ -125,17 +125,17 @@
           </div>
 
           <div v-if="formData.type === 'OWNTRACKS'" class="form-field">
-            <label for="location-source-payload-encryption-secret" class="form-label">Payload Encryption Secret</label>
+            <label for="location-source-payload-encryption-secret" class="form-label">{{ t('locationSources.dialog.payloadEncryptionSecret') }}</label>
             <Password
               id="location-source-payload-encryption-secret"
               v-model="formData.payloadEncryptionSecret"
-              :placeholder="isEditMode ? 'Enter new secret (leave empty to keep current)' : 'Optional OwnTracks encryptionKey'"
+              :placeholder="isEditMode ? t('locationSources.dialog.payloadEncryptionSecretPlaceholderEdit') : t('locationSources.dialog.payloadEncryptionSecretPlaceholderAdd')"
               :feedback="false"
               toggleMask
               :invalid="!!formErrors.payloadEncryptionSecret"
             />
             <small v-if="formErrors.payloadEncryptionSecret" class="error-message">{{ formErrors.payloadEncryptionSecret }}</small>
-            <small v-else class="text-muted">Optional. Must match OwnTracks encryptionKey and be 32 UTF-8 bytes or fewer.</small>
+            <small v-else class="text-muted">{{ t('locationSources.dialog.payloadEncryptionSecretHint') }}</small>
           </div>
 
           <div
@@ -148,18 +148,18 @@
               binary
             />
             <label for="location-source-clear-payload-secret" class="form-label clear-secret-label">
-              Clear payload encryption secret
+              {{ t('locationSources.dialog.clearPayloadEncryptionSecret') }}
             </label>
           </div>
         </div>
 
         <div v-else-if="formData.type === 'OVERLAND'" class="form-section">
           <div class="form-field">
-            <label for="location-source-token-overland" class="form-label">Access Token</label>
+            <label for="location-source-token-overland" class="form-label">{{ t('locationSources.dialog.accessToken') }}</label>
             <InputText
               id="location-source-token-overland"
               v-model="formData.token"
-              placeholder="Enter access token"
+              :placeholder="t('locationSources.dialog.accessTokenPlaceholder')"
               :invalid="!!formErrors.token"
             />
             <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
@@ -168,34 +168,38 @@
 
         <div v-else-if="formData.type === 'TRACCAR'" class="form-section">
           <div class="form-field">
-            <label for="location-source-token-traccar" class="form-label">Forwarding Token</label>
+            <label for="location-source-token-traccar" class="form-label">{{ t('locationSources.dialog.forwardingToken') }}</label>
             <InputText
               id="location-source-token-traccar"
               v-model="formData.token"
-              placeholder="Enter forwarding token"
+              :placeholder="t('locationSources.dialog.forwardingTokenPlaceholder')"
               :invalid="!!formErrors.token"
             />
             <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
           </div>
 
           <div class="form-field">
-            <label for="location-source-device-id-traccar" class="form-label">Device Unique ID (optional)</label>
+            <label for="location-source-device-id-traccar" class="form-label">{{ t('locationSources.dialog.deviceUniqueId') }}</label>
             <InputText
               id="location-source-device-id-traccar"
               v-model="formData.deviceId"
-              placeholder="Leave empty to accept all devices"
+              :placeholder="t('locationSources.dialog.deviceUniqueIdPlaceholder')"
             />
-            <small class="text-muted">Matches Traccar <code>device.uniqueId</code>. Use one source per device when sharing a token.</small>
+            <small class="text-muted">
+              <i18n-t keypath="locationSources.dialog.deviceUniqueIdHint" tag="span">
+                <template #code><code>device.uniqueId</code></template>
+              </i18n-t>
+            </small>
           </div>
         </div>
 
         <div v-else-if="formData.type === 'DAWARICH'" class="form-section">
           <div class="form-field">
-            <label for="location-source-token-dawarich" class="form-label">API Key</label>
+            <label for="location-source-token-dawarich" class="form-label">{{ t('locationSources.dialog.apiKeyLabel') }}</label>
             <InputText
               id="location-source-token-dawarich"
               v-model="formData.token"
-              placeholder="Enter API key"
+              :placeholder="t('locationSources.dialog.apiKeyPlaceholder')"
               :invalid="!!formErrors.token"
             />
             <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
@@ -204,11 +208,11 @@
 
         <div v-else-if="formData.type === 'HOME_ASSISTANT'" class="form-section">
           <div class="form-field">
-            <label for="location-source-token-ha" class="form-label">Token</label>
+            <label for="location-source-token-ha" class="form-label">{{ t('locationSources.dialog.token') }}</label>
             <InputText
               id="location-source-token-ha"
               v-model="formData.token"
-              placeholder="Enter token"
+              :placeholder="t('locationSources.dialog.tokenPlaceholder')"
               :invalid="!!formErrors.token"
             />
             <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
@@ -221,11 +225,11 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <Button label="Cancel" outlined @click="close" />
+        <Button :label="t('locationSources.dialog.cancel')" outlined @click="close" />
 
         <Button
           v-if="!isEditMode && addWizardStep === 1"
-          label="Continue"
+          :label="t('locationSources.dialog.continue')"
           icon="pi pi-arrow-right"
           iconPos="right"
           @click="goToAddConfigStep"
@@ -233,7 +237,7 @@
 
         <Button
           v-if="!isEditMode && addWizardStep === 2"
-          label="Back"
+          :label="t('locationSources.dialog.back')"
           severity="secondary"
           outlined
           @click="goToAddSourceStep"
@@ -241,7 +245,7 @@
 
         <Button
           v-if="isEditMode || addWizardStep === 2"
-          :label="isEditMode ? 'Save Changes' : 'Add Source'"
+          :label="isEditMode ? t('locationSources.dialog.saveChanges') : t('locationSources.dialog.addSource')"
           :loading="saving"
           @click="submit"
         />
@@ -252,6 +256,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import GpsFilteringSettings from '@/components/GpsFilteringSettings.vue'
 import {
   LOCATION_SOURCE_OPTIONS,
@@ -259,6 +264,8 @@ import {
   getLocationSourceIcon,
   getLocationSourceIdentifier
 } from '@/components/location-sources/locationSourceMeta'
+
+const { t } = useI18n()
 
 const props = defineProps({
   saving: {
@@ -442,29 +449,29 @@ const validateForm = () => {
 
   if (formData.value.type === 'OWNTRACKS' || formData.value.type === 'GPSLOGGER' || formData.value.type === 'COLOTA') {
     if (isBlank(formData.value.username)) {
-      formErrors.value.username = 'Username is required'
+      formErrors.value.username = t('locationSources.dialog.validation.usernameRequired')
     }
     if (!isEditMode.value && isBlank(formData.value.password)) {
-      formErrors.value.password = 'Password is required'
+      formErrors.value.password = t('locationSources.dialog.validation.passwordRequired')
     }
     if (formData.value.type === 'OWNTRACKS' && isPayloadEncryptionSecretTooLong()) {
-      formErrors.value.payloadEncryptionSecret = 'Secret must be 32 UTF-8 bytes or fewer'
+      formErrors.value.payloadEncryptionSecret = t('locationSources.dialog.validation.secretTooLong')
     }
   } else if (formData.value.type === 'OVERLAND') {
     if (isBlank(formData.value.token)) {
-      formErrors.value.token = 'Access token is required'
+      formErrors.value.token = t('locationSources.dialog.validation.accessTokenRequired')
     }
   } else if (formData.value.type === 'TRACCAR') {
     if (isBlank(formData.value.token)) {
-      formErrors.value.token = 'Forwarding token is required'
+      formErrors.value.token = t('locationSources.dialog.validation.forwardingTokenRequired')
     }
   } else if (formData.value.type === 'DAWARICH') {
     if (isBlank(formData.value.token)) {
-      formErrors.value.token = 'API key is required'
+      formErrors.value.token = t('locationSources.dialog.validation.apiKeyRequired')
     }
   } else if (formData.value.type === 'HOME_ASSISTANT') {
     if (isBlank(formData.value.token)) {
-      formErrors.value.token = 'Token is required'
+      formErrors.value.token = t('locationSources.dialog.validation.tokenRequired')
     }
   }
 

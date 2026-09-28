@@ -6,31 +6,31 @@
           @hide="onDialogHide">
     <div v-if="favoriteLocation" class="edit-favorite-content">
       <div class="form-field">
-        <label for="name" class="field-label">Name</label>
+        <label for="name" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.nameLabel') }}</label>
         <InputText
           id="name"
           v-model="favoriteLocation.name"
-          placeholder="Enter location name"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.namePlaceholder')"
           class="w-full"
         />
       </div>
 
       <div class="form-field">
-        <label for="city" class="field-label">City</label>
+        <label for="city" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.cityLabel') }}</label>
         <InputText
           id="city"
           v-model="favoriteLocation.city"
-          placeholder="Enter city (optional)"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.cityPlaceholder')"
           class="w-full"
         />
       </div>
 
       <div class="form-field">
-        <label for="country" class="field-label">Country</label>
+        <label for="country" class="field-label">{{ t('favoritesGeocodingDialogs.editFavorite.countryLabel') }}</label>
         <InputText
           id="country"
           v-model="favoriteLocation.country"
-          placeholder="Enter country (optional)"
+          :placeholder="t('favoritesGeocodingDialogs.editFavorite.countryPlaceholder')"
           class="w-full"
         />
       </div>
@@ -40,10 +40,10 @@
         <div class="bounds-header">
           <div class="bounds-title-group">
             <i class="pi pi-th-large"></i>
-            <span class="bounds-title">Area Boundaries</span>
+            <span class="bounds-title">{{ t('favoritesGeocodingDialogs.editFavorite.areaBoundariesTitle') }}</span>
           </div>
           <Button
-            :label="isDrawing() ? 'Drawing...' : 'Redraw Area'"
+            :label="isDrawing() ? t('favoritesGeocodingDialogs.editFavorite.drawing') : t('favoritesGeocodingDialogs.editFavorite.redrawArea')"
             icon="pi pi-pencil"
             size="small"
             @click="handleRedrawArea"
@@ -65,29 +65,29 @@
           <!-- Drawing instruction overlay -->
           <div v-if="isDrawing()" class="drawing-instruction">
             <i class="pi pi-info-circle"></i>
-            <span>Click and drag on the map to draw a new rectangular area</span>
+            <span>{{ t('favoritesGeocodingDialogs.editFavorite.drawInstruction') }}</span>
           </div>
         </div>
 
         <!-- Coordinates Display (read-only) -->
         <div class="bounds-info">
-          <span class="bounds-info-label">Current Bounds:</span>
+          <span class="bounds-info-label">{{ t('favoritesGeocodingDialogs.editFavorite.currentBoundsLabel') }}</span>
           <span class="bounds-info-text">
-            NE: {{ favoriteLocation.northEastLat?.toFixed(6) }}, {{ favoriteLocation.northEastLon?.toFixed(6) }}
-            | SW: {{ favoriteLocation.southWestLat?.toFixed(6) }}, {{ favoriteLocation.southWestLon?.toFixed(6) }}
+            {{ t('favoritesGeocodingDialogs.editFavorite.neLabel') }} {{ favoriteLocation.northEastLat?.toFixed(6) }}, {{ favoriteLocation.northEastLon?.toFixed(6) }}
+            | {{ t('favoritesGeocodingDialogs.editFavorite.swLabel') }} {{ favoriteLocation.southWestLat?.toFixed(6) }}, {{ favoriteLocation.southWestLon?.toFixed(6) }}
           </span>
         </div>
       </div>
     </div>
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('common.cancel')"
         severity="secondary"
         outlined
         @click="onDialogHide"
       />
       <Button
-        label="Save"
+        :label="t('favoritesGeocodingDialogs.editFavorite.save')"
         @click="onEditButton"
       />
     </template>
@@ -96,6 +96,7 @@
 
 <script setup>
 import {ref, computed, watch, onUnmounted} from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from "primevue/button"
 import Dialog from "primevue/dialog"
 import InputText from "primevue/inputtext"
@@ -106,6 +107,8 @@ import {
   getAreaCenterLatLng,
   toLeafletBounds
 } from '@/maps/favoritesManagement/shared/favoritesManagementGeometry'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { t } from '@/locales'
 
 /**
  * Composable for shared timeline label functionality
@@ -52,14 +53,14 @@ export function useTimelineLabel() {
   // Validation helpers
   const validateLabelName = (name) => {
     if (!name || name.trim() === '') {
-      return 'Tag name is required'
+      return t('miscDialogs.timelineLabelForm.nameRequired')
     }
     return null
   }
 
   const validateDateRange = (dateRange) => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) {
-      return 'Date range is required'
+      return t('miscDialogs.timelineLabelForm.dateRangeRequired')
     }
     return null
   }

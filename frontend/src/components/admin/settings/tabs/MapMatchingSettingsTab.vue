@@ -1,14 +1,14 @@
 <template>
   <div>
     <div v-if="hasUnsavedChanges" class="save-actions">
-      <Message severity="warn" :closable="false">You have unsaved changes</Message>
+      <Message severity="warn" :closable="false">{{ t('adminProviderSettings.shared.unsavedChanges') }}</Message>
       <div class="buttons">
-        <Button label="Discard Changes" severity="secondary" outlined :disabled="isSaving" @click="reloadSettings" />
-        <Button label="Save Changes" icon="pi pi-save" :loading="isSaving" :disabled="adminReadOnly" @click="saveAllChanges" />
+        <Button :label="t('adminProviderSettings.shared.discardChanges')" severity="secondary" outlined :disabled="isSaving" @click="reloadSettings" />
+        <Button :label="t('adminProviderSettings.shared.saveChanges')" icon="pi pi-save" :loading="isSaving" :disabled="adminReadOnly" @click="saveAllChanges" />
       </div>
     </div>
 
-    <SettingSection title="Map Matching">
+    <SettingSection :title="t('admin.settingsPage.tabs.mapMatching')">
       <SettingItem v-for="setting in coreSettings" :key="setting.key" :setting="setting" @reset="handleReset(setting)">
         <template #control="{ setting }">
           <InputSwitch v-if="setting.valueType === 'BOOLEAN'" v-model="setting.currentValue" @change="markDirty" />
@@ -48,7 +48,7 @@
 
       <div class="section-actions">
         <Button
-          label="Test Valhalla Connection"
+          :label="t('adminProviderSettings.mapMatchingSettingsTab.testValhallaConnection')"
           icon="pi pi-bolt"
           :loading="testingConnection"
           :disabled="adminReadOnly"
@@ -57,7 +57,7 @@
       </div>
     </SettingSection>
 
-    <SettingSection title="Processing Limits">
+    <SettingSection :title="t('adminProviderSettings.mapMatchingSettingsTab.processingLimitsSectionTitle')">
       <SettingItem v-for="setting in limitSettings" :key="setting.key" :setting="setting" @reset="handleReset(setting)">
         <template #control="{ setting }">
           <InputNumber
@@ -72,8 +72,8 @@
     </SettingSection>
 
     <details class="advanced-settings">
-      <summary>Advanced configuration</summary>
-      <SettingSection title="Match Quality">
+      <summary>{{ t('adminProviderSettings.mapMatchingSettingsTab.advancedConfigurationSummary') }}</summary>
+      <SettingSection :title="t('adminProviderSettings.mapMatchingSettingsTab.matchQualitySectionTitle')">
         <SettingItem v-for="setting in advancedSettings" :key="setting.key" :setting="setting" @reset="handleReset(setting)">
           <template #control="{ setting }">
             <InputNumber
@@ -89,7 +89,7 @@
       </SettingSection>
     </details>
 
-    <SettingSection title="Processing Status">
+    <SettingSection :title="t('adminProviderSettings.mapMatchingSettingsTab.processingStatusSectionTitle')">
       <div class="status-card">
         <div class="status-header">
           <div>
@@ -98,7 +98,7 @@
           </div>
           <div class="buttons">
             <Button
-              label="Re-run Map Matching"
+              :label="t('adminProviderSettings.mapMatchingSettingsTab.rerunMapMatching')"
               icon="pi pi-refresh"
               severity="secondary"
               outlined
@@ -106,7 +106,7 @@
               :disabled="rerunMapMatchingDisabled"
               @click="openRerunMapMatching()"
             />
-            <Button label="Refresh" icon="pi pi-refresh" severity="secondary" outlined
+            <Button :label="t('adminProviderSettings.shared.refresh')" icon="pi pi-refresh" severity="secondary" outlined
               :loading="loadingStatus" @click="loadStatus" />
           </div>
         </div>
@@ -114,54 +114,53 @@
         <div v-if="showBackfillProgress" class="backfill-progress">
           <div class="progress-heading">
             <div>
-              <strong>Historical backfill</strong>
-              <span>{{ formatNumber(backfill.scannedTrips) }} / {{ formatNumber(backfill.totalTrips) }} trips inspected</span>
+              <strong>{{ t('adminProviderSettings.mapMatchingSettingsTab.historicalBackfill') }}</strong>
+              <span>{{ t('adminProviderSettings.mapMatchingSettingsTab.tripsInspected', { scanned: formatNumber(backfill.scannedTrips), total: formatNumber(backfill.totalTrips) }) }}</span>
             </div>
             <strong>{{ formatPercent(backfill.percent) }}</strong>
           </div>
           <ProgressBar :value="backfillProgressValue" :showValue="false" />
           <div class="progress-caption">
-            <span>{{ formatNumber(backfill.remainingTrips) }} trips remaining</span>
-            <span>{{ formatNumber(backfill.completedUsers) }} / {{ formatNumber(backfill.totalUsers) }} users complete</span>
+            <span>{{ t('adminProviderSettings.mapMatchingSettingsTab.tripsRemaining', { count: formatNumber(backfill.remainingTrips) }) }}</span>
+            <span>{{ t('adminProviderSettings.mapMatchingSettingsTab.usersComplete', { completed: formatNumber(backfill.completedUsers), total: formatNumber(backfill.totalUsers) }) }}</span>
           </div>
         </div>
 
         <dl class="status-grid status-grid-primary">
-          <div><dt>Queued</dt><dd>{{ formatNumber(queue.queued) }}</dd></div>
-          <div><dt>Processing</dt><dd>{{ formatNumber(queue.processing) }}</dd></div>
-          <div><dt>Scheduled ranges</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
-          <div><dt>Next scan</dt><dd>{{ formatDateTime(diagnostics.nextReconciliationEligibleAt) }}</dd></div>
-          <div><dt>Last activity</dt><dd>{{ formatDateTime(worker.lastActivityAt) }}</dd></div>
+          <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.queued') }}</dt><dd>{{ formatNumber(queue.queued) }}</dd></div>
+          <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.processing') }}</dt><dd>{{ formatNumber(queue.processing) }}</dd></div>
+          <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.scheduledRanges') }}</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
+          <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.nextScan') }}</dt><dd>{{ formatDateTime(diagnostics.nextReconciliationEligibleAt) }}</dd></div>
+          <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.lastActivity') }}</dt><dd>{{ formatDateTime(worker.lastActivityAt) }}</dd></div>
         </dl>
 
         <Message v-if="worker.lastError" severity="warn" :closable="false">{{ worker.lastError }}</Message>
 
         <Message v-if="pendingRerunHint" severity="info" :closable="false">
-          Matching settings changed. Past trips are matched again when you view them in the timeline —
-          re-run map matching to update all of them now.
+          {{ t('adminProviderSettings.mapMatchingSettingsTab.pendingRerunHint') }}
         </Message>
 
         <details class="status-diagnostics">
-          <summary>Diagnostics</summary>
+          <summary>{{ t('adminProviderSettings.mapMatchingSettingsTab.diagnosticsSummary') }}</summary>
           <dl class="status-grid">
-            <div><dt>Phase</dt><dd>{{ worker.phase || 'IDLE' }}</dd></div>
-            <div><dt>Trigger</dt><dd>{{ worker.trigger || '—' }}</dd></div>
-            <div><dt>Worker started</dt><dd>{{ formatDateTime(worker.startedAt) }}</dd></div>
-            <div><dt>Last worker cycle</dt><dd>{{ formatDateTime(diagnostics.lastWorkerCycleCompletedAt) }}</dd></div>
-            <div><dt>User histories remaining</dt><dd>{{ formatNumber(backfill.remainingUsers) }} / {{ formatNumber(backfill.totalUsers) }}</dd></div>
-            <div><dt>Pending reconciliations</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
-            <div><dt>Oldest queued target</dt><dd>{{ formatDateTime(queue.oldestQueuedAt) }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.phase') }}</dt><dd>{{ worker.phase || 'IDLE' }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.trigger') }}</dt><dd>{{ worker.trigger || '—' }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.workerStarted') }}</dt><dd>{{ formatDateTime(worker.startedAt) }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.lastWorkerCycle') }}</dt><dd>{{ formatDateTime(diagnostics.lastWorkerCycleCompletedAt) }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.userHistoriesRemaining') }}</dt><dd>{{ formatNumber(backfill.remainingUsers) }} / {{ formatNumber(backfill.totalUsers) }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.pendingReconciliations') }}</dt><dd>{{ formatNumber(pendingReconciliationCount) }}</dd></div>
+            <div><dt>{{ t('adminProviderSettings.mapMatchingSettingsTab.oldestQueuedTarget') }}</dt><dd>{{ formatDateTime(queue.oldestQueuedAt) }}</dd></div>
           </dl>
 
           <div class="diagnostic-outcomes">
             <div class="diagnostic-outcomes-header">
-              <h4>Stored cache records</h4>
-              <span>All cache versions</span>
+              <h4>{{ t('adminProviderSettings.mapMatchingSettingsTab.storedCacheRecords') }}</h4>
+              <span>{{ t('adminProviderSettings.mapMatchingSettingsTab.allCacheVersions') }}</span>
             </div>
 
             <div class="diagnostic-outcome-groups">
               <section class="outcome-group">
-                <h5>By status</h5>
+                <h5>{{ t('adminProviderSettings.mapMatchingSettingsTab.byStatus') }}</h5>
                 <dl class="outcome-list">
                   <div v-for="(count, name) in diagnostics.targetsByStatus" :key="name" class="outcome-item">
                     <dt>{{ formatStatusName(name) }}</dt>
@@ -171,7 +170,7 @@
               </section>
 
               <section class="outcome-group">
-                <h5>By source</h5>
+                <h5>{{ t('adminProviderSettings.mapMatchingSettingsTab.bySource') }}</h5>
                 <dl class="outcome-list">
                   <div v-for="(count, name) in diagnostics.targetsBySource" :key="name" class="outcome-item">
                     <dt>{{ formatStatusName(name) }}</dt>
@@ -181,7 +180,7 @@
               </section>
 
               <section class="outcome-group">
-                <h5>Pending ranges</h5>
+                <h5>{{ t('adminProviderSettings.mapMatchingSettingsTab.pendingRangesGroup') }}</h5>
                 <dl class="outcome-list">
                   <div v-for="(count, name) in diagnostics.pendingReconciliationsBySource" :key="name" class="outcome-item">
                     <dt>{{ formatStatusName(name) }}</dt>
@@ -197,26 +196,25 @@
 
     <Dialog
       v-model:visible="rerunPromptVisible"
-      header="Re-run map matching?"
+      :header="t('adminProviderSettings.mapMatchingSettingsTab.rerunPromptHeader')"
       :modal="true"
       :style="{ width: '32rem' }"
     >
       <div class="rerun-prompt">
         <i class="pi pi-info-circle"></i>
         <p>
-          Routes that already exist were matched with the old settings. Viewing a trip in the timeline
-          matches it again, or re-run now to update every past trip at once.
+          {{ t('adminProviderSettings.mapMatchingSettingsTab.rerunPromptText') }}
         </p>
       </div>
       <template #footer>
-        <Button label="Later" severity="secondary" text @click="rerunPromptVisible = false" />
-        <Button label="Re-run now" icon="pi pi-refresh" @click="openRerunFromPrompt" />
+        <Button :label="t('adminProviderSettings.mapMatchingSettingsTab.later')" severity="secondary" text @click="rerunPromptVisible = false" />
+        <Button :label="t('adminProviderSettings.mapMatchingSettingsTab.rerunNow')" icon="pi pi-refresh" @click="openRerunFromPrompt" />
       </template>
     </Dialog>
 
     <Dialog
       v-model:visible="rerunMapMatchingDialogVisible"
-      header="Re-run Map Matching"
+      :header="t('adminProviderSettings.mapMatchingSettingsTab.rerunDialogHeader')"
       :modal="true"
       :style="{ width: '34rem' }"
     >
@@ -241,13 +239,13 @@
       </div>
 
       <Message v-if="rerunMode === 'ALL'" severity="warn" :closable="false">
-        Matched routes disappear from the map until they are recomputed.
+        {{ t('adminProviderSettings.mapMatchingSettingsTab.rerunAllWarning') }}
       </Message>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text :disabled="rerunningMapMatching"
+        <Button :label="t('common.cancel')" icon="pi pi-times" text :disabled="rerunningMapMatching"
           @click="rerunMapMatchingDialogVisible = false" />
         <Button
-          label="Re-run"
+          :label="t('adminProviderSettings.mapMatchingSettingsTab.rerun')"
           icon="pi pi-refresh"
           :severity="rerunMode === 'ALL' ? 'danger' : 'primary'"
           :loading="rerunningMapMatching"
@@ -260,6 +258,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -282,6 +281,7 @@ import { parseSettingValue } from '@/utils/settingHelpers'
 import { affectsMapMatchingCache } from '@/utils/mapMatchingSettings'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const toast = useToast()
 const { loadSettings, resetSetting } = useAdminSettings()
 const { adminReadOnly } = storeToRefs(useAuthStore())
@@ -357,13 +357,13 @@ const rerunMapMatchingDisabled = computed(() =>
 const rerunModeOptions = computed(() => [
   {
     value: 'UNSUCCESSFUL',
-    label: 'Retry failed and skipped trips',
-    description: 'Keeps routes that are already matched. Only trips that never produced a route are sent to Valhalla again.'
+    label: t('adminProviderSettings.mapMatchingSettingsTab.rerunModeOptions.unsuccessfulLabel'),
+    description: t('adminProviderSettings.mapMatchingSettingsTab.rerunModeOptions.unsuccessfulDescription')
   },
   {
     value: 'ALL',
-    label: `Re-match all trips (${formatNumber(backfill.value.totalTrips)})`,
-    description: 'Recomputes every stored route, including matched ones. Use this after the Valhalla map data changed.'
+    label: t('adminProviderSettings.mapMatchingSettingsTab.rerunModeOptions.allLabel', { count: formatNumber(backfill.value.totalTrips) }),
+    description: t('adminProviderSettings.mapMatchingSettingsTab.rerunModeOptions.allDescription')
   }
 ])
 const waitingForQuietPeriod = computed(() => {
@@ -384,15 +384,15 @@ const workerSeverity = computed(() => {
 const backfillProgressValue = computed(() => Math.min(100, Math.max(0, Number(backfill.value.percent) || 0)))
 const showBackfillProgress = computed(() => backfill.value.enabled || Number(backfill.value.totalTrips) > 0)
 const statusSummary = computed(() => {
-  if (!status.value.enabled) return 'Map matching is disabled'
-  if (!status.value.configured) return 'Valhalla is not configured'
-  if (worker.value.running) return worker.value.phase === 'DISCOVERING' ? 'Discovering eligible trips' : 'Matching queued trips'
-  if (worker.value.lastError) return 'Processing is blocked'
-  if (!backfill.value.enabled && Number(backfill.value.remainingTrips) > 0) return 'Historical backfill is paused'
-  if (waitingForQuietPeriod.value) return 'Work is scheduled'
-  if (hasPendingReconciliations.value) return 'Discovering eligible trips'
-  if (Number(backfill.value.remainingTrips) > 0 || Number(queue.value.queued) > 0 || Number(queue.value.processing) > 0) return 'Work is queued'
-  return 'Map matching is caught up'
+  if (!status.value.enabled) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.disabled')
+  if (!status.value.configured) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.notConfigured')
+  if (worker.value.running) return worker.value.phase === 'DISCOVERING' ? t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.discoveringEligible') : t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.matchingQueued')
+  if (worker.value.lastError) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.blocked')
+  if (!backfill.value.enabled && Number(backfill.value.remainingTrips) > 0) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.backfillPaused')
+  if (waitingForQuietPeriod.value) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.workScheduled')
+  if (hasPendingReconciliations.value) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.discoveringEligible')
+  if (Number(backfill.value.remainingTrips) > 0 || Number(queue.value.queued) > 0 || Number(queue.value.processing) > 0) return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.workQueued')
+  return t('adminProviderSettings.mapMatchingSettingsTab.statusSummary.caughtUp')
 })
 
 const reloadSettings = async () => {
@@ -456,20 +456,20 @@ const buildChangedSettings = () => {
 const validateChanges = () => {
   const provider = getSetting('map-matching.provider')?.currentValue
   if (provider !== 'valhalla') {
-    return 'Map matching provider must be Valhalla'
+    return t('adminProviderSettings.mapMatchingSettingsTab.validation.providerMustBeValhalla')
   }
 
   const baseUrl = String(getSetting('map-matching.valhalla.base-url')?.currentValue || '').trim()
   if (baseUrl && !baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-    return 'Valhalla base URL must start with http:// or https://'
+    return t('adminProviderSettings.mapMatchingSettingsTab.validation.baseUrlProtocol')
   }
 
   for (const setting of [...valhallaSettings.value, ...limitSettings.value, ...advancedSettings.value]) {
     if (setting.valueType === 'INTEGER' && Number(setting.currentValue) < 1) {
-      return `${setting.label} must be at least 1`
+      return t('adminProviderSettings.mapMatchingSettingsTab.validation.atLeastOne', { label: setting.label })
     }
     if (percentSettingKeys.has(setting.key) && Number(setting.currentValue) > 100) {
-      return `${setting.label} must be at most 100`
+      return t('adminProviderSettings.mapMatchingSettingsTab.validation.atMost100', { label: setting.label })
     }
   }
   return null

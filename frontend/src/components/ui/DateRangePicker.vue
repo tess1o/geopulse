@@ -68,6 +68,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import { storeToRefs } from 'pinia'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
@@ -77,6 +79,8 @@ import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import DateRangePresetSelect from '@/components/ui/DateRangePresetSelect.vue'
 import { shouldShowTimelineLabelAsPreset } from '@/utils/dateRangePresetOptions'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -103,23 +107,23 @@ const props = defineProps({
   },
   label: {
     type: String,
-    default: 'Select Dates'
+    default: () => translate('ui.dateRangePicker.labelDefault')
   },
   placeholder: {
     type: String,
-    default: 'Select date range'
+    default: () => translate('ui.dateRangePicker.placeholderDefault')
   },
   presetPlaceholder: {
     type: String,
-    default: 'Select Preset'
+    default: () => translate('ui.dateRangePicker.presetPlaceholderDefault')
   },
   presets: {
     type: Array,
     default: () => [
-      { label: 'Today', value: 'today' },
-      { label: 'Yesterday', value: 'yesterday' },
-      { label: 'Last 7 days', value: 'lastWeek' },
-      { label: 'Last 30 days', value: 'lastMonth' }
+      { label: translate('ui.dateRangePicker.presets.today'), value: 'today' },
+      { label: translate('ui.dateRangePicker.presets.yesterday'), value: 'yesterday' },
+      { label: translate('ui.dateRangePicker.presets.last7Days'), value: 'lastWeek' },
+      { label: translate('ui.dateRangePicker.presets.last30Days'), value: 'lastMonth' }
     ]
   },
   maxRangeDays: {
@@ -178,7 +182,7 @@ const periodPresets = computed(() => {
 
   return sorted.map((tag) => ({
     label: formatPeriodPresetLabel(tag),
-    nameLabel: truncatePresetName(tag.name || 'Period'),
+    nameLabel: truncatePresetName(tag.name || t('ui.dateRangePicker.periodFallbackName')),
     value: `${periodPresetPrefix}${tag.id}`,
     kind: 'timeline-label',
     color: normalizeTimelineLabelColor(tag.color),
@@ -197,8 +201,8 @@ const useGroupedPresets = computed(() => periodPresets.value.length > 0)
 const presetOptions = computed(() => {
   if (!useGroupedPresets.value) return defaultPresetOptions.value
   return [
-    { label: 'Timeline Labels', items: periodPresets.value },
-    { label: 'Presets', items: defaultPresetOptions.value }
+    { label: t('ui.dateRangePicker.timelineLabelsGroup'), items: periodPresets.value },
+    { label: t('ui.dateRangePicker.presetsGroup'), items: defaultPresetOptions.value }
   ]
 })
 
@@ -227,7 +231,7 @@ const dateRange = computed({
       if (props.maxRangeDays) {
         const days = timezone.diffInDays(end, start) + 1
         if (days > props.maxRangeDays) {
-          validationMessage.value = `Maximum range is ${props.maxRangeDays} days`
+          validationMessage.value = t('ui.dateRangePicker.maxRangeError', { days: props.maxRangeDays })
           emit('validation-error', validationMessage.value)
 
           // Reset to last 7 days after showing error
@@ -302,7 +306,7 @@ function getPeriodDateRange(tag) {
 }
 
 function formatPeriodPresetLabel(tag) {
-  const name = truncatePresetName(tag.name || 'Label')
+  const name = truncatePresetName(tag.name || t('ui.dateRangePicker.labelFallbackName'))
   const dateRangeLabel = formatPeriodPresetDateLabel(tag)
   return `${name} (${dateRangeLabel})`
 }
@@ -315,10 +319,10 @@ function formatPeriodPresetDateLabel(tag) {
   const includeYear = start.year() !== endBase.year() || start.year() !== nowYear
   const format = includeYear ? 'MMM D, YYYY' : 'MMM D'
   const startText = start.format(format)
-  const endText = isActive ? 'Today' : endBase.format(format)
+  const endText = isActive ? t('ui.dateRangePicker.presets.today') : endBase.format(format)
 
   if (start.isSame(endBase, 'day')) {
-    return isActive ? 'Today' : startText
+    return isActive ? t('ui.dateRangePicker.presets.today') : startText
   }
 
   return `${startText} - ${endText}`

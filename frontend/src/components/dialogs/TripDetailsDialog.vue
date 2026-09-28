@@ -9,7 +9,7 @@
     <div class="trip-details-content">
       <!-- Map Section -->
       <div class="map-section">
-        <h4 class="section-title">Trip Route</h4>
+        <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.route') }}</h4>
         <div class="trip-details-map-shell">
           <MapContainer
             :map-id="`trip-details-map-${mapId}`"
@@ -66,29 +66,29 @@
         <!-- Trip Header -->
         <div class="trip-header">
           <h3 class="trip-title">{{ getTripTitle() }}</h3>
-          <Tag 
+          <Tag
             v-if="trip?.movementType"
-            :value="trip.movementType"
+            :value="movementTypeLabel"
             :severity="getTransportSeverity(trip.movementType)"
             :icon="getTransportIcon(trip.movementType)"
             class="transport-tag"
           />
         </div>
-        
+
         <div class="details-grid">
           <!-- Timing Information -->
           <div class="detail-group">
-            <h4 class="section-title">Timing</h4>
+            <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.timing') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Start:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.start') }}</span>
               <span class="detail-value">{{ getStartDateTime() }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">End:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.end') }}</span>
               <span class="detail-value">{{ getEndDateTime() }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Duration:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.duration') }}</span>
               <span class="detail-value duration-badge">
                 {{ formatDuration(trip?.tripDuration) }}
               </span>
@@ -97,46 +97,46 @@
 
           <!-- Trip Information -->
           <div class="detail-group">
-            <h4 class="section-title">Trip Details</h4>
+            <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.tripInfo') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Distance:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.distance') }}</span>
               <span class="detail-value">{{ formatDistance(trip?.distanceMeters) }}</span>
             </div>
             <div v-if="averageSpeedText" class="detail-item">
-              <span class="detail-label">Average Speed:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.averageSpeed') }}</span>
               <span class="detail-value">{{ averageSpeedText }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Route Points:</span>
-              <span class="detail-value">{{ tripGpsPoints.length }} points</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.routePoints') }}</span>
+              <span class="detail-value">{{ t('tripDialogs.tripDetails.labels.routePointsValue', { count: tripGpsPoints.length }) }}</span>
             </div>
           </div>
 
           <!-- Route Information -->
           <div class="detail-group">
-            <h4 class="section-title">Route</h4>
+            <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.routeInfo') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Origin:</span>
-              <span class="detail-value">{{ trip?.origin?.locationName || 'Unknown' }}</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.origin') }}</span>
+              <span class="detail-value">{{ trip?.origin?.locationName || t('common.unknown') }}</span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">Destination:</span>
-              <span class="detail-value">{{ trip?.destination?.locationName || 'Unknown' }}</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.destination') }}</span>
+              <span class="detail-value">{{ trip?.destination?.locationName || t('common.unknown') }}</span>
             </div>
           </div>
 
           <!-- Coordinates -->
           <div class="detail-group">
-            <h4 class="section-title">Coordinates</h4>
+            <h4 class="section-title">{{ t('tripDialogs.tripDetails.sections.coordinates') }}</h4>
             <div class="detail-item">
-              <span class="detail-label">Start:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.start') }}</span>
               <span class="detail-value coordinate copyable" @click="copyToClipboard(`${trip?.latitude}, ${trip?.longitude}`)">
                 {{ trip?.latitude?.toFixed(6) }}, {{ trip?.longitude?.toFixed(6) }}
                 <i class="pi pi-copy copy-icon"></i>
               </span>
             </div>
             <div class="detail-item">
-              <span class="detail-label">End:</span>
+              <span class="detail-label">{{ t('tripDialogs.tripDetails.labels.end') }}</span>
               <span class="detail-value coordinate copyable" @click="copyToClipboard(`${trip?.endLatitude}, ${trip?.endLongitude}`)">
                 {{ trip?.endLatitude?.toFixed(6) }}, {{ trip?.endLongitude?.toFixed(6) }}
                 <i class="pi pi-copy copy-icon"></i>
@@ -149,13 +149,14 @@
 
     <!-- Dialog Footer -->
     <template #footer>
-      <Button label="Close" outlined @click="internalVisible = false" />
+      <Button :label="t('tripDialogs.tripDetails.close')" outlined @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, markRaw } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -175,6 +176,7 @@ import {
 } from '@/maps/shared/highlightedTripData'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
 
+const { t, te } = useI18n()
 const timezone = useTimezone()
 const toast = useToast()
 const locationStore = useLocationStore()
@@ -205,9 +207,16 @@ const mapId = ref(Date.now())
 const mapInstance = ref(null)
 const tripGpsPoints = ref([])
 
+const translateMovementType = (type) => {
+  if (!type) return t('common.unknown')
+  return te(`movementTypes.${type}`) ? t(`movementTypes.${type}`) : type
+}
+
+const movementTypeLabel = computed(() => translateMovementType(props.trip?.movementType))
+
 const dialogTitle = computed(() => {
-  if (!props.trip) return 'Trip Details'
-  return `Trip Details - ${props.trip.movementType || 'Unknown'}`
+  if (!props.trip) return t('tripDialogs.tripDetails.dialogTitleDefault')
+  return t('tripDialogs.tripDetails.dialogTitleWithType', { type: translateMovementType(props.trip.movementType) })
 })
 
 const mapCenter = computed(() => {
@@ -282,18 +291,18 @@ const {
 
 // Methods
 const getTripTitle = () => {
-  const origin = props.trip?.origin?.locationName || 'Unknown Origin'
-  const destination = props.trip?.destination?.locationName || 'Unknown Destination'
+  const origin = props.trip?.origin?.locationName || t('tripDialogs.tripDetails.unknownOrigin')
+  const destination = props.trip?.destination?.locationName || t('tripDialogs.tripDetails.unknownDestination')
   return `${origin} → ${destination}`
 }
 
 const getStartDateTime = () => {
-  if (!props.trip?.timestamp) return 'N/A'
+  if (!props.trip?.timestamp) return t('tripDialogs.tripDetails.notAvailable')
   return `${timezone.formatDateDisplay(props.trip.timestamp)} ${timezone.formatTime(props.trip.timestamp, { withSeconds: true })}`
 }
 
 const getEndDateTime = () => {
-  if (!props.trip?.timestamp || !props.trip?.tripDuration) return 'N/A'
+  if (!props.trip?.timestamp || !props.trip?.tripDuration) return t('tripDialogs.tripDetails.notAvailable')
   
   const startTime = timezone.fromUtc(props.trip.timestamp)
   const endTime = startTime.clone().add(props.trip.tripDuration, 'seconds')
@@ -343,16 +352,16 @@ const copyToClipboard = async (text) => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied!',
-      detail: 'Coordinates copied to clipboard',
+      summary: t('tripDialogs.tripDetails.toasts.copiedSummary'),
+      detail: t('tripDialogs.tripDetails.toasts.copiedDetail'),
       life: 2000
     })
   } else {
     console.error('Failed to copy')
     toast.add({
       severity: 'error',
-      summary: 'Copy Failed',
-      detail: 'Could not copy coordinates',
+      summary: t('tripDialogs.tripDetails.toasts.copyFailedSummary'),
+      detail: t('tripDialogs.tripDetails.toasts.copyFailedDetail'),
       life: 3000
     })
   }
@@ -389,8 +398,8 @@ const fetchTripGpsPoints = async () => {
     tripGpsPoints.value = []
     toast.add({
       severity: 'warn',
-      summary: 'GPS Data Unavailable',
-      detail: 'Could not load GPS points for this trip',
+      summary: t('tripDialogs.tripDetails.toasts.gpsUnavailableSummary'),
+      detail: t('tripDialogs.tripDetails.toasts.gpsUnavailableDetail'),
       life: 3000
     })
   }

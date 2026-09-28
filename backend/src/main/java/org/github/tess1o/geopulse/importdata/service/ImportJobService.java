@@ -254,9 +254,14 @@ public class ImportJobService {
                     int importProgress = 75 + (timelineJob.getProgressPercentage() * timelineProgressRange / 100);
                     importJob.setProgress(Math.min(100, Math.max(importJob.getProgress(), importProgress)));
 
-                    // Update progress message based on timeline step
-                    String progressMessage = "Timeline generation: " + timelineJob.getCurrentStep();
-                    importJob.setProgressMessage(progressMessage);
+                    // Update progress message based on timeline step. ImportJob.progressMessage is
+                    // wrapped by ImportJobResponse.descriptor() using a phase-based key (see below), so
+                    // this composite string only needs to carry the English fallback -- the timeline
+                    // sub-step's own key does not carry through here since it belongs to a different job.
+                    String timelineStepFallback = timelineJob.getCurrentStep() != null
+                            ? timelineJob.getCurrentStep().fallback()
+                            : "";
+                    importJob.setProgressMessage("Timeline generation: " + timelineStepFallback);
 
                     // Check if timeline job failed
                     if (timelineJob.getStatus() == org.github.tess1o.geopulse.streaming.model.TimelineJobProgress.JobStatus.FAILED) {

@@ -8,7 +8,7 @@
       <template v-if="isLoading && !countryDetails">
         <div class="loading-container">
           <ProgressSpinner />
-          <p class="loading-text">Loading country details...</p>
+          <p class="loading-text">{{ t('locationAnalytics.countryPage.loading') }}</p>
         </div>
       </template>
 
@@ -17,9 +17,9 @@
         <BaseCard>
           <div class="error-container">
             <i class="pi pi-exclamation-triangle error-icon"></i>
-            <h3 class="error-title">Failed to Load Country Details</h3>
+            <h3 class="error-title">{{ t('locationAnalytics.countryPage.errorTitle') }}</h3>
             <p class="error-message">{{ error }}</p>
-            <Button label="Try Again" icon="pi pi-refresh" @click="loadCountryData" />
+            <Button :label="t('common.tryAgain')" icon="pi pi-refresh" @click="loadCountryData" />
           </div>
         </BaseCard>
       </template>
@@ -28,15 +28,15 @@
       <template v-else-if="countryDetails">
         <LocationDetailsHeader
           :title="countryDetails.countryName"
-          subtitle="Country insights and visit history"
+          :subtitle="t('locationAnalytics.countryPage.subtitle')"
           icon="pi pi-globe"
-          back-label="Back"
+          :back-label="t('common.back')"
           @back="goToLocationAnalytics"
         >
           <template #metadata>
-            <span>{{ countryDetails.cities.length }} cities visited</span>
+            <span>{{ t('locationAnalytics.countryPage.citiesVisitedCount', { count: countryDetails.cities.length }) }}</span>
             <span v-if="countryDetails.statistics">
-              {{ countryDetails.statistics.totalVisits || 0 }} visits
+              {{ t('locationAnalytics.countryPage.visitsCount', { count: countryDetails.statistics.totalVisits || 0 }) }}
             </span>
           </template>
         </LocationDetailsHeader>
@@ -54,7 +54,7 @@
           <!-- Cities Breakdown -->
           <BaseCard
             v-if="countryDetails.cities?.length"
-            :title="`Cities in ${countryDetails.countryName}`"
+            :title="t('locationAnalytics.countryPage.citiesTitle', { name: countryDetails.countryName })"
             class="cities-card"
           >
             <div id="country-cities-list" class="cities-list">
@@ -69,7 +69,7 @@
                   <div class="city-details">
                     <div class="city-name">{{ city.cityName }}</div>
                     <div class="city-stats">
-                      {{ city.visitCount }} visits • {{ formatDuration(city.totalDuration) }} • {{ city.uniquePlaces }} places
+                      {{ t('locationAnalytics.countryPage.cityStats', { count: city.visitCount, duration: formatDuration(city.totalDuration), places: city.uniquePlaces }) }}
                     </div>
                   </div>
                 </div>
@@ -78,7 +78,7 @@
             </div>
             <template v-if="countryDetails.cities.length > 5" #footer>
               <Button
-                :label="showAllCities ? 'Show top 5' : `Show all ${countryDetails.cities.length} cities`"
+                :label="showAllCities ? t('locationAnalytics.countryPage.showTop5') : t('locationAnalytics.countryPage.showAllCities', { count: countryDetails.cities.length })"
                 :icon="showAllCities ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
                 :aria-expanded="showAllCities"
                 aria-controls="country-cities-list"
@@ -92,7 +92,7 @@
           <!-- Top Places in Country -->
           <BaseCard
             v-if="countryDetails.topPlaces?.length"
-            :title="`Top Places in ${countryDetails.countryName}`"
+            :title="t('locationAnalytics.countryPage.topPlacesTitle', { name: countryDetails.countryName })"
             class="top-places-card"
           >
             <div class="top-places-list">
@@ -107,7 +107,7 @@
                   <div class="place-details">
                     <div class="place-name">{{ place.name }}</div>
                     <div class="place-stats">
-                      {{ place.visitCount }} visits • {{ formatDuration(place.totalDuration) }}
+                      {{ t('locationAnalytics.countryPage.placeStats', { count: place.visitCount, duration: formatDuration(place.totalDuration) }) }}
                     </div>
                   </div>
                 </div>
@@ -121,7 +121,7 @@
           v-if="hasPhotoMap"
           ref="countryPhotosMapRef"
           :key="`country-photos-map-${countryName}`"
-          :title="`Photo locations in ${countryDetails.countryName}`"
+          :title="t('locationAnalytics.countryPage.photoLocationsTitle', { name: countryDetails.countryName })"
           :photos="countryPhotosForMap"
           :photo-marker-groups="countryMarkerGroupsForMap"
           @photo-click="handleCountryMapPhotoClick"
@@ -136,9 +136,9 @@
 
         <ImmichLatestPhotosSection
           ref="countryPhotosSectionRef"
-          :title="`Latest photos in ${countryDetails.countryName}`"
+          :title="t('locationAnalytics.countryPage.latestPhotosTitle', { name: countryDetails.countryName })"
           :search-params="countryImmichSearchParams"
-          empty-message="No Immich photos found for this country."
+          :empty-message="t('locationAnalytics.countryPage.noPhotosMessage')"
           :show-on-map-enabled="true"
           @latest-photos-change="handleCountryPhotosChange"
           @map-markers-change="handleCountryMarkerGroupsChange"
@@ -166,6 +166,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -187,6 +188,7 @@ import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { useImmichStore } from '@/stores/immich'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -279,10 +281,10 @@ const loadCountryData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading country data:', err)
-    error.value = formatApiErrorDetail(err, 'Failed to load country details')
+    error.value = formatApiErrorDetail(err, t('locationAnalytics.countryPage.loadFailed'))
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: error.value,
       life: 5000
     })
@@ -308,8 +310,8 @@ const loadVisits = async (page, pageSize, sortBy = currentSortBy.value, sortDire
     console.error('Error loading visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load visit history',
+      summary: t('common.error'),
+      detail: t('locationAnalytics.countryPage.loadVisitsFailed'),
       life: 3000
     })
   } finally {
@@ -333,16 +335,16 @@ const handleExportVisits = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: `Exported visits to ${countryName.value}`,
+      summary: t('locationAnalytics.countryPage.exportSuccessSummary'),
+      detail: t('locationAnalytics.countryPage.exportSuccessDetail', { name: countryName.value }),
       life: 5000
     })
   } catch (err) {
     console.error('Error exporting visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: formatApiErrorDetail(err, 'Failed to export visits'),
+      summary: t('locationAnalytics.countryPage.exportFailedSummary'),
+      detail: formatApiErrorDetail(err, t('locationAnalytics.countryPage.exportFailedDetail')),
       life: 5000
     })
   }

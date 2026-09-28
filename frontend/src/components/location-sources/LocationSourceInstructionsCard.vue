@@ -3,7 +3,7 @@
     <template #title>
       <div class="flex items-center gap-2">
         <i class="pi pi-book text-blue-500"></i>
-        Setup Instructions
+        {{ t('locationSources.instructions.title') }}
       </div>
     </template>
     <template #content>
@@ -16,12 +16,12 @@
       >
         <div v-if="activeTab === 'owntracks-http' && hasOwnTracksHttp">
           <div class="instruction-content">
-            <h3 class="instruction-title">OwnTracks Configuration (HTTP)</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.owntracksHttp.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Server URL</div>
+                  <div class="step-title">{{ t('locationSources.instructions.serverUrl') }}</div>
                   <div class="copy-field">
                     <code>{{ owntracksUrl }}</code>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(owntracksUrl)" />
@@ -32,25 +32,29 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">Connection Mode</div>
-                  <div class="step-value">HTTP</div>
+                  <div class="step-title">{{ t('locationSources.instructions.connectionMode') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.http') }}</div>
                 </div>
               </div>
 
               <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <div class="step-title">Authentication</div>
-                  <div class="step-value">Use your configured username</div>
-                  <div class="step-value">Use your configured password</div>
+                  <div class="step-title">{{ t('locationSources.instructions.authentication') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.useUsername') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.usePassword') }}</div>
                 </div>
               </div>
 
               <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <div class="step-title">Payload Encryption</div>
-                  <div class="step-value">Optional: set OwnTracks <code>encryptionKey</code> to the payload encryption secret configured on this source.</div>
+                  <div class="step-title">{{ t('locationSources.instructions.payloadEncryption') }}</div>
+                  <div class="step-value">
+                    <i18n-t keypath="locationSources.instructions.payloadEncryptionHint" tag="span">
+                      <template #code><code>encryptionKey</code></template>
+                    </i18n-t>
+                  </div>
                 </div>
               </div>
             </div>
@@ -59,15 +63,19 @@
 
         <div v-if="activeTab === 'owntracks-mqtt' && hasOwnTracksMqtt">
           <div class="instruction-content">
-            <h3 class="instruction-title">OwnTracks Configuration (MQTT)</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.owntracksMqtt.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Connection Type</div>
-                  <div class="step-value">Select <strong>MQTT</strong> in OwnTracks connection settings</div>
+                  <div class="step-title">{{ t('locationSources.instructions.owntracksMqtt.connectionTypeStep') }}</div>
+                  <div class="step-value">
+                    <i18n-t keypath="locationSources.instructions.owntracksMqtt.selectMqtt" tag="span">
+                      <template #mqtt><strong>MQTT</strong></template>
+                    </i18n-t>
+                  </div>
                   <small v-if="!mqttServiceEnabled" class="text-muted">
-                    MQTT integration is currently disabled on this server. Ask your admin to enable it.
+                    {{ t('locationSources.instructions.owntracksMqtt.mqttDisabledHint') }}
                   </small>
                 </div>
               </div>
@@ -75,7 +83,7 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">MQTT Broker Host</div>
+                  <div class="step-title">{{ t('locationSources.instructions.owntracksMqtt.brokerHost') }}</div>
                   <div class="copy-field">
                     <code>{{ mqttBrokerHost }}</code>
                     <Button
@@ -86,14 +94,14 @@
                       @click="emitCopy(mqttBrokerHost)"
                     />
                   </div>
-                  <small class="text-muted">Configured on GeoPulse server by admin</small>
+                  <small class="text-muted">{{ t('locationSources.instructions.owntracksMqtt.brokerHostHint') }}</small>
                 </div>
               </div>
 
               <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <div class="step-title">MQTT Port</div>
+                  <div class="step-title">{{ t('locationSources.instructions.owntracksMqtt.brokerPort') }}</div>
                   <div class="copy-field">
                     <code>{{ mqttBrokerPort }}</code>
                     <Button
@@ -110,18 +118,18 @@
               <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <div class="step-title">Authentication</div>
-                  <div class="step-value">Use your configured username</div>
-                  <div class="step-value">Use your configured password</div>
+                  <div class="step-title">{{ t('locationSources.instructions.authentication') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.useUsername') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.usePassword') }}</div>
                 </div>
               </div>
 
               <div class="step">
                 <div class="step-number">5</div>
                 <div class="step-content">
-                  <div class="step-title">Security Settings</div>
+                  <div class="step-title">{{ t('locationSources.instructions.owntracksMqtt.securitySettings') }}</div>
                   <div class="step-value">
-                    TLS: <strong>{{ mqttTlsEnabled ? 'Enabled' : 'Disabled' }}</strong><br>
+                    {{ t('locationSources.instructions.owntracksMqtt.tls') }} <strong>{{ mqttTlsEnabled ? t('locationSources.instructions.owntracksMqtt.tlsEnabled') : t('locationSources.instructions.owntracksMqtt.tlsDisabled') }}</strong><br>
                     <small class="text-muted">{{ mqttTlsHint }}</small>
                   </div>
                 </div>
@@ -130,8 +138,12 @@
               <div class="step">
                 <div class="step-number">6</div>
                 <div class="step-content">
-                  <div class="step-title">Payload Encryption</div>
-                  <div class="step-value">Optional: set OwnTracks <code>encryptionKey</code> to the payload encryption secret configured on this source.</div>
+                  <div class="step-title">{{ t('locationSources.instructions.payloadEncryption') }}</div>
+                  <div class="step-value">
+                    <i18n-t keypath="locationSources.instructions.payloadEncryptionHint" tag="span">
+                      <template #code><code>encryptionKey</code></template>
+                    </i18n-t>
+                  </div>
                 </div>
               </div>
             </div>
@@ -140,12 +152,12 @@
 
         <div v-if="activeTab === 'overland' && hasOverlandSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">Overland Configuration</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.overland.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Receiver Endpoint URL</div>
+                  <div class="step-title">{{ t('locationSources.instructions.overland.receiverEndpointUrl') }}</div>
                   <div class="copy-field">
                     <code>{{ overlandUrl }}</code>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(overlandUrl)" />
@@ -156,9 +168,9 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">Access Token</div>
+                  <div class="step-title">{{ t('locationSources.instructions.overland.accessToken') }}</div>
                   <div class="copy-field">
-                    <code>Your configured token</code>
+                    <code>{{ t('locationSources.instructions.overland.yourConfiguredToken') }}</code>
                   </div>
                 </div>
               </div>
@@ -168,21 +180,30 @@
 
         <div v-if="activeTab === 'traccar' && hasTraccarSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">Traccar Position Forwarding (JSON)</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.traccar.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Update <code>traccar.xml</code> Position Forwarding settings</div>
+                  <div class="step-title">
+                    <i18n-t keypath="locationSources.instructions.traccar.updateXmlTitle" tag="span">
+                      <template #file><code>traccar.xml</code></template>
+                    </i18n-t>
+                  </div>
                   <div class="step-value">
-                    Set <code>forward.url</code>, <code>forward.type=json</code>, and <code>forward.header</code> (Bearer token) in <code>traccar.xml</code>:
+                    <i18n-t keypath="locationSources.instructions.traccar.updateXmlValue" tag="span">
+                      <template #forwardUrl><code>forward.url</code></template>
+                      <template #forwardType><code>forward.type=json</code></template>
+                      <template #forwardHeader><code>forward.header</code></template>
+                      <template #file><code>traccar.xml</code></template>
+                    </i18n-t>
                   </div>
                   <div class="copy-field">
                     <pre class="yaml-config">{{ traccarXmlSnippet }}</pre>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(traccarXmlSnippet)" />
                   </div>
                   <small class="text-muted">
-                    Official docs:
+                    {{ t('locationSources.instructions.traccar.officialDocs') }}
                     <a href="https://www.traccar.org/forward/" target="_blank" rel="noopener noreferrer">
                       https://www.traccar.org/forward/
                     </a>
@@ -193,10 +214,12 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">Shared Traccar token setup</div>
+                  <div class="step-title">{{ t('locationSources.instructions.traccar.sharedTokenTitle') }}</div>
                   <div class="step-value">
-                    If multiple people share one Traccar server/token, create one GeoPulse Traccar source per device and set
-                    <code>Device Unique ID</code> to that device's <code>uniqueId</code>.
+                    <i18n-t keypath="locationSources.instructions.traccar.sharedTokenValue" tag="span">
+                      <template #deviceUniqueId><code>{{ t('locationSources.instructions.deviceUniqueIdShort') }}</code></template>
+                      <template #uniqueId><code>uniqueId</code></template>
+                    </i18n-t>
                   </div>
                 </div>
               </div>
@@ -206,14 +229,16 @@
 
         <div v-if="activeTab === 'gpslogger' && hasGpsLoggerSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">GPSLogger Configuration</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.gpslogger.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Enable Custom URL Logging</div>
+                  <div class="step-title">{{ t('locationSources.instructions.gpslogger.enableCustomUrlTitle') }}</div>
                   <div class="step-value">
-                    In GPSLogger, enable <strong>Log to custom URL</strong>.
+                    <i18n-t keypath="locationSources.instructions.gpslogger.enableCustomUrlValue" tag="span">
+                      <template #logToCustomUrl><strong>{{ t('locationSources.instructions.gpslogger.logToCustomUrl') }}</strong></template>
+                    </i18n-t>
                   </div>
                 </div>
               </div>
@@ -221,7 +246,7 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">URL</div>
+                  <div class="step-title">{{ t('locationSources.instructions.gpslogger.url') }}</div>
                   <div class="copy-field">
                     <code>{{ gpsLoggerUrl }}</code>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(gpsLoggerUrl)" />
@@ -232,21 +257,21 @@
               <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <div class="step-title">HTTP Method</div>
-                  <div class="step-value">POST</div>
+                  <div class="step-title">{{ t('locationSources.instructions.gpslogger.httpMethod') }}</div>
+                  <div class="step-value">{{ t('locationSources.instructions.gpslogger.post') }}</div>
                 </div>
               </div>
 
               <div class="step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                  <div class="step-title">HTTP Body (JSON)</div>
+                  <div class="step-title">{{ t('locationSources.instructions.gpslogger.httpBody') }}</div>
                   <div class="copy-field">
                     <pre class="yaml-config">{{ gpsLoggerHttpBody }}</pre>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(gpsLoggerHttpBody)" />
                   </div>
                   <small class="text-muted">
-                    GeoPulse treats GPSLogger speed as m/s and converts it to km/h automatically.
+                    {{ t('locationSources.instructions.gpslogger.httpBodyHint') }}
                   </small>
                 </div>
               </div>
@@ -254,15 +279,15 @@
               <div class="step">
                 <div class="step-number">5</div>
                 <div class="step-content">
-                  <div class="step-title">Headers</div>
+                  <div class="step-title">{{ t('locationSources.instructions.gpslogger.headers') }}</div>
                   <div class="step-value">
-                    Add this required header:
+                    {{ t('locationSources.instructions.gpslogger.headersValue') }}
                   </div>
                   <div class="copy-field">
                     <code>Content-Type: application/json</code>
                   </div>
                   <small class="text-muted">
-                    Optional device ID header:
+                    {{ t('locationSources.instructions.gpslogger.optionalDeviceIdHeader') }}
                   </small>
                   <div class="copy-field">
                     <code>X-Limit-D: my-android-phone</code>
@@ -273,9 +298,11 @@
               <div class="step">
                 <div class="step-number">6</div>
                 <div class="step-content">
-                  <div class="step-title">Authentication</div>
+                  <div class="step-title">{{ t('locationSources.instructions.authentication') }}</div>
                   <div class="step-value">
-                    Enable <strong>Basic Authentication</strong> and use the username/password from this source.
+                    <i18n-t keypath="locationSources.instructions.gpslogger.authenticationValue" tag="span">
+                      <template #basicAuth><strong>{{ t('locationSources.instructions.basicAuthentication') }}</strong></template>
+                    </i18n-t>
                   </div>
                 </div>
               </div>
@@ -285,12 +312,12 @@
 
         <div v-if="activeTab === 'dawarich' && hasDawarichSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">Dawarich Configuration</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.dawarich.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">Server URL</div>
+                  <div class="step-title">{{ t('locationSources.instructions.serverUrl') }}</div>
                   <div class="copy-field">
                     <code>{{ dawarichUrl }}</code>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(dawarichUrl)" />
@@ -301,9 +328,9 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">API Key</div>
+                  <div class="step-title">{{ t('locationSources.instructions.dawarich.apiKey') }}</div>
                   <div class="copy-field">
-                    <code>Your configured API Key</code>
+                    <code>{{ t('locationSources.instructions.dawarich.yourConfiguredApiKey') }}</code>
                   </div>
                 </div>
               </div>
@@ -313,20 +340,20 @@
 
         <div v-if="activeTab === 'home_assistant' && hasHomeAssistantSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">Home Assistant Configuration</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.homeAssistant.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">In configuration.yaml add the following:</div>
+                  <div class="step-title">{{ t('locationSources.instructions.homeAssistant.configYamlTitle') }}</div>
                   <div class="copy-field">
                     <pre class="yaml-config">{{ homeAssistantConfigYaml }}</pre>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(homeAssistantConfigYaml)" />
                   </div>
                   <div class="step-value">
-                    <strong>Replace:</strong><br>
-                    • iphone_16 with your device_id (can be found in Home Assistant)<br>
-                    • YOUR_CONFIGURED_TOKEN with the token you just created in GeoPulse
+                    <strong>{{ t('locationSources.instructions.homeAssistant.replaceTitle') }}</strong><br>
+                    • {{ t('locationSources.instructions.homeAssistant.replaceDeviceId') }}<br>
+                    • {{ t('locationSources.instructions.homeAssistant.replaceToken') }}
                   </div>
                 </div>
               </div>
@@ -334,7 +361,7 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">In automations.yaml add the following:</div>
+                  <div class="step-title">{{ t('locationSources.instructions.homeAssistant.automationYamlTitle') }}</div>
                   <div class="copy-field">
                     <pre class="yaml-config">{{ homeAssistantAutomationYaml }}</pre>
                     <Button
@@ -350,7 +377,7 @@
               <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <div class="step-title">Restart Home Assistant server to apply the changes.</div>
+                  <div class="step-title">{{ t('locationSources.instructions.homeAssistant.restartTitle') }}</div>
                 </div>
               </div>
             </div>
@@ -358,12 +385,12 @@
         </div>
         <div v-if="activeTab === 'colota' && hasColotaSource">
           <div class="instruction-content">
-            <h3 class="instruction-title">Colota Configuration</h3>
+            <h3 class="instruction-title">{{ t('locationSources.instructions.colota.title') }}</h3>
             <div class="instruction-steps">
               <div class="step">
                 <div class="step-number">1</div>
                 <div class="step-content">
-                  <div class="step-title">API Endpoint</div>
+                  <div class="step-title">{{ t('locationSources.instructions.colota.apiEndpoint') }}</div>
                   <div class="copy-field">
                     <code>{{ colotaUrl }}</code>
                     <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(colotaUrl)" />
@@ -374,9 +401,11 @@
               <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                  <div class="step-title">Authentication</div>
+                  <div class="step-title">{{ t('locationSources.instructions.authentication') }}</div>
                   <div class="step-value">
-                    Uses <strong>Basic Authentication</strong> with the username and password configured in your source.
+                    <i18n-t keypath="locationSources.instructions.colota.authenticationValue" tag="span">
+                      <template #basicAuth><strong>{{ t('locationSources.instructions.basicAuthentication') }}</strong></template>
+                    </i18n-t>
                   </div>
                 </div>
               </div>
@@ -384,12 +413,12 @@
               <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                  <div class="step-title">Payload Format (JSON)</div>
+                  <div class="step-title">{{ t('locationSources.instructions.colota.payloadFormat') }}</div>
                   <div class="copy-field">
                     <pre class="yaml-config">{{ colotaPayloadExample }}</pre>
                   </div>
                   <small class="text-muted">
-                    Fields: lat, lon, acc (meters), alt (meters), vel (m/s), batt (%), bs (battery status), tst (Unix timestamp), bear (bearing degrees).
+                    {{ t('locationSources.instructions.colota.payloadFieldsHint') }}
                   </small>
                 </div>
               </div>
@@ -405,8 +434,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   tabItems: {
@@ -467,22 +499,22 @@ const browserOrigin = computed(() => (
 
 const mqttBrokerHost = computed(() => {
   const host = props.ownTracksMqttConfig?.brokerHost
-  return typeof host === 'string' && host.trim().length > 0 ? host.trim() : 'Not configured'
+  return typeof host === 'string' && host.trim().length > 0 ? host.trim() : t('locationSources.instructions.owntracksMqtt.notConfigured')
 })
 
 const mqttBrokerPort = computed(() => {
   const port = props.ownTracksMqttConfig?.brokerPort
-  return Number.isInteger(port) && port > 0 ? String(port) : 'Not configured'
+  return Number.isInteger(port) && port > 0 ? String(port) : t('locationSources.instructions.owntracksMqtt.notConfigured')
 })
 
 const mqttTlsEnabled = computed(() => Boolean(props.ownTracksMqttConfig?.tlsEnabled))
 const mqttServiceEnabled = computed(() => Boolean(props.ownTracksMqttConfig?.mqttEnabled))
-const canCopyMqttHost = computed(() => mqttBrokerHost.value !== 'Not configured')
-const canCopyMqttPort = computed(() => mqttBrokerPort.value !== 'Not configured')
+const canCopyMqttHost = computed(() => mqttBrokerHost.value !== t('locationSources.instructions.owntracksMqtt.notConfigured'))
+const canCopyMqttPort = computed(() => mqttBrokerPort.value !== t('locationSources.instructions.owntracksMqtt.notConfigured'))
 const mqttTlsHint = computed(() => (
   mqttTlsEnabled.value
-    ? 'Enable TLS/SSL in OwnTracks connection settings'
-    : 'Leave TLS/SSL settings unchecked'
+    ? t('locationSources.instructions.owntracksMqtt.tlsHintEnabled')
+    : t('locationSources.instructions.owntracksMqtt.tlsHintDisabled')
 ))
 
 const owntracksUrl = computed(() => `${browserOrigin.value}/api/v1/gps/ingest/owntracks`)

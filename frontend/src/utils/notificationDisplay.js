@@ -1,189 +1,191 @@
+import { t } from '@/locales'
+
 const NOTIFICATION_SOURCE_CONFIG = {
   GEOFENCE: {
-    sourceLabel: 'Geofence',
+    sourceLabelKey: 'notifications.display.sources.geofence',
     icon: 'pi pi-map-marker',
     severity: 'info',
     route: '/app/geofences?tab=events',
-    actionLabel: 'Open Geofence Events'
+    actionLabelKey: 'notifications.display.actions.openGeofenceEvents'
   },
   TIMELINE: {
-    sourceLabel: 'Timeline',
+    sourceLabelKey: 'notifications.display.sources.timeline',
     icon: 'pi pi-history',
     severity: 'info',
     route: '/app/timeline/jobs',
-    actionLabel: 'View Timeline Status'
+    actionLabelKey: 'notifications.display.actions.viewTimelineStatus'
   },
   IMPORT: {
-    sourceLabel: 'Import',
+    sourceLabelKey: 'notifications.display.sources.import',
     icon: 'pi pi-upload',
     severity: 'success',
     route: '/app/data-export-import?tab=import',
-    actionLabel: 'Open Imports'
+    actionLabelKey: 'notifications.display.actions.openImports'
   },
   EXPORT: {
-    sourceLabel: 'Export',
+    sourceLabelKey: 'notifications.display.sources.export',
     icon: 'pi pi-download',
     severity: 'success',
     route: '/app/data-export-import?tab=export',
-    actionLabel: 'Open Exports'
+    actionLabelKey: 'notifications.display.actions.openExports'
   },
   FRIEND_INVITE: {
-    sourceLabel: 'Friends',
+    sourceLabelKey: 'notifications.display.sources.friendInvite',
     icon: 'pi pi-users',
     severity: 'secondary',
     route: '/app/friends/live',
-    actionLabel: 'Open Friends'
+    actionLabelKey: 'notifications.display.actions.openFriends'
   },
   WEATHER: {
-    sourceLabel: 'Weather',
+    sourceLabelKey: 'notifications.display.sources.weather',
     icon: 'pi pi-cloud',
     severity: 'warn',
     route: '/app/admin/dashboard',
-    actionLabel: 'Open Admin Dashboard'
+    actionLabelKey: 'notifications.display.actions.openAdminDashboard'
   },
   BACKUP_HEALTH: {
-    sourceLabel: 'Backup health',
+    sourceLabelKey: 'notifications.display.sources.backupHealth',
     icon: 'pi pi-database',
     severity: 'warn',
     route: '/app/admin/backups',
-    actionLabel: 'Open backup settings'
+    actionLabelKey: 'notifications.display.actions.openBackupSettings'
   },
   GPS_HEALTH: {
-    sourceLabel: 'GPS health',
+    sourceLabelKey: 'notifications.display.sources.gpsHealth',
     icon: 'pi pi-map-marker',
     severity: 'warn',
     route: '/app/notifications',
-    actionLabel: 'Open Notifications'
+    actionLabelKey: 'notifications.display.actions.openNotifications'
   },
   PRODUCT: {
-    sourceLabel: 'Product',
+    sourceLabelKey: 'notifications.display.sources.product',
     icon: 'pi pi-sparkles',
     severity: 'info',
     route: '/app/notifications',
-    actionLabel: 'Open Notifications'
+    actionLabelKey: 'notifications.display.actions.openNotifications'
   },
   REWIND: {
-    sourceLabel: 'Rewind',
+    sourceLabelKey: 'notifications.display.sources.rewind',
     icon: 'pi pi-history',
     severity: 'info',
     route: '/app/rewind',
-    actionLabel: 'Open Rewind'
+    actionLabelKey: 'notifications.display.actions.openRewind'
   }
 }
 
 const NOTIFICATION_TYPE_CONFIG = {
   GEOFENCE_ENTER: {
-    typeLabel: 'Geofence enter',
+    typeLabelKey: 'notifications.display.types.geofenceEnter',
     route: '/app/geofences?tab=events',
-    actionLabel: 'Open Geofence Events'
+    actionLabelKey: 'notifications.display.actions.openGeofenceEvents'
   },
   GEOFENCE_LEAVE: {
-    typeLabel: 'Geofence leave',
+    typeLabelKey: 'notifications.display.types.geofenceLeave',
     route: '/app/geofences?tab=events',
-    actionLabel: 'Open Geofence Events'
+    actionLabelKey: 'notifications.display.actions.openGeofenceEvents'
   },
   TIMELINE_REGENERATION_REQUIRED: {
-    title: 'Timeline refresh scheduled',
-    typeLabel: 'Timeline refresh scheduled',
+    titleKey: 'notifications.display.types.timelineRegenerationRequired',
+    typeLabelKey: 'notifications.display.types.timelineRegenerationRequired',
     icon: 'pi pi-refresh',
     severity: 'info',
     route: '/app/timeline/jobs',
-    actionLabel: 'View Timeline Status'
+    actionLabelKey: 'notifications.display.actions.viewTimelineStatus'
   },
   IMPORT_COMPLETED: {
-    typeLabel: 'Import completed',
+    typeLabelKey: 'notifications.display.types.importCompleted',
     severity: 'success',
     route: '/app/data-export-import?tab=import',
-    actionLabel: 'Open Imports'
+    actionLabelKey: 'notifications.display.actions.openImports'
   },
   IMPORT_FAILED: {
-    typeLabel: 'Import failed',
+    typeLabelKey: 'notifications.display.types.importFailed',
     severity: 'danger',
     route: '/app/data-export-import?tab=import',
-    actionLabel: 'Open Imports'
+    actionLabelKey: 'notifications.display.actions.openImports'
   },
   EXPORT_COMPLETED: {
-    typeLabel: 'Export completed',
+    typeLabelKey: 'notifications.display.types.exportCompleted',
     severity: 'success',
     route: '/app/data-export-import?tab=export',
-    actionLabel: 'Open Exports'
+    actionLabelKey: 'notifications.display.actions.openExports'
   },
   EXPORT_FAILED: {
-    typeLabel: 'Export failed',
+    typeLabelKey: 'notifications.display.types.exportFailed',
     severity: 'danger',
     route: '/app/data-export-import?tab=export',
-    actionLabel: 'Open Exports'
+    actionLabelKey: 'notifications.display.actions.openExports'
   },
   FRIEND_INVITE_RECEIVED: {
-    typeLabel: 'Friend invitation',
+    typeLabelKey: 'notifications.display.types.friendInviteReceived',
     route: '/app/friends/invites',
-    actionLabel: 'Open Invitations'
+    actionLabelKey: 'notifications.display.actions.openInvitations'
   },
   FRIEND_INVITE_ACCEPTED: {
-    typeLabel: 'Friend accepted',
+    typeLabelKey: 'notifications.display.types.friendInviteAccepted',
     route: '/app/friends/live',
-    actionLabel: 'Open Friends'
+    actionLabelKey: 'notifications.display.actions.openFriends'
   },
   WEATHER_QUOTA_REACHED: {
-    typeLabel: 'Weather quota reached',
+    typeLabelKey: 'notifications.display.types.weatherQuotaReached',
     icon: 'pi pi-exclamation-triangle',
     severity: 'warn',
     route: '/app/admin/dashboard',
-    actionLabel: 'Open Admin Dashboard'
+    actionLabelKey: 'notifications.display.actions.openAdminDashboard'
   },
   WEATHER_QUOTA_RESTORED: {
-    typeLabel: 'Weather quota restored',
+    typeLabelKey: 'notifications.display.types.weatherQuotaRestored',
     icon: 'pi pi-check-circle',
     severity: 'success',
     route: '/app/admin/dashboard',
-    actionLabel: 'Open Admin Dashboard'
+    actionLabelKey: 'notifications.display.actions.openAdminDashboard'
   },
   GPS_HEALTH_INCIDENT_OPENED: {
-    typeLabel: 'GPS tracking is quiet', icon: 'pi pi-exclamation-triangle', severity: 'warn', route: '/app/notifications', actionLabel: 'Open Notifications'
+    typeLabelKey: 'notifications.display.types.gpsHealthIncidentOpened', icon: 'pi pi-exclamation-triangle', severity: 'warn', route: '/app/notifications', actionLabelKey: 'notifications.display.actions.openNotifications'
   },
   GPS_HEALTH_INCIDENT_RESOLVED: {
-    typeLabel: 'GPS tracking resumed', icon: 'pi pi-check-circle', severity: 'success', route: '/app/notifications', actionLabel: 'Open Notifications'
+    typeLabelKey: 'notifications.display.types.gpsHealthIncidentResolved', icon: 'pi pi-check-circle', severity: 'success', route: '/app/notifications', actionLabelKey: 'notifications.display.actions.openNotifications'
   },
   PRODUCT_RELEASE_AVAILABLE: {
-    typeLabel: 'What’s new', icon: 'pi pi-sparkles', severity: 'info', route: '/app/notifications', actionLabel: 'Open Notifications'
+    typeLabelKey: 'notifications.display.types.productReleaseAvailable', icon: 'pi pi-sparkles', severity: 'info', route: '/app/notifications', actionLabelKey: 'notifications.display.actions.openNotifications'
   },
   REWIND_READY: {
-    typeLabel: 'Rewind ready', icon: 'pi pi-history', severity: 'info', route: '/app/rewind', actionLabel: 'Open Rewind'
+    typeLabelKey: 'notifications.display.types.rewindReady', icon: 'pi pi-history', severity: 'info', route: '/app/rewind', actionLabelKey: 'notifications.display.actions.openRewind'
   }
 }
 
 const TARGET_ROUTE_CONFIG = [
   {
     prefix: '/app/timeline/jobs',
-    actionLabel: 'View Timeline Status'
+    actionLabelKey: 'notifications.display.actions.viewTimelineStatus'
   },
   {
     prefix: '/app/geofences',
-    actionLabel: 'Open Geofence Events'
+    actionLabelKey: 'notifications.display.actions.openGeofenceEvents'
   },
   {
     prefix: '/app/data-export-import?tab=import',
-    actionLabel: 'Open Imports'
+    actionLabelKey: 'notifications.display.actions.openImports'
   },
   {
     prefix: '/app/data-export-import?tab=export',
-    actionLabel: 'Open Exports'
+    actionLabelKey: 'notifications.display.actions.openExports'
   },
   {
     prefix: '/app/friends/invites',
-    actionLabel: 'Open Invitations'
+    actionLabelKey: 'notifications.display.actions.openInvitations'
   },
   {
     prefix: '/app/friends',
-    actionLabel: 'Open Friends'
+    actionLabelKey: 'notifications.display.actions.openFriends'
   },
   {
     prefix: '/app/admin/dashboard',
-    actionLabel: 'Open Admin Dashboard'
+    actionLabelKey: 'notifications.display.actions.openAdminDashboard'
   }
 ]
 
-const humanizeToken = (value, fallback = '') => {
+const humanizeToken = (value, fallback) => {
   if (!value) {
     return fallback
   }
@@ -216,15 +218,19 @@ export const resolveNotificationDisplay = (notification = {}) => {
   const targetRoute = targetRouteFor(notification)
   const targetRouteConfig = targetRouteConfigFor(targetRoute)
   const route = targetRoute || typeConfig.route || sourceConfig.route || '/app/notifications'
+  const fallbackLabel = t('notifications.titleFallback')
 
   return {
-    title: typeConfig.title || notification?.title || typeConfig.typeLabel || humanizeToken(notification?.type, 'Notification'),
-    sourceLabel: sourceConfig.sourceLabel || humanizeToken(notification?.source, 'Notification'),
-    typeLabel: typeConfig.typeLabel || humanizeToken(notification?.type, 'Notification'),
+    title: (typeConfig.titleKey && t(typeConfig.titleKey)) || notification?.title || (typeConfig.typeLabelKey && t(typeConfig.typeLabelKey)) || humanizeToken(notification?.type, fallbackLabel),
+    sourceLabel: (sourceConfig.sourceLabelKey && t(sourceConfig.sourceLabelKey)) || humanizeToken(notification?.source, fallbackLabel),
+    typeLabel: (typeConfig.typeLabelKey && t(typeConfig.typeLabelKey)) || humanizeToken(notification?.type, fallbackLabel),
     icon: typeConfig.icon || sourceConfig.icon || 'pi pi-bell',
     severity: typeConfig.severity || sourceConfig.severity || 'secondary',
     route,
-    actionLabel: targetRouteConfig.actionLabel || typeConfig.actionLabel || sourceConfig.actionLabel || 'Open Notification'
+    actionLabel: (targetRouteConfig.actionLabelKey && t(targetRouteConfig.actionLabelKey))
+      || (typeConfig.actionLabelKey && t(typeConfig.actionLabelKey))
+      || (sourceConfig.actionLabelKey && t(sourceConfig.actionLabelKey))
+      || t('notifications.display.actions.openNotification')
   }
 }
 

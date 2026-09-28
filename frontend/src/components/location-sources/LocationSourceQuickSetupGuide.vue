@@ -3,7 +3,7 @@
     <template #title>
       <div class="flex items-center gap-2">
         <i class="pi pi-info-circle text-blue-500"></i>
-        Quick Setup Guide
+        {{ t('locationSources.quickSetupGuide.title') }}
       </div>
     </template>
     <template #content>
@@ -17,7 +17,7 @@
             </div>
           </div>
           <Button
-            :label="`Setup ${option.label}`"
+            :label="t('locationSources.quickSetupGuide.setupButton', { name: option.label })"
             outlined
             size="small"
             @click="emit('quick-setup', option.value)"
@@ -30,12 +30,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import {
   LOCATION_SOURCE_OPTIONS,
   getLocationSourceIcon
 } from '@/components/location-sources/locationSourceMeta'
 
+const { t } = useI18n()
 const emit = defineEmits(['quick-setup'])
 
 const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
@@ -51,6 +53,7 @@ const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
 const quickSetupOptions = computed(() => (
   LOCATION_SOURCE_OPTIONS.map((option) => ({
     ...option,
+    description: t(option.descriptionKey),
     accentClass: QUICK_SETUP_ACCENT_BY_TYPE[option.value] || 'text-blue-500'
   }))
 ))

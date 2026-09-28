@@ -6,22 +6,22 @@
     variant="wide"
   >
     <div class="raw-gps-popup-grid">
-      <div class="gp-map-popup-label raw-gps-popup-label">Coordinates</div>
+      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.coordinates') }}</div>
       <div class="gp-map-popup-value">
         <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.latitude) }}</span>
         <span class="gp-map-popup-value-line">{{ formatCoordinate(selectedPoint?.longitude) }}</span>
       </div>
 
-      <div class="gp-map-popup-label raw-gps-popup-label">Accuracy</div>
+      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.accuracy') }}</div>
       <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.accuracy) }}</div>
 
-      <div class="gp-map-popup-label raw-gps-popup-label">Battery</div>
+      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.battery') }}</div>
       <div class="gp-map-popup-value">{{ formatBattery(selectedPoint?.battery) }}</div>
 
-      <div class="gp-map-popup-label raw-gps-popup-label">Speed</div>
+      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.common.speed') }}</div>
       <div class="gp-map-popup-value">{{ formatSpeed(selectedPoint?.velocity) }}</div>
 
-      <div class="gp-map-popup-label raw-gps-popup-label">Altitude</div>
+      <div class="gp-map-popup-label raw-gps-popup-label">{{ t('maps.popups.rawGps.altitude') }}</div>
       <div class="gp-map-popup-value">{{ formatMeters(selectedPoint?.altitude) }}</div>
     </div>
 
@@ -31,9 +31,9 @@
         <div class="raw-gps-popup-location-source">{{ locationSource }}</div>
       </template>
       <div v-else-if="locationStatus === 'error'" class="raw-gps-popup-location-muted">
-        Location unavailable
+        {{ t('maps.popups.rawGps.locationUnavailable') }}
       </div>
-      <div v-else class="raw-gps-popup-location-muted">Finding location...</div>
+      <div v-else class="raw-gps-popup-location-muted">{{ t('maps.popups.rawGps.findingLocation') }}</div>
     </div>
 
     <div v-if="isStack" class="raw-gps-stack-list">
@@ -47,17 +47,17 @@
         <span class="raw-gps-stack-time">{{ formatRawGpsDateTime(timezone, point.timestamp) }}</span>
         <span class="raw-gps-stack-telemetry">
           <span class="raw-gps-stack-telemetry-item">
-            <span class="raw-gps-stack-telemetry-label">Speed</span>
+            <span class="raw-gps-stack-telemetry-label">{{ t('maps.popups.common.speed') }}</span>
             <span>{{ formatSpeed(point.velocity) }}</span>
           </span>
           <span class="raw-gps-stack-telemetry-item">
-            <span class="raw-gps-stack-telemetry-label">Battery</span>
+            <span class="raw-gps-stack-telemetry-label">{{ t('maps.popups.common.battery') }}</span>
             <span>{{ formatBattery(point.battery) }}</span>
           </span>
         </span>
       </button>
       <div v-if="overflowCount > 0" class="raw-gps-stack-overflow">
-        Showing first {{ visiblePoints.length }} of {{ group.count }} points
+        {{ t('maps.popups.rawGps.showingPoints', { shown: visiblePoints.length, total: group.count }) }}
       </div>
     </div>
   </MapPopupCard>
@@ -65,6 +65,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { t } from '@/locales'
 import { formatSpeed } from '@/utils/calculationsHelpers'
 import MapPopupCard from './MapPopupCard.vue'
 
@@ -100,17 +101,17 @@ const visiblePoints = computed(() => points.value.slice(0, 80))
 const overflowCount = computed(() => Math.max(0, points.value.length - visiblePoints.value.length))
 const title = computed(() => (
   isStack.value
-    ? `${props.group.count} GPS points here`
+    ? t('maps.popups.rawGps.pointsHere', { count: props.group.count })
     : formatRawGpsDateTime(props.timezone, selectedPoint.value?.timestamp)
 ))
 const subtitle = computed(() => (
   isStack.value
     ? `${formatRawGpsDateTime(props.timezone, props.group.firstTimestamp)} - ${formatRawGpsDateTime(props.timezone, props.group.lastTimestamp)}`
-    : selectedPoint.value?.sourceType || 'Raw GPS point'
+    : selectedPoint.value?.sourceType || t('maps.popups.rawGps.rawGpsPoint')
 ))
 const locationName = computed(() => resolvedLocation.value?.locationName || '')
 const locationSource = computed(() => (
-  resolvedLocation.value?.sourceType === 'favorite' ? 'Favorite' : 'Geocoding'
+  resolvedLocation.value?.sourceType === 'favorite' ? t('maps.popups.rawGps.favoriteSource') : t('maps.popups.rawGps.geocodingSource')
 ))
 
 const notifyRender = () => {
@@ -146,27 +147,27 @@ onMounted(() => {
 })
 
 const formatRawGpsDateTime = (timezone, value) => {
-  if (!value) return 'Unknown time'
+  if (!value) return t('maps.popups.common.unknownTime')
   try {
     return `${timezone.formatDateDisplay(value)} ${timezone.formatTime(value, { withSeconds: true })}`
   } catch {
-    return 'Unknown time'
+    return t('maps.popups.common.unknownTime')
   }
 }
 
 const formatCoordinate = (value) => {
   const number = Number(value)
-  return Number.isFinite(number) ? number.toFixed(6) : 'N/A'
+  return Number.isFinite(number) ? number.toFixed(6) : t('maps.popups.rawGps.notAvailable')
 }
 
 const formatMeters = (value) => {
   const number = Number(value)
-  return Number.isFinite(number) ? `${Math.round(number)}m` : 'N/A'
+  return Number.isFinite(number) ? `${Math.round(number)}m` : t('maps.popups.rawGps.notAvailable')
 }
 
 const formatBattery = (value) => {
   const number = Number(value)
-  return Number.isFinite(number) && number >= 0 ? `${Math.round(number)}%` : 'N/A'
+  return Number.isFinite(number) && number >= 0 ? `${Math.round(number)}%` : t('maps.popups.rawGps.notAvailable')
 }
 </script>
 

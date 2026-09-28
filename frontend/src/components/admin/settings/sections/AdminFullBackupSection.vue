@@ -2,8 +2,8 @@
   <section class="backup-section full-backup-section">
     <div class="backup-section-header">
       <div>
-        <h3>Full App Backup</h3>
-        <p class="text-muted">Password-encrypted PostgreSQL backup of application data and secrets.</p>
+        <h3>{{ t('adminSettings.fullBackupSection.title') }}</h3>
+        <p class="text-muted">{{ t('adminSettings.fullBackupSection.subtitle') }}</p>
       </div>
     </div>
 
@@ -11,42 +11,42 @@
       <div class="backup-grid">
         <section class="backup-panel">
           <div class="backup-panel-header">
-            <div><h4>Download Full Backup</h4><p class="text-muted">Generate a full backup and download it in this browser.</p></div>
+            <div><h4>{{ t('adminSettings.fullBackupSection.downloadPanel.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.downloadPanel.description') }}</p></div>
             <i class="pi pi-download backup-panel-icon"></i>
           </div>
-          <Button label="Download Full Backup" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="downloadFullBackup" />
+          <Button :label="t('adminSettings.fullBackupSection.downloadPanel.button')" icon="pi pi-download" :loading="fullDownloading" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="downloadFullBackup" />
         </section>
 
         <section class="backup-panel">
           <div class="backup-panel-header">
-            <div><h4>Run Backup Now</h4><p class="text-muted">Create a backup file in the mounted local folder.</p></div>
+            <div><h4>{{ t('adminSettings.fullBackupSection.runNowPanel.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.runNowPanel.description') }}</p></div>
             <i class="pi pi-save backup-panel-icon"></i>
           </div>
-          <Button label="Run Backup Now" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="runBackupNow" />
+          <Button :label="t('adminSettings.fullBackupSection.runNowPanel.button')" icon="pi pi-play" :loading="runningNow" :disabled="adminReadOnly || operationRunning || !backupConfig.passwordConfigured" @click="runBackupNow" />
         </section>
       </div>
 
       <Message severity="warn" :closable="false">
-        Full backups are encrypted with your backup password. Save that password outside GeoPulse: without it, the backup cannot be recovered. Restore only trusted backups. Restore preparation runs online; activation briefly stops GeoPulse and restarts the backend automatically.
+        {{ t('adminSettings.fullBackupSection.warnMessage') }}
       </Message>
 
       <Message v-if="restorePreparationFailed" severity="error" :closable="false">
         <div class="restore-failure">
           <div>
-            <h4>Restore preparation failed</h4>
+            <h4>{{ t('adminSettings.fullBackupSection.restorePreparationFailedTitle') }}</h4>
             <p>{{ restoreFailureMessage }}</p>
-            <p class="text-muted">The original database remains active and no restored data was applied.</p>
-            <p v-if="backupStatus?.fileName" class="text-muted">Backup file: {{ backupStatus.fileName }}</p>
+            <p class="text-muted">{{ t('adminSettings.fullBackupSection.originalDatabaseActive') }}</p>
+            <p v-if="backupStatus?.fileName" class="text-muted">{{ t('adminSettings.fullBackupSection.backupFileLabel', { fileName: backupStatus.fileName }) }}</p>
           </div>
         </div>
       </Message>
 
       <Message v-if="backupStatus?.state === 'ACTIVATION_RETRYABLE'" severity="warn" :closable="false">
         <div class="retryable-restore">
-          <span>{{ backupStatus.error || 'Activation did not complete. The original database is active and the prepared restore is retained.' }}</span>
+          <span>{{ backupStatus.error || t('adminSettings.fullBackupSection.activationRetryableFallback') }}</span>
           <div class="file-actions">
-            <Button label="Retry Activation" icon="pi pi-refresh" :loading="restoring" @click="retryActivation" />
-            <Button label="Discard Prepared Restore" icon="pi pi-trash" severity="danger" outlined :loading="deleting" @click="discardPreparedRestore" />
+            <Button :label="t('adminSettings.fullBackupSection.retryActivation')" icon="pi pi-refresh" :loading="restoring" @click="retryActivation" />
+            <Button :label="t('adminSettings.fullBackupSection.discardPreparedRestore')" icon="pi pi-trash" severity="danger" outlined :loading="deleting" @click="discardPreparedRestore" />
           </div>
         </div>
       </Message>
@@ -61,65 +61,65 @@
       </div>
 
       <section class="backup-subsection">
-        <div class="subsection-header"><div><h4>Scheduled Local Backups</h4><p class="text-muted">Configure automatic backups written to the mounted backup folder.</p></div></div>
+        <div class="subsection-header"><div><h4>{{ t('adminSettings.fullBackupSection.scheduledSection.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.scheduledSection.description') }}</p></div></div>
         <div class="config-grid">
           <div class="config-group schedule-group">
-            <h5>Backup password</h5>
+            <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.backupPassword') }}</h5>
             <label class="config-field">
-              <span>{{ backupConfig.passwordConfigured ? 'Change password (leave empty to keep)' : 'Password required for all full backups' }}</span>
+              <span>{{ backupConfig.passwordConfigured ? t('adminSettings.fullBackupSection.scheduledSection.changePasswordLabel') : t('adminSettings.fullBackupSection.scheduledSection.passwordRequiredLabel') }}</span>
               <InputText v-model="backupPassword" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="adminReadOnly" />
             </label>
-            <label class="config-field"><span>Confirm new password</span><InputText v-model="backupPasswordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="adminReadOnly" /></label>
-            <small class="text-muted">New passwords must contain 12–1024 characters.</small>
-            <h5>Schedule</h5>
-            <label class="config-field" data-setting-id="backup.scheduled.enabled"><span>Enabled</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
-            <label class="config-field" data-setting-id="backup.scheduled.cron"><span>Cron</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
+            <label class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.confirmNewPassword') }}</span><InputText v-model="backupPasswordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="1024" :disabled="adminReadOnly" /></label>
+            <small class="text-muted">{{ t('adminSettings.fullBackupSection.scheduledSection.passwordLengthHint') }}</small>
+            <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.schedule') }}</h5>
+            <label class="config-field" data-setting-id="backup.scheduled.enabled"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.enabled') }}</span><ToggleSwitch v-model="backupConfig.scheduledEnabled" :disabled="adminReadOnly" /></label>
+            <label class="config-field" data-setting-id="backup.scheduled.cron"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.cron') }}</span><InputText v-model="backupConfig.scheduledCron" :disabled="adminReadOnly" /></label>
           </div>
           <div class="config-group">
-            <h5>Storage</h5>
-            <label class="config-field" data-setting-id="backup.local.path"><span>Folder Path</span><InputText v-model="backupConfig.localPath" :disabled="adminReadOnly" /></label>
+            <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.storage') }}</h5>
+            <label class="config-field" data-setting-id="backup.local.path"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.folderPath') }}</span><InputText v-model="backupConfig.localPath" :disabled="adminReadOnly" /></label>
             <div class="config-row">
-              <label class="config-field" data-setting-id="backup.retention.count"><span>Backups to Keep</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
-              <label class="config-field" data-setting-id="backup.operation.timeout-minutes"><span>Timeout Minutes</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
+              <label class="config-field" data-setting-id="backup.retention.count"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.backupsToKeep') }}</span><InputNumber v-model="backupConfig.retentionCount" :min="1" :max="365" :disabled="adminReadOnly" /></label>
+              <label class="config-field" data-setting-id="backup.operation.timeout-minutes"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.timeoutMinutes') }}</span><InputNumber v-model="backupConfig.operationTimeoutMinutes" :min="1" :max="1440" :disabled="adminReadOnly" /></label>
             </div>
           </div>
           <div class="config-group">
-            <h5>Health Alerts</h5>
+            <h5>{{ t('adminSettings.fullBackupSection.scheduledSection.healthAlerts') }}</h5>
             <label class="config-field" data-setting-id="backup.health.max-age-days">
-              <span>Warn After Days</span>
+              <span>{{ t('adminSettings.fullBackupSection.scheduledSection.warnAfterDays') }}</span>
               <InputNumber v-model="backupConfig.healthMaxAgeDays" :min="0" :max="365" :disabled="adminReadOnly" />
             </label>
-            <small class="text-muted">Set to 0 to disable backup freshness warnings and notifications. Active admins receive in-app alerts when enabled.</small>
+            <small class="text-muted">{{ t('adminSettings.fullBackupSection.scheduledSection.healthWarningHint') }}</small>
             <label class="config-field" data-setting-id="backup.health.apprise.enabled">
-              <span>Send External Alert</span>
+              <span>{{ t('adminSettings.fullBackupSection.scheduledSection.sendExternalAlert') }}</span>
               <ToggleSwitch v-model="backupConfig.healthAppriseEnabled" :disabled="adminReadOnly || backupConfig.healthMaxAgeDays === 0" />
             </label>
             <template v-if="backupConfig.healthAppriseEnabled">
-              <label class="config-field"><span>Apprise Routing</span><Select v-model="backupConfig.healthAppriseRoutingMode" :options="appriseRoutingOptions" optionLabel="label" optionValue="value" :disabled="adminReadOnly" /></label>
-              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>Config Key</span><InputText v-model="backupConfig.healthAppriseConfigKey" :disabled="adminReadOnly" /></label>
-              <label v-else class="config-field"><span>Destination URLs</span><InputText v-model="backupConfig.healthAppriseDestination" :disabled="adminReadOnly" /></label>
-              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>Tag (optional)</span><InputText v-model="backupConfig.healthAppriseTag" :disabled="adminReadOnly" /></label>
+              <label class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.appriseRouting') }}</span><Select v-model="backupConfig.healthAppriseRoutingMode" :options="appriseRoutingOptions" optionLabel="label" optionValue="value" :disabled="adminReadOnly" /></label>
+              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.configKey') }}</span><InputText v-model="backupConfig.healthAppriseConfigKey" :disabled="adminReadOnly" /></label>
+              <label v-else class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.destinationUrls') }}</span><InputText v-model="backupConfig.healthAppriseDestination" :disabled="adminReadOnly" /></label>
+              <label v-if="backupConfig.healthAppriseRoutingMode === 'KEY_TAG'" class="config-field"><span>{{ t('adminSettings.fullBackupSection.scheduledSection.tagOptional') }}</span><InputText v-model="backupConfig.healthAppriseTag" :disabled="adminReadOnly" /></label>
             </template>
           </div>
         </div>
-        <div class="section-actions"><Button label="Save Backup Settings" icon="pi pi-save" :loading="savingConfig" :disabled="adminReadOnly" @click="saveBackupConfig" /></div>
+        <div class="section-actions"><Button :label="t('adminSettings.fullBackupSection.scheduledSection.saveButton')" icon="pi pi-save" :loading="savingConfig" :disabled="adminReadOnly" @click="saveBackupConfig" /></div>
       </section>
 
       <section class="backup-subsection">
         <div class="subsection-header local-backups-header">
-          <div><h4>Local Backups</h4><p class="text-muted">Files available in the configured server-side backup folder.</p></div>
-          <Button icon="pi pi-refresh" text rounded :loading="loadingFiles" aria-label="Refresh local backups" v-tooltip.top="'Refresh local backups'" @click="loadBackupFiles" />
+          <div><h4>{{ t('adminSettings.fullBackupSection.localBackups.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.localBackups.description') }}</p></div>
+          <Button icon="pi pi-refresh" text rounded :loading="loadingFiles" :aria-label="t('adminSettings.fullBackupSection.localBackups.refreshAriaLabel')" v-tooltip.top="t('adminSettings.fullBackupSection.localBackups.refreshAriaLabel')" @click="loadBackupFiles" />
         </div>
         <DataTable :value="backupFiles" dataKey="fileName" responsiveLayout="scroll" class="backup-files-table">
-          <Column field="fileName" header="File" />
-          <Column header="Size"><template #body="{ data }">{{ formatBytes(data.sizeBytes) }}</template></Column>
-          <Column header="Modified"><template #body="{ data }">{{ formatDate(data.lastModifiedAt) }}</template></Column>
-          <Column header="Actions">
+          <Column field="fileName" :header="t('adminSettings.fullBackupSection.localBackups.columnFile')" />
+          <Column :header="t('adminSettings.fullBackupSection.localBackups.columnSize')"><template #body="{ data }">{{ formatBytes(data.sizeBytes) }}</template></Column>
+          <Column :header="t('adminSettings.fullBackupSection.localBackups.columnModified')"><template #body="{ data }">{{ formatDate(data.lastModifiedAt) }}</template></Column>
+          <Column :header="t('adminSettings.fullBackupSection.localBackups.columnActions')">
             <template #body="{ data }">
               <div class="file-actions">
-                <Button icon="pi pi-download" text rounded :disabled="adminReadOnly || operationRunning" aria-label="Download backup" v-tooltip.top="'Download backup'" @click="downloadLocalBackup(data.fileName)" />
-                <Button icon="pi pi-undo" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Restore backup" v-tooltip.top="'Restore backup'" @click="openRestoreLocalDialog(data.fileName)" />
-                <Button icon="pi pi-trash" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" aria-label="Delete backup" v-tooltip.top="'Delete backup'" @click="openDeleteDialog(data.fileName)" />
+                <Button icon="pi pi-download" text rounded :disabled="adminReadOnly || operationRunning" :aria-label="t('adminSettings.fullBackupSection.localBackups.downloadAriaLabel')" v-tooltip.top="t('adminSettings.fullBackupSection.localBackups.downloadAriaLabel')" @click="downloadLocalBackup(data.fileName)" />
+                <Button icon="pi pi-undo" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" :aria-label="t('adminSettings.fullBackupSection.localBackups.restoreAriaLabel')" v-tooltip.top="t('adminSettings.fullBackupSection.localBackups.restoreAriaLabel')" @click="openRestoreLocalDialog(data.fileName)" />
+                <Button icon="pi pi-trash" text rounded severity="danger" :disabled="adminReadOnly || operationRunning" :aria-label="t('adminSettings.fullBackupSection.localBackups.deleteAriaLabel')" v-tooltip.top="t('adminSettings.fullBackupSection.localBackups.deleteAriaLabel')" @click="openDeleteDialog(data.fileName)" />
               </div>
             </template>
           </Column>
@@ -127,24 +127,24 @@
       </section>
 
       <section class="backup-subsection">
-        <div class="subsection-header"><div><h4>Restore Uploaded Full Backup</h4><p class="text-muted">Upload an encrypted .gpb backup. Preparation runs in the background while GeoPulse stays available; activation then replaces newer data and restarts the backend.</p></div></div>
+        <div class="subsection-header"><div><h4>{{ t('adminSettings.fullBackupSection.restoreUploadSection.title') }}</h4><p class="text-muted">{{ t('adminSettings.fullBackupSection.restoreUploadSection.description') }}</p></div></div>
         <div class="restore-upload-row">
           <div class="inline-upload">
-            <FileUpload ref="fullFileUpload" mode="basic" accept=".gpb,application/octet-stream" chooseLabel="Choose Full Backup" :auto="false" :disabled="adminReadOnly || operationRunning" @select="onFullFileSelect" @clear="onFullFileClear" />
+            <FileUpload ref="fullFileUpload" mode="basic" accept=".gpb,application/octet-stream" :chooseLabel="t('adminSettings.fullBackupSection.restoreUploadSection.chooseFile')" :auto="false" :disabled="adminReadOnly || operationRunning" @select="onFullFileSelect" @clear="onFullFileClear" />
             <div v-if="selectedFullFile" class="selected-file"><i class="pi pi-file"></i><span>{{ selectedFullFile.name }}</span></div>
           </div>
-          <Button label="Restore Uploaded Backup" icon="pi pi-upload" severity="danger" :loading="restoring" :disabled="adminReadOnly || operationRunning || !selectedFullFile" @click="openRestoreUploadDialog" />
+          <Button :label="t('adminSettings.fullBackupSection.restoreUploadSection.button')" icon="pi pi-upload" severity="danger" :loading="restoring" :disabled="adminReadOnly || operationRunning || !selectedFullFile" @click="openRestoreUploadDialog" />
         </div>
       </section>
     </div>
 
-    <Dialog v-model:visible="restoreDialogVisible" header="Restore Full Backup?" modal :closable="!restoreProgressInDialog" :closeOnEscape="!restoreProgressInDialog" :style="{ width: '34rem' }">
+    <Dialog v-model:visible="restoreDialogVisible" :header="t('adminSettings.fullBackupSection.restoreDialog.header')" modal :closable="!restoreProgressInDialog" :closeOnEscape="!restoreProgressInDialog" :style="{ width: '34rem' }">
       <div v-if="!restoreProgressInDialog" class="confirm-content">
         <i class="pi pi-exclamation-triangle"></i>
         <div>
-          <p>Restoring a full backup can replace users, app settings, GPS data, friends, and permissions.</p>
-          <p class="text-muted">Preparation runs while GeoPulse remains available. Activation briefly blocks application work, replaces newer data, and restarts the backend automatically.</p>
-          <label class="config-field"><span>Source backup password</span><InputText v-model="restorePassword" type="password" autocomplete="off" maxlength="1024" /></label>
+          <p>{{ t('adminSettings.fullBackupSection.restoreDialog.warning') }}</p>
+          <p class="text-muted">{{ t('adminSettings.fullBackupSection.restoreDialog.note') }}</p>
+          <label class="config-field"><span>{{ t('adminSettings.fullBackupSection.restoreDialog.sourcePasswordLabel') }}</span><InputText v-model="restorePassword" type="password" autocomplete="off" maxlength="1024" /></label>
         </div>
       </div>
       <div v-else class="restore-progress">
@@ -153,17 +153,17 @@
         <div class="progress-caption"><span>{{ backupStatus?.fileName || '' }}</span></div>
       </div>
       <template #footer>
-        <Button v-if="!restoreProgressInDialog" label="Cancel" icon="pi pi-times" text @click="restoreDialogVisible = false" />
-        <Button v-if="!restoreProgressInDialog" label="Restore" icon="pi pi-undo" severity="danger" :loading="restoring" :disabled="!restorePassword" @click="restoreFullBackup" />
-        <Button v-else label="Restoring" icon="pi pi-spin pi-spinner" severity="danger" disabled />
+        <Button v-if="!restoreProgressInDialog" :label="t('common.cancel')" icon="pi pi-times" text @click="restoreDialogVisible = false" />
+        <Button v-if="!restoreProgressInDialog" :label="t('adminSettings.fullBackupSection.restoreDialog.restore')" icon="pi pi-undo" severity="danger" :loading="restoring" :disabled="!restorePassword" @click="restoreFullBackup" />
+        <Button v-else :label="t('adminSettings.fullBackupSection.restoreDialog.restoring')" icon="pi pi-spin pi-spinner" severity="danger" disabled />
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="deleteDialogVisible" header="Delete Backup?" modal :style="{ width: '30rem' }">
-      <div class="confirm-content"><i class="pi pi-exclamation-triangle"></i><div><p>Delete {{ deleteFileName }} from the configured local backup folder?</p><p class="text-muted">This only removes the server-side backup file.</p></div></div>
+    <Dialog v-model:visible="deleteDialogVisible" :header="t('adminSettings.fullBackupSection.deleteDialog.header')" modal :style="{ width: '30rem' }">
+      <div class="confirm-content"><i class="pi pi-exclamation-triangle"></i><div><p>{{ t('adminSettings.fullBackupSection.deleteDialog.message', { fileName: deleteFileName }) }}</p><p class="text-muted">{{ t('adminSettings.fullBackupSection.deleteDialog.note') }}</p></div></div>
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" text @click="deleteDialogVisible = false" />
-        <Button label="Delete" icon="pi pi-trash" severity="danger" :loading="deleting" @click="deleteBackup" />
+        <Button :label="t('common.cancel')" icon="pi pi-times" text @click="deleteDialogVisible = false" />
+        <Button :label="t('adminSettings.fullBackupSection.deleteDialog.delete')" icon="pi pi-trash" severity="danger" :loading="deleting" @click="deleteBackup" />
       </template>
     </Dialog>
   </section>
@@ -171,6 +171,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
@@ -189,6 +190,7 @@ import { showDemoReadOnlyToast } from '@/utils/demoMode'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 
+const { t } = useI18n()
 const adminService = useAdminStore()
 const props = defineProps({ adminReadOnly: { type: Boolean, default: false } })
 const toast = useToast()
@@ -213,7 +215,10 @@ const backupStatus = ref(null)
 const statusPoller = ref(null)
 const restoreStatusPending = ref(false)
 const backupConfig = ref({ scheduledEnabled: false, scheduledCron: '0 0 3 * * ?', localPath: '/data/geopulse-backups', retentionCount: 7, operationTimeoutMinutes: 120, healthMaxAgeDays: 2, healthAppriseEnabled: false, healthAppriseRoutingMode: 'URLS', healthAppriseDestination: '', healthAppriseConfigKey: '', healthAppriseTag: '' })
-const appriseRoutingOptions = [{ label: 'Destination URLs', value: 'URLS' }, { label: 'Config Key and Tag', value: 'KEY_TAG' }]
+const appriseRoutingOptions = computed(() => [
+  { label: t('adminSettings.fullBackupSection.scheduledSection.appriseRoutingOptions.destinationUrls'), value: 'URLS' },
+  { label: t('adminSettings.fullBackupSection.scheduledSection.appriseRoutingOptions.configKeyAndTag'), value: 'KEY_TAG' }
+])
 
 const RESTORE_TERMINAL_STATES = new Set(['PREPARATION_FAILED', 'ACTIVATION_RETRYABLE', 'ACTIVATION_FAILED', 'COMPLETED', 'DISCARDED'])
 const operationRunning = computed(() => backupStatus.value?.backupRunning || backupStatus.value?.restoreRunning || restoring.value || runningNow.value || fullDownloading.value)
@@ -221,20 +226,20 @@ const restoreProgressInDialog = computed(() => restoreDialogVisible.value && (re
 const restoreStarting = computed(() => restoring.value && restoreStatusPending.value)
 const restorePreparationFailed = computed(() => backupStatus.value?.state === 'PREPARATION_FAILED')
 const restoreTerminal = computed(() => RESTORE_TERMINAL_STATES.has(backupStatus.value?.state))
-const restoreFailureMessage = computed(() => backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || 'Restore preparation failed.')
+const restoreFailureMessage = computed(() => backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || t('adminSettings.fullBackupSection.restorePreparationFailedFallback'))
 const showBackupProgress = computed(() => backupStatus.value?.backupRunning || (backupStatus.value?.restoreRunning && !restoreDialogVisible.value) || restorePreparationFailed.value || ['completed', 'failed'].includes(backupStatus.value?.status))
 const backupProgressValue = computed(() => Math.max(0, Math.min(100, backupStatus.value?.progressPercent ?? 0)))
 const backupProgressTitle = computed(() => {
-  if (restoreStarting.value || backupStatus.value?.restoreRunning) return 'Restore in progress'
-  if (restorePreparationFailed.value) return 'Restore preparation failed'
-  if (backupStatus.value?.backupRunning) return 'Backup in progress'
-  if (backupStatus.value?.status === 'completed') return 'Last backup operation completed'
-  if (backupStatus.value?.status === 'failed') return 'Last backup operation failed'
-  return 'Backup status'
+  if (restoreStarting.value || backupStatus.value?.restoreRunning) return t('adminSettings.fullBackupSection.progress.restoreInProgress')
+  if (restorePreparationFailed.value) return t('adminSettings.fullBackupSection.progress.restorePreparationFailed')
+  if (backupStatus.value?.backupRunning) return t('adminSettings.fullBackupSection.progress.backupInProgress')
+  if (backupStatus.value?.status === 'completed') return t('adminSettings.fullBackupSection.progress.lastBackupCompleted')
+  if (backupStatus.value?.status === 'failed') return t('adminSettings.fullBackupSection.progress.lastBackupFailed')
+  return t('adminSettings.fullBackupSection.progress.backupStatus')
 })
 const backupProgressMessage = computed(() => {
-  if (restoreStarting.value) return 'Restoration is being prepared in the background. GeoPulse remains available until activation.'
-  return backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || backupStatus.value?.phase || 'Waiting for status'
+  if (restoreStarting.value) return t('adminSettings.fullBackupSection.progress.restorePreparingMessage')
+  return backupStatus.value?.error || formatMessageDescriptor(backupStatus.value?.message) || backupStatus.value?.phase || t('adminSettings.fullBackupSection.progress.waitingForStatus')
 })
 
 const onFullFileSelect = (event) => { selectedFullFile.value = event.files?.[0] || null }
@@ -265,10 +270,10 @@ const stopBackupStatusPolling = async (refresh = true) => {
 }
 const loadBackupFiles = async () => {
   loadingFiles.value = true
-  try { backupFiles.value = await adminService.getBackupFiles() } catch (error) { showError('Load Failed', error, 'Failed to load local backups') } finally { loadingFiles.value = false }
+  try { backupFiles.value = await adminService.getBackupFiles() } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.loadFilesFailed'), error, t('adminSettings.fullBackupSection.toasts.loadFilesFailedFallback')) } finally { loadingFiles.value = false }
 }
 const loadBackupConfig = async () => {
-  try { backupConfig.value = { ...backupConfig.value, ...await adminService.getBackupConfig() } } catch (error) { showError('Load Failed', error, 'Failed to load backup settings') }
+  try { backupConfig.value = { ...backupConfig.value, ...await adminService.getBackupConfig() } } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.loadFilesFailed'), error, t('adminSettings.fullBackupSection.toasts.loadConfigFailedFallback')) }
 }
 
 const downloadFullBackup = async () => {
@@ -277,8 +282,8 @@ const downloadFullBackup = async () => {
   startBackupStatusPolling()
   try {
     await adminService.downloadFullBackup()
-    toast.add({ severity: 'success', summary: 'Download Started', detail: 'Full backup download has started.', life: 3000 })
-  } catch (error) { showError('Download Failed', error, 'Failed to download full backup') } finally { fullDownloading.value = false; await stopBackupStatusPolling() }
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.downloadStarted'), detail: t('adminSettings.fullBackupSection.toasts.downloadStartedDetail'), life: 3000 })
+  } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadFailedFallback')) } finally { fullDownloading.value = false; await stopBackupStatusPolling() }
 }
 const runBackupNow = async () => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
@@ -286,25 +291,25 @@ const runBackupNow = async () => {
   startBackupStatusPolling()
   try {
     const result = await adminService.runFullBackupNow()
-    toast.add({ severity: 'success', summary: 'Backup Complete', detail: `Created ${result.fileName}`, life: 5000 })
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.backupComplete'), detail: t('adminSettings.fullBackupSection.toasts.backupCompleteDetail', { fileName: result.fileName }), life: 5000 })
     await loadBackupFiles()
-  } catch (error) { showError('Backup Failed', error, 'Failed to run backup') } finally { runningNow.value = false; await stopBackupStatusPolling() }
+  } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.backupFailed'), error, t('adminSettings.fullBackupSection.toasts.backupFailedFallback')) } finally { runningNow.value = false; await stopBackupStatusPolling() }
 }
 const saveBackupConfig = async () => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
   const newPasswordLength = backupPassword.value.length
-  if (backupPassword.value !== backupPasswordConfirmation.value) return showError('Save Failed', new Error('Backup passwords do not match'), '')
-  if (newPasswordLength > 0 && (newPasswordLength < 12 || newPasswordLength > 1024)) return showError('Save Failed', new Error('New backup password must contain 12–1024 characters'), '')
+  if (backupPassword.value !== backupPasswordConfirmation.value) return showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), new Error(t('adminSettings.fullBackupSection.toasts.passwordsDoNotMatch')), '')
+  if (newPasswordLength > 0 && (newPasswordLength < 12 || newPasswordLength > 1024)) return showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), new Error(t('adminSettings.fullBackupSection.toasts.passwordLengthError')), '')
   savingConfig.value = true
   try {
     backupConfig.value = await adminService.updateBackupConfig({ ...backupConfig.value, password: backupPassword.value || undefined })
     backupPassword.value = ''; backupPasswordConfirmation.value = ''
-    toast.add({ severity: 'success', summary: 'Settings Saved', detail: 'Backup settings updated.', life: 3000 })
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.settingsSaved'), detail: t('adminSettings.fullBackupSection.toasts.settingsSavedDetail'), life: 3000 })
     await loadBackupFiles()
-  } catch (error) { showError('Save Failed', error, 'Failed to save backup settings') } finally { savingConfig.value = false }
+  } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.saveFailed'), error, t('adminSettings.fullBackupSection.toasts.saveConfigFailedFallback')) } finally { savingConfig.value = false }
 }
 const downloadLocalBackup = async (fileName) => {
-  try { await adminService.downloadLocalBackup(fileName) } catch (error) { showError('Download Failed', error, 'Failed to download local backup') }
+  try { await adminService.downloadLocalBackup(fileName) } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.downloadFailed'), error, t('adminSettings.fullBackupSection.toasts.downloadLocalFailedFallback')) }
 }
 const openDeleteDialog = (fileName) => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
@@ -315,9 +320,9 @@ const deleteBackup = async () => {
   deleting.value = true
   try {
     await adminService.deleteLocalBackup(deleteFileName.value)
-    toast.add({ severity: 'success', summary: 'Backup Deleted', detail: `Deleted ${deleteFileName.value}`, life: 4000 })
+    toast.add({ severity: 'success', summary: t('adminSettings.fullBackupSection.toasts.backupDeleted'), detail: t('adminSettings.fullBackupSection.toasts.backupDeletedDetail', { fileName: deleteFileName.value }), life: 4000 })
     deleteDialogVisible.value = false; deleteFileName.value = ''; await loadBackupFiles()
-  } catch (error) { showError('Delete Failed', error, 'Failed to delete backup') } finally { deleting.value = false }
+  } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.deleteFailed'), error, t('adminSettings.fullBackupSection.toasts.deleteFailedFallback')) } finally { deleting.value = false }
 }
 const openRestoreLocalDialog = (fileName) => {
   if (props.adminReadOnly) return showDemoReadOnlyToast(toast)
@@ -328,7 +333,7 @@ const openRestoreUploadDialog = () => {
   restoreSource.value = 'upload'; restoreDialogVisible.value = true
 }
 const restoreFullBackup = async () => {
-  if (!restorePassword.value || restorePassword.value.length > 1024) return showError('Restore Failed', new Error('Restore password must contain 1–1024 characters'), '')
+  if (!restorePassword.value || restorePassword.value.length > 1024) return showError(t('adminSettings.fullBackupSection.toasts.restoreFailed'), new Error(t('adminSettings.fullBackupSection.toasts.restorePasswordLengthError')), '')
   restoring.value = true
   restoreStatusPending.value = true
   backupStatus.value = {
@@ -338,7 +343,7 @@ const restoreFullBackup = async () => {
     restoreRunning: true,
     progressPercent: 0,
     fileName: restoreSource.value === 'local' ? restoreLocalFileName.value : selectedFullFile.value?.name,
-    message: 'Restoration is being prepared in the background. GeoPulse remains available until activation.'
+    message: t('adminSettings.fullBackupSection.progress.restorePreparingMessage')
   }
   startBackupStatusPolling()
   try {
@@ -346,22 +351,22 @@ const restoreFullBackup = async () => {
       ? adminService.restoreLocalFullBackup(restoreLocalFileName.value, restorePassword.value)
       : adminService.restoreUploadedFullBackup(selectedFullFile.value, restorePassword.value))
     restoreDialogVisible.value = false; selectedFullFile.value = null; fullFileUpload.value?.clear?.(); restorePassword.value = ''
-    applyMaintenanceStatus({ state: 'PREPARING', blocked: false, warning: true, message: 'Restoration is being prepared in the background. GeoPulse remains available, but data and changes newer than this backup will be replaced when restoration activates.' })
+    applyMaintenanceStatus({ state: 'PREPARING', blocked: false, warning: true, message: t('admin.restoreMaintenanceScreen.restorationPreparingMessage') })
     await refreshMaintenance()
   } catch (error) {
     restoreDialogVisible.value = false
     restoreStatusPending.value = false
     await stopBackupStatusPolling()
-    showError('Restore Failed', error, 'Failed to restore full backup')
+    showError(t('adminSettings.fullBackupSection.toasts.restoreFailed'), error, t('adminSettings.fullBackupSection.toasts.restoreFailedFallback'))
   } finally { restoring.value = false }
 }
 const retryActivation = async () => {
   restoring.value = true
-  try { await adminService.retryPreparedRestore(); await refreshMaintenance() } catch (error) { showError('Activation Retry Failed', error, 'Failed to retry activation') } finally { restoring.value = false }
+  try { await adminService.retryPreparedRestore(); await refreshMaintenance() } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.activationRetryFailed'), error, t('adminSettings.fullBackupSection.toasts.activationRetryFailedFallback')) } finally { restoring.value = false }
 }
 const discardPreparedRestore = async () => {
   deleting.value = true
-  try { await adminService.discardPreparedRestore(); await Promise.all([loadBackupStatus(), refreshMaintenance()]) } catch (error) { showError('Discard Failed', error, 'Failed to discard prepared restore') } finally { deleting.value = false }
+  try { await adminService.discardPreparedRestore(); await Promise.all([loadBackupStatus(), refreshMaintenance()]) } catch (error) { showError(t('adminSettings.fullBackupSection.toasts.discardFailed'), error, t('adminSettings.fullBackupSection.toasts.discardFailedFallback')) } finally { deleting.value = false }
 }
 const formatBytes = (bytes = 0) => {
   if (!bytes) return '0 B'

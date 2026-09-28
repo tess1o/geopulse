@@ -2,7 +2,7 @@
   <div class="digest-trends">
     <h3 class="trends-title">
       <i class="pi pi-chart-line"></i>
-      Activity Trends
+      {{ t('analytics.digest.trends.title') }}
     </h3>
 
     <div v-if="hasChartData" class="chart-container">
@@ -16,13 +16,14 @@
 
     <div class="no-trends-placeholder" v-else>
       <i class="pi pi-chart-line"></i>
-      <p>No activity trends for this period.</p>
+      <p>{{ t('analytics.digest.trends.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import BarChart from '@/components/charts/BarChart.vue'
 import {
   convertKilometersToDisplayUnit,
@@ -31,25 +32,29 @@ import {
 } from '@/utils/calculationsHelpers'
 import { buildMergedChartAxis, getChartPointKey } from '@/utils/chartAxisHelpers'
 
-// Trip type display configuration with distinct colors
-const tripTypeConfig = {
-  WALK: { label: 'Walk', color: 'success' },      // Green
-  RUNNING: { label: 'Running', color: 'contrast' }, // Purple/Contrast
-  BICYCLE: { label: 'Bicycle', color: 'warning' }, // Orange/Yellow
-  CAR: { label: 'Car', color: 'primary' },        // Blue
-  MOTORCYCLE: { label: 'Motorcycle', color: 'info' },
-  PUBLIC_TRANSPORT: { label: 'Public Transportation', color: 'secondary' },
-  TRAIN: { label: 'Train', color: 'secondary' },  // Gray
-  FLIGHT: { label: 'Flight', color: 'danger' },   // Red
-  BOAT: { label: 'Boat', color: 'info' }          // Cyan
-}
+const { t } = useI18n()
+
+// Trip type display configuration with distinct colors -- labels resolve through the shared
+// `movementTypes.*` catalog (same enum values used by trip reconstruction/profile) rather than
+// duplicating English text here.
+const tripTypeConfig = computed(() => ({
+  WALK: { label: t('movementTypes.WALK'), color: 'success' },
+  RUNNING: { label: t('movementTypes.RUNNING'), color: 'contrast' },
+  BICYCLE: { label: t('movementTypes.BICYCLE'), color: 'warning' },
+  CAR: { label: t('movementTypes.CAR'), color: 'primary' },
+  MOTORCYCLE: { label: t('movementTypes.MOTORCYCLE'), color: 'info' },
+  PUBLIC_TRANSPORT: { label: t('movementTypes.PUBLIC_TRANSPORT'), color: 'secondary' },
+  TRAIN: { label: t('movementTypes.TRAIN'), color: 'secondary' },
+  FLIGHT: { label: t('movementTypes.FLIGHT'), color: 'danger' },
+  BOAT: { label: t('movementTypes.BOAT'), color: 'info' }
+}))
 
 // Y-axis title based on unit system and view mode
 const yAxisTitle = computed(() => {
   const unitLabel = getDistanceUnitLabel()
   return props.viewMode === 'monthly'
-    ? `Weekly Distance (${unitLabel})`
-    : `Monthly Distance (${unitLabel})`
+    ? t('analytics.digest.trends.weeklyDistance', { unit: unitLabel })
+    : t('analytics.digest.trends.monthlyDistance', { unit: unitLabel })
 })
 
 const props = defineProps({
@@ -106,7 +111,7 @@ const chartDatasets = computed(() => {
     const alignedData = alignDataWithKeys(chartData, chartData.data)
 
     // Get configuration for this trip type
-    const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
+    const config = tripTypeConfig.value[tripType] || { label: tripType, color: 'secondary' }
 
     datasets.push({
       label: `${config.label}`,

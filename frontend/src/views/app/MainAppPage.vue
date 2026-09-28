@@ -9,9 +9,9 @@
           <!-- Share button - only show on Timeline page -->
           <Button
             v-if="isTimelinePage"
-            label="Share"
-            aria-label="Share timeline"
-            title="Share timeline"
+            :label="t('ui.mainApp.shareLabel')"
+            :aria-label="t('ui.mainApp.shareAria')"
+            :title="t('ui.mainApp.shareAria')"
             icon="pi pi-share-alt"
             @click="showShareDialog"
             outlined
@@ -19,10 +19,10 @@
           />
           <Button
             v-if="isTimelinePage"
-            v-tooltip.bottom="'Generate GPS points from manual stays and trips. Existing GPS points are preserved.'"
-            label="Add Missing Timeline Data"
-            aria-label="Add missing timeline data"
-            title="Add missing timeline data"
+            v-tooltip.bottom="t('ui.mainApp.reconstructTooltip')"
+            :label="t('ui.mainApp.reconstructLabel')"
+            :aria-label="t('ui.mainApp.reconstructAria')"
+            :title="t('ui.mainApp.reconstructAria')"
             icon="pi pi-map"
             @click="requestTimelineReconstruction"
             outlined
@@ -49,6 +49,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed, provide, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
@@ -66,6 +67,7 @@ import { useAuthStore } from '@/stores/auth'
 import { readCachedUserProfile } from '@/utils/userProfileCache'
 
 // Composables
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const timezone = useTimezone()
@@ -82,22 +84,22 @@ const shareDialogVisible = ref(false)
 const timelineReconstructionRequestToken = ref(0)
 const isUpdatingUrl = ref(false)
 
-const tabItems = ref([
+const tabItems = computed(() => [
   {
-    label: 'Timeline',
+    label: t('nav.items.timeline'),
     icon: 'pi pi-calendar',
     to: '/app/timeline',
     class: 'timeline-tab',
     'data-tour': 'timeline-tab'
   },
   {
-    label: 'Timeline Reports',
+    label: t('ui.mainApp.timelineReportsTab'),
     icon: 'pi pi-table',
     to: '/app/timeline-reports',
     class: 'data-tables-tab'
   },
   {
-    label: 'Dashboard',
+    label: t('nav.items.dashboard'),
     icon: 'pi pi-home',
     to: '/app/dashboard',
     class: 'dashboard-tab'

@@ -6,7 +6,7 @@
         <div class="import-form">
           <!-- Import Format Selection -->
           <div class="form-section">
-            <h3 class="form-section-title">Import Format</h3>
+            <h3 class="form-section-title">{{ t('data.importTab.formatSectionTitle') }}</h3>
             <div class="format-options">
               <div
                   v-for="format in importFormatOptions"
@@ -33,7 +33,7 @@
 
           <!-- File Upload -->
           <div class="form-section">
-            <h3 class="form-section-title">Select Import File</h3>
+            <h3 class="form-section-title">{{ t('data.importTab.selectFileTitle') }}</h3>
             <div class="file-upload-container">
               <FileUpload
                   ref="fileUpload"
@@ -41,24 +41,24 @@
                   :accept="getCurrentFormatConfig().acceptedFormats"
                   @select="onFileSelect"
                   @clear="onFileClear"
-                  chooseLabel="Choose Import File"
+                  :chooseLabel="t('data.importTab.chooseFile')"
                   class="file-uploader"
                   :auto="false"
                   :disabled="readOnly"
               />
             </div>
             <small class="upload-note">
-              {{ readOnly ? 'File upload is disabled in demo mode.' : getUploadNote() }}
+              {{ readOnly ? t('data.importTab.uploadDisabledDemo') : getUploadNote() }}
             </small>
           </div>
 
           <!-- CSV Format Documentation (shown when CSV is selected, before file upload) -->
           <div v-if="importFormat === 'csv'" class="csv-format-docs">
-            <h4 class="csv-docs-title">CSV Format Specification</h4>
+            <h4 class="csv-docs-title">{{ t('data.importTab.csvSpecTitle') }}</h4>
 
             <div class="csv-download-template">
               <Button
-                label="Download CSV Template"
+                :label="t('data.importTab.downloadCsvTemplate')"
                 icon="pi pi-download"
                 size="small"
                 outlined
@@ -69,28 +69,28 @@
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Required Fields</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.requiredFieldsTitle') }}</h5>
               <ul class="csv-field-list">
-                <li><strong>timestamp</strong>: ISO-8601 format (e.g., 2024-01-15T10:30:00Z)</li>
-                <li><strong>latitude</strong>: Decimal degrees, -90 to 90</li>
-                <li><strong>longitude</strong>: Decimal degrees, -180 to 180</li>
+                <li><strong>timestamp</strong>: {{ t('data.importTab.requiredFields.timestamp') }}</li>
+                <li><strong>latitude</strong>: {{ t('data.importTab.requiredFields.latitude') }}</li>
+                <li><strong>longitude</strong>: {{ t('data.importTab.requiredFields.longitude') }}</li>
               </ul>
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Optional Fields</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.optionalFieldsTitle') }}</h5>
               <ul class="csv-field-list">
-                <li><strong>accuracy</strong>: GPS accuracy in meters</li>
-                <li><strong>velocity</strong>: Speed in km/h</li>
-                <li><strong>altitude</strong>: Altitude in meters</li>
-                <li><strong>battery</strong>: Battery percentage (0-100)</li>
-                <li><strong>device_id</strong>: Device identifier (text)</li>
-                <li><strong>source_type</strong>: Data source (CSV, OWNTRACKS, GPX, GEOJSON, etc.)</li>
+                <li><strong>accuracy</strong>: {{ t('data.importTab.optionalFields.accuracy') }}</li>
+                <li><strong>velocity</strong>: {{ t('data.importTab.optionalFields.velocity') }}</li>
+                <li><strong>altitude</strong>: {{ t('data.importTab.optionalFields.altitude') }}</li>
+                <li><strong>battery</strong>: {{ t('data.importTab.optionalFields.battery') }}</li>
+                <li><strong>device_id</strong>: {{ t('data.importTab.optionalFields.deviceId') }}</li>
+                <li><strong>source_type</strong>: {{ t('data.importTab.optionalFields.sourceType') }}</li>
               </ul>
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Example CSV</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.exampleCsvTitle') }}</h5>
               <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
 2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
 2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
@@ -98,27 +98,27 @@
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Format Rules</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.importTab.formatRulesTitle') }}</h5>
               <ul class="csv-field-list">
-                <li>UTF-8 encoding required</li>
-                <li>Header row required (case-sensitive)</li>
-                <li>Empty optional fields: leave blank (e.g., ,,)</li>
-                <li>Decimal separator: period (.)</li>
-                <li>Timestamps must be UTC (ending with Z)</li>
+                <li>{{ t('data.importTab.formatRules.utf8') }}</li>
+                <li>{{ t('data.importTab.formatRules.header') }}</li>
+                <li>{{ t('data.importTab.formatRules.emptyOptional') }}</li>
+                <li>{{ t('data.importTab.formatRules.decimalSeparator') }}</li>
+                <li>{{ t('data.importTab.formatRules.timestampsUtc') }}</li>
               </ul>
             </div>
           </div>
 
           <!-- Import Options -->
           <div v-if="selectedFile" class="form-section">
-            <h3 class="form-section-title">Import Options</h3>
+            <h3 class="form-section-title">{{ t('data.importTab.importOptionsTitle') }}</h3>
 
             <div class="import-options">
               <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
                 <div class="option-group-header">
-                  <label class="option-label">Data types to import:</label>
+                  <label class="option-label">{{ t('data.importTab.dataTypesToImport') }}</label>
                   <Button
-                      :label="importOptions.dataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
+                      :label="importOptions.dataTypes.length === availableDataTypes.length ? t('data.importTab.deselectAll') : t('data.importTab.selectAll')"
                       outlined
                       size="small"
                       :disabled="readOnly"
@@ -128,7 +128,7 @@
                 </div>
                 <div class="timeline-info">
                   <i class="pi pi-info-circle"></i>
-                  <span><strong>Timeline Data:</strong> Will be automatically regenerated from your GPS data after import</span>
+                  <span><strong>{{ t('data.importTab.timelineDataLabel') }}</strong> {{ t('data.importTab.timelineDataNote') }}</span>
                 </div>
                 <div class="import-data-types">
                   <div
@@ -170,7 +170,7 @@
                       :disabled="readOnly"
                   />
                   <label for="dateFilter" class="option-label">
-                    Import only data within date range
+                    {{ t('data.importTab.importOnlyWithinRange') }}
                   </label>
                 </div>
               </div>
@@ -184,41 +184,39 @@
                       :disabled="readOnly"
                   />
                   <label for="clearDataBeforeImport" class="option-label">
-                    Replace existing data in time range
+                    {{ t('data.importTab.replaceExistingData') }}
                   </label>
                 </div>
                 <div class="option-description">
                   <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--gp-primary-500);"></i>
-                  When enabled, existing data in the time range being imported will be deleted before importing new
-                  data. This ensures clean data replacement without duplicates.
+                  {{ t('data.importTab.replaceExistingDataDescription') }}
                 </div>
                 <div v-if="clearDataBeforeImport" class="warning-message">
                   <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
-                  <strong>Warning:</strong> This will permanently delete existing data in the import time range. Make
-                  sure you have backups if needed.
+                  <strong>{{ t('data.importTab.replaceWarningLabel') }}</strong> {{ t('data.importTab.replaceWarningText') }}
                 </div>
               </div>
 
               <div v-if="enableDateFilter" class="date-filter-controls">
                 <div class="date-control">
-                  <label for="importStartDate" class="date-label">Start Date</label>
+                  <label for="importStartDate" class="date-label">{{ t('data.importTab.startDateLabel') }}</label>
                   <Calendar
                       id="importStartDate"
                       v-model="importStartDate"
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                      placeholder="Select start date"
+                      :placeholder="t('data.importTab.startDatePlaceholder')"
                       showIcon
                       :disabled="readOnly"
                       class="date-picker"
                   />
                 </div>
                 <div class="date-control">
-                  <label for="importEndDate" class="date-label">End Date</label>
+                  <label for="importEndDate" class="date-label">{{ t('data.importTab.endDateLabel') }}</label>
                   <Calendar
                       id="importEndDate"
                       v-model="importEndDate"
                       :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                      placeholder="Select end date"
+                      :placeholder="t('data.importTab.endDatePlaceholder')"
                       showIcon
                       :disabled="readOnly"
                       class="date-picker"
@@ -231,7 +229,7 @@
           <!-- Import Actions -->
           <div class="form-actions">
             <Button
-                label="Start Import"
+                :label="t('data.importTab.startImport')"
                 icon="pi pi-upload"
                 @click="startImport"
                 :loading="isImporting || hasActiveImportJob"
@@ -240,10 +238,10 @@
             />
             <div class="import-info">
               <small v-if="readOnly" class="demo-disabled-note">
-                Import is disabled in demo mode. Uploading data would change the shared demo dataset.
+                {{ t('data.importTab.demoDisabledNote') }}
               </small>
               <small class="import-note">
-                Import process may take several minutes depending on file size.
+                {{ t('data.importTab.importDurationNote') }}
               </small>
             </div>
           </div>
@@ -256,23 +254,23 @@
       <template #content>
         <div class="upload-status">
           <div class="upload-header">
-            <h3 class="upload-title">Uploading File</h3>
-            <Tag value="Uploading" severity="info" icon="pi pi-spin pi-spinner"/>
+            <h3 class="upload-title">{{ t('data.importTab.uploadingFileTitle') }}</h3>
+            <Tag :value="t('data.importTab.uploading')" severity="info" icon="pi pi-spin pi-spinner"/>
           </div>
 
           <div class="upload-details">
             <div class="upload-detail">
-              <span class="detail-label">File:</span>
-              <span class="detail-value">{{ selectedFile?.name || 'Unknown' }}</span>
+              <span class="detail-label">{{ t('data.importTab.fileLabel') }}</span>
+              <span class="detail-value">{{ selectedFile?.name || t('data.importTab.unknownFile') }}</span>
             </div>
 
             <div class="upload-detail" v-if="selectedFile">
-              <span class="detail-label">Size:</span>
+              <span class="detail-label">{{ t('data.importTab.sizeLabel') }}</span>
               <span class="detail-value">{{ getFileSizeDisplay(selectedFile.size) }}</span>
             </div>
 
             <div class="upload-detail">
-              <span class="detail-label">Upload Progress:</span>
+              <span class="detail-label">{{ t('data.importTab.uploadProgressLabel') }}</span>
               <div class="detail-value">
                 <ProgressBar :value="uploadProgress" class="upload-progress-bar"/>
                 <div class="progress-info">
@@ -285,7 +283,7 @@
 
           <div class="upload-info-message">
             <i class="pi pi-info-circle"></i>
-            <span>Large files may take several minutes to upload depending on your network speed.</span>
+            <span>{{ t('data.importTab.largeFileNote') }}</span>
           </div>
         </div>
       </template>
@@ -296,7 +294,7 @@
       <template #content>
         <div class="job-status">
           <div class="job-header">
-            <h3 class="job-title">Current Import Job</h3>
+            <h3 class="job-title">{{ t('data.importTab.currentJobTitle') }}</h3>
             <Tag
                 :value="getStatusDisplayInfo(currentImportJob.status).label"
                 :severity="getStatusDisplayInfo(currentImportJob.status).severity"
@@ -306,19 +304,19 @@
 
           <div class="job-details">
             <div class="job-detail">
-              <span class="detail-label">File:</span>
+              <span class="detail-label">{{ t('data.importTab.fileLabel') }}</span>
               <span class="detail-value">{{ currentImportJob.uploadedFileName }}</span>
             </div>
 
             <div class="job-detail" v-if="currentImportJob.importedDataTypes">
-              <span class="detail-label">Data Types:</span>
+              <span class="detail-label">{{ t('data.importTab.dataTypesLabel') }}</span>
               <span class="detail-value">
                 {{ currentImportJob.importedDataTypes?.map(getDataTypeDisplayName).join(', ') }}
               </span>
             </div>
 
             <div class="job-detail" v-if="currentImportJob.progress !== undefined">
-              <span class="detail-label">Progress:</span>
+              <span class="detail-label">{{ t('data.importTab.progressLabel') }}</span>
               <div class="detail-value">
                 <ProgressBar :value="currentImportJob.progress" class="job-progress"/>
                 <div class="progress-info">
@@ -332,7 +330,7 @@
             <div v-if="currentImportJob.timelineJobId && currentImportJob.status === 'processing' && currentImportJob.progress >= 70"
                  class="timeline-progress-container">
               <div class="timeline-progress-header">
-                <h4 class="timeline-progress-title">Timeline Generation</h4>
+                <h4 class="timeline-progress-title">{{ t('data.importTab.timelineGenerationTitle') }}</h4>
                 <span v-if="showTimelineSubProgress" class="timeline-progress-percentage">
                   {{ timelineJobProgress.progressPercentage }}%
                 </span>
@@ -355,7 +353,7 @@
                 </div>
                 <div v-else class="timeline-current-step">
                   <i class="pi pi-sync pi-spin" style="font-size: 0.875rem; margin-right: 0.5rem;"></i>
-                  <span>Initializing timeline generation...</span>
+                  <span>{{ t('data.importTab.initializingTimeline') }}</span>
                 </div>
 
                 <div v-if="timelineKeyMetric" class="timeline-key-metric">
@@ -365,7 +363,7 @@
               </div>
 
               <Button
-                  label="View Detailed Progress"
+                  :label="t('data.importTab.viewDetailedProgress')"
                   icon="pi pi-external-link"
                   severity="info"
                   outlined
@@ -377,27 +375,23 @@
 
             <div v-if="currentImportJob.importSummary && currentImportJob.status === 'completed'"
                  class="import-summary">
-              <h4 class="summary-title">Import Summary</h4>
+              <h4 class="summary-title">{{ t('data.importTab.importSummaryTitle') }}</h4>
               <div class="summary-items">
                 <div v-if="currentImportJob.importSummary.rawGpsPoints" class="summary-item">
                   <i class="pi pi-map-marker"></i>
-                  <span>{{ currentImportJob.importSummary.rawGpsPoints.toLocaleString() }} GPS points</span>
+                  <span>{{ t('data.importTab.summaryGpsPoints', { count: currentImportJob.importSummary.rawGpsPoints.toLocaleString() }) }}</span>
                 </div>
                 <div v-if="currentImportJob.importSummary.timelineItems" class="summary-item">
                   <i class="pi pi-clock"></i>
-                  <span>{{
-                      currentImportJob.importSummary.timelineItems.toLocaleString()
-                    }} timeline items</span>
+                  <span>{{ t('data.importTab.summaryTimelineItems', { count: currentImportJob.importSummary.timelineItems.toLocaleString() }) }}</span>
                 </div>
                 <div v-if="currentImportJob.importSummary.favoriteLocations" class="summary-item">
                   <i class="pi pi-heart"></i>
-                  <span>{{ currentImportJob.importSummary.favoriteLocations.toLocaleString() }} favorite locations</span>
+                  <span>{{ t('data.importTab.summaryFavoriteLocations', { count: currentImportJob.importSummary.favoriteLocations.toLocaleString() }) }}</span>
                 </div>
                 <div v-if="currentImportJob.importSummary.locationSources" class="summary-item">
                   <i class="pi pi-mobile"></i>
-                  <span>{{
-                      currentImportJob.importSummary.locationSources.toLocaleString()
-                    }} location sources</span>
+                  <span>{{ t('data.importTab.summaryLocationSources', { count: currentImportJob.importSummary.locationSources.toLocaleString() }) }}</span>
                 </div>
               </div>
             </div>
@@ -411,9 +405,9 @@
       <template #content>
         <div class="import-history">
           <div class="history-header">
-            <h3 class="history-title">Import History</h3>
+            <h3 class="history-title">{{ t('data.importTab.importHistoryTitle') }}</h3>
             <Button
-                label="Refresh"
+                :label="t('data.importTab.refresh')"
                 icon="pi pi-refresh"
                 outlined
                 size="small"
@@ -423,7 +417,7 @@
 
           <div v-if="importJobs.length === 0" class="empty-state">
             <i class="pi pi-file-import empty-icon"></i>
-            <p class="empty-text">No import jobs found</p>
+            <p class="empty-text">{{ t('data.importTab.noImportJobs') }}</p>
           </div>
 
           <div v-else class="import-list">
@@ -463,6 +457,7 @@
 
 <script setup>
 import {ref, computed, watch, onMounted, onUnmounted} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {storeToRefs} from 'pinia'
 import {useRouter} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
@@ -473,6 +468,7 @@ import {showDemoModeToast} from '@/utils/demoMode'
 import {formatApiErrorDetail, normalizeApiError} from '@/utils/apiErrorDetail'
 import {formatMessageDescriptor} from '@/utils/messageDescriptor'
 
+const { t } = useI18n()
 const router = useRouter()
 const timezone = useTimezone()
 const toast = useToast()
@@ -539,138 +535,73 @@ const importOptions = ref({
 })
 
 // Data types configuration
-const availableDataTypes = ref([
-  {
-    key: 'rawgps',
-    label: 'Raw GPS Data',
-    description: 'All your location points with timestamps and accuracy',
-    icon: 'pi pi-map-marker'
-  },
-  {
-    key: 'favorites',
-    label: 'Favorite Locations',
-    description: 'Your saved favorite places and areas',
-    icon: 'pi pi-heart'
-  },
-  {
-    key: 'reversegeocodinglocation',
-    label: 'Reverse Geocoding Data',
-    description: 'Address information and place names for your locations',
-    icon: 'pi pi-map'
-  },
-  {
-    key: 'locationsources',
-    label: 'Location Sources',
-    description: 'Your configured GPS tracking apps and endpoints',
-    icon: 'pi pi-mobile'
-  },
-  {
-    key: 'userinfo',
-    label: 'User Information',
-    description: 'Your profile and preferences (excludes sensitive data)',
-    icon: 'pi pi-user'
-  },
-  {
-    key: 'timelinelabels',
-    label: 'Timeline Labels',
-    description: 'Timeline labels and their date ranges',
-    icon: 'pi pi-tags'
-  },
-  {
-    key: 'timelineoverrides',
-    label: 'Timeline Overrides',
-    description: 'Manual trip type and data gap corrections',
-    icon: 'pi pi-pencil'
-  },
-  {
-    key: 'tripworkspace',
-    label: 'Trip Plans',
-    description: 'Trips, plans, notes, and collaborators',
-    icon: 'pi pi-briefcase'
-  },
-  {
-    key: 'notificationtemplates',
-    label: 'Notification Templates',
-    description: 'Templates used by geofence notifications',
-    icon: 'pi pi-bell'
-  },
-  {
-    key: 'geofencing',
-    label: 'Geofences',
-    description: 'Geofence rules and monitored subjects',
-    icon: 'pi pi-map-marker'
-  },
-  {
-    key: 'notes',
-    label: 'Timeline Notes',
-    description: 'GeoPulse notes attached to timeline places and dates',
-    icon: 'pi pi-file-edit'
-  },
-  {
-    key: 'weathersamples',
-    label: 'Weather Samples',
-    description: 'Fetched weather observations in the selected range',
-    icon: 'pi pi-cloud'
-  },
-  {
-    key: 'mapmatching',
-    label: 'Map Matching',
-    description: 'Restores completed matched route cache for timeline trips',
-    icon: 'pi pi-directions'
-  }
+const availableDataTypes = computed(() => [
+  { key: 'rawgps', label: t('data.dataTypes.rawgps.label'), description: t('data.dataTypes.rawgps.description'), icon: 'pi pi-map-marker' },
+  { key: 'favorites', label: t('data.dataTypes.favorites.label'), description: t('data.dataTypes.favorites.description'), icon: 'pi pi-heart' },
+  { key: 'reversegeocodinglocation', label: t('data.dataTypes.reversegeocodinglocation.label'), description: t('data.dataTypes.reversegeocodinglocation.description'), icon: 'pi pi-map' },
+  { key: 'locationsources', label: t('data.dataTypes.locationsources.label'), description: t('data.dataTypes.locationsources.description'), icon: 'pi pi-mobile' },
+  { key: 'userinfo', label: t('data.dataTypes.userinfo.label'), description: t('data.dataTypes.userinfo.description'), icon: 'pi pi-user' },
+  { key: 'timelinelabels', label: t('data.dataTypes.timelinelabels.label'), description: t('data.dataTypes.timelinelabels.description'), icon: 'pi pi-tags' },
+  { key: 'timelineoverrides', label: t('data.dataTypes.timelineoverrides.label'), description: t('data.dataTypes.timelineoverrides.description'), icon: 'pi pi-pencil' },
+  { key: 'tripworkspace', label: t('data.dataTypes.tripworkspace.label'), description: t('data.dataTypes.tripworkspace.description'), icon: 'pi pi-briefcase' },
+  { key: 'notificationtemplates', label: t('data.dataTypes.notificationtemplates.label'), description: t('data.dataTypes.notificationtemplates.description'), icon: 'pi pi-bell' },
+  { key: 'geofencing', label: t('data.dataTypes.geofencing.label'), description: t('data.dataTypes.geofencing.description'), icon: 'pi pi-map-marker' },
+  { key: 'notes', label: t('data.dataTypes.notes.label'), description: t('data.dataTypes.notes.description'), icon: 'pi pi-file-edit' },
+  { key: 'weathersamples', label: t('data.dataTypes.weathersamples.label'), description: t('data.dataTypes.weathersamples.description'), icon: 'pi pi-cloud' },
+  { key: 'mapmatching', label: t('data.dataTypes.mapmatching.label'), description: t('data.dataTypes.mapmatchingImportDescription'), icon: 'pi pi-directions' }
 ])
 
 // Import format options - extensible for future formats
-const importFormatOptions = ref([
+const importFormatOptions = computed(() => [
   {
-    label: 'GeoPulse',
+    label: t('data.importTab.formats.geopulse.label'),
     value: 'geopulse',
-    description: 'Import from GeoPulse file',
+    description: t('data.importTab.formats.geopulse.description'),
     fileExtensions: ['.zip'],
     acceptedFormats: '.zip',
     uploadFunction: 'uploadImportFile',
     supportsDataTypeSelection: true
   },
   {
-    label: 'OwnTracks',
+    label: t('data.importTab.formats.owntracks.label'),
     value: 'owntracks',
-    description: 'Import from OwnTracks file',
+    description: t('data.importTab.formats.owntracks.description'),
     fileExtensions: ['.json'],
     acceptedFormats: '.json',
     uploadFunction: 'uploadOwnTracksImportFile',
     supportsDataTypeSelection: false
   },
   {
-    label: 'Google Timeline',
+    label: t('data.importTab.formats.googleTimeline.label'),
     value: 'google-timeline',
-    description: 'Import from Google Timeline/Takeout JSON files',
+    description: t('data.importTab.formats.googleTimeline.description'),
     fileExtensions: ['.json'],
     acceptedFormats: '.json',
     uploadFunction: 'uploadGoogleTimelineImportFile',
     supportsDataTypeSelection: false
   },
   {
-    label: 'GPX',
+    label: t('data.importTab.formats.gpx.label'),
     value: 'gpx',
-    description: 'Import from GPX track/route files or ZIP archives containing multiple GPX files',
+    description: t('data.importTab.formats.gpx.description'),
     fileExtensions: ['.gpx', '.zip'],
     acceptedFormats: '.gpx,.zip',
     uploadFunction: 'uploadGpxImportFile',
     supportsDataTypeSelection: false
   },
   {
-    label: 'GeoJSON',
+    label: t('data.importTab.formats.geojson.label'),
     value: 'geojson',
-    description: 'Import from GeoJSON file (Point or LineString features)',
+    description: t('data.importTab.formats.geojson.description'),
     fileExtensions: ['.json', '.geojson'],
     acceptedFormats: '.json,.geojson',
     uploadFunction: 'uploadGeoJsonImportFile',
     supportsDataTypeSelection: false
   },
   {
-    label: 'CSV',
+    label: t('data.importTab.formats.csv.label'),
     value: 'csv',
-    description: 'Import from CSV file',
+    description: t('data.importTab.formats.csv.description'),
     fileExtensions: ['.csv'],
     acceptedFormats: '.csv',
     uploadFunction: 'uploadCsvImportFile',
@@ -747,8 +678,8 @@ const startImport = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Import Started',
-      detail: 'Your import job has been created and is being processed',
+      summary: t('data.importTab.importStartedSummary'),
+      detail: t('data.importTab.importStartedDetail'),
       life: 5000
     })
 
@@ -765,20 +696,20 @@ const startImport = async () => {
   } catch (error) {
     console.error('Import error:', error)
 
-    const problem = normalizeApiError(error, 'Failed to start import job')
+    const problem = normalizeApiError(error, t('data.importTab.importFailedFallback'))
     const errorMessage = formatApiErrorDetail(problem)
 
     if (problem.code === 'IMPORT_ACTIVE_JOB_CONFLICT') {
       toast.add({
         severity: 'warn',
-        summary: 'Import in Progress',
+        summary: t('data.importTab.importInProgressSummary'),
         detail: errorMessage,
         life: 5000
       })
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Import Failed',
+        summary: t('data.importTab.importFailedSummary'),
         detail: errorMessage,
         life: 5000
       })
@@ -793,8 +724,8 @@ const refreshImportJobs = async () => {
     console.error('Error refreshing import jobs:', error)
     toast.add({
       severity: 'error',
-      summary: 'Refresh Failed',
-      detail: 'Failed to refresh import jobs',
+      summary: t('data.importTab.refreshFailedSummary'),
+      detail: t('data.importTab.refreshFailedFallback'),
       life: 5000
     })
   }
@@ -814,16 +745,16 @@ const downloadCsvTemplate = async () => {
     await exportImportStore.downloadCsvTemplate()
     toast.add({
       severity: 'success',
-      summary: 'Template Downloaded',
-      detail: 'CSV template has been downloaded successfully',
+      summary: t('data.importTab.templateDownloadedSummary'),
+      detail: t('data.importTab.templateDownloadedDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Error downloading CSV template:', error)
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Failed to download CSV template',
+      summary: t('data.importTab.templateDownloadFailedSummary'),
+      detail: t('data.importTab.templateDownloadFailedFallback'),
       life: 3000
     })
   }
@@ -848,7 +779,7 @@ const toggleAllImportDataTypes = () => {
 }
 
 const showDemoDisabledToast = () => {
-  showDemoModeToast(toast, 'Import is disabled in demo mode.')
+  showDemoModeToast(toast, t('data.importTab.demoToast'))
 }
 
 // Helper methods to get current format configuration
@@ -859,33 +790,33 @@ const getCurrentFormatConfig = () => {
 const getUploadNote = () => {
   const config = getCurrentFormatConfig()
   const extensions = config.fileExtensions.join(', ')
-  return `Only ${config.label} files (${extensions}) are supported`
+  return t('data.importTab.onlyFormatFilesSupported', { label: config.label, extensions })
 }
 
 const getFormatInfoMessage = () => {
   const messages = {
-    'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
-    'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.',
-    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline. You can import a single GPX file or a ZIP archive containing multiple GPX files.',
-    'geojson': 'GeoJSON import will add GPS location data from GeoJSON Point and LineString features to your GeoPulse timeline.',
-    'csv': 'CSV import will add GPS location data from a structured CSV file to your GeoPulse timeline. Use the CSV template below to prepare your data.'
+    'owntracks': t('data.importTab.formatInfoMessages.owntracks'),
+    'google-timeline': t('data.importTab.formatInfoMessages.googleTimeline'),
+    'gpx': t('data.importTab.formatInfoMessages.gpx'),
+    'geojson': t('data.importTab.formatInfoMessages.geojson'),
+    'csv': t('data.importTab.formatInfoMessages.csv')
   }
-  return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
+  return messages[importFormat.value] || t('data.importTab.formatInfoMessages.fallback', { label: getCurrentFormatConfig().label })
 }
 
 const getUploadPhaseDescription = () => {
   const progress = uploadProgress.value || 0
 
   if (progress < 10) {
-    return 'Starting upload...'
+    return t('data.importTab.uploadPhase.starting')
   } else if (progress < 50) {
-    return 'Uploading file to server...'
+    return t('data.importTab.uploadPhase.uploading')
   } else if (progress < 90) {
-    return 'Upload in progress...'
+    return t('data.importTab.uploadPhase.inProgress')
   } else if (progress < 100) {
-    return 'Finalizing upload...'
+    return t('data.importTab.uploadPhase.finalizing')
   } else {
-    return 'Processing file...'
+    return t('data.importTab.uploadPhase.processing')
   }
 }
 
@@ -901,17 +832,18 @@ const getProgressPhaseDescription = (job) => {
   const progress = job.progress || 0
 
   if (job.status === 'validating') {
-    return 'Validating file format...'
+    return t('data.importTab.progressPhase.validating')
   }
 
   if (job.status === 'processing') {
     if (progress < 25) {
-      return 'Parsing import data...'
+      return t('data.importTab.progressPhase.parsing')
     } else if (progress < 95) {
-      const mode = clearDataBeforeImport.value ? 'bulk inserting' : 'merging with existing data'
-      return `Importing GPS points (${mode})...`
+      return clearDataBeforeImport.value
+        ? t('data.importTab.progressPhase.importingBulk')
+        : t('data.importTab.progressPhase.importingMerge')
     } else {
-      return 'Generating timeline...'
+      return t('data.importTab.progressPhase.generatingTimeline')
     }
   }
 
@@ -940,7 +872,7 @@ const isTimelineCompleteForImport = computed(() =>
 )
 const timelineDisplayStep = computed(() => {
   if (isCoverageRecalculationPhase.value) {
-    return 'Timeline generation completed'
+    return t('data.importTab.timelineGenerationCompleted')
   }
   return timelineJobProgress.value?.currentStep || ''
 })
@@ -987,7 +919,10 @@ const timelineKeyMetric = computed(() => {
   if (details.gpsPointsLoaded !== undefined && details.totalGpsPoints) {
     return {
       icon: 'pi-map-marker',
-      text: `${details.gpsPointsLoaded.toLocaleString()} / ${details.totalGpsPoints.toLocaleString()} GPS points loaded`
+      text: t('data.importTab.gpsPointsLoaded', {
+        loaded: details.gpsPointsLoaded.toLocaleString(),
+        total: details.totalGpsPoints.toLocaleString()
+      })
     }
   }
 
@@ -995,10 +930,10 @@ const timelineKeyMetric = computed(() => {
   if (details.totalLocations !== undefined) {
     const resolved = details.totalResolved || 0
     const pending = details.externalPending || 0
-    const pendingText = pending > 0 ? ` (${pending} pending)` : ''
+    const pendingText = pending > 0 ? t('data.importTab.pendingSuffix', { count: pending }) : ''
     return {
       icon: 'pi-globe',
-      text: `${resolved} / ${details.totalLocations} locations geocoded${pendingText}`
+      text: t('data.importTab.locationsGeocoded', { resolved, total: details.totalLocations, pending: pendingText })
     }
   }
 
@@ -1010,8 +945,8 @@ watch(() => currentImportJob.value?.status, (newStatus, oldStatus) => {
   if (oldStatus && oldStatus !== 'completed' && newStatus === 'completed') {
     toast.add({
       severity: 'success',
-      summary: 'Import Completed',
-      detail: 'Your data has been successfully imported!',
+      summary: t('data.importTab.importCompletedSummary'),
+      detail: t('data.importTab.importCompletedDetail'),
       life: 5000
     })
   }

@@ -1,8 +1,8 @@
 <template>
   <AppLayout variant="default">
-    <PageContainer 
-      title="GPS Data" 
-      subtitle="Technical information about your GPS tracking data"
+    <PageContainer
+      :title="t('technicalData.page.title')"
+      :subtitle="t('technicalData.page.subtitle')"
       :loading="isLoading"
       variant="fullwidth"
     >
@@ -14,12 +14,12 @@
           severity="info"
           class="selection-badge"
         >
-          <span class="selection-text">{{ selectedRows.length }} selected</span>
+          <span class="selection-text">{{ t('technicalData.page.actions.selected', { count: selectedRows.length }) }}</span>
         </Badge>
 
         <Button
           v-if="selectedRows.length > 0"
-          label="Delete Selected"
+          :label="t('technicalData.page.actions.deleteSelected')"
           icon="pi pi-trash"
           severity="danger"
           size="small"
@@ -36,7 +36,7 @@
         />
         <Button
           v-if="hasData"
-          label="Delete All Data"
+          :label="t('technicalData.page.actions.deleteAllData')"
           icon="pi pi-trash"
           severity="danger"
           outlined
@@ -61,37 +61,37 @@
           icon="pi pi-database"
           icon-color="primary"
           :value="summaryStats.totalPoints"
-          label="Total GPS Points"
+          :label="t('technicalData.page.stats.totalPoints')"
           :formatter="formatNumber"
         />
       </BaseCard>
-      
+
       <BaseCard variant="subtle" class="stat-card">
         <MetricItem
           icon="pi pi-calendar-plus"
           icon-color="secondary"
           :value="summaryStats.pointsToday"
-          label="Points Today"
+          :label="t('technicalData.page.stats.pointsToday')"
           :formatter="formatNumber"
         />
       </BaseCard>
-      
+
       <BaseCard variant="subtle" class="stat-card">
         <MetricItem
           icon="pi pi-play"
           icon-color="success"
           :value="summaryStats.firstPointDate"
-          label="First GPS Point"
+          :label="t('technicalData.page.stats.firstPoint')"
           :formatter="formatDate"
         />
       </BaseCard>
-      
+
       <BaseCard variant="subtle" class="stat-card">
         <MetricItem
           icon="pi pi-stop"
           icon-color="info"
           :value="summaryStats.lastPointDate"
-          label="Latest GPS Point"
+          :label="t('technicalData.page.stats.lastPoint')"
           :formatter="timezone.timeAgo"
         />
       </BaseCard>
@@ -100,11 +100,11 @@
     <!-- Date Filter -->
     <BaseCard class="filter-section">
       <div class="filter-header">
-        <h3 class="filter-title">Filters</h3>
+        <h3 class="filter-title">{{ t('technicalData.page.filters.title') }}</h3>
         <div class="filter-header-actions">
           <Button
             v-if="activeFilterCount > 0"
-            :label="`${activeFilterCount} active`"
+            :label="t('technicalData.page.filters.activeCount', { count: activeFilterCount })"
             severity="info"
             size="small"
             outlined
@@ -112,7 +112,7 @@
           />
           <Button
             v-if="hasActiveFilters"
-            label="Clear All"
+            :label="t('technicalData.page.filters.clearAll')"
             severity="secondary"
             size="small"
             text
@@ -120,7 +120,7 @@
           />
           <Button
             :icon="showAdvancedFilters ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-            :label="showAdvancedFilters ? 'Hide Advanced' : 'Show Advanced'"
+            :label="showAdvancedFilters ? t('technicalData.page.filters.hideAdvanced') : t('technicalData.page.filters.showAdvanced')"
             text
             size="small"
             @click="showAdvancedFilters = !showAdvancedFilters"
@@ -130,16 +130,16 @@
 
       <!-- Quick Date Presets -->
       <div class="quick-presets">
-        <Button label="Today" size="small" outlined @click="setToday" />
-        <Button label="Yesterday" size="small" outlined @click="setYesterday" />
-        <Button label="Last 7 Days" size="small" outlined @click="setLast7Days" />
-        <Button label="Last 30 Days" size="small" outlined @click="setLast30Days" />
+        <Button :label="t('technicalData.page.filters.today')" size="small" outlined @click="setToday" />
+        <Button :label="t('technicalData.page.filters.yesterday')" size="small" outlined @click="setYesterday" />
+        <Button :label="t('technicalData.page.filters.last7Days')" size="small" outlined @click="setLast7Days" />
+        <Button :label="t('technicalData.page.filters.last30Days')" size="small" outlined @click="setLast30Days" />
       </div>
 
       <div class="filter-controls">
         <div class="date-time-filter-group">
           <div class="date-time-field">
-            <label class="filter-label" for="gps-start-date-time-input">From</label>
+            <label class="filter-label" for="gps-start-date-time-input">{{ t('technicalData.page.filters.from') }}</label>
             <DatePicker
               input-id="gps-start-date-time-input"
               v-model="startDateTime"
@@ -148,12 +148,12 @@
               show-icon
               icon-display="input"
               :date-format="timezone.getPrimeVueDatePickerFormat()"
-              placeholder="Start date and time"
+              :placeholder="t('technicalData.page.filters.startPlaceholder')"
               class="date-picker date-time-picker"
             />
           </div>
           <div class="date-time-field">
-            <label class="filter-label" for="gps-end-date-time-input">To</label>
+            <label class="filter-label" for="gps-end-date-time-input">{{ t('technicalData.page.filters.to') }}</label>
             <DatePicker
               input-id="gps-end-date-time-input"
               v-model="endDateTime"
@@ -162,13 +162,13 @@
               show-icon
               icon-display="input"
               :date-format="timezone.getPrimeVueDatePickerFormat()"
-              placeholder="End date and time"
+              :placeholder="t('technicalData.page.filters.endPlaceholder')"
               class="date-picker date-time-picker"
             />
           </div>
         </div>
         <Button
-          label="Apply"
+          :label="t('technicalData.page.filters.apply')"
           icon="pi pi-check"
           size="small"
           :disabled="!canApplyDateFilter"
@@ -177,7 +177,7 @@
         />
         <Button
           v-if="hasDateFilter || hasDateFilterDraft"
-          label="Clear"
+          :label="t('technicalData.page.filters.clear')"
           severity="secondary"
           size="small"
           text
@@ -194,13 +194,13 @@
       <div v-if="showAdvancedFilters" class="advanced-filters">
         <div class="filter-row">
           <div class="filter-field">
-            <label class="filter-label">Source Types:</label>
+            <label class="filter-label">{{ t('technicalData.page.filters.sourceTypesLabel') }}</label>
             <MultiSelect
               v-model="filters.sourceTypes"
               :options="sourceTypeOptions"
               option-label="label"
               option-value="value"
-              placeholder="All Sources"
+              :placeholder="t('technicalData.page.filters.allSources')"
               display="chip"
               class="filter-input"
               :showToggleAll="false"
@@ -210,19 +210,19 @@
 
         <div class="filter-row">
           <div class="filter-field">
-            <label class="filter-label">Accuracy (meters):</label>
+            <label class="filter-label">{{ t('technicalData.page.filters.accuracyLabel') }}</label>
             <div class="range-inputs">
               <InputNumber
                 v-model="filters.accuracyMin"
-                placeholder="Min"
+                :placeholder="t('technicalData.page.filters.min')"
                 :min="0"
                 :max="10000"
                 class="range-input"
               />
-              <span class="range-separator">to</span>
+              <span class="range-separator">{{ t('technicalData.page.filters.rangeTo') }}</span>
               <InputNumber
                 v-model="filters.accuracyMax"
-                placeholder="Max"
+                :placeholder="t('technicalData.page.filters.max')"
                 :min="0"
                 :max="10000"
                 class="range-input"
@@ -231,19 +231,19 @@
           </div>
 
           <div class="filter-field">
-            <label class="filter-label">Speed (km/h):</label>
+            <label class="filter-label">{{ t('technicalData.page.filters.speedLabel') }}</label>
             <div class="range-inputs">
               <InputNumber
                 v-model="filters.speedMin"
-                placeholder="Min"
+                :placeholder="t('technicalData.page.filters.min')"
                 :min="0"
                 :max="500"
                 class="range-input"
               />
-              <span class="range-separator">to</span>
+              <span class="range-separator">{{ t('technicalData.page.filters.rangeTo') }}</span>
               <InputNumber
                 v-model="filters.speedMax"
-                placeholder="Max"
+                :placeholder="t('technicalData.page.filters.max')"
                 :min="0"
                 :max="500"
                 class="range-input"
@@ -257,25 +257,25 @@
       <div v-if="hasActiveFilters" class="active-filter-chips">
         <Chip
           v-if="hasDateFilter"
-          :label="`Date: ${formatDateRange(appliedStartDateTime, appliedEndDateTime)}`"
+          :label="t('technicalData.page.filters.dateChip', { range: formatDateRange(appliedStartDateTime, appliedEndDateTime) })"
           removable
           @remove="clearDateFilter"
         />
         <Chip
           v-if="filters.accuracyMin !== null || filters.accuracyMax !== null"
-          :label="`Accuracy: ${filters.accuracyMin || 0} - ${filters.accuracyMax || '∞'} m`"
+          :label="t('technicalData.page.filters.accuracyChip', { min: filters.accuracyMin || 0, max: filters.accuracyMax || '∞' })"
           removable
           @remove="filters.accuracyMin = null; filters.accuracyMax = null"
         />
         <Chip
           v-if="filters.speedMin !== null || filters.speedMax !== null"
-          :label="`Speed: ${filters.speedMin || 0} - ${filters.speedMax || '∞'} km/h`"
+          :label="t('technicalData.page.filters.speedChip', { min: filters.speedMin || 0, max: filters.speedMax || '∞' })"
           removable
           @remove="filters.speedMin = null; filters.speedMax = null"
         />
         <Chip
           v-if="filters.sourceTypes && filters.sourceTypes.length > 0"
-          :label="`Sources: ${filters.sourceTypes.length} selected`"
+          :label="t('technicalData.page.filters.sourcesChip', { count: filters.sourceTypes.length })"
           removable
           @remove="filters.sourceTypes = []"
         />
@@ -284,12 +284,12 @@
 
     <BaseCard class="filter-section telemetry-mapping-section">
       <div class="filter-header">
-        <h3 class="filter-title">Telemetry Mapping (Optional)</h3>
+        <h3 class="filter-title">{{ t('technicalData.page.telemetry.title') }}</h3>
         <div class="filter-header-actions">
-          <small class="text-muted">Global per source type for GPS Data and timeline popups.</small>
+          <small class="text-muted">{{ t('technicalData.page.telemetry.hint') }}</small>
           <Button
             :icon="showTelemetryMappingAdvanced ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
-            :label="showTelemetryMappingAdvanced ? 'Hide Mapping' : 'Show Mapping'"
+            :label="showTelemetryMappingAdvanced ? t('technicalData.page.telemetry.hideMapping') : t('technicalData.page.telemetry.showMapping')"
             text
             size="small"
             @click="showTelemetryMappingAdvanced = !showTelemetryMappingAdvanced"
@@ -300,7 +300,7 @@
       <div v-if="showTelemetryMappingAdvanced" class="advanced-filters telemetry-mapping-content">
         <div class="telemetry-mapping-controls">
           <div class="telemetry-mapping-select">
-            <label class="filter-label" for="telemetry-source-type">Source Type</label>
+            <label class="filter-label" for="telemetry-source-type">{{ t('technicalData.page.telemetry.sourceTypeLabel') }}</label>
             <Select
               id="telemetry-source-type"
               v-model="selectedTelemetrySourceType"
@@ -313,20 +313,20 @@
 
           <div class="telemetry-mapping-actions">
             <Button
-              label="Reset to Defaults"
+              :label="t('technicalData.page.telemetry.resetToDefaults')"
               icon="pi pi-refresh"
               text
               :loading="telemetryResetting"
               @click="resetTelemetryMapping"
             />
             <Button
-              label="Add Row"
+              :label="t('technicalData.page.telemetry.addRow')"
               icon="pi pi-plus"
               outlined
               @click="addTelemetryMappingRow"
             />
             <Button
-              label="Save Mapping"
+              :label="t('technicalData.page.telemetry.saveMapping')"
               icon="pi pi-save"
               :loading="telemetrySaving"
               @click="saveTelemetryMapping"
@@ -335,33 +335,33 @@
         </div>
 
         <div v-if="telemetryLoading" class="telemetry-loading">
-          Loading telemetry mapping...
+          {{ t('technicalData.page.telemetry.loading') }}
         </div>
 
         <div v-else class="telemetry-table-wrapper">
           <table class="telemetry-table">
             <thead>
             <tr>
-              <th>Key</th>
-              <th>Label</th>
-              <th>Type</th>
-              <th>Unit</th>
-              <th>GPS Data</th>
-              <th>Current Popup</th>
-              <th>Order</th>
+              <th>{{ t('technicalData.page.telemetry.columns.key') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.label') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.type') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.unit') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.gpsData') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.currentPopup') }}</th>
+              <th>{{ t('technicalData.page.telemetry.columns.order') }}</th>
               <th></th>
             </tr>
             </thead>
             <tbody>
             <tr v-if="telemetryMappingRows.length === 0">
-              <td colspan="8" class="telemetry-empty">No telemetry mappings configured.</td>
+              <td colspan="8" class="telemetry-empty">{{ t('technicalData.page.telemetry.empty') }}</td>
             </tr>
             <tr v-for="(entry, index) in telemetryMappingRows" :key="`${entry.key || 'new'}-${index}`">
               <td>
-                <InputText v-model="entry.key" placeholder="ext key" class="telemetry-input" />
+                <InputText v-model="entry.key" :placeholder="t('technicalData.page.telemetry.keyPlaceholder')" class="telemetry-input" />
               </td>
               <td>
-                <InputText v-model="entry.label" placeholder="Label" class="telemetry-input" />
+                <InputText v-model="entry.label" :placeholder="t('technicalData.page.telemetry.labelPlaceholder')" class="telemetry-input" />
               </td>
               <td>
                 <Select
@@ -373,7 +373,7 @@
                 />
               </td>
               <td>
-                <InputText v-model="entry.unit" placeholder="Unit" class="telemetry-input telemetry-unit" />
+                <InputText v-model="entry.unit" :placeholder="t('technicalData.page.telemetry.unitPlaceholder')" class="telemetry-input telemetry-unit" />
               </td>
               <td class="telemetry-check-cell">
                 <Checkbox v-model="entry.showInGpsData" binary />
@@ -404,16 +404,16 @@
             :key="`bool-${entry.key || index}`"
             class="telemetry-boolean-row"
           >
-            <div class="telemetry-boolean-title">{{ entry.label || entry.key || `Boolean ${index + 1}` }}</div>
+            <div class="telemetry-boolean-title">{{ entry.label || entry.key || t('technicalData.page.telemetry.booleanDefaultLabel', { index: index + 1 }) }}</div>
             <div class="telemetry-boolean-fields">
               <InputText
                 v-model="entry.trueValues"
-                placeholder="True values (e.g. 1,true,on)"
+                :placeholder="t('technicalData.page.telemetry.trueValuesPlaceholder')"
                 class="telemetry-input"
               />
               <InputText
                 v-model="entry.falseValues"
-                placeholder="False values (e.g. 0,false,off)"
+                :placeholder="t('technicalData.page.telemetry.falseValuesPlaceholder')"
                 class="telemetry-input"
               />
             </div>
@@ -461,29 +461,29 @@
         }"
       >
         <template #paginatorstart>
-          <span class="paginator-info">Page {{ currentPage + 1 }} of {{ totalPages.toLocaleString() }}</span>
+          <span class="paginator-info">{{ t('technicalData.page.table.pageOf', { current: currentPage + 1, total: totalPages.toLocaleString() }) }}</span>
         </template>
         <template #paginatorend>
-          <span class="paginator-info">{{ totalRecords.toLocaleString() }} total</span>
+          <span class="paginator-info">{{ t('technicalData.page.table.totalCount', { count: totalRecords.toLocaleString() }) }}</span>
         </template>
         <template #header>
           <div class="table-header">
             <div class="table-header-left">
-              <span class="table-title">GPS Points</span>
+              <span class="table-title">{{ t('technicalData.page.table.title') }}</span>
               <span class="table-subtitle">
                 <template v-if="totalRecords > 0">
-                  Showing {{ currentPage * pageSize + 1 }}-{{ Math.min((currentPage + 1) * pageSize, totalRecords) }} of {{ totalRecords.toLocaleString() }} points
+                  {{ t('technicalData.page.table.showing', { start: currentPage * pageSize + 1, end: Math.min((currentPage + 1) * pageSize, totalRecords), total: totalRecords.toLocaleString() }) }}
                   <span v-if="hasActiveFilters && summaryStats.filteredPoints" class="filtered-info">
-                    (filtered from {{ summaryStats.totalPoints.toLocaleString() }})
+                    ({{ t('technicalData.page.table.filteredFrom', { total: summaryStats.totalPoints.toLocaleString() }) }})
                   </span>
                 </template>
                 <template v-else>
-                  No points found
+                  {{ t('technicalData.page.table.noPointsFound') }}
                 </template>
               </span>
             </div>
             <div class="table-header-right">
-              <label class="page-size-label">Rows per page:</label>
+              <label class="page-size-label">{{ t('technicalData.page.table.rowsPerPage') }}</label>
               <Dropdown
                 v-model="pageSize"
                 :options="pageSizeOptions"
@@ -496,8 +496,8 @@
         <template #empty>
           <div class="empty-state">
             <i class="pi pi-map-marker empty-icon"></i>
-            <h3>No GPS Points Found</h3>
-            <p>No GPS tracking data available for the selected criteria.</p>
+            <h3>{{ t('technicalData.page.table.emptyTitle') }}</h3>
+            <p>{{ t('technicalData.page.table.emptyDescription') }}</p>
           </div>
         </template>
 
@@ -512,7 +512,7 @@
           </template>
         </Column>
 
-        <Column field="timestamp" header="Date" sortable class="timestamp-col">
+        <Column field="timestamp" :header="t('technicalData.page.table.columns.date')" sortable class="timestamp-col">
           <template #body="slotProps">
             <div class="timestamp-cell">
               <span class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</span>
@@ -521,14 +521,14 @@
           </template>
         </Column>
 
-        <Column header="Delta" class="delta-col" v-if="!isMobile">
+        <Column :header="t('technicalData.page.table.columns.delta')" class="delta-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.timeDeltaDisplay">{{ slotProps.data.timeDeltaDisplay }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column header="Location" class="coordinates-col">
+        <Column :header="t('technicalData.page.table.columns.location')" class="coordinates-col">
           <template #body="slotProps">
             <div class="coordinates-cell">
               <span class="coordinate-line">{{ slotProps.data.coordinates.lat.toFixed(6) }}</span>
@@ -538,35 +538,35 @@
           </template>
         </Column>
 
-        <Column field="velocity" sortable header="Speed" class="numeric-col speed-col">
+        <Column field="velocity" sortable :header="t('technicalData.page.table.columns.speed')" class="numeric-col speed-col">
           <template #body="slotProps">
             <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity >= 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="accuracy" sortable header="Accuracy" class="numeric-col accuracy-col" v-if="!isMobile">
+        <Column field="accuracy" sortable :header="t('technicalData.page.table.columns.accuracy')" class="numeric-col accuracy-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.accuracy">{{ formatDistance(slotProps.data.accuracy.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="altitude" header="Altitude" class="numeric-col altitude-col" v-if="!isMobile && !isTablet">
+        <Column field="altitude" :header="t('technicalData.page.table.columns.altitude')" class="numeric-col altitude-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.altitude">{{ formatDistance(Math.round(slotProps.data.altitude)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="battery" header="Battery" sortable class="numeric-col battery-col" v-if="!isMobile && !isTablet">
+        <Column field="battery" :header="t('technicalData.page.table.columns.battery')" sortable class="numeric-col battery-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.battery !== null && slotProps.data.battery >= 0">{{ Math.round(slotProps.data.battery) }}%</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column header="Telemetry" class="telemetry-col" v-if="!isMobile">
+        <Column :header="t('technicalData.page.table.columns.telemetry')" class="telemetry-col" v-if="!isMobile">
           <template #body="slotProps">
             <div
               v-if="slotProps.data.telemetryGpsData && slotProps.data.telemetryGpsData.length > 0"
@@ -585,35 +585,35 @@
           </template>
         </Column>
 
-        <Column field="sourceType" header="Source" class="source-col" v-if="!isMobile">
+        <Column field="sourceType" :header="t('technicalData.page.table.columns.source')" class="source-col" v-if="!isMobile">
           <template #body="slotProps">
-            <Tag 
-              :value="slotProps.data.sourceType || 'Unknown'" 
+            <Tag
+              :value="slotProps.data.sourceType || t('common.unknown')"
               :severity="getSourceSeverity(slotProps.data.sourceType)"
               class="source-tag"
             />
           </template>
         </Column>
 
-        <Column header="Actions" class="actions-col">
+        <Column :header="t('technicalData.page.table.columns.actions')" class="actions-col">
           <template #body="slotProps">
             <div class="actions-buttons">
-              <Button 
-                icon="pi pi-pencil" 
-                severity="secondary" 
+              <Button
+                icon="pi pi-pencil"
+                severity="secondary"
                 size="small"
                 text
                 @click="editGpsPoint(slotProps.data)"
-                v-tooltip.top="'Edit GPS Point'"
+                v-tooltip.top="t('technicalData.page.table.editTooltip')"
                 class="action-button edit-button"
               />
-              <Button 
-                icon="pi pi-trash" 
-                severity="danger" 
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
                 size="small"
                 text
                 @click="deleteGpsPoint(slotProps.data)"
-                v-tooltip.top="'Delete GPS Point'"
+                v-tooltip.top="t('technicalData.page.table.deleteTooltip')"
                 class="action-button delete-button"
               />
             </div>
@@ -624,21 +624,21 @@
       <div v-else class="mobile-gps-list-panel">
         <div class="table-header mobile-gps-header">
           <div class="table-header-left">
-            <span class="table-title">GPS Points</span>
+            <span class="table-title">{{ t('technicalData.page.table.title') }}</span>
             <span class="table-subtitle">
               <template v-if="totalRecords > 0">
-                Showing {{ currentPage * pageSize + 1 }}-{{ Math.min((currentPage + 1) * pageSize, totalRecords) }} of {{ totalRecords.toLocaleString() }} points
+                {{ t('technicalData.page.table.showing', { start: currentPage * pageSize + 1, end: Math.min((currentPage + 1) * pageSize, totalRecords), total: totalRecords.toLocaleString() }) }}
                 <span v-if="hasActiveFilters && summaryStats.filteredPoints" class="filtered-info">
-                  (filtered from {{ summaryStats.totalPoints.toLocaleString() }})
+                  ({{ t('technicalData.page.table.filteredFrom', { total: summaryStats.totalPoints.toLocaleString() }) }})
                 </span>
               </template>
               <template v-else>
-                No points found
+                {{ t('technicalData.page.table.noPointsFound') }}
               </template>
             </span>
           </div>
           <div class="table-header-right">
-            <label class="page-size-label">Rows:</label>
+            <label class="page-size-label">{{ t('technicalData.page.table.rowsShort') }}</label>
             <Dropdown
               v-model="pageSize"
               :options="pageSizeOptions"
@@ -654,13 +654,13 @@
               :disabled="gpsPointsWithDelta.length === 0"
               binary
               @change="toggleVisibleGpsRowsSelection"
-              aria-label="Select all GPS points on this page"
+              :aria-label="t('technicalData.page.mobile.selectAllAriaLabel')"
             />
-            <span>{{ allVisibleGpsRowsSelected ? 'Clear page' : 'Select page' }}</span>
+            <span>{{ allVisibleGpsRowsSelected ? t('technicalData.page.mobile.clearPage') : t('technicalData.page.mobile.selectPage') }}</span>
           </label>
 
           <div class="mobile-sort-control">
-            <label class="mobile-sort-label" for="mobile-gps-sort">Sort</label>
+            <label class="mobile-sort-label" for="mobile-gps-sort">{{ t('technicalData.page.mobile.sort') }}</label>
             <Dropdown
               input-id="mobile-gps-sort"
               v-model="sortField"
@@ -677,15 +677,15 @@
               size="small"
               class="mobile-sort-direction-button"
               @click="toggleMobileSortDirection"
-              v-tooltip.top="sortOrder === 1 ? 'Ascending' : 'Descending'"
-              :aria-label="sortOrder === 1 ? 'Sort ascending' : 'Sort descending'"
+              v-tooltip.top="sortOrder === 1 ? t('technicalData.page.mobile.ascending') : t('technicalData.page.mobile.descending')"
+              :aria-label="sortOrder === 1 ? t('technicalData.page.mobile.sortAscendingAriaLabel') : t('technicalData.page.mobile.sortDescendingAriaLabel')"
             />
           </div>
         </div>
 
         <div v-if="tableLoading" class="mobile-gps-loading">
           <i class="pi pi-spin pi-spinner"></i>
-          <span>Loading GPS points...</span>
+          <span>{{ t('technicalData.page.mobile.loading') }}</span>
         </div>
 
         <template v-else-if="gpsPointsWithDelta.length > 0">
@@ -701,7 +701,7 @@
                 @change="handleCheckboxChange($event, point)"
                 binary
                 class="mobile-gps-checkbox"
-                :aria-label="`Select GPS point from ${formatTimestamp(point.timestamp).date} ${formatTimestamp(point.timestamp).time}`"
+                :aria-label="t('technicalData.page.mobile.selectPointAriaLabel', { date: formatTimestamp(point.timestamp).date, time: formatTimestamp(point.timestamp).time })"
               />
               <div class="mobile-gps-main">
                 <div class="mobile-gps-primary">
@@ -743,10 +743,10 @@
                 size="small"
                 class="mobile-gps-actions-button"
                 @click="openMobileActionMenu($event, point)"
-                v-tooltip.left="'GPS point actions'"
+                v-tooltip.left="t('technicalData.page.mobile.actionsTooltip')"
                 aria-haspopup="true"
                 aria-controls="mobile-gps-action-menu"
-                :aria-label="`Actions for GPS point from ${formatTimestamp(point.timestamp).date} ${formatTimestamp(point.timestamp).time}`"
+                :aria-label="t('technicalData.page.mobile.actionsAriaLabel', { date: formatTimestamp(point.timestamp).date, time: formatTimestamp(point.timestamp).time })"
               />
             </div>
           </div>
@@ -760,18 +760,18 @@
             @page="onMobilePageChange"
           >
             <template #start>
-              <span class="paginator-info">Page {{ currentPage + 1 }} of {{ totalPages.toLocaleString() }}</span>
+              <span class="paginator-info">{{ t('technicalData.page.table.pageOf', { current: currentPage + 1, total: totalPages.toLocaleString() }) }}</span>
             </template>
             <template #end>
-              <span class="paginator-info">{{ totalRecords.toLocaleString() }} total</span>
+              <span class="paginator-info">{{ t('technicalData.page.table.totalCount', { count: totalRecords.toLocaleString() }) }}</span>
             </template>
           </Paginator>
         </template>
 
         <div v-else class="empty-state mobile-empty-state">
           <i class="pi pi-map-marker empty-icon"></i>
-          <h3>No GPS Points Found</h3>
-          <p>No GPS tracking data available for the selected criteria.</p>
+          <h3>{{ t('technicalData.page.table.emptyTitle') }}</h3>
+          <p>{{ t('technicalData.page.table.emptyDescription') }}</p>
         </div>
 
         <Menu
@@ -786,26 +786,26 @@
     <!-- Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="showDeleteDialog"
-      :header="'Delete GPS Point'"
+      :header="t('technicalData.page.dialogs.delete.header')"
       :modal="true"
       :style="{ width: '25rem' }"
     >
       <div class="confirm-dialog-content">
         <i class="pi pi-exclamation-triangle confirm-icon"></i>
-        <span>Are you sure you want to delete this GPS point? This action cannot be undone.</span>
+        <span>{{ t('technicalData.page.dialogs.delete.message') }}</span>
       </div>
       <template #footer>
-        <Button 
-          label="Cancel" 
-          severity="secondary" 
-          @click="showDeleteDialog = false" 
-          autofocus 
+        <Button
+          :label="t('common.cancel')"
+          severity="secondary"
+          @click="showDeleteDialog = false"
+          autofocus
           :disabled="deleteLoading"
         />
-        <Button 
-          label="Delete" 
-          severity="danger" 
-          @click="confirmDeleteGpsPoint" 
+        <Button
+          :label="t('technicalData.page.dialogs.delete.confirm')"
+          severity="danger"
+          @click="confirmDeleteGpsPoint"
           :loading="deleteLoading"
         />
       </template>
@@ -814,29 +814,28 @@
     <!-- Bulk Delete Confirmation Dialog -->
     <Dialog
       v-model:visible="showBulkDeleteDialog"
-      :header="'Delete Multiple GPS Points'"
+      :header="t('technicalData.page.dialogs.bulkDelete.header')"
       :modal="true"
       :style="{ width: '30rem' }"
     >
       <div class="confirm-dialog-content">
         <i class="pi pi-exclamation-triangle confirm-icon"></i>
         <span>
-          Are you sure you want to delete {{ selectedRows.length }} GPS point{{ selectedRows.length > 1 ? 's' : '' }}? 
-          This action cannot be undone.
+          {{ t('technicalData.page.dialogs.bulkDelete.message', { count: selectedRows.length }, selectedRows.length) }}
         </span>
       </div>
       <template #footer>
-        <Button 
-          label="Cancel" 
-          severity="secondary" 
-          @click="showBulkDeleteDialog = false" 
-          autofocus 
+        <Button
+          :label="t('common.cancel')"
+          severity="secondary"
+          @click="showBulkDeleteDialog = false"
+          autofocus
           :disabled="bulkDeleteLoading"
         />
-        <Button 
-          label="Delete All" 
-          severity="danger" 
-          @click="confirmBulkDelete" 
+        <Button
+          :label="t('technicalData.page.dialogs.bulkDelete.confirm')"
+          severity="danger"
+          @click="confirmBulkDelete"
           :loading="bulkDeleteLoading"
         />
       </template>
@@ -845,31 +844,39 @@
     <!-- Delete All GPS Data Confirmation Dialog -->
     <Dialog
       v-model:visible="showDeleteAllDialog"
-      header="Delete All GPS Data"
+      :header="t('technicalData.page.dialogs.deleteAll.header')"
       :modal="true"
       :style="{ width: '32rem' }"
     >
       <div class="confirm-dialog-content">
         <i class="pi pi-exclamation-triangle confirm-icon confirm-icon--large"></i>
         <div>
-          <p class="delete-all-warning-title">This will permanently delete:</p>
+          <p class="delete-all-warning-title">{{ t('technicalData.page.dialogs.deleteAll.warningTitle') }}</p>
           <ul class="delete-all-warning-list">
-            <li>All <strong>{{ summaryStats.totalPoints.toLocaleString() }}</strong> GPS points</li>
-            <li>All timeline stays, trips and data gaps</li>
+            <li>
+              <i18n-t keypath="technicalData.page.dialogs.deleteAll.allPoints" tag="span">
+                <template #count><strong>{{ summaryStats.totalPoints.toLocaleString() }}</strong></template>
+              </i18n-t>
+            </li>
+            <li>{{ t('technicalData.page.dialogs.deleteAll.timelineData') }}</li>
           </ul>
-          <p class="delete-all-warning-note">Your settings and favorite locations will <strong>not</strong> be affected. This action cannot be undone.</p>
+          <p class="delete-all-warning-note">
+            <i18n-t keypath="technicalData.page.dialogs.deleteAll.note" tag="span">
+              <template #not><strong>{{ t('technicalData.page.dialogs.deleteAll.notWord') }}</strong></template>
+            </i18n-t>
+          </p>
         </div>
       </div>
       <template #footer>
         <Button
-          label="Cancel"
+          :label="t('common.cancel')"
           severity="secondary"
           @click="showDeleteAllDialog = false"
           autofocus
           :disabled="deleteAllLoading"
         />
         <Button
-          label="Delete Everything"
+          :label="t('technicalData.page.dialogs.deleteAll.confirm')"
           severity="danger"
           @click="confirmDeleteAll"
           :loading="deleteAllLoading"
@@ -893,6 +900,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { useTechnicalDataStore } from '@/stores/technicalData'
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { useTimezone } from '@/composables/useTimezone'
@@ -900,6 +908,7 @@ import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
 const timezone = useTimezone()
+const { t } = useI18n()
 
 // Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -957,7 +966,10 @@ const filters = ref({
 })
 
 // Source type options for multi-select
-const sourceTypeOptions = ref([
+// Brand/format names (OwnTracks, GPSLogger, Overland, Traccar, Google Timeline, GPX, Dawarich,
+// Home Assistant, Colota, GeoJSON, CSV) are never translated - see locales/en/locationSources.js.
+// "Manual Reconstruction" is a real label, so the whole array is a computed to stay reactive to it.
+const sourceTypeOptions = computed(() => [
   { label: 'OwnTracks', value: 'OWNTRACKS' },
   { label: 'GPSLogger', value: 'GPSLOGGER' },
   { label: 'Overland', value: 'OVERLAND' },
@@ -969,15 +981,15 @@ const sourceTypeOptions = ref([
   { label: 'Colota', value: 'COLOTA' },
   { label: 'GeoJSON', value: 'GEOJSON' },
   { label: 'CSV', value: 'CSV' },
-  { label: 'Manual Reconstruction', value: 'MANUAL' }
+  { label: t('technicalData.page.filters.sourceOptions.manualReconstruction'), value: 'MANUAL' }
 ])
 
 // Page size options
 const pageSizeOptions = ref([25, 50, 100, 200, 500])
-const mobileSortOptions = [
-  { label: 'Date', value: 'timestamp' },
-  { label: 'Speed', value: 'velocity' }
-]
+const mobileSortOptions = computed(() => [
+  { label: t('technicalData.page.table.columns.date'), value: 'timestamp' },
+  { label: t('technicalData.page.table.columns.speed'), value: 'velocity' }
+])
 
 // Loading states
 const isLoading = ref(false)
@@ -1009,16 +1021,17 @@ const telemetryResetting = ref(false)
 const selectedTelemetrySourceType = ref('OWNTRACKS')
 const telemetryMappingRows = ref([])
 
+// Brand names (OwnTracks, GPSLogger) are never translated.
 const telemetrySourceTypeOptions = [
   { label: 'OwnTracks', value: 'OWNTRACKS' },
   { label: 'GPSLogger', value: 'GPSLOGGER' }
 ]
 
-const telemetryTypeOptions = [
-  { label: 'Boolean', value: 'boolean' },
-  { label: 'Number', value: 'number' },
-  { label: 'String', value: 'string' }
-]
+const telemetryTypeOptions = computed(() => [
+  { label: t('technicalData.page.telemetry.typeOptions.boolean'), value: 'boolean' },
+  { label: t('technicalData.page.telemetry.typeOptions.number'), value: 'number' },
+  { label: t('technicalData.page.telemetry.typeOptions.string'), value: 'string' }
+])
 
 // Computed properties
 const summaryStats = computed(() => technicalDataStore.summaryStats)
@@ -1040,7 +1053,7 @@ const hasCompleteDateFilterDraft = computed(() =>
 const dateFilterValidationMessage = computed(() => {
   if (!hasCompleteDateFilterDraft.value) return ''
   if (startDateTime.value.getTime() > endDateTime.value.getTime()) {
-    return 'From must be before To.'
+    return t('technicalData.page.filters.fromBeforeTo')
   }
   return ''
 })
@@ -1076,33 +1089,36 @@ const filteredRecordsText = computed(() => {
   const unfilteredTotal = summaryStats.value.totalPoints
 
   if (filtered === 0) {
-    return 'No points available for selected period'
+    return t('technicalData.page.filters.noPointsForPeriod')
   }
 
   // Show comparison: filtered count vs unfiltered total
   if (filtered < unfilteredTotal) {
-    return `Showing ${filtered.toLocaleString()} of ${unfilteredTotal.toLocaleString()} points`
+    return t('technicalData.page.filters.showingOfTotal', {
+      filtered: filtered.toLocaleString(),
+      total: unfilteredTotal.toLocaleString()
+    })
   }
 
-  return `Showing ${filtered.toLocaleString()} points`
+  return t('technicalData.page.filters.showingCount', { count: filtered.toLocaleString() })
 })
 
 const exportButtonLabel = computed(() => {
   // Priority 1: Manual selection (regardless of filters)
   if (selectedRows.value.length > 0) {
-    return `Export CSV (${selectedRows.value.length} selected)`
+    return t('technicalData.page.actions.exportCsvSelected', { count: selectedRows.value.length })
   }
 
   // Priority 2: Filters applied, no manual selection
   if (hasActiveFilters.value) {
     if (totalRecords.value === 0) {
-      return 'Export CSV (0 pts)'
+      return t('technicalData.page.actions.exportCsvZero')
     }
-    return `Export CSV (${totalRecords.value.toLocaleString()} pts)`
+    return t('technicalData.page.actions.exportCsvFiltered', { count: totalRecords.value.toLocaleString() })
   }
 
   // Priority 3: No filters and no manual selection
-  return 'Export CSV'
+  return t('technicalData.page.actions.exportCsv')
 })
 
 const totalPages = computed(() => {
@@ -1121,7 +1137,7 @@ const telemetryBooleanRows = computed(() =>
 
 const mobileActionMenuItems = computed(() => [
   {
-    label: 'Edit GPS Point',
+    label: t('technicalData.page.table.editTooltip'),
     icon: 'pi pi-pencil',
     command: () => {
       if (mobileActionPoint.value) {
@@ -1130,7 +1146,7 @@ const mobileActionMenuItems = computed(() => [
     }
   },
   {
-    label: 'Delete GPS Point',
+    label: t('technicalData.page.table.deleteTooltip'),
     icon: 'pi pi-trash',
     command: () => {
       if (mobileActionPoint.value) {
@@ -1336,8 +1352,8 @@ const loadTelemetryMapping = async (sourceType = selectedTelemetrySourceType.val
     telemetryMappingRows.value = []
     toast.add({
       severity: 'error',
-      summary: 'Telemetry Load Failed',
-      detail: formatApiErrorDetail(error, 'Failed to load telemetry mapping'),
+      summary: t('technicalData.page.toasts.telemetryLoadFailedSummary'),
+      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.telemetryLoadFailedFallback')),
       life: 5000
     })
   } finally {
@@ -1379,15 +1395,15 @@ const saveTelemetryMapping = async () => {
     telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
     toast.add({
       severity: 'success',
-      summary: 'Telemetry Saved',
-      detail: 'Telemetry mapping updated successfully',
+      summary: t('technicalData.page.toasts.telemetrySavedSummary'),
+      detail: t('technicalData.page.toasts.telemetrySavedDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Save Failed',
-      detail: formatApiErrorDetail(error, 'Failed to save telemetry mapping'),
+      summary: t('technicalData.page.toasts.saveFailedSummary'),
+      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.saveTelemetryFailedFallback')),
       life: 5000
     })
   } finally {
@@ -1402,15 +1418,15 @@ const resetTelemetryMapping = async () => {
     telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
     toast.add({
       severity: 'success',
-      summary: 'Telemetry Reset',
-      detail: 'Telemetry mapping reset to defaults',
+      summary: t('technicalData.page.toasts.telemetryResetSummary'),
+      detail: t('technicalData.page.toasts.telemetryResetDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Reset Failed',
-      detail: formatApiErrorDetail(error, 'Failed to reset telemetry mapping'),
+      summary: t('technicalData.page.toasts.resetFailedSummary'),
+      detail: formatApiErrorDetail(error, t('technicalData.page.toasts.resetTelemetryFailedFallback')),
       life: 5000
     })
   } finally {
@@ -1421,7 +1437,7 @@ const resetTelemetryMapping = async () => {
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
   isTablet.value = window.innerWidth >= 768 && window.innerWidth < 1024
-  if (isMobile.value && !mobileSortOptions.some(option => option.value === sortField.value)) {
+  if (isMobile.value && !mobileSortOptions.value.some(option => option.value === sortField.value)) {
     sortField.value = 'timestamp'
     sortOrder.value = -1
   }
@@ -1571,8 +1587,8 @@ const loadSummaryStats = async () => {
     console.error('Error loading summary stats:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load GPS data summary',
+      summary: t('common.error'),
+      detail: t('technicalData.page.toasts.summaryLoadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -1630,8 +1646,8 @@ const loadGPSPoints = async () => {
     console.error('Error loading GPS points:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load GPS points',
+      summary: t('common.error'),
+      detail: t('technicalData.page.toasts.pointsLoadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -1650,8 +1666,8 @@ const handleExportCSV = async () => {
 
       toast.add({
         severity: 'success',
-        summary: 'Export Started',
-        detail: `Exporting ${selectedRows.value.length} selected GPS points. Download will start shortly.`,
+        summary: t('technicalData.page.toasts.exportStartedSummary'),
+        detail: t('technicalData.page.toasts.exportSelectedDetail', { count: selectedRows.value.length }),
         life: 4000
       })
       return
@@ -1664,16 +1680,16 @@ const handleExportCSV = async () => {
     const recordCount = totalRecords.value || summaryStats.value.totalPoints
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: `Exporting ${recordCount.toLocaleString()} GPS points. Download will start shortly.`,
+      summary: t('technicalData.page.toasts.exportStartedSummary'),
+      detail: t('technicalData.page.toasts.exportAllDetail', { count: recordCount.toLocaleString() }),
       life: 4000
     })
   } catch (error) {
     console.error('Error exporting GPS points:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: 'Failed to export GPS data',
+      summary: t('technicalData.page.toasts.exportFailedSummary'),
+      detail: t('technicalData.page.toasts.exportFailedDetail'),
       life: 3000
     })
   } finally {
@@ -1700,13 +1716,13 @@ const buildDeleteSuccessDetail = (baseMessage, result) => {
 
   if (data.timelineJobId) {
     timelineJobUrl = router.resolve(`/app/timeline/jobs/${data.timelineJobId}`).href
-    details.push('Timeline regeneration started.')
+    details.push(t('technicalData.page.toasts.timelineRegenStarted'))
   } else if (data.timelineRegenerationScheduled) {
-    details.push('Timeline regeneration will run after the current timeline job finishes.')
+    details.push(t('technicalData.page.toasts.timelineRegenScheduled'))
   }
 
   if (data.coverageRebuildScheduled) {
-    details.push('Coverage rebuild scheduled.')
+    details.push(t('technicalData.page.toasts.coverageRebuildScheduled'))
   }
 
   return {
@@ -1722,29 +1738,29 @@ const confirmDeleteGpsPoint = async () => {
   
   try {
     const result = await technicalDataStore.deleteGpsPoint(selectedGpsPoint.value.id)
-    const successDetail = buildDeleteSuccessDetail('GPS point has been successfully deleted', result)
-    
+    const successDetail = buildDeleteSuccessDetail(t('technicalData.page.toasts.pointDeletedDetail'), result)
+
     toast.add({
       group: 'gps-delete',
       severity: 'success',
-      summary: 'GPS Point Deleted',
+      summary: t('technicalData.page.toasts.pointDeletedSummary'),
       detail: successDetail.detail,
       data: {
         timelineJobUrl: successDetail.timelineJobUrl
       },
       life: 10000
     })
-    
+
     // Refresh the data
     await loadGPSPoints()
     await loadSummaryStats()
-    
+
   } catch (error) {
     console.error('Error deleting GPS point:', error)
-    const errorMessage = formatApiErrorDetail(error, 'Failed to delete GPS point')
+    const errorMessage = formatApiErrorDetail(error, t('technicalData.page.toasts.deleteFailedFallback'))
     toast.add({
       severity: 'error',
-      summary: 'Delete Failed',
+      summary: t('technicalData.page.toasts.deleteFailedSummary'),
       detail: errorMessage,
       life: 5000
     })
@@ -1760,23 +1776,23 @@ const handleEditSave = async (updatedData) => {
   
   try {
     await technicalDataStore.updateGpsPoint(selectedGpsPoint.value.id, updatedData)
-    
+
     toast.add({
       severity: 'success',
-      summary: 'GPS Point Updated',
-      detail: 'GPS point has been successfully updated',
+      summary: t('technicalData.page.toasts.pointUpdatedSummary'),
+      detail: t('technicalData.page.toasts.pointUpdatedDetail'),
       life: 3000
     })
-    
+
     // Refresh the data
     await loadGPSPoints()
-    
+
   } catch (error) {
     console.error('Error updating GPS point:', error)
-    const errorMessage = formatApiErrorDetail(error, 'Failed to update GPS point')
+    const errorMessage = formatApiErrorDetail(error, t('technicalData.page.toasts.updateFailedFallback'))
     toast.add({
       severity: 'error',
-      summary: 'Update Failed',
+      summary: t('technicalData.page.toasts.updateFailedSummary'),
       detail: errorMessage,
       life: 5000
     })
@@ -1803,12 +1819,15 @@ const confirmBulkDelete = async () => {
 
     // Extract the correct count from the response
     const deletedCount = deleteData.deletedCount ?? pointIds.length
-    const successDetail = buildDeleteSuccessDetail(`Successfully deleted ${deletedCount} GPS point${deletedCount !== 1 ? 's' : ''}`, result)
+    const successDetail = buildDeleteSuccessDetail(
+      t('technicalData.page.toasts.bulkDeleteSuccessDetail', { count: deletedCount }, deletedCount),
+      result
+    )
 
     toast.add({
       group: 'gps-delete',
       severity: 'success',
-      summary: 'GPS Points Deleted',
+      summary: t('technicalData.page.toasts.pointsDeletedSummary'),
       detail: successDetail.detail,
       data: {
         timelineJobUrl: successDetail.timelineJobUrl
@@ -1824,10 +1843,10 @@ const confirmBulkDelete = async () => {
 
   } catch (error) {
     console.error('Error deleting GPS points:', error)
-    const errorMessage = formatApiErrorDetail(error, 'Failed to delete selected GPS points')
+    const errorMessage = formatApiErrorDetail(error, t('technicalData.page.toasts.bulkDeleteFailedFallback'))
     toast.add({
       severity: 'error',
-      summary: 'Bulk Delete Failed',
+      summary: t('technicalData.page.toasts.bulkDeleteFailedSummary'),
       detail: errorMessage,
       life: 5000
     })
@@ -1847,8 +1866,8 @@ const confirmDeleteAll = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'All Data Deleted',
-      detail: 'All GPS points and timeline data have been successfully deleted',
+      summary: t('technicalData.page.toasts.allDataDeletedSummary'),
+      detail: t('technicalData.page.toasts.allDataDeletedDetail'),
       life: 4000
     })
 
@@ -1860,10 +1879,10 @@ const confirmDeleteAll = async () => {
 
   } catch (error) {
     console.error('Error deleting all GPS data:', error)
-    const errorMessage = formatApiErrorDetail(error, 'Failed to delete all GPS data')
+    const errorMessage = formatApiErrorDetail(error, t('technicalData.page.toasts.deleteAllFailedFallback'))
     toast.add({
       severity: 'error',
-      summary: 'Delete Failed',
+      summary: t('technicalData.page.toasts.deleteFailedSummary'),
       detail: errorMessage,
       life: 5000
     })

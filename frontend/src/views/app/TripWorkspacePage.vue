@@ -19,7 +19,7 @@
           <Button
             v-if="isUnplannedTrip && isOwner"
             icon="pi pi-calendar-plus"
-            label="Set Trip Dates"
+            :label="t('trips.workspacePage.setTripDates')"
             class="gp-btn-primary"
             @click="openTripScheduling"
           />
@@ -42,22 +42,22 @@
             icon="pi pi-history"
             text
             rounded
-            aria-label="Reset to full trip range"
+            :aria-label="t('trips.workspacePage.resetToFullTripRange')"
             @click="resetToTripRange"
-            v-tooltip.bottom="'Reset to full trip range'"
+            v-tooltip.bottom="t('trips.workspacePage.resetToFullTripRange')"
           />
           <Button
             v-if="canReconstructTrip"
             icon="pi pi-map"
             outlined
-            label="Add Missing Trip Data"
+            :label="t('trips.workspacePage.addMissingTripData')"
             @click="openReconstructionDialog"
           />
           <Button
             v-if="isOwner"
             icon="pi pi-users"
             outlined
-            label="Collaborators"
+            :label="t('trips.workspacePage.collaborators')"
             @click="openCollaboratorsDialog"
           />
         </div>
@@ -73,7 +73,7 @@
 
       <template v-else>
         <Message v-if="isUnplannedTrip" severity="info" :closable="false" class="unplanned-trip-banner">
-          This trip is unplanned. Add planned stops now, then set trip dates to enable timeline, path, and analytics.
+          {{ t('trips.workspacePage.unplannedBanner') }}
         </Message>
         <Message v-if="showAccessModeBanner" severity="warn" :closable="false" class="trip-access-banner">
           {{ accessModeBannerText }}
@@ -97,8 +97,8 @@
           <TimelineSplitLayout
             ref="timelineSplitLayoutRef"
             class="workspace-timeline-split"
-            collapsed-label="Stops"
-            expanded-label="Stops"
+            :collapsed-label="t('trips.workspacePage.stopsLabel')"
+            :expanded-label="t('trips.workspacePage.stopsLabel')"
             handle-mobile-only
             @layout-resize="triggerWorkspaceMapResize"
           >
@@ -166,10 +166,10 @@
 
                     <ImmichLatestPhotosSection
                       v-if="showTripPhotosSection"
-                      title="Trip Photos"
+                      :title="t('trips.workspacePage.tripPhotosTitle')"
                       :search-params="tripImmichSearchParams"
                       :use-store-photos="true"
-                      empty-message="No Immich photos found for this trip range."
+                      :empty-message="t('trips.workspacePage.tripPhotosEmpty')"
                       @show-on-map="handleTripPhotoShowOnMap"
                     />
                   </div>
@@ -185,45 +185,45 @@
     <Dialog
       v-model:visible="showPlanItemDialog"
       modal
-      :header="editingPlanItemId ? 'Edit Plan Item' : 'Add Plan Item'"
+      :header="editingPlanItemId ? t('trips.workspacePage.planItemDialog.editHeader') : t('trips.workspacePage.planItemDialog.createHeader')"
       class="gp-dialog-xl plan-item-dialog"
       @hide="resetPlanItemForm"
     >
       <div class="plan-item-dialog-layout">
         <div class="plan-item-dialog-form">
           <div v-if="isResolvingPlanSuggestion">
-            <Message severity="info" :closable="false">Resolving place details...</Message>
+            <Message severity="info" :closable="false">{{ t('trips.workspacePage.planItemDialog.resolvingPlaceDetails') }}</Message>
           </div>
           <div v-if="planItemMapSourceHint">
             <Message severity="info" :closable="false">{{ planItemMapSourceHint }}</Message>
           </div>
 
           <div>
-            <label for="planTitle" class="field-label">Title *</label>
+            <label for="planTitle" class="field-label">{{ t('trips.workspacePage.planItemDialog.titleLabel') }}</label>
             <InputText
               id="planTitle"
               v-model="planItemForm.title"
               class="w-full"
-              placeholder="e.g., Sagrada Familia"
+              :placeholder="t('trips.workspacePage.planItemDialog.titlePlaceholder')"
               :class="{ 'p-invalid': planItemErrors.title }"
             />
             <small v-if="planItemErrors.title" class="p-error">{{ planItemErrors.title }}</small>
           </div>
 
           <div>
-            <label for="planNotes" class="field-label">Notes</label>
+            <label for="planNotes" class="field-label">{{ t('trips.workspacePage.planItemDialog.notesLabel') }}</label>
             <Textarea
               id="planNotes"
               v-model="planItemForm.notes"
               rows="3"
               class="w-full"
-              placeholder="Optional context..."
+              :placeholder="t('trips.workspacePage.planItemDialog.notesPlaceholder')"
             />
           </div>
 
           <div class="plan-item-dialog-row">
             <div>
-              <label for="planDate" class="field-label">Planned Day</label>
+              <label for="planDate" class="field-label">{{ t('trips.workspacePage.planItemDialog.plannedDayLabel') }}</label>
               <DatePicker
                 id="planDate"
                 v-model="planItemForm.plannedDay"
@@ -233,7 +233,7 @@
               />
             </div>
             <div>
-              <label for="planPriority" class="field-label">Priority</label>
+              <label for="planPriority" class="field-label">{{ t('trips.workspacePage.planItemDialog.priorityLabel') }}</label>
               <Select
                 id="planPriority"
                 v-model="planItemForm.priority"
@@ -247,7 +247,7 @@
 
           <div class="plan-item-dialog-row">
             <div>
-              <label for="planOrder" class="field-label">Order</label>
+              <label for="planOrder" class="field-label">{{ t('trips.workspacePage.planItemDialog.orderLabel') }}</label>
               <InputNumber
                 id="planOrder"
                 v-model="planItemForm.orderIndex"
@@ -257,12 +257,12 @@
               />
             </div>
             <div>
-              <label class="field-label">Coordinates</label>
+              <label class="field-label">{{ t('trips.workspacePage.planItemDialog.coordinatesLabel') }}</label>
               <div class="plan-item-coordinate-pill">
                 <span v-if="hasPlanItemCoordinates">
                   {{ Number(planItemForm.latitude).toFixed(5) }}, {{ Number(planItemForm.longitude).toFixed(5) }}
                 </span>
-                <span v-else>Not selected yet</span>
+                <span v-else>{{ t('trips.workspacePage.planItemDialog.notSelectedYet') }}</span>
               </div>
             </div>
 
@@ -276,13 +276,13 @@
 
         <div class="plan-item-dialog-map-pane">
           <div>
-            <label for="planLocationSearch" class="field-label">Search place</label>
+            <label for="planLocationSearch" class="field-label">{{ t('trips.workspacePage.planItemDialog.searchPlaceLabel') }}</label>
             <TripPlanLocationSearchInput
               input-id="planLocationSearch"
               ref="planLocationSearchRef"
               v-model="planItemLocationSearchQuery"
               :suggestions="planItemLocationSearchSuggestions"
-              placeholder="Search saved places or providers..."
+              :placeholder="t('trips.search.defaultPlaceholder')"
               :loading="isPlanItemLocationSearchLoading"
               :error="planItemLocationSearchError"
               class="plan-item-location-search"
@@ -307,15 +307,15 @@
           </div>
 
           <small class="plan-item-dialog-map-hint">
-            Search by place name or click the map to pin this stop.
+            {{ t('trips.workspacePage.planItemDialog.mapHint') }}
           </small>
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel" icon="pi pi-times" outlined @click="showPlanItemDialog = false" />
+        <Button :label="t('common.cancel')" icon="pi pi-times" outlined @click="showPlanItemDialog = false" />
         <Button
-          :label="editingPlanItemId ? 'Update Item' : 'Create Item'"
+          :label="editingPlanItemId ? t('trips.workspacePage.planItemDialog.updateItem') : t('trips.workspacePage.planItemDialog.createItem')"
           icon="pi pi-check"
           :loading="isSubmittingPlanItem"
           @click="submitPlanItem"
@@ -326,13 +326,13 @@
     <Dialog
       v-model:visible="showCollaboratorsDialog"
       modal
-      header="Trip Collaborators"
+      :header="t('trips.workspacePage.collaboratorsDialog.header')"
       class="gp-dialog-md"
       @show="loadCollaboratorsData"
     >
       <div class="collaborators-content">
         <Message severity="info" :closable="false">
-          Only invited friends can access this trip. Choose Viewer or Editor per friend.
+          {{ t('trips.workspacePage.collaboratorsDialog.infoMessage') }}
         </Message>
 
         <div class="collaborator-add-row">
@@ -341,7 +341,7 @@
             :options="availableFriendOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select friend"
+            :placeholder="t('trips.workspacePage.collaboratorsDialog.selectFriendPlaceholder')"
             class="w-full"
             filter
           />
@@ -354,7 +354,7 @@
           />
           <Button
             icon="pi pi-plus"
-            label="Add"
+            :label="t('trips.workspacePage.collaboratorsDialog.add')"
             :loading="isSavingCollaborator"
             :disabled="!newCollaboratorFriendId"
             @click="addCollaborator"
@@ -366,7 +366,7 @@
         </div>
 
         <div v-else-if="collaborators.length === 0" class="collaborators-empty">
-          No collaborators yet.
+          {{ t('trips.workspacePage.collaboratorsDialog.empty') }}
         </div>
 
         <div v-else class="collaborators-list">
@@ -429,7 +429,7 @@
     <Dialog
       v-model:visible="showTimelineGenerationDialog"
       modal
-      header="Timeline Generation"
+      :header="t('trips.workspacePage.timelineGenerationDialog.header')"
       class="gp-dialog-md timeline-generation-dialog"
       :closable="timelineJobCanClose"
       :dismissableMask="timelineJobCanClose"
@@ -439,7 +439,7 @@
         <div class="timeline-generation-status-row">
           <Tag :value="timelineJobStatusLabel" :severity="timelineJobStatusSeverity" />
           <small v-if="trackedTimelineJobId" class="timeline-generation-job-id">
-            Job: {{ trackedTimelineJobId }}
+            {{ t('trips.workspacePage.timelineGenerationDialog.jobId', { id: trackedTimelineJobId }) }}
           </small>
         </div>
 
@@ -469,21 +469,21 @@
           severity="info"
           :closable="false"
         >
-          Refreshing workspace data...
+          {{ t('trips.workspacePage.timelineGenerationDialog.refreshingWorkspace') }}
         </Message>
       </div>
 
       <template #footer>
         <Button
           v-if="timelineJobStatus === 'FAILED'"
-          label="Retry Status"
+          :label="t('trips.workspacePage.timelineGenerationDialog.retryStatus')"
           icon="pi pi-refresh"
           outlined
           :disabled="!trackedTimelineJobId"
           @click="retryTimelineJobProgress"
         />
         <Button
-          label="Close"
+          :label="t('trips.workspacePage.timelineGenerationDialog.close')"
           icon="pi pi-times"
           :disabled="!timelineJobCanClose"
           @click="showTimelineGenerationDialog = false"
@@ -497,6 +497,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -547,6 +548,7 @@ import {
   useTripPlanLocationSearch
 } from '@/composables/useTripPlanLocationSearch'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -641,7 +643,7 @@ const {
   reset: resetPlanItemLocationSearchState
 } = useTripPlanLocationSearch({
   getBias: () => resolvePlanItemLocationSearchBias(),
-  fallbackLabel: 'Planned place'
+  fallbackLabel: t('trips.search.plannedPlaceFallback')
 })
 const collaboratorsLoading = ref(false)
 const isSavingCollaborator = ref(false)
@@ -668,15 +670,15 @@ const planItemForm = ref({
   orderIndex: 0
 })
 
-const priorityOptions = [
-  { label: 'Optional', value: 'OPTIONAL' },
-  { label: 'Must', value: 'MUST' }
-]
+const priorityOptions = computed(() => [
+  { label: t('trips.stopsRail.priorityOptional'), value: 'OPTIONAL' },
+  { label: t('trips.stopsRail.priorityMust'), value: 'MUST' }
+])
 
-const collaboratorRoleOptions = [
-  { label: 'Viewer', value: 'VIEW' },
-  { label: 'Editor', value: 'EDIT' }
-]
+const collaboratorRoleOptions = computed(() => [
+  { label: t('trips.managementPage.access.viewer'), value: 'VIEW' },
+  { label: t('trips.managementPage.access.editor'), value: 'EDIT' }
+])
 
 const tripId = computed(() => Number(route.params.tripId))
 const isOwner = computed(() => Boolean(currentTrip.value?.isOwner) || String(currentTrip.value?.accessRole || '').toUpperCase() === 'OWNER')
@@ -686,22 +688,38 @@ const canReconstructTrip = computed(() => isOwner.value && !isUnplannedTrip.valu
 const showAccessModeBanner = computed(() => !isOwner.value)
 const accessModeBannerText = computed(() => {
   if (accessRole.value === 'EDIT') {
-    return 'Editor access: you can update planned stops and visit states, but only the owner can change trip metadata.'
+    return t('trips.workspacePage.editorAccessBanner')
   }
-  return 'Viewer access: this trip is read-only for you.'
+  return t('trips.workspacePage.viewerAccessBanner')
 })
 
-const pageTitle = computed(() => currentTrip.value?.name || 'Trip Planner')
+const TRIP_STATUS_LABEL_KEYS = {
+  UNPLANNED: 'trips.managementPage.status.unplanned',
+  UPCOMING: 'trips.managementPage.status.upcoming',
+  ACTIVE: 'trips.managementPage.status.active',
+  COMPLETED: 'trips.managementPage.status.completed',
+  CANCELLED: 'trips.managementPage.status.cancelled'
+}
+
+const getTripStatusLabel = (status) => {
+  const value = String(status || '').toUpperCase()
+  return t(TRIP_STATUS_LABEL_KEYS[value] || 'trips.managementPage.status.unknown')
+}
+
+const pageTitle = computed(() => currentTrip.value?.name || t('trips.workspacePage.defaultTitle'))
 const pageSubtitle = computed(() => {
-  if (!currentTrip.value) return 'Workspace'
+  if (!currentTrip.value) return t('trips.workspacePage.subtitleWorkspace')
 
   if (isUnplannedTrip.value) {
-    return 'Unplanned • Set trip dates later to unlock timeline and analytics'
+    return t('trips.workspacePage.subtitleUnplanned')
   }
 
-  const status = String(currentTrip.value.status || '').toLowerCase()
-  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'
-  return `${statusLabel} • ${formatDateTime(currentTrip.value.startTime)} - ${formatDateTime(currentTrip.value.endTime)}`
+  const statusLabel = getTripStatusLabel(currentTrip.value.status)
+  return t('trips.workspacePage.subtitleWithRange', {
+    status: statusLabel,
+    start: formatDateTime(currentTrip.value.startTime),
+    end: formatDateTime(currentTrip.value.endTime)
+  })
 })
 
 /**
@@ -710,11 +728,10 @@ const pageSubtitle = computed(() => {
  * What the picker cannot show is where the trip stands and how long it runs.
  */
 const pageSubtitleCompact = computed(() => {
-  if (!currentTrip.value) return 'Workspace'
-  if (isUnplannedTrip.value) return 'Unplanned • Dates not set'
+  if (!currentTrip.value) return t('trips.workspacePage.subtitleWorkspace')
+  if (isUnplannedTrip.value) return t('trips.workspacePage.subtitleUnplannedCompact')
 
-  const status = String(currentTrip.value.status || '').toLowerCase()
-  const statusLabel = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown'
+  const statusLabel = getTripStatusLabel(currentTrip.value.status)
 
   const start = currentTrip.value.startTime ? timezone.fromUtc(currentTrip.value.startTime) : null
   const end = currentTrip.value.endTime ? timezone.fromUtc(currentTrip.value.endTime) : null
@@ -722,7 +739,9 @@ const pageSubtitleCompact = computed(() => {
     ? Math.max(1, end.startOf('day').diff(start.startOf('day'), 'day') + 1)
     : null
 
-  return days ? `${statusLabel} • ${days} day${days === 1 ? '' : 's'}` : statusLabel
+  return days
+    ? t('trips.workspacePage.subtitleCompactWithDays', { status: statusLabel, count: days }, days)
+    : statusLabel
 })
 
 const summaryPlanTotal = computed(() => tripSummary.value?.planItemsTotal || 0)
@@ -842,10 +861,10 @@ const planItemMapSourceHint = computed(() => {
   const longitude = Number(planItemLocationSource.value.longitude)
   const source = planItemLocationSource.value.source
   const sourceLabel = source === 'context-menu'
-    ? 'Pinned from map (context menu)'
+    ? t('trips.workspacePage.planItemDialog.pinnedFromMapContextMenu')
     : source === 'dialog-map'
-      ? 'Pinned from map (dialog)'
-      : 'Pinned from map'
+      ? t('trips.workspacePage.planItemDialog.pinnedFromMapDialog')
+      : t('trips.workspacePage.planItemDialog.pinnedFromMap')
 
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return `${sourceLabel}.`
@@ -863,7 +882,7 @@ const tripPlanMapItems = computed(() => {
     .filter((item) => typeof item.latitude === 'number' && typeof item.longitude === 'number')
     .map((item) => ({
       id: `trip-plan-${item.id}`,
-      name: item.title || 'Planned place',
+      name: item.title || t('trips.search.plannedPlaceFallback'),
       type: 'trip-plan',
       planItemId: item.id,
       priority: item.priority || 'OPTIONAL',
@@ -949,15 +968,15 @@ const timelineJobCanClose = computed(() => {
 const timelineJobStatusLabel = computed(() => {
   switch (timelineJobStatus.value) {
     case 'QUEUED':
-      return 'Queued'
+      return t('trips.workspacePage.timelineGenerationDialog.statusQueued')
     case 'RUNNING':
-      return 'Running'
+      return t('trips.workspacePage.timelineGenerationDialog.statusRunning')
     case 'COMPLETED':
-      return 'Completed'
+      return t('trips.workspacePage.timelineGenerationDialog.statusCompleted')
     case 'FAILED':
-      return 'Failed'
+      return t('trips.workspacePage.timelineGenerationDialog.statusFailed')
     default:
-      return 'Starting'
+      return t('trips.workspacePage.timelineGenerationDialog.statusStarting')
   }
 })
 const timelineJobStatusSeverity = computed(() => {
@@ -976,7 +995,9 @@ const timelineJobStatusSeverity = computed(() => {
 })
 const timelineJobCurrentStep = computed(() => (
   timelineJobProgress.value?.currentStep
-  || (timelineJobStatus.value === 'FAILED' ? 'Timeline generation failed.' : 'Preparing timeline generation...')
+  || (timelineJobStatus.value === 'FAILED'
+    ? t('trips.workspacePage.timelineGenerationDialog.stepFailed')
+    : t('trips.workspacePage.timelineGenerationDialog.stepPreparing'))
 ))
 const timelineJobProgressValue = computed(() => {
   const raw = Number(timelineJobProgress.value?.progressPercentage)
@@ -986,9 +1007,9 @@ const timelineJobProgressValue = computed(() => {
 const timelineJobDurationLabel = computed(() => {
   const durationMs = Number(timelineJobProgress.value?.durationMs)
   if (!Number.isFinite(durationMs) || durationMs < 0) {
-    return 'Duration: —'
+    return t('trips.workspacePage.timelineGenerationDialog.durationDash')
   }
-  return `Duration: ${formatJobDuration(durationMs)}`
+  return t('trips.workspacePage.timelineGenerationDialog.durationValue', { duration: formatJobDuration(durationMs) })
 })
 
 const formatDateTime = (value) => {
@@ -999,16 +1020,20 @@ const formatDateTime = (value) => {
 const formatJobDuration = (durationMs) => {
   const totalSeconds = Math.floor(durationMs / 1000)
   if (totalSeconds < 60) {
-    return `${totalSeconds}s`
+    return t('trips.workspacePage.timelineGenerationDialog.secondsShort', { count: totalSeconds })
   }
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
+    return seconds > 0
+      ? t('trips.workspacePage.timelineGenerationDialog.minutesSecondsShort', { minutes, seconds })
+      : t('trips.workspacePage.timelineGenerationDialog.minutesShort', { count: minutes })
   }
   const hours = Math.floor(minutes / 60)
   const minutesRemainder = minutes % 60
-  return minutesRemainder > 0 ? `${hours}h ${minutesRemainder}m` : `${hours}h`
+  return minutesRemainder > 0
+    ? t('trips.workspacePage.timelineGenerationDialog.hoursMinutesShort', { hours, minutes: minutesRemainder })
+    : t('trips.workspacePage.timelineGenerationDialog.hoursShort', { count: hours })
 }
 
 const formatPlannedDay = (plannedDay) => {
@@ -1021,12 +1046,12 @@ const getPrioritySeverity = (priority) => {
   return String(priority || '').toUpperCase() === 'MUST' ? 'danger' : 'warn'
 }
 
-const ensurePlanEditAccess = (message = 'You have read-only access to this trip plan.') => {
+const ensurePlanEditAccess = (message) => {
   if (canEditPlanItems.value) return true
   toast.add({
     severity: 'warn',
-    summary: 'Read-Only Access',
-    detail: message,
+    summary: t('trips.workspacePage.toasts.readOnlyAccessSummary'),
+    detail: message || t('trips.workspacePage.toasts.readOnlyAccessDefault'),
     life: 3500
   })
   return false
@@ -1090,8 +1115,8 @@ const loadCollaboratorsData = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Load Collaborators',
-      detail: formatApiErrorDetail(error, 'Could not load collaborators.'),
+      summary: t('trips.workspacePage.toasts.loadCollaboratorsFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.loadCollaboratorsFailedFallback')),
       life: 5000
     })
   } finally {
@@ -1109,15 +1134,15 @@ const addCollaborator = async () => {
     await loadCollaboratorsData()
     toast.add({
       severity: 'success',
-      summary: 'Collaborator Added',
-      detail: 'Trip collaborator updated successfully.',
+      summary: t('trips.workspacePage.toasts.collaboratorAddedSummary'),
+      detail: t('trips.workspacePage.toasts.collaboratorAddedDetail'),
       life: 2500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Add Collaborator',
-      detail: formatApiErrorDetail(error, 'Request failed.'),
+      summary: t('trips.workspacePage.toasts.addCollaboratorFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1134,16 +1159,16 @@ const updateCollaboratorRole = async (collaborator, nextRole) => {
     await tripsStore.setTripCollaborator(tripId.value, collaborator.userId, nextRole)
     toast.add({
       severity: 'success',
-      summary: 'Role Updated',
-      detail: 'Collaborator role updated.',
+      summary: t('trips.workspacePage.toasts.roleUpdatedSummary'),
+      detail: t('trips.workspacePage.toasts.roleUpdatedDetail'),
       life: 2200
     })
   } catch (error) {
     collaborator.accessRole = previousRole
     toast.add({
       severity: 'error',
-      summary: 'Failed to Update Role',
-      detail: formatApiErrorDetail(error, 'Request failed.'),
+      summary: t('trips.workspacePage.toasts.updateRoleFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1159,15 +1184,15 @@ const removeCollaborator = async (collaborator) => {
     collaborators.value = collaborators.value.filter((item) => String(item.userId) !== String(collaborator.userId))
     toast.add({
       severity: 'success',
-      summary: 'Collaborator Removed',
-      detail: 'Access revoked.',
+      summary: t('trips.workspacePage.toasts.collaboratorRemovedSummary'),
+      detail: t('trips.workspacePage.toasts.collaboratorRemovedDetail'),
       life: 2200
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Remove Collaborator',
-      detail: formatApiErrorDetail(error, 'Request failed.'),
+      summary: t('trips.workspacePage.toasts.removeCollaboratorFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.requestFailed')),
       life: 5000
     })
   } finally {
@@ -1286,8 +1311,8 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Reset Manual Stay Override',
-    message: 'Reset this manual Data Gap override back to automatic timeline detection? This will regenerate timeline segments.',
+    header: t('trips.workspacePage.toasts.resetStayOverrideHeader'),
+    message: t('trips.workspacePage.toasts.resetStayOverrideMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -1295,15 +1320,15 @@ const handleWorkspaceResetDataGapOverride = (stayItem) => {
         await handleWorkspaceTimelineRefreshRequested()
         toast.add({
           severity: 'success',
-          summary: 'Override Reset',
-          detail: 'Manual Data Gap override was reset to automatic behavior.',
+          summary: t('trips.workspacePage.toasts.overrideResetSummary'),
+          detail: t('trips.workspacePage.toasts.overrideResetDetail'),
           life: 3000
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: formatApiErrorDetail(error, 'Failed to reset manual override'),
+          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetOverrideFailedFallback')),
           life: 5000
         })
       }
@@ -1318,8 +1343,8 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
   }
 
   confirm.require({
-    header: 'Undo Manual Trip Split',
-    message: 'Undo this manual trip split and regenerate timeline segments?',
+    header: t('trips.workspacePage.toasts.undoTripSplitHeader'),
+    message: t('trips.workspacePage.toasts.undoTripSplitMessage'),
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
@@ -1327,15 +1352,15 @@ const handleWorkspaceResetTripSplitOverride = (stayItem) => {
         await handleWorkspaceTimelineRefreshRequested()
         toast.add({
           severity: 'success',
-          summary: 'Split Reset',
-          detail: 'Manual trip split was reset to automatic behavior.',
+          summary: t('trips.workspacePage.toasts.splitResetSummary'),
+          detail: t('trips.workspacePage.toasts.splitResetDetail'),
           life: 3000
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Reset Failed',
-          detail: formatApiErrorDetail(error, 'Failed to reset manual trip split'),
+          summary: t('trips.workspacePage.toasts.resetFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.resetSplitFailedFallback')),
           life: 5000
         })
       }
@@ -1419,14 +1444,14 @@ const loadWorkspace = async () => {
 
     const initialRange = resolveInitialRange()
     if (!initialRange.start || !initialRange.end) {
-      throw new Error('Trip date range is invalid')
+      throw new Error(t('trips.workspacePage.toasts.invalidDateRange'))
     }
 
     syncCalendarRange(initialRange)
     await fetchWorkspaceRange(initialRange, true)
     await refreshVisitComparisons()
   } catch (error) {
-    pageError.value = formatApiErrorDetail(error, 'Failed to load trip planner')
+    pageError.value = formatApiErrorDetail(error, t('trips.workspacePage.toasts.loadWorkspaceFailedFallback'))
   } finally {
     isInitialLoading.value = false
   }
@@ -1460,7 +1485,7 @@ const applyPlanSuggestionToForm = async (suggestion) => {
     return
   }
 
-  const resolvedTitle = suggestion.title || planItemForm.value.title || 'Planned place'
+  const resolvedTitle = suggestion.title || planItemForm.value.title || t('trips.search.plannedPlaceFallback')
   planItemForm.value.title = resolvedTitle
   planItemForm.value.latitude = typeof suggestion.latitude === 'number' ? suggestion.latitude : planItemForm.value.latitude
   planItemForm.value.longitude = typeof suggestion.longitude === 'number' ? suggestion.longitude : planItemForm.value.longitude
@@ -1652,8 +1677,8 @@ const resolvePlanSuggestionForCoordinates = async (latitude, longitude, {
     }
     toast.add({
       severity: 'warn',
-      summary: 'Plan suggestion unavailable',
-      detail: formatApiErrorDetail(error, 'You can still edit title and save.'),
+      summary: t('trips.workspacePage.toasts.planSuggestionUnavailableSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.planSuggestionUnavailableFallback')),
       life: 3000
     })
   } finally {
@@ -1886,7 +1911,7 @@ const validatePlanItem = () => {
   planItemErrors.value = {}
 
   if (!planItemForm.value.title || !planItemForm.value.title.trim()) {
-    planItemErrors.value.title = 'Title is required'
+    planItemErrors.value.title = t('trips.workspacePage.planItemDialog.titleRequired')
   }
 
   return Object.keys(planItemErrors.value).length === 0
@@ -1939,15 +1964,15 @@ const handleAddStopFromRail = async (place) => {
     })
     toast.add({
       severity: 'success',
-      summary: 'Added to plan',
-      detail: `"${place.title}" was added to your stops`,
+      summary: t('trips.workspacePage.toasts.addedToPlanSummary'),
+      detail: t('trips.workspacePage.toasts.addedToPlanDetail', { title: place.title }),
       life: 2500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Could not add place',
-      detail: error?.userMessage || error?.message || 'Failed to add this place',
+      summary: t('trips.workspacePage.toasts.couldNotAddPlaceSummary'),
+      detail: error?.userMessage || error?.message || t('trips.workspacePage.toasts.couldNotAddPlaceFallback'),
       life: 3000
     })
   }
@@ -1979,16 +2004,16 @@ const submitPlanItem = async () => {
       await tripsStore.updateTripPlanItem(tripId.value, editingPlanItemId.value, payload)
       toast.add({
         severity: 'success',
-        summary: 'Plan Item Updated',
-        detail: 'Trip plan item updated successfully',
+        summary: t('trips.workspacePage.toasts.planItemUpdatedSummary'),
+        detail: t('trips.workspacePage.toasts.planItemUpdatedDetail'),
         life: 2500
       })
     } else {
       await tripsStore.createTripPlanItem(tripId.value, payload)
       toast.add({
         severity: 'success',
-        summary: 'Plan Item Added',
-        detail: 'Trip plan item added successfully',
+        summary: t('trips.workspacePage.toasts.planItemAddedSummary'),
+        detail: t('trips.workspacePage.toasts.planItemAddedDetail'),
         life: 2500
       })
     }
@@ -2002,8 +2027,8 @@ const submitPlanItem = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Save Plan Item',
-      detail: formatApiErrorDetail(error, 'Request failed'),
+      summary: t('trips.workspacePage.toasts.savePlanItemFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.savePlanItemFailedFallback')),
       life: 5000
     })
   } finally {
@@ -2015,8 +2040,8 @@ const confirmDeletePlanItem = (item) => {
   if (!ensurePlanEditAccess()) return
   confirm.require({
     group: 'trip-workspace-plan-item',
-    message: `Delete plan item "${item.title}"?`,
-    header: 'Delete Plan Item',
+    message: t('trips.workspacePage.toasts.deletePlanItemMessage', { title: item.title }),
+    header: t('trips.workspacePage.toasts.deletePlanItemHeader'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
@@ -2028,15 +2053,15 @@ const confirmDeletePlanItem = (item) => {
         ])
         toast.add({
           severity: 'success',
-          summary: 'Plan Item Deleted',
-          detail: 'Trip plan item removed',
+          summary: t('trips.workspacePage.toasts.planItemDeletedSummary'),
+          detail: t('trips.workspacePage.toasts.planItemDeletedDetail'),
           life: 2500
         })
       } catch (error) {
         toast.add({
           severity: 'error',
-          summary: 'Failed to Delete Plan Item',
-          detail: formatApiErrorDetail(error, 'Delete failed'),
+          summary: t('trips.workspacePage.toasts.deletePlanItemFailedSummary'),
+          detail: formatApiErrorDetail(error, t('trips.managementPage.toasts.deleteFailedFallback')),
           life: 5000
         })
       }
@@ -2059,15 +2084,15 @@ const applyVisitOverride = async (item, action) => {
     ])
     toast.add({
       severity: 'success',
-      summary: 'Visit Status Updated',
-      detail: 'Plan item visit status has been updated',
+      summary: t('trips.workspacePage.toasts.visitStatusUpdatedSummary'),
+      detail: t('trips.workspacePage.toasts.visitStatusUpdatedDetail'),
       life: 2500
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Failed to Update Visit Status',
-      detail: formatApiErrorDetail(error, 'Update failed'),
+      summary: t('trips.workspacePage.toasts.updateVisitStatusFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.updateVisitStatusFailedFallback')),
       life: 5000
     })
   }
@@ -2103,15 +2128,15 @@ const openTimelineGenerationDialogForJob = async (jobId) => {
 
         toast.add({
           severity: 'success',
-          summary: 'Timeline Generation Complete',
-          detail: 'Trip workspace was refreshed with regenerated data.',
+          summary: t('trips.workspacePage.toasts.timelineGenCompleteSummary'),
+          detail: t('trips.workspacePage.toasts.timelineGenCompleteDetail'),
           life: 3200
         })
       } catch (error) {
         toast.add({
           severity: 'warn',
-          summary: 'Refresh Incomplete',
-          detail: formatApiErrorDetail(error, 'Timeline completed, but workspace refresh failed.'),
+          summary: t('trips.workspacePage.toasts.refreshIncompleteSummary'),
+          detail: formatApiErrorDetail(error, t('trips.workspacePage.toasts.refreshIncompleteFallback')),
           life: 5000
         })
       } finally {
@@ -2121,15 +2146,15 @@ const openTimelineGenerationDialogForJob = async (jobId) => {
     onFailed: (progress) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Generation Failed',
-        detail: progress?.errorMessage || timelineJobError.value || 'Job failed.',
+        summary: t('trips.workspacePage.toasts.timelineGenFailedSummary'),
+        detail: progress?.errorMessage || timelineJobError.value || t('trips.workspacePage.toasts.timelineGenFailedFallback'),
         life: 5000
       })
     },
     onTrackingError: (error) => {
       toast.add({
         severity: 'error',
-        summary: 'Timeline Job Tracking Failed',
+        summary: t('trips.workspacePage.toasts.timelineJobTrackingFailedSummary'),
         detail: error,
         life: 5000
       })

@@ -30,4 +30,8 @@ public class UpdateProfileRequest {
 
     @Pattern(regexp = "^(24h|12h)$", message = "Time format must be one of: 24h, 12h")
     private String timeFormat;
+
+    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @Size(max = 16, message = "Language cannot exceed 16 characters")
+    private String language;
 }

@@ -3,7 +3,7 @@
     <div class="heatmap-header">
       <h3 class="heatmap-title">
         <i class="pi pi-map"></i>
-        Location Heatmap
+        {{ t('analytics.digest.heatmap.title') }}
       </h3>
       <div class="heatmap-controls" v-if="!isLoading && !hasError">
         <div class="layer-toggle">
@@ -12,14 +12,14 @@
             @click="layerMode = 'stays'"
           >
             <i class="pi pi-home"></i>
-            Stays
+            {{ t('analytics.digest.heatmap.stays') }}
           </button>
           <button
             :class="['toggle-btn', { active: layerMode === 'trips' }]"
             @click="layerMode = 'trips'"
           >
             <i class="pi pi-directions"></i>
-            Trips
+            {{ t('analytics.digest.heatmap.trips') }}
           </button>
         </div>
         <div class="intensity-toggle" v-if="layerMode !== 'trips'">
@@ -28,14 +28,14 @@
             @click="intensityMode = 'duration'"
           >
             <i class="pi pi-clock"></i>
-            By Duration
+            {{ t('analytics.digest.heatmap.byDuration') }}
           </button>
           <button
             :class="['toggle-btn', { active: intensityMode === 'visits' }]"
             @click="intensityMode = 'visits'"
           >
             <i class="pi pi-refresh"></i>
-            By Visits
+            {{ t('analytics.digest.heatmap.byVisits') }}
           </button>
         </div>
       </div>
@@ -44,19 +44,19 @@
     <!-- Loading -->
     <div v-if="isLoading" class="heatmap-state">
       <i class="pi pi-spin pi-spinner heatmap-state-icon"></i>
-      <p>Loading heatmap data…</p>
+      <p>{{ t('analytics.digest.heatmap.loading') }}</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="hasError" class="heatmap-state heatmap-state--error">
       <i class="pi pi-exclamation-triangle heatmap-state-icon"></i>
-      <p>Could not load heatmap data.</p>
+      <p>{{ t('analytics.digest.heatmap.error') }}</p>
     </div>
 
     <!-- Empty -->
     <div v-else-if="!hasData" class="heatmap-state">
       <i class="pi pi-map heatmap-state-icon"></i>
-      <p>No location data available for this period.</p>
+      <p>{{ t('analytics.digest.heatmap.empty') }}</p>
     </div>
 
     <!-- Map -->
@@ -88,9 +88,9 @@
       />
       <!-- Legend -->
       <div class="heatmap-legend">
-        <span class="legend-label">Low</span>
+        <span class="legend-label">{{ t('analytics.digest.heatmap.legendLow') }}</span>
         <div class="legend-gradient"></div>
-        <span class="legend-label">High</span>
+        <span class="legend-label">{{ t('analytics.digest.heatmap.legendHigh') }}</span>
         <span class="legend-hint">{{ legendHint }}</span>
       </div>
     </div>
@@ -99,10 +99,13 @@
 
 <script setup>
 import { ref, watch, computed, nextTick, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import HeatmapLayer from '@/components/maps/layers/HeatmapLayer.vue'
 import { useDigestStore } from '@/stores/digest'
+
+const { t } = useI18n()
 
 const props = defineProps({
   viewMode: { type: String, default: 'monthly' },
@@ -149,9 +152,9 @@ const heatmapCenter = computed(() => {
 const initialMapZoom = computed(() => heatBounds.value.length === 1 ? 14 : 8)
 const legendHint = computed(() => {
   if (intensityMode.value === 'duration') {
-    return layerMode.value === 'trips' ? 'Time moving' : 'Time spent'
+    return layerMode.value === 'trips' ? t('analytics.digest.heatmap.hintTimeMoving') : t('analytics.digest.heatmap.hintTimeSpent')
   }
-  return 'Visit count'
+  return t('analytics.digest.heatmap.hintVisitCount')
 })
 
 const valueKey = computed(() => {

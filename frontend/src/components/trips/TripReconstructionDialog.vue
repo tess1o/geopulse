@@ -63,28 +63,28 @@
     <template #footer>
       <div class="footer-stack">
         <p v-if="readOnly" class="demo-disabled-text">
-          Demo mode: generated timeline data cannot be committed or regenerated. You can still validate the plan.
+          {{ t('trips.reconstructionDialog.demoDisabledText') }}
         </p>
         <div class="footer-actions">
           <Button
-            label="Cancel"
+            :label="t('trips.reconstructionDialog.cancel')"
             icon="pi pi-times"
             outlined
             @click="handleClose"
           />
           <Button
-            label="Validate"
+            :label="t('trips.reconstructionDialog.validate')"
             icon="pi pi-check-circle"
             outlined
             :loading="isPreviewLoading"
             @click="previewReconstruction"
           />
           <Button
-            label="Commit & Regenerate"
+            :label="t('trips.reconstructionDialog.commitAndRegenerate')"
             icon="pi pi-check"
             :loading="isCommitLoading"
             :disabled="readOnly || isCommitLoading"
-            v-tooltip.bottom="readOnly ? 'Committing generated points is disabled in demo mode' : 'Commit generated points and regenerate timeline'"
+            v-tooltip.bottom="readOnly ? t('trips.reconstructionDialog.commitTooltipDemoDisabled') : t('trips.reconstructionDialog.commitTooltip')"
             @click="commitReconstruction"
           />
         </div>
@@ -95,6 +95,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -153,6 +154,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'committed'])
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const toast = useToast()
 const tripsStore = useTripsStore()
@@ -178,14 +180,14 @@ const {
   reset: resetSearchState
 } = useTripPlanLocationSearch({
   getBias: () => getSearchBias(),
-  fallbackLabel: 'Planned place'
+  fallbackLabel: t('trips.search.plannedPlaceFallback')
 })
 
-const dialogHeader = computed(() => (props.mode === 'trip' ? 'Add Missing Trip Data' : 'Add Missing Timeline Data'))
+const dialogHeader = computed(() => (props.mode === 'trip' ? t('trips.reconstructionDialog.headerTrip') : t('trips.reconstructionDialog.headerTimeline')))
 const reconstructionHelpMessage = computed(() => (
   props.mode === 'trip'
-    ? 'Add stays and trips to generate missing GPS points for this trip. Existing GPS points are preserved; this does not replace existing timeline data. For a trip segment, add multiple waypoints on the map: first point is start, last point is end.'
-    : 'Add stays and trips to generate missing GPS points for any dates and times you choose. Existing GPS points are preserved; this does not replace existing timeline data. For a trip segment, add multiple waypoints on the map: first point is start, last point is end.'
+    ? t('trips.reconstructionDialog.helpTrip')
+    : t('trips.reconstructionDialog.helpTimeline')
 ))
 
 const getContextRangeDates = () => {
@@ -267,7 +269,7 @@ const {
 })
 
 const locationSourceLabel = (segment) => {
-  return locationSync?.locationSourceLabel?.(segment) || 'Unknown'
+  return locationSync?.locationSourceLabel?.(segment) || t('trips.locationSource.unknown')
 }
 
 const contextPoints = computed(() => getContextPoints())
@@ -400,7 +402,7 @@ const previewReconstruction = async () => {
   if (error) {
     toast.add({
       severity: 'warn',
-      summary: 'Validation Error',
+      summary: t('trips.reconstructionDialog.validationErrorSummary'),
       detail: error,
       life: 3500
     })
@@ -417,22 +419,28 @@ const previewReconstruction = async () => {
 
     const derivedWarnings = []
     if (previewSummary.value.gapCount > 0) {
-      derivedWarnings.push(`Detected ${previewSummary.value.gapCount} uncovered interval(s) totaling ${formatDurationMinutes(previewSummary.value.gapMinutes)}.`)
+      derivedWarnings.push(t('trips.reconstructionDialog.detectedGapWarning', {
+        count: previewSummary.value.gapCount,
+        duration: formatDurationMinutes(previewSummary.value.gapMinutes)
+      }))
     }
 
     previewWarnings.value = [...backendWarnings, ...derivedWarnings]
 
     toast.add({
       severity: 'success',
-      summary: 'Validation Ready',
-      detail: `Generated points: ${previewResult.value?.estimatedPoints || 0}. Uncovered intervals: ${previewSummary.value.gapCount}.`,
+      summary: t('trips.reconstructionDialog.validationReadySummary'),
+      detail: t('trips.reconstructionDialog.validationReadyDetail', {
+        points: previewResult.value?.estimatedPoints || 0,
+        gaps: previewSummary.value.gapCount
+      }),
       life: 2800
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Validation Failed',
-      detail: formatApiErrorDetail(error, 'Request failed.'),
+      summary: t('trips.reconstructionDialog.validationFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.reconstructionDialog.requestFailed')),
       life: 5000
     })
   } finally {
@@ -442,7 +450,7 @@ const previewReconstruction = async () => {
 
 const commitReconstruction = async () => {
   if (props.readOnly) {
-    showDemoModeToast(toast, 'Committing generated timeline data is disabled in demo mode.')
+    showDemoModeToast(toast, t('trips.reconstructionDialog.commitDemoToast'))
     return
   }
 
@@ -450,7 +458,7 @@ const commitReconstruction = async () => {
   if (error) {
     toast.add({
       severity: 'warn',
-      summary: 'Validation Error',
+      summary: t('trips.reconstructionDialog.validationErrorSummary'),
       detail: error,
       life: 3500
     })
@@ -465,15 +473,15 @@ const commitReconstruction = async () => {
     if (result?.regenerationWarning) {
       toast.add({
         severity: 'warn',
-        summary: 'Points Saved',
+        summary: t('trips.reconstructionDialog.pointsSavedSummary'),
         detail: result.regenerationWarning,
         life: 6000
       })
     } else {
       toast.add({
         severity: 'success',
-        summary: 'Missing Data Saved',
-        detail: `Inserted ${result?.insertedPoints || 0} GPS points.`,
+        summary: t('trips.reconstructionDialog.dataSavedSummary'),
+        detail: t('trips.reconstructionDialog.dataSavedDetail', { count: result?.insertedPoints || 0 }),
         life: 3200
       })
     }
@@ -483,8 +491,8 @@ const commitReconstruction = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Commit Failed',
-      detail: formatApiErrorDetail(error, 'Request failed.'),
+      summary: t('trips.reconstructionDialog.commitFailedSummary'),
+      detail: formatApiErrorDetail(error, t('trips.reconstructionDialog.requestFailed')),
       life: 5000
     })
   } finally {
@@ -500,16 +508,16 @@ const formatDateTime = (value) => {
 const formatDurationMinutes = (minutes) => {
   const safeMinutes = Number.isFinite(minutes) ? Math.max(0, minutes) : 0
   if (safeMinutes < 60) {
-    return `${safeMinutes} min`
+    return t('trips.reconstructionDialog.minutesShort', { minutes: safeMinutes })
   }
 
   const hours = Math.floor(safeMinutes / 60)
   const remainder = safeMinutes % 60
   if (remainder === 0) {
-    return `${hours} h`
+    return t('trips.reconstructionDialog.hoursShort', { hours })
   }
 
-  return `${hours} h ${remainder} min`
+  return t('trips.reconstructionDialog.hoursMinutesShort', { hours, minutes: remainder })
 }
 
 const handleClose = () => {

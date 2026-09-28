@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Job Management">
+    <SettingSection :title="t('adminSettings.exportTab.jobManagement')">
       <SettingItem
         v-for="setting in jobSettings"
         :key="setting.key"
@@ -18,7 +18,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Batch Processing">
+    <SettingSection :title="t('adminSettings.exportTab.batchProcessing')">
       <SettingItem
         v-for="setting in batchSettings"
         :key="setting.key"
@@ -37,7 +37,7 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection title="Temporary File Storage">
+    <SettingSection :title="t('adminSettings.exportTab.tempFileStorage')">
       <SettingItem
         v-for="setting in tempFileSettings"
         :key="setting.key"
@@ -59,11 +59,13 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputNumber from 'primevue/inputnumber'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
 
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const exportSettings = ref([])
 

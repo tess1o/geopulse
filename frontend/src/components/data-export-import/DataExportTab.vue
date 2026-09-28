@@ -6,7 +6,7 @@
         <div class="export-form">
           <!-- Export Format Selection -->
           <div class="form-section">
-            <h3 class="form-section-title">Export Format</h3>
+            <h3 class="form-section-title">{{ t('data.exportTab.formatSectionTitle') }}</h3>
             <div class="format-options">
               <div
                   v-for="format in exportFormatOptions"
@@ -34,9 +34,9 @@
           <!-- Data Types Selection (only for GeoPulse format) -->
           <div v-if="exportFormat === 'geopulse'" class="form-section">
             <div class="form-section-header">
-              <h3 class="form-section-title">Select Data Types</h3>
+              <h3 class="form-section-title">{{ t('data.exportTab.selectDataTypesTitle') }}</h3>
               <Button
-                :label="selectedDataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
+                :label="selectedDataTypes.length === availableDataTypes.length ? t('data.exportTab.deselectAll') : t('data.exportTab.selectAll')"
                 outlined
                 size="small"
                 :disabled="readOnly"
@@ -46,7 +46,7 @@
             </div>
             <div class="timeline-info">
               <i class="pi pi-info-circle"></i>
-              <span><strong>Timeline Data:</strong> Will be automatically regenerated from your GPS data after import</span>
+              <span><strong>{{ t('data.exportTab.timelineDataLabel') }}</strong> {{ t('data.exportTab.timelineDataNote') }}</span>
             </div>
             <div class="data-types-grid">
               <div
@@ -75,7 +75,7 @@
 
           <!-- OwnTracks Export Options (only for OwnTracks format) -->
           <div v-if="exportFormat === 'owntracks'" class="form-section">
-            <h3 class="form-section-title">OwnTracks Export Options</h3>
+            <h3 class="form-section-title">{{ t('data.exportTab.owntracksOptionsTitle') }}</h3>
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
@@ -91,10 +91,10 @@
                 />
                 <div class="gpx-option-info">
                   <label for="owntracks-ocat" class="gpx-option-label">
-                    Official Recorder Format
+                    {{ t('data.exportTab.owntracksOcatLabel') }}
                   </label>
                   <p class="gpx-option-description">
-                    JSON object with count and locations fields, compatible with OwnTracks ocat exports
+                    {{ t('data.exportTab.owntracksOcatDescription') }}
                   </p>
                 </div>
               </div>
@@ -113,10 +113,10 @@
                 />
                 <div class="gpx-option-info">
                   <label for="owntracks-array" class="gpx-option-label">
-                    Legacy GeoPulse Array
+                    {{ t('data.exportTab.owntracksArrayLabel') }}
                   </label>
                   <p class="gpx-option-description">
-                    JSON array of location messages, matching older GeoPulse OwnTracks exports
+                    {{ t('data.exportTab.owntracksArrayDescription') }}
                   </p>
                 </div>
               </div>
@@ -125,7 +125,7 @@
 
           <!-- GPX Export Options (only for GPX format) -->
           <div v-if="exportFormat === 'gpx'" class="form-section">
-            <h3 class="form-section-title">GPX Export Options</h3>
+            <h3 class="form-section-title">{{ t('data.exportTab.gpxOptionsTitle') }}</h3>
             <div class="gpx-export-options">
               <div
                   class="gpx-option"
@@ -141,10 +141,10 @@
                 />
                 <div class="gpx-option-info">
                   <label for="gpx-single" class="gpx-option-label">
-                    Single GPX File
+                    {{ t('data.exportTab.gpxSingleLabel') }}
                   </label>
                   <p class="gpx-option-description">
-                    One GPX file containing all tracks (raw GPS + timeline trips) and waypoints (timeline stays)
+                    {{ t('data.exportTab.gpxSingleDescription') }}
                   </p>
                 </div>
               </div>
@@ -163,10 +163,10 @@
                 />
                 <div class="gpx-option-info">
                   <label for="gpx-zip" class="gpx-option-label">
-                    ZIP Archive
+                    {{ t('data.exportTab.gpxZipLabel') }}
                   </label>
                   <p class="gpx-option-description">
-                    Multiple GPX files packaged in a ZIP archive
+                    {{ t('data.exportTab.gpxZipDescription') }}
                   </p>
                 </div>
               </div>
@@ -174,7 +174,7 @@
 
             <!-- ZIP Grouping Options (shown when ZIP mode is selected) -->
             <div v-if="gpxExportMode === 'zip'" class="gpx-zip-grouping">
-              <h4 class="grouping-title">ZIP Grouping Mode</h4>
+              <h4 class="grouping-title">{{ t('data.exportTab.gpxZipGroupingTitle') }}</h4>
               <div class="grouping-options">
                 <div
                     class="grouping-option"
@@ -190,10 +190,10 @@
                   />
                   <div class="grouping-option-info">
                     <label for="gpx-group-individual" class="grouping-option-label">
-                      Individual (One file per trip/stay)
+                      {{ t('data.exportTab.gpxGroupIndividualLabel') }}
                     </label>
                     <p class="grouping-option-description">
-                      Each trip and stay gets its own GPX file
+                      {{ t('data.exportTab.gpxGroupIndividualDescription') }}
                     </p>
                   </div>
                 </div>
@@ -212,10 +212,10 @@
                   />
                   <div class="grouping-option-info">
                     <label for="gpx-group-daily" class="grouping-option-label">
-                      Daily (One file per day)
+                      {{ t('data.exportTab.gpxGroupDailyLabel') }}
                     </label>
                     <p class="grouping-option-description">
-                      All trips and stays for each day grouped into one GPX file
+                      {{ t('data.exportTab.gpxGroupDailyDescription') }}
                     </p>
                   </div>
                 </div>
@@ -225,32 +225,32 @@
 
           <!-- CSV Format Documentation (shown when CSV is selected) -->
           <div v-if="exportFormat === 'csv'" class="csv-format-docs">
-            <h4 class="csv-docs-title">CSV Export Format</h4>
+            <h4 class="csv-docs-title">{{ t('data.exportTab.csvDocsTitle') }}</h4>
 
             <div class="csv-docs-section">
               <p class="csv-info-text">
                 <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
-                CSV export will include all GPS points in the selected date range with the following fields:
+                {{ t('data.exportTab.csvInfoText') }}
               </p>
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Export Fields</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.exportTab.csvFieldsTitle') }}</h5>
               <ul class="csv-field-list">
-                <li><strong>timestamp</strong>: ISO-8601 format (UTC)</li>
-                <li><strong>latitude</strong>: Decimal degrees</li>
-                <li><strong>longitude</strong>: Decimal degrees</li>
-                <li><strong>accuracy</strong>: GPS accuracy in meters (if available)</li>
-                <li><strong>velocity</strong>: Speed in km/h (if available)</li>
-                <li><strong>altitude</strong>: Altitude in meters (if available)</li>
-                <li><strong>battery</strong>: Battery percentage (if available)</li>
-                <li><strong>device_id</strong>: Device identifier (if available)</li>
-                <li><strong>source_type</strong>: Data source type</li>
+                <li><strong>timestamp</strong>: {{ t('data.exportTab.csvFields.timestamp') }}</li>
+                <li><strong>latitude</strong>: {{ t('data.exportTab.csvFields.latitude') }}</li>
+                <li><strong>longitude</strong>: {{ t('data.exportTab.csvFields.longitude') }}</li>
+                <li><strong>accuracy</strong>: {{ t('data.exportTab.csvFields.accuracy') }}</li>
+                <li><strong>velocity</strong>: {{ t('data.exportTab.csvFields.velocity') }}</li>
+                <li><strong>altitude</strong>: {{ t('data.exportTab.csvFields.altitude') }}</li>
+                <li><strong>battery</strong>: {{ t('data.exportTab.csvFields.battery') }}</li>
+                <li><strong>device_id</strong>: {{ t('data.exportTab.csvFields.deviceId') }}</li>
+                <li><strong>source_type</strong>: {{ t('data.exportTab.csvFields.sourceType') }}</li>
               </ul>
             </div>
 
             <div class="csv-docs-section">
-              <h5 class="csv-docs-subtitle">Example Output</h5>
+              <h5 class="csv-docs-subtitle">{{ t('data.exportTab.csvExampleTitle') }}</h5>
               <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
 2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
 2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV</pre>
@@ -259,27 +259,27 @@
 
           <!-- Date Range Selection -->
           <div class="form-section">
-            <h3 class="form-section-title">Date Range</h3>
+            <h3 class="form-section-title">{{ t('data.exportTab.dateRangeTitle') }}</h3>
             <div class="date-range-controls">
               <div class="date-control">
-                <label for="startDate" class="date-label">Start Date</label>
+                <label for="startDate" class="date-label">{{ t('data.exportTab.startDateLabel') }}</label>
                 <Calendar
                     id="startDate"
                     v-model="exportStartDate"
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                    placeholder="Select start date"
+                    :placeholder="t('data.exportTab.startDatePlaceholder')"
                     showIcon
                     :disabled="readOnly"
                     class="date-picker"
                 />
               </div>
               <div class="date-control">
-                <label for="endDate" class="date-label">End Date</label>
+                <label for="endDate" class="date-label">{{ t('data.exportTab.endDateLabel') }}</label>
                 <Calendar
                     id="endDate"
                     v-model="exportEndDate"
                     :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-                    placeholder="Select end date"
+                    :placeholder="t('data.exportTab.endDatePlaceholder')"
                     showIcon
                     :disabled="readOnly"
                     class="date-picker"
@@ -288,28 +288,28 @@
             </div>
             <div class="date-range-presets">
               <Button
-                  label="Last 30 Days"
+                  :label="t('data.exportTab.last30Days')"
                   outlined
                   size="small"
                   :disabled="readOnly"
                   @click="setDateRange(30)"
               />
               <Button
-                  label="Last 90 Days"
+                  :label="t('data.exportTab.last90Days')"
                   outlined
                   size="small"
                   :disabled="readOnly"
                   @click="setDateRange(90)"
               />
               <Button
-                  label="Last Year"
+                  :label="t('data.exportTab.lastYear')"
                   outlined
                   size="small"
                   :disabled="readOnly"
                   @click="setDateRange(365)"
               />
               <Button
-                  label="All Time"
+                  :label="t('data.exportTab.allTime')"
                   outlined
                   size="small"
                   :disabled="readOnly"
@@ -321,7 +321,7 @@
           <!-- Export Actions -->
           <div class="form-actions">
             <Button
-                label="Start Export"
+                :label="t('data.exportTab.startExport')"
                 icon="pi pi-download"
                 @click="startExport"
                 :loading="isExporting || hasActiveExportJob"
@@ -329,7 +329,7 @@
                 class="export-button"
             />
             <small v-if="readOnly" class="demo-disabled-note">
-              Export is disabled in demo mode. The demo dataset is reset regularly and cannot be exported.
+              {{ t('data.exportTab.demoDisabledNote') }}
             </small>
           </div>
         </div>
@@ -341,7 +341,7 @@
       <template #content>
         <div class="job-status">
           <div class="job-header">
-            <h3 class="job-title">Current Export Job</h3>
+            <h3 class="job-title">{{ t('data.exportTab.currentJobTitle') }}</h3>
             <Tag
                 :value="getStatusDisplayInfo(currentExportJob.status).label"
                 :severity="getStatusDisplayInfo(currentExportJob.status).severity"
@@ -351,21 +351,21 @@
 
           <div class="job-details">
             <div class="job-detail">
-              <span class="detail-label">Data Types:</span>
+              <span class="detail-label">{{ t('data.exportTab.dataTypesLabel') }}</span>
               <span class="detail-value">
                 {{ currentExportJob.dataTypes?.map(getDataTypeDisplayName).join(', ') }}
               </span>
             </div>
 
             <div class="job-detail" v-if="currentExportJob.dateRange">
-              <span class="detail-label">Date Range:</span>
+              <span class="detail-label">{{ t('data.exportTab.dateRangeLabel') }}</span>
               <span class="detail-value">
                 {{ formatDateRange(currentExportJob.dateRange) }}
               </span>
             </div>
 
             <div class="job-detail" v-if="currentExportJob.progress !== undefined">
-              <span class="detail-label">Progress:</span>
+              <span class="detail-label">{{ t('data.exportTab.progressLabel') }}</span>
               <div class="detail-value">
                 <ProgressBar :value="currentExportJob.progress" class="job-progress"/>
                 <div class="progress-info">
@@ -380,20 +380,20 @@
 
           <div class="job-actions" v-if="currentExportJob.status === 'completed'">
             <Button
-                label="Download"
+                :label="t('data.exportTab.download')"
                 icon="pi pi-download"
                 @click="downloadExport(currentExportJob.exportJobId)"
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Downloads are disabled in demo mode' : 'Download export'"
+                v-tooltip.bottom="readOnly ? t('data.exportTab.downloadsDisabledDemo') : t('data.exportTab.downloadExportTooltip')"
                 outlined
             />
             <Button
-                label="Delete"
+                :label="t('data.exportTab.delete')"
                 icon="pi pi-trash"
                 severity="danger"
                 outlined
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Deleting exports is disabled in demo mode' : 'Delete export'"
+                v-tooltip.bottom="readOnly ? t('data.exportTab.deleteExportsDisabledDemo') : t('data.exportTab.deleteExportTooltip')"
                 @click="confirmDeleteExport(currentExportJob.exportJobId)"
             />
           </div>
@@ -406,9 +406,9 @@
       <template #content>
         <div class="export-history">
           <div class="history-header">
-            <h3 class="history-title">Export History</h3>
+            <h3 class="history-title">{{ t('data.exportTab.exportHistoryTitle') }}</h3>
             <Button
-                label="Refresh"
+                :label="t('data.exportTab.refresh')"
                 icon="pi pi-refresh"
                 outlined
                 size="small"
@@ -418,7 +418,7 @@
 
           <div v-if="exportJobs.length === 0" class="empty-state">
             <i class="pi pi-file-export empty-icon"></i>
-            <p class="empty-text">No export jobs found</p>
+            <p class="empty-text">{{ t('data.exportTab.noExportJobs') }}</p>
           </div>
 
           <div v-else class="export-list">
@@ -455,7 +455,7 @@
                     size="small"
                     @click="downloadExport(job.exportJobId)"
                     :disabled="readOnly || isJobExpired(job)"
-                    v-tooltip="readOnly ? 'Downloads are disabled in demo mode' : (isJobExpired(job) ? 'Export has expired' : 'Download export')"
+                    v-tooltip="readOnly ? t('data.exportTab.downloadsDisabledDemo') : (isJobExpired(job) ? t('data.exportTab.exportExpired') : t('data.exportTab.downloadExportTooltip'))"
                 />
                 <Button
                     icon="pi pi-trash"
@@ -463,7 +463,7 @@
                     outlined
                     size="small"
                     :disabled="readOnly"
-                    v-tooltip="readOnly ? 'Deleting exports is disabled in demo mode' : 'Delete export'"
+                    v-tooltip="readOnly ? t('data.exportTab.deleteExportsDisabledDemo') : t('data.exportTab.deleteExportTooltip')"
                     @click="confirmDeleteExport(job.exportJobId)"
                 />
               </div>
@@ -481,6 +481,7 @@
 
 <script setup>
 import {ref, computed, onMounted, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {storeToRefs} from 'pinia'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
@@ -490,6 +491,7 @@ import {showDemoModeToast} from '@/utils/demoMode'
 import {formatMessageDescriptor} from '@/utils/messageDescriptor'
 import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const toast = useToast()
 const confirm = useConfirm()
@@ -536,106 +538,31 @@ const gpxExportMode = ref('single') // 'single' or 'zip'
 const gpxZipGroupBy = ref('individual') // 'individual' or 'daily'
 
 // Data types configuration
-const availableDataTypes = ref([
-  {
-    key: 'rawgps',
-    label: 'Raw GPS Data',
-    description: 'All your location points with timestamps and accuracy',
-    icon: 'pi pi-map-marker'
-  },
-  {
-    key: 'favorites',
-    label: 'Favorite Locations',
-    description: 'Your saved favorite places and areas',
-    icon: 'pi pi-heart'
-  },
-  {
-    key: 'reversegeocodinglocation',
-    label: 'Reverse Geocoding Data',
-    description: 'Address information and place names for your locations',
-    icon: 'pi pi-map'
-  },
-  {
-    key: 'locationsources',
-    label: 'Location Sources',
-    description: 'Your configured GPS tracking apps and endpoints',
-    icon: 'pi pi-mobile'
-  },
-  {
-    key: 'userinfo',
-    label: 'User Information',
-    description: 'Your profile and preferences (excludes sensitive data)',
-    icon: 'pi pi-user'
-  },
-  {
-    key: 'timelinelabels',
-    label: 'Timeline Labels',
-    description: 'Timeline labels and their date ranges',
-    icon: 'pi pi-tags'
-  },
-  {
-    key: 'timelineoverrides',
-    label: 'Timeline Overrides',
-    description: 'Manual trip type and data gap corrections',
-    icon: 'pi pi-pencil'
-  },
-  {
-    key: 'tripworkspace',
-    label: 'Trip Plans',
-    description: 'Trips, plans, notes, and collaborators',
-    icon: 'pi pi-briefcase'
-  },
-  {
-    key: 'notificationtemplates',
-    label: 'Notification Templates',
-    description: 'Templates used by geofence notifications',
-    icon: 'pi pi-bell'
-  },
-  {
-    key: 'geofencing',
-    label: 'Geofences',
-    description: 'Geofence rules and monitored subjects',
-    icon: 'pi pi-map-marker'
-  },
-  {
-    key: 'notes',
-    label: 'Timeline Notes',
-    description: 'GeoPulse notes attached to timeline places and dates',
-    icon: 'pi pi-file-edit'
-  },
-  {
-    key: 'weathersamples',
-    label: 'Weather Samples',
-    description: 'Fetched weather observations in the selected range',
-    icon: 'pi pi-cloud'
-  },
-  {
-    key: 'mapmatching',
-    label: 'Map Matching',
-    description: 'Completed matched route cache for timeline trips',
-    icon: 'pi pi-directions'
-  },
-  {
-    key: 'friends',
-    label: 'Friends',
-    description: 'Directed friend relationships',
-    icon: 'pi pi-users'
-  },
-  {
-    key: 'friendpermissions',
-    label: 'Friend Permissions',
-    description: 'Timeline and live location sharing permissions',
-    icon: 'pi pi-lock'
-  }
+const availableDataTypes = computed(() => [
+  { key: 'rawgps', label: t('data.dataTypes.rawgps.label'), description: t('data.dataTypes.rawgps.description'), icon: 'pi pi-map-marker' },
+  { key: 'favorites', label: t('data.dataTypes.favorites.label'), description: t('data.dataTypes.favorites.description'), icon: 'pi pi-heart' },
+  { key: 'reversegeocodinglocation', label: t('data.dataTypes.reversegeocodinglocation.label'), description: t('data.dataTypes.reversegeocodinglocation.description'), icon: 'pi pi-map' },
+  { key: 'locationsources', label: t('data.dataTypes.locationsources.label'), description: t('data.dataTypes.locationsources.description'), icon: 'pi pi-mobile' },
+  { key: 'userinfo', label: t('data.dataTypes.userinfo.label'), description: t('data.dataTypes.userinfo.description'), icon: 'pi pi-user' },
+  { key: 'timelinelabels', label: t('data.dataTypes.timelinelabels.label'), description: t('data.dataTypes.timelinelabels.description'), icon: 'pi pi-tags' },
+  { key: 'timelineoverrides', label: t('data.dataTypes.timelineoverrides.label'), description: t('data.dataTypes.timelineoverrides.description'), icon: 'pi pi-pencil' },
+  { key: 'tripworkspace', label: t('data.dataTypes.tripworkspace.label'), description: t('data.dataTypes.tripworkspace.description'), icon: 'pi pi-briefcase' },
+  { key: 'notificationtemplates', label: t('data.dataTypes.notificationtemplates.label'), description: t('data.dataTypes.notificationtemplates.description'), icon: 'pi pi-bell' },
+  { key: 'geofencing', label: t('data.dataTypes.geofencing.label'), description: t('data.dataTypes.geofencing.description'), icon: 'pi pi-map-marker' },
+  { key: 'notes', label: t('data.dataTypes.notes.label'), description: t('data.dataTypes.notes.description'), icon: 'pi pi-file-edit' },
+  { key: 'weathersamples', label: t('data.dataTypes.weathersamples.label'), description: t('data.dataTypes.weathersamples.description'), icon: 'pi pi-cloud' },
+  { key: 'mapmatching', label: t('data.dataTypes.mapmatching.label'), description: t('data.dataTypes.mapmatching.description'), icon: 'pi pi-directions' },
+  { key: 'friends', label: t('data.dataTypes.friends.label'), description: t('data.dataTypes.friends.description'), icon: 'pi pi-users' },
+  { key: 'friendpermissions', label: t('data.dataTypes.friendpermissions.label'), description: t('data.dataTypes.friendpermissions.description'), icon: 'pi pi-lock' }
 ])
 
 // Export format options
-const exportFormatOptions = ref([
-  {label: 'GeoPulse', value: 'geopulse', description: 'Native GeoPulse format with all data types'},
-  {label: 'OwnTracks', value: 'owntracks', description: 'Compatible with OwnTracks format (GPS data only)'},
-  {label: 'GeoJSON', value: 'geojson', description: 'Standard GeoJSON format compatible with GIS tools (GPS data only)'},
-  {label: 'GPX', value: 'gpx', description: 'GPS Exchange Format with tracks and waypoints (compatible with GPXSee, QGIS, Garmin)'},
-  {label: 'CSV', value: 'csv', description: 'Comma-Separated Values format compatible with Excel and data analysis tools (GPS data only)'}
+const exportFormatOptions = computed(() => [
+  {label: t('data.exportTab.formats.geopulse.label'), value: 'geopulse', description: t('data.exportTab.formats.geopulse.description')},
+  {label: t('data.exportTab.formats.owntracks.label'), value: 'owntracks', description: t('data.exportTab.formats.owntracks.description')},
+  {label: t('data.exportTab.formats.geojson.label'), value: 'geojson', description: t('data.exportTab.formats.geojson.description')},
+  {label: t('data.exportTab.formats.gpx.label'), value: 'gpx', description: t('data.exportTab.formats.gpx.description')},
+  {label: t('data.exportTab.formats.csv.label'), value: 'csv', description: t('data.exportTab.formats.csv.description')}
 ])
 
 // Computed
@@ -711,8 +638,8 @@ const startExport = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Export Started',
-      detail: 'Your export job has been created and is being processed',
+      summary: t('data.exportTab.exportStartedSummary'),
+      detail: t('data.exportTab.exportStartedDetail'),
       life: 5000
     })
 
@@ -724,8 +651,8 @@ const startExport = async () => {
     console.error('Export error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: formatApiErrorDetail(error, 'Failed to start export job'),
+      summary: t('data.exportTab.exportFailedSummary'),
+      detail: formatApiErrorDetail(error, t('data.exportTab.exportFailedFallback')),
       life: 5000
     })
   }
@@ -742,16 +669,16 @@ const downloadExport = async (exportJobId) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Download Started',
-      detail: 'Your export file download has started',
+      summary: t('data.exportTab.downloadStartedSummary'),
+      detail: t('data.exportTab.downloadStartedDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Download error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: formatApiErrorDetail(error, 'Failed to download export file'),
+      summary: t('data.exportTab.downloadFailedSummary'),
+      detail: formatApiErrorDetail(error, t('data.exportTab.downloadFailedFallback')),
       life: 5000
     })
   }
@@ -764,16 +691,16 @@ const confirmDeleteExport = (exportJobId) => {
   }
 
   confirm.require({
-    message: 'Are you sure you want to delete this export? This action cannot be undone.',
-    header: 'Delete Export',
+    message: t('data.exportTab.deleteExportConfirmMessage'),
+    header: t('data.exportTab.deleteExportConfirmHeader'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('common.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Delete',
+      label: t('data.exportTab.delete'),
       severity: 'danger'
     },
     accept: () => deleteExport(exportJobId)
@@ -791,16 +718,16 @@ const deleteExport = async (exportJobId) => {
 
     toast.add({
       severity: 'success',
-      summary: 'Export Deleted',
-      detail: 'Export job has been deleted successfully',
+      summary: t('data.exportTab.exportDeletedSummary'),
+      detail: t('data.exportTab.exportDeletedDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Delete error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Delete Failed',
-      detail: formatApiErrorDetail(error, 'Failed to delete export job'),
+      summary: t('data.exportTab.deleteFailedSummary'),
+      detail: formatApiErrorDetail(error, t('data.exportTab.deleteFailedFallback')),
       life: 5000
     })
   }
@@ -813,8 +740,8 @@ const refreshExportJobs = async () => {
     console.error('Error refreshing export jobs:', error)
     toast.add({
       severity: 'error',
-      summary: 'Refresh Failed',
-      detail: formatApiErrorDetail(error, 'Failed to refresh export jobs'),
+      summary: t('data.exportTab.refreshFailedSummary'),
+      detail: formatApiErrorDetail(error, t('data.exportTab.refreshFailedFallback')),
       life: 5000
     })
   }
@@ -830,7 +757,7 @@ const formatDate = (dateString) => {
 }
 
 const formatDateRange = (dateRange) => {
-  if (!dateRange) return 'All time'
+  if (!dateRange) return t('data.exportTab.allTimeLabel')
   const start = timezone.formatDateDisplay(dateRange.startDate)
   const end = timezone.formatDateDisplay(dateRange.endDate)
   return `${start} - ${end}`
@@ -855,7 +782,7 @@ const toggleAllExportDataTypes = () => {
 }
 
 const showDemoDisabledToast = () => {
-  showDemoModeToast(toast, 'Export is disabled in demo mode.')
+  showDemoModeToast(toast, t('data.exportTab.demoToast'))
 }
 
 // Watch for export job completion
@@ -863,8 +790,8 @@ watch(() => currentExportJob.value?.status, (newStatus, oldStatus) => {
   if (oldStatus && oldStatus !== 'completed' && newStatus === 'completed') {
     toast.add({
       severity: 'success',
-      summary: 'Export Completed',
-      detail: 'Your export is ready for download!',
+      summary: t('data.exportTab.exportCompletedSummary'),
+      detail: t('data.exportTab.exportCompletedDetail'),
       life: 5000
     })
   }

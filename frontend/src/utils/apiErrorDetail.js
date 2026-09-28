@@ -1,4 +1,18 @@
 import { formatMessageDescriptor } from './messageDescriptor'
+import { t } from '@/locales'
+
+/**
+ * Stable code for the refresh-token path's failure.
+ *
+ * The refresh flow has no HTTP response to classify -- `apiService` gives up on refreshing and knows
+ * only that the session is over -- so it signals expiry with this code rather than a status. It is
+ * matched by code and never by message: the user-facing copy is translatable, so matching on it would
+ * break silently the moment either side was reworded or translated.
+ */
+export const AUTH_EXPIRED_CODE = 'AUTH_EXPIRED'
+
+export const createAuthExpiredError = () =>
+  Object.assign(new Error('Authentication expired. Please login again.'), { code: AUTH_EXPIRED_CODE })
 
 export const formatViolationField = (field) => {
   if (!field) {
@@ -94,7 +108,7 @@ export const withErrorReference = (detail, error) => {
   if (!hasErrorReference(error)) {
     return detail
   }
-  return `${detail}\nCheck backend logs for ID: ${getErrorReferenceId(error)}`
+  return `${detail}\n${t('errors.reference.hint', { id: getErrorReferenceId(error) })}`
 }
 
 export const formatApiErrorDetail = (error, fallback) => {

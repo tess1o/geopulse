@@ -1,8 +1,8 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Location Analytics"
-      subtitle="Explore your visits by map, city, and country"
+      :title="t('analytics.locationAnalyticsPage.title')"
+      :subtitle="t('analytics.locationAnalyticsPage.subtitle')"
       variant="fullwidth"
     >
       <template #actions>
@@ -13,7 +13,7 @@
 
           <div class="analytics-tabs">
             <Button
-              label="Map"
+              :label="t('analytics.locationAnalyticsPage.mapTab')"
               icon="pi pi-map-marker"
               :class="{ 'active-tab': activeTab === 'map' }"
               @click="handleTabClick('map')"
@@ -51,7 +51,7 @@
           <template #header>
             <div class="map-places-title">
               <div class="map-places-heading">
-                <span class="map-places-label">Recent places in view</span>
+                <span class="map-places-label">{{ t('analytics.locationAnalyticsPage.recentPlacesInView') }}</span>
                 <span class="map-places-count">{{ sortedMapPlaces.length }}</span>
               </div>
               <div class="map-places-controls">
@@ -60,7 +60,7 @@
                   text
                   rounded
                   :disabled="!canScrollRailLeft"
-                  aria-label="Scroll places left"
+                  :aria-label="t('analytics.locationAnalyticsPage.scrollPlacesLeft')"
                   @click="scrollPlacesRail(-1)"
                 />
                 <Button
@@ -68,7 +68,7 @@
                   text
                   rounded
                   :disabled="!canScrollRailRight"
-                  aria-label="Scroll places right"
+                  :aria-label="t('analytics.locationAnalyticsPage.scrollPlacesRight')"
                   @click="scrollPlacesRail(1)"
                 />
               </div>
@@ -79,7 +79,7 @@
           </div>
           <div v-else-if="sortedMapPlaces.length === 0" class="empty-state compact">
             <i class="pi pi-map-marker empty-icon"></i>
-            <p>No places found for this area.</p>
+            <p>{{ t('analytics.locationAnalyticsPage.noPlacesInArea') }}</p>
           </div>
           <div v-else class="map-places-rail-wrapper">
             <div
@@ -104,22 +104,22 @@
                 <i class="pi pi-map-marker"></i>
               </div>
               <div class="map-place-main">
-                <div class="map-place-name">{{ place.locationName || 'Unknown location' }}</div>
+                <div class="map-place-name">{{ place.locationName || t('analytics.locationAnalyticsPage.unknownLocation') }}</div>
                 <div class="map-place-meta">
-                  {{ [place.city, place.country].filter(Boolean).join(', ') || 'Unknown area' }}
+                  {{ [place.city, place.country].filter(Boolean).join(', ') || t('analytics.locationAnalyticsPage.unknownArea') }}
                 </div>
                 <div class="map-place-timeline">
-                  Last visit: {{ formatLastVisitFull(place.lastVisit) }}
+                  {{ t('analytics.locationAnalyticsPage.lastVisit', { value: formatLastVisitFull(place.lastVisit) }) }}
                 </div>
                 <div v-if="getMapPlaceTimelineLabel(place) || getMapPlaceTrip(place)" class="map-place-trip">
                   <span
                     v-if="getMapPlaceTimelineLabel(place)"
                     class="map-place-tag-chip"
                     :style="{ '--tag-color': getTimelineLabelColor(getMapPlaceTimelineLabel(place)) }"
-                    title="Timeline label match. Click to open timeline range."
+                    :title="t('analytics.locationAnalyticsPage.timelineLabelMatchTitle')"
                     role="button"
                     tabindex="0"
-                    aria-label="Open timeline label range"
+                    :aria-label="t('analytics.locationAnalyticsPage.openTimelineLabelRange')"
                     @click.stop="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
                     @keydown.enter="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
                     @keydown.space.prevent="handleMapPlaceTimelineLabelClick(getMapPlaceTimelineLabel(place))"
@@ -133,18 +133,18 @@
                     class="map-place-chip-action"
                     text
                     rounded
-                    title="Open linked trip planner"
-                    aria-label="Open linked trip planner"
+                    :title="t('analytics.locationAnalyticsPage.openLinkedTripPlanner')"
+                    :aria-label="t('analytics.locationAnalyticsPage.openLinkedTripPlanner')"
                     @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                   />
                   <span
                     v-if="showStandaloneTripChip(place)"
                     class="map-place-trip-chip"
                     :style="{ '--trip-tag-color': getTripColor(getMapPlaceTrip(place)) }"
-                    title="Trip plan match. Click to open trip planner."
+                    :title="t('analytics.locationAnalyticsPage.tripPlanMatchTitle')"
                     role="button"
                     tabindex="0"
-                    aria-label="Open trip planner"
+                    :aria-label="t('analytics.locationAnalyticsPage.openTripPlanner')"
                     @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                     @keydown.enter="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                     @keydown.space.prevent="handleMapPlaceTripClick(getMapPlaceTrip(place))"
@@ -155,16 +155,16 @@
                 </div>
               </div>
               <div class="map-place-side">
-                <div class="map-place-visits" :title="`${place.visitCount} visits`">
+                <div class="map-place-visits" :title="t('analytics.locationAnalyticsPage.visitsCountTitle', { count: place.visitCount })">
                   <span class="value">{{ place.visitCount }}</span>
-                  <span class="label">visits</span>
+                  <span class="label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
                 </div>
                 <Button
                   icon="pi pi-external-link"
                   class="map-place-open-btn"
                   text
                   rounded
-                  aria-label="Open place details"
+                  :aria-label="t('analytics.locationAnalyticsPage.openPlaceDetails')"
                   @click.stop="openMapPlaceDetails(place)"
                 />
               </div>
@@ -182,7 +182,7 @@
 
         <div v-else-if="cities.length === 0" class="empty-state">
           <i class="pi pi-building empty-icon"></i>
-          <p>No cities found in your travel history</p>
+          <p>{{ t('analytics.locationAnalyticsPage.noCitiesFound') }}</p>
         </div>
 
         <div v-else class="location-grid">
@@ -202,11 +202,11 @@
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ city.visitCount }}</span>
-                <span class="stat-label">visits</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ city.uniquePlaces }}</span>
-                <span class="stat-label">places</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.places') }}</span>
               </div>
             </div>
             <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
@@ -222,7 +222,7 @@
 
         <div v-else-if="countries.length === 0" class="empty-state">
           <i class="pi pi-globe empty-icon"></i>
-          <p>No countries found in your travel history</p>
+          <p>{{ t('analytics.locationAnalyticsPage.noCountriesFound') }}</p>
         </div>
 
         <div v-else class="location-grid">
@@ -241,15 +241,15 @@
             <div class="location-stats">
               <div class="stat-item">
                 <span class="stat-value">{{ country.visitCount }}</span>
-                <span class="stat-label">visits</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.visits') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ country.cityCount }}</span>
-                <span class="stat-label">cities</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.cities') }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-value">{{ country.uniquePlaces }}</span>
-                <span class="stat-label">places</span>
+                <span class="stat-label">{{ t('analytics.locationAnalyticsPage.places') }}</span>
               </div>
             </div>
             <i class="pi pi-chevron-right location-chevron" aria-hidden="true"></i>
@@ -262,6 +262,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -289,6 +290,7 @@ import {
   normalizeTimelineLabelColor
 } from '@/utils/timelineLabelHelpers'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -381,8 +383,8 @@ const sortedMapPlaces = computed(() => {
 })
 
 const mapPlacesPreview = computed(() => sortedMapPlaces.value.slice(0, 60))
-const citiesTabLabel = computed(() => (citiesLoaded.value ? `Cities (${cities.value.length})` : 'Cities'))
-const countriesTabLabel = computed(() => (countriesLoaded.value ? `Countries (${countries.value.length})` : 'Countries'))
+const citiesTabLabel = computed(() => (citiesLoaded.value ? t('analytics.locationAnalyticsPage.citiesTabCount', { count: cities.value.length }) : t('analytics.locationAnalyticsPage.citiesTab')))
+const countriesTabLabel = computed(() => (countriesLoaded.value ? t('analytics.locationAnalyticsPage.countriesTabCount', { count: countries.value.length }) : t('analytics.locationAnalyticsPage.countriesTab')))
 const mapPlaceTripsByKey = computed(() => {
   const result = new Map()
   const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
@@ -401,7 +403,7 @@ const mapPlaceTimelineLabelsByKey = computed(() => {
 })
 
 const formatLastVisitFull = (timestamp) => {
-  if (!timestamp) return 'Unknown'
+  if (!timestamp) return t('analytics.locationAnalyticsPage.unknown')
   return timezone.formatDateDisplay(timestamp)
 }
 
@@ -415,12 +417,12 @@ const getMapPlaceTimelineLabel = (place) => {
 
 const getMapPlaceTripLabel = (trip) => {
   if (!trip) return ''
-  return trip.name || `Trip #${trip.id}`
+  return trip.name || t('analytics.locationAnalyticsPage.tripFallback', { id: trip.id })
 }
 
 const getMapPlaceTimelineLabelLabel = (tag) => {
   if (!tag) return ''
-  return tag.name || `Label #${tag.id}`
+  return tag.name || t('analytics.locationAnalyticsPage.labelFallback', { id: tag.id })
 }
 
 const isLinkedPair = (tag, trip) => {
@@ -605,8 +607,8 @@ const fetchMapPlaces = async (force = false) => {
     console.error('Failed to fetch map places:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to load map places'),
+      summary: t('analytics.locationAnalyticsPage.errorSummary'),
+      detail: formatApiErrorDetail(error, t('analytics.locationAnalyticsPage.mapPlacesLoadFailed')),
       life: 5000
     })
   }
@@ -670,8 +672,8 @@ watch(activeTab, async (newTab) => {
     console.error('Failed to load location analytics tab data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to load location data'),
+      summary: t('analytics.locationAnalyticsPage.errorSummary'),
+      detail: formatApiErrorDetail(error, t('analytics.locationAnalyticsPage.tabDataLoadFailed')),
       life: 5000
     })
   }

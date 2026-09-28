@@ -1,21 +1,21 @@
 <template>
   <div class="tab-panel">
     <BaseCard class="panel-card">
-      <h3>{{ editingRuleId ? 'Edit Rule' : 'Create Rule' }}</h3>
+      <h3>{{ editingRuleId ? t('geofences.rulesTab.headerEdit') : t('geofences.rulesTab.headerCreate') }}</h3>
       <p v-if="readOnly" class="demo-disabled-text">
-        Demo mode: geofence rules are read-only. Create, update, draw, and delete actions are disabled.
+        {{ t('geofences.rulesTab.demoDisabled') }}
       </p>
       <div class="form-layout">
         <section :class="['form-section', 'form-section--area', { 'form-section--needs-area': !selectedAreaSummary }]">
           <div class="section-header">
-            <h4>Basics</h4>
+            <h4>{{ t('geofences.rulesTab.basicsHeader') }}</h4>
           </div>
           <div class="section-grid section-grid--basics">
             <div class="field field--name">
-              <label>Name</label>
+              <label>{{ t('geofences.rulesTab.nameLabel') }}</label>
               <InputText
                 v-model="ruleForm.name"
-                placeholder="Home area"
+                :placeholder="t('geofences.rulesTab.namePlaceholder')"
                 :disabled="readOnly"
                 :class="{ 'p-invalid': !!ruleFormErrors.name }"
               />
@@ -23,7 +23,7 @@
             </div>
 
             <div class="field field--subjects">
-              <label>Subjects</label>
+              <label>{{ t('geofences.rulesTab.subjectsLabel') }}</label>
               <MultiSelect
                 v-model="ruleForm.subjectUserIds"
                 :options="subjectOptions"
@@ -32,14 +32,14 @@
                 filter
                 display="chip"
                 :maxSelectedLabels="3"
-                placeholder="Select subjects"
+                :placeholder="t('geofences.rulesTab.subjectsPlaceholder')"
                 :disabled="readOnly"
                 :class="['subjects-select', { 'p-invalid': !!ruleFormErrors.subjectUserIds }]"
               >
                 <template #option="slotProps">
                   <div class="subject-option" :class="{ 'subject-option--unavailable': slotProps.option.unavailable }">
                     <span>{{ slotProps.option.label }}</span>
-                    <small v-if="slotProps.option.unavailable" class="subject-option-warning">Unavailable</small>
+                    <small v-if="slotProps.option.unavailable" class="subject-option-warning">{{ t('geofences.rulesTab.subjectUnavailable') }}</small>
                   </div>
                 </template>
               </MultiSelect>
@@ -47,7 +47,7 @@
             </div>
 
             <div class="field field--status">
-              <label>Status</label>
+              <label>{{ t('geofences.rulesTab.statusLabel') }}</label>
               <Select
                 v-model="ruleForm.status"
                 :options="statusOptions"
@@ -62,17 +62,17 @@
         <section class="form-section">
           <div class="section-header section-header--with-action">
             <h4>
-              Area
-              <span v-if="!selectedAreaSummary" class="required-inline-chip">Required</span>
+              {{ t('geofences.rulesTab.areaHeader') }}
+              <span v-if="!selectedAreaSummary" class="required-inline-chip">{{ t('geofences.rulesTab.areaRequiredChip') }}</span>
             </h4>
             <Button
-              :label="selectedAreaSummary ? 'Redraw Rectangle' : 'Draw Rectangle (Required)'"
+              :label="selectedAreaSummary ? t('geofences.rulesTab.redrawRectangle') : t('geofences.rulesTab.drawRectangleRequired')"
               icon="pi pi-pencil"
               :severity="selectedAreaSummary ? 'secondary' : 'primary'"
               :outlined="!!selectedAreaSummary"
               :disabled="readOnly"
               :class="['draw-rectangle-button', { 'draw-rectangle-button--required': !selectedAreaSummary }]"
-              v-tooltip.bottom="readOnly ? 'Drawing geofence areas is disabled in demo mode' : 'Draw geofence rectangle'"
+              v-tooltip.bottom="readOnly ? t('geofences.rulesTab.drawTooltipDemo') : t('geofences.rulesTab.drawTooltip')"
               @click="$emit('start-rectangle-draw')"
             />
           </div>
@@ -94,34 +94,34 @@
 
         <section class="form-section">
           <div class="section-header">
-            <h4>Behavior</h4>
+            <h4>{{ t('geofences.rulesTab.behaviorHeader') }}</h4>
           </div>
           <div class="rule-sentence">
-            <p class="rule-sentence-intro">When a subject...</p>
+            <p class="rule-sentence-intro">{{ t('geofences.rulesTab.sentenceIntro') }}</p>
 
             <div class="rule-sentence-row">
               <div class="rule-toggle-chip">
                 <span class="rule-toggle-chip-label">
                   <i class="pi pi-sign-in rule-toggle-chip-icon" />
-                  Enter
+                  {{ t('geofences.rulesTab.enterChip') }}
                 </span>
                 <InputSwitch v-model="ruleForm.monitorEnter" :disabled="readOnly" />
               </div>
               <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorEnter }]">
-                enters the area, send:
+                {{ t('geofences.rulesTab.entersAreaSend') }}
               </span>
               <Select
                 v-model="ruleForm.enterTemplateId"
                 :options="enterTemplateOptions"
                 optionLabel="label"
                 optionValue="value"
-                :placeholder="hasEnabledDefaultEnterTemplate ? `Default: ${enabledDefaultEnterTemplate?.name}` : 'Built-in message'"
+                :placeholder="hasEnabledDefaultEnterTemplate ? t('geofences.rulesTab.templatePlaceholderDefault', { name: enabledDefaultEnterTemplate?.name }) : t('geofences.rulesTab.templatePlaceholder')"
                 :disabled="readOnly"
                 :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorEnter }]"
               />
               <i
                 class="pi pi-info-circle rule-sentence-info"
-                v-tooltip.bottom="'If no template is selected, default ENTER template is used when enabled. If no template resolves, event is logged without inbox notification.'"
+                v-tooltip.bottom="t('geofences.rulesTab.enterTemplateInfo')"
               />
             </div>
 
@@ -129,35 +129,35 @@
               <div class="rule-toggle-chip">
                 <span class="rule-toggle-chip-label">
                   <i class="pi pi-sign-out rule-toggle-chip-icon" />
-                  Leave
+                  {{ t('geofences.rulesTab.leaveChip') }}
                 </span>
                 <InputSwitch v-model="ruleForm.monitorLeave" :disabled="readOnly" />
               </div>
               <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorLeave }]">
-                leaves the area, send:
+                {{ t('geofences.rulesTab.leavesAreaSend') }}
               </span>
               <Select
                 v-model="ruleForm.leaveTemplateId"
                 :options="leaveTemplateOptions"
                 optionLabel="label"
                 optionValue="value"
-                :placeholder="hasEnabledDefaultLeaveTemplate ? `Default: ${enabledDefaultLeaveTemplate?.name}` : 'Built-in message'"
+                :placeholder="hasEnabledDefaultLeaveTemplate ? t('geofences.rulesTab.templatePlaceholderDefault', { name: enabledDefaultLeaveTemplate?.name }) : t('geofences.rulesTab.templatePlaceholder')"
                 :disabled="readOnly"
                 :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorLeave }]"
               />
               <i
                 class="pi pi-info-circle rule-sentence-info"
-                v-tooltip.bottom="'If no template is selected, default LEAVE template is used when enabled. If no template resolves, event is logged without inbox notification.'"
+                v-tooltip.bottom="t('geofences.rulesTab.leaveTemplateInfo')"
               />
             </div>
 
             <div class="rule-sentence-cooldown">
-              <span>Wait at least</span>
+              <span>{{ t('geofences.rulesTab.waitAtLeast') }}</span>
               <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" :disabled="readOnly" class="rule-sentence-cooldown-input" />
-              <span>seconds between notifications.</span>
+              <span>{{ t('geofences.rulesTab.secondsBetween') }}</span>
               <i
                 class="pi pi-info-circle help-icon"
-                v-tooltip.bottom="'Prevents repeated Enter/Leave notifications for this rule during the cooldown window.'"
+                v-tooltip.bottom="t('geofences.rulesTab.cooldownInfo')"
               />
             </div>
           </div>
@@ -169,16 +169,16 @@
 
       <div class="actions-row sticky-actions">
         <Button
-          :label="editingRuleId ? 'Update Rule' : 'Create Rule'"
+          :label="editingRuleId ? t('geofences.rulesTab.updateRule') : t('geofences.rulesTab.headerCreate')"
           icon="pi pi-save"
           @click="$emit('save-rule')"
           :loading="savingRule"
           :disabled="readOnly || savingRule"
-          v-tooltip.bottom="readOnly ? 'Creating and updating geofence rules is disabled in demo mode' : 'Save geofence rule'"
+          v-tooltip.bottom="readOnly ? t('geofences.rulesTab.saveTooltipDemo') : t('geofences.rulesTab.saveTooltip')"
         />
         <Button
           v-if="editingRuleId"
-          label="Cancel"
+          :label="t('geofences.rulesTab.cancel')"
           severity="secondary"
           outlined
           @click="$emit('reset-rule-form')"
@@ -188,12 +188,12 @@
 
     <BaseCard class="panel-card">
       <div class="table-header">
-        <h3>Rules</h3>
-        <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="$emit('load-rules')" />
+        <h3>{{ t('geofences.rulesTab.rulesHeader') }}</h3>
+        <Button icon="pi pi-refresh" :label="t('geofences.rulesTab.refresh')" severity="secondary" outlined @click="$emit('load-rules')" />
       </div>
       <DataTable :value="rules" dataKey="id" responsiveLayout="scroll">
-        <Column field="name" header="Name" />
-        <Column header="Subjects">
+        <Column field="name" :header="t('geofences.rulesTab.columns.name')" />
+        <Column :header="t('geofences.rulesTab.columns.subjects')">
           <template #body="slotProps">
             <div class="subjects-cell">
               <Tag
@@ -204,31 +204,31 @@
               />
               <Tag
                 v-if="remainingSubjectsCount(slotProps.data) > 0"
-                :value="`+${remainingSubjectsCount(slotProps.data)} more`"
+                :value="t('geofences.rulesTab.moreSubjects', { count: remainingSubjectsCount(slotProps.data) })"
                 severity="secondary"
               />
             </div>
           </template>
         </Column>
-        <Column header="Events">
+        <Column :header="t('geofences.rulesTab.columns.events')">
           <template #body="slotProps">
             <span>{{ eventSummary(slotProps.data) }}</span>
           </template>
         </Column>
-        <Column field="cooldownSeconds" header="Cooldown" />
-        <Column field="status" header="Status">
+        <Column field="cooldownSeconds" :header="t('geofences.rulesTab.columns.cooldown')" />
+        <Column field="status" :header="t('geofences.rulesTab.columns.status')">
           <template #body="slotProps">
             <Tag :value="slotProps.data.status" :severity="slotProps.data.status === 'ACTIVE' ? 'success' : 'secondary'" />
           </template>
         </Column>
-        <Column header="Actions">
+        <Column :header="t('geofences.rulesTab.columns.actions')">
           <template #body="slotProps">
             <div class="row-actions">
               <Button
                 icon="pi pi-pencil"
                 text
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Editing geofence rules is disabled in demo mode' : 'Edit rule'"
+                v-tooltip.bottom="readOnly ? t('geofences.rulesTab.editTooltipDemo') : t('geofences.rulesTab.editTooltip')"
                 @click="$emit('edit-rule', slotProps.data)"
               />
               <Button
@@ -236,7 +236,7 @@
                 text
                 severity="danger"
                 :disabled="readOnly"
-                v-tooltip.bottom="readOnly ? 'Deleting geofence rules is disabled in demo mode' : 'Delete rule'"
+                v-tooltip.bottom="readOnly ? t('geofences.rulesTab.deleteTooltipDemo') : t('geofences.rulesTab.deleteTooltip')"
                 @click="$emit('delete-rule', slotProps.data)"
               />
             </div>
@@ -248,6 +248,7 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import BaseMap from '@/components/maps/BaseMap.vue'
 import InputText from 'primevue/inputtext'
@@ -259,6 +260,8 @@ import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+
+const { t } = useI18n()
 
 defineProps({
   editingRuleId: {

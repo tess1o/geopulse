@@ -1,16 +1,16 @@
 <template>
   <AppLayout variant="default">
-    <PageContainer title="Rewind" subtitle="Your location story, one period at a time." max-width="large" :loading="isLoading">
+    <PageContainer :title="t('analytics.timeDigestPage.title')" :subtitle="t('analytics.timeDigestPage.subtitle')" max-width="large" :loading="isLoading">
       <template #actions>
-        <Button label="Export PDF" icon="pi pi-file-pdf" outlined :disabled="!currentDigest" @click="exportDialogVisible = true" />
+        <Button :label="t('analytics.timeDigestPage.exportPdf')" icon="pi pi-file-pdf" outlined :disabled="!currentDigest" @click="exportDialogVisible = true" />
       </template>
 
       <DigestHeader v-model:viewMode="viewMode" v-model:year="selectedYear" v-model:month="selectedMonth" @period-changed="handlePeriodChange" />
 
-      <div v-if="isLoading" class="digest-loading"><ProgressSpinner size="large" /><p>Building your rewind…</p></div>
+      <div v-if="isLoading" class="digest-loading"><ProgressSpinner size="large" /><p>{{ t('analytics.timeDigestPage.building') }}</p></div>
 
       <div v-else-if="hasError" class="digest-error">
-        <BaseCard class="error-card"><i class="pi pi-exclamation-triangle error-icon"></i><h3>Unable to load Rewind</h3><p>{{ errorMessage }}</p><BaseButton label="Try again" icon="pi pi-refresh" variant="gp-primary" @click="loadDigest" /></BaseCard>
+        <BaseCard class="error-card"><i class="pi pi-exclamation-triangle error-icon"></i><h3>{{ t('analytics.timeDigestPage.unableToLoad') }}</h3><p>{{ errorMessage }}</p><BaseButton :label="t('analytics.timeDigestPage.tryAgain')" icon="pi pi-refresh" variant="gp-primary" @click="loadDigest" /></BaseCard>
       </div>
 
       <div v-else-if="currentDigest" class="digest-content">
@@ -25,18 +25,18 @@
         <DigestHeatmap :view-mode="viewMode" :year="selectedYear" :month="selectedMonth" />
       </div>
 
-      <div v-else class="digest-empty"><BaseCard class="empty-card"><i class="pi pi-compass empty-icon"></i><h3>No movement for {{ displayPeriod }}</h3><p>Choose another period or start tracking to create your first rewind.</p></BaseCard></div>
+      <div v-else class="digest-empty"><BaseCard class="empty-card"><i class="pi pi-compass empty-icon"></i><h3>{{ t('analytics.timeDigestPage.noMovementFor', { period: displayPeriod }) }}</h3><p>{{ t('analytics.timeDigestPage.emptyHint') }}</p></BaseCard></div>
     </PageContainer>
 
-    <Dialog v-model:visible="exportDialogVisible" modal header="Export Rewind" :style="{ width: 'min(92vw, 28rem)' }">
-      <p class="export-description">Download a polished report for <b>{{ displayPeriod }}</b>.</p>
+    <Dialog v-model:visible="exportDialogVisible" modal :header="t('analytics.timeDigestPage.exportDialogHeader')" :style="{ width: 'min(92vw, 28rem)' }">
+      <p class="export-description">{{ t('analytics.timeDigestPage.exportDescription', { period: displayPeriod }) }}</p>
       <label class="export-photos-option" :class="{ disabled: !immichAvailable }">
         <Checkbox v-model="includePhotos" binary input-id="rewind-include-photos" :disabled="!immichAvailable" />
-        <span><b>Include Immich photos</b><small>{{ immichAvailable ? 'Add up to six recent memories from this period.' : 'Connect Immich to include photos.' }}</small></span>
+        <span><b>{{ t('analytics.timeDigestPage.includePhotos') }}</b><small>{{ immichAvailable ? t('analytics.timeDigestPage.includePhotosHintAvailable') : t('analytics.timeDigestPage.includePhotosHintUnavailable') }}</small></span>
       </label>
       <template #footer>
-        <Button label="Cancel" text @click="exportDialogVisible = false" />
-        <Button label="Download PDF" icon="pi pi-download" :loading="exporting" @click="downloadPdf" />
+        <Button :label="t('analytics.timeDigestPage.cancel')" text @click="exportDialogVisible = false" />
+        <Button :label="t('analytics.timeDigestPage.downloadPdf')" icon="pi pi-download" :loading="exporting" @click="downloadPdf" />
       </template>
     </Dialog>
   </AppLayout>
@@ -44,6 +44,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -68,6 +69,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const digestStore = useDigestStore()
 const { currentDigest, loading: isLoading, error: digestError } = storeToRefs(digestStore)
@@ -84,7 +86,7 @@ const includePhotos = ref(false)
 const immichAvailable = ref(false)
 
 const hasError = computed(() => digestStore.hasError)
-const errorMessage = computed(() => formatApiErrorDetail(digestError.value, 'Failed to load Rewind'))
+const errorMessage = computed(() => formatApiErrorDetail(digestError.value, t('analytics.timeDigestPage.loadFailedFallback')))
 const displayPeriod = computed(() => viewMode.value === 'monthly' ? timezone.create(`${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-01`).format('MMMM YYYY') : String(selectedYear.value))
 
 const loadDigest = async () => {
@@ -117,9 +119,9 @@ const downloadPdf = async () => {
     if (viewMode.value === 'monthly') params.month = selectedMonth.value
     await digestStore.downloadPdf(params)
     exportDialogVisible.value = false
-    toast.add({ severity: 'success', summary: 'Rewind exported', detail: 'Your PDF is downloading.', life: 3500 })
+    toast.add({ severity: 'success', summary: t('analytics.timeDigestPage.exportedSummary'), detail: t('analytics.timeDigestPage.exportedDetail'), life: 3500 })
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Export failed', detail: formatApiErrorDetail(error, 'Could not generate the PDF.'), life: 5000 })
+    toast.add({ severity: 'error', summary: t('analytics.timeDigestPage.exportFailedSummary'), detail: formatApiErrorDetail(error, t('analytics.timeDigestPage.exportFailedFallback')), life: 5000 })
   } finally {
     exporting.value = false
   }

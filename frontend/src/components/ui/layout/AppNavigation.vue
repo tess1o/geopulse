@@ -30,26 +30,26 @@
             <!-- Administration (Admin only) -->
             <template v-if="canViewAdmin">
               <div class="gp-nav-admin-header">
-                <span class="gp-nav-section-title">Administration</span>
+                <span class="gp-nav-section-title">{{ t('nav.sections.administration') }}</span>
               </div>
 
               <NavigationSection
-                title="Overview"
+                :title="t('nav.sections.overview')"
                 :items="adminOverviewItems"
                 @item-click="handleItemClick"
               />
               <NavigationSection
-                title="Operations"
+                :title="t('nav.sections.operations')"
                 :items="adminOperationsItems"
                 @item-click="handleItemClick"
               />
               <NavigationSection
-                title="People & Access"
+                :title="t('nav.sections.peopleAndAccess')"
                 :items="adminPeopleItems"
                 @item-click="handleItemClick"
               />
               <NavigationSection
-                title="Configuration"
+                :title="t('nav.sections.configuration')"
                 :items="adminConfigurationItems"
                 @item-click="handleItemClick"
               />
@@ -58,10 +58,10 @@
             <!-- Theme & Settings -->
             <div class="gp-nav-theme">
               <div class="gp-nav-theme-header">
-                <span class="gp-nav-section-title">Appearance</span>
+                <span class="gp-nav-section-title">{{ t('nav.sections.appearance') }}</span>
               </div>
               <div class="gp-nav-theme-control">
-                <span class="gp-theme-label">Theme: {{ themeModeLabel }}</span>
+                <span class="gp-theme-label">{{ t('nav.theme.label', { mode: themeModeLabel }) }}</span>
                 <DarkModeSwitcher class="gp-theme-switcher" />
               </div>
             </div>
@@ -69,12 +69,12 @@
             <!-- User Profile Section -->
             <div class="gp-nav-user">
               <div class="gp-nav-user-info">
-                <span class="gp-nav-user-label">Logged in as:</span>
+                <span class="gp-nav-user-label">{{ t('nav.loggedInAs') }}</span>
                 <span class="gp-nav-user-name">{{ userName }}</span>
               </div>
               <BaseButton
                 icon="pi pi-sign-out"
-                label="Logout"
+                :label="t('nav.logout')"
                 variant="gp-minimal"
                 @click="handleLogout"
                 class="gp-nav-logout"
@@ -83,7 +83,7 @@
 
             <!-- Version Display -->
             <div class="gp-nav-version">
-              <span class="gp-nav-version-label">Version</span>
+              <span class="gp-nav-version-label">{{ t('nav.version') }}</span>
               <span class="gp-nav-version-number">{{ appVersion }}</span>
               <a
                 v-if="updateAvailable && latestVersion"
@@ -93,7 +93,7 @@
                 class="gp-nav-version-update"
               >
                 <i class="pi pi-arrow-circle-up" />
-                <span>New: {{ latestVersion }} available</span>
+                <span>{{ t('nav.newVersionAvailable', { version: latestVersion }) }}</span>
               </a>
             </div>
           </nav>
@@ -115,6 +115,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Drawer from 'primevue/drawer'
 import BaseButton from '../base/BaseButton.vue'
@@ -127,6 +128,8 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { useVersionStore } from '@/stores/version'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { isMaintenanceInterruption } from '@/stores/maintenance'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -170,72 +173,75 @@ const toggleClasses = computed(() => ({
 }))
 
 const themeModeLabel = computed(() => {
-  if (themeMode.value === themeModes.LIGHT) return 'Light'
-  if (themeMode.value === themeModes.DARK) return 'Dark'
-  return 'System'
+  if (themeMode.value === themeModes.LIGHT) return t('nav.theme.modes.light')
+  if (themeMode.value === themeModes.DARK) return t('nav.theme.modes.dark')
+  return t('nav.theme.modes.system')
 })
 
+// Labels are resolved from the catalogs here rather than stored as display text. This computed reads
+// the reactive locale, so the whole navigation re-renders when the language changes. Each entry keeps
+// its stable `key`, which is also the catalog key (`nav.items.<key>`) and matches route meta.titleKey.
 const navigationSections = computed(() => [
   {
-    title: 'Timeline',
+    title: t('nav.sections.timeline'),
     items: [
-      { label: 'Timeline', icon: 'pi pi-calendar', to: '/app/timeline', key: 'timeline' },
-      { label: 'Dashboard', icon: 'pi pi-chart-bar', to: '/app/dashboard', key: 'dashboard' },
-      { label: 'Timeline Labels', icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'timeline-labels' },
-      { label: 'Trip Plans', icon: 'pi pi-briefcase', to: '/app/trips', key: 'trips' }
+      { label: t('nav.items.timeline'), icon: 'pi pi-calendar', to: '/app/timeline', key: 'timeline' },
+      { label: t('nav.items.dashboard'), icon: 'pi pi-chart-bar', to: '/app/dashboard', key: 'dashboard' },
+      { label: t('nav.items.timeline-labels'), icon: 'pi pi-calendar-times', to: '/app/timeline-labels', key: 'timeline-labels' },
+      { label: t('nav.items.trips'), icon: 'pi pi-briefcase', to: '/app/trips', key: 'trips' }
     ]
   },
   {
-    title: 'Explore',
+    title: t('nav.sections.explore'),
     items: [
-      { label: 'Location Analytics', icon: 'pi pi-map', to: '/app/location-analytics', key: 'location-analytics' },
-      { label: 'Journey Insights', icon: 'pi pi-compass', to: '/app/journey-insights', key: 'journey-insights' },
-      { label: 'Rewind', icon: 'pi pi-calendar-clock', to: '/app/rewind', key: 'rewind' },
-      { label: 'Coverage Explorer', icon: 'pi pi-globe', to: '/app/coverage', key: 'coverage-explorer' },
-      { label: 'AI Assistant', icon: 'pi pi-sparkles', to: '/app/ai/chat', key: 'ai-chat' }
+      { label: t('nav.items.location-analytics'), icon: 'pi pi-map', to: '/app/location-analytics', key: 'location-analytics' },
+      { label: t('nav.items.journey-insights'), icon: 'pi pi-compass', to: '/app/journey-insights', key: 'journey-insights' },
+      { label: t('nav.items.rewind'), icon: 'pi pi-calendar-clock', to: '/app/rewind', key: 'rewind' },
+      { label: t('nav.items.coverage-explorer'), icon: 'pi pi-globe', to: '/app/coverage', key: 'coverage-explorer' },
+      { label: t('nav.items.ai-chat'), icon: 'pi pi-sparkles', to: '/app/ai/chat', key: 'ai-chat' }
     ]
   },
   {
-    title: 'Organize & Share',
+    title: t('nav.sections.organizeAndShare'),
     items: [
-      { label: 'Favorites', icon: 'pi pi-heart', to: '/app/favorites-management', key: 'favorites-management' },
-      { label: 'Geofences', icon: 'pi pi-map-marker', to: '/app/geofences', key: 'geofences' },
+      { label: t('nav.items.favorites-management'), icon: 'pi pi-heart', to: '/app/favorites-management', key: 'favorites-management' },
+      { label: t('nav.items.geofences'), icon: 'pi pi-map-marker', to: '/app/geofences', key: 'geofences' },
       {
-        label: 'Friends',
+        label: t('nav.items.friends'),
         icon: 'pi pi-users',
         to: '/app/friends',
         key: 'friends',
         badge: receivedInvitesCount.value > 0 ? receivedInvitesCount.value : null,
         badgeType: 'danger'
       },
-      { label: 'Share Links', icon: 'pi pi-share-alt', to: '/app/share-links', key: 'share-links' }
+      { label: t('nav.items.share-links'), icon: 'pi pi-share-alt', to: '/app/share-links', key: 'share-links' }
     ]
   },
   {
-    title: 'Settings & Data',
+    title: t('nav.sections.settingsAndData'),
     items: [
-      { label: 'Profile', icon: 'pi pi-user', to: '/app/profile', key: 'profile' },
+      { label: t('nav.items.profile'), icon: 'pi pi-user', to: '/app/profile', key: 'profile' },
       {
-        label: 'Notifications',
+        label: t('nav.items.notifications'),
         icon: 'pi pi-bell',
         to: '/app/notifications',
         key: 'notifications',
         badge: notificationUnreadCount.value > 0 ? notificationUnreadCount.value : null,
         badgeType: 'danger'
       },
-      { label: 'Location Sources', icon: 'pi pi-mobile', to: '/app/location-sources', key: 'location-sources' },
-      { label: 'Timeline Preferences', icon: 'pi pi-cog', to: '/app/timeline/preferences', key: 'preferences' },
-      { label: 'GPS Data', icon: 'pi pi-database', to: '/app/gps-data', key: 'gps-data' },
-      { label: 'Geocoding', icon: 'pi pi-map-marker', to: '/app/geocoding-management', key: 'geocoding-management' },
-      { label: 'Export / Import', icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' },
-      { label: 'Help & Support', icon: 'pi pi-question-circle', to: '/app/help', key: 'help' }
+      { label: t('nav.items.location-sources'), icon: 'pi pi-mobile', to: '/app/location-sources', key: 'location-sources' },
+      { label: t('nav.items.preferences'), icon: 'pi pi-cog', to: '/app/timeline/preferences', key: 'preferences' },
+      { label: t('nav.items.gps-data'), icon: 'pi pi-database', to: '/app/gps-data', key: 'gps-data' },
+      { label: t('nav.items.geocoding-management'), icon: 'pi pi-map-marker', to: '/app/geocoding-management', key: 'geocoding-management' },
+      { label: t('nav.items.export'), icon: 'pi pi-download', to: '/app/data-export-import', key: 'export' },
+      { label: t('nav.items.help'), icon: 'pi pi-question-circle', to: '/app/help', key: 'help' }
     ]
   }
 ])
 
 const adminOverviewItems = computed(() => [
   {
-    label: 'Overview',
+    label: t('nav.items.admin-dashboard'),
     icon: 'pi pi-th-large',
     to: '/app/admin',
     key: 'admin-dashboard'
@@ -244,13 +250,13 @@ const adminOverviewItems = computed(() => [
 
 const adminOperationsItems = computed(() => [
   {
-    label: 'Backups & Restore',
+    label: t('nav.items.admin-backups'),
     icon: 'pi pi-database',
     to: '/app/admin/backups',
     key: 'admin-backups'
   },
   {
-    label: 'Timeline Regeneration Campaigns',
+    label: t('nav.items.admin-timeline-regeneration'),
     icon: 'pi pi-refresh',
     to: '/app/admin/timeline-regeneration-campaigns',
     key: 'admin-timeline-regeneration'
@@ -259,25 +265,25 @@ const adminOperationsItems = computed(() => [
 
 const adminPeopleItems = computed(() => [
   {
-    label: 'Manage Users',
+    label: t('nav.items.admin-users'),
     icon: 'pi pi-users',
     to: '/app/admin/users',
     key: 'admin-users'
   },
   {
-    label: 'Invitations',
+    label: t('nav.items.admin-invitations'),
     icon: 'pi pi-send',
     to: '/app/admin/invitations',
     key: 'admin-invitations'
   },
   {
-    label: 'OIDC Providers',
+    label: t('nav.items.admin-oidc-providers'),
     icon: 'pi pi-key',
     to: '/app/admin/oidc-providers',
     key: 'admin-oidc-providers'
   },
   {
-    label: 'Audit Logs',
+    label: t('nav.items.admin-audit-logs'),
     icon: 'pi pi-history',
     to: '/app/admin/audit-logs',
     key: 'admin-audit-logs',
@@ -286,7 +292,7 @@ const adminPeopleItems = computed(() => [
 ])
 
 const adminConfigurationItems = computed(() => [{
-  label: 'System Settings',
+  label: t('nav.items.admin-settings'),
   icon: 'pi pi-cog',
   to: '/app/admin/settings',
   key: 'admin-settings'

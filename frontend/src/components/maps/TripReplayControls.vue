@@ -12,7 +12,7 @@
         <button
           type="button"
           class="trip-replay-btn"
-          :title="isPlaying ? 'Pause replay' : 'Play replay'"
+          :title="isPlaying ? t('maps.tripReplay.pause') : t('maps.tripReplay.play')"
           @click="$emit('toggle-playback')"
         >
           <i :class="isPlaying ? 'pi pi-pause' : 'pi pi-play'"></i>
@@ -21,7 +21,7 @@
         <button
           type="button"
           class="trip-replay-btn"
-          title="Stop replay"
+          :title="t('maps.tripReplay.stop')"
           @click="$emit('stop')"
         >
           <i class="pi pi-stop"></i>
@@ -50,7 +50,7 @@
             type="button"
             class="trip-replay-speed-btn"
             :class="{ active: speedMultiplier === speed }"
-            :title="`Set speed ${speed}x`"
+            :title="t('maps.tripReplay.setSpeed', { speed })"
             @click="$emit('set-speed', speed)"
           >
             {{ speed }}x
@@ -61,11 +61,11 @@
           type="button"
           class="trip-replay-toggle-btn"
           :class="{ active: followCamera }"
-          title="Follow camera"
+          :title="t('maps.tripReplay.followCamera')"
           @click="$emit('toggle-follow-camera')"
         >
           <i class="pi pi-compass"></i>
-          Follow
+          {{ t('maps.tripReplay.follow') }}
         </button>
 
         <button
@@ -73,7 +73,7 @@
           type="button"
           class="trip-replay-toggle-btn"
           :class="{ active: enable3d }"
-          title="Enable 3D camera"
+          :title="t('maps.tripReplay.enable3d')"
           @click="$emit('toggle-3d')"
         >
           <i class="pi pi-box"></i>
@@ -84,8 +84,8 @@
       <button
         type="button"
         class="trip-replay-btn trip-replay-dismiss-btn"
-        title="Hide replay controls"
-        aria-label="Hide replay controls"
+        :title="t('maps.tripReplay.hideControls')"
+        :aria-label="t('maps.tripReplay.hideControls')"
         @click="$emit('dismiss')"
       >
         <i class="pi pi-times"></i>
@@ -103,18 +103,22 @@
       <button
         type="button"
         class="trip-replay-restore-btn"
-        title="Show replay controls"
-        aria-label="Show replay controls"
+        :title="t('maps.tripReplay.showControls')"
+        :aria-label="t('maps.tripReplay.showControls')"
         @click="$emit('restore')"
       >
         <i class="pi pi-play-circle"></i>
-        Replay
+        {{ t('maps.tripReplay.replay') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   showBar: {
     type: Boolean,

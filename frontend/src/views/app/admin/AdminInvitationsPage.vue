@@ -5,20 +5,20 @@
 
       <div class="page-header">
         <div>
-          <h1>User Invitations</h1>
-          <p class="text-muted">Manage user invitation links</p>
+          <h1>{{ t('admin.dashboardPage.userInvitations') }}</h1>
+          <p class="text-muted">{{ t('adminAuditInvitations.invitationsPage.subtitle') }}</p>
         </div>
         <div class="header-actions">
           <router-link to="/app/admin/users" class="no-underline">
             <Button
-              label="Manage Users"
+              :label="t('admin.dashboardPage.manageUsers')"
               icon="pi pi-users"
               severity="secondary"
               outlined
             />
           </router-link>
           <Button
-            label="Create Invitation"
+            :label="t('adminAuditInvitations.invitationsPage.createInvitation')"
             icon="pi pi-plus"
             @click="showCreateDialog = true"
             :disabled="adminReadOnly"
@@ -35,7 +35,7 @@
           :options="statusOptions"
           optionLabel="label"
           optionValue="value"
-          placeholder="Filter by status"
+          :placeholder="t('adminAuditInvitations.invitationsPage.statusFilterPlaceholder')"
           @change="onFilterChange"
           class="w-full"
         />
@@ -55,45 +55,45 @@
           responsiveLayout="scroll"
           :rowsPerPageOptions="[10, 25, 50]"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} invitations"
+          :currentPageReportTemplate="t('adminAuditInvitations.invitationsPage.table.currentPageReport')"
         >
-          <Column field="token" header="Token" style="max-width: 150px">
+          <Column field="token" :header="t('adminAuditInvitations.invitationsPage.table.columns.token')" style="max-width: 150px">
             <template #body="{ data }">
               <span class="font-mono">{{ data.token.substring(0, 12) }}...</span>
             </template>
           </Column>
 
-          <Column field="createdBy.email" header="Created By">
+          <Column field="createdBy.email" :header="t('adminAuditInvitations.invitationsPage.table.columns.createdBy')">
             <template #body="{ data }">
               {{ data.createdBy?.email || '-' }}
             </template>
           </Column>
 
-          <Column field="createdAt" header="Created" sortable>
+          <Column field="createdAt" :header="t('adminAuditInvitations.invitationsPage.table.columns.created')" sortable>
             <template #body="{ data }">
               {{ formatDateTime(data.createdAt) }}
             </template>
           </Column>
 
-          <Column field="expiresAt" header="Expires" sortable>
+          <Column field="expiresAt" :header="t('adminAuditInvitations.invitationsPage.table.columns.expires')" sortable>
             <template #body="{ data }">
               {{ formatDateTime(data.expiresAt) }}
             </template>
           </Column>
 
-          <Column field="status" header="Status">
+          <Column field="status" :header="t('adminAuditInvitations.invitationsPage.table.columns.status')">
             <template #body="{ data }">
-              <Tag :severity="getStatusSeverity(data.status)" :value="data.status" />
+              <Tag :severity="getStatusSeverity(data.status)" :value="getStatusLabel(data.status)" />
             </template>
           </Column>
 
-          <Column field="usedBy.email" header="Used By">
+          <Column field="usedBy.email" :header="t('adminAuditInvitations.invitationsPage.table.columns.usedBy')">
             <template #body="{ data }">
               {{ getUsedByDisplay(data) }}
             </template>
           </Column>
 
-          <Column header="Actions" :exportable="false" style="min-width: 150px">
+          <Column :header="t('adminAuditInvitations.invitationsPage.table.columns.actions')" :exportable="false" style="min-width: 150px">
             <template #body="{ data }">
               <div class="flex gap-2">
                 <Button
@@ -102,7 +102,7 @@
                   text
                   severity="info"
                   @click="copyInvitationLink(data)"
-                  v-tooltip="'Copy Link'"
+                  v-tooltip="t('adminAuditInvitations.invitationsPage.table.copyLinkTooltip')"
                   :disabled="adminReadOnly || data.status !== 'PENDING'"
                 />
                 <Button
@@ -111,7 +111,7 @@
                   text
                   severity="warning"
                   @click="confirmRevoke(data)"
-                  v-tooltip="'Revoke Invitation'"
+                  v-tooltip="t('adminAuditInvitations.invitationsPage.table.revokeTooltip')"
                   :disabled="data.status !== 'PENDING'"
                 />
               </div>
@@ -120,7 +120,7 @@
 
           <template #empty>
             <div class="text-center p-4">
-              No invitations found.
+              {{ t('adminAuditInvitations.invitationsPage.table.empty') }}
             </div>
           </template>
         </DataTable>
@@ -133,7 +133,7 @@
         </div>
 
         <div v-else-if="invitations.length === 0" class="text-center p-4 card">
-          No invitations found.
+          {{ t('adminAuditInvitations.invitationsPage.table.empty') }}
         </div>
 
         <div v-else class="invitation-cards">
@@ -143,29 +143,29 @@
                 <div class="invitation-token">{{ invitation.token.substring(0, 16) }}...</div>
                 <div class="invitation-creator">{{ invitation.createdBy?.email || '-' }}</div>
               </div>
-              <Tag :severity="getStatusSeverity(invitation.status)" :value="invitation.status" />
+              <Tag :severity="getStatusSeverity(invitation.status)" :value="getStatusLabel(invitation.status)" />
             </div>
 
             <div class="invitation-card-body">
               <div class="invitation-stat">
-                <span class="stat-label">Created</span>
+                <span class="stat-label">{{ t('adminAuditInvitations.invitationsPage.table.columns.created') }}</span>
                 <span class="stat-value">{{ formatDateTime(invitation.createdAt) }}</span>
               </div>
               <div class="invitation-stat">
-                <span class="stat-label">Expires</span>
+                <span class="stat-label">{{ t('adminAuditInvitations.invitationsPage.table.columns.expires') }}</span>
                 <span class="stat-value">{{ formatDateTime(invitation.expiresAt) }}</span>
               </div>
             </div>
 
             <div v-if="getUsedByDisplay(invitation) !== '-'" class="invitation-used">
               <i class="pi pi-user"></i>
-              <span>Used by: {{ getUsedByDisplay(invitation) }}</span>
+              <span>{{ t('adminAuditInvitations.invitationsPage.mobile.usedByPrefix', { value: getUsedByDisplay(invitation) }) }}</span>
             </div>
 
             <div class="invitation-card-actions">
               <Button
                 icon="pi pi-copy"
-                label="Copy Link"
+                :label="t('adminAuditInvitations.invitationsPage.mobile.copyLink')"
                 rounded
                 text
                 severity="info"
@@ -175,7 +175,7 @@
               />
               <Button
                 icon="pi pi-ban"
-                label="Revoke"
+                :label="t('adminAuditInvitations.invitationsPage.mobile.revoke')"
                 rounded
                 text
                 severity="warning"
@@ -202,7 +202,7 @@
             :disabled="page === 0"
           />
           <span class="pagination-info">
-            Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+            {{ t('admin.usersPage.pageOf', { page: page + 1, total: Math.ceil(totalRecords / pageSize) }) }}
           </span>
           <Button
             icon="pi pi-angle-right"
@@ -222,14 +222,14 @@
       <!-- Create Invitation Dialog -->
       <Dialog
         v-model:visible="showCreateDialog"
-        header="Create Invitation"
+        :header="t('adminAuditInvitations.invitationsPage.createInvitation')"
         :modal="true"
         :style="{ width: '450px' }"
         @show="initializeNewInvitation"
       >
         <div class="invitation-dialog-form">
           <div class="form-field">
-            <label for="expiresAt">Expiration Date</label>
+            <label for="expiresAt">{{ t('adminAuditInvitations.invitationsPage.createDialog.expirationDateLabel') }}</label>
             <DatePicker
               id="expiresAt"
               v-model="newInvitation.expiresAt"
@@ -237,16 +237,16 @@
               hourFormat="24"
               :minDate="new Date()"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              placeholder="Select expiration date"
+              :placeholder="t('adminAuditInvitations.invitationsPage.createDialog.expirationDatePlaceholder')"
               class="w-full"
             />
           </div>
         </div>
 
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="showCreateDialog = false" />
+          <Button :label="t('common.cancel')" icon="pi pi-times" text @click="showCreateDialog = false" />
           <Button
-            label="Create"
+            :label="t('admin.oidcProviderDialog.create')"
             icon="pi pi-check"
             @click="createInvitation"
             :loading="creating"
@@ -257,12 +257,12 @@
       <!-- Show Link Dialog -->
       <Dialog
         v-model:visible="showLinkDialog"
-        header="Invitation Link Created"
+        :header="t('adminAuditInvitations.invitationsPage.linkDialog.header')"
         :modal="true"
         :style="{ width: '650px' }"
       >
         <div class="invitation-dialog-content">
-          <p class="invitation-dialog-text">Share this link with the user you want to invite:</p>
+          <p class="invitation-dialog-text">{{ t('adminAuditInvitations.invitationsPage.linkDialog.shareText') }}</p>
 
           <div class="invitation-link-container">
             <InputText
@@ -273,45 +273,45 @@
             <Button
               icon="pi pi-copy"
               @click="copyToClipboard(generatedLink)"
-              v-tooltip="'Copy to clipboard'"
+              v-tooltip="t('adminAuditInvitations.invitationsPage.linkDialog.copyTooltip')"
               class="copy-button"
             />
           </div>
 
           <div class="invitation-expiry">
             <i class="pi pi-clock"></i>
-            <span>Expires: {{ formatDateTime(generatedExpiry) }}</span>
+            <span>{{ t('adminAuditInvitations.invitationsPage.linkDialog.expiresLabel', { date: formatDateTime(generatedExpiry) }) }}</span>
           </div>
 
           <Message severity="info" :closable="false" class="invitation-message">
-            This link can only be used once and will expire on the date shown above.
+            {{ t('adminAuditInvitations.invitationsPage.linkDialog.message') }}
           </Message>
         </div>
 
         <template #footer>
-          <Button label="Close" @click="showLinkDialog = false" />
+          <Button :label="t('adminAuditInvitations.invitationsPage.linkDialog.close')" @click="showLinkDialog = false" />
         </template>
       </Dialog>
 
       <!-- Revoke Confirmation Dialog -->
       <Dialog
         v-model:visible="revokeDialogVisible"
-        header="Confirm Revoke"
+        :header="t('adminAuditInvitations.invitationsPage.revokeDialog.header')"
         :modal="true"
         :style="{ width: '450px' }"
       >
         <div class="flex align-items-center gap-3 mb-3">
           <i class="pi pi-exclamation-triangle text-4xl text-orange-500"></i>
           <span>
-            Are you sure you want to revoke this invitation?
+            {{ t('adminAuditInvitations.invitationsPage.revokeDialog.message') }}
             <br><br>
-            The invitation link will no longer be usable.
+            {{ t('adminAuditInvitations.invitationsPage.revokeDialog.note') }}
           </span>
         </div>
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="revokeDialogVisible = false" />
+          <Button :label="t('common.cancel')" icon="pi pi-times" text @click="revokeDialogVisible = false" />
           <Button
-            label="Revoke"
+            :label="t('adminAuditInvitations.invitationsPage.revokeDialog.confirm')"
             icon="pi pi-ban"
             severity="warning"
             @click="revokeInvitation"
@@ -329,6 +329,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -350,6 +351,7 @@ import { useAdminStore } from '@/stores/admin'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const timezone = useTimezone()
@@ -361,12 +363,12 @@ const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'Invitations' }
+  { label: t('adminAuditInvitations.invitationsPage.breadcrumb') }
 ])
 
 const invitations = ref([])
@@ -376,13 +378,24 @@ const page = ref(0)
 const pageSize = ref(10)
 const statusFilter = ref(null)
 
-const statusOptions = ref([
-  { label: 'All Statuses', value: null },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Used', value: 'USED' },
-  { label: 'Expired', value: 'EXPIRED' },
-  { label: 'Revoked', value: 'REVOKED' }
+const statusLabels = computed(() => ({
+  PENDING: t('adminAuditInvitations.invitationsPage.statuses.pending'),
+  USED: t('adminAuditInvitations.invitationsPage.statuses.used'),
+  EXPIRED: t('adminAuditInvitations.invitationsPage.statuses.expired'),
+  REVOKED: t('adminAuditInvitations.invitationsPage.statuses.revoked')
+}))
+
+const statusOptions = computed(() => [
+  { label: t('adminAuditInvitations.invitationsPage.statuses.all'), value: null },
+  { label: statusLabels.value.PENDING, value: 'PENDING' },
+  { label: statusLabels.value.USED, value: 'USED' },
+  { label: statusLabels.value.EXPIRED, value: 'EXPIRED' },
+  { label: statusLabels.value.REVOKED, value: 'REVOKED' }
 ])
+
+const getStatusLabel = (status) => {
+  return statusLabels.value[status] || status
+}
 
 const showCreateDialog = ref(false)
 const showLinkDialog = ref(false)
@@ -418,8 +431,8 @@ const loadInvitations = async () => {
     console.error('Failed to load invitations:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load invitations',
+      summary: t('common.error'),
+      detail: t('adminAuditInvitations.invitationsPage.toasts.loadFailedDetail'),
       life: 3000
     })
   } finally {
@@ -471,8 +484,8 @@ const createInvitation = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Invitation created successfully',
+      summary: t('common.success'),
+      detail: t('adminAuditInvitations.invitationsPage.toasts.createdDetail'),
       life: 3000
     })
 
@@ -484,8 +497,8 @@ const createInvitation = async () => {
     console.error('Failed to create invitation:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to create invitation'),
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminAuditInvitations.invitationsPage.toasts.createFailedFallback')),
       life: 3000
     })
   } finally {
@@ -505,15 +518,15 @@ const copyToClipboard = async (text) => {
   if (success) {
     toast.add({
       severity: 'success',
-      summary: 'Copied',
-      detail: 'Link copied to clipboard',
+      summary: t('common.clipboard.copied'),
+      detail: t('adminAuditInvitations.invitationsPage.toasts.copiedDetail'),
       life: 3000
     })
   } else {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to copy to clipboard',
+      summary: t('common.error'),
+      detail: t('adminAuditInvitations.invitationsPage.toasts.copyFailedDetail'),
       life: 3000
     })
   }
@@ -533,8 +546,8 @@ const revokeInvitation = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'Invitation revoked successfully',
+      summary: t('common.success'),
+      detail: t('adminAuditInvitations.invitationsPage.toasts.revokedDetail'),
       life: 3000
     })
 
@@ -545,8 +558,8 @@ const revokeInvitation = async () => {
     console.error('Failed to revoke invitation:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: formatApiErrorDetail(error, 'Failed to revoke invitation'),
+      summary: t('common.error'),
+      detail: formatApiErrorDetail(error, t('adminAuditInvitations.invitationsPage.toasts.revokeFailedFallback')),
       life: 3000
     })
   } finally {
@@ -570,7 +583,7 @@ const getUsedByDisplay = (invitation) => {
   }
 
   if (invitation?.status === 'USED') {
-    return 'Deleted user'
+    return t('adminAuditInvitations.invitationsPage.usedByDeletedUser')
   }
 
   return '-'

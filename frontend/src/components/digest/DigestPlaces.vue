@@ -2,7 +2,7 @@
   <div class="digest-places">
     <h3 class="places-title">
       <i class="pi pi-map-marker"></i>
-      Top Places
+      {{ t('analytics.digest.places.title') }}
     </h3>
 
     <div class="places-list" v-if="places && places.length > 0">
@@ -14,20 +14,23 @@
         <div class="place-rank">{{ index + 1 }}</div>
         <div class="place-info">
           <div class="place-name">{{ place.name }}</div>
-          <div class="place-stats">{{ place.visits }} visits</div>
+          <div class="place-stats">{{ t('analytics.digest.places.visitsCount', { count: place.visits }, place.visits) }}</div>
         </div>
       </div>
     </div>
 
     <div class="no-places-placeholder" v-else>
       <i class="pi pi-compass"></i>
-      <p>No places visited during this period.</p>
+      <p>{{ t('analytics.digest.places.empty') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   places: {

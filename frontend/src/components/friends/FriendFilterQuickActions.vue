@@ -1,12 +1,16 @@
 <template>
   <div class="friend-filter-actions">
-    <Button label="All" outlined size="small" @click="$emit('select-all')" :disabled="disabled" />
-    <Button label="None" outlined size="small" @click="$emit('select-none')" :disabled="disabled" />
-    <Button label="Online" outlined size="small" @click="$emit('select-online')" :disabled="disabled" />
+    <Button :label="t('friends.filters.all')" outlined size="small" @click="$emit('select-all')" :disabled="disabled" />
+    <Button :label="t('friends.filters.none')" outlined size="small" @click="$emit('select-none')" :disabled="disabled" />
+    <Button :label="t('friends.filters.online')" outlined size="small" @click="$emit('select-online')" :disabled="disabled" />
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   disabled: {
     type: Boolean,

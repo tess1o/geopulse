@@ -53,6 +53,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { t } from '@/locales'
 import Select from 'primevue/select'
 
 const props = defineProps({
@@ -66,7 +67,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Select Preset'
+    default: () => t('ui.dateRangePicker.presetPlaceholderDefault')
   },
   groupProps: {
     type: Object,

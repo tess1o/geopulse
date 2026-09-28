@@ -38,13 +38,13 @@
 
     <div class="map-hint">
       <span v-if="activeSegment?.segmentType === 'TRIP'">
-        Search or click map to append waypoints for this trip segment. Existing stays/trips are shown as context.
+        {{ t('trips.mapPanel.hintTrip') }}
       </span>
       <span v-else-if="activeSegment?.segmentType === 'STAY'">
-        Search or click map to place the stay location.
+        {{ t('trips.mapPanel.hintStay') }}
       </span>
       <span v-else>
-        Select a segment to edit it on the map.
+        {{ t('trips.mapPanel.hintDefault') }}
       </span>
     </div>
 
@@ -54,6 +54,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
 import { MapContainer } from '@/components/maps'
 import TripReconstructionMapOverlay from '@/components/trips/reconstruction/TripReconstructionMapOverlay.vue'
@@ -125,6 +126,8 @@ const emit = defineEmits([
   'update:search-query'
 ])
 
+const { t } = useI18n()
+
 const localSearchQuery = computed({
   get: () => props.searchQuery,
   set: (value) => {
@@ -134,12 +137,12 @@ const localSearchQuery = computed({
 
 const searchPlaceholder = computed(() => {
   if (props.activeSegment?.segmentType === 'TRIP') {
-    return 'Search location to add waypoint...'
+    return t('trips.mapPanel.searchPlaceholderTrip')
   }
   if (props.activeSegment?.segmentType === 'STAY') {
-    return 'Search location to place stay...'
+    return t('trips.mapPanel.searchPlaceholderStay')
   }
-  return 'Search location...'
+  return t('trips.mapPanel.searchPlaceholderDefault')
 })
 </script>
 

@@ -2,15 +2,15 @@
   <ConfirmDialog />
   <section class="settings-group" aria-labelledby="connected-accounts-heading">
     <div class="settings-group-header">
-      <h3 id="connected-accounts-heading">Connected accounts</h3>
-      <p>Manage social or corporate OIDC sign-in methods.</p>
+      <h3 id="connected-accounts-heading">{{ t('profile.access.oidc.heading') }}</h3>
+      <p>{{ t('profile.access.oidc.description') }}</p>
     </div>
 
     <div class="settings-panel">
       <div class="oidc-management">
         <!-- Linked Providers -->
         <div v-if="linkedProviders.length > 0" class="provider-section">
-          <h4>Linked accounts</h4>
+          <h4>{{ t('profile.access.oidc.linkedHeading') }}</h4>
           <div class="provider-list">
             <div
               v-for="connection in linkedProviders"
@@ -21,7 +21,7 @@
                 <ProviderIcon
                   :provider="{ name: connection.providerName, icon: connection.providerIcon }"
                   size="large"
-                  :alt="`${connection.providerDisplayName || connection.providerName} icon`"
+                  :alt="t('profile.access.oidc.providerIconAlt', { provider: connection.providerDisplayName || connection.providerName })"
                 />
                 <div class="provider-details">
                   <span class="provider-name">{{ connection.providerDisplayName || connection.providerName }}</span>
@@ -29,13 +29,13 @@
                 </div>
               </div>
               <Button
-                label="Unlink"
+                :label="t('profile.access.oidc.unlink')"
                 severity="danger"
                 outlined
                 size="small"
                 @click="confirmUnlinkProvider(connection.providerName)"
                 :disabled="readOnly || !canUnlink(connection.providerName)"
-                v-tooltip.bottom="readOnly ? 'Disabled in demo mode' : (!canUnlink(connection.providerName) ? 'Cannot unlink the only authentication method without a password set.' : 'Unlink this account')"
+                v-tooltip.bottom="readOnly ? t('profile.access.oidc.tooltips.demoDisabled') : (!canUnlink(connection.providerName) ? t('profile.access.oidc.tooltips.unlinkBlocked') : t('profile.access.oidc.tooltips.unlink'))"
               />
             </div>
           </div>
@@ -43,7 +43,7 @@
         
         <!-- Available Providers -->
         <div v-if="availableProviders.length > 0" class="provider-section">
-          <h4>Link another account</h4>
+          <h4>{{ t('profile.access.oidc.linkHeading') }}</h4>
           <div class="provider-list">
             <div
               v-for="provider in availableProviders"
@@ -54,12 +54,12 @@
                 <ProviderIcon
                   :provider="provider"
                   size="large"
-                  :alt="`${provider.displayName} icon`"
+                  :alt="t('profile.access.oidc.providerIconAlt', { provider: provider.displayName })"
                 />
                 <span class="provider-name">{{ provider.displayName }}</span>
               </div>
               <Button
-                label="Link"
+                :label="t('profile.access.oidc.link')"
                 @click="linkProvider(provider.name)"
                 size="small"
                 :disabled="readOnly"
@@ -69,7 +69,7 @@
         </div>
         
         <Message v-if="linkedProviders.length > 0 && !hasPassword && linkedProviders.length === 1" severity="warn" :closable="false">
-          You have no password set. You must add another login method before unlinking your only connected account.
+          {{ t('profile.access.oidc.noPasswordWarning') }}
         </Message>
       </div>
     </div>
@@ -78,6 +78,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail';
 import { useToast } from 'primevue/usetoast';
@@ -87,6 +88,7 @@ import Button from 'primevue/button';
 import Message from 'primevue/message';
 import ProviderIcon from '@/components/common/ProviderIcon.vue';
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const toast = useToast();
 const confirm = useConfirm();
@@ -126,8 +128,8 @@ const linkProvider = async (providerName) => {
     console.error('Failed to link provider:', error);
     toast.add({
       severity: 'error',
-      summary: 'Link Failed',
-      detail: 'Failed to initiate linking for ' + providerName,
+      summary: t('profile.access.oidc.toasts.linkFailed.title'),
+      detail: t('profile.access.oidc.toasts.linkFailed.detail', { provider: providerName }),
       life: 3000
     });
   }
@@ -136,8 +138,8 @@ const linkProvider = async (providerName) => {
 const confirmUnlinkProvider = (providerName) => {
     if (props.readOnly) return
     confirm.require({
-        message: `Are you sure you want to unlink your ${getProviderDisplayName(providerName)} account? This action cannot be undone.`,
-        header: 'Confirm Unlink',
+        message: t('profile.access.oidc.confirm.message', { provider: getProviderDisplayName(providerName) }),
+        header: t('profile.access.oidc.confirm.header'),
         icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
         accept: () => {
@@ -154,16 +156,16 @@ const unlinkProvider = async (providerName) => {
     
     toast.add({
       severity: 'success',
-      summary: 'Account Unlinked',
-      detail: `Successfully unlinked your ${getProviderDisplayName(providerName)} account.`,
+      summary: t('profile.access.oidc.toasts.unlinked.title'),
+      detail: t('profile.access.oidc.toasts.unlinked.detail', { provider: getProviderDisplayName(providerName) }),
       life: 3000
     });
   } catch (error) {
     console.error('Failed to unlink provider:', error);
     toast.add({
       severity: 'error',
-      summary: 'Unlink Failed',
-      detail: formatApiErrorDetail(error, 'Failed to unlink account'),
+      summary: t('profile.access.oidc.toasts.unlinkFailed.title'),
+      detail: formatApiErrorDetail(error, t('profile.access.oidc.toasts.unlinkFailed.detail')),
       life: 5000
     });
   }
@@ -181,8 +183,8 @@ const loadData = async () => {
     console.error('Failed to load OIDC provider data:', error);
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Could not load connected account information.',
+      summary: t('profile.access.oidc.toasts.error'),
+      detail: t('profile.access.oidc.toasts.loadFailed'),
       life: 3000
     });
   }

@@ -8,7 +8,7 @@
       <template v-if="isLoading && !cityDetails">
         <div class="loading-container">
           <ProgressSpinner />
-          <p class="loading-text">Loading city details...</p>
+          <p class="loading-text">{{ t('locationAnalytics.cityPage.loading') }}</p>
         </div>
       </template>
 
@@ -17,9 +17,9 @@
         <BaseCard>
           <div class="error-container">
             <i class="pi pi-exclamation-triangle error-icon"></i>
-            <h3 class="error-title">Failed to Load City Details</h3>
+            <h3 class="error-title">{{ t('locationAnalytics.cityPage.errorTitle') }}</h3>
             <p class="error-message">{{ error }}</p>
-            <Button label="Try Again" icon="pi pi-refresh" @click="loadCityData" />
+            <Button :label="t('common.tryAgain')" icon="pi pi-refresh" @click="loadCityData" />
           </div>
         </BaseCard>
       </template>
@@ -28,9 +28,9 @@
       <template v-else-if="cityDetails">
         <LocationDetailsHeader
           :title="cityDetails.cityName"
-          subtitle="City insights and visit history"
+          :subtitle="t('locationAnalytics.cityPage.subtitle')"
           icon="pi pi-building"
-          back-label="Back"
+          :back-label="t('common.back')"
           @back="goToLocationAnalytics"
         >
           <template #metadata>
@@ -42,7 +42,7 @@
               {{ cityDetails.country }}
             </RouterLink>
             <span v-if="cityDetails.statistics">
-              {{ cityDetails.statistics.totalVisits || 0 }} visits
+              {{ t('locationAnalytics.cityPage.visitsCount', { count: cityDetails.statistics.totalVisits || 0 }) }}
             </span>
           </template>
         </LocationDetailsHeader>
@@ -57,7 +57,7 @@
           <!-- Top Places in City -->
           <BaseCard
             v-if="cityDetails.topPlaces && cityDetails.topPlaces.length > 0"
-            :title="`Top Places in ${cityDetails.cityName}`"
+            :title="t('locationAnalytics.cityPage.topPlacesTitle', { name: cityDetails.cityName })"
             class="top-places-card"
           >
             <div class="top-places-list">
@@ -72,7 +72,7 @@
                   <div class="place-details">
                     <div class="place-name">{{ place.name }}</div>
                     <div class="place-stats">
-                      {{ place.visitCount }} visits • {{ formatDuration(place.totalDuration) }}
+                      {{ t('locationAnalytics.cityPage.placeStats', { count: place.visitCount, duration: formatDuration(place.totalDuration) }) }}
                     </div>
                   </div>
                 </div>
@@ -96,9 +96,9 @@
 
         <ImmichLatestPhotosSection
           ref="cityPhotosSectionRef"
-          :title="`Latest photos in ${cityDetails.cityName}`"
+          :title="t('locationAnalytics.cityPage.latestPhotosTitle', { name: cityDetails.cityName })"
           :search-params="cityImmichSearchParams"
-          empty-message="No Immich photos found for this city."
+          :empty-message="t('locationAnalytics.cityPage.noPhotosMessage')"
           @latest-photos-change="handleCityPhotosChange"
           @map-markers-change="handleCityMarkerGroupsChange"
           @show-on-map="handleCityPhotoShowOnMap"
@@ -123,6 +123,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -142,6 +143,7 @@ import { useImmichPhotoMapBridge } from '@/composables/useImmichPhotoMapBridge'
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -223,10 +225,10 @@ const loadCityData = async () => {
     await loadVisits(0, 50)
   } catch (err) {
     console.error('Error loading city data:', err)
-    error.value = formatApiErrorDetail(err, 'Failed to load city details')
+    error.value = formatApiErrorDetail(err, t('locationAnalytics.cityPage.loadFailed'))
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: error.value,
       life: 5000
     })
@@ -242,8 +244,8 @@ const loadVisits = async (page, pageSize, sortBy = currentSortBy.value, sortDire
     console.error('Error loading visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load visit history',
+      summary: t('common.error'),
+      detail: t('locationAnalytics.cityPage.loadVisitsFailed'),
       life: 3000
     })
   } finally {
@@ -267,16 +269,16 @@ const handleExportVisits = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Export Successful',
-      detail: `Exported visits to ${cityName.value}`,
+      summary: t('locationAnalytics.cityPage.exportSuccessSummary'),
+      detail: t('locationAnalytics.cityPage.exportSuccessDetail', { name: cityName.value }),
       life: 5000
     })
   } catch (err) {
     console.error('Error exporting visits:', err)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: formatApiErrorDetail(err, 'Failed to export visits'),
+      summary: t('locationAnalytics.cityPage.exportFailedSummary'),
+      detail: formatApiErrorDetail(err, t('locationAnalytics.cityPage.exportFailedDetail')),
       life: 5000
     })
   }

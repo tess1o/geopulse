@@ -23,6 +23,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { t } from '@/locales'
 
 const props = defineProps({
   enabled: {
@@ -44,15 +45,15 @@ const props = defineProps({
   },
   pullText: {
     type: String,
-    default: 'Pull to refresh'
+    default: () => t('ui.pullToRefresh.pullText')
   },
   readyText: {
     type: String,
-    default: 'Release to refresh'
+    default: () => t('ui.pullToRefresh.readyText')
   },
   refreshingText: {
     type: String,
-    default: 'Refreshing...'
+    default: () => t('ui.pullToRefresh.refreshingText')
   }
 })
 

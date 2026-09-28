@@ -77,7 +77,7 @@ class ImportJobServiceCoverageTest {
                 .jobId(timelineJobId)
                 .userId(userId)
                 .status(TimelineJobProgress.JobStatus.COMPLETED)
-                .currentStep("Timeline generation completed")
+                .currentStep(TimelineJobProgressService.step("completed", "Timeline generation completed", null))
                 .progressPercentage(100)
                 .build();
         when(timelineJobProgressService.getJobProgress(timelineJobId))
@@ -125,7 +125,7 @@ class ImportJobServiceCoverageTest {
                 .jobId(timelineJobId)
                 .userId(userId)
                 .status(TimelineJobProgress.JobStatus.RUNNING)
-                .currentStep("Geocoding location 1/10")
+                .currentStep(TimelineJobProgressService.step("geocodingLocationProgress", "Geocoding location 1/10", null))
                 .progressPercentage(20)
                 .build();
         when(timelineJobProgressService.getJobProgress(timelineJobId))

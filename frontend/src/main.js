@@ -20,6 +20,9 @@ import ConfirmationService from 'primevue/confirmationservice';
 import Tooltip from 'primevue/tooltip'
 import { createPinia } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
+import { registerDocumentTitleRefresher, registerPrimeVueConfig, setLocale } from '@/composables/useLocale'
+import { i18n } from '@/locales'
+import { applyDocumentTitle } from '@/utils/documentTitle'
 import { clearAllFormatCaches } from '@/utils/formatMemoizer'
 import { installProductionConsoleSanitizer } from '@/utils/productionConsoleSanitizer'
 
@@ -70,11 +73,17 @@ app.use(PrimeVue, {
     }
 });
 
+app.use(i18n)
 app.use(createPinia())
 app.use(router);
 app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip)
+
+// Locale propagation needs the app (PrimeVue's config) and the router (the live tab title); both are
+// wired here because useLocale deliberately imports neither.
+registerPrimeVueConfig(app.config.globalProperties.$primevue?.config)
+registerDocumentTitleRefresher(() => applyDocumentTitle(router.currentRoute.value?.meta))
 
 watch(
     [timezone.userDateFormat, timezone.userTimeFormat, timezone.userTimezone],
@@ -92,6 +101,11 @@ watch(
     },
     { immediate: true }
 )
+
+// Resolve the active locale (cached profile language, else English) before mounting, so a Ukrainian
+// user never sees an English frame. `persist: false` -- this value came from the profile, not a choice
+// made in this session.
+await setLocale(i18n.global.locale.value, { persist: false })
 
 app.mount("#app");
 

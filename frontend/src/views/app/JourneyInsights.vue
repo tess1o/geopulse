@@ -1,72 +1,72 @@
 <template>
   <AppLayout variant="default">
-    <PageContainer title="Journey Insights" subtitle="Your location story, all in one place." max-width="large" :loading="isLoading">
-      <div v-if="isLoading" class="insights-loading"><ProgressSpinner size="large" /><p>Building your journey insights…</p></div>
+    <PageContainer :title="t('insights.page.title')" :subtitle="t('insights.page.subtitle')" max-width="large" :loading="isLoading">
+      <div v-if="isLoading" class="insights-loading"><ProgressSpinner size="large" /><p>{{ t('insights.loading') }}</p></div>
 
       <BaseCard v-else-if="!hasAnyData" class="empty-card">
-        <i class="pi pi-compass empty-icon"></i><h3>No Journey Data Available</h3>
-        <p>Start tracking your location to unlock insights about your travel patterns and achievements.</p>
+        <i class="pi pi-compass empty-icon"></i><h3>{{ t('insights.empty.title') }}</h3>
+        <p>{{ t('insights.empty.description') }}</p>
       </BaseCard>
 
       <div v-else class="insights-content">
         <section class="journey-hero" aria-labelledby="journey-hero-title">
           <div class="journey-hero-copy">
-            <p class="journey-eyebrow"><i class="pi pi-compass"></i> All-time journey</p>
-            <h2 id="journey-hero-title">{{ formattedTotalDistance }} of movement.</h2>
+            <p class="journey-eyebrow"><i class="pi pi-compass"></i> {{ t('insights.hero.eyebrow') }}</p>
+            <h2 id="journey-hero-title">{{ t('insights.hero.movementSummary', { distance: formattedTotalDistance }) }}</h2>
           </div>
           <div class="hero-movement" aria-labelledby="movement-title">
-            <h3 id="movement-title" class="hero-movement-title"><i class="pi pi-directions"></i> How you moved</h3>
+            <h3 id="movement-title" class="hero-movement-title"><i class="pi pi-directions"></i> {{ t('insights.hero.movementTitle') }}</h3>
             <div v-if="movementModes.length" class="movement-summary">
-              <div class="movement-bar" aria-label="Distance split by transport type"><span v-for="mode in movementModes" :key="mode.key" :style="{ width: `${mode.share}%`, background: mode.color }" :title="`${mode.label}: ${mode.distance} (${mode.share}%)`"></span></div>
+              <div class="movement-bar" :aria-label="t('insights.hero.movementAria')"><span v-for="mode in movementModes" :key="mode.key" :style="{ width: `${mode.share}%`, background: mode.color }" :title="`${mode.label}: ${mode.distance} (${mode.share}%)`"></span></div>
               <div class="movement-legend"><span v-for="mode in movementModes" :key="mode.key"><i :style="{ background: mode.color }"></i>{{ mode.label }} <b>{{ mode.share }}%</b><small>{{ mode.distance }}</small></span></div>
             </div>
-            <div v-else class="section-placeholder"><i class="pi pi-compass"></i><p>No movement has been recorded yet.</p></div>
+            <div v-else class="section-placeholder"><i class="pi pi-compass"></i><p>{{ t('insights.hero.noMovement') }}</p></div>
           </div>
         </section>
 
         <section class="insights-section" aria-labelledby="places-title">
-          <h3 id="places-title" class="section-title"><i class="pi pi-globe"></i> Where you've been</h3>
+          <h3 id="places-title" class="section-title"><i class="pi pi-globe"></i> {{ t('insights.places.title') }}</h3>
           <div class="places-grid">
             <article class="places-card">
-              <div class="places-card-heading"><span><i class="pi pi-flag"></i> Countries explored</span><b>{{ countriesCount }}</b></div>
+              <div class="places-card-heading"><span><i class="pi pi-flag"></i> {{ t('insights.places.countries') }}</span><b>{{ countriesCount }}</b></div>
               <div v-if="displayedCountries.length" class="places-list">
                 <div v-for="country in displayedCountries" :key="country.name" class="place-row">
-                  <span v-if="country.flagClass" class="country-flag-img flag" :class="country.flagClass" role="img" :aria-label="`${country.name} flag`"></span><span v-else class="country-flag-placeholder">🏳️</span><span>{{ country.name }}</span>
+                  <span v-if="country.flagClass" class="country-flag-img flag" :class="country.flagClass" role="img" :aria-label="t('insights.places.countryFlagAria', { country: country.name })"></span><span v-else class="country-flag-placeholder">🏳️</span><span>{{ country.name }}</span>
                 </div>
               </div>
-              <p v-else class="no-data">Start exploring to discover countries!</p>
+              <p v-else class="no-data">{{ t('insights.places.noCountries') }}</p>
             </article>
             <article class="places-card">
-              <div class="places-card-heading"><span><i class="pi pi-map-marker"></i> Cities visited</span><b>{{ citiesCount }}</b></div>
-              <div v-if="displayedCities.length" class="places-list"><div v-for="city in displayedCities" :key="city.name" class="place-row city-row"><i class="pi pi-building city-icon"></i><span>{{ city.name }}</span><small>{{ city.visits }} visits</small></div></div>
-              <p v-else class="no-data">Start tracking to discover cities!</p>
+              <div class="places-card-heading"><span><i class="pi pi-map-marker"></i> {{ t('insights.places.cities') }}</span><b>{{ citiesCount }}</b></div>
+              <div v-if="displayedCities.length" class="places-list"><div v-for="city in displayedCities" :key="city.name" class="place-row city-row"><i class="pi pi-building city-icon"></i><span>{{ city.name }}</span><small>{{ t('insights.places.visits', { count: city.visits }, city.visits) }}</small></div></div>
+              <p v-else class="no-data">{{ t('insights.places.noCities') }}</p>
             </article>
           </div>
         </section>
 
         <section class="insights-section" aria-labelledby="patterns-title">
-          <h3 id="patterns-title" class="section-title"><i class="pi pi-calendar"></i> Time patterns</h3>
+          <h3 id="patterns-title" class="section-title"><i class="pi pi-calendar"></i> {{ t('insights.patterns.title') }}</h3>
           <div class="patterns-grid"><article v-for="pattern in patternCards" :key="pattern.label" class="pattern-card"><span>{{ pattern.icon }}</span><div><p class="card-kicker">{{ pattern.label }}</p><strong>{{ pattern.value }}</strong><small v-if="pattern.detail">{{ pattern.detail }}</small></div></article></div>
         </section>
 
         <JourneyWeatherInsights :weather="weather" :distance-unit="distanceUnit" :temperature-unit="temperatureUnit" />
 
         <section class="insights-section" aria-labelledby="milestones-title">
-          <h3 id="milestones-title" class="section-title"><i class="pi pi-trophy"></i> Journey milestones <span>{{ earnedAchievementsCount }} / {{ achievementBadges.length }}</span></h3>
+          <h3 id="milestones-title" class="section-title"><i class="pi pi-trophy"></i> {{ t('insights.milestones.title') }} <span>{{ earnedAchievementsCount }} / {{ achievementBadges.length }}</span></h3>
           <div v-if="achievementGroups.length" class="achievement-groups">
             <section v-for="group in achievementGroups" :key="group.key" class="achievement-group" :aria-labelledby="`achievement-group-${group.key}`">
               <h4 :id="`achievement-group-${group.key}`" class="achievement-group-title"><span>{{ group.icon }} {{ group.title }}</span><small>{{ group.earnedCount }} / {{ group.badges.length }}</small></h4>
               <div class="milestones-grid">
                 <article v-for="badge in group.badges" :key="badge.id" class="milestone-card" :class="{ earned: badge.earned }">
-                  <div class="milestone-header"><span class="badge-icon">{{ badge.icon }}</span><span class="milestone-status">{{ badge.earned ? 'Earned' : `${badge.progress}%` }}</span></div>
-                  <h5>{{ badge.title }}</h5><p>{{ badge.description }}</p>
-                  <template v-if="badge.earned"><small v-if="badge.earnedDate">Earned {{ timezone.formatDate(badge.earnedDate) }}</small></template>
+                  <div class="milestone-header"><span class="badge-icon">{{ badge.icon }}</span><span class="milestone-status">{{ badge.earned ? t('insights.milestones.earned') : `${badge.progress}%` }}</span></div>
+                  <h5>{{ badgeTitle(badge) }}</h5><p>{{ badgeDescription(badge) }}</p>
+                  <template v-if="badge.earned"><small v-if="badge.earnedDate">{{ t('insights.milestones.earnedOn', { date: timezone.formatDate(badge.earnedDate) }) }}</small></template>
                   <template v-else><div class="progress-bar"><span :style="{ width: `${badge.progress}%` }"></span></div><small>{{ badge.progressText }}</small></template>
                 </article>
               </div>
             </section>
           </div>
-          <div v-else class="section-placeholder"><i class="pi pi-trophy"></i><p>Keep exploring to unlock milestones!</p></div>
+          <div v-else class="section-placeholder"><i class="pi pi-trophy"></i><p>{{ t('insights.milestones.empty') }}</p></div>
         </section>
       </div>
     </PageContainer>
@@ -75,6 +75,7 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import ProgressSpinner from 'primevue/progressspinner'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -87,17 +88,37 @@ import { getCountryFlagClass } from '@/utils/countryFlags'
 import { formatDistanceRounded } from '@/utils/calculationsHelpers'
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
 import { useAuthStore } from '@/stores/auth'
+import { te } from '@/locales'
 
 const ACHIEVEMENT_CATEGORIES = [
-  { key: 'distance', title: 'Distance milestones', icon: '🛣️', matches: /^(total_distance|target_trip_distance|long_hauler|speed_deamon)/ },
-  { key: 'exploration', title: 'Exploration', icon: '🗺️', matches: /^(country_visited|cites_visited|local_explorer|local_legend)/ },
-  { key: 'modes', title: 'Travel modes', icon: '🚆', matches: /^(flight_trips|train_trips|daily_driver)/ },
-  { key: 'consistency', title: 'Consistency streaks', icon: '🔥', matches: /^(daily_habit|track_data_week|first_month|first_steps|busy_bee)/ },
-  { key: 'time', title: 'Time of day', icon: '🕐', matches: /^time_of_day/ },
-  { key: 'weather', title: 'Weather explorer', icon: '🌦️', matches: /^weather_/ }
+  // `matches` keys off the backend's locale-neutral badge ids and must stay untouched by translation;
+  // only the `titleKey` is copy.
+  { key: 'distance', titleKey: 'insights.milestones.groups.distance', icon: '🛣️', matches: /^(total_distance|target_trip_distance|long_hauler|speed_deamon)/ },
+  { key: 'exploration', titleKey: 'insights.milestones.groups.exploration', icon: '🗺️', matches: /^(country_visited|cites_visited|local_explorer|local_legend)/ },
+  { key: 'modes', titleKey: 'insights.milestones.groups.modes', icon: '🚆', matches: /^(flight_trips|train_trips|daily_driver)/ },
+  { key: 'consistency', titleKey: 'insights.milestones.groups.consistency', icon: '🔥', matches: /^(daily_habit|track_data_week|first_month|first_steps|busy_bee)/ },
+  { key: 'time', titleKey: 'insights.milestones.groups.time', icon: '🕐', matches: /^time_of_day/ },
+  { key: 'weather', titleKey: 'insights.milestones.groups.weather', icon: '🌦️', matches: /^weather_/ }
+]
+
+// Mode table. Previously positional tuples where index 1 was the label, so a label could be changed
+// only by counting array slots; named fields make the label explicit and its key greppable.
+// `key` is the backend's locale-neutral distance field name and the i18n key suffix.
+const MOVEMENT_MODES = [
+  { key: 'byCar', icon: '🚗', color: '#3b82f6' },
+  { key: 'byMotorcycle', icon: '🏍️', color: '#06b6d4' },
+  { key: 'byPublicTransport', icon: '🚌', color: '#ec4899' },
+  { key: 'byWalk', icon: '🚶', color: '#10b981' },
+  { key: 'byBicycle', icon: '🚴', color: '#f59e0b' },
+  { key: 'byRunning', icon: '🏃', color: '#8b5cf6' },
+  { key: 'byTrain', icon: '🚆', color: '#6366f1' },
+  { key: 'byFlight', icon: '✈️', color: '#ef4444' },
+  { key: 'byBoat', icon: '🚤', color: '#14b8a6' },
+  { key: 'byUnknown', icon: '🧭', color: '#94a3b8' }
 ]
 
 const timezone = useTimezone()
+const { t } = useI18n()
 const journeyInsightsStore = useJourneyInsightsStore()
 const authStore = useAuthStore()
 const { handleErrorWithRetry } = useErrorHandler()
@@ -137,26 +158,37 @@ const displayedCities = computed(() => geographic.value.cities || [])
 const achievementBadges = computed(() => (achievements.value.badges || []).map((badge) => ({ ...badge, progress: Math.min(100, badge.progress || 0), progressText: badge.progressText || `${badge.current || 0}/${badge.target || 0}` })))
 const earnedAchievementsCount = computed(() => achievementBadges.value.filter((badge) => badge.earned).length)
 const achievementGroups = computed(() => {
-  const categorized = ACHIEVEMENT_CATEGORIES.map((category) => ({ ...category, badges: achievementBadges.value.filter((badge) => category.matches.test(badge.id)), earnedCount: 0 })).filter((category) => category.badges.length)
+  const categorized = ACHIEVEMENT_CATEGORIES.map((category) => ({ ...category, title: t(category.titleKey), badges: achievementBadges.value.filter((badge) => category.matches.test(badge.id)), earnedCount: 0 })).filter((category) => category.badges.length)
   const categorizedIds = new Set(categorized.flatMap((category) => category.badges.map((badge) => badge.id)))
   const otherBadges = achievementBadges.value.filter((badge) => !categorizedIds.has(badge.id))
-  if (otherBadges.length) categorized.push({ key: 'other', title: 'Other achievements', icon: '✨', badges: otherBadges, earnedCount: 0 })
+  if (otherBadges.length) categorized.push({ key: 'other', title: t('insights.milestones.groups.other'), icon: '✨', badges: otherBadges, earnedCount: 0 })
   return categorized.map((category) => ({ ...category, earnedCount: category.badges.filter((badge) => badge.earned).length }))
 })
 const movementModes = computed(() => {
   const total = Number(distanceTraveled.value.total) || 0
-  const definitions = [['byCar', 'Car', '🚗', '#3b82f6'], ['byMotorcycle', 'Motorcycle', '🏍️', '#06b6d4'], ['byPublicTransport', 'Public Transportation', '🚌', '#ec4899'], ['byWalk', 'Walk', '🚶', '#10b981'], ['byBicycle', 'Bicycle', '🚴', '#f59e0b'], ['byRunning', 'Running', '🏃', '#8b5cf6'], ['byTrain', 'Train', '🚆', '#6366f1'], ['byFlight', 'Flight', '✈️', '#ef4444'], ['byBoat', 'Boat', '🚤', '#14b8a6'], ['byUnknown', 'Unclassified', '🧭', '#94a3b8']]
-  return definitions.map(([key, label, icon, color]) => ({ key, label, icon, color, value: Number(distanceTraveled.value[key]) || 0 })).filter((mode) => mode.value > 0).map((mode) => ({ ...mode, distance: formatDistanceRounded(mode.value * 1000), share: Math.max(1, Math.round((mode.value / total) * 100)) }))
+  return MOVEMENT_MODES.map((mode) => ({ ...mode, label: t(`insights.movement.${mode.key}`), value: Number(distanceTraveled.value[mode.key]) || 0 })).filter((mode) => mode.value > 0).map((mode) => ({ ...mode, distance: formatDistanceRounded(mode.value * 1000), share: Math.max(1, Math.round((mode.value / total) * 100)) }))
 })
 const patternCards = computed(() => [
-  { icon: '📅', label: 'Most active month', value: timePatterns.value.mostActiveMonth || 'N/A', detail: 'Your historical peak activity period' },
-  { icon: '📊', label: 'Current month', value: timezone.format(timezone.now(), 'MMMM YYYY'), detail: timePatterns.value.monthlyComparison },
-  { icon: '📍', label: 'Busiest day', value: timePatterns.value.busiestDayOfWeek || 'N/A', detail: timePatterns.value.dayInsight },
-  { icon: '🕐', label: 'Most active time', value: localMostActiveTime.value, detail: timePatterns.value.timeInsight }
+  { icon: '📅', label: t('insights.patterns.mostActiveMonth'), value: timePatterns.value.mostActiveMonth || 'N/A', detail: t('insights.patterns.mostActiveMonthDetail') },
+  { icon: '📊', label: t('insights.patterns.currentMonth'), value: timezone.format(timezone.now(), 'MMMM YYYY'), detail: timePatterns.value.monthlyComparison },
+  { icon: '📍', label: t('insights.patterns.busiestDay'), value: timePatterns.value.busiestDayOfWeek || 'N/A', detail: timePatterns.value.dayInsight },
+  { icon: '🕐', label: t('insights.patterns.mostActiveTime'), value: localMostActiveTime.value, detail: timePatterns.value.timeInsight }
 ])
 const fetchJourneyInsights = async () => {
   try { await journeyInsightsStore.fetchJourneyInsights() } catch (error) { console.error('Error fetching journey insights:', error); handleErrorWithRetry(error, fetchJourneyInsights) }
 }
+
+// Achievement badges stay English for now: the backend serves and persists their title/description in
+// `user_badges`, so there is no catalog entry for them. The lookup is keyed by the locale-neutral badge
+// id and guarded by te(), which means translating a badge later is a catalog addition -- no change
+// here. te() returns false when neither the active locale nor the fallback has the key, which is what
+// keeps the backend's English text in place instead of a raw dotted key.
+const badgeText = (badge, field, fallback) => {
+  const key = `badges.${badge.id}.${field}`
+  return te(key) ? t(key) : fallback
+}
+const badgeTitle = (badge) => badgeText(badge, 'title', badge.title)
+const badgeDescription = (badge) => badgeText(badge, 'description', badge.description)
 
 onMounted(fetchJourneyInsights)
 </script>

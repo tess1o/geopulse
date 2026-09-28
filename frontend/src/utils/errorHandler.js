@@ -2,7 +2,8 @@
  * Error handling utilities for GeoPulse frontend
  */
 
-import { formatApiErrorDetail, getErrorReferenceId, hasErrorReference, normalizeApiError, withErrorReference } from './apiErrorDetail'
+import { formatApiErrorDetail, getErrorReferenceId, hasErrorReference, normalizeApiError, withErrorReference, AUTH_EXPIRED_CODE } from './apiErrorDetail'
+import { t } from '@/locales'
 
 function getErrorText(value) {
   if (!value) return ''
@@ -28,9 +29,11 @@ export function formatError(error) {
   const problem = normalizeApiError(error)
   // Default error object
   const formattedError = {
-    title: 'Something went wrong',
-    message: 'An unexpected error occurred. Please try again.',
+    title: t('errors.generic.title'),
+    message: t('errors.generic.message'),
     severity: 'error',
+    // Diagnostic only -- surfaced in logs and technical views, never as user-facing copy, so it stays
+    // untranslated.
     technical: error?.message || problem.detail || 'Unknown error',
     canRetry: true,
     isConnectionError: false,
@@ -46,9 +49,9 @@ export function formatError(error) {
       error?.message?.includes('ERR_NETWORK') ||
       error?.message?.includes('Failed to fetch') ||
       !navigator.onLine) {
-    
-    formattedError.title = 'Connection Problem'
-    formattedError.message = 'Unable to connect to GeoPulse servers. Please check your internet connection and try again.'
+
+    formattedError.title = t('errors.network.title')
+    formattedError.message = t('errors.network.message')
     formattedError.isConnectionError = true
     formattedError.canRetry = true
     return formattedError
@@ -57,9 +60,9 @@ export function formatError(error) {
   // Handle timeout errors
   if (error?.code === 'ECONNABORTED' ||
       error?.message?.includes('timeout')) {
-    
-    formattedError.title = 'Request Timeout'
-    formattedError.message = 'The request is taking longer than expected. Please try again.'
+
+    formattedError.title = t('errors.timeout.title')
+    formattedError.message = t('errors.timeout.message')
     formattedError.canRetry = true
     return formattedError
   }
@@ -73,61 +76,60 @@ export function formatError(error) {
     switch (status) {
       case 400:
         {
-          formattedError.title = 'Invalid Request'
-          formattedError.message = problemDetail ||
-            'The request could not be processed. Please check your input and try again.'
+          formattedError.title = t('errors.http.400.title')
+          formattedError.message = problemDetail || t('errors.http.400.message')
           formattedError.canRetry = true
           break
         }
 
       case 401:
-        formattedError.title = 'Authentication Required'
-        formattedError.message = 'Your session has expired. Please sign in again.'
+        formattedError.title = t('errors.http.401.title')
+        formattedError.message = t('errors.http.401.message')
         formattedError.canRetry = false
         break
 
       case 403:
-        formattedError.title = 'Access Denied'
-        formattedError.message = problemDetail || 'You don\'t have permission to perform this action.'
+        formattedError.title = t('errors.http.403.title')
+        formattedError.message = problemDetail || t('errors.http.403.message')
         formattedError.canRetry = false
         break
 
       case 404:
-        formattedError.title = 'Not Found'
-        formattedError.message = problemDetail || 'The requested resource could not be found.'
+        formattedError.title = t('errors.http.404.title')
+        formattedError.message = problemDetail || t('errors.http.404.message')
         formattedError.canRetry = false
         break
 
       case 409:
-        formattedError.title = 'Conflict'
-        formattedError.message = problemDetail || 'This action conflicts with the current state. Please refresh and try again.'
+        formattedError.title = t('errors.http.409.title')
+        formattedError.message = problemDetail || t('errors.http.409.message')
         formattedError.canRetry = true
         break
 
       case 429:
-        formattedError.title = 'Too Many Requests'
-        formattedError.message = 'You\'re making requests too quickly. Please wait a moment and try again.'
+        formattedError.title = t('errors.http.429.title')
+        formattedError.message = t('errors.http.429.message')
         formattedError.canRetry = true
         break
 
       case 500:
-        formattedError.title = 'Server Error'
-        formattedError.message = 'Internal Server Error'
+        formattedError.title = t('errors.http.500.title')
+        formattedError.message = t('errors.http.500.message')
         formattedError.canRetry = true
         break
 
       case 502:
       case 503:
       case 504:
-        formattedError.title = 'Service Unavailable'
-        formattedError.message = 'GeoPulse is temporarily unavailable. Please try again in a few minutes.'
+        formattedError.title = t(`errors.http.${status}.title`)
+        formattedError.message = t(`errors.http.${status}.message`)
         formattedError.isConnectionError = true
         formattedError.canRetry = true
         break
 
       default:
-        formattedError.title = `Error ${status}`
-        formattedError.message = problemDetail || `An error occurred (${status}). Please try again.`
+        formattedError.title = t('errors.http.unknown.title', { status })
+        formattedError.message = problemDetail || t('errors.http.unknown.message', { status })
         formattedError.canRetry = true
     }
 
@@ -137,21 +139,23 @@ export function formatError(error) {
     }
   }
 
-  // Handle specific authentication errors
-  if (error.message?.includes('Authentication expired') || 
-      error.message?.includes('Please login again')) {
-    
-    formattedError.title = 'Session Expired'
-    formattedError.message = 'Your session has expired. Please sign in again.'
+  // Handle the refresh-token path, which signals an ended session with a code rather than a status.
+  // Matched on the code, never the message: this copy is translatable, so matching on text would break
+  // silently the moment either side was reworded or translated.
+  if (error?.code === AUTH_EXPIRED_CODE) {
+    formattedError.title = t('errors.session.title')
+    formattedError.message = t('errors.session.message')
     formattedError.canRetry = false
+    formattedError.isAuthExpired = true
   }
 
   return formattedError
 }
 
-export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected error occurred. Please try again.') {
+export function getFriendlyErrorMessage(error, fallbackMessage) {
+  const fallback = fallbackMessage ?? t('errors.generic.message')
   if (!error) {
-    return fallbackMessage
+    return fallback
   }
 
   const userMessage = getErrorText(error.userMessage)
@@ -164,7 +168,7 @@ export function getFriendlyErrorMessage(error, fallbackMessage = 'An unexpected 
     return apiMessage
   }
 
-  return getErrorText(formatError(error).message) || fallbackMessage
+  return getErrorText(formatError(error).message) || fallback
 }
 
 /**
@@ -311,8 +315,8 @@ export function createRetryableErrorHandler(toastAdd, retryFunction) {
       setTimeout(() => {
         toastAdd({
           severity: 'info',
-          summary: 'Retry Available',
-          detail: 'Click here to try again',
+          summary: t('errors.retry.available'),
+          detail: t('errors.retry.hint'),
           life: 5000,
           onClick: retryFunction
         })

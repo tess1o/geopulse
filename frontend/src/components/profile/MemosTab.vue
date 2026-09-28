@@ -2,13 +2,13 @@
   <form class="integration-settings settings-tab" @submit.prevent="handleSubmit">
     <section class="settings-group" aria-labelledby="memos-availability-heading">
       <div class="settings-group-header">
-        <h3 id="memos-availability-heading">Notes integration</h3>
-        <p>Control whether timestamped Memos notes appear on your timeline.</p>
+        <h3 id="memos-availability-heading">{{ t('profile.connectedApps.memos.availability.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.memos.availability.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Enable Memos" description="Fetch timeline notes from your Memos server." setting-id="memos-enabled">
+        <SettingCard :title="t('profile.connectedApps.memos.availability.enabled.title')" :description="t('profile.connectedApps.memos.availability.enabled.description')" setting-id="memos-enabled">
           <template #control>
-            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" aria-label="Enable Memos integration" />
+            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" :aria-label="t('profile.connectedApps.memos.availability.enabled.ariaLabel')" />
           </template>
         </SettingCard>
       </div>
@@ -16,35 +16,35 @@
 
     <section class="settings-group" aria-labelledby="memos-connection-heading">
       <div class="settings-group-header">
-        <h3 id="memos-connection-heading">Connection</h3>
-        <p>Provide the server address and credentials used to access Memos.</p>
+        <h3 id="memos-connection-heading">{{ t('profile.connectedApps.memos.connection.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.memos.connection.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Server URL" description="Enter the full address of your Memos server." setting-id="memosServerUrl">
+        <SettingCard :title="t('profile.connectedApps.memos.connection.serverUrl.title')" :description="t('profile.connectedApps.memos.connection.serverUrl.description')" setting-id="memosServerUrl">
           <template #control>
             <div class="field-control">
-              <InputText id="memosServerUrl" v-model="form.serverUrl" placeholder="https://memos.example.com" :invalid="!!errors.serverUrl" :disabled="readOnly || !form.enabled || loading || saveLoading" class="w-full" aria-label="Memos server URL" />
+              <InputText id="memosServerUrl" v-model="form.serverUrl" placeholder="https://memos.example.com" :invalid="!!errors.serverUrl" :disabled="readOnly || !form.enabled || loading || saveLoading" class="w-full" :aria-label="t('profile.connectedApps.memos.connection.serverUrl.ariaLabel')" />
               <small v-if="errors.serverUrl" class="error-message">{{ errors.serverUrl }}</small>
             </div>
           </template>
         </SettingCard>
 
-        <SettingCard title="API key" description="Create an API token in your Memos settings." setting-id="memosApiKey">
+        <SettingCard :title="t('profile.connectedApps.memos.connection.apiKey.title')" :description="t('profile.connectedApps.memos.connection.apiKey.description')" setting-id="memosApiKey">
           <template #control>
             <div class="field-control">
               <Password
                 id="memosApiKey"
                 v-model="form.apiKey"
-                :placeholder="apiKeyConfigured ? 'API key is set (enter new key to replace)' : 'Enter your Memos API key'"
+                :placeholder="apiKeyConfigured ? t('profile.connectedApps.memos.connection.apiKey.placeholderConfigured') : t('profile.connectedApps.memos.connection.apiKey.placeholder')"
                 :feedback="false"
                 toggleMask
                 :invalid="!!errors.apiKey"
                 :disabled="readOnly || !form.enabled || loading || saveLoading"
                 class="w-full"
-                aria-label="Memos API key"
+                :aria-label="t('profile.connectedApps.memos.connection.apiKey.ariaLabel')"
               />
               <small v-if="errors.apiKey" class="error-message">{{ errors.apiKey }}</small>
-              <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text configured-key"><i class="pi pi-check-circle"></i> API key is configured. Leave empty to keep it.</small>
+              <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text configured-key"><i class="pi pi-check-circle"></i> {{ t('profile.connectedApps.memos.connection.apiKey.configuredNote') }}</small>
             </div>
           </template>
         </SettingCard>
@@ -53,18 +53,18 @@
 
     <section v-if="form.enabled" class="settings-group" aria-labelledby="memos-defaults-heading">
       <div class="settings-group-header">
-        <h3 id="memos-defaults-heading">Timeline defaults</h3>
-        <p>Choose how notes created from GeoPulse are stored in Memos.</p>
+        <h3 id="memos-defaults-heading">{{ t('profile.connectedApps.memos.defaults.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.memos.defaults.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Default save destination" description="Choose where new notes are saved by default." setting-id="memosDefaultDestination">
+        <SettingCard :title="t('profile.connectedApps.memos.defaults.destination.title')" :description="t('profile.connectedApps.memos.defaults.destination.description')" setting-id="memosDefaultDestination">
           <template #control>
-            <Select id="memosDefaultDestination" v-model="form.defaultSaveDestination" :options="destinationOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" aria-label="Default save destination" />
+            <Select id="memosDefaultDestination" v-model="form.defaultSaveDestination" :options="destinationOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" :aria-label="t('profile.connectedApps.memos.defaults.destination.ariaLabel')" />
           </template>
         </SettingCard>
-        <SettingCard title="Default visibility" description="Choose the initial Memos visibility for new notes." setting-id="memosDefaultVisibility">
+        <SettingCard :title="t('profile.connectedApps.memos.defaults.visibility.title')" :description="t('profile.connectedApps.memos.defaults.visibility.description')" setting-id="memosDefaultVisibility">
           <template #control>
-            <Select id="memosDefaultVisibility" v-model="form.defaultVisibility" :options="visibilityOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" aria-label="Default Memos visibility" />
+            <Select id="memosDefaultVisibility" v-model="form.defaultVisibility" :options="visibilityOptions" optionLabel="label" optionValue="value" :disabled="readOnly || loading || saveLoading" class="w-full" :aria-label="t('profile.connectedApps.memos.defaults.visibility.ariaLabel')" />
           </template>
         </SettingCard>
       </div>
@@ -72,17 +72,17 @@
 
     <section v-if="form.enabled" class="settings-group" aria-labelledby="memos-filtering-heading">
       <div class="settings-group-header">
-        <h3 id="memos-filtering-heading">Filtering & performance</h3>
-        <p>Control cached searches and which tagged notes appear on the timeline.</p>
+        <h3 id="memos-filtering-heading">{{ t('profile.connectedApps.memos.filtering.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.memos.filtering.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Search cache" description="Reuse recent searches for faster timeline note loading." setting-id="memosSearchCacheEnabled">
+        <SettingCard :title="t('profile.connectedApps.memos.filtering.searchCache.title')" :description="t('profile.connectedApps.memos.filtering.searchCache.description')" setting-id="memosSearchCacheEnabled">
           <template #control>
-            <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="readOnly || loading || saveLoading" aria-label="Enable Memos search cache" />
+            <ToggleSwitch v-model="form.searchCacheEnabled" :disabled="readOnly || loading || saveLoading" :aria-label="t('profile.connectedApps.memos.filtering.searchCache.ariaLabel')" />
           </template>
         </SettingCard>
 
-        <SettingCard class="tag-setting" title="Include tags" description="Only load notes containing at least one of these tags." setting-id="memosIncludeTags">
+        <SettingCard class="tag-setting" :title="t('profile.connectedApps.memos.filtering.includeTags.title')" :description="t('profile.connectedApps.memos.filtering.includeTags.description')" setting-id="memosIncludeTags">
           <template #control>
             <AutoComplete
               v-model="form.includeTags"
@@ -90,7 +90,7 @@
               multiple
               :typeahead="false"
               :suggestions="[]"
-              placeholder="Add a tag and press Enter"
+              :placeholder="t('profile.connectedApps.memos.filtering.includeTags.placeholder')"
               :disabled="readOnly || loading || saveLoading"
               class="w-full tag-input"
               @change="normalizeFormTags('includeTags')"
@@ -99,7 +99,7 @@
           </template>
         </SettingCard>
 
-        <SettingCard class="tag-setting" title="Exclude tags" description="Hide notes containing any of these tags." setting-id="memosExcludeTags">
+        <SettingCard class="tag-setting" :title="t('profile.connectedApps.memos.filtering.excludeTags.title')" :description="t('profile.connectedApps.memos.filtering.excludeTags.description')" setting-id="memosExcludeTags">
           <template #control>
             <AutoComplete
               v-model="form.excludeTags"
@@ -107,7 +107,7 @@
               multiple
               :typeahead="false"
               :suggestions="[]"
-              placeholder="Add a tag and press Enter"
+              :placeholder="t('profile.connectedApps.memos.filtering.excludeTags.placeholder')"
               :disabled="readOnly || loading || saveLoading"
               class="w-full tag-input"
               @change="normalizeFormTags('excludeTags')"
@@ -123,15 +123,16 @@
     </Message>
 
     <div class="settings-actions is-sticky">
-      <Button v-if="form.enabled" type="button" label="Test Connection" icon="pi pi-link" outlined :loading="testLoading" :disabled="readOnly || !canTestConnection || loading || saveLoading" @click="handleTestConnection" />
-      <Button type="button" label="Reset" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
-      <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
+      <Button v-if="form.enabled" type="button" :label="t('profile.connectedApps.memos.testConnection')" icon="pi pi-link" outlined :loading="testLoading" :disabled="readOnly || !canTestConnection || loading || saveLoading" @click="handleTestConnection" />
+      <Button type="button" :label="t('profile.connectedApps.memos.reset')" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
+      <Button type="submit" :label="t('profile.connectedApps.memos.saveSettings')" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
     </div>
   </form>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ToggleSwitch from 'primevue/toggleswitch'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -143,6 +144,7 @@ import { useNotesStore } from '@/stores/notes'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
   config: { type: Object, default: null },
@@ -158,13 +160,24 @@ const testMessage = ref('')
 const testDetails = ref('')
 const apiKeyConfigured = ref(false)
 const errors = ref({})
-const destinationOptions = [{ label: 'GeoPulse', value: 'GEOPULSE' }, { label: 'Memos', value: 'MEMOS' }]
-const visibilityOptions = [{ label: 'Private', value: 'PRIVATE' }, { label: 'Protected', value: 'PROTECTED' }, { label: 'Public', value: 'PUBLIC' }]
-const connectionMessages = {
-  CONNECTED: 'Successfully connected to Memos server',
-  USER_NOT_FOUND: 'User not found',
-  API_KEY_REQUIRED: 'API key is required',
-  CONNECTION_FAILED: 'Connection failed'
+// Labels only; the `value` half stays the untouched backend enum. PrimeVue's `optionLabel` reads a
+// field, so the labels resolve inside a computed -- which keeps them reactive to a language change.
+const destinationOptions = computed(() => [
+  { label: t('profile.connectedApps.memos.defaults.destination.options.geopulse'), value: 'GEOPULSE' },
+  { label: t('profile.connectedApps.memos.defaults.destination.options.memos'), value: 'MEMOS' }
+])
+const visibilityOptions = computed(() => [
+  { label: t('profile.connectedApps.memos.defaults.visibility.options.private'), value: 'PRIVATE' },
+  { label: t('profile.connectedApps.memos.defaults.visibility.options.protected'), value: 'PROTECTED' },
+  { label: t('profile.connectedApps.memos.defaults.visibility.options.public'), value: 'PUBLIC' }
+])
+// Backend status code -> catalog key. The codes are the values the store returns and must stay
+// verbatim; the sentences are resolved with `t()` where they are used, so they follow the locale.
+const connectionMessageKeys = {
+  CONNECTED: 'profile.connectedApps.memos.messages.connected',
+  USER_NOT_FOUND: 'profile.connectedApps.memos.messages.userNotFound',
+  API_KEY_REQUIRED: 'profile.connectedApps.memos.messages.apiKeyRequired',
+  CONNECTION_FAILED: 'profile.connectedApps.memos.messages.connectionFailed'
 }
 const form = ref({ serverUrl: '', apiKey: '', enabled: false, defaultSaveDestination: 'GEOPULSE', defaultVisibility: 'PRIVATE', searchCacheEnabled: true, includeTags: [], excludeTags: [] })
 
@@ -239,15 +252,15 @@ const validate = () => {
   errors.value = {}
   if (form.value.enabled) {
     if (!form.value.serverUrl?.trim()) {
-      errors.value.serverUrl = 'Server URL is required when integration is enabled'
+      errors.value.serverUrl = t('profile.connectedApps.memos.errors.serverUrlRequired')
     } else {
       try {
         new URL(form.value.serverUrl.trim())
       } catch {
-        errors.value.serverUrl = 'Please enter a valid URL'
+        errors.value.serverUrl = t('profile.connectedApps.memos.errors.serverUrlInvalid')
       }
     }
-    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) errors.value.apiKey = 'API key is required when integration is enabled'
+    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) errors.value.apiKey = t('profile.connectedApps.memos.errors.apiKeyRequired')
   }
   return Object.keys(errors.value).length === 0
 }
@@ -269,11 +282,11 @@ const handleTestConnection = async () => {
   try {
     const payload = await notesStore.testMemosConfig({ serverUrl: form.value.serverUrl.trim(), apiKey: form.value.apiKey?.trim() || null })
     testStatus.value = payload?.success ? 'success' : 'error'
-    testMessage.value = connectionMessages[payload?.status] || (payload?.success ? connectionMessages.CONNECTED : connectionMessages.CONNECTION_FAILED)
-    testDetails.value = payload?.memoCount == null ? (payload?.details || '') : `Server returned ${payload.memoCount} memo(s)`
+    testMessage.value = t(connectionMessageKeys[payload?.status] || (payload?.success ? connectionMessageKeys.CONNECTED : connectionMessageKeys.CONNECTION_FAILED))
+    testDetails.value = payload?.memoCount == null ? (payload?.details || '') : t('profile.connectedApps.memos.messages.memoCount', { count: payload.memoCount }, payload.memoCount)
   } catch (error) {
     testStatus.value = 'error'
-    testMessage.value = 'Connection test failed'
+    testMessage.value = t('profile.connectedApps.memos.messages.testError')
     testDetails.value = formatApiErrorDetail(error, '')
   } finally {
     testLoading.value = false

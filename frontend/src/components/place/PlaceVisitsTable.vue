@@ -1,18 +1,18 @@
 <template>
-  <BaseCard title="Visit History">
+  <BaseCard :title="t('place.visitsTable.title')">
     <!-- Table Header -->
     <template #header>
       <div class="table-header">
         <div class="table-title-section">
           <div>
             <div class="table-title-row">
-              <h3 class="table-title">All Visits</h3>
-              <span class="table-count">{{ pagination.totalCount }} visits</span>
+              <h3 class="table-title">{{ t('place.visitsTable.allVisits') }}</h3>
+              <span class="table-count">{{ t('place.visitsTable.countLabel', { count: pagination.totalCount }) }}</span>
             </div>
           </div>
         </div>
         <Button
-          label="Export CSV"
+          :label="t('place.visitsTable.exportCsv')"
           icon="pi pi-download"
           @click="$emit('export')"
           outlined
@@ -48,7 +48,7 @@
       <!-- Start Time Column -->
       <Column
         field="timestamp"
-        header="Visit Date"
+        :header="t('place.visitsTable.columns.visitDate')"
         :sortable="true"
         :style="{ 'min-width': '180px' }"
       >
@@ -64,7 +64,7 @@
       <Column
         v-if="showCity"
         field="city"
-        header="City"
+        :header="t('place.visitsTable.columns.city')"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
         :class="{ 'hide-on-mobile-city': showCity && showLocationName }"
@@ -79,7 +79,7 @@
           >
             {{ slotProps.data.city }}
           </span>
-          <span v-else>{{ slotProps.data.city || 'N/A' }}</span>
+          <span v-else>{{ slotProps.data.city || t('place.visitsTable.notAvailable') }}</span>
         </template>
       </Column>
 
@@ -87,21 +87,21 @@
       <Column
         v-if="showLocationName"
         field="locationName"
-        header="Place Name"
+        :header="t('place.visitsTable.columns.placeName')"
         :sortable="true"
         :style="{ 'min-width': '150px' }"
         headerClass="place-name-column-header"
         bodyClass="place-name-column-body"
       >
         <template #body="slotProps">
-          <span class="place-name">{{ slotProps.data.locationName || 'Unknown' }}</span>
+          <span class="place-name">{{ slotProps.data.locationName || t('place.visitsTable.unknownPlace') }}</span>
         </template>
       </Column>
 
       <!-- Duration Column -->
       <Column
         v-if="hasAnyVisitTripTag"
-        header="Trip"
+        :header="t('place.visitsTable.columns.trip')"
         :style="{ 'min-width': '170px' }"
         class="trip-column"
         headerClass="trip-column"
@@ -112,10 +112,10 @@
             v-if="getVisitTripTag(slotProps.data)"
             class="trip-tag-chip"
             :style="{ '--trip-tag-color': getVisitTripColor(slotProps.data) }"
-            :title="`Visit is linked to trip planner: ${getVisitTripLabel(slotProps.data)}`"
+            :title="t('place.visitsTable.tripTagTitle', { label: getVisitTripLabel(slotProps.data) })"
             role="button"
             tabindex="0"
-            :aria-label="`Open trip planner ${getVisitTripLabel(slotProps.data)}`"
+            :aria-label="t('place.visitsTable.tripTagAriaLabel', { label: getVisitTripLabel(slotProps.data) })"
             @click.stop="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.enter="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.space.prevent="handleTripTagClick(getVisitTripTag(slotProps.data))"
@@ -130,7 +130,7 @@
       <!-- Duration Column -->
       <Column
         field="stayDuration"
-        header="Duration"
+        :header="t('place.visitsTable.columns.duration')"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
         :class="{ 'duration-column-country': showCity && showLocationName }"
@@ -147,7 +147,7 @@
       <!-- End Time Column -->
       <Column
         v-if="showEndTime"
-        header="End Time"
+        :header="t('place.visitsTable.columns.endTime')"
         :style="{ 'min-width': '150px' }"
         class="end-time-column"
         headerClass="end-time-column"
@@ -163,7 +163,7 @@
 
       <!-- Day of Week Column -->
       <Column
-        header="Day of Week"
+        :header="t('place.visitsTable.columns.dayOfWeek')"
         :style="{ 'min-width': '120px' }"
         class="day-of-week-column"
         headerClass="day-of-week-column"
@@ -190,9 +190,9 @@
             icon="pi pi-external-link"
             text
             size="small"
-            aria-label="Open visit day in timeline"
-            title="Open visit day in timeline"
-            v-tooltip.top="'Open visit day in timeline'"
+            :aria-label="t('place.visitsTable.openInTimelineAriaLabel')"
+            :title="t('place.visitsTable.openInTimelineTooltip')"
+            v-tooltip.top="t('place.visitsTable.openInTimelineTooltip')"
             @click.stop="openVisitInTimeline(slotProps.data)"
           />
         </template>
@@ -202,9 +202,9 @@
     <!-- No Data State -->
     <div v-if="!loading && visits.length === 0" class="no-data-state">
       <i class="pi pi-map-marker no-data-icon"></i>
-      <h4 class="no-data-title">No Visits Found</h4>
+      <h4 class="no-data-title">{{ t('place.visitsTable.empty.title') }}</h4>
       <p class="no-data-message">
-        No visits recorded for this location.
+        {{ t('place.visitsTable.empty.message') }}
       </p>
     </div>
 
@@ -217,6 +217,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -228,6 +229,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useTripsStore } from '@/stores/trips'
 import { findMatchingTripForVisit, normalizeTripColor } from '@/utils/tripHelpers'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const router = useRouter()
 const tripsStore = useTripsStore()
@@ -323,11 +325,11 @@ const getVisitTripColor = (visit) => {
 const getVisitTripLabel = (visit) => {
   const trip = getVisitTripTag(visit)
   if (!trip) return ''
-  return trip.name || `Trip #${trip.id}`
+  return trip.name || t('place.visitsTable.tripFallbackLabel', { id: trip.id })
 }
 
 const getEndDate = (visit) => {
-  if (!visit.timestamp || !visit.stayDuration) return 'N/A'
+  if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
   const startTime = timezone.fromUtc(visit.timestamp)
   const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
@@ -336,7 +338,7 @@ const getEndDate = (visit) => {
 }
 
 const getEndTime = (visit) => {
-  if (!visit.timestamp || !visit.stayDuration) return 'N/A'
+  if (!visit.timestamp || !visit.stayDuration) return t('place.visitsTable.notAvailable')
 
   const startTime = timezone.fromUtc(visit.timestamp)
   const endTime = startTime.clone().add(visit.stayDuration, 'seconds')
@@ -345,7 +347,7 @@ const getEndTime = (visit) => {
 }
 
 const getDayOfWeek = (timestamp) => {
-  if (!timestamp) return 'N/A'
+  if (!timestamp) return t('place.visitsTable.notAvailable')
   return timezone.format(timestamp, 'dddd') // Full day name (Monday, Tuesday, etc.)
 }
 

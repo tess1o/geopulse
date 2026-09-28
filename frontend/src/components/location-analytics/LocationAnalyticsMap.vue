@@ -25,13 +25,13 @@
       <div v-if="showInitialLoadingOverlay" class="map-overlay">
         <div class="map-overlay-content">
           <ProgressSpinner strokeWidth="5" />
-          <span>Loading places...</span>
+          <span>{{ t('analytics.locationAnalyticsMapView.loadingPlaces') }}</span>
         </div>
       </div>
 
       <div v-if="showRefreshIndicator" class="map-refresh-badge" aria-live="polite">
         <ProgressSpinner strokeWidth="6" />
-        <span>Updating map…</span>
+        <span>{{ t('analytics.locationAnalyticsMapView.updatingMap') }}</span>
       </div>
 
     </div>
@@ -40,9 +40,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProgressSpinner from 'primevue/progressspinner'
 import { MapContainer } from '@/components/maps'
 import LocationAnalyticsDotsLayer from '@/components/maps/layers/LocationAnalyticsDotsLayer.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   places: {

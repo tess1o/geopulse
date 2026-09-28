@@ -2,13 +2,13 @@
   <form class="integration-settings settings-tab" @submit.prevent="handleSubmit">
     <section class="settings-group" aria-labelledby="ai-availability-heading">
       <div class="settings-group-header">
-        <h3 id="ai-availability-heading">Assistant availability</h3>
-        <p>Control whether AI chat is available in GeoPulse.</p>
+        <h3 id="ai-availability-heading">{{ t('profile.connectedApps.ai.availability.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.ai.availability.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Enable AI Assistant" description="Allow AI-powered chat and timeline assistance." setting-id="ai-enabled">
+        <SettingCard :title="t('profile.connectedApps.ai.availability.enabled.title')" :description="t('profile.connectedApps.ai.availability.enabled.description')" setting-id="ai-enabled">
           <template #control>
-            <ToggleSwitch id="ai-enabled" v-model="form.enabled" :disabled="readOnly" aria-label="Enable AI Assistant" />
+            <ToggleSwitch id="ai-enabled" v-model="form.enabled" :disabled="readOnly" :aria-label="t('profile.connectedApps.ai.availability.enabled.title')" />
           </template>
         </SettingCard>
       </div>
@@ -16,48 +16,48 @@
 
     <section class="settings-group" aria-labelledby="ai-provider-heading">
       <div class="settings-group-header">
-        <h3 id="ai-provider-heading">Provider</h3>
-        <p>Configure the OpenAI or OpenAI-compatible service used by the assistant.</p>
+        <h3 id="ai-provider-heading">{{ t('profile.connectedApps.ai.provider.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.ai.provider.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="API key required" description="Turn off only when the provider accepts unauthenticated requests." setting-id="api-key-required">
+        <SettingCard :title="t('profile.connectedApps.ai.provider.apiKeyRequired.title')" :description="t('profile.connectedApps.ai.provider.apiKeyRequired.description')" setting-id="api-key-required">
           <template #control>
-            <ToggleSwitch id="api-key-required" v-model="form.apiKeyRequired" :disabled="readOnly" aria-label="API key required" />
+            <ToggleSwitch id="api-key-required" v-model="form.apiKeyRequired" :disabled="readOnly" :aria-label="t('profile.connectedApps.ai.provider.apiKeyRequired.title')" />
           </template>
         </SettingCard>
 
-        <SettingCard title="API key" description="Enter a new key only when adding or replacing credentials." setting-id="openai-api-key">
+        <SettingCard :title="t('profile.connectedApps.ai.provider.apiKey.title')" :description="t('profile.connectedApps.ai.provider.apiKey.description')" setting-id="openai-api-key">
           <template #control>
             <div class="field-control">
               <Password
                 id="openai-api-key"
                 v-model="form.openaiApiKey"
-                :placeholder="apiKeyConfigured ? 'API key is configured (enter new key to replace)' : 'Enter your OpenAI API key'"
+                :placeholder="apiKeyConfigured ? t('profile.connectedApps.ai.provider.apiKey.placeholderConfigured') : t('profile.connectedApps.ai.provider.apiKey.placeholder')"
                 class="w-full"
                 :feedback="false"
                 toggleMask
                 autocomplete="new-password"
                 :inputProps="{ autocomplete: 'new-password', 'data-lpignore': 'true', 'data-form-type': 'other' }"
                 :disabled="readOnly || !form.apiKeyRequired"
-                aria-label="OpenAI API key"
+                :aria-label="t('profile.connectedApps.ai.provider.apiKey.ariaLabel')"
               />
-              <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="help-text configured-key"><i class="pi pi-check-circle"></i> API key is configured. Leave empty to keep it.</small>
-              <small v-else-if="!apiKeyConfigured && form.apiKeyRequired" class="help-text">Enter an API key to enable authenticated requests.</small>
+              <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="help-text configured-key"><i class="pi pi-check-circle"></i> {{ t('profile.connectedApps.ai.provider.apiKey.configuredNote') }}</small>
+              <small v-else-if="!apiKeyConfigured && form.apiKeyRequired" class="help-text">{{ t('profile.connectedApps.ai.provider.apiKey.missingNote') }}</small>
             </div>
           </template>
         </SettingCard>
 
-        <SettingCard title="API base URL" description="Use OpenAI’s endpoint or another compatible service." setting-id="openai-api-url">
+        <SettingCard :title="t('profile.connectedApps.ai.provider.baseUrl.title')" :description="t('profile.connectedApps.ai.provider.baseUrl.description')" setting-id="openai-api-url">
           <template #control>
-            <InputText id="openai-api-url" v-model="form.openaiApiUrl" placeholder="https://api.openai.com/v1" class="w-full" :disabled="readOnly" aria-label="API base URL" />
+            <InputText id="openai-api-url" v-model="form.openaiApiUrl" placeholder="https://api.openai.com/v1" class="w-full" :disabled="readOnly" :aria-label="t('profile.connectedApps.ai.provider.baseUrl.title')" />
           </template>
         </SettingCard>
 
-        <SettingCard title="Model" description="Choose a listed model or enter its identifier." setting-id="openai-model">
+        <SettingCard :title="t('profile.connectedApps.ai.provider.model.title')" :description="t('profile.connectedApps.ai.provider.model.description')" setting-id="openai-model">
           <template #control>
             <div class="model-select-row">
-              <Dropdown id="openai-model" v-model="form.openaiModel" :options="openaiModels" placeholder="Select or enter model name" class="w-full" editable :disabled="readOnly" aria-label="AI model" />
-              <Button type="button" icon="pi pi-sync" aria-label="Refresh provider models" @click="fetchModels" :loading="modelsLoading" :disabled="readOnly" v-tooltip.bottom="'Fetch models from server'" />
+              <Dropdown id="openai-model" v-model="form.openaiModel" :options="openaiModels" :placeholder="t('profile.connectedApps.ai.provider.model.placeholder')" class="w-full" editable :disabled="readOnly" :aria-label="t('profile.connectedApps.ai.provider.model.ariaLabel')" />
+              <Button type="button" icon="pi pi-sync" :aria-label="t('profile.connectedApps.ai.provider.refreshModels.ariaLabel')" @click="fetchModels" :loading="modelsLoading" :disabled="readOnly" v-tooltip.bottom="t('profile.connectedApps.ai.provider.refreshModels.tooltip')" />
             </div>
           </template>
         </SettingCard>
@@ -66,36 +66,38 @@
 
     <section class="settings-group" aria-labelledby="ai-behavior-heading">
       <div class="settings-group-header">
-        <h3 id="ai-behavior-heading">Assistant behavior</h3>
-        <p>Customize the instruction sent with every conversation.</p>
+        <h3 id="ai-behavior-heading">{{ t('profile.connectedApps.ai.behavior.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.ai.behavior.description') }}</p>
       </div>
       <div class="settings-panel behavior-panel">
-        <SettingCard title="System message" description="Clear the message to restore the server default." details="The system message guides the assistant’s tone and behavior." setting-id="custom-system-message">
+        <SettingCard :title="t('profile.connectedApps.ai.behavior.systemMessage.title')" :description="t('profile.connectedApps.ai.behavior.systemMessage.description')" :details="t('profile.connectedApps.ai.behavior.systemMessage.details')" setting-id="custom-system-message">
           <template #control>
-            <Textarea id="custom-system-message" v-model="form.customSystemMessage" placeholder="Loading system message..." rows="8" class="w-full" autoResize :disabled="readOnly" aria-label="AI system message" />
+            <Textarea id="custom-system-message" v-model="form.customSystemMessage" :placeholder="t('profile.connectedApps.ai.behavior.systemMessage.placeholder')" rows="8" class="w-full" autoResize :disabled="readOnly" :aria-label="t('profile.connectedApps.ai.behavior.systemMessage.ariaLabel')" />
           </template>
         </SettingCard>
       </div>
     </section>
 
     <Message v-if="testConnectionStatus" :severity="testConnectionStatus === 'success' ? 'success' : 'error'" :closable="false" aria-live="polite">
-      {{ testConnectionStatus === 'success' ? 'Connection successful!' : 'Connection failed. Check URL and API key.' }}
+      {{ testConnectionStatus === 'success' ? t('profile.connectedApps.ai.test.success') : t('profile.connectedApps.ai.test.failure') }}
     </Message>
 
     <div class="settings-actions is-sticky">
-      <Button type="button" label="Test Connection" icon="pi pi-plug" :loading="testConnectionLoading" :disabled="readOnly" @click="testConnection" outlined />
-      <Button type="submit" label="Save AI Settings" icon="pi pi-save" :loading="loading" :disabled="readOnly" />
+      <Button type="button" :label="t('profile.connectedApps.ai.testConnection')" icon="pi pi-plug" :loading="testConnectionLoading" :disabled="readOnly" @click="testConnection" outlined />
+      <Button type="submit" :label="t('profile.connectedApps.ai.saveSettings')" icon="pi pi-save" :loading="loading" :disabled="readOnly" />
     </div>
   </form>
 </template>
 
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import { useAIStore } from '@/stores/ai'
 
+const { t } = useI18n()
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
   initialSettings: {

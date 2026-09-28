@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    header="Map Matching Details"
+    :header="t('tripDialogs.mapMatchingDetails.header')"
     :modal="true"
     :style="{ width: '32rem' }"
     @hide="$emit('close')"
@@ -20,7 +20,7 @@
       <p v-if="completedLabel" class="state-when">{{ completedLabel }}</p>
 
       <p v-if="neverQueued" class="state-note">
-        This trip was skipped before it reached the map-matching queue, so there is no stored result to retry.
+        {{ t('tripDialogs.mapMatchingDetails.neverQueuedNote') }}
       </p>
 
       <div v-if="stateText.detail" class="state-detail">
@@ -30,25 +30,26 @@
 
       <Button
         v-if="canOpenMapMatchingSettings"
-        label="Open map matching settings"
+        :label="t('tripDialogs.mapMatchingDetails.openSettings')"
         icon="pi pi-cog"
         severity="secondary"
         outlined
         @click="openMapMatchingSettings"
       />
       <p v-else-if="isProblem" class="state-hint">
-        An administrator can re-run map matching from Admin → Settings → Map Matching.
+        {{ t('tripDialogs.mapMatchingDetails.adminHint') }}
       </p>
     </div>
 
     <template #footer>
-      <Button label="Close" icon="pi pi-times" text @click="internalVisible = false" />
+      <Button :label="t('tripDialogs.mapMatchingDetails.close')" icon="pi pi-times" text @click="internalVisible = false" />
     </template>
   </Dialog>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
@@ -83,17 +84,18 @@ const internalVisible = computed({
   }
 })
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const router = useRouter()
 const { canViewAdmin } = storeToRefs(useAuthStore())
 
-const STATUS_LABELS = {
-  COMPLETED: 'MATCHED',
-  QUEUED: 'QUEUED',
-  PROCESSING: 'MATCHING',
-  FAILED: 'FAILED',
-  SKIPPED: 'SKIPPED'
-}
+const STATUS_LABELS = computed(() => ({
+  COMPLETED: t('tripDialogs.mapMatchingDetails.statusLabels.completed'),
+  QUEUED: t('tripDialogs.mapMatchingDetails.statusLabels.queued'),
+  PROCESSING: t('tripDialogs.mapMatchingDetails.statusLabels.processing'),
+  FAILED: t('tripDialogs.mapMatchingDetails.statusLabels.failed'),
+  SKIPPED: t('tripDialogs.mapMatchingDetails.statusLabels.skipped')
+}))
 const STATUS_SEVERITIES = {
   COMPLETED: 'success',
   QUEUED: 'info',
@@ -103,14 +105,14 @@ const STATUS_SEVERITIES = {
 }
 
 const status = computed(() => props.info?.status || 'FAILED')
-const statusLabel = computed(() => STATUS_LABELS[status.value] || status.value)
+const statusLabel = computed(() => STATUS_LABELS.value[status.value] || status.value)
 const statusSeverity = computed(() => STATUS_SEVERITIES[status.value] || 'danger')
 const stateText = computed(() => describeMapMatchingState(props.info))
 const isProblem = computed(() => status.value === 'FAILED' || status.value === 'SKIPPED')
 // Trips judged before queueing have no target row, so the state comes from the eligibility checks rather
 // than from a stored attempt.
 const neverQueued = computed(() => !props.info?.targetId)
-const detailCaption = computed(() => (isProblem.value ? 'Reported by the routing engine' : null))
+const detailCaption = computed(() => (isProblem.value ? t('tripDialogs.mapMatchingDetails.detailCaption') : null))
 
 const tripDuration = computed(() => props.trip?.tripDuration || 0)
 const tripTimestamp = computed(() => {
@@ -120,7 +122,9 @@ const tripTimestamp = computed(() => {
 const completedLabel = computed(() => {
   if (!props.info?.completedAt) return null
   const when = `${timezone.formatDateDisplay(props.info.completedAt)} ${timezone.formatTime(props.info.completedAt)}`
-  return isProblem.value ? `Last attempted on ${when}` : `Refined on ${when}`
+  return isProblem.value
+    ? t('tripDialogs.mapMatchingDetails.lastAttemptedOn', { when })
+    : t('tripDialogs.mapMatchingDetails.refinedOn', { when })
 })
 
 const canOpenMapMatchingSettings = computed(() => isProblem.value && canViewAdmin.value)

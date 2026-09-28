@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    :header="'Timeline Regeneration'"
+    :header="t('miscDialogs.timelineRegeneration.header')"
     :modal="true"
     :closable="false"
     :draggable="false"
@@ -26,7 +26,7 @@
           <!-- Completion Message (shown when completed) -->
           <div v-if="jobProgress.status === 'COMPLETED'" class="completion-indicator">
             <i class="pi pi-check-circle"></i>
-            <span>Timeline generation completed successfully!</span>
+            <span>{{ t('miscDialogs.timelineRegeneration.completedMessage') }}</span>
           </div>
 
           <div class="progress-header">
@@ -45,46 +45,46 @@
             <!-- GPS Loading -->
             <div v-if="jobProgress.details.gpsPointsLoaded" class="detail-item">
               <i class="pi pi-map-marker"></i>
-              <span>{{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }} GPS points loaded</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.gpsPointsLoaded', { loaded: jobProgress.details.gpsPointsLoaded.toLocaleString(), total: jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }) }}</span>
             </div>
 
             <!-- GPS Processing (State Machine) -->
             <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-item">
               <i class="pi pi-cog"></i>
-              <span>{{ jobProgress.details.processedPoints.toLocaleString() }} / {{ jobProgress.details.totalPoints?.toLocaleString() || '?' }} points processed</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.pointsProcessed', { processed: jobProgress.details.processedPoints.toLocaleString(), total: jobProgress.details.totalPoints?.toLocaleString() || '?' }) }}</span>
             </div>
 
             <!-- Geocoding Summary -->
             <div v-if="jobProgress.details.totalLocations" class="detail-item">
               <i class="pi pi-globe"></i>
-              <span>{{ jobProgress.details.totalResolved || 0 }} / {{ jobProgress.details.totalLocations }} locations geocoded</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.locationsGeocoded', { resolved: jobProgress.details.totalResolved || 0, total: jobProgress.details.totalLocations }) }}</span>
             </div>
 
             <!-- Geocoding Breakdown -->
             <div v-if="jobProgress.details.favoritesResolved" class="detail-item detail-sub">
               <i class="pi pi-star"></i>
-              <span>{{ jobProgress.details.favoritesResolved }} from favorites</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromFavorites', { count: jobProgress.details.favoritesResolved }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.cachedResolved" class="detail-item detail-sub">
               <i class="pi pi-database"></i>
-              <span>{{ jobProgress.details.cachedResolved }} from cache</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromCache', { count: jobProgress.details.cachedResolved }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.externalCompleted" class="detail-item detail-sub">
               <i class="pi pi-cloud"></i>
-              <span>{{ jobProgress.details.externalCompleted }} from external API</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.fromExternalApi', { count: jobProgress.details.externalCompleted }) }}</span>
             </div>
 
             <div v-if="jobProgress.details.externalPending > 0" class="detail-item detail-pending">
               <i class="pi pi-clock"></i>
-              <span>{{ jobProgress.details.externalPending }} pending</span>
+              <span>{{ t('miscDialogs.timelineRegeneration.pending', { count: jobProgress.details.externalPending }) }}</span>
             </div>
           </div>
 
           <!-- Link to detailed progress page -->
           <Button
-            label="View Detailed Progress"
+            :label="t('miscDialogs.timelineRegeneration.viewDetailedProgress')"
             icon="pi pi-external-link"
             class="view-details-btn"
             severity="info"
@@ -95,8 +95,7 @@
 
         <!-- Fallback for legacy mode (no jobId) -->
         <p v-else class="regeneration-note">
-          This process may take 5-15 seconds or longer depending on your data size.
-          Your timeline will be temporarily unavailable during regeneration.
+          {{ t('miscDialogs.timelineRegeneration.fallbackNote') }}
         </p>
       </div>
 
@@ -107,7 +106,7 @@
           <span class="dot"></span>
           <span class="dot"></span>
         </div>
-        <p class="progress-text">Please wait...</p>
+        <p class="progress-text">{{ t('miscDialogs.timelineRegeneration.pleaseWait') }}</p>
       </div>
     </div>
   </Dialog>
@@ -115,11 +114,14 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import ProgressBar from 'primevue/progressbar'
 import Button from 'primevue/button'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -155,34 +157,34 @@ const internalVisible = ref(props.visible)
 const title = computed(() => {
   switch (props.type) {
     case 'favorite':
-      return 'Adding Favorite & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.favorite')
     case 'favorite-delete':
-      return 'Deleting Favorite & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.favoriteDelete')
     case 'preferences':
-      return 'Applying Preferences & Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.preferences')
     case 'classification':
-      return 'Updating Trip Classifications'
+      return t('miscDialogs.timelineRegeneration.titles.classification')
     case 'reconstruction':
-      return 'Applying Missing Timeline Data'
+      return t('miscDialogs.timelineRegeneration.titles.reconstruction')
     default:
-      return 'Regenerating Timeline'
+      return t('miscDialogs.timelineRegeneration.titles.general')
   }
 })
 
 const message = computed(() => {
   switch (props.type) {
     case 'favorite':
-      return 'We\'re adding your favorite location and regenerating your complete timeline to incorporate this change. This ensures all timeline data remains accurate and up-to-date.'
+      return t('miscDialogs.timelineRegeneration.messages.favorite')
     case 'favorite-delete':
-      return 'We\'re removing your favorite location and regenerating your complete timeline to reflect this change. This ensures all timeline data remains accurate and up-to-date.'
+      return t('miscDialogs.timelineRegeneration.messages.favoriteDelete')
     case 'preferences':
-      return 'We\'re applying your new preferences and regenerating your complete timeline based on the updated settings. This ensures optimal timeline accuracy with your preferences.'
+      return t('miscDialogs.timelineRegeneration.messages.preferences')
     case 'classification':
-      return 'We\'re recalculating movement types for your existing trips based on your updated speed thresholds. This process will update how your trips are classified without changing the underlying timeline structure.'
+      return t('miscDialogs.timelineRegeneration.messages.classification')
     case 'reconstruction':
-      return 'We\'re applying generated GPS points from your stays and trips, then updating the affected timeline portion. Existing timeline data is not replaced.'
+      return t('miscDialogs.timelineRegeneration.messages.reconstruction')
     default:
-      return 'We\'re regenerating your complete timeline from your GPS data. This process ensures your timeline is accurate and reflects all available location information.'
+      return t('miscDialogs.timelineRegeneration.messages.general')
   }
 })
 

@@ -2,11 +2,11 @@
   <BaseCard v-if="hasPendingFavorites" class="pending-panel" variant="highlighted">
     <template #header>
       <div class="panel-header">
-        <h3 class="panel-title">Pending Favorites</h3>
+        <h3 class="panel-title">{{ t('sharing.favorites.pendingPanel.title') }}</h3>
         <div class="panel-actions">
-          <Tag :value="`${pendingCount} pending`" severity="warning" />
+          <Tag :value="t('sharing.favorites.pendingPanel.pendingCount', { count: pendingCount })" severity="warning" />
           <Button
-            label="Clear All"
+            :label="t('sharing.favorites.pendingPanel.clearAll')"
             icon="pi pi-times"
             severity="secondary"
             size="small"
@@ -14,7 +14,7 @@
             @click="$emit('clear-all')"
           />
           <Button
-            label="Save All"
+            :label="t('sharing.favorites.pendingPanel.saveAll')"
             icon="pi pi-check"
             severity="success"
             size="small"
@@ -37,11 +37,15 @@
           <div class="item-name">{{ item.name }}</div>
           <div class="item-location">
             <span v-if="item.type === 'point'">
-              Point: {{ item.lat.toFixed(4) }}, {{ item.lon.toFixed(4) }}
+              {{ t('sharing.favorites.pendingPanel.pointLocation', { lat: item.lat.toFixed(4), lon: item.lon.toFixed(4) }) }}
             </span>
             <span v-else>
-              Area: {{ item.southWestLat.toFixed(2) }}, {{ item.southWestLon.toFixed(2) }} to
-              {{ item.northEastLat.toFixed(2) }}, {{ item.northEastLon.toFixed(2) }}
+              {{ t('sharing.favorites.pendingPanel.areaLocation', {
+                southWestLat: item.southWestLat.toFixed(2),
+                southWestLon: item.southWestLon.toFixed(2),
+                northEastLat: item.northEastLat.toFixed(2),
+                northEastLon: item.northEastLon.toFixed(2)
+              }) }}
             </span>
           </div>
         </div>
@@ -59,7 +63,7 @@
     <template #footer>
       <div class="footer-info">
         <i class="pi pi-info-circle" />
-        <span>Timeline regeneration will happen once for all favorites</span>
+        <span>{{ t('sharing.favorites.pendingPanel.footerInfo') }}</span>
       </div>
     </template>
   </BaseCard>
@@ -67,6 +71,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFavoritesStore } from '@/stores/favorites'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import Button from 'primevue/button'
@@ -74,6 +79,7 @@ import Tag from 'primevue/tag'
 
 defineEmits(['clear-all', 'save-all', 'remove'])
 
+const { t } = useI18n()
 const favoritesStore = useFavoritesStore()
 
 const hasPendingFavorites = computed(() => favoritesStore.hasPendingFavorites)

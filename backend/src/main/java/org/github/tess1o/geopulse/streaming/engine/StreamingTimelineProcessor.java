@@ -169,7 +169,7 @@ public class StreamingTimelineProcessor {
 
         jobProgressService.updateProgress(
             jobId,
-            "Processing GPS points through state machine",
+            TimelineJobProgressService.step("processingStateMachine", "Processing GPS points through state machine", details),
             4,
             percentage,
             details

@@ -33,8 +33,11 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import { getPhotoThumbnailBlobUrl, hasPhotoThumbnail } from '@/utils/immichPhotoThumbnails'
+
+const { t } = useI18n()
 
 const props = defineProps({
   photos: {
@@ -69,12 +72,12 @@ const singlePhoto = computed(() => {
 const showSinglePhotoThumbnail = computed(() => Boolean(singlePhoto.value && singlePhotoThumbnailBlobUrl.value))
 const triggerLabel = computed(() => {
   if (props.photos.length === 1) {
-    return 'Open photo'
+    return t('timeline.photos.openSingle')
   }
 
-  return `Open ${props.photos.length} photos`
+  return t('timeline.photos.openMultiple', { count: props.photos.length })
 })
-const singlePhotoAlt = computed(() => singlePhoto.value?.originalFileName || 'Photo')
+const singlePhotoAlt = computed(() => singlePhoto.value?.originalFileName || t('timeline.photos.fallbackAlt'))
 const triggerStyle = computed(() => ({
   '--photo-trigger-color': props.accentColor,
   '--photo-trigger-hover-bg': props.hoverBgColor

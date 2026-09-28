@@ -1,6 +1,6 @@
 <template>
   <div v-if="pois.length || loading" class="poi-suggest">
-    <label class="field-label">What's here</label>
+    <label class="field-label">{{ t('trips.planItemPoiImages.whatsHere') }}</label>
 
     <div v-if="loading" class="poi-suggest-loading">
       <ProgressSpinner style="width: 24px; height: 24px" strokeWidth="4" />
@@ -12,27 +12,30 @@
         :key="poi.id"
         type="button"
         class="poi-suggest-card"
-        :title="`Use &quot;${poi.name}&quot;`"
+        :title="t('trips.planItemPoiImages.usePhotoTitle', { name: poi.name })"
         @click="handleSelect(poi)"
       >
         <PoiImage :endpoint="poi.imageUrl" :alt="poi.name" />
         <span class="poi-suggest-name">{{ poi.name }}</span>
         <!-- Per-image credit: Commons licences are per file, so it travels with the photo. -->
         <span v-if="poi.imageLicense" class="poi-suggest-credit">
-          {{ poi.imageAuthor || 'Unknown' }} · {{ poi.imageLicense }}
+          {{ poi.imageAuthor || t('common.unknown') }} · {{ poi.imageLicense }}
         </span>
       </button>
     </div>
 
-    <p v-if="pois.length" class="poi-suggest-hint">Click a photo to name this stop after it.</p>
+    <p v-if="pois.length" class="poi-suggest-hint">{{ t('trips.planItemPoiImages.hint') }}</p>
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProgressSpinner from 'primevue/progressspinner'
 import apiService from '@/utils/apiService'
 import PoiImage from '@/components/trips/discovery/PoiImage.vue'
+
+const { t } = useI18n()
 
 /**
  * Shows what is actually at the pinned coordinates - name and photo - so a stop added by

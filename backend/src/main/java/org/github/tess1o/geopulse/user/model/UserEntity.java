@@ -144,6 +144,18 @@ public class UserEntity extends PanacheEntityBase implements Serializable {
     @Builder.Default
     private String timeFormat = "24h";
 
+    /**
+     * BCP 47 language subtag for the UI (see {@link SupportedLanguages}).
+     *
+     * <p>Shaped like {@code timeFormat}: the preference is stored server-side but applied client-side,
+     * so the backend never formats anything with it.
+     */
+    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @Size(max = 16, message = "Language cannot exceed 16 characters")
+    @Column(name = "language", length = 16, nullable = false)
+    @Builder.Default
+    private String language = "en";
+
     @Size(max = 32, message = "Default date range preset cannot exceed 32 characters")
     @Column(name = "default_date_range_preset", length = 32)
     private String defaultDateRangePreset;

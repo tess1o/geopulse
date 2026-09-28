@@ -1,7 +1,7 @@
 <template>
   <EmptySettingsTab
-    title="GPS Processing Settings"
-    description="Configure default GPS data processing behavior"
+    :title="t('adminSettings.gpsProcessingTab.title')"
+    :description="t('adminSettings.gpsProcessingTab.description')"
     icon="pi-map-marker"
     iconColor="var(--blue-500)"
     :plannedFeatures="plannedFeatures"
@@ -9,28 +9,32 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import EmptySettingsTab from '../EmptySettingsTab.vue'
 
-const plannedFeatures = [
+const { t } = useI18n()
+
+const plannedFeatures = computed(() => [
   {
-    name: 'Stay Detection Algorithm',
-    description: 'Default algorithm for detecting stays from GPS points'
+    name: t('adminSettings.gpsProcessingTab.features.stayDetection.name'),
+    description: t('adminSettings.gpsProcessingTab.features.stayDetection.description')
   },
   {
-    name: 'Accuracy Filtering',
-    description: 'Minimum GPS accuracy threshold for processing'
+    name: t('adminSettings.gpsProcessingTab.features.accuracyFiltering.name'),
+    description: t('adminSettings.gpsProcessingTab.features.accuracyFiltering.description')
   },
   {
-    name: 'Batch Size',
-    description: 'Number of GPS points to process in each batch'
+    name: t('adminSettings.gpsProcessingTab.features.batchSize.name'),
+    description: t('adminSettings.gpsProcessingTab.features.batchSize.description')
   },
   {
-    name: 'Distance Thresholds',
-    description: 'Configure stay/trip distance parameters'
+    name: t('adminSettings.gpsProcessingTab.features.distanceThresholds.name'),
+    description: t('adminSettings.gpsProcessingTab.features.distanceThresholds.description')
   },
   {
-    name: 'Time Windows',
-    description: 'Minimum/maximum time for stay detection'
+    name: t('adminSettings.gpsProcessingTab.features.timeWindows.name'),
+    description: t('adminSettings.gpsProcessingTab.features.timeWindows.description')
   }
-]
+])
 </script>

@@ -7,6 +7,16 @@ export const PROFILE_SETTINGS_SEARCH_INDEX = [
     keywords: ['name', 'display name', 'user name']
   },
   {
+    id: 'language',
+    title: 'Language',
+    // Resolved through the catalogs by buildProfileSettingsIndex, which reads `titleKey` when present.
+    // Keywords stay bilingual so the setting is findable whichever language the UI is in.
+    titleKey: 'settings.language.title',
+    tab: 'profile',
+    subtitle: 'Profile',
+    keywords: ['language', 'locale', 'translation', 'english', 'ukrainian', 'мова', 'українська', 'переклад']
+  },
+  {
     id: 'timezone',
     title: 'Timezone',
     tab: 'profile',

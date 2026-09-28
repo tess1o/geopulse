@@ -5,12 +5,12 @@
 
       <div class="page-header">
         <div>
-          <h1>Timeline Regeneration</h1>
-          <p class="text-muted">Create and monitor forced timeline regeneration campaigns</p>
+          <h1>{{ t('adminCampaignsAndUsers.campaignsPage.header.title') }}</h1>
+          <p class="text-muted">{{ t('adminCampaignsAndUsers.campaignsPage.header.subtitle') }}</p>
         </div>
         <div class="header-actions">
           <Button
-            label="Refresh"
+            :label="t('admin.dashboardPage.refresh')"
             icon="pi pi-refresh"
             severity="secondary"
             outlined
@@ -18,7 +18,7 @@
             @click="loadCampaigns"
           />
           <Button
-            label="Create Campaign"
+            :label="t('adminCampaignsAndUsers.campaignsPage.createCampaign')"
             icon="pi pi-plus"
             @click="openCreateDialog"
             :disabled="adminReadOnly"
@@ -38,45 +38,45 @@
           responsiveLayout="scroll"
           :rowsPerPageOptions="[10, 25, 50]"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} campaigns"
+          :currentPageReportTemplate="t('adminCampaignsAndUsers.campaignsPage.table.currentPageReport')"
         >
-          <Column field="campaignKey" header="Campaign" style="min-width: 220px">
+          <Column field="campaignKey" :header="t('adminCampaignsAndUsers.campaignsPage.labels.campaign')" style="min-width: 220px">
             <template #body="{ data }">
               <div class="campaign-key">{{ data.campaignKey }}</div>
               <div class="campaign-reason" v-tooltip="data.reason">{{ truncate(data.reason, 90) }}</div>
             </template>
           </Column>
 
-          <Column field="source" header="Source" style="min-width: 110px">
+          <Column field="source" :header="t('adminCampaignsAndUsers.campaignsPage.labels.source')" style="min-width: 110px">
             <template #body="{ data }">
               <Tag :severity="sourceSeverity(data.source)" :value="data.source" />
             </template>
           </Column>
 
-          <Column field="status" header="Status" style="min-width: 120px">
+          <Column field="status" :header="t('adminCampaignsAndUsers.campaignsPage.labels.status')" style="min-width: 120px">
             <template #body="{ data }">
               <Tag :severity="statusSeverity(data.status)" :value="data.status" />
             </template>
           </Column>
 
-          <Column field="affectedFrom" header="Affected From" style="min-width: 180px">
+          <Column field="affectedFrom" :header="t('adminCampaignsAndUsers.campaignsPage.labels.affectedFrom')" style="min-width: 180px">
             <template #body="{ data }">
               {{ formatDateTime(data.affectedFrom) }}
             </template>
           </Column>
 
-          <Column header="Progress" style="min-width: 220px">
+          <Column :header="t('adminCampaignsAndUsers.campaignsPage.labels.progress')" style="min-width: 220px">
             <template #body="{ data }">
               <div class="progress-text">{{ formatProgress(data) }}</div>
               <div class="progress-breakdown">
-                <span>{{ data.pendingUsers }} pending</span>
-                <span>{{ data.runningUsers }} running</span>
-                <span>{{ data.completedUsers }} done</span>
+                <span>{{ t('adminCampaignsAndUsers.campaignsPage.table.pendingCount', { count: data.pendingUsers }) }}</span>
+                <span>{{ t('adminCampaignsAndUsers.campaignsPage.table.runningCount', { count: data.runningUsers }) }}</span>
+                <span>{{ t('adminCampaignsAndUsers.campaignsPage.table.doneCount', { count: data.completedUsers }) }}</span>
               </div>
             </template>
           </Column>
 
-          <Column field="failedUsers" header="Failed" style="min-width: 100px">
+          <Column field="failedUsers" :header="t('adminCampaignsAndUsers.campaignsPage.labels.failed')" style="min-width: 100px">
             <template #body="{ data }">
               <Tag
                 :severity="data.failedUsers > 0 ? 'danger' : 'secondary'"
@@ -85,19 +85,19 @@
             </template>
           </Column>
 
-          <Column field="createdAt" header="Created" style="min-width: 180px">
+          <Column field="createdAt" :header="t('adminCampaignsAndUsers.campaignsPage.labels.created')" style="min-width: 180px">
             <template #body="{ data }">
               {{ formatDateTime(data.createdAt) }}
             </template>
           </Column>
 
-          <Column field="completedAt" header="Completed" style="min-width: 180px">
+          <Column field="completedAt" :header="t('adminCampaignsAndUsers.campaignsPage.labels.completed')" style="min-width: 180px">
             <template #body="{ data }">
               {{ formatDateTime(data.completedAt) }}
             </template>
           </Column>
 
-          <Column header="Actions" :exportable="false" style="min-width: 150px">
+          <Column :header="t('adminCampaignsAndUsers.campaignsPage.labels.actions')" :exportable="false" style="min-width: 150px">
             <template #body="{ data }">
               <div class="flex gap-2">
                 <Button
@@ -105,7 +105,7 @@
                   rounded
                   text
                   severity="info"
-                  v-tooltip="'View Details'"
+                  v-tooltip="t('admin.usersPage.viewDetails')"
                   @click="openDetails(data)"
                 />
                 <Button
@@ -113,7 +113,7 @@
                   rounded
                   text
                   severity="warning"
-                  v-tooltip="'Retry Failed Users'"
+                  v-tooltip="t('adminCampaignsAndUsers.campaignsPage.table.retryTooltip')"
                   :disabled="adminReadOnly || data.failedUsers === 0"
                   :loading="retryingCampaignId === data.id"
                   @click="retryFailed(data)"
@@ -123,7 +123,7 @@
           </Column>
 
           <template #empty>
-            <div class="text-center p-4">No timeline regeneration campaigns found.</div>
+            <div class="text-center p-4">{{ t('adminCampaignsAndUsers.campaignsPage.table.empty') }}</div>
           </template>
         </DataTable>
       </div>
@@ -133,7 +133,7 @@
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
         </div>
         <div v-else-if="campaigns.length === 0" class="text-center p-4 card">
-          No timeline regeneration campaigns found.
+          {{ t('adminCampaignsAndUsers.campaignsPage.table.empty') }}
         </div>
         <div v-else class="campaign-cards">
           <div v-for="campaign in campaigns" :key="campaign.id" class="campaign-card">
@@ -146,20 +146,20 @@
             </div>
             <div class="campaign-card-reason">{{ campaign.reason }}</div>
             <div class="campaign-card-stats">
-              <div><span>Total</span><strong>{{ campaign.totalUsers }}</strong></div>
-              <div><span>Done</span><strong>{{ campaign.completedUsers }}</strong></div>
-              <div><span>Failed</span><strong :class="{ danger: campaign.failedUsers > 0 }">{{ campaign.failedUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.total') }}</span><strong>{{ campaign.totalUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.done') }}</span><strong>{{ campaign.completedUsers }}</strong></div>
+              <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.failed') }}</span><strong :class="{ danger: campaign.failedUsers > 0 }">{{ campaign.failedUsers }}</strong></div>
             </div>
             <div class="campaign-card-actions">
               <Button
-                label="Details"
+                :label="t('adminCampaignsAndUsers.campaignsPage.mobile.detailsButton')"
                 icon="pi pi-eye"
                 size="small"
                 text
                 @click="openDetails(campaign)"
               />
               <Button
-                label="Retry Failed"
+                :label="t('adminCampaignsAndUsers.campaignsPage.mobile.retryButton')"
                 icon="pi pi-replay"
                 size="small"
                 text
@@ -175,60 +175,60 @@
 
       <Dialog
         v-model:visible="createDialogVisible"
-        header="Create Timeline Regeneration Campaign"
+        :header="t('adminCampaignsAndUsers.campaignsPage.createDialog.header')"
         :modal="true"
         :style="{ width: '640px', maxWidth: '95vw' }"
       >
         <div class="dialog-form">
           <div class="form-field">
-            <label for="campaignKey">Campaign Key</label>
+            <label for="campaignKey">{{ t('adminCampaignsAndUsers.campaignsPage.createDialog.campaignKeyLabel') }}</label>
             <InputText
               id="campaignKey"
               v-model="createForm.campaignKey"
               maxlength="120"
-              placeholder="july-12-timeline-repair"
+              :placeholder="t('adminCampaignsAndUsers.campaignsPage.createDialog.campaignKeyPlaceholder')"
               class="w-full"
             />
           </div>
 
           <div class="form-field">
-            <label for="affectedFrom">Regenerate From</label>
+            <label for="affectedFrom">{{ t('adminCampaignsAndUsers.campaignsPage.createDialog.regenerateFromLabel') }}</label>
             <DatePicker
               id="affectedFrom"
               v-model="createForm.affectedFrom"
               showTime
               hourFormat="24"
               :dateFormat="timezone.getPrimeVueDatePickerFormat()"
-              placeholder="Select cutoff date and time"
+              :placeholder="t('adminCampaignsAndUsers.campaignsPage.createDialog.regenerateFromPlaceholder')"
               class="w-full"
             />
           </div>
 
           <div class="form-field">
-            <label for="reason">Reason</label>
+            <label for="reason">{{ t('adminCampaignsAndUsers.campaignsPage.createDialog.reasonLabel') }}</label>
             <Textarea
               id="reason"
               v-model="createForm.reason"
               rows="4"
               autoResize
-              placeholder="Explain why timelines must be regenerated. Users will see this message."
+              :placeholder="t('adminCampaignsAndUsers.campaignsPage.createDialog.reasonPlaceholder')"
               class="w-full"
             />
           </div>
 
           <div class="preview-panel" :class="{ stale: preview && !previewMatchesCurrentDate }">
             <div>
-              <div class="preview-title">Affected Users</div>
+              <div class="preview-title">{{ t('adminCampaignsAndUsers.campaignsPage.labels.affectedUsers') }}</div>
               <div class="preview-value">
                 <template v-if="preview && previewMatchesCurrentDate">{{ preview.affectedUsers }}</template>
-                <template v-else>Preview required</template>
+                <template v-else>{{ t('adminCampaignsAndUsers.campaignsPage.createDialog.previewRequired') }}</template>
               </div>
               <div class="preview-help">
-                Preview counts users with GPS data at or after the selected timestamp.
+                {{ t('adminCampaignsAndUsers.campaignsPage.createDialog.previewHelp') }}
               </div>
             </div>
             <Button
-              label="Run Preview"
+              :label="t('adminCampaignsAndUsers.campaignsPage.createDialog.runPreview')"
               icon="pi pi-search"
               severity="secondary"
               outlined
@@ -240,9 +240,9 @@
         </div>
 
         <template #footer>
-          <Button label="Cancel" icon="pi pi-times" text @click="createDialogVisible = false" />
+          <Button :label="t('common.cancel')" icon="pi pi-times" text @click="createDialogVisible = false" />
           <Button
-            label="Review Create"
+            :label="t('adminCampaignsAndUsers.campaignsPage.createDialog.reviewCreate')"
             icon="pi pi-check"
             :disabled="adminReadOnly || !canReviewCreate"
             @click="confirmationVisible = true"
@@ -252,33 +252,33 @@
 
       <Dialog
         v-model:visible="confirmationVisible"
-        header="Confirm Timeline Regeneration"
+        :header="t('adminCampaignsAndUsers.campaignsPage.confirmDialog.header')"
         :modal="true"
         :style="{ width: '560px', maxWidth: '95vw' }"
       >
         <div class="confirmation-content">
           <div class="confirmation-row">
-            <span>Campaign</span>
+            <span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.campaign') }}</span>
             <strong>{{ createForm.campaignKey.trim() }}</strong>
           </div>
           <div class="confirmation-row">
-            <span>Regenerate From</span>
+            <span>{{ t('adminCampaignsAndUsers.campaignsPage.createDialog.regenerateFromLabel') }}</span>
             <strong>{{ formatDateTime(currentAffectedFromIso) }}</strong>
           </div>
           <div class="confirmation-row">
-            <span>Affected Users</span>
+            <span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.affectedUsers') }}</span>
             <strong>{{ preview?.affectedUsers ?? 0 }}</strong>
           </div>
           <div class="confirmation-reason">
-            <span>Reason</span>
+            <span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.reason') }}</span>
             <p>{{ createForm.reason.trim() }}</p>
           </div>
         </div>
 
         <template #footer>
-          <Button label="Back" icon="pi pi-arrow-left" text @click="confirmationVisible = false" />
+          <Button :label="t('common.back')" icon="pi pi-arrow-left" text @click="confirmationVisible = false" />
           <Button
-            label="Create Campaign"
+            :label="t('adminCampaignsAndUsers.campaignsPage.createCampaign')"
             icon="pi pi-check"
             severity="warning"
             :loading="creating"
@@ -290,7 +290,7 @@
 
       <Dialog
         v-model:visible="detailsVisible"
-        header="Timeline Regeneration Details"
+        :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.header')"
         :modal="true"
         :style="{ width: '900px', maxWidth: '95vw' }"
       >
@@ -300,41 +300,41 @@
         <div v-else-if="campaignDetails" class="details-content">
           <div class="details-grid">
             <div>
-              <span class="detail-label">Campaign</span>
+              <span class="detail-label">{{ t('adminCampaignsAndUsers.campaignsPage.labels.campaign') }}</span>
               <strong>{{ campaignDetails.campaign.campaignKey }}</strong>
             </div>
             <div>
-              <span class="detail-label">Status</span>
+              <span class="detail-label">{{ t('adminCampaignsAndUsers.campaignsPage.labels.status') }}</span>
               <Tag :severity="statusSeverity(campaignDetails.campaign.status)" :value="campaignDetails.campaign.status" />
             </div>
             <div>
-              <span class="detail-label">Source</span>
+              <span class="detail-label">{{ t('adminCampaignsAndUsers.campaignsPage.labels.source') }}</span>
               <Tag :severity="sourceSeverity(campaignDetails.campaign.source)" :value="campaignDetails.campaign.source" />
             </div>
             <div>
-              <span class="detail-label">Affected From</span>
+              <span class="detail-label">{{ t('adminCampaignsAndUsers.campaignsPage.labels.affectedFrom') }}</span>
               <strong>{{ formatDateTime(campaignDetails.campaign.affectedFrom) }}</strong>
             </div>
           </div>
 
           <div class="details-reason">
-            <span class="detail-label">Reason</span>
+            <span class="detail-label">{{ t('adminCampaignsAndUsers.campaignsPage.labels.reason') }}</span>
             <p>{{ campaignDetails.campaign.reason }}</p>
           </div>
 
           <div class="details-stats">
-            <div><span>Total</span><strong>{{ campaignDetails.campaign.totalUsers }}</strong></div>
-            <div><span>Pending</span><strong>{{ campaignDetails.campaign.pendingUsers }}</strong></div>
-            <div><span>Running</span><strong>{{ campaignDetails.campaign.runningUsers }}</strong></div>
-            <div><span>Completed</span><strong>{{ campaignDetails.campaign.completedUsers }}</strong></div>
-            <div><span>Failed</span><strong :class="{ danger: campaignDetails.campaign.failedUsers > 0 }">{{ campaignDetails.campaign.failedUsers }}</strong></div>
-            <div><span>Skipped</span><strong>{{ campaignDetails.campaign.skippedUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.total') }}</span><strong>{{ campaignDetails.campaign.totalUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.pending') }}</span><strong>{{ campaignDetails.campaign.pendingUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.running') }}</span><strong>{{ campaignDetails.campaign.runningUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.completed') }}</span><strong>{{ campaignDetails.campaign.completedUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.failed') }}</span><strong :class="{ danger: campaignDetails.campaign.failedUsers > 0 }">{{ campaignDetails.campaign.failedUsers }}</strong></div>
+            <div><span>{{ t('adminCampaignsAndUsers.campaignsPage.labels.skipped') }}</span><strong>{{ campaignDetails.campaign.skippedUsers }}</strong></div>
           </div>
 
           <div class="failed-users-header">
-            <h3>Failed Users</h3>
+            <h3>{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.failedUsersTitle') }}</h3>
             <Button
-              label="Retry Failed"
+              :label="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.retryButton')"
               icon="pi pi-replay"
               severity="warning"
               size="small"
@@ -351,31 +351,31 @@
             :paginator="(campaignDetails.failedUsers || []).length > 10"
             :rows="10"
           >
-            <Column field="email" header="Email" style="min-width: 220px">
+            <Column field="email" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.email')" style="min-width: 220px">
               <template #body="{ data }">
                 <div>{{ data.email }}</div>
                 <div class="text-muted small">{{ data.fullName || data.userId }}</div>
               </template>
             </Column>
-            <Column field="attempts" header="Attempts" style="min-width: 100px" />
-            <Column field="lastError" header="Last Error" style="min-width: 260px">
+            <Column field="attempts" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.attempts')" style="min-width: 100px" />
+            <Column field="lastError" :header="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.lastError')" style="min-width: 260px">
               <template #body="{ data }">
                 <span v-tooltip="data.lastError">{{ truncate(data.lastError || '-', 100) }}</span>
               </template>
             </Column>
-            <Column field="updatedAt" header="Updated" style="min-width: 180px">
+            <Column field="updatedAt" :header="t('adminCampaignsAndUsers.campaignsPage.labels.updated')" style="min-width: 180px">
               <template #body="{ data }">
                 {{ formatDateTime(data.updatedAt) }}
               </template>
             </Column>
             <template #empty>
-              <div class="text-center p-4">No failed users.</div>
+              <div class="text-center p-4">{{ t('adminCampaignsAndUsers.campaignsPage.detailsDialog.table.empty') }}</div>
             </template>
           </DataTable>
         </div>
 
         <template #footer>
-          <Button label="Close" icon="pi pi-times" text @click="detailsVisible = false" />
+          <Button :label="t('adminCampaignsAndUsers.campaignsPage.detailsDialog.close')" icon="pi pi-times" text @click="detailsVisible = false" />
         </template>
       </Dialog>
 
@@ -386,6 +386,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -412,17 +413,18 @@ const toast = useToast()
 const timezone = useTimezone()
 const authStore = useAuthStore()
 const { adminReadOnly } = storeToRefs(authStore)
+const { t } = useI18n()
 
 const breadcrumbHome = ref({
   icon: 'pi pi-home',
   command: () => router.push('/')
 })
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'Timeline Regeneration' }
+  { label: t('adminCampaignsAndUsers.campaignsPage.breadcrumb.title') }
 ])
 
 const campaigns = ref([])
@@ -485,8 +487,8 @@ const loadCampaigns = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: extractApiErrorMessage(error, 'Failed to load timeline regeneration campaigns'),
+      summary: t('common.error'),
+      detail: extractApiErrorMessage(error, t('adminCampaignsAndUsers.campaignsPage.toasts.loadFailed')),
       life: 4000
     })
   } finally {
@@ -521,8 +523,8 @@ const runPreview = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Preview Failed',
-      detail: extractApiErrorMessage(error, 'Failed to preview affected users'),
+      summary: t('adminCampaignsAndUsers.campaignsPage.toasts.previewFailedSummary'),
+      detail: extractApiErrorMessage(error, t('adminCampaignsAndUsers.campaignsPage.toasts.previewFailedDetail')),
       life: 5000
     })
   } finally {
@@ -543,8 +545,8 @@ const createCampaign = async () => {
     })
     toast.add({
       severity: 'success',
-      summary: 'Campaign Created',
-      detail: 'Timeline regeneration campaign was created.',
+      summary: t('adminCampaignsAndUsers.campaignsPage.toasts.createdSummary'),
+      detail: t('adminCampaignsAndUsers.campaignsPage.toasts.createdDetail'),
       life: 4000
     })
     confirmationVisible.value = false
@@ -553,8 +555,8 @@ const createCampaign = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Create Failed',
-      detail: extractApiErrorMessage(error, 'Failed to create timeline regeneration campaign'),
+      summary: t('adminCampaignsAndUsers.campaignsPage.toasts.createFailedSummary'),
+      detail: extractApiErrorMessage(error, t('adminCampaignsAndUsers.campaignsPage.toasts.createFailedDetail')),
       life: 5000
     })
   } finally {
@@ -571,8 +573,8 @@ const openDetails = async (campaign) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: extractApiErrorMessage(error, 'Failed to load campaign details'),
+      summary: t('common.error'),
+      detail: extractApiErrorMessage(error, t('adminCampaignsAndUsers.campaignsPage.toasts.detailsLoadFailed')),
       life: 4000
     })
     detailsVisible.value = false
@@ -590,8 +592,8 @@ const retryFailed = async (campaign) => {
     await adminService.retryTimelineRegenerationCampaignFailedUsers(campaign.id)
     toast.add({
       severity: 'success',
-      summary: 'Retry Queued',
-      detail: 'Failed campaign users were queued for retry.',
+      summary: t('adminCampaignsAndUsers.campaignsPage.toasts.retryQueuedSummary'),
+      detail: t('adminCampaignsAndUsers.campaignsPage.toasts.retryQueuedDetail'),
       life: 4000
     })
     await loadCampaigns()
@@ -601,8 +603,8 @@ const retryFailed = async (campaign) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Retry Failed',
-      detail: extractApiErrorMessage(error, 'Failed to retry campaign users'),
+      summary: t('adminCampaignsAndUsers.campaignsPage.toasts.retryFailedSummary'),
+      detail: extractApiErrorMessage(error, t('adminCampaignsAndUsers.campaignsPage.toasts.retryFailedDetail')),
       life: 5000
     })
   } finally {
@@ -619,7 +621,7 @@ const formatDateTime = (value) => {
 
 const formatProgress = (campaign) => {
   const processed = campaign.completedUsers + campaign.failedUsers + campaign.skippedUsers
-  return `${processed} / ${campaign.totalUsers} processed`
+  return t('adminCampaignsAndUsers.campaignsPage.table.progressText', { processed, total: campaign.totalUsers })
 }
 
 const truncate = (value, length) => {

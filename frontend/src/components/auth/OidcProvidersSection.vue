@@ -1,20 +1,20 @@
 <template>
   <div v-if="providers.length > 0" class="oidc-section">
     <div class="divider" v-if="showDivider">
-      <span>{{ dividerText }}</span>
+      <span>{{ displayDividerText }}</span>
     </div>
     <div class="oidc-providers">
       <Button
         v-for="provider in providers"
         :key="provider.name"
-        :label="`Continue with ${provider.displayName}`"
+        :label="t('auth.oidc.continueWith', { provider: provider.displayName })"
         :class="['oidc-button', `oidc-${provider.name}`]"
         @click="$emit('provider-selected', provider.name)"
         :disabled="disabled"
         outlined
       >
         <template #icon>
-          <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" />
+          <ProviderIcon :provider="provider" size="medium" :alt="t('auth.oidc.providerIconAlt', { provider: provider.displayName })" />
         </template>
       </Button>
     </div>
@@ -22,7 +22,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ProviderIcon from '@/components/common/ProviderIcon.vue';
+
+const { t } = useI18n()
 
 const props = defineProps({
   providers: {
@@ -39,9 +43,11 @@ const props = defineProps({
   },
   dividerText: {
     type: String,
-    default: 'Or continue with'
+    default: null
   }
 })
+
+const displayDividerText = computed(() => props.dividerText || t('auth.oidc.dividerDefault'))
 
 const emit = defineEmits(['provider-selected'])
 </script>

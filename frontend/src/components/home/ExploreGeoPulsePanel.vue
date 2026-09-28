@@ -2,13 +2,13 @@
   <section
     class="feature-panel"
     :class="[activeFeature ? activeFeature.colorClass : '', { 'feature-panel--mobile': mobile, 'feature-panel--embedded': embedded }]"
-    aria-label="Explore GeoPulse"
+    :aria-label="t('ui.exploreFeatures.ariaLabel')"
     @mouseenter="stopFeatureAutoPlay"
     @mouseleave="startFeatureAutoPlay"
   >
     <div class="feature-panel-header">
-      <p v-if="!mobile" class="feature-panel-kicker">Explore GeoPulse</p>
-      <div class="feature-tabs" role="tablist" aria-label="GeoPulse features">
+      <p v-if="!mobile" class="feature-panel-kicker">{{ t('ui.exploreFeatures.kicker') }}</p>
+      <div class="feature-tabs" role="tablist" :aria-label="t('ui.exploreFeatures.tabsAriaLabel')">
         <button
           v-for="feature in features"
           :key="feature.id"
@@ -44,7 +44,7 @@
               rel="noopener noreferrer"
               class="feature-learn-more"
             >
-              <span>Read docs</span>
+              <span>{{ t('ui.exploreFeatures.readDocs') }}</span>
               <i class="pi pi-external-link"></i>
             </a>
             <button
@@ -53,7 +53,7 @@
               class="feature-learn-more feature-learn-more-app"
               @click="openInApp"
             >
-              <span>Open in app</span>
+              <span>{{ t('ui.exploreFeatures.openInApp') }}</span>
               <i class="pi pi-arrow-right"></i>
             </button>
           </div>
@@ -65,8 +65,11 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { EXPLORE_FEATURES } from '@/content/exploreFeatures'
+import { EXPLORE_FEATURES_META } from '@/content/exploreFeatures'
+
+const { t, tm } = useI18n()
 
 const props = defineProps({
   mobile: {
@@ -88,29 +91,35 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const features = EXPLORE_FEATURES
-const activeFeatureId = ref(features[0]?.id || null)
+const features = computed(() => EXPLORE_FEATURES_META.map((meta) => ({
+  ...meta,
+  tabLabel: t(`ui.exploreFeatures.${meta.id}.tabLabel`),
+  title: t(`ui.exploreFeatures.${meta.id}.title`),
+  description: t(`ui.exploreFeatures.${meta.id}.description`),
+  highlights: tm(`ui.exploreFeatures.${meta.id}.highlights`)
+})))
+const activeFeatureId = ref(EXPLORE_FEATURES_META[0]?.id || null)
 
 let featureInterval = null
 
-const activeFeature = computed(() => features.find(feature => feature.id === activeFeatureId.value) || null)
+const activeFeature = computed(() => features.value.find(feature => feature.id === activeFeatureId.value) || null)
 
 const getNextFeatureId = () => {
-  if (features.length === 0) {
+  if (features.value.length === 0) {
     return null
   }
 
-  const currentIndex = features.findIndex(feature => feature.id === activeFeatureId.value)
+  const currentIndex = features.value.findIndex(feature => feature.id === activeFeatureId.value)
   const normalizedIndex = currentIndex >= 0 ? currentIndex : 0
-  const nextIndex = (normalizedIndex + 1) % features.length
+  const nextIndex = (normalizedIndex + 1) % features.value.length
 
-  return features[nextIndex].id
+  return features.value[nextIndex].id
 }
 
 const startFeatureAutoPlay = () => {
   stopFeatureAutoPlay()
 
-  if (!props.autoPlay || features.length <= 1) {
+  if (!props.autoPlay || features.value.length <= 1) {
     return
   }
 

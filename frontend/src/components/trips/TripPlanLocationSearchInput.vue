@@ -23,7 +23,7 @@
             <span
               v-if="option.groupLabel"
               class="trip-plan-location-source-chip"
-              :class="option.groupLabel === 'Saved place' || option.groupLabel === 'Cached place'
+              :class="option.groupKind === 'saved'
                 ? 'trip-plan-location-source-chip--saved'
                 : 'trip-plan-location-source-chip--provider'"
             >
@@ -37,7 +37,7 @@
 
     <div v-if="loading && showLoadingText" class="trip-plan-location-search-loading" aria-live="polite">
       <i class="pi pi-spin pi-spinner trip-plan-location-search-loading-icon" />
-      <span>Searching places...</span>
+      <span>{{ t('trips.search.searchingPlaces') }}</span>
     </div>
 
     <small v-if="error" class="trip-plan-location-search-error">{{ error }}</small>
@@ -46,7 +46,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AutoComplete from 'primevue/autocomplete'
+import { t as translate } from '@/locales'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -67,7 +71,7 @@ const props = defineProps({
   },
   placeholder: {
     type: String,
-    default: 'Search saved places or providers...'
+    default: () => translate('trips.search.defaultPlaceholder')
   },
   inputId: {
     type: String,

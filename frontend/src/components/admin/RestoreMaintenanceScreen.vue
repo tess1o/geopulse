@@ -5,31 +5,34 @@
       <h1>{{ title }}</h1>
       <p>{{ message }}</p>
       <template v-if="maintenance.manualRestartRequired">
-        <p class="restart-instructions"><strong>GeoPulse has not reconnected.</strong> Check the backend logs. If the backend stopped or did not restart, restart only the GeoPulse backend manually. Do not restart PostgreSQL.</p>
-        <p>Use Docker Compose, Kubernetes, Unraid, Proxmox, or the service controls used by your installation.</p>
+        <p class="restart-instructions"><strong>{{ t('admin.restoreMaintenanceScreen.restartInstructionsBold') }}</strong> {{ t('admin.restoreMaintenanceScreen.restartInstructionsRest') }}</p>
+        <p>{{ t('admin.restoreMaintenanceScreen.dockerNote') }}</p>
       </template>
-      <p v-if="maintenance.unavailable" class="connection-note">Check the backend logs and make sure GeoPulse starts again. This page will update automatically when it reconnects.</p>
-      <button v-if="maintenance.unavailable" type="button" @click="refreshMaintenance">Check connection</button>
-      <p class="connection-note">PostgreSQL must remain running while the GeoPulse backend restarts.</p>
+      <p v-if="maintenance.unavailable" class="connection-note">{{ t('admin.restoreMaintenanceScreen.connectionUnavailable') }}</p>
+      <button v-if="maintenance.unavailable" type="button" @click="refreshMaintenance">{{ t('admin.restoreMaintenanceScreen.checkConnection') }}</button>
+      <p class="connection-note">{{ t('admin.restoreMaintenanceScreen.postgresNote') }}</p>
     </section>
   </main>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { maintenance, refreshMaintenance } from '@/stores/maintenance'
+
+const { t } = useI18n()
 
 const restarting = computed(() => maintenance.unavailable || maintenance.state === 'SWAPPED_PENDING_RESTART')
 const title = computed(() => maintenance.activated
-  ? 'Restoration completed. Signing out…'
+  ? t('admin.restoreMaintenanceScreen.activationCompleteTitle')
   : maintenance.state === 'ACTIVATION_FAILED'
-    ? 'Administrator action required'
-    : restarting.value ? 'GeoPulse backend restart' : 'Activating restored data')
+    ? t('admin.restoreMaintenanceScreen.adminActionRequiredTitle')
+    : restarting.value ? t('admin.restoreMaintenanceScreen.backendRestartTitle') : t('admin.restoreMaintenanceScreen.activatingTitle'))
 const message = computed(() => maintenance.activated
-  ? 'Clearing the previous session before returning to sign in. This page will update automatically.'
+  ? t('admin.restoreMaintenanceScreen.activatedMessage')
   : restarting.value
-    ? 'Restored data was activated and the backend stopped to complete restoration. A configured container or service manager may restart it automatically.'
-    : maintenance.message || 'Activating restored data. Please wait.')
+    ? t('admin.restoreMaintenanceScreen.restartingMessage')
+    : maintenance.message || t('admin.restoreMaintenanceScreen.activatingMessage'))
 const icon = computed(() => maintenance.manualRestartRequired || maintenance.state === 'ACTIVATION_FAILED' ? 'pi pi-exclamation-triangle' : 'pi pi-spin pi-spinner')
 </script>
 

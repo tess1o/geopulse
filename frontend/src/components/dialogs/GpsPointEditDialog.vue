@@ -1,7 +1,7 @@
 <template>
   <Dialog
     v-model:visible="internalVisible"
-    :header="'Edit GPS Point'"
+    :header="t('tripDialogs.gpsPointEdit.header')"
     :modal="true"
     class="gp-dialog-md"
     @hide="$emit('close')"
@@ -9,7 +9,7 @@
     <div class="edit-dialog-content">
       <!-- Map Section (always visible) -->
       <div class="map-section">
-        <p class="map-instructions">Click on the map to select a new location for this GPS point.</p>
+        <p class="map-instructions">{{ t('tripDialogs.gpsPointEdit.mapInstructions') }}</p>
         <MapContainer
           :map-id="`gps-edit-map-${mapId}`"
           :center="mapCenter"
@@ -27,18 +27,18 @@
         <form @submit.prevent="handleSave" class="gps-edit-form">
           <!-- Location Section -->
           <div class="field-group">
-            <label class="field-label">Location</label>
+            <label class="field-label">{{ t('tripDialogs.gpsPointEdit.locationLabel') }}</label>
             <div class="location-fields">
               <div class="field">
-                <label for="latitude">Latitude</label>
-                <InputNumber 
+                <label for="latitude">{{ t('tripDialogs.gpsPointEdit.latitudeLabel') }}</label>
+                <InputNumber
                   id="latitude"
                   v-model="formData.coordinates.lat"
                   :min-fraction-digits="6"
                   :max-fraction-digits="6"
                   :min="-90"
                   :max="90"
-                  placeholder="Latitude"
+                  :placeholder="t('tripDialogs.gpsPointEdit.latitudeLabel')"
                   class="location-input"
                   :class="{ 'p-invalid': errors.lat }"
                   @input="updateMapMarker"
@@ -46,15 +46,15 @@
                 <small v-if="errors.lat" class="p-error">{{ errors.lat }}</small>
               </div>
               <div class="field">
-                <label for="longitude">Longitude</label>
-                <InputNumber 
+                <label for="longitude">{{ t('tripDialogs.gpsPointEdit.longitudeLabel') }}</label>
+                <InputNumber
                   id="longitude"
                   v-model="formData.coordinates.lng"
                   :min-fraction-digits="6"
                   :max-fraction-digits="6"
                   :min="-180"
                   :max="180"
-                  placeholder="Longitude"
+                  :placeholder="t('tripDialogs.gpsPointEdit.longitudeLabel')"
                   class="location-input"
                   :class="{ 'p-invalid': errors.lng }"
                   @input="updateMapMarker"
@@ -66,28 +66,28 @@
 
           <!-- Speed Section -->
           <div class="field">
-            <label for="velocity">Speed (km/h)</label>
-            <InputNumber 
+            <label for="velocity">{{ t('tripDialogs.gpsPointEdit.speedLabel') }}</label>
+            <InputNumber
               id="velocity"
               v-model="formData.velocity"
               :min-fraction-digits="1"
               :max-fraction-digits="1"
               :min="0"
-              placeholder="Speed in km/h"
+              :placeholder="t('tripDialogs.gpsPointEdit.speedPlaceholder')"
               class="w-full"
             />
           </div>
 
           <!-- Accuracy Section -->
           <div class="field">
-            <label for="accuracy">Accuracy (meters)</label>
-            <InputNumber 
+            <label for="accuracy">{{ t('tripDialogs.gpsPointEdit.accuracyLabel') }}</label>
+            <InputNumber
               id="accuracy"
               v-model="formData.accuracy"
               :min-fraction-digits="1"
               :max-fraction-digits="1"
               :min="0"
-              placeholder="Accuracy in meters"
+              :placeholder="t('tripDialogs.gpsPointEdit.accuracyPlaceholder')"
               class="w-full"
             />
           </div>
@@ -97,15 +97,15 @@
 
     <!-- Dialog Footer -->
     <template #footer>
-      <Button 
-        label="Cancel" 
-        severity="secondary" 
-        @click="handleCancel" 
+      <Button
+        :label="t('common.cancel')"
+        severity="secondary"
+        @click="handleCancel"
         :disabled="loading"
       />
-      <Button 
-        label="Save" 
-        @click="handleSave" 
+      <Button
+        :label="t('tripDialogs.gpsPointEdit.save')"
+        @click="handleSave"
         :loading="loading"
         :disabled="!isFormValid"
       />
@@ -116,6 +116,7 @@
 
 <script setup>
 import { ref, computed, watch, reactive, nextTick, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
@@ -136,6 +137,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'save'])
+
+const { t } = useI18n()
 
 // State
 const internalVisible = ref(props.visible)
@@ -205,15 +208,15 @@ const validateForm = () => {
   errors.lng = ''
   
   if (formData.coordinates.lat === null || formData.coordinates.lat === undefined) {
-    errors.lat = 'Latitude is required'
+    errors.lat = t('tripDialogs.gpsPointEdit.validation.latitudeRequired')
   } else if (formData.coordinates.lat < -90 || formData.coordinates.lat > 90) {
-    errors.lat = 'Latitude must be between -90 and 90'
+    errors.lat = t('tripDialogs.gpsPointEdit.validation.latitudeRange')
   }
-  
+
   if (formData.coordinates.lng === null || formData.coordinates.lng === undefined) {
-    errors.lng = 'Longitude is required'
+    errors.lng = t('tripDialogs.gpsPointEdit.validation.longitudeRequired')
   } else if (formData.coordinates.lng < -180 || formData.coordinates.lng > 180) {
-    errors.lng = 'Longitude must be between -180 and 180'
+    errors.lng = t('tripDialogs.gpsPointEdit.validation.longitudeRange')
   }
   
   return !errors.lat && !errors.lng
@@ -270,7 +273,7 @@ const createRasterGpsEditMapAdapter = (map) => {
         fillOpacity: 1
       })
         .addTo(map)
-        .bindPopup('Current Location - Click on map to move')
+        .bindPopup(t('tripDialogs.gpsPointEdit.mapPopups.currentLocation'))
     }
 
     if (hasDifferentLocation(originalLocationRef, currentLocation)) {
@@ -283,7 +286,7 @@ const createRasterGpsEditMapAdapter = (map) => {
         fillOpacity: 0.7
       })
         .addTo(map)
-        .bindPopup('Original Location')
+        .bindPopup(t('tripDialogs.gpsPointEdit.mapPopups.originalLocation'))
     }
   }
 
@@ -329,7 +332,7 @@ const createVectorGpsEditMapAdapter = (map) => {
           closeOnClick: true,
           closeOnMove: false,
           offset: 12
-        }).setText('Current Location - Click on map to move'))
+        }).setText(t('tripDialogs.gpsPointEdit.mapPopups.currentLocation')))
         .addTo(map)
     }
 
@@ -344,7 +347,7 @@ const createVectorGpsEditMapAdapter = (map) => {
           closeOnClick: true,
           closeOnMove: false,
           offset: 10
-        }).setText('Original Location'))
+        }).setText(t('tripDialogs.gpsPointEdit.mapPopups.originalLocation')))
         .addTo(map)
     }
   }

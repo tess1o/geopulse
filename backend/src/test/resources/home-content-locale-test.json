@@ -1,0 +1,11 @@
+{
+  "tips": [
+    {
+      "id": "locale-test-tip",
+      "title": "English title",
+      "description": "English description",
+      "icon": "pi pi-lightbulb",
+      "audiences": ["all"]
+    }
+  ]
+}

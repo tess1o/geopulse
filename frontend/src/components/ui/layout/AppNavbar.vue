@@ -6,7 +6,7 @@
         <div class="gp-navbar-logo">
           <router-link to="/" class="gp-navbar-logo-link">
             <span class="gp-navbar-logo-text">GeoPulse</span>
-            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">DEMO</span>
+            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">{{ t('ui.appNavbar.demoBadge') }}</span>
           </router-link>
         </div>
       </div>
@@ -22,14 +22,14 @@
         <div v-if="showLocationSharingToggle" class="location-sharing-navbar">
           <i
             :class="['sharing-icon-navbar', locationSharingEnabled ? 'pi pi-eye' : 'pi pi-eye-slash']"
-            v-tooltip.bottom="locationSharingEnabled ? 'Location sharing enabled' : 'Location sharing disabled'"
+            v-tooltip.bottom="locationSharingEnabled ? t('ui.appNavbar.locationSharingEnabledTooltip') : t('ui.appNavbar.locationSharingDisabledTooltip')"
           ></i>
           <ToggleSwitch
             :modelValue="locationSharingEnabled"
             @update:modelValue="$emit('toggle-location-sharing', $event)"
             class="sharing-toggle-navbar"
           />
-          <span class="sharing-label-desktop">Share Location</span>
+          <span class="sharing-label-desktop">{{ t('ui.appNavbar.shareLocation') }}</span>
         </div>
 
         <!-- Invite Friend Button -->
@@ -39,8 +39,8 @@
           :label="inviteButtonLabel"
           @click="$emit('invite-friend')"
           :disabled="inviteDisabled"
-          :aria-label="inviteDisabled ? 'Invite Friend disabled in demo mode' : 'Invite Friend'"
-          v-tooltip.bottom="inviteDisabled ? 'Invitations are disabled in demo mode' : 'Invite Friend'"
+          :aria-label="inviteDisabled ? t('ui.appNavbar.inviteFriendDisabledAriaLabel') : t('ui.appNavbar.inviteFriend')"
+          v-tooltip.bottom="inviteDisabled ? t('ui.appNavbar.inviteFriendDisabledTooltip') : t('ui.appNavbar.inviteFriend')"
           :class="inviteButtonClass"
         />
         <NotificationBell />
@@ -52,11 +52,14 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
 import NotificationBell from './NotificationBell.vue'
 import { useAuthStore } from '@/stores/auth'
+
+const { t } = useI18n()
 
 const props = defineProps({
   variant: {
@@ -92,7 +95,7 @@ const { demoModeEnabled, demoReadOnly } = storeToRefs(authStore)
 
 const inviteButtonLabel = computed(() => {
   // Show label on desktop, hide on mobile
-  return window.innerWidth > 768 ? 'Invite Friend' : ''
+  return window.innerWidth > 768 ? t('ui.appNavbar.inviteFriend') : ''
 })
 
 const inviteButtonClass = computed(() => {

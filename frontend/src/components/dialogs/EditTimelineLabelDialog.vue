@@ -8,10 +8,9 @@
   >
     <!-- OwnTracks Tag Warning -->
     <Message v-if="isActiveOwnTracksTag" severity="warn" :closable="false" style="margin-bottom: var(--gp-spacing-md)">
-      <strong>Active OwnTracks Tag</strong>
+      <strong>{{ t('miscDialogs.editTimelineLabel.activeOwnTracksTitle') }}</strong>
       <p style="margin: var(--gp-spacing-xs) 0 0 0">
-        This tag is currently being managed by OwnTracks and cannot be edited while active.
-        You can edit it after it's completed (when you change tags in OwnTracks).
+        {{ t('miscDialogs.editTimelineLabel.activeOwnTracksMessage') }}
       </p>
     </Message>
 
@@ -19,12 +18,12 @@
       <!-- Label Name -->
       <div class="col-12">
         <label for="labelName" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Label Name *
+          {{ t('miscDialogs.timelineLabelForm.nameLabel') }}
         </label>
         <InputText
           id="labelName"
           v-model="form.name"
-          placeholder="e.g., Spain Vacation, Work Trip to NYC"
+          :placeholder="t('miscDialogs.timelineLabelForm.namePlaceholder')"
           class="w-full gp-input"
           :class="{ 'p-invalid': errors.labelName }"
           :disabled="isActiveOwnTracksTag"
@@ -35,7 +34,7 @@
       <!-- Date Range -->
       <div class="col-12">
         <label for="dateRange" class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Date Range *
+          {{ t('miscDialogs.timelineLabelForm.dateRangeLabel') }}
         </label>
         <DatePicker
           id="dateRange"
@@ -43,7 +42,7 @@
           selectionMode="range"
           :manualInput="false"
           dateFormat="M d, yy"
-          placeholder="Select start and end dates"
+          :placeholder="t('miscDialogs.timelineLabelForm.dateRangePlaceholder')"
           class="w-full"
           :class="{ 'p-invalid': errors.dateRange }"
           :disabled="isActiveOwnTracksTag"
@@ -54,7 +53,7 @@
       <!-- Color Picker -->
       <div class="col-12">
         <label class="gp-text-secondary" style="display: block; margin-bottom: var(--gp-spacing-xs)">
-          Color
+          {{ t('miscDialogs.timelineLabelForm.colorLabel') }}
         </label>
         <div style="display: flex; align-items: center; gap: var(--gp-spacing-sm)">
           <ColorPicker v-model="form.color" format="hex" :disabled="isActiveOwnTracksTag" />
@@ -63,10 +62,10 @@
             :style="{ backgroundColor: displayColor }"
             style="font-size: 0.75rem"
           >
-            {{ form.name || 'Preview' }}
+            {{ form.name || t('miscDialogs.timelineLabelForm.colorPreview') }}
           </div>
           <Button
-            label="Random"
+            :label="t('miscDialogs.timelineLabelForm.randomButton')"
             icon="pi pi-refresh"
             size="small"
             @click="form.color = getRandomColor()"
@@ -85,24 +84,24 @@
             :disabled="isActiveOwnTracksTag"
           />
           <label for="editShowAsPreset" class="gp-text-secondary">
-            Show as date preset
+            {{ t('miscDialogs.timelineLabelForm.showAsPresetLabel') }}
           </label>
         </div>
         <small class="gp-text-secondary">
-          When enabled, this label appears in DatePicker preset dropdowns.
+          {{ t('miscDialogs.timelineLabelForm.showAsPresetHint') }}
         </small>
       </div>
     </div>
 
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('miscDialogs.timelineLabelForm.cancel')"
         icon="pi pi-times"
         @click="dialogVisible = false"
         outlined
       />
       <Button
-        label="Update"
+        :label="t('miscDialogs.editTimelineLabel.updateButton')"
         icon="pi pi-check"
         @click="updateTimelineLabel"
         :loading="isLoading"
@@ -114,6 +113,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTimelineLabelsStore } from '@/stores/timelineLabels'
 import { useTimelineLabel } from '@/composables/useTimelineLabel'
@@ -124,6 +124,8 @@ import DatePicker from 'primevue/datepicker'
 import ColorPicker from 'primevue/colorpicker'
 import Message from 'primevue/message'
 import Checkbox from 'primevue/checkbox'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: Boolean,
@@ -166,9 +168,9 @@ const isActiveOwnTracksTag = computed(() => {
 
 const dialogHeader = computed(() => {
   if (isActiveOwnTracksTag.value) {
-    return 'View Timeline Label (Read-Only)'
+    return t('miscDialogs.editTimelineLabel.readOnlyHeader')
   }
-  return 'Edit Timeline Label'
+  return t('miscDialogs.editTimelineLabel.header')
 })
 
 const displayColor = createDisplayColor(computed(() => form.value?.color))
@@ -228,8 +230,8 @@ const updateTimelineLabel = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Updated',
-      detail: 'Timeline label updated successfully',
+      summary: t('miscDialogs.editTimelineLabel.toasts.updatedSummary'),
+      detail: t('miscDialogs.editTimelineLabel.toasts.updatedDetail'),
       life: 3000
     })
 
@@ -237,8 +239,8 @@ const updateTimelineLabel = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.message || 'Failed to update timeline label',
+      summary: t('common.error'),
+      detail: error.message || t('miscDialogs.editTimelineLabel.toasts.updateFailedFallback'),
       life: 3000
     })
   } finally {

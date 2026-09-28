@@ -16,14 +16,14 @@
         input-id="tripAddStopSearch"
         v-model="query"
         :suggestions="suggestions"
-        placeholder="Search saved places or providers..."
+        :placeholder="t('trips.search.defaultPlaceholder')"
         :loading="isSearching"
         :error="searchError"
         @complete="handleSearch"
         @select="handleSearchSelect"
       />
       <p class="trip-add-hint">
-        Pick a result to add it to your stops. You can set the day and priority afterwards.
+        {{ t('trips.addStopPanel.hint') }}
       </p>
     </div>
 
@@ -35,7 +35,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SelectButton from 'primevue/selectbutton'
 import TripPlanLocationSearchInput from '@/components/trips/TripPlanLocationSearchInput.vue'
 import PoiDiscoveryPanel from '@/components/trips/discovery/PoiDiscoveryPanel.vue'
@@ -44,16 +45,18 @@ import {
   useTripPlanLocationSearch
 } from '@/composables/useTripPlanLocationSearch'
 
+const { t } = useI18n()
+
 const props = defineProps({
   planItems: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['add-stop'])
 
-const modes = [
-  { label: 'Search by name', value: 'search' },
-  { label: 'Explore nearby', value: 'explore' }
-]
+const modes = computed(() => [
+  { label: t('trips.addStopPanel.modeSearch'), value: 'search' },
+  { label: t('trips.addStopPanel.modeExplore'), value: 'explore' }
+])
 
 const mode = ref('search')
 
@@ -63,7 +66,7 @@ const {
   isLoading: isSearching,
   error: searchError,
   search: runSearch
-} = useTripPlanLocationSearch({ fallbackLabel: 'Stop', limit: 10 })
+} = useTripPlanLocationSearch({ fallbackLabel: t('trips.addStopPanel.stopFallback'), limit: 10 })
 
 const handleSearch = (event) => runSearch(event)
 

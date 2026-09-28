@@ -4,7 +4,7 @@
       icon="pi pi-bell"
       text
       rounded
-      aria-label="Open notifications inbox"
+      :aria-label="t('notifications.bell.openAriaLabel')"
       class="gp-bell-trigger"
       @click="togglePanel"
     />
@@ -18,20 +18,20 @@
         :style="panelInlineStyle"
       >
         <div class="gp-notification-panel-header">
-          <div class="gp-notification-panel-title">Notifications</div>
-          <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
+          <div class="gp-notification-panel-title">{{ t('notifications.page.title') }}</div>
+          <Tag v-if="unreadCount > 0" :value="t('notifications.bell.unreadTag', { count: unreadCount })" severity="danger" />
         </div>
 
         <div class="gp-notification-filters">
           <Button
-            label="Unread"
+            :label="t('notifications.filters.unread')"
             size="small"
             :severity="activeFilter === 'unread' ? 'primary' : 'secondary'"
             :outlined="activeFilter !== 'unread'"
             @click="activeFilter = 'unread'"
           />
           <Button
-            label="All"
+            :label="t('notifications.filters.all')"
             size="small"
             :severity="activeFilter === 'all' ? 'primary' : 'secondary'"
             :outlined="activeFilter !== 'all'"
@@ -40,7 +40,7 @@
         </div>
 
         <div class="gp-notification-browser">
-          <label class="gp-notification-browser-label" for="browserNotificationToggle">Browser alerts</label>
+          <label class="gp-notification-browser-label" for="browserNotificationToggle">{{ t('notifications.bell.browserAlerts') }}</label>
           <InputSwitch
             inputId="browserNotificationToggle"
             :modelValue="browserNotificationsEnabled"
@@ -49,7 +49,7 @@
           />
         </div>
         <small v-if="!browserNotificationsSupported" class="gp-notification-browser-help">
-          Browser notifications are not available in this browser.
+          {{ t('notifications.bell.browserNotSupported') }}
         </small>
 
         <div class="gp-notification-list">
@@ -81,7 +81,7 @@
                   :severity="deliverySeverity(item.deliveryStatus)"
                 />
               </div>
-              <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
+              <div class="gp-notification-item-message">{{ item.message || t('notifications.bell.defaultMessage') }}</div>
               <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
             </button>
             <div class="gp-notification-item-actions">
@@ -95,7 +95,7 @@
               />
               <Button
                 v-if="!item.seen"
-                label="Mark seen"
+                :label="t('notifications.bell.markSeen')"
                 size="small"
                 text
                 class="gp-notification-item-action"
@@ -107,7 +107,7 @@
 
         <div class="gp-notification-footer">
           <Button
-            label="Mark all seen"
+            :label="t('notifications.bell.markAllSeen')"
             size="small"
             severity="secondary"
             outlined
@@ -115,7 +115,7 @@
             @click="markAllSeen"
           />
           <Button
-            label="View all notifications"
+            :label="t('ui.appLayout.viewAllNotifications')"
             size="small"
             severity="secondary"
             outlined
@@ -129,6 +129,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -137,6 +138,7 @@ import { useToast } from 'primevue/usetoast'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const toast = useToast()
 const timezone = useTimezone()
 const notificationsStore = useNotificationsStore()
@@ -153,7 +155,7 @@ const unreadBadgeValue = computed(() => {
 })
 
 const emptyMessage = computed(() => {
-  return activeFilter.value === 'unread' ? 'No unread notifications.' : 'No notifications found.'
+  return activeFilter.value === 'unread' ? t('notifications.bell.noUnread') : t('notifications.bell.noNotifications')
 })
 
 const visibleItems = computed(() => {
@@ -235,8 +237,8 @@ const markSeen = async (eventId) => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Notification Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark notification as seen'),
+      summary: t('notifications.bell.errorSummary'),
+      detail: extractApiErrorMessage(error, t('notifications.toast.markSeenFailed')),
       life: 5000
     })
   }
@@ -248,8 +250,8 @@ const markAllSeen = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Notification Error',
-      detail: extractApiErrorMessage(error, 'Failed to mark all notifications as seen'),
+      summary: t('notifications.bell.errorSummary'),
+      detail: extractApiErrorMessage(error, t('notifications.toast.markAllSeenFailed')),
       life: 5000
     })
   }
@@ -282,7 +284,7 @@ const notificationDisplay = (item) => {
 }
 
 const itemTitle = (item) => {
-  return notificationDisplay(item).title || 'Notification'
+  return notificationDisplay(item).title || t('notifications.titleFallback')
 }
 
 const showTypeLabel = (item) => {

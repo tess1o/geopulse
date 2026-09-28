@@ -11,27 +11,27 @@
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        <span class="gap-label">📵 Data Gap - Unknown Activity</span>
+        <span class="gap-label">📵 {{ t('timeline.dataGap.subtitle') }}</span>
       </div>
     </template>
 
     <template #content>
       <div class="overnight-data-gap-content">
         <p class="duration-detail">
-          📈 Total duration: <span class="duration-value">{{ getGapDuration() }}</span>
+          📈 {{ t('timeline.dataGap.totalDuration') }} <span class="duration-value">{{ getGapDuration() }}</span>
         </p>
         <p class="duration-detail">
-          ⏱️ On this day:
+          ⏱️ {{ t('timeline.dataGap.onThisDay') }}
           <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
 
         <button
           v-if="dataGapItem.id && !dataGapItem.ongoing"
           class="convert-gap-btn"
-          title="Convert this data gap to a stay"
+          :title="t('timeline.dataGap.convertTooltip')"
           @click.stop="handleConvertToStay"
         >
-          Convert to stay
+          {{ t('timeline.dataGap.convertButton') }}
         </button>
 
         <!-- Help section for gap configuration guidance -->
@@ -43,9 +43,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart } from '@/utils/calculationsHelpers';
 import DataGapHelpSection from './DataGapHelpSection.vue';
+
+const { t } = useI18n()
 
 const props = defineProps({
   dataGapItem: {

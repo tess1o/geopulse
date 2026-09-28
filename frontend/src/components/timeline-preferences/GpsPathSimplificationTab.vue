@@ -1,14 +1,14 @@
 <template>
   <PreferencesTabLayout
-    title="GPS Path Simplification Settings"
-    description="Configure how GPS paths are simplified to reduce data while preserving route accuracy"
+    :title="t('timeline.preferences.gpsPathSimplification.title')"
+    :description="t('timeline.preferences.gpsPathSimplification.description')"
   >
     <div class="settings-panel">
     <!-- Enable Path Simplification -->
     <SettingCard
-      title="Enable Path Simplification"
-      description="Whether GPS path simplification is enabled for timeline trips"
-      details="When enabled, trip paths will be simplified using the Douglas-Peucker algorithm to reduce the number of GPS points while preserving route accuracy"
+      :title="t('timeline.preferences.gpsPathSimplification.enabled.title')"
+      :description="t('timeline.preferences.gpsPathSimplification.enabled.description')"
+      :details="t('timeline.preferences.gpsPathSimplification.enabled.details')"
     >
       <template #control>
         <ToggleSwitch
@@ -22,12 +22,9 @@
     <!-- Simplification Tolerance -->
     <SettingCard
       v-if="modelValue.pathSimplificationEnabled"
-      title="Simplification Tolerance"
-      description="Base tolerance in meters for GPS path simplification"
-      :details="{
-        'Lower values': 'Preserve more detail, less compression',
-        'Higher values': 'More compression, less detail'
-      }"
+      :title="t('timeline.preferences.gpsPathSimplification.tolerance.title')"
+      :description="t('timeline.preferences.gpsPathSimplification.tolerance.description')"
+      :details="toleranceDetails"
     >
       <template #control>
         <SliderControl
@@ -37,8 +34,8 @@
           :min="1"
           :max="50"
           :step="1"
-          :labels="['1m (High detail)', '15m (Balanced)', '50m (High compression)']"
-          suffix=" m"
+          :labels="toleranceLabels"
+          :suffix="t('timeline.preferences.gpsPathSimplification.tolerance.suffix')"
           :input-min="1"
           :input-max="100"
           :decimal-places="0"
@@ -49,9 +46,9 @@
     <!-- Maximum Points -->
     <SettingCard
       v-if="modelValue.pathSimplificationEnabled"
-      title="Maximum Points"
-      description="Maximum number of GPS points to retain in simplified paths"
-      details="If a simplified path still exceeds this limit, tolerance will be automatically increased until the limit is met. Set to 0 for no limit"
+      :title="t('timeline.preferences.gpsPathSimplification.maxPoints.title')"
+      :description="t('timeline.preferences.gpsPathSimplification.maxPoints.description')"
+      :details="t('timeline.preferences.gpsPathSimplification.maxPoints.details')"
     >
       <template #control>
         <SliderControl
@@ -61,8 +58,8 @@
           :min="0"
           :max="500"
           :step="10"
-          :labels="['0 (No limit)', '100 (Balanced)', '500 (High limit)']"
-          :suffix="modelValue.pathMaxPoints === 0 ? '' : ' points'"
+          :labels="maxPointsLabels"
+          :suffix="modelValue.pathMaxPoints === 0 ? '' : t('timeline.preferences.gpsPathSimplification.maxPoints.suffix')"
           :input-min="0"
           :input-max="1000"
           :decimal-places="0"
@@ -73,9 +70,9 @@
     <!-- Adaptive Simplification -->
     <SettingCard
       v-if="modelValue.pathSimplificationEnabled"
-      title="Adaptive Simplification"
-      description="Enables adaptive simplification that adjusts tolerance based on trip characteristics"
-      details="When enabled, longer trips use higher tolerance values for better compression while shorter trips maintain higher accuracy with lower tolerance"
+      :title="t('timeline.preferences.gpsPathSimplification.adaptive.title')"
+      :description="t('timeline.preferences.gpsPathSimplification.adaptive.description')"
+      :details="t('timeline.preferences.gpsPathSimplification.adaptive.details')"
     >
       <template #control>
         <ToggleSwitch
@@ -90,11 +87,15 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import './shared-styles.css'
 import PreferencesTabLayout from './PreferencesTabLayout.vue'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -111,4 +112,21 @@ const updatePref = (key, value) => {
     [key]: value
   })
 }
+
+const toleranceDetails = computed(() => ({
+  [t('timeline.preferences.gpsPathSimplification.tolerance.detailsLowerLabel')]: t('timeline.preferences.gpsPathSimplification.tolerance.detailsLowerValue'),
+  [t('timeline.preferences.gpsPathSimplification.tolerance.detailsHigherLabel')]: t('timeline.preferences.gpsPathSimplification.tolerance.detailsHigherValue')
+}))
+
+const toleranceLabels = computed(() => [
+  t('timeline.preferences.gpsPathSimplification.tolerance.labelLow'),
+  t('timeline.preferences.gpsPathSimplification.tolerance.labelMid'),
+  t('timeline.preferences.gpsPathSimplification.tolerance.labelHigh')
+])
+
+const maxPointsLabels = computed(() => [
+  t('timeline.preferences.gpsPathSimplification.maxPoints.labelLow'),
+  t('timeline.preferences.gpsPathSimplification.maxPoints.labelMid'),
+  t('timeline.preferences.gpsPathSimplification.maxPoints.labelHigh')
+])
 </script>

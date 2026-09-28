@@ -6,7 +6,7 @@
         <div class="gp-navbar-logo">
           <router-link to="/" class="gp-navbar-logo-link">
             <span class="gp-navbar-logo-text">GeoPulse</span>
-            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">DEMO</span>
+            <span v-if="demoModeEnabled" class="gp-navbar-demo-badge">{{ t('ui.appNavbar.demoBadge') }}</span>
           </router-link>
         </div>
       </div>
@@ -46,6 +46,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import { storeToRefs } from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
@@ -69,7 +71,7 @@ const props = defineProps({
   },
   datePickerLabel: {
     type: String,
-    default: 'Select Dates'
+    default: () => translate('ui.dateRangePicker.labelDefault')
   },
   datePickerWidth: {
     type: String,
@@ -78,6 +80,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['navigate', 'date-change'])
+const { t } = useI18n()
 const authStore = useAuthStore()
 const { demoModeEnabled } = storeToRefs(authStore)
 

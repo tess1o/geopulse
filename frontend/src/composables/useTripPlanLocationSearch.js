@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { useTripsStore } from '@/stores/trips'
+import { t } from '@/locales'
 
 const SAVED_FAVORITE_SOURCE_TYPES = new Set(['favorite-point', 'favorite-area'])
 const LOCAL_SOURCE_TYPES = new Set([...SAVED_FAVORITE_SOURCE_TYPES, 'geocoding'])
@@ -41,12 +42,13 @@ export const buildTripPlanProviderMetaLine = (subtitle, providerName) => {
 
 export const buildTripPlanLocationMeta = (suggestion, options = {}) => {
   const sourceType = suggestion?.sourceType || ''
-  const savedFavoriteGroupLabel = options.savedFavoriteGroupLabel || 'Saved place'
+  const savedFavoriteGroupLabel = options.savedFavoriteGroupLabel || t('trips.search.savedPlace')
   const geocodingGroupLabel = options.geocodingGroupLabel || savedFavoriteGroupLabel
 
   if (isTripPlanSavedFavoriteSource(sourceType)) {
     return {
       groupLabel: savedFavoriteGroupLabel,
+      groupKind: 'saved',
       metaLine: suggestion?.subtitle?.trim() || null
     }
   }
@@ -54,31 +56,34 @@ export const buildTripPlanLocationMeta = (suggestion, options = {}) => {
   if (sourceType === 'geocoding') {
     return {
       groupLabel: geocodingGroupLabel,
+      groupKind: 'saved',
       metaLine: suggestion?.subtitle?.trim() || null
     }
   }
 
   const providerName = suggestion?.providerName?.trim() || ''
-  const providerPrefix = options.providerGroupPrefix ?? 'Provider: '
+  const providerPrefix = options.providerGroupPrefix ?? t('trips.search.providerPrefix')
   return {
-    groupLabel: providerName ? `${providerPrefix}${providerName}` : 'Provider',
+    groupLabel: providerName ? `${providerPrefix}${providerName}` : t('trips.search.provider'),
+    groupKind: 'provider',
     metaLine: buildTripPlanProviderMetaLine(suggestion?.subtitle, providerName)
   }
 }
 
 export const normalizeTripPlanSearchResult = (result, options = {}) => {
-  const fallbackLabel = options.fallbackLabel || 'Planned place'
+  const fallbackLabel = options.fallbackLabel || t('trips.search.plannedPlaceFallback')
   const title = result?.title?.trim()
   const coordinates = getTripPlanSuggestionCoordinates(result)
   const displayName = title || (coordinates
     ? `${fallbackLabel} (${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)})`
     : fallbackLabel)
-  const { groupLabel, metaLine } = buildTripPlanLocationMeta(result, options)
+  const { groupLabel, groupKind, metaLine } = buildTripPlanLocationMeta(result, options)
 
   return {
     ...result,
     displayName,
     groupLabel,
+    groupKind,
     metaLine
   }
 }
@@ -150,7 +155,7 @@ export const useTripPlanLocationSearch = (options = {}) => {
         return
       }
       suggestions.value = []
-      error.value = searchError.response?.data?.message || searchError.userMessage || searchError.message || 'Failed to search places.'
+      error.value = searchError.response?.data?.message || searchError.userMessage || searchError.message || t('trips.search.failed')
     } finally {
       if (currentRequestToken === requestToken.value) {
         isLoading.value = false

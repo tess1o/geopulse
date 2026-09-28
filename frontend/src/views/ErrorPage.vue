@@ -18,41 +18,41 @@
         <!-- Error Details (if provided) -->
         <div v-if="errorDetails" class="error-details">
           <details>
-            <summary>Technical Details</summary>
+            <summary>{{ t('errors.page.details.summary') }}</summary>
             <div v-if="parsedErrorDetails" class="error-details-formatted">
               <div class="error-detail-section">
-                <h4>Request Information</h4>
+                <h4>{{ t('errors.page.details.requestHeading') }}</h4>
                 <div class="detail-grid">
                   <div class="detail-item">
-                    <span class="detail-label">Method:</span>
+                    <span class="detail-label">{{ t('errors.page.details.method') }}</span>
                     <span class="detail-value">{{ parsedErrorDetails.method || 'N/A' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">URL:</span>
+                    <span class="detail-label">{{ t('errors.page.details.url') }}</span>
                     <span class="detail-value url">{{ parsedErrorDetails.url || 'N/A' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Status:</span>
+                    <span class="detail-label">{{ t('errors.page.details.status') }}</span>
                     <span class="detail-value status" :class="getStatusClass(parsedErrorDetails.status)">
                       {{ parsedErrorDetails.status || 'N/A' }}
                     </span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Timestamp:</span>
+                    <span class="detail-label">{{ t('errors.page.details.timestamp') }}</span>
                     <span class="detail-value">{{ formatTimestamp(parsedErrorDetails.timestamp) }}</span>
                   </div>
                 </div>
               </div>
               
               <div class="error-detail-section">
-                <h4>Error Information</h4>
+                <h4>{{ t('errors.page.details.errorHeading') }}</h4>
                 <div class="detail-grid">
                   <div class="detail-item">
-                    <span class="detail-label">Request ID:</span>
+                    <span class="detail-label">{{ t('errors.page.details.requestId') }}</span>
                     <span class="detail-value">{{ parsedErrorDetails.requestId || 'N/A' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-label">Error ID:</span>
+                    <span class="detail-label">{{ t('errors.page.details.errorId') }}</span>
                     <span class="detail-value">{{ parsedErrorDetails.errorId || 'N/A' }}</span>
                   </div>
                 </div>
@@ -64,14 +64,14 @@
         <!-- Action Buttons -->
         <div class="error-actions">
           <Button
-            label="Check Connection"
+            :label="t('errors.page.actions.checkConnection')"
             icon="pi pi-refresh"
             @click="checkBackendStatus"
             class="retry-button"
             :loading="retrying"
           />
           <Button
-            label="Go to Home"
+            :label="t('errors.page.actions.goHome')"
             icon="pi pi-home"
             severity="secondary"
             outlined
@@ -82,34 +82,34 @@
 
         <!-- Connection Tips -->
         <div v-if="errorType === 'connection'" class="error-tips">
-          <h3>What can you do?</h3>
+          <h3>{{ t('errors.page.tips.heading') }}</h3>
           <ul>
-            <li>Wait a few minutes and click "Check Connection" - servers may be restarting</li>
-            <li>Check your internet connection</li>
-            <li>Try refreshing the page or clearing browser cache</li>
-            <li>If the problem persists, GeoPulse servers may be under maintenance</li>
-            <li>Check back in 10-15 minutes</li>
+            <li>{{ t('errors.page.tips.wait') }}</li>
+            <li>{{ t('errors.page.tips.internet') }}</li>
+            <li>{{ t('errors.page.tips.refresh') }}</li>
+            <li>{{ t('errors.page.tips.maintenance') }}</li>
+            <li>{{ t('errors.page.tips.checkBack') }}</li>
           </ul>
         </div>
 
         <!-- Status Info -->
         <div class="error-status">
           <div class="status-item">
-            <span class="status-label">Internet Connection:</span>
+            <span class="status-label">{{ t('errors.page.status.internetConnection') }}</span>
             <span :class="['status-value', isOnline ? 'status-online' : 'status-offline']">
               <i :class="isOnline ? 'pi pi-check-circle' : 'pi pi-times-circle'"></i>
-              {{ isOnline ? 'Connected' : 'Offline' }}
+              {{ isOnline ? t('errors.page.status.connected') : t('errors.page.status.offline') }}
             </span>
           </div>
           <div class="status-item">
-            <span class="status-label">GeoPulse Backend:</span>
+            <span class="status-label">{{ t('errors.page.status.backend') }}</span>
             <span :class="['status-value', connectionStatus.class]">
               <i :class="connectionStatus.icon"></i>
               {{ connectionStatus.text }}
             </span>
           </div>
           <div class="status-item">
-            <span class="status-label">Last Checked:</span>
+            <span class="status-label">{{ t('errors.page.status.lastChecked') }}</span>
             <span class="status-value">{{ lastUpdated }}</span>
           </div>
         </div>
@@ -123,6 +123,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Toast from 'primevue/toast'
@@ -130,6 +131,7 @@ import ErrorReferenceToast from '@/components/ui/layout/ErrorReferenceToast.vue'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()
+const { t } = useI18n()
 
 const props = defineProps({
   errorType: {
@@ -236,8 +238,8 @@ const checkBackendConnectivity = async () => {
     if (props.errorType === 'connection' && backendOnline.value && wasOffline) {
       toast.add({
         severity: 'success',
-        summary: 'Connection Restored!',
-        detail: 'GeoPulse servers are back online. Redirecting...',
+        summary: t('errors.page.restored.title'),
+        detail: t('errors.page.restored.detail'),
         life: 3000
       })
 
@@ -292,11 +294,11 @@ const errorTitle = computed(() => {
 
   switch (props.errorType) {
     case 'connection':
-      return 'Connection Problem'
+      return t('errors.page.connection.title')
     case 'server':
-      return 'Server Error'
+      return t('errors.page.server.title')
     default:
-      return 'Something went wrong'
+      return t('errors.page.generic.title')
   }
 })
 
@@ -305,11 +307,11 @@ const errorMessage = computed(() => {
 
   switch (props.errorType) {
     case 'connection':
-      return 'Unable to connect to GeoPulse servers. This might be due to a network issue or server maintenance.'
+      return t('errors.page.connection.message')
     case 'server':
-      return 'GeoPulse servers are experiencing issues. Our team has been notified and is working on a fix.'
+      return t('errors.page.server.message')
     default:
-      return 'An unexpected error occurred. Please try again or contact support if the problem persists.'
+      return t('errors.page.generic.message')
   }
 })
 
@@ -353,14 +355,14 @@ const connectionStatus = computed(() => {
   
   if (backendOnline.value) {
     return {
-      text: 'Backend Online',
+      text: t('errors.page.status.online'),
       class: 'status-online',
       icon: 'pi pi-check-circle'
     }
   }
   
   return {
-    text: 'Backend Offline',
+    text: t('errors.page.status.offlineShort'),
     class: 'status-offline',
     icon: 'pi pi-times-circle'
   }
@@ -384,8 +386,8 @@ const checkBackendStatus = async () => {
       // Backend is back online!
       toast.add({
         severity: 'success',
-        summary: 'Connection Restored!',
-        detail: 'GeoPulse servers are back online. Redirecting...',
+        summary: t('errors.page.restored.title'),
+        detail: t('errors.page.restored.detail'),
         life: 3000
       })
 
@@ -397,8 +399,8 @@ const checkBackendStatus = async () => {
     console.error('Backend still down:', error)
     toast.add({
       severity: 'warn',
-      summary: 'Still Unavailable',
-      detail: 'GeoPulse servers are still experiencing issues. Please try again in a few minutes.',
+      summary: t('errors.page.stillUnavailable.title'),
+      detail: t('errors.page.stillUnavailable.detail'),
       life: 4000
     })
   } finally {

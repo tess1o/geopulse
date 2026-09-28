@@ -4,7 +4,7 @@
       <div class="step-number">{{ index }}</div>
       <div class="step-type">
         <span class="type-icon">{{ getTransportIcon(step.tripType) }}</span>
-        <span class="type-name">{{ step.tripType }}</span>
+        <span class="type-name">{{ movementTypeLabel(step.tripType) }}</span>
       </div>
       <div class="step-status">
         <i v-if="!step.checked" class="pi pi-minus-circle status-icon status-icon--skipped"></i>
@@ -19,7 +19,7 @@
     </div>
 
     <div v-if="step.checks && step.checks.length > 0" class="step-checks">
-      <div class="checks-header">Threshold Checks:</div>
+      <div class="checks-header">{{ t('classification.stepCard.thresholdChecksHeader') }}</div>
       <div class="checks-list">
         <div
           v-for="(check, checkIndex) in step.checks"
@@ -31,7 +31,7 @@
           <span class="check-name">{{ check.name }}</span>
           <span class="check-operator">{{ check.operator }}</span>
           <span class="check-threshold">{{ formatValue(check.threshold) }}</span>
-          <span class="check-actual">(actual: {{ formatValue(check.actual) }})</span>
+          <span class="check-actual">{{ t('classification.stepCard.actual', { value: formatValue(check.actual) }) }}</span>
         </div>
       </div>
     </div>
@@ -40,6 +40,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t, te } = useI18n()
 
 const props = defineProps({
   step: {
@@ -66,9 +69,16 @@ const stepClass = computed(() => {
 })
 
 const getStatusText = () => {
-  if (!props.step.checked) return 'Not Enabled'
-  if (props.step.passed) return 'Passed'
-  return 'Failed'
+  if (!props.step.checked) return t('classification.stepCard.notEnabled')
+  if (props.step.passed) return t('classification.stepCard.passed')
+  return t('classification.stepCard.failed')
+}
+
+// Movement type label from the shared movementTypes.* catalog, falling back to the raw enum value.
+const movementTypeLabel = (type) => {
+  if (!type) return type
+  const key = `movementTypes.${type}`
+  return te(key) ? t(key) : type
 }
 
 const getTransportIcon = (type) => {
@@ -86,7 +96,7 @@ const getTransportIcon = (type) => {
 }
 
 const formatValue = (value) => {
-  if (value === null || value === undefined) return 'N/A'
+  if (value === null || value === undefined) return t('classification.na')
   if (typeof value === 'number') return value.toFixed(1)
   return value
 }

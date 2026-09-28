@@ -1,14 +1,14 @@
 <template>
   <PreferencesTabLayout
-    title="Stay Point Merging Settings"
-    description="Configure how nearby stay points are consolidated into single locations"
+    :title="t('timeline.preferences.stayMerging.title')"
+    :description="t('timeline.preferences.stayMerging.description')"
   >
     <div class="settings-panel">
     <!-- Enable Merging -->
     <SettingCard
-      title="Enable Stay Point Merging"
-      description="Whether to merge nearby stay points that are close in time and distance"
-      details="Helps consolidate multiple GPS clusters at the same general location into single stay points"
+      :title="t('timeline.preferences.stayMerging.enabled.title')"
+      :description="t('timeline.preferences.stayMerging.enabled.description')"
+      :details="t('timeline.preferences.stayMerging.enabled.details')"
       setting-id="isMergeEnabled"
     >
       <template #control>
@@ -23,12 +23,9 @@
     <!-- Max Merge Distance -->
     <SettingCard
       v-if="modelValue.isMergeEnabled"
-      title="Maximum Merge Distance"
-      description="Maximum distance between stay points to consider them for merging"
-      :details="{
-        'Lower values': 'Only merge very close points',
-        'Higher values': 'Merge points further apart'
-      }"
+      :title="t('timeline.preferences.stayMerging.maxDistance.title')"
+      :description="t('timeline.preferences.stayMerging.maxDistance.description')"
+      :details="maxDistanceDetails"
       setting-id="mergeMaxDistanceMeters"
     >
       <template #control>
@@ -39,8 +36,8 @@
           :min="20"
           :max="500"
           :step="10"
-          :labels="['20m (Precise)', '150m (Balanced)', '500m (Generous)']"
-          suffix=" m"
+          :labels="maxDistanceLabels"
+          :suffix="t('timeline.preferences.stayMerging.maxDistance.suffix')"
           :input-min="10"
           :input-max="1000"
           :decimal-places="0"
@@ -51,12 +48,9 @@
     <!-- Max Time Gap -->
     <SettingCard
       v-if="modelValue.isMergeEnabled"
-      title="Maximum Time Gap"
-      description="Maximum time gap between stay points to consider them for merging"
-      :details="{
-        'Lower values': 'Only merge consecutive stays',
-        'Higher values': 'Merge stays separated by longer gaps'
-      }"
+      :title="t('timeline.preferences.stayMerging.maxTimeGap.title')"
+      :description="t('timeline.preferences.stayMerging.maxTimeGap.description')"
+      :details="maxTimeGapDetails"
       setting-id="mergeMaxTimeGapMinutes"
     >
       <template #control>
@@ -67,8 +61,8 @@
           :min="1"
           :max="60"
           :step="1"
-          :labels="['1 min (Strict)', '10 min (Balanced)', '60 min (Generous)']"
-          suffix=" min"
+          :labels="maxTimeGapLabels"
+          :suffix="t('timeline.preferences.stayMerging.maxTimeGap.suffix')"
           :input-min="1"
           :input-max="300"
           :decimal-places="0"
@@ -80,11 +74,15 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import './shared-styles.css'
 import PreferencesTabLayout from './PreferencesTabLayout.vue'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -101,4 +99,26 @@ const updatePref = (key, value) => {
     [key]: value
   })
 }
+
+const maxDistanceDetails = computed(() => ({
+  [t('timeline.preferences.stayMerging.maxDistance.detailsLowerLabel')]: t('timeline.preferences.stayMerging.maxDistance.detailsLowerValue'),
+  [t('timeline.preferences.stayMerging.maxDistance.detailsHigherLabel')]: t('timeline.preferences.stayMerging.maxDistance.detailsHigherValue')
+}))
+
+const maxDistanceLabels = computed(() => [
+  t('timeline.preferences.stayMerging.maxDistance.labelLow'),
+  t('timeline.preferences.stayMerging.maxDistance.labelMid'),
+  t('timeline.preferences.stayMerging.maxDistance.labelHigh')
+])
+
+const maxTimeGapDetails = computed(() => ({
+  [t('timeline.preferences.stayMerging.maxTimeGap.detailsLowerLabel')]: t('timeline.preferences.stayMerging.maxTimeGap.detailsLowerValue'),
+  [t('timeline.preferences.stayMerging.maxTimeGap.detailsHigherLabel')]: t('timeline.preferences.stayMerging.maxTimeGap.detailsHigherValue')
+}))
+
+const maxTimeGapLabels = computed(() => [
+  t('timeline.preferences.stayMerging.maxTimeGap.labelLow'),
+  t('timeline.preferences.stayMerging.maxTimeGap.labelMid'),
+  t('timeline.preferences.stayMerging.maxTimeGap.labelHigh')
+])
 </script>

@@ -125,6 +125,11 @@ public class UserService {
      */
     @Transactional
     public UserEntity registerUser(String email, String password, String fullName, String timezone) {
+        return registerUser(email, password, fullName, timezone, null);
+    }
+
+    @Transactional
+    public UserEntity registerUser(String email, String password, String fullName, String timezone, String language) {
         if (!authConfigurationService.isPasswordRegistrationEnabled()) {
             throw new IllegalArgumentException("Registration is disabled");
         }
@@ -150,6 +155,7 @@ public class UserService {
                 .distanceUnit(getDefaultDistanceUnit())
                 .temperatureUnit(getDefaultTemperatureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
+                .language(SupportedLanguages.normalizeOrDefault(language))
                 .build();
 
         persist(user);
@@ -171,6 +177,11 @@ public class UserService {
      */
     @Transactional
     public UserEntity registerUserViaInvitation(String invitationToken, String email, String password, String fullName, String timezone) {
+        return registerUserViaInvitation(invitationToken, email, password, fullName, timezone, null);
+    }
+
+    @Transactional
+    public UserEntity registerUserViaInvitation(String invitationToken, String email, String password, String fullName, String timezone, String language) {
         // NOTE: This method intentionally bypasses the isPasswordRegistrationEnabled() check
         // to allow invited users to register even when public registration is disabled.
 
@@ -196,6 +207,7 @@ public class UserService {
                 .distanceUnit(getDefaultDistanceUnit())
                 .temperatureUnit(getDefaultTemperatureUnit())
                 .coverageEnabled(coverageEnabledByDefault)
+                .language(SupportedLanguages.normalizeOrDefault(language))
                 .build();
 
         persist(user);
@@ -299,6 +311,23 @@ public class UserService {
             case "24h", "12h" -> normalized;
             default -> throw new IllegalArgumentException("Invalid time format. Allowed values: 24h, 12h");
         };
+    }
+
+    /**
+     * Validate a UI language against {@link SupportedLanguages}, the authoritative list.
+     *
+     * <p>{@code @Pattern} on the request already rejects unknown values, so this is the second line of
+     * defence and stays in step with the enum rather than duplicating its codes.
+     */
+    private String validateLanguage(String language) {
+        if (language == null || language.trim().isEmpty()) {
+            return null;
+        }
+
+        return SupportedLanguages.fromCode(language)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid language. Allowed values: " + SupportedLanguages.allowedCodes()))
+                .getCode();
     }
 
     private String validateDefaultDateRangePreset(String defaultDateRangePreset) {
@@ -662,6 +691,11 @@ public class UserService {
         if (request.getTimeFormat() != null) {
             user.setTimeFormat(validateTimeFormat(request.getTimeFormat()));
             log.debug("Updated time format for user {}", user.getId());
+        }
+
+        if (request.getLanguage() != null) {
+            user.setLanguage(validateLanguage(request.getLanguage()));
+            log.debug("Updated language for user {}", user.getId());
         }
 
         return user;

@@ -1,13 +1,13 @@
 <template>
   <div class="friends-timeline-date-picker">
-    <label for="friends-timeline-date-picker" class="date-picker-label">Range:</label>
+    <label for="friends-timeline-date-picker" class="date-picker-label">{{ t('friends.datePicker.rangeLabel') }}</label>
     <DateRangePicker
         variant="inline"
         :maxRangeDays="30"
         :showValidation="true"
         :presets="presets"
-        placeholder="Select date range"
-        presetPlaceholder="Quick Presets"
+        :placeholder="t('friends.datePicker.placeholder')"
+        :presetPlaceholder="t('friends.datePicker.presetPlaceholder')"
         pickerId="friends-timeline-date-picker"
         @date-change="handleDateChange"
         @validation-error="handleValidationError"
@@ -16,20 +16,22 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useTimezone } from '@/composables/useTimezone'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 const dateRangeStore = useDateRangeStore()
 
-const presets = [
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'Last 7 Days', value: 'lastWeek' },
-  { label: 'Last 30 Days', value: 'lastMonth' }
-]
+const presets = computed(() => [
+  { label: t('friends.datePicker.today'), value: 'today' },
+  { label: t('friends.datePicker.yesterday'), value: 'yesterday' },
+  { label: t('timeline.largeDataset.last7Days'), value: 'lastWeek' },
+  { label: t('timeline.largeDataset.last30Days'), value: 'lastMonth' }
+])
 
 function handleDateChange() {
   // Date change is handled by the DateRangePicker component

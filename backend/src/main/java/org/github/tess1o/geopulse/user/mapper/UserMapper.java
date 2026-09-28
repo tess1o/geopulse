@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
 import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
 import org.github.tess1o.geopulse.shared.map.MapRenderMode;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
 
@@ -52,6 +53,7 @@ public class UserMapper {
                 .defaultRedirectUrl(entity.getDefaultRedirectUrl())
                 .dateFormat(entity.getDateFormat())
                 .timeFormat(entity.getTimeFormat())
+                .language(SupportedLanguages.normalizeOrDefault(entity.getLanguage()))
                 .defaultDateRangePreset(entity.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)

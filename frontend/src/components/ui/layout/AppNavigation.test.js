@@ -84,4 +84,25 @@ describe('AppNavigation', () => {
     expect(items.find((item) => item.label === 'Friends').badge).toBe(2)
     expect(items.find((item) => item.label === 'Notifications').badge).toBe(3)
   })
+
+  it('renders the Ukrainian labels once the locale is switched', async () => {
+    const { setLocale } = await import('@/composables/useLocale')
+    await setLocale('uk', { persist: false })
+
+    const wrapper = mount(AppNavigation, { global: { plugins: [pinia], stubs } })
+    const sections = wrapper.findAllComponents({ name: 'NavigationSection' })
+
+    expect(sections.map((section) => section.props('title'))).toEqual([
+      'Хронологія', 'Дослідження', 'Організація та обмін', 'Налаштування та дані'
+    ])
+    expect(sections[0].props('items').map((item) => item.label)).toEqual([
+      'Хронологія', 'Дашборд', 'Мітки хронології', 'Плани поїздок'
+    ])
+    expect(sections[3].props('items').map((item) => item.label)).toContain('Профіль')
+
+    // The stable keys and routes must be untouched by the switch: they are identities, not copy.
+    const items = sections.flatMap((section) => section.props('items'))
+    expect(items.find((item) => item.label === 'Друзі').key).toBe('friends')
+    expect(items.find((item) => item.key === 'journey-insights').to).toBe('/app/journey-insights')
+  })
 })

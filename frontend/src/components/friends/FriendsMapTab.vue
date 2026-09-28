@@ -4,7 +4,7 @@
     <div v-if="loading" class="loading-state">
       <div class="loading-content">
         <i class="pi pi-spin pi-spinner loading-spinner"></i>
-        <p class="loading-text">Loading friends map...</p>
+        <p class="loading-text">{{ t('friends.mapTab.loading') }}</p>
       </div>
     </div>
 
@@ -12,18 +12,18 @@
       <div class="empty-icon">
         <i class="pi pi-map"></i>
       </div>
-      <h3 class="empty-title">No Friends to Show</h3>
+      <h3 class="empty-title">{{ t('friends.mapTab.noFriends.title') }}</h3>
       <p class="empty-description">
-        Add friends to see their locations on the map
+        {{ t('friends.mapTab.noFriends.description') }}
       </p>
       <p v-if="readOnly" class="demo-disabled-text">
-        Inviting friends is disabled in demo mode.
+        {{ t('friends.mapTab.noFriends.demoDisabled') }}
       </p>
       <Button
-          label="Invite Friends"
+          :label="t('friends.mapTab.noFriends.invite')"
           icon="pi pi-user-plus"
           :disabled="readOnly"
-          v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite Friends'"
+          v-tooltip.bottom="readOnly ? t('friends.demo.invitationsTooltip') : t('friends.mapTab.noFriends.invite')"
           @click="$emit('invite-friend')"
       />
     </div>
@@ -32,27 +32,26 @@
       <div class="empty-icon">
         <i class="pi pi-map-marker"></i>
       </div>
-      <h3 class="empty-title">No Location Data Available</h3>
+      <h3 class="empty-title">{{ t('friends.mapTab.noLocation.title') }}</h3>
       <p class="empty-description">
-        Your friends haven't shared their location yet. This could be because they've disabled location sharing
-        or haven't used location tracking apps.
+        {{ t('friends.mapTab.noLocation.description') }}
       </p>
       <p v-if="readOnly" class="demo-disabled-text">
-        Inviting more friends is disabled in demo mode.
+        {{ t('friends.mapTab.noLocation.demoDisabled') }}
       </p>
       <div class="empty-actions">
         <Button
-            label="Refresh"
+            :label="t('friends.mapTab.noLocation.refresh')"
             icon="pi pi-refresh"
             outlined
             @click="$emit('refresh')"
             :loading="refreshing"
         />
         <Button
-            label="Invite More Friends"
+            :label="t('friends.mapTab.noLocation.inviteMore')"
             icon="pi pi-user-plus"
             :disabled="readOnly"
-            v-tooltip.bottom="readOnly ? 'Invitations are disabled in demo mode' : 'Invite More Friends'"
+            v-tooltip.bottom="readOnly ? t('friends.demo.invitationsTooltip') : t('friends.mapTab.noLocation.inviteMore')"
             @click="$emit('invite-friend')"
         />
       </div>
@@ -72,13 +71,13 @@
         <div class="empty-icon">
           <i class="pi pi-filter"></i>
         </div>
-        <h3 class="empty-title">No Friends Selected</h3>
+        <h3 class="empty-title">{{ t('friends.mapTab.noSelection.title') }}</h3>
         <p class="empty-description">
-          Choose at least one friend in the filter to show locations on the map.
+          {{ t('friends.mapTab.noSelection.description') }}
         </p>
         <div class="empty-actions">
           <Button
-              label="Show All Friends"
+              :label="t('friends.mapTab.noSelection.showAll')"
               icon="pi pi-users"
               @click="resetSelectionToAll"
           />
@@ -107,8 +106,11 @@
 
 <script setup>
 import { computed, ref, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FriendsMap from '@/components/maps/FriendsMap.vue'
 import LiveFriendsFilter from '@/components/friends/LiveFriendsFilter.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   friends: {

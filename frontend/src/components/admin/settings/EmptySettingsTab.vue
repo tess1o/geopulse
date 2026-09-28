@@ -6,7 +6,7 @@
     <h3>{{ title }}</h3>
     <p class="text-muted">{{ description }}</p>
     <div v-if="plannedFeatures && plannedFeatures.length > 0" class="planned-features">
-      <h4>Planned Features:</h4>
+      <h4>{{ t('adminSettings.shell.plannedFeatures') }}</h4>
       <ul>
         <li v-for="(feature, index) in plannedFeatures" :key="index">
           <strong>{{ feature.name }}:</strong> {{ feature.description }}
@@ -14,7 +14,7 @@
       </ul>
     </div>
     <div class="coming-soon-badge">
-      <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+      <Tag severity="info" :value="t('adminSettings.shell.comingSoon')" icon="pi pi-clock" />
     </div>
   </div>
 </template>
@@ -22,6 +22,9 @@
 <script setup>
 import { computed } from 'vue'
 import Tag from 'primevue/tag'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   title: {

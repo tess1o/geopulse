@@ -38,10 +38,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SelectButton from 'primevue/selectbutton'
 import FriendsMapTab from './FriendsMapTab.vue'
 import FriendsTimelineTab from './FriendsTimelineTab.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   friends: {
@@ -72,18 +75,18 @@ defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all'])
 const viewMode = ref('live')
 
 // Mode options
-const modeOptions = [
+const modeOptions = computed(() => [
   {
-    label: 'Live Location',
+    label: t('friends.locationTab.liveLocation'),
     value: 'live',
     icon: 'pi pi-map-marker'
   },
   {
-    label: 'Timeline History',
+    label: t('friends.locationTab.timelineHistory'),
     value: 'timeline',
     icon: 'pi pi-history'
   }
-]
+])
 </script>
 
 <style scoped>

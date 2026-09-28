@@ -5,6 +5,7 @@ import { readCachedUserProfile } from '@/utils/userProfileCache'
 import { resolveNotificationDisplay, resolveNotificationRoute } from '@/utils/notificationDisplay'
 import { interruptsApplicationRequests, isMaintenanceInterruption } from '@/stores/maintenance'
 import { normalizeApiError } from '@/utils/apiErrorDetail'
+import { t } from '@/locales'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
 const BACKLOG_WATERMARK_PREFIX = 'gp.notifications.backlog.watermark.'
@@ -283,7 +284,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return Array.isArray(response?.items) ? response.items : []
       } catch (error) {
-        throw this.fail(error, 'Failed to load notifications')
+        throw this.fail(error, t('notifications.toast.loadFailed'))
       }
     },
 
@@ -312,7 +313,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return response || { items: [], totalElements: 0, page, size: pageSize, totalPages: 0 }
       } catch (error) {
-        throw this.fail(error, 'Failed to load notifications')
+        throw this.fail(error, t('notifications.toast.loadFailed'))
       }
     },
 
@@ -327,7 +328,7 @@ export const useNotificationsStore = defineStore('notifications', {
           : null
         return { count, latestUnreadId }
       } catch (error) {
-        throw this.fail(error, 'Failed to load unread notification count')
+        throw this.fail(error, t('notifications.store.loadUnreadCountFailed'))
       }
     },
 
@@ -337,7 +338,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return this.preferences
       } catch (error) {
-        throw this.fail(error, 'Failed to load notification preferences')
+        throw this.fail(error, t('notifications.store.loadPreferencesFailed'))
       }
     },
 
@@ -347,7 +348,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return this.preferences
       } catch (error) {
-        throw this.fail(error, 'Failed to save notification preferences')
+        throw this.fail(error, t('notifications.store.savePreferencesFailed'))
       }
     },
 
@@ -357,7 +358,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return announcement
       } catch (error) {
-        throw this.fail(error, 'Failed to load release announcement')
+        throw this.fail(error, t('notifications.store.loadReleaseAnnouncementFailed'))
       }
     },
 
@@ -399,8 +400,8 @@ export const useNotificationsStore = defineStore('notifications', {
             const latestUnreadEvent = events.find(event => Number(event.id) === startupBaselineId)
               || events.find(event => !event.seen)
             this.emitToast({
-              summary: 'Unread notifications',
-              detail: `You have ${unreadCount} unread notifications.`,
+              summary: t('notifications.store.unreadToastSummary'),
+              detail: t('notifications.store.unreadToastDetail', { count: unreadCount }, unreadCount),
               life: 6500,
               data: latestUnreadEvent
                 ? {
@@ -411,7 +412,7 @@ export const useNotificationsStore = defineStore('notifications', {
                   }
                 : {
                     action: 'open-notification-center',
-                    actionLabel: 'View all notifications'
+                    actionLabel: t('notifications.store.viewAllNotifications')
                   }
             })
             this.advanceBacklogWatermark(startupBaselineId)
@@ -437,7 +438,7 @@ export const useNotificationsStore = defineStore('notifications', {
         if (emitToasts) {
           this.emitToast({
             summary: event.title || this.fallbackTitle(event),
-            detail: event.message || 'New notification',
+            detail: event.message || t('notifications.newNotification'),
             life: 7000,
             data: {
               action: 'open-notification',
@@ -460,9 +461,9 @@ export const useNotificationsStore = defineStore('notifications', {
         return `${event.source}: ${event.type}`
       }
       if (event?.source) {
-        return `${event.source} notification`
+        return t('notifications.sourceNotificationSuffix', { source: event.source })
       }
-      return 'New notification'
+      return t('notifications.newNotification')
     },
 
     notificationActionLabel(event) {
@@ -488,7 +489,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return updated
       } catch (error) {
-        throw this.fail(error, 'Failed to mark notification as seen')
+        throw this.fail(error, t('notifications.toast.markSeenFailed'))
       }
     },
 
@@ -504,7 +505,7 @@ export const useNotificationsStore = defineStore('notifications', {
         this.error = null
         return result
       } catch (error) {
-        throw this.fail(error, 'Failed to mark notifications as seen')
+        throw this.fail(error, t('notifications.toast.markAllSeenFailed'))
       }
     },
 
@@ -532,8 +533,8 @@ export const useNotificationsStore = defineStore('notifications', {
           this.browserNotificationsEnabled = false
           this.persistBrowserPreference(false)
           this.emitToast({
-            summary: 'Browser notifications blocked',
-            detail: 'Enable notification permission in your browser settings to use desktop alerts.',
+            summary: t('notifications.store.browserBlockedSummary'),
+            detail: t('notifications.store.browserBlockedDetail'),
             life: 6000
           })
           return false
@@ -582,8 +583,8 @@ export const useNotificationsStore = defineStore('notifications', {
         if (!this.browserNotificationWarningShown) {
           this.browserNotificationWarningShown = true
           this.emitToast({
-            summary: 'Browser notification not sent',
-            detail: 'Browser permission is not granted. Enable Browser alerts from the bell menu again.',
+            summary: t('notifications.store.browserNotSentSummary'),
+            detail: t('notifications.store.browserNotSentDetail'),
             life: 6500
           })
         }
@@ -592,7 +593,7 @@ export const useNotificationsStore = defineStore('notifications', {
 
       try {
         const notification = new Notification(event.title || this.fallbackTitle(event), {
-          body: event.message || 'New notification',
+          body: event.message || t('notifications.newNotification'),
           tag: `notification-${event.id}`,
           renotify: false
         })
@@ -606,8 +607,8 @@ export const useNotificationsStore = defineStore('notifications', {
         if (!this.browserNotificationWarningShown) {
           this.browserNotificationWarningShown = true
           this.emitToast({
-            summary: 'Browser notification failed',
-            detail: 'Your browser or OS blocked desktop alerts. In-app notifications are still active.',
+            summary: t('notifications.store.browserFailedSummary'),
+            detail: t('notifications.store.browserFailedDetail'),
             life: 6500
           })
         }

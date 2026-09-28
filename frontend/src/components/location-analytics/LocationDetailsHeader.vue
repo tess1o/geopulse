@@ -28,12 +28,13 @@
 
 <script setup>
 import Button from 'primevue/button'
+import { t as translate } from '@/locales'
 
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   icon: { type: String, default: 'pi pi-map-marker' },
-  backLabel: { type: String, default: 'Back to Location Analytics' }
+  backLabel: { type: String, default: () => translate('analytics.locationDetailsHeader.backLabel') }
 })
 
 defineEmits(['back'])

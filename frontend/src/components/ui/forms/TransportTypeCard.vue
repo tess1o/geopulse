@@ -24,14 +24,14 @@
               <ToggleSwitch
                 :model-value="isEnabled"
                 @update:model-value="handleEnableToggle"
-                :aria-label="`Enable ${title} detection`"
+                :aria-label="t('ui.transportTypeCard.enableAriaLabel', { title })"
               />
             </div>
 
             <!-- Mandatory Badge -->
             <div v-else class="mandatory-badge">
               <i class="pi pi-lock"></i>
-              <span>Always Active</span>
+              <span>{{ t('ui.transportTypeCard.alwaysActive') }}</span>
             </div>
 
             <!-- Collapse Indicator (only for collapsible cards) -->
@@ -39,7 +39,7 @@
               v-if="collapsible && !mandatory"
               class="collapse-button"
               :aria-expanded="!isCollapsed"
-              :aria-label="isCollapsed ? `Expand ${title}` : `Collapse ${title}`"
+              :aria-label="isCollapsed ? t('ui.transportTypeCard.expandAriaLabel', { title }) : t('ui.transportTypeCard.collapseAriaLabel', { title })"
             >
               <i :class="isCollapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up'"></i>
             </button>
@@ -77,7 +77,7 @@
         <!-- Disabled State Message -->
         <div v-if="!isEnabled && !mandatory" class="disabled-message">
           <i class="pi pi-ban"></i>
-          <span>{{ title }} detection is currently disabled. Enable to configure thresholds.</span>
+          <span>{{ t('ui.transportTypeCard.disabledMessage', { title }) }}</span>
         </div>
       </div>
     </template>
@@ -86,6 +86,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   type: {

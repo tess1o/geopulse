@@ -9,6 +9,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 /**
  * Always-visible trip metrics.
@@ -17,6 +18,8 @@ import { computed } from 'vue'
  * were absent entirely for future trips. They are cheap to compute and always relevant,
  * so they are now a permanent strip under the header.
  */
+const { t } = useI18n()
+
 const props = defineProps({
   completionRate: { type: Number, default: null },
   visitedCount: { type: Number, default: 0 },
@@ -31,19 +34,19 @@ const metrics = computed(() => {
   const list = []
 
   if (props.completionRate !== null) {
-    list.push({ label: 'Completion', value: `${props.completionRate}%` })
+    list.push({ label: t('trips.summaryBar.completion'), value: `${props.completionRate}%` })
   }
 
-  list.push({ label: 'Visited', value: `${props.visitedCount} / ${props.totalCount}` })
+  list.push({ label: t('trips.summaryBar.visited'), value: `${props.visitedCount} / ${props.totalCount}` })
 
   if (props.mustTotal > 0) {
     const percent = Math.round((props.mustVisited / props.mustTotal) * 100)
-    list.push({ label: 'Must visits', value: `${props.mustVisited} / ${props.mustTotal} (${percent}%)` })
+    list.push({ label: t('trips.summaryBar.mustVisits'), value: `${props.mustVisited} / ${props.mustTotal} (${percent}%)` })
   }
 
   const travel = [props.distanceLabel, props.durationLabel].filter(Boolean).join(' / ')
   if (travel) {
-    list.push({ label: 'Distance / Duration', value: travel })
+    list.push({ label: t('trips.summaryBar.distanceDuration'), value: travel })
   }
 
   return list

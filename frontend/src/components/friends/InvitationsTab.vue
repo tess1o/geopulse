@@ -1,7 +1,7 @@
 <template>
   <div class="invites-content">
     <p v-if="readOnly" class="demo-disabled-text">
-      Invitation actions are disabled in demo mode.
+      {{ t('friends.invitationsTab.demoDisabled') }}
     </p>
 
     <!-- Received Invites -->
@@ -10,18 +10,18 @@
         <div class="section-header">
           <div class="section-title">
             <i class="pi pi-inbox mr-2"></i>
-            Received Invitations
+            {{ t('friends.invitationsTab.received.header') }}
           </div>
           <div class="section-actions">
             <Button
-                label="Accept All"
+                :label="t('friends.invitationsTab.received.acceptAll')"
                 size="small"
                 @click="$emit('accept-all')"
                 :loading="bulkActionsLoading.acceptAll"
                 :disabled="readOnly"
             />
             <Button
-                label="Reject All"
+                :label="t('friends.invitationsTab.received.rejectAll')"
                 size="small"
                 severity="danger"
                 outlined
@@ -49,7 +49,7 @@
 
             <div class="invite-actions">
               <Button
-                  label="Accept"
+                  :label="t('friends.invitationsTab.actions.accept')"
                   icon="pi pi-check"
                   size="small"
                   @click="$emit('accept-invite', invite.id)"
@@ -57,7 +57,7 @@
                   :disabled="readOnly"
               />
               <Button
-                  label="Reject"
+                  :label="t('friends.invitationsTab.actions.reject')"
                   icon="pi pi-times"
                   size="small"
                   severity="danger"
@@ -78,11 +78,11 @@
         <div class="section-header">
           <div class="section-title">
             <i class="pi pi-send mr-2"></i>
-            Sent Invitations
+            {{ t('friends.invitationsTab.sent.header') }}
           </div>
           <div class="section-actions">
             <Button
-                label="Cancel All"
+                :label="t('friends.invitationsTab.sent.cancelAll')"
                 size="small"
                 severity="danger"
                 outlined
@@ -109,9 +109,9 @@
             </div>
 
             <div class="invite-actions">
-              <Badge value="Pending" severity="warning"/>
+              <Badge :value="t('friends.invitationsTab.sent.pending')" severity="warning"/>
               <Button
-                  label="Cancel"
+                  :label="t('friends.invitationsTab.actions.cancel')"
                   icon="pi pi-times"
                   size="small"
                   severity="danger"
@@ -131,17 +131,19 @@
       <div class="empty-icon">
         <i class="pi pi-envelope"></i>
       </div>
-      <h3 class="empty-title">No Pending Invitations</h3>
+      <h3 class="empty-title">{{ t('friends.invitationsTab.empty.title') }}</h3>
       <p class="empty-description">
-        All your invitations have been processed
+        {{ t('friends.invitationsTab.empty.description') }}
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 defineProps({

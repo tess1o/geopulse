@@ -27,4 +27,8 @@ public class UserRegistrationRequest {
 
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
     private String timezone;
+
+    @Pattern(regexp = SupportedLanguages.PATTERN, message = "Language must be one of: en, uk")
+    @Size(max = 16, message = "Language cannot exceed 16 characters")
+    private String language;
 }

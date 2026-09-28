@@ -45,9 +45,9 @@ class HomeContentResourceTest {
                 new HomeContentResponse.Meta("bundled", "2026-03-30T10:00:00Z")
         );
 
-        when(homeContentService.getContent()).thenReturn(payload);
+        when(homeContentService.getContent("uk")).thenReturn(payload);
 
-        assertEquals(payload, homeContentResource.getHomeContent());
-        verify(homeContentService).getContent();
+        assertEquals(payload, homeContentResource.getHomeContent("uk"));
+        verify(homeContentService).getContent("uk");
     }
 }

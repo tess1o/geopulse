@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.RefreshTokenResponse;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -152,6 +153,7 @@ public class AuthenticationService {
                 .temperatureUnit(user.getTemperatureUnit())
                 .dateFormat(user.getDateFormat())
                 .timeFormat(user.getTimeFormat())
+                .language(SupportedLanguages.normalizeOrDefault(user.getLanguage()))
                 .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
                         ? user.getTimelineDisplayAutoShowTripReplayControls() : true)

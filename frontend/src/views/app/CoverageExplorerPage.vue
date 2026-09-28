@@ -2,14 +2,14 @@
   <AppLayout variant="default">
     <ConfirmDialog />
     <PageContainer
-        title="Coverage Explorer"
-        subtitle="Lifetime map coverage from your GPS history. Zoom in to see which streets and blocks you have already explored."
+        :title="t('analytics.coverageExplorer.title')"
+        :subtitle="t('analytics.coverageExplorer.subtitle')"
         maxWidth="none"
         padding="large"
     >
-      <div class="coverage-toolbar" aria-label="Coverage controls">
+      <div class="coverage-toolbar" :aria-label="t('analytics.coverageExplorer.controlsAriaLabel')">
         <div class="grid-control">
-          <label for="coverage-grid" class="control-label">Grid</label>
+          <label for="coverage-grid" class="control-label">{{ t('analytics.coverageExplorer.gridLabel') }}</label>
           <Dropdown
               input-id="coverage-grid"
               v-model="selectedGrid"
@@ -17,48 +17,48 @@
               optionLabel="label"
               optionValue="value"
               class="grid-dropdown"
-              aria-label="Coverage grid resolution"
+              :aria-label="t('analytics.coverageExplorer.gridAriaLabel')"
           />
         </div>
         <div class="coverage-actions">
           <div class="coverage-toggle">
-            <label for="coverage-toggle" class="control-label">Coverage</label>
+            <label for="coverage-toggle" class="control-label">{{ t('analytics.coverageExplorer.coverageLabel') }}</label>
             <div class="toggle-row">
               <InputSwitch
                 inputId="coverage-toggle"
                 v-model="userCoverageEnabled"
                 :disabled="!canToggleCoverage"
-                v-tooltip.bottom="demoReadOnly ? 'Coverage settings are read-only in demo mode' : 'Enable or disable coverage processing'"
+                v-tooltip.bottom="demoReadOnly ? t('analytics.coverageExplorer.toggleTooltipDemoDisabled') : t('analytics.coverageExplorer.toggleTooltip')"
                 @change="handleCoverageToggle"
-                aria-label="Enable or disable coverage processing"
+                :aria-label="t('analytics.coverageExplorer.toggleAriaLabel')"
               />
               <span class="toggle-text">{{ coverageToggleLabel }}</span>
             </div>
           </div>
           <Button
             v-if="userEnabled"
-            label="Recalculate Coverage"
+            :label="t('analytics.coverageExplorer.recalculate')"
             icon="pi pi-refresh"
             severity="secondary"
             outlined
             class="coverage-recalculate"
             :disabled="!canRecalculateCoverage"
             :loading="settingsUpdating && !statusLoading"
-            v-tooltip.bottom="demoReadOnly ? 'Coverage recalculation is disabled in demo mode' : 'Recalculate coverage from GPS history'"
+            v-tooltip.bottom="demoReadOnly ? t('analytics.coverageExplorer.recalculateTooltipDemoDisabled') : t('analytics.coverageExplorer.recalculateTooltip')"
             @click="confirmCoverageRecalculation"
           />
         </div>
         <div class="seen-area-summary" aria-live="polite">
           <i class="pi pi-map" aria-hidden="true"></i>
           <div>
-            <span class="control-label">Seen area</span>
-            <strong>{{ summaryLoading ? 'Loading…' : formattedArea }}</strong>
+            <span class="control-label">{{ t('analytics.coverageExplorer.seenArea') }}</span>
+            <strong>{{ summaryLoading ? t('analytics.coverageExplorer.loadingEllipsis') : formattedArea }}</strong>
           </div>
         </div>
       </div>
 
       <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-        Demo mode: coverage settings are read-only. Enabling, disabling, and recalculating coverage are disabled.
+        {{ t('analytics.coverageExplorer.demoReadOnlyMessage') }}
       </Message>
 
       <Message v-if="coverageActionError" severity="error" :closable="false" class="coverage-action-error">
@@ -68,17 +68,17 @@
       <div class="coverage-page">
         <div class="coverage-map-card">
         <div class="map-header">
-          <div class="map-title">Coverage Map</div>
+          <div class="map-title">{{ t('analytics.coverageExplorer.coverageMap') }}</div>
           <div class="map-meta">
-            <span v-if="statusLoading">Checking status...</span>
+            <span v-if="statusLoading">{{ t('analytics.coverageExplorer.checkingStatus') }}</span>
             <span v-else-if="statusErrorMessage">{{ statusErrorMessage }}</span>
-            <span v-else-if="!userEnabled">Coverage not enabled</span>
-            <span v-else-if="processing">Calculating...</span>
+            <span v-else-if="!userEnabled">{{ t('analytics.coverageExplorer.coverageNotEnabled') }}</span>
+            <span v-else-if="processing">{{ t('analytics.coverageExplorer.calculating') }}</span>
             <span v-else-if="cellsErrorMessage">{{ cellsErrorMessage }}</span>
-            <span v-else-if="showCoverageUpdatingMeta">Updating...</span>
-            <span v-else-if="showNoCoverageDataYet">No coverage data yet</span>
-            <span v-else-if="showNoCoverageInView">No coverage in current view</span>
-            <span v-else>{{ coverageCells.length.toLocaleString() }} cells in current view</span>
+            <span v-else-if="showCoverageUpdatingMeta">{{ t('analytics.coverageExplorer.updatingMeta') }}</span>
+            <span v-else-if="showNoCoverageDataYet">{{ t('analytics.coverageExplorer.noCoverageDataYet') }}</span>
+            <span v-else-if="showNoCoverageInView">{{ t('analytics.coverageExplorer.noCoverageInView') }}</span>
+            <span v-else>{{ t('analytics.coverageExplorer.cellsInView', { count: coverageCells.length.toLocaleString() }) }}</span>
           </div>
         </div>
         <div class="map-container">
@@ -104,7 +104,7 @@
           <div v-if="statusLoading" class="map-overlay">
             <div class="map-overlay-content">
               <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-              <span>Checking coverage status</span>
+              <span>{{ t('analytics.coverageExplorer.checkingCoverageStatus') }}</span>
             </div>
           </div>
 
@@ -112,15 +112,15 @@
             <div class="map-overlay-content">
               <i class="pi pi-power-off empty-icon"></i>
               <div>
-                <strong>Coverage is off</strong>
-                <p>Enable coverage to start building your exploration map.</p>
+                <strong>{{ t('analytics.coverageExplorer.coverageIsOff') }}</strong>
+                <p>{{ t('analytics.coverageExplorer.enableCoverageHint') }}</p>
               </div>
               <Button
-                label="Enable Coverage"
+                :label="t('analytics.coverageExplorer.enableCoverage')"
                 icon="pi pi-power-off"
                 class="overlay-enable-button"
                 :disabled="!canToggleCoverage || settingsUpdating"
-                v-tooltip.bottom="demoReadOnly ? 'Enabling coverage is disabled in demo mode' : 'Enable coverage processing'"
+                v-tooltip.bottom="demoReadOnly ? t('analytics.coverageExplorer.enableTooltipDemoDisabled') : t('analytics.coverageExplorer.enableTooltip')"
                 @click="enableCoverageFromOverlay"
               />
             </div>
@@ -129,14 +129,14 @@
           <div v-else-if="processing" class="map-overlay">
             <div class="map-overlay-content">
               <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-              <span>Calculating coverage</span>
+              <span>{{ t('analytics.coverageExplorer.calculatingCoverage') }}</span>
             </div>
           </div>
 
           <div v-else-if="showCoverageLoadingOverlay" class="map-overlay">
             <div class="map-overlay-content">
               <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-              <span>Loading coverage</span>
+              <span>{{ t('analytics.coverageExplorer.loadingCoverage') }}</span>
             </div>
           </div>
 
@@ -144,8 +144,8 @@
             <div class="map-overlay-content">
               <i class="pi pi-map empty-icon"></i>
               <div>
-                <strong>No coverage data yet</strong>
-                <p>Coverage will appear once the background job processes your GPS points.</p>
+                <strong>{{ t('analytics.coverageExplorer.noCoverageDataYet') }}</strong>
+                <p>{{ t('analytics.coverageExplorer.noCoverageDataYetHint') }}</p>
               </div>
             </div>
           </div>
@@ -154,15 +154,15 @@
             <div class="map-overlay-content">
               <i class="pi pi-map empty-icon"></i>
               <div>
-                <strong>No coverage in current view</strong>
-                <p>Try panning or zooming to an area you have already explored.</p>
+                <strong>{{ t('analytics.coverageExplorer.noCoverageInView') }}</strong>
+                <p>{{ t('analytics.coverageExplorer.noCoverageInViewHint') }}</p>
               </div>
             </div>
           </div>
         </div>
         <div class="map-legend">
           <span class="legend-chip"></span>
-          <span>Explored area (opacity shows repeat visits)</span>
+          <span>{{ t('analytics.coverageExplorer.legendText') }}</span>
         </div>
       </div>
       </div>
@@ -172,6 +172,7 @@
 
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {storeToRefs} from 'pinia'
 import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
@@ -191,6 +192,7 @@ import {formatApiErrorDetail} from '@/utils/apiErrorDetail'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
+const {t} = useI18n()
 const coverageStore = useCoverageStore()
 const authStore = useAuthStore()
 const locationStore = useLocationStore()
@@ -202,16 +204,16 @@ const mapInstance = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(10)
 
-const gridOptions = [
-  {label: 'Auto (based on zoom)', value: 'auto'},
-  {label: '20 m grid (street)', value: 20},
-  {label: '50 m grid (local)', value: 50},
-  {label: '250 m grid (city)', value: 250},
-  {label: '1 km grid (regional)', value: 1000},
-  {label: '5 km grid (country)', value: 5000},
-  {label: '20 km grid (continent)', value: 20000},
-  {label: '40 km grid (global)', value: 40000}
-]
+const gridOptions = computed(() => [
+  {label: t('analytics.coverageExplorer.gridAuto'), value: 'auto'},
+  {label: t('analytics.coverageExplorer.grid20m'), value: 20},
+  {label: t('analytics.coverageExplorer.grid50m'), value: 50},
+  {label: t('analytics.coverageExplorer.grid250m'), value: 250},
+  {label: t('analytics.coverageExplorer.grid1km'), value: 1000},
+  {label: t('analytics.coverageExplorer.grid5km'), value: 5000},
+  {label: t('analytics.coverageExplorer.grid20km'), value: 20000},
+  {label: t('analytics.coverageExplorer.grid40km'), value: 40000}
+])
 const selectedGrid = ref('auto')
 
 const {
@@ -231,8 +233,8 @@ const processing = computed(() => coverageStatus.value?.processing ?? false)
 const hasCoverageHistory = computed(() => coverageStatus.value?.hasCells ?? false)
 const statusReady = computed(() => status.value !== null)
 const coverageAllowed = computed(() => userEnabled.value)
-const statusErrorMessage = computed(() => statusError.value ? 'Coverage status unavailable' : '')
-const cellsErrorMessage = computed(() => cellsError.value ? 'Failed to refresh current view' : '')
+const statusErrorMessage = computed(() => statusError.value ? t('analytics.coverageExplorer.statusUnavailable') : '')
+const cellsErrorMessage = computed(() => cellsError.value ? t('analytics.coverageExplorer.refreshFailed') : '')
 const demoReadOnly = computed(() => authStore.demoReadOnly)
 
 const userCoverageEnabled = ref(false)
@@ -243,10 +245,10 @@ const summaryLoading = ref(false)
 const summaryGrid = 20
 
 const coverageToggleLabel = computed(() => {
-  if (statusLoading.value) return 'Loading...'
-  if (settingsUpdating.value) return 'Updating...'
-  if (demoReadOnly.value) return userEnabled.value ? 'Enabled (read-only)' : 'Disabled (read-only)'
-  return userEnabled.value ? 'Enabled' : 'Disabled'
+  if (statusLoading.value) return t('analytics.coverageExplorer.toggleLoading')
+  if (settingsUpdating.value) return t('analytics.coverageExplorer.toggleUpdating')
+  if (demoReadOnly.value) return userEnabled.value ? t('analytics.coverageExplorer.toggleEnabledReadOnly') : t('analytics.coverageExplorer.toggleDisabledReadOnly')
+  return userEnabled.value ? t('analytics.coverageExplorer.toggleEnabled') : t('analytics.coverageExplorer.toggleDisabled')
 })
 const canToggleCoverage = computed(() =>
   statusReady.value && !settingsUpdating.value && !processing.value && !demoReadOnly.value
@@ -261,7 +263,7 @@ const canRecalculateCoverage = computed(() =>
 )
 
 const showDemoCoverageReadOnlyToast = () => {
-  showDemoModeToast(toast, 'Coverage settings are read-only in demo mode.')
+  showDemoModeToast(toast, t('analytics.coverageExplorer.demoReadOnlyToast'))
 }
 
 const getGridForZoom = (zoom) => {
@@ -313,9 +315,9 @@ const formatNumber = (value, digits = 1) => {
 }
 
 const formattedArea = computed(() => {
-  if (!coverageAllowed.value) return '—'
-  if (!summary.value) return '0 km²'
-  return `${formatNumber(summary.value.areaSquareKm)} km²`
+  if (!coverageAllowed.value) return t('analytics.coverageExplorer.areaUnavailable')
+  if (!summary.value) return t('analytics.coverageExplorer.areaZero')
+  return t('analytics.coverageExplorer.areaValue', { value: formatNumber(summary.value.areaSquareKm) })
 })
 
 const getBboxFromMap = () => {
@@ -469,11 +471,11 @@ const handleCoverageToggle = async () => {
     scheduleFetch()
   } catch (error) {
     userCoverageEnabled.value = userEnabled.value
-    const detail = formatApiErrorDetail(error, 'Failed to update coverage settings')
+    const detail = formatApiErrorDetail(error, t('analytics.coverageExplorer.updateSettingsFailed'))
     coverageActionError.value = detail
     toast.add({
       severity: 'error',
-      summary: 'Coverage Settings Error',
+      summary: t('analytics.coverageExplorer.settingsErrorSummary'),
       detail,
       life: 5000
     })
@@ -515,11 +517,11 @@ const handleCoverageRecalculation = async () => {
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
-    const detail = formatApiErrorDetail(error, 'Failed to recalculate coverage')
+    const detail = formatApiErrorDetail(error, t('analytics.coverageExplorer.recalculateFailed'))
     coverageActionError.value = detail
     toast.add({
       severity: 'error',
-      summary: 'Coverage Recalculation Error',
+      summary: t('analytics.coverageExplorer.recalculateErrorSummary'),
       detail,
       life: 5000
     })
@@ -536,16 +538,16 @@ const confirmCoverageRecalculation = () => {
   if (!canRecalculateCoverage.value) return
 
   confirm.require({
-    message: 'This rebuilds coverage from your entire GPS history and may take some time. Coverage may be temporarily unavailable while processing.',
-    header: 'Recalculate coverage?',
+    message: t('analytics.coverageExplorer.recalculateConfirmMessage'),
+    header: t('analytics.coverageExplorer.recalculateConfirmHeader'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('analytics.coverageExplorer.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Recalculate',
+      label: t('analytics.coverageExplorer.recalculateConfirmAccept'),
       severity: 'primary'
     },
     accept: handleCoverageRecalculation

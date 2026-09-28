@@ -6,16 +6,16 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">Data Export & Import</h1>
+              <h1 class="page-title">{{ t('data.exportImportPage.pageTitle') }}</h1>
               <p class="page-description">
-                Export your GeoPulse data for backup or import previously exported data
+                {{ t('data.exportImportPage.pageDescription') }}
               </p>
             </div>
           </div>
         </div>
 
         <Message v-if="demoModeEnabled" severity="error" :closable="false" class="demo-disabled-message">
-          Demo mode: exporting and importing data are disabled to keep the shared demo dataset stable.
+          {{ t('data.exportImportPage.demoDisabledMessage') }}
         </Message>
 
         <!-- Info Banner -->
@@ -26,9 +26,9 @@
                 <i class="pi pi-info-circle"></i>
               </div>
               <div class="banner-text">
-                <h3 class="banner-title">Data Security & Privacy</h3>
+                <h3 class="banner-title">{{ t('data.exportImportPage.bannerTitle') }}</h3>
                 <p class="banner-description">
-                  Export files are not stored on the server. Make sure you download them before leaving this page.
+                  {{ t('data.exportImportPage.bannerDescription') }}
                 </p>
               </div>
             </div>
@@ -55,6 +55,7 @@
 
 <script setup>
 import {ref, computed, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute, useRouter} from 'vue-router'
 import {storeToRefs} from 'pinia'
 import Message from 'primevue/message'
@@ -69,6 +70,7 @@ import DataExportTab from '@/components/data-export-import/DataExportTab.vue'
 import DataImportTab from '@/components/data-export-import/DataImportTab.vue'
 import {useAuthStore} from '@/stores/auth'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -82,14 +84,14 @@ const normalizeTab = (value) => {
 const activeTab = ref(normalizeTab(route.query.tab))
 
 // Tab configuration
-const tabItems = ref([
+const tabItems = computed(() => [
   {
-    label: 'Export Data',
+    label: t('data.exportImportPage.exportTab'),
     icon: 'pi pi-download',
     key: 'export'
   },
   {
-    label: 'Import Data',
+    label: t('data.exportImportPage.importTab'),
     icon: 'pi pi-upload',
     key: 'import'
   }

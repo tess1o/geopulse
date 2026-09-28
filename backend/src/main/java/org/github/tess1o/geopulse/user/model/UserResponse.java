@@ -36,6 +36,7 @@ public class UserResponse {
     private String defaultRedirectUrl;
     private String dateFormat;
     private String timeFormat;
+    private String language;
     private String defaultDateRangePreset;
     private Boolean autoShowTripReplayControls;
     private Boolean enable3dBuildingsByDefault;

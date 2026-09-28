@@ -8,24 +8,24 @@
             <i class="pi pi-eye"></i>
           </div>
           <div class="settings-tab-info">
-            <h3 class="settings-tab-title">Timeline &amp; Map</h3>
+            <h3 class="settings-tab-title">{{ t('profile.timeline.title') }}</h3>
             <p class="settings-tab-description">
-              Customize timeline and map presentation without regenerating timeline data.
+              {{ t('profile.timeline.description') }}
             </p>
           </div>
         </div>
 
         <section class="settings-group" aria-labelledby="timeline-behavior-heading">
           <div class="settings-group-header">
-            <h3 id="timeline-behavior-heading">Timeline behavior</h3>
-            <p>Choose what appears when you open and interact with the timeline.</p>
+            <h3 id="timeline-behavior-heading">{{ t('profile.timeline.behavior.heading') }}</h3>
+            <p>{{ t('profile.timeline.behavior.description') }}</p>
           </div>
 
           <div class="settings-panel">
             <SettingCard
-              title="Default date range"
-              description="Choose the initial range for Timeline, Dashboard, and Timeline Reports."
-              details="Clear the selection to use the app default: Today."
+              :title="t('profile.timeline.behavior.defaultDateRange.title')"
+              :description="t('profile.timeline.behavior.defaultDateRange.description')"
+              :details="t('profile.timeline.behavior.defaultDateRange.details')"
               setting-id="defaultDateRangePreset"
             >
               <template #control>
@@ -35,7 +35,7 @@
                   :options="defaultDateRangePresetOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="Use app default (Today)"
+                  :placeholder="t('profile.timeline.behavior.defaultDateRange.placeholder')"
                   class="w-full"
                   showClear
                 />
@@ -43,9 +43,9 @@
             </SettingCard>
 
             <SettingCard
-              title="Current-location telemetry"
-              description="Show telemetry values in the current-location map popup."
-              details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
+              :title="t('profile.timeline.behavior.telemetry.title')"
+              :description="t('profile.timeline.behavior.telemetry.description')"
+              :details="t('profile.timeline.behavior.telemetry.details')"
               setting-id="showCurrentLocationTelemetry"
             >
               <template #control>
@@ -57,9 +57,9 @@
             </SettingCard>
 
             <SettingCard
-              title="Auto-show replay controls"
-              description="Open the replay control bar when a trip is selected."
-              details="When disabled, trip replay remains available from a compact Replay button."
+              :title="t('profile.timeline.behavior.replayControls.title')"
+              :description="t('profile.timeline.behavior.replayControls.description')"
+              :details="t('profile.timeline.behavior.replayControls.details')"
               setting-id="autoShowTripReplayControls"
             >
               <template #control>
@@ -74,15 +74,15 @@
 
         <section class="settings-group" aria-labelledby="map-display-heading">
           <div class="settings-group-header">
-            <h3 id="map-display-heading">Map display &amp; sources</h3>
-            <p>Choose how maps are rendered and where their visual data comes from.</p>
+            <h3 id="map-display-heading">{{ t('profile.timeline.sources.heading') }}</h3>
+            <p>{{ t('profile.timeline.sources.description') }}</p>
           </div>
 
           <div class="settings-panel">
             <SettingCard
-              title="Map render mode"
-              description="Choose the renderer used throughout the map views."
-              details="Switching modes keeps both custom source URLs."
+              :title="t('profile.timeline.sources.renderMode.title')"
+              :description="t('profile.timeline.sources.renderMode.description')"
+              :details="t('profile.timeline.sources.renderMode.details')"
               setting-id="mapRenderMode"
             >
               <template #control>
@@ -98,9 +98,9 @@
             </SettingCard>
 
             <SettingCard
-              title="3D buildings"
-              description="Show building shapes on compatible vector maps."
-              details="Available only for MapTiler styles with building height data."
+              :title="t('profile.timeline.sources.buildings3d.title')"
+              :description="t('profile.timeline.sources.buildings3d.description')"
+              :details="t('profile.timeline.sources.buildings3d.details')"
               setting-id="enable3dBuildingsByDefault"
             >
               <template #control>
@@ -112,9 +112,9 @@
             </SettingCard>
 
             <SettingCard
-              title="Custom raster tiles"
-              description="Optional source used when Raster mode is selected."
-              details="The URL template must use HTTP or HTTPS and include {z}, {x}, and {y}. Leave empty to use OpenStreetMap."
+              :title="t('profile.timeline.sources.rasterTiles.title')"
+              :description="t('profile.timeline.sources.rasterTiles.description')"
+              :details="t('profile.timeline.sources.rasterTiles.details')"
               setting-id="customMapTileUrl"
             >
               <template #control>
@@ -125,7 +125,7 @@
                     placeholder="https://tiles.example.com/{z}/{x}/{y}.png"
                     :invalid="!!errors.customMapTileUrl"
                     class="w-full"
-                    aria-label="Custom raster tile URL"
+                    :aria-label="t('profile.timeline.sources.rasterTiles.ariaLabel')"
                   />
                   <small v-if="errors.customMapTileUrl" class="error-message">{{ errors.customMapTileUrl }}</small>
                 </div>
@@ -133,9 +133,9 @@
             </SettingCard>
 
             <SettingCard
-              title="Custom vector style"
-              description="Optional style used when Vector mode is selected."
-              details="Enter an HTTP or HTTPS style JSON URL. Leave empty to use OpenFreeMap."
+              :title="t('profile.timeline.sources.vectorStyle.title')"
+              :description="t('profile.timeline.sources.vectorStyle.description')"
+              :details="t('profile.timeline.sources.vectorStyle.details')"
               setting-id="customMapStyleUrl"
             >
               <template #control>
@@ -146,7 +146,7 @@
                     placeholder="https://tiles.openfreemap.org/styles/liberty"
                     :invalid="!!errors.customMapStyleUrl"
                     class="w-full"
-                    aria-label="Custom vector style URL"
+                    :aria-label="t('profile.timeline.sources.vectorStyle.ariaLabel')"
                   />
                   <small v-if="errors.customMapStyleUrl" class="error-message">{{ errors.customMapStyleUrl }}</small>
                 </div>
@@ -157,13 +157,13 @@
 
         <section class="settings-group" aria-labelledby="map-processing-heading">
           <div class="settings-group-header">
-            <h3 id="map-processing-heading">Map processing</h3>
-            <p>Control optional route matching and display performance.</p>
+            <h3 id="map-processing-heading">{{ t('profile.timeline.processing.heading') }}</h3>
+            <p>{{ t('profile.timeline.processing.description') }}</p>
           </div>
 
           <div class="settings-panel">
             <SettingCard
-              title="Map matching"
+              :title="t('profile.timeline.processing.mapMatching.title')"
               :description="mapMatchingDescription"
               :details="mapMatchingDetails"
               setting-id="mapMatchingEnabled"
@@ -172,7 +172,7 @@
                 <ToggleSwitch
                   v-model="form.mapMatchingEnabled"
                   class="toggle-control"
-                  aria-label="Enable map matching"
+                  :aria-label="t('profile.timeline.toggleAria.mapMatching')"
                   :disabled="readOnly || !mapMatchingAvailable"
                 />
               </template>
@@ -180,9 +180,9 @@
 
             <SettingCard
               v-if="mapMatchingAvailable && form.mapMatchingEnabled"
-              title="Show raw GPS for"
-              description="Keep the original GPS path for selected movement types."
-              details="Matching may still run in the background, but matched geometry, progress, comparison controls, and details stay hidden."
+              :title="t('profile.timeline.processing.rawGps.title')"
+              :description="t('profile.timeline.processing.rawGps.description')"
+              :details="t('profile.timeline.processing.rawGps.details')"
               setting-id="mapMatchingExcludedMovementTypes"
             >
               <template #control>
@@ -192,19 +192,19 @@
                   :options="mapMatchingMovementTypeOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="Use matched routes for all supported types"
+                  :placeholder="t('profile.timeline.processing.rawGps.placeholder')"
                   display="chip"
                   class="w-full"
-                  aria-label="Movement types that show raw GPS"
+                  :aria-label="t('profile.timeline.processing.rawGps.ariaLabel')"
                   :disabled="readOnly"
                 />
               </template>
             </SettingCard>
 
             <SettingCard
-              title="Path simplification"
-              description="Reduce the number of points drawn for a trip."
-              details="Uses the Douglas-Peucker algorithm to simplify paths without affecting your timeline data."
+              :title="t('profile.timeline.processing.simplification.title')"
+              :description="t('profile.timeline.processing.simplification.description')"
+              :details="t('profile.timeline.processing.simplification.details')"
               setting-id="pathSimplificationEnabled"
             >
               <template #control>
@@ -217,12 +217,9 @@
 
             <SettingCard
               v-if="form.pathSimplificationEnabled"
-              title="Simplification tolerance"
-              description="Set the distance threshold used to simplify paths."
-              :details="{
-                'Lower values (1-10m)': 'Preserve more detail, show more points',
-                'Higher values (20-100m)': 'More compression, show fewer points'
-              }"
+              :title="t('profile.timeline.processing.tolerance.title')"
+              :description="t('profile.timeline.processing.tolerance.description')"
+              :details="toleranceDetails"
               setting-id="pathSimplificationTolerance"
             >
               <template #control>
@@ -231,7 +228,7 @@
                   :min="1"
                   :max="50"
                   :step="1"
-                  :labels="['1m (High detail)', '15m (Balanced)', '50m (High compression)']"
+                  :labels="toleranceLabels"
                   suffix=" m"
                   :input-min="1"
                   :input-max="100"
@@ -242,9 +239,9 @@
 
             <SettingCard
               v-if="form.pathSimplificationEnabled"
-              title="Maximum points"
-              description="Limit how many GPS points are displayed in a path."
-              details="If a path exceeds this limit, tolerance is automatically increased. Set to 0 for no limit."
+              :title="t('profile.timeline.processing.maxPoints.title')"
+              :description="t('profile.timeline.processing.maxPoints.description')"
+              :details="t('profile.timeline.processing.maxPoints.details')"
               setting-id="pathMaxPoints"
             >
               <template #control>
@@ -253,8 +250,8 @@
                   :min="0"
                   :max="500"
                   :step="10"
-                  :labels="['0 (No limit)', '100 (Balanced)', '500 (High limit)']"
-                  :suffix="form.pathMaxPoints === 0 ? '' : ' points'"
+                  :labels="maxPointsLabels"
+                  :suffix="form.pathMaxPoints === 0 ? '' : t('profile.timeline.pointsSuffix')"
                   :input-min="0"
                   :input-max="1000"
                   :decimal-places="0"
@@ -264,9 +261,9 @@
 
             <SettingCard
               v-if="form.pathSimplificationEnabled"
-              title="Adaptive simplification"
-              description="Adjust simplification automatically based on trip length."
-              details="Longer trips use higher tolerance for better performance; shorter trips retain more detail."
+              :title="t('profile.timeline.processing.adaptive.title')"
+              :description="t('profile.timeline.processing.adaptive.description')"
+              :details="t('profile.timeline.processing.adaptive.details')"
               setting-id="pathAdaptiveSimplification"
             >
               <template #control>
@@ -283,7 +280,7 @@
         <div class="settings-actions is-sticky">
           <Button
             type="button"
-            label="Reset to Defaults"
+            :label="t('profile.timeline.resetToDefaults')"
             severity="secondary"
             outlined
             @click="handleReset"
@@ -291,7 +288,7 @@
           />
           <Button
             type="submit"
-            label="Save Changes"
+            :label="t('profile.timeline.saveChanges')"
             :loading="loading"
             icon="pi pi-check"
             :disabled="readOnly"
@@ -304,6 +301,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -313,6 +311,8 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import { movementTypeOptions } from '@/composables/useTripReconstructionSegments'
+
+const { t } = useI18n()
 
 const props = defineProps({
   readOnly: {
@@ -351,16 +351,33 @@ const errors = ref({
 })
 
 const loading = ref(false)
-const defaultDateRangePresetOptions = [
-  { label: 'Today', value: 'today' },
-  { label: 'Yesterday', value: 'yesterday' },
-  { label: 'Last 7 days', value: 'lastWeek' },
-  { label: 'Last 30 days', value: 'lastMonth' }
-]
-const mapRenderModeOptions = [
-  { label: 'Vector (MapLibre)', value: 'VECTOR' },
-  { label: 'Raster (Leaflet)', value: 'RASTER' }
-]
+// Option tables carry keys, not text; PrimeVue's `optionLabel` reads a field, so the labels are
+// resolved here -- inside a computed, which keeps them reactive to a language change.
+const defaultDateRangePresetOptions = computed(() => [
+  { label: t('profile.timeline.dateRangeOptions.today'), value: 'today' },
+  { label: t('profile.timeline.dateRangeOptions.yesterday'), value: 'yesterday' },
+  { label: t('profile.timeline.dateRangeOptions.lastWeek'), value: 'lastWeek' },
+  { label: t('profile.timeline.dateRangeOptions.lastMonth'), value: 'lastMonth' }
+])
+const mapRenderModeOptions = computed(() => [
+  { label: t('profile.timeline.renderModeOptions.vector'), value: 'VECTOR' },
+  { label: t('profile.timeline.renderModeOptions.raster'), value: 'RASTER' }
+])
+const toleranceLabels = computed(() => [
+  t('profile.timeline.toleranceLabels.low'),
+  t('profile.timeline.toleranceLabels.mid'),
+  t('profile.timeline.toleranceLabels.high')
+])
+const maxPointsLabels = computed(() => [
+  t('profile.timeline.maxPointsLabels.none'),
+  t('profile.timeline.maxPointsLabels.balanced'),
+  t('profile.timeline.maxPointsLabels.high')
+])
+// SettingCard renders an object `details` as `label: value` rows, so both halves are translated.
+const toleranceDetails = computed(() => ({
+  [t('profile.timeline.processing.tolerance.detailLowerLabel')]: t('profile.timeline.processing.tolerance.detailLowerValue'),
+  [t('profile.timeline.processing.tolerance.detailHigherLabel')]: t('profile.timeline.processing.tolerance.detailHigherValue')
+}))
 const mapMatchingMovementTypeValues = new Set([
   'WALK',
   'RUNNING',
@@ -369,12 +386,16 @@ const mapMatchingMovementTypeValues = new Set([
   'MOTORCYCLE',
   'PUBLIC_TRANSPORT'
 ])
-const mapMatchingMovementTypeOptions = movementTypeOptions.filter(option => (
-  mapMatchingMovementTypeValues.has(option.value)
-))
+const mapMatchingMovementTypeOptions = computed(() => movementTypeOptions
+  .filter(option => mapMatchingMovementTypeValues.has(option.value))
+  .map(option => ({ label: t(option.labelKey), value: option.value })))
+// The order the backend-normalisation helpers expect, kept independent of the display labels.
+const mapMatchingMovementTypeOrder = movementTypeOptions
+  .filter(option => mapMatchingMovementTypeValues.has(option.value))
+  .map(option => option.value)
 const normalizeMovementTypeList = (values) => {
   const selected = new Set((Array.isArray(values) ? values : []).map(value => String(value).trim().toUpperCase()))
-  return mapMatchingMovementTypeOptions.map(option => option.value).filter(value => selected.has(value))
+  return mapMatchingMovementTypeOrder.filter(value => selected.has(value))
 }
 const movementTypeListsEqual = (left, right) => {
   const normalizedLeft = normalizeMovementTypeList(left)
@@ -418,13 +439,13 @@ const normalizePreferences = (preferences = {}) => ({
 const mapMatchingAvailable = computed(() => form.value.mapMatchingAvailable === true)
 const mapMatchingDescription = computed(() => (
   mapMatchingAvailable.value
-    ? 'Display cached matched trip geometry when available'
-    : 'Unavailable until an administrator configures a Valhalla service.'
+    ? t('profile.timeline.processing.mapMatching.descriptionAvailable')
+    : t('profile.timeline.processing.mapMatching.descriptionUnavailable')
 ))
 const mapMatchingDetails = computed(() => (
   mapMatchingAvailable.value
-    ? 'Requires a configured Valhalla instance. Raw GPS data, exports, and timeline detection are unchanged.'
-    : 'An administrator must enable Map Matching and configure Valhalla before you can turn this on.'
+    ? t('profile.timeline.processing.mapMatching.detailsAvailable')
+    : t('profile.timeline.processing.mapMatching.detailsUnavailable')
 ))
 
 const hasChanges = computed(() => {
@@ -463,12 +484,12 @@ const validateCustomMapTileUrl = (url) => {
 
   // Check for required placeholders
   if (!url.includes('{z}') || !url.includes('{x}') || !url.includes('{y}')) {
-    return 'URL must contain {z}, {x}, and {y} placeholders'
+    return t('profile.timeline.validation.tilePlaceholders')
   }
 
   // Check for valid protocol
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-    return 'URL must use HTTP or HTTPS protocol'
+    return t('profile.timeline.validation.protocol')
   }
 
   // Check for dangerous patterns
@@ -477,12 +498,12 @@ const validateCustomMapTileUrl = (url) => {
     normalizedUrl.includes('data:') ||
     normalizedUrl.includes('file:')
   ) {
-    return 'Invalid URL protocol'
+    return t('profile.timeline.validation.invalidProtocol')
   }
 
   // Check for path traversal
   if (url.includes('..')) {
-    return 'Invalid URL format'
+    return t('profile.timeline.validation.invalidFormat')
   }
 
   return null
@@ -496,7 +517,7 @@ const validateCustomMapStyleUrl = (url) => {
   const normalizedUrl = url.trim().toLowerCase()
 
   if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
-    return 'URL must use HTTP or HTTPS protocol'
+    return t('profile.timeline.validation.protocol')
   }
 
   if (
@@ -504,16 +525,16 @@ const validateCustomMapStyleUrl = (url) => {
     normalizedUrl.includes('data:') ||
     normalizedUrl.includes('file:')
   ) {
-    return 'Invalid URL protocol'
+    return t('profile.timeline.validation.invalidProtocol')
   }
 
   if (url.includes('..')) {
-    return 'Invalid URL format'
+    return t('profile.timeline.validation.invalidFormat')
   }
 
   const looksLikeStyleUrl = normalizedUrl.endsWith('.json') || normalizedUrl.includes('/style') || normalizedUrl.includes('/styles/')
   if (!looksLikeStyleUrl) {
-    return 'URL should point to a style JSON endpoint'
+    return t('profile.timeline.validation.styleEndpoint')
   }
 
   return null

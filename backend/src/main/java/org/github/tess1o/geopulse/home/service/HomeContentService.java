@@ -6,6 +6,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.home.model.HomeContentResponse;
+import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,8 +14,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @ApplicationScoped
@@ -31,7 +34,18 @@ public class HomeContentService {
     private final String tipsResourcePath;
     private final String whatsNewResourcePath;
 
-    private volatile List<HomeContentResponse.Tip> tips = List.of();
+    /**
+     * Tips, keyed by {@link SupportedLanguages} code. Always has an {@code en} entry; other locales are
+     * only present when their bundled file exists, and {@link #getContent(String)} falls back to
+     * {@code en} for anything else -- so a language can ship without translated tips yet without
+     * breaking the endpoint.
+     */
+    private volatile Map<String, List<HomeContentResponse.Tip>> tipsByLocale = Map.of();
+    /**
+     * "What's New" release notes are not translated: they are a running changelog tied to actual
+     * releases, so maintaining bilingual history indefinitely is a separate scope decision from the
+     * evergreen tips above. Same content is returned regardless of the requested locale.
+     */
     private volatile List<HomeContentResponse.WhatsNewItem> whatsNew = List.of();
     private volatile Instant updatedAt = Instant.EPOCH;
 
@@ -56,36 +70,86 @@ public class HomeContentService {
 
     @PostConstruct
     void init() {
-        tips = loadBundledTips();
+        tipsByLocale = loadBundledTipsByLocale();
         whatsNew = loadBundledWhatsNew();
         updatedAt = Instant.now(clock);
     }
 
+    /**
+     * @deprecated kept for callers that do not need locale-specific tips; returns the {@code en} content.
+     */
+    @Deprecated
     public HomeContentResponse getContent() {
+        return getContent(SupportedLanguages.DEFAULT.getCode());
+    }
+
+    public HomeContentResponse getContent(String locale) {
+        String normalizedLocale = SupportedLanguages.normalizeOrDefault(locale);
+        List<HomeContentResponse.Tip> localizedTips = tipsByLocale.getOrDefault(
+                normalizedLocale,
+                tipsByLocale.getOrDefault(SupportedLanguages.DEFAULT.getCode(), List.of())
+        );
+
         return new HomeContentResponse(
-                tips,
+                localizedTips,
                 whatsNew,
                 new HomeContentResponse.Meta("bundled", updatedAt.toString())
         );
     }
 
-    private List<HomeContentResponse.Tip> loadBundledTips() {
-        JsonNode root = readResourceRoot(tipsResourcePath);
-        return parseTips(root.path("tips"));
+    private Map<String, List<HomeContentResponse.Tip>> loadBundledTipsByLocale() {
+        Map<String, List<HomeContentResponse.Tip>> result = new HashMap<>();
+
+        List<HomeContentResponse.Tip> englishTips = parseTips(readResourceRoot(tipsResourcePath, true).path("tips"));
+        result.put(SupportedLanguages.DEFAULT.getCode(), englishTips);
+
+        for (SupportedLanguages language : SupportedLanguages.values()) {
+            if (language == SupportedLanguages.DEFAULT) {
+                continue;
+            }
+
+            String localizedPath = localizedResourcePath(tipsResourcePath, language.getCode());
+            JsonNode root = readResourceRoot(localizedPath, false);
+            List<HomeContentResponse.Tip> localizedTips = parseTips(root.path("tips"));
+            // An empty/missing translation file is expected for a language that has not been translated
+            // yet -- fall back to English rather than serving an empty tips list for that locale.
+            result.put(language.getCode(), localizedTips.isEmpty() ? englishTips : localizedTips);
+        }
+
+        return Map.copyOf(result);
+    }
+
+    /**
+     * {@code /home-content.json} -> {@code /home-content_uk.json}, matching the frontend locale catalog
+     * naming (a `_<code>` suffix before the extension).
+     */
+    private String localizedResourcePath(String basePath, String languageCode) {
+        int dotIndex = basePath.lastIndexOf('.');
+        return dotIndex < 0
+                ? basePath + "_" + languageCode
+                : basePath.substring(0, dotIndex) + "_" + languageCode + basePath.substring(dotIndex);
     }
 
     private List<HomeContentResponse.WhatsNewItem> loadBundledWhatsNew() {
-        JsonNode root = readResourceRoot(whatsNewResourcePath);
+        JsonNode root = readResourceRoot(whatsNewResourcePath, true);
         if (root.isArray()) {
             return parseWhatsNew(root);
         }
         return parseWhatsNew(root.path("whatsNew"));
     }
 
-    private JsonNode readResourceRoot(String resourcePath) {
+    /**
+     * @param required whether a missing file is logged as an error (a core bundled file) or quietly
+     *                  treated as "not translated yet" (an optional per-locale file).
+     */
+    private JsonNode readResourceRoot(String resourcePath, boolean required) {
         try (InputStream inputStream = getClass().getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
-                log.error("Bundled home content file '{}' is missing", resourcePath);
+                if (required) {
+                    log.error("Bundled home content file '{}' is missing", resourcePath);
+                } else {
+                    log.debug("Optional bundled home content file '{}' is not present", resourcePath);
+                }
                 return objectMapper.createObjectNode();
             }
 

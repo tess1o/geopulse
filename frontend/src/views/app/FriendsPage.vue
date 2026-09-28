@@ -6,7 +6,7 @@
     <PageContainer padding="none" maxWidth="none">
       <div class="friends-page">
         <Message v-if="demoReadOnly" severity="error" :closable="false" class="demo-read-only-message">
-          Demo mode: friend invitations, permission changes, and friend removal are disabled. Existing shared demo locations remain viewable.
+          {{ t('friends.page.demoReadOnlyMessage') }}
         </Message>
 
         <!-- Main Content Tabs -->
@@ -30,12 +30,12 @@
         <Dialog
             v-if="!demoReadOnly"
             v-model:visible="showInviteDialog"
-            header="Invite Friend"
+            :header="t('friends.page.inviteDialog.header')"
             modal
             :style="{ width: '350px', maxWidth: '90vw' }"
         >
           <div class="p-fluid">
-            <label for="friendEmail" class="block mb-3 font-semibold text-lg">Friend's Email Address or Name</label>
+            <label for="friendEmail" class="block mb-3 font-semibold text-lg">{{ t('friends.page.inviteDialog.emailLabel') }}</label>
             <AutoComplete
                 fluid
                 id="friendEmail"
@@ -44,7 +44,7 @@
                 @complete="searchUsers"
                 field="email"
                 optionLabel="email"
-                placeholder="Enter email address or search users"
+                :placeholder="t('friends.page.inviteDialog.emailPlaceholder')"
                 :invalid="!!inviteErrors.email"
                 class="w-full mb-2"
                 inputClass="p-inputtext-lg"
@@ -70,8 +70,8 @@
             </small>
 
             <div class="flex justify-content-end gap-2 mt-5">
-              <Button label="Cancel" severity="secondary" outlined size="large" @click="closeInviteDialog"/>
-              <Button label="Send Invitation" size="large" @click="sendInvite" :loading="inviteLoading"/>
+              <Button :label="t('common.cancel')" severity="secondary" outlined size="large" @click="closeInviteDialog"/>
+              <Button :label="t('friends.page.inviteDialog.send')" size="large" @click="sendInvite" :loading="inviteLoading"/>
             </div>
           </div>
         </Dialog>
@@ -86,6 +86,7 @@
 
 <script setup>
 import {ref, computed, onMounted, onUnmounted, reactive, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute, useRouter} from 'vue-router'
 import {storeToRefs} from 'pinia'
 import {useToast} from 'primevue/usetoast'
@@ -122,6 +123,7 @@ import {
 } from '@/utils/friendsTrailRange'
 
 // Composables
+const {t} = useI18n()
 const toast = useToast()
 const confirm = useConfirm()
 const friendsStore = useFriendsStore()
@@ -262,7 +264,7 @@ const activeTab = ref()
 const showInviteDialog = ref(false)
 
 const showDemoReadOnlyToast = () => {
-  showDemoModeToast(toast, 'Friend changes are disabled in demo mode.')
+  showDemoModeToast(toast, t('friends.page.demoChangesDisabled'))
 }
 
 const openInviteDialog = () => {
@@ -278,21 +280,21 @@ const openInviteDialog = () => {
 const tabItems = computed(() => {
   const tabs = [
     {
-      label: 'Live',
+      label: t('friends.page.tabs.live'),
       icon: 'pi pi-map-marker',
       key: 'live',
       badge: friendsWithLiveLocation.value?.length > 0 ? friendsWithLiveLocation.value.length : null,
       badgeType: 'success'
     },
     {
-      label: 'Timeline',
+      label: t('friends.page.tabs.timeline'),
       icon: 'pi pi-history',
       key: 'timeline',
       badge: friendsWithTimeline.value?.length > 0 ? friendsWithTimeline.value.length : null,
       badgeType: 'success'
     },
     {
-      label: 'Friends',
+      label: t('friends.page.tabs.friends'),
       icon: 'pi pi-users',
       key: 'friends',
       badge: friends.value?.length > 0 ? friends.value.length : null,
@@ -304,7 +306,7 @@ const tabItems = computed(() => {
   const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
   if (hasInvites) {
     tabs.push({
-      label: 'Invitations',
+      label: t('friends.page.tabs.invitations'),
       icon: 'pi pi-envelope',
       key: 'invites',
       badge: receivedInvites.value?.length > 0 ? receivedInvites.value.length : null,
@@ -558,9 +560,9 @@ const validateInviteForm = () => {
       : inviteForm.value.email
 
   if (!emailToValidate?.trim()) {
-    inviteErrors.value.email = 'Email address is required'
+    inviteErrors.value.email = t('friends.page.validation.emailRequired')
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToValidate)) {
-    inviteErrors.value.email = 'Please enter a valid email address'
+    inviteErrors.value.email = t('friends.page.validation.emailInvalid')
   }
 
   return Object.keys(inviteErrors.value).length === 0
@@ -585,8 +587,8 @@ const sendInvite = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Invitation Sent',
-      detail: `Friend request sent to ${emailToSend}`,
+      summary: t('friends.page.toasts.invitationSentSummary'),
+      detail: t('friends.page.toasts.invitationSentDetail', { email: emailToSend }),
       life: 3000
     })
 
@@ -594,8 +596,8 @@ const sendInvite = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Invitation Failed',
-      detail: formatApiErrorDetail(error, 'Failed to send invitation'),
+      summary: t('friends.page.toasts.invitationFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.invitationFailedDetail')),
       life: 5000
     })
   } finally {
@@ -616,16 +618,16 @@ const confirmDeleteFriend = (friend) => {
   }
 
   confirm.require({
-    message: `Are you sure you want to remove ${friend.fullName} from your friends?`,
-    header: 'Remove Friend',
+    message: t('friends.page.toasts.removeFriendConfirm', { name: friend.fullName }),
+    header: t('friends.page.toasts.removeFriendHeader'),
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
-      label: 'Cancel',
+      label: t('common.cancel'),
       severity: 'secondary',
       outlined: true
     },
     acceptProps: {
-      label: 'Remove',
+      label: t('friends.page.toasts.removeFriendConfirmLabel'),
       severity: 'danger'
     },
     accept: () => deleteFriend(friend.friendId)
@@ -642,15 +644,15 @@ const deleteFriend = async (friendId) => {
     await friendsStore.deleteFriendship(friendId)
     toast.add({
       severity: 'success',
-      summary: 'Friend Removed',
-      detail: 'The friend has been removed from your list',
+      summary: t('friends.page.toasts.friendRemovedSummary'),
+      detail: t('friends.page.toasts.friendRemovedDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Remove Failed',
-      detail: formatApiErrorDetail(error, 'Failed to remove friend'),
+      summary: t('friends.page.toasts.removeFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.removeFailedDetail')),
       life: 5000
     })
   }
@@ -698,15 +700,15 @@ const handleAcceptInvite = async (inviteId) => {
     await friendsStore.acceptInvitation(inviteId)
     toast.add({
       severity: 'success',
-      summary: 'Invitation Accepted',
-      detail: 'You are now friends!',
+      summary: t('friends.page.toasts.acceptedSummary'),
+      detail: t('friends.page.toasts.acceptedDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Accept Failed',
-      detail: formatApiErrorDetail(error, 'Failed to accept invitation'),
+      summary: t('friends.page.toasts.acceptFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.acceptFailedDetail')),
       life: 5000
     })
   } finally {
@@ -726,15 +728,15 @@ const handleRejectInvite = async (inviteId) => {
     await friendsStore.rejectInvitation(inviteId)
     toast.add({
       severity: 'success',
-      summary: 'Invitation Rejected',
-      detail: 'The invitation has been rejected',
+      summary: t('friends.page.toasts.rejectedSummary'),
+      detail: t('friends.page.toasts.rejectedDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Reject Failed',
-      detail: formatApiErrorDetail(error, 'Failed to reject invitation'),
+      summary: t('friends.page.toasts.rejectFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.rejectFailedDetail')),
       life: 5000
     })
   } finally {
@@ -754,15 +756,15 @@ const handleCancelInvite = async (inviteId) => {
     await friendsStore.cancelInvitation(inviteId)
     toast.add({
       severity: 'success',
-      summary: 'Invitation Cancelled',
-      detail: 'The invitation has been cancelled',
+      summary: t('friends.page.toasts.cancelledSummary'),
+      detail: t('friends.page.toasts.cancelledDetail'),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Cancel Failed',
-      detail: formatApiErrorDetail(error, 'Failed to cancel invitation'),
+      summary: t('friends.page.toasts.cancelFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.cancelFailedDetail')),
       life: 5000
     })
   } finally {
@@ -783,15 +785,15 @@ const handleAcceptAllInvites = async () => {
     await friendsStore.acceptMultipleInvitations(inviteIds)
     toast.add({
       severity: 'success',
-      summary: 'All Invitations Accepted',
-      detail: `Accepted ${inviteIds.length} invitation(s)`,
+      summary: t('friends.page.toasts.allAcceptedSummary'),
+      detail: t('friends.page.toasts.allAcceptedDetail', { count: inviteIds.length }),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Bulk Accept Failed',
-      detail: formatApiErrorDetail(error, 'Failed to accept all invitations'),
+      summary: t('friends.page.toasts.bulkAcceptFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.bulkAcceptFailedDetail')),
       life: 5000
     })
   } finally {
@@ -812,15 +814,15 @@ const handleRejectAllInvites = async () => {
     await friendsStore.rejectMultipleInvitations(inviteIds)
     toast.add({
       severity: 'success',
-      summary: 'All Invitations Rejected',
-      detail: `Rejected ${inviteIds.length} invitation(s)`,
+      summary: t('friends.page.toasts.allRejectedSummary'),
+      detail: t('friends.page.toasts.allRejectedDetail', { count: inviteIds.length }),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Bulk Reject Failed',
-      detail: formatApiErrorDetail(error, 'Failed to reject all invitations'),
+      summary: t('friends.page.toasts.bulkRejectFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.bulkRejectFailedDetail')),
       life: 5000
     })
   } finally {
@@ -842,15 +844,15 @@ const handleCancelAllInvites = async () => {
     await Promise.all(inviteIds.map(id => friendsStore.cancelInvitation(id)))
     toast.add({
       severity: 'success',
-      summary: 'All Invitations Cancelled',
-      detail: `Cancelled ${inviteIds.length} invitation(s)`,
+      summary: t('friends.page.toasts.allCancelledSummary'),
+      detail: t('friends.page.toasts.allCancelledDetail', { count: inviteIds.length }),
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Bulk Cancel Failed',
-      detail: formatApiErrorDetail(error, 'Failed to cancel all invitations'),
+      summary: t('friends.page.toasts.bulkCancelFailedSummary'),
+      detail: formatApiErrorDetail(error, t('friends.page.toasts.bulkCancelFailedDetail')),
       life: 5000
     })
   } finally {
@@ -970,8 +972,8 @@ const showFriendTrailVisibleToast = (trails) => {
   if (totalPoints > 0) {
     toast.add({
       severity: 'success',
-      summary: 'Location Trails Enabled',
-      detail: `Showing ${totalPoints} points across ${friendsWithPoints.length} friend trail(s) for ${activeTrailRangeDescription}`,
+      summary: t('friends.page.toasts.trailsEnabledSummary'),
+      detail: t('friends.page.toasts.trailsEnabledDetailWithPoints', { points: totalPoints, trailCount: friendsWithPoints.length, range: activeTrailRangeDescription }),
       life: 3500
     })
     return
@@ -979,8 +981,8 @@ const showFriendTrailVisibleToast = (trails) => {
 
   toast.add({
     severity: 'info',
-    summary: 'Location Trails Enabled',
-    detail: `No trail points found for ${activeTrailRangeDescription}`,
+    summary: t('friends.page.toasts.trailsEnabledSummary'),
+    detail: t('friends.page.toasts.trailsEnabledDetailEmpty', { range: activeTrailRangeDescription }),
     life: 3500
   })
 }
@@ -992,8 +994,8 @@ const showFriendTrailErrorToast = (error) => {
 
   toast.add({
     severity: 'error',
-    summary: 'Trail Loading Failed',
-    detail: formatApiErrorDetail(error, 'Failed to load friend location trails'),
+    summary: t('friends.page.toasts.trailLoadFailedSummary'),
+    detail: formatApiErrorDetail(error, t('friends.page.toasts.trailLoadFailedDetail')),
     life: 5000
   })
 }
@@ -1078,16 +1080,16 @@ const refreshFriendsData = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Data Refreshed',
-      detail: 'Friends data and locations have been updated',
+      summary: t('friends.page.toasts.dataRefreshedSummary'),
+      detail: t('friends.page.toasts.dataRefreshedDetail'),
       life: 3000
     })
   } catch (error) {
     console.error('Error refreshing friends data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Refresh Failed',
-      detail: 'Failed to refresh friends data',
+      summary: t('friends.page.toasts.refreshFailedSummary'),
+      detail: t('friends.page.toasts.refreshFailedDetail'),
       life: 5000
     })
   } finally {
@@ -1188,8 +1190,8 @@ onMounted(async () => {
     console.error('Error loading friends page data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Loading Failed',
-      detail: 'Failed to load page data',
+      summary: t('friends.page.toasts.loadingFailedSummary'),
+      detail: t('friends.page.toasts.loadingFailedDetail'),
       life: 5000
     })
   } finally {

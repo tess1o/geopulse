@@ -2,13 +2,13 @@
   <form class="integration-settings settings-tab" @submit.prevent="handleSubmit">
     <section class="settings-group" aria-labelledby="immich-availability-heading">
       <div class="settings-group-header">
-        <h3 id="immich-availability-heading">Photo integration</h3>
-        <p>Control whether Immich photos appear on your timeline.</p>
+        <h3 id="immich-availability-heading">{{ t('profile.connectedApps.immich.availability.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.immich.availability.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Enable Immich" description="Sync timeline photos from your Immich server." setting-id="immich-enabled">
+        <SettingCard :title="t('profile.connectedApps.immich.availability.enabled.title')" :description="t('profile.connectedApps.immich.availability.enabled.description')" setting-id="immich-enabled">
           <template #control>
-            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" aria-label="Enable Immich integration" />
+            <ToggleSwitch v-model="form.enabled" :disabled="readOnly || loading || saveLoading" :aria-label="t('profile.connectedApps.immich.availability.enabled.ariaLabel')" />
           </template>
         </SettingCard>
       </div>
@@ -16,35 +16,35 @@
 
     <section class="settings-group" aria-labelledby="immich-connection-heading">
       <div class="settings-group-header">
-        <h3 id="immich-connection-heading">Connection</h3>
-        <p>Provide the server address and credentials used to access Immich.</p>
+        <h3 id="immich-connection-heading">{{ t('profile.connectedApps.immich.connection.heading') }}</h3>
+        <p>{{ t('profile.connectedApps.immich.connection.description') }}</p>
       </div>
       <div class="settings-panel">
-        <SettingCard title="Server URL" description="Enter the full address of your Immich server." setting-id="immichServerUrl">
+        <SettingCard :title="t('profile.connectedApps.immich.connection.serverUrl.title')" :description="t('profile.connectedApps.immich.connection.serverUrl.description')" setting-id="immichServerUrl">
           <template #control>
             <div class="field-control">
-              <InputText id="immichServerUrl" v-model="form.serverUrl" placeholder="https://photos.example.com" :invalid="!!errors.serverUrl" :disabled="readOnly || !form.enabled || loading || saveLoading" class="w-full" aria-label="Immich server URL" />
+              <InputText id="immichServerUrl" v-model="form.serverUrl" placeholder="https://photos.example.com" :invalid="!!errors.serverUrl" :disabled="readOnly || !form.enabled || loading || saveLoading" class="w-full" :aria-label="t('profile.connectedApps.immich.connection.serverUrl.ariaLabel')" />
               <small v-if="errors.serverUrl" class="error-message">{{ errors.serverUrl }}</small>
             </div>
           </template>
         </SettingCard>
 
-        <SettingCard title="API key" description="Create an API key in your Immich server settings." setting-id="immichApiKey">
+        <SettingCard :title="t('profile.connectedApps.immich.connection.apiKey.title')" :description="t('profile.connectedApps.immich.connection.apiKey.description')" setting-id="immichApiKey">
           <template #control>
             <div class="field-control">
               <Password
                 id="immichApiKey"
                 v-model="form.apiKey"
-                :placeholder="apiKeyConfigured ? 'API key is set (enter new key to replace)' : 'Enter your Immich API key'"
+                :placeholder="apiKeyConfigured ? t('profile.connectedApps.immich.connection.apiKey.placeholderConfigured') : t('profile.connectedApps.immich.connection.apiKey.placeholder')"
                 :feedback="false"
                 toggleMask
                 :invalid="!!errors.apiKey"
                 :disabled="readOnly || !form.enabled || loading || saveLoading"
                 class="w-full"
-                aria-label="Immich API key"
+                :aria-label="t('profile.connectedApps.immich.connection.apiKey.ariaLabel')"
               />
               <small v-if="errors.apiKey" class="error-message">{{ errors.apiKey }}</small>
-              <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text configured-key"><i class="pi pi-check-circle"></i> API key is configured. Leave empty to keep it.</small>
+              <small v-else-if="apiKeyConfigured && !form.apiKey" class="help-text configured-key"><i class="pi pi-check-circle"></i> {{ t('profile.connectedApps.immich.connection.apiKey.configuredNote') }}</small>
             </div>
           </template>
         </SettingCard>
@@ -56,20 +56,22 @@
     </Message>
 
     <div class="settings-actions is-sticky">
-      <Button v-if="form.enabled" type="button" label="Test Connection" icon="pi pi-link" outlined :loading="testLoading" :disabled="readOnly || !canTestConnection || loading || saveLoading" @click="handleTestConnection" />
-      <Button type="button" label="Reset" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
-      <Button type="submit" label="Save Settings" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
+      <Button v-if="form.enabled" type="button" :label="t('profile.connectedApps.immich.testConnection')" icon="pi pi-link" outlined :loading="testLoading" :disabled="readOnly || !canTestConnection || loading || saveLoading" @click="handleTestConnection" />
+      <Button type="button" :label="t('profile.connectedApps.immich.reset')" outlined @click="handleReset" :disabled="readOnly || loading || saveLoading" />
+      <Button type="submit" :label="t('profile.connectedApps.immich.saveSettings')" :loading="saveLoading" :disabled="readOnly || !hasChanges || loading" />
     </div>
   </form>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Message from 'primevue/message'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import { useImmichStore } from '@/stores/immich'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const props = defineProps({
   readOnly: { type: Boolean, default: false },
   config: { type: Object, default: null },
@@ -100,14 +102,16 @@ watch(hasChanges, (changed) => emit('dirty-change', Boolean(changed)))
 
 const canTestConnection = computed(() => form.value.serverUrl?.trim() && (form.value.apiKey?.trim() || apiKeyConfigured.value))
 
-const connectionMessages = {
-  CONNECTED: 'Successfully connected to Immich server',
-  USER_NOT_FOUND: 'The configured Immich user could not be found',
-  API_KEY_REQUIRED: 'An Immich API key is required',
-  AUTHENTICATION_FAILED: 'Immich rejected the API key',
-  SERVER_NOT_FOUND: 'The Immich server could not be found',
-  CONNECTION_TIMEOUT: 'The Immich connection timed out',
-  CONNECTION_FAILED: 'Failed to connect to the Immich server'
+// Backend status code -> catalog key. The codes are the values the store returns and must stay
+// verbatim; the sentences are resolved with `t()` where they are used, so they follow the locale.
+const connectionMessageKeys = {
+  CONNECTED: 'profile.connectedApps.immich.messages.connected',
+  USER_NOT_FOUND: 'profile.connectedApps.immich.messages.userNotFound',
+  API_KEY_REQUIRED: 'profile.connectedApps.immich.messages.apiKeyRequired',
+  AUTHENTICATION_FAILED: 'profile.connectedApps.immich.messages.authenticationFailed',
+  SERVER_NOT_FOUND: 'profile.connectedApps.immich.messages.serverNotFound',
+  CONNECTION_TIMEOUT: 'profile.connectedApps.immich.messages.connectionTimeout',
+  CONNECTION_FAILED: 'profile.connectedApps.immich.messages.connectionFailed'
 }
 
 const handleTestConnection = async () => {
@@ -123,14 +127,14 @@ const handleTestConnection = async () => {
     })
     const success = result?.success === true
     testStatus.value = success ? 'success' : 'error'
-    testMessage.value = connectionMessages[result?.status] || (success ? connectionMessages.CONNECTED : 'Failed to test connection')
+    testMessage.value = t(connectionMessageKeys[result?.status] || (success ? connectionMessageKeys.CONNECTED : 'profile.connectedApps.immich.messages.testFailed'))
     testDetails.value = result?.totalAssets != null
-      ? `${result.totalAssets} assets available.`
+      ? t('profile.connectedApps.immich.messages.assetsAvailable', { count: result.totalAssets }, result.totalAssets)
       : (result?.details || '')
   } catch (error) {
     testStatus.value = 'error'
-    testMessage.value = 'Connection test failed'
-    testDetails.value = formatApiErrorDetail(error, 'An unexpected error occurred')
+    testMessage.value = t('profile.connectedApps.immich.messages.testError')
+    testDetails.value = formatApiErrorDetail(error, t('profile.connectedApps.immich.messages.unexpected'))
   } finally {
     testLoading.value = false
   }
@@ -140,15 +144,15 @@ const validate = () => {
   errors.value = {}
   if (form.value.enabled) {
     if (!form.value.serverUrl?.trim()) {
-      errors.value.serverUrl = 'Server URL is required when integration is enabled'
+      errors.value.serverUrl = t('profile.connectedApps.immich.errors.serverUrlRequired')
     } else {
       try {
         new URL(form.value.serverUrl.trim())
       } catch {
-        errors.value.serverUrl = 'Please enter a valid URL (e.g., https://photos.example.com)'
+        errors.value.serverUrl = t('profile.connectedApps.immich.errors.serverUrlInvalid')
       }
     }
-    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) errors.value.apiKey = 'API Key is required when integration is enabled'
+    if (!form.value.apiKey?.trim() && !apiKeyConfigured.value) errors.value.apiKey = t('profile.connectedApps.immich.errors.apiKeyRequired')
   }
   return Object.keys(errors.value).length === 0
 }

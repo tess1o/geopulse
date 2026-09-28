@@ -2,16 +2,16 @@
   <div class="digest-header">
     <div class="digest-header-main">
       <!-- Period Type Toggle -->
-      <div class="period-toggle" role="group" aria-label="Rewind period type">
+      <div class="period-toggle" role="group" :aria-label="t('analytics.digest.heatmap.periodAriaLabel')">
         <Button
-          label="Monthly"
+          :label="t('analytics.digest.header.monthly')"
           icon="pi pi-calendar"
           :class="['toggle-btn', { active: viewMode === 'monthly' }]"
           text
           @click="setViewMode('monthly')"
         />
         <Button
-          label="Yearly"
+          :label="t('analytics.digest.header.yearly')"
           icon="pi pi-calendar-clock"
           :class="['toggle-btn', { active: viewMode === 'yearly' }]"
           text
@@ -82,10 +82,14 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import { useTimezone } from '@/composables/useTimezone'
+import { useLocale } from '@/composables/useLocale'
 
+const { t } = useI18n()
 const timezone = useTimezone()
+const { locale } = useLocale()
 
 const props = defineProps({
   viewMode: {
@@ -108,10 +112,15 @@ const emit = defineEmits(['update:viewMode', 'update:year', 'update:month', 'per
 const selectedYear = ref(props.year)
 const selectedMonth = ref(props.month || timezone.now().month() + 1)
 
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+/**
+ * Locale-aware month names via dayjs (its global locale is switched by `useLocale().setLocale()`).
+ * Depending on `locale.value` here is what forces a recompute on language switch -- dayjs's own
+ * locale mutation isn't itself a reactive dependency Vue can track.
+ */
+const monthNames = computed(() => {
+  void locale.value
+  return Array.from({ length: 12 }, (_, index) => timezone.now().date(1).month(index).format('MMMM'))
+})
 
 const availableYears = computed(() => {
   const currentYear = timezone.now().year()
@@ -129,7 +138,7 @@ const recentYears = computed(() => {
 
 const displayPeriod = computed(() => {
   if (props.viewMode === 'monthly') {
-    const monthName = monthNames[selectedMonth.value - 1]
+    const monthName = monthNames.value[selectedMonth.value - 1]
     return `${monthName} ${selectedYear.value}`
   } else {
     return `${selectedYear.value}`

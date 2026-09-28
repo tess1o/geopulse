@@ -3,15 +3,15 @@
     <div class="callback-content">
       <div v-if="isProcessing" class="processing-state">
         <ProgressSpinner/>
-        <h2 class="processing-title">Completing authentication...</h2>
-        <p class="processing-description">Please wait while we securely log you in.</p>
+        <h2 class="processing-title">{{ t('auth.callback.processingTitle') }}</h2>
+        <p class="processing-description">{{ t('auth.callback.processingDescription') }}</p>
       </div>
 
       <div v-else-if="error && !linkingData" class="error-state">
         <i class="pi pi-exclamation-triangle error-icon"></i>
-        <h2 class="error-title">Authentication Failed</h2>
+        <h2 class="error-title">{{ t('auth.callback.errorTitle') }}</h2>
         <p class="error-description">{{ error }}</p>
-        <Button label="Return to Login" @click="returnToLogin" class="return-button"/>
+        <Button :label="t('auth.callback.returnToLogin')" @click="returnToLogin" class="return-button"/>
       </div>
     </div>
 
@@ -28,6 +28,7 @@
 
 <script setup>
 import {ref, onMounted} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute, useRouter} from 'vue-router'
 import {useAuthStore} from '@/stores/auth'
 import {useToast} from 'primevue/usetoast'
@@ -38,6 +39,7 @@ import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import AccountLinkingModal from '@/components/auth/AccountLinkingModal.vue';
 
+const {t} = useI18n()
 const timezone = useTimezone()
 
 const route = useRoute()
@@ -59,7 +61,7 @@ onMounted(async () => {
     }
 
     if (!code || !state) {
-      throw new Error('Invalid callback request. Missing required parameters.')
+      throw new Error(t('auth.callback.missingParams'))
     }
 
     const authResponse = await authStore.handleOidcCallback(code, state)
@@ -69,8 +71,8 @@ onMounted(async () => {
 
     toast.add({
       severity: 'success',
-      summary: isNewUser ? 'Welcome to GeoPulse!' : 'Welcome back!',
-      detail: 'Successfully authenticated',
+      summary: isNewUser ? t('auth.callback.toasts.welcomeNew') : t('auth.callback.toasts.welcomeBack'),
+      detail: t('auth.callback.toasts.authenticated'),
       life: 3000
     })
 
@@ -90,10 +92,10 @@ onMounted(async () => {
       showLinkingModal.value = true
 
     } else {
-      error.value = formatApiErrorDetail(err, 'An unknown authentication error occurred.')
+      error.value = formatApiErrorDetail(err, t('auth.callback.genericError'))
       toast.add({
         severity: 'error',
-        summary: 'Authentication Failed',
+        summary: t('auth.callback.errorTitle'),
         detail: error.value,
         life: 5000
       });
@@ -126,8 +128,8 @@ const handleLinkingSuccess = async (authResponse) => {
 
   toast.add({
     severity: 'success',
-    summary: 'Account Linked Successfully!',
-    detail: 'Your accounts have been linked and you are now logged in.',
+    summary: t('auth.callback.toasts.linked.title'),
+    detail: t('auth.callback.toasts.linked.detail'),
     life: 3000
   })
 

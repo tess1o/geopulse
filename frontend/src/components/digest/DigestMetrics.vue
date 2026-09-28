@@ -3,34 +3,38 @@
     <template v-if="hasMetrics">
       <div class="digest-hero-copy">
         <p class="digest-eyebrow"><i class="pi pi-sparkles"></i> {{ title }}</p>
-        <h2 id="digest-hero-title">{{ formatDistanceRounded(metrics.totalDistance) }} of movement.</h2>
-        <p class="digest-summary">{{ metrics.tripCount }} trips across {{ metrics.citiesVisited }} {{ metrics.citiesVisited === 1 ? 'city' : 'cities' }}.</p>
+        <h2 id="digest-hero-title">{{ t('analytics.digest.hero.distanceOfMovement', { distance: formatDistanceRounded(metrics.totalDistance) }) }}</h2>
+        <p class="digest-summary">{{ metrics.citiesVisited === 1 ? t('analytics.digest.hero.tripsAcrossCity', { count: metrics.tripCount, cities: metrics.citiesVisited }) : t('analytics.digest.hero.tripsAcrossCities', { count: metrics.tripCount, cities: metrics.citiesVisited }) }}</p>
         <span v-if="comparison" class="comparison-pill" :class="comparisonClass"><i :class="comparisonIcon"></i>{{ comparisonText }}</span>
       </div>
 
       <dl class="hero-stats">
-        <div><dt>Trips</dt><dd>{{ metrics.tripCount }}</dd></div>
-        <div><dt>Active days</dt><dd>{{ metrics.activeDays }}</dd></div>
-        <div><dt>Moving time</dt><dd>{{ formatDuration(metrics.timeMoving || 0) }}</dd></div>
-        <div><dt>Stays</dt><dd>{{ metrics.stayCount || 0 }}</dd></div>
+        <div><dt>{{ t('analytics.digest.hero.trips') }}</dt><dd>{{ metrics.tripCount }}</dd></div>
+        <div><dt>{{ t('analytics.digest.hero.activeDays') }}</dt><dd>{{ metrics.activeDays }}</dd></div>
+        <div><dt>{{ t('analytics.digest.hero.movingTime') }}</dt><dd>{{ formatDuration(metrics.timeMoving || 0) }}</dd></div>
+        <div><dt>{{ t('analytics.digest.hero.stays') }}</dt><dd>{{ metrics.stayCount || 0 }}</dd></div>
       </dl>
 
       <div v-if="movementModes.length" class="movement-mix">
-        <div class="movement-mix-heading"><span>How you moved</span><span v-if="highlights?.peakHours?.length" class="peak-hours">Most active: {{ highlights.peakHours.join(', ') }}</span></div>
-        <div class="movement-bar" aria-label="Distance split by transport type"><span v-for="mode in movementModes" :key="mode.key" :style="{ width: `${mode.share}%`, background: mode.color }" :title="`${mode.label}: ${mode.share}%`"></span></div>
+        <div class="movement-mix-heading"><span>{{ t('analytics.digest.hero.howYouMoved') }}</span><span v-if="highlights?.peakHours?.length" class="peak-hours">{{ t('analytics.digest.hero.mostActive', { hours: highlights.peakHours.join(', ') }) }}</span></div>
+        <div class="movement-bar" :aria-label="t('analytics.digest.hero.distanceSplitAriaLabel')"><span v-for="mode in movementModes" :key="mode.key" :style="{ width: `${mode.share}%`, background: mode.color }" :title="t('analytics.digest.hero.modeSharePercent', { label: mode.label, share: mode.share })"></span></div>
         <div class="movement-legend"><span v-for="mode in movementModes" :key="mode.key"><i :style="{ background: mode.color }"></i>{{ mode.label }} <b>{{ mode.share }}%</b></span></div>
       </div>
     </template>
-    <div v-else class="no-metrics-placeholder"><i class="pi pi-compass"></i><p>No movement recorded for this period yet.</p></div>
+    <div v-else class="no-metrics-placeholder"><i class="pi pi-compass"></i><p>{{ t('analytics.digest.hero.noMetrics') }}</p></div>
   </section>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/locales'
 import { formatDistanceRounded, formatDuration } from '@/utils/calculationsHelpers'
 
+const { t } = useI18n()
+
 const props = defineProps({
-  title: { type: String, default: 'Your rewind' },
+  title: { type: String, default: () => translate('analytics.digest.hero.title') },
   metrics: { type: Object, default: () => ({}) },
   comparison: { type: Object, default: null },
   highlights: { type: Object, default: () => ({}) }
@@ -43,12 +47,23 @@ const comparisonText = computed(() => {
   const comparison = props.comparison
   if (!comparison) return ''
   const change = Math.abs(Number(comparison.percentChange) || 0)
-  if (comparison.direction === 'increase') return `${change}% more than the previous period`
-  if (comparison.direction === 'decrease') return `${change}% less than the previous period`
-  return 'About the same as the previous period'
+  if (comparison.direction === 'increase') return t('analytics.digest.hero.increaseComparison', { change })
+  if (comparison.direction === 'decrease') return t('analytics.digest.hero.decreaseComparison', { change })
+  return t('analytics.digest.hero.sameComparison')
 })
 const movementModes = computed(() => {
-  const definitions = [['carDistance', 'Car', '#3b82f6'], ['walkDistance', 'Walk', '#10b981'], ['bicycleDistance', 'Bicycle', '#f59e0b'], ['runningDistance', 'Running', '#8b5cf6'], ['motorcycleDistance', 'Motorcycle', '#06b6d4'], ['publicTransportDistance', 'Public Transportation', '#64748b'], ['trainDistance', 'Train', '#64748b'], ['flightDistance', 'Flight', '#ef4444'], ['boatDistance', 'Boat', '#14b8a6'], ['unknownDistance', 'Other', '#94a3b8']]
+  const definitions = [
+    ['carDistance', t('movementTypes.CAR'), '#3b82f6'],
+    ['walkDistance', t('movementTypes.WALK'), '#10b981'],
+    ['bicycleDistance', t('movementTypes.BICYCLE'), '#f59e0b'],
+    ['runningDistance', t('movementTypes.RUNNING'), '#8b5cf6'],
+    ['motorcycleDistance', t('movementTypes.MOTORCYCLE'), '#06b6d4'],
+    ['publicTransportDistance', t('movementTypes.PUBLIC_TRANSPORT'), '#64748b'],
+    ['trainDistance', t('movementTypes.TRAIN'), '#64748b'],
+    ['flightDistance', t('movementTypes.FLIGHT'), '#ef4444'],
+    ['boatDistance', t('movementTypes.BOAT'), '#14b8a6'],
+    ['unknownDistance', t('analytics.digest.hero.otherMode'), '#94a3b8']
+  ]
   const total = Number(props.metrics?.totalDistance) || 0
   return definitions.map(([key, label, color]) => ({ key, label, color, distance: Number(props.metrics?.[key]) || 0 })).filter((mode) => mode.distance > 0).map((mode) => ({ ...mode, share: Math.max(1, Math.round((mode.distance / total) * 100)) }))
 })

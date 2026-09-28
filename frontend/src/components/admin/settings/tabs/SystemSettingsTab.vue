@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection v-if="baseSystemSettings.length > 0" title="System">
+    <SettingSection v-if="baseSystemSettings.length > 0" :title="t('admin.settingsPage.tabs.system')">
       <SettingItem
         v-for="setting in baseSystemSettings"
         :key="setting.key"
@@ -14,7 +14,7 @@
             :options="distanceUnitOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select default unit"
+            :placeholder="t('adminSettings.systemTab.selectDefaultUnit')"
             @change="handleUpdate(setting)"
             style="width: 260px"
           />
@@ -24,7 +24,7 @@
             :options="temperatureUnitOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="Select default unit"
+            :placeholder="t('adminSettings.systemTab.selectDefaultUnit')"
             @change="handleUpdate(setting)"
             style="width: 260px"
           />
@@ -51,37 +51,37 @@
     </SettingSection>
 
     <details v-if="loggingSetting" class="advanced-settings" open>
-      <summary>Observability</summary>
-      <SettingSection title="Application Logging">
+      <summary>{{ t('adminSettings.systemTab.observability') }}</summary>
+      <SettingSection :title="t('adminSettings.systemTab.applicationLogging')">
         <SettingItem
           :setting="loggingSetting"
-          reset-label="Use environment/default"
+          :reset-label="t('adminSettings.systemTab.useEnvironmentDefault')"
           @reset="handleLoggingReset"
         >
           <template #control="{ setting }">
             <Select
               v-model="setting.currentValue"
               :options="logLevelOptions"
-              placeholder="Select log level"
+              :placeholder="t('adminSettings.systemTab.selectLogLevel')"
               @change="handleLoggingUpdate(setting)"
               style="width: 220px"
             />
           </template>
         </SettingItem>
         <div v-if="loggingStatus" class="logging-status">
-          Configured: <strong>{{ loggingStatus.configuredLevel }}</strong> ·
-          Effective: <strong>{{ loggingStatus.effectiveLevel }}</strong> ·
-          Source: <strong>{{ loggingStatus.source }}</strong>
+          {{ t('adminSettings.systemTab.configuredLabel') }} <strong>{{ loggingStatus.configuredLevel }}</strong> ·
+          {{ t('adminSettings.systemTab.effectiveLabel') }} <strong>{{ loggingStatus.effectiveLevel }}</strong> ·
+          {{ t('adminSettings.systemTab.sourceLabel') }} <strong>{{ loggingStatus.source }}</strong>
         </div>
         <Message v-if="loggingStatus?.effectiveLevel === 'DEBUG'" severity="warn" :closable="false">
-          DEBUG logging is verbose and should only be enabled temporarily in production.
+          {{ t('adminSettings.systemTab.debugLoggingWarning') }}
         </Message>
       </SettingSection>
     </details>
 
     <details v-if="updateCheckSettings.length > 0" class="advanced-settings">
-      <summary>Update Check</summary>
-      <SettingSection title="Release Metadata">
+      <summary>{{ t('adminSettings.systemTab.updateCheck') }}</summary>
+      <SettingSection :title="t('adminSettings.systemTab.releaseMetadata')">
         <SettingItem
           v-for="setting in updateCheckSettings"
           :key="setting.key"
@@ -113,8 +113,8 @@
     </details>
 
     <details v-if="waterDatasetSettings.length > 0" class="advanced-settings">
-      <summary>Water Dataset</summary>
-      <SettingSection title="Dataset Source">
+      <summary>{{ t('adminSettings.systemTab.waterDataset') }}</summary>
+      <SettingSection :title="t('adminSettings.systemTab.datasetSource')">
         <SettingItem
           v-for="setting in waterDatasetSettings"
           :key="setting.key"
@@ -149,14 +149,15 @@
       <div class="empty-state-icon">
         <i class="pi pi-cog" style="font-size: 2rem; color: var(--text-color-secondary);" />
       </div>
-      <h3>No General System Settings</h3>
-      <p class="text-muted">Notification settings were moved to the Notifications tab.</p>
+      <h3>{{ t('adminSettings.systemTab.noSettingsTitle') }}</h3>
+      <p class="text-muted">{{ t('adminSettings.systemTab.noSettingsDescription') }}</p>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
@@ -165,14 +166,20 @@ import Message from 'primevue/message'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
-import { DISTANCE_UNIT_OPTIONS, TEMPERATURE_UNIT_OPTIONS } from '@/constants/adminSettingsMetadata'
 import { useAdminStore } from '@/stores/admin'
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const adminStore = useAdminStore()
 
 const systemSettings = ref([])
-const distanceUnitOptions = DISTANCE_UNIT_OPTIONS
-const temperatureUnitOptions = TEMPERATURE_UNIT_OPTIONS
+const distanceUnitOptions = computed(() => [
+  { label: t('adminSettings.unitOptions.distanceKilometers'), value: 'KILOMETERS' },
+  { label: t('adminSettings.unitOptions.distanceMiles'), value: 'MILES' }
+])
+const temperatureUnitOptions = computed(() => [
+  { label: t('adminSettings.unitOptions.temperatureCelsius'), value: 'CELSIUS' },
+  { label: t('adminSettings.unitOptions.temperatureFahrenheit'), value: 'FAHRENHEIT' }
+])
 const logLevelOptions = ['ERROR', 'WARN', 'INFO', 'DEBUG']
 const loggingStatus = ref(null)
 

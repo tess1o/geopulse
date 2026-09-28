@@ -18,7 +18,7 @@
       <!-- Loading State -->
       <div v-if="loading" class="loading-state">
         <ProgressSpinner/>
-        <p>Loading shared location...</p>
+        <p>{{ t('sharing.sharedLocationPage.loading') }}</p>
       </div>
 
       <!-- Error State -->
@@ -28,10 +28,10 @@
             <div class="error-content">
               <i class="pi pi-exclamation-triangle error-icon"></i>
               <div class="error-message">
-                <h3>Error Loading Location</h3>
+                <h3>{{ t('sharing.sharedLocationPage.errorTitle') }}</h3>
                 <p>{{ error }}</p>
                 <Button
-                    label="Try Again"
+                    :label="t('common.tryAgain')"
                     @click="initializeSharedView"
                     class="retry-btn"
                 />
@@ -48,20 +48,20 @@
             <div class="password-content">
               <i class="pi pi-lock password-icon"></i>
               <div class="password-form">
-                <h3>Password Required</h3>
-                <p>This shared location is password protected.</p>
+                <h3>{{ t('sharing.sharedLocationPage.passwordRequiredTitle') }}</h3>
+                <p>{{ t('sharing.sharedLocationPage.passwordRequiredMessage') }}</p>
                 <form @submit.prevent="verifyPassword" class="password-input-form">
                   <div class="input-group">
                     <Password
                         v-model="password"
-                        placeholder="Enter password"
+                        :placeholder="t('sharing.sharedLocationPage.passwordPlaceholder')"
                         :feedback="false"
                         class="password-input"
                         autofocus
                     />
                     <Button
                         type="submit"
-                        label="Access"
+                        :label="t('sharing.sharedLocationPage.access')"
                         :loading="loading"
                         class="access-btn"
                     />
@@ -79,24 +79,24 @@
         <Card v-if="!isMapEmbed" class="location-info-card">
           <template #content>
             <div class="location-info">
-              <h2 class="share-title">{{ shareData.shareName || 'Shared Location' }}</h2>
+              <h2 class="share-title">{{ shareData.shareName || t('sharing.sharedLocationPage.defaultShareName') }}</h2>
               <p v-if="shareData.description" class="share-description">{{ shareData.description }}</p>
 
               <div class="info-grid">
                 <div class="info-item">
-                  <span class="info-label">Shared by:</span>
-                  <span class="info-value">{{ shareLinksStore.getSharedLocationInfo?.shared_by || 'Unknown' }}</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.sharedByLabel') }}</span>
+                  <span class="info-value">{{ shareLinksStore.getSharedLocationInfo?.shared_by || t('sharing.sharedLocationPage.unknown') }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Last seen:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.lastSeenLabel') }}</span>
                   <span class="info-value">{{ timezone.timeAgo(shareData.sharedAt) }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Expires:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.expiresLabel') }}</span>
                   <span class="info-value" :class="getExpirationClass()">{{ formatExpiration() }}</span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Scope:</span>
+                  <span class="info-label">{{ t('sharing.sharedLocationPage.scopeLabel') }}</span>
                   <span class="info-value">{{ scopeLabel }}</span>
                 </div>
               </div>
@@ -109,7 +109,7 @@
           <Card class="map-card" :class="{ 'map-card--embed': isMapEmbed }">
             <template v-if="!isMapEmbed" #header>
               <div class="map-header">
-                <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
+                <h3 class="map-title">{{ hasHistoryData ? t('sharing.sharedLocationPage.locationAndHistory') : t('sharing.sharedLocationPage.currentLocation') }}</h3>
                 <div class="map-actions">
                   <Select
                       v-model="autoRefreshIntervalMs"
@@ -117,7 +117,7 @@
                       option-label="label"
                       option-value="value"
                       size="small"
-                      aria-label="Auto-refresh interval"
+                      :aria-label="t('sharing.sharedLocationPage.autoRefreshAriaLabel')"
                       class="auto-refresh-select"
                   />
                   <Button
@@ -127,9 +127,9 @@
                       :outlined="!autoFollow"
                       size="small"
                       class="refresh-btn"
-                      :aria-label="autoFollow ? 'Disable auto-follow' : 'Enable auto-follow'"
+                      :aria-label="autoFollow ? t('sharing.sharedLocationPage.disableAutoFollowAriaLabel') : t('sharing.sharedLocationPage.enableAutoFollowAriaLabel')"
                       :aria-pressed="autoFollow"
-                      v-tooltip.bottom="autoFollow ? 'Auto-following live location' : 'Auto-follow disabled'"
+                      v-tooltip.bottom="autoFollow ? t('sharing.sharedLocationPage.autoFollowOnTooltip') : t('sharing.sharedLocationPage.autoFollowOffTooltip')"
                   />
                   <Button
                       icon="pi pi-refresh"
@@ -139,8 +139,8 @@
                       outlined
                       size="small"
                       class="refresh-btn"
-                      aria-label="Refresh location data"
-                      v-tooltip.bottom="'Refresh location data'"
+                      :aria-label="t('sharing.sharedLocationPage.refreshAriaLabel')"
+                      v-tooltip.bottom="t('sharing.sharedLocationPage.refreshTooltip')"
                   />
                 </div>
               </div>
@@ -214,8 +214,8 @@
               <div class="no-data-content">
                 <i class="pi pi-info-circle no-data-icon"></i>
                 <div class="no-data-message">
-                  <h3>No Location Data Available</h3>
-                  <p>The user hasn't recorded any GPS location data yet.</p>
+                  <h3>{{ t('sharing.sharedLocationPage.noDataTitle') }}</h3>
+                  <p>{{ t('sharing.sharedLocationPage.noDataMessage') }}</p>
                 </div>
               </div>
             </template>
@@ -228,10 +228,12 @@
     <div v-if="!isMapEmbed" class="shared-footer">
       <div class="footer-content">
         <p class="footer-text">
-          Powered by <strong>GeoPulse</strong> - Location Analytics Platform
+          <i18n-t keypath="sharing.sharedLocationPage.footerText" tag="span">
+            <template #brand><strong>GeoPulse</strong></template>
+          </i18n-t>
         </p>
         <Button
-            label="Get GeoPulse"
+            :label="t('sharing.sharedLocationPage.getApp')"
             severity="secondary"
             @click="visitGeoPulse"
             class="get-app-btn"
@@ -243,6 +245,7 @@
 
 <script setup>
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useI18n} from 'vue-i18n'
 import {useRoute} from 'vue-router'
 import {Button, Card, Password, ProgressSpinner} from 'primevue'
 import Select from 'primevue/select'
@@ -257,6 +260,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useViewerLocation } from '@/composables/useViewerLocation'
 import { productionErrorContext } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 
@@ -278,12 +282,12 @@ const shouldFitViewerLocation = ref(false)
 const initialMapCenter = ref(null)
 const autoFollow = ref(true)
 const autoRefreshIntervalMs = ref(15_000)
-const autoRefreshOptions = [
-  {label: 'Auto: Off', value: 0},
-  {label: 'Auto: 5 sec', value: 5_000},
-  {label: 'Auto: 15 sec', value: 15_000},
-  {label: 'Auto: 30 sec', value: 30_000}
-]
+const autoRefreshOptions = computed(() => [
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.off'), value: 0},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec5'), value: 5_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec15'), value: 15_000},
+  {label: t('sharing.sharedLocationPage.autoRefreshOptions.sec30'), value: 30_000}
+])
 let autoRefreshTimer = null
 
 // Template refs
@@ -299,14 +303,14 @@ const hasHistoryData = computed(() => {
 const scopeLabel = computed(() => {
   const info = shareLinksStore.getSharedLocationInfo;
   if (!info || !info.show_history) {
-    return 'Current Location Only';
+    return t('sharing.sharedLocationPage.scope.currentOnly');
   }
 
   if (info.history_hours && info.history_hours > 0) {
-    return `Location History (${info.history_hours}h)`;
+    return t('sharing.sharedLocationPage.scope.historyWithHours', { hours: info.history_hours });
   }
 
-  return 'Location History';
+  return t('sharing.sharedLocationPage.scope.history');
 });
 
 const viewerLocationPoint = computed(() => viewerLocation.location.value)
@@ -415,7 +419,7 @@ const initializeSharedView = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.userMessage || err.message || 'Failed to load shared location'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.loadFailed')
     loading.value = false
   }
 }
@@ -444,7 +448,7 @@ const applyLocationData = (locationData, preserveMeta = false) => {
   shareData.value = {
     ...(preserveMeta ? shareData.value : {
       sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
-      shareName: shareLinksStore.getSharedLocationInfo?.name || 'Shared Location',
+      shareName: shareLinksStore.getSharedLocationInfo?.name || t('sharing.sharedLocationPage.defaultShareName'),
       description: shareLinksStore.getSharedLocationInfo?.description || ''
     }),
     latitude: currentLocation.latitude,
@@ -476,7 +480,7 @@ const verifyPassword = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.userMessage || err.message || 'Invalid password'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.invalidPassword')
     loading.value = false
   }
 }
@@ -508,7 +512,7 @@ const loadLocationData = async () => {
       }
     }
 
-    error.value = err.userMessage || err.message || 'Failed to load location data'
+    error.value = err.userMessage || err.message || t('sharing.sharedLocationPage.loadLocationDataFailed')
     loading.value = false
   }
 }
@@ -612,31 +616,31 @@ const handleMapReady = (mapInstance) => {
 
 // Format time until expiration (like timeAgo but for future dates)
 const timeUntil = (futureDate) => {
-  if (!futureDate) return 'Never'
+  if (!futureDate) return t('sharing.sharedLocationPage.timeUntil.never')
 
   const dateObj = timezone.fromUtc(futureDate);
 
   if (!dateObj.isValid()) {
-    return 'Invalid date'
+    return t('sharing.sharedLocationPage.timeUntil.invalidDate')
   }
 
   const now = timezone.now();
   const diffMs = dateObj.diff(now);
 
   if (diffMs <= 0) {
-    return 'Expired'
+    return t('sharing.sharedLocationPage.timeUntil.expired')
   }
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffMinutes < 60) return `In ${diffMinutes} min`
-  if (diffHours < 24) return `In ${diffHours} hours`
-  if (diffDays < 30) return `In ${diffDays} days`
+  if (diffMinutes < 60) return t('sharing.sharedLocationPage.timeUntil.inMinutes', { count: diffMinutes })
+  if (diffHours < 24) return t('sharing.sharedLocationPage.timeUntil.inHours', { count: diffHours })
+  if (diffDays < 30) return t('sharing.sharedLocationPage.timeUntil.inDays', { count: diffDays })
 
   // For longer periods, show actual date
-  return `On ${timezone.formatDateDisplay(dateObj.toISOString())} ${timezone.formatTime(dateObj.toISOString())}`
+  return t('sharing.sharedLocationPage.timeUntil.onDate', { date: timezone.formatDateDisplay(dateObj.toISOString()), time: timezone.formatTime(dateObj.toISOString()) })
 }
 
 // Format expiration using timeUntil

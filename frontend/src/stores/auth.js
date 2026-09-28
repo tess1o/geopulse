@@ -1,7 +1,9 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import {useTimezone} from '@/composables/useTimezone'
+import {useLocale} from '@/composables/useLocale'
 import {clearCachedUserProfile, readCachedUserProfile, writeCachedUserProfile} from '@/utils/userProfileCache'
+import {resolvePreferredLocale} from '@/locales'
 import {isBackendDown} from '@/utils/errorHandler'
 import {normalizeApiError} from '@/utils/apiErrorDetail'
 
@@ -50,6 +52,7 @@ function normalizeUser(source) {
         defaultRedirectUrl: raw.defaultRedirectUrl || '',
         dateFormat: raw.dateFormat || 'MDY',
         timeFormat: raw.timeFormat || '24h',
+        language: raw.language || 'en',
         defaultDateRangePreset: raw.defaultDateRangePreset || '',
         autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: raw.enable3dBuildingsByDefault ?? false,
@@ -98,6 +101,7 @@ export const useAuthStore = defineStore('auth', {
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
         timeFormat: (state) => state.user?.timeFormat || '24h',
+        language: (state) => state.user?.language || 'en',
         defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         autoShowTripReplayControls: (state) => state.user?.autoShowTripReplayControls ?? true,
         enable3dBuildingsByDefault: (state) => state.user?.enable3dBuildingsByDefault ?? false,
@@ -123,6 +127,7 @@ export const useAuthStore = defineStore('auth', {
             this.isAuthenticated = !!user
 
             const timezone = useTimezone()
+            const locale = useLocale()
             if (user) {
                 if (persist) {
                     writeCachedUserProfile(user)
@@ -130,10 +135,21 @@ export const useAuthStore = defineStore('auth', {
                 timezone.setTimezone(user.timezone || 'UTC')
                 timezone.setDateFormat(user.dateFormat || 'MDY')
                 timezone.setTimeFormat(user.timeFormat || '24h')
+                // The profile is the authority for language, so persist:false -- writing it back would
+                // be a pointless round trip. Not awaited: setUser stays synchronous for its callers,
+                // and the locale ref is reactive, so the UI re-renders once the catalog resolves.
+                //
+                // Only when the payload actually carries a language: defaulting an absent field to
+                // 'en' would silently reset a Ukrainian user's UI on any partial response. Sign-out
+                // below is the one place that deliberately returns to the default.
+                if (user.language) {
+                    void locale.setLocale(user.language, { persist: false })
+                }
             } else if (persist) {
                 clearCachedUserProfile()
                 timezone.setDateFormat('MDY')
                 timezone.setTimeFormat('24h')
+                void locale.setLocale('en', { persist: false })
             }
 
             return user
@@ -176,6 +192,9 @@ export const useAuthStore = defineStore('auth', {
             timezone.setTimezone('UTC')
             timezone.setDateFormat('MDY')
             timezone.setTimeFormat('24h')
+            // Falls back to the guest's own choice or browser language, not a hardcoded 'en' --
+            // otherwise a Ukrainian-speaking user loses their language on every public page on sign-out.
+            void useLocale().setLocale(resolvePreferredLocale(), { persist: false })
             apiService.clearAuthData()
         },
 
@@ -203,12 +222,13 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async register(email, password, fullName, timezone) {
+        async register(email, password, fullName, timezone, language) {
             await apiService.post('/registrations', {
                 email,
                 password,
                 fullName,
-                timezone
+                timezone,
+                language
             })
             await this.login(email, password)
         },
@@ -231,7 +251,7 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat}) {
+        async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, language}) {
             const response = await apiService.patch('/users/me', {
                 fullName,
                 avatar,
@@ -240,7 +260,8 @@ export const useAuthStore = defineStore('auth', {
                 temperatureUnit,
                 defaultRedirectUrl,
                 dateFormat,
-                timeFormat
+                timeFormat,
+                language
             })
 
             const updatedUser = response

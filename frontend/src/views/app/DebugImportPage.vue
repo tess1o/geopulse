@@ -6,9 +6,9 @@
         <div class="page-header">
           <div class="header-content">
             <div class="header-text">
-              <h1 class="page-title">Import Debug Data</h1>
+              <h1 class="page-title">{{ t('data.debugImport.pageTitle') }}</h1>
               <p class="page-description">
-                Import GPS data and timeline configuration from a debug export ZIP file
+                {{ t('data.debugImport.pageDescription') }}
               </p>
             </div>
           </div>
@@ -22,11 +22,9 @@
                 <i class="pi pi-exclamation-triangle"></i>
               </div>
               <div class="banner-text">
-                <h3 class="banner-title">Important</h3>
+                <h3 class="banner-title">{{ t('data.debugImport.importantTitle') }}</h3>
                 <p class="banner-description">
-                  This import is designed for troubleshooting purposes. It will import shifted GPS data,
-                  anonymized favorite locations, and timeline configuration. By default, it will clear
-                  all your existing data before import.
+                  {{ t('data.debugImport.importantDescription') }}
                 </p>
               </div>
             </div>
@@ -37,7 +35,7 @@
         <Card class="upload-card">
           <template #content>
             <div class="upload-section">
-              <h2 class="section-title">Upload Debug Export ZIP</h2>
+              <h2 class="section-title">{{ t('data.debugImport.sectionTitle') }}</h2>
 
               <!-- File Upload -->
               <div class="upload-area" @click="triggerFileInput" @drop.prevent="handleDrop" @dragover.prevent>
@@ -51,8 +49,8 @@
 
                 <div v-if="!selectedFile" class="upload-prompt">
                   <i class="pi pi-cloud-upload upload-icon"></i>
-                  <p class="upload-text">Click to select or drag & drop a ZIP file</p>
-                  <p class="upload-hint">Only .zip files from debug export are accepted</p>
+                  <p class="upload-text">{{ t('data.debugImport.uploadPromptText') }}</p>
+                  <p class="upload-hint">{{ t('data.debugImport.uploadHint') }}</p>
                 </div>
 
                 <div v-else class="file-info">
@@ -60,7 +58,7 @@
                   <p class="file-name">{{ selectedFile.name }}</p>
                   <p class="file-size">{{ formatFileSize(selectedFile.size) }}</p>
                   <Button
-                    label="Remove"
+                    :label="t('data.debugImport.remove')"
                     icon="pi pi-times"
                     size="small"
                     severity="danger"
@@ -72,17 +70,16 @@
 
               <!-- Import Options -->
               <div class="form-group">
-                <label class="form-label">Import Options</label>
+                <label class="form-label">{{ t('data.debugImport.importOptionsLabel') }}</label>
                 <div class="checkbox-group">
                   <div class="checkbox-item">
                     <Checkbox v-model="clearExistingData" :binary="true" inputId="clearData" />
                     <label for="clearData" class="checkbox-label">
-                      Clear existing data before import
+                      {{ t('data.debugImport.clearExistingData') }}
                     </label>
                   </div>
                   <small class="checkbox-help">
-                    This will delete all your GPS points, timeline data, and favorite locations before importing.
-                    Recommended for troubleshooting on a fresh user account.
+                    {{ t('data.debugImport.clearExistingDataHelp') }}
                   </small>
                 </div>
 
@@ -90,12 +87,11 @@
                   <div class="checkbox-item">
                     <Checkbox v-model="updateTimelineConfig" :binary="true" inputId="updateConfig" />
                     <label for="updateConfig" class="checkbox-label">
-                      Update timeline configuration
+                      {{ t('data.debugImport.updateTimelineConfig') }}
                     </label>
                   </div>
                   <small class="checkbox-help">
-                    This will replace your current timeline settings with the configuration from the ZIP file.
-                    Required to reproduce the exact same timeline.
+                    {{ t('data.debugImport.updateTimelineConfigHelp') }}
                   </small>
                 </div>
               </div>
@@ -103,7 +99,7 @@
               <!-- Import Button -->
               <div class="form-actions">
                 <Button
-                  label="Import Debug Data"
+                  :label="t('data.debugImport.importButton')"
                   icon="pi pi-upload"
                   :loading="isImporting"
                   :disabled="!selectedFile"
@@ -117,7 +113,7 @@
               <div v-if="importError" class="import-error-box">
                 <div class="error-header">
                   <i class="pi pi-times-circle"></i>
-                  <span>Import Failed</span>
+                  <span>{{ t('data.debugImport.importFailedLabel') }}</span>
                 </div>
                 <div class="error-message">
                   {{ importError }}
@@ -131,35 +127,35 @@
         <Card class="info-card">
           <template #content>
             <div class="info-content">
-              <h3 class="info-title">What Will Be Imported?</h3>
+              <h3 class="info-title">{{ t('data.debugImport.whatWillBeImportedTitle') }}</h3>
               <p class="info-description">
-                The ZIP file should contain the following files from a debug export:
+                {{ t('data.debugImport.zipDescription') }}
               </p>
               <ul class="info-list">
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>metadata.json</strong> - Export metadata and validation info
+                  <strong>metadata.json</strong> - {{ t('data.debugImport.items.metadata') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>gps_data.json</strong> - GPS points with shifted coordinates
+                  <strong>gps_data.json</strong> - {{ t('data.debugImport.items.gpsData') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>timeline_config.json</strong> - Timeline generation settings
+                  <strong>timeline_config.json</strong> - {{ t('data.debugImport.items.timelineConfig') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_locations.json</strong> - Anonymized favorite locations
+                  <strong>favorite_locations.json</strong> - {{ t('data.debugImport.items.favoriteLocations') }}
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
-                  <strong>favorite_areas.json</strong> - Anonymized favorite areas
+                  <strong>favorite_areas.json</strong> - {{ t('data.debugImport.items.favoriteAreas') }}
                 </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
-                After import, the timeline will be automatically regenerated using the imported data and configuration.
+                {{ t('data.debugImport.importNote') }}
               </p>
             </div>
           </template>
@@ -171,6 +167,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -181,6 +178,7 @@ import Checkbox from 'primevue/checkbox'
 import { useExportImportStore } from '@/stores/exportImport'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const router = useRouter()
 const toast = useToast()
 const exportImportStore = useExportImportStore()
@@ -216,8 +214,8 @@ const validateAndSetFile = (file) => {
   if (!file.name.endsWith('.zip')) {
     toast.add({
       severity: 'error',
-      summary: 'Invalid File',
-      detail: 'Please select a ZIP file',
+      summary: t('data.debugImport.invalidFileSummary'),
+      detail: t('data.debugImport.invalidFileDetail'),
       life: 3000
     })
     return
@@ -258,8 +256,8 @@ const importData = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Import Successful',
-      detail: 'Debug data has been imported and timeline regenerated',
+      summary: t('data.debugImport.importSuccessSummary'),
+      detail: t('data.debugImport.importSuccessDetail'),
       life: 5000
     })
 
@@ -271,13 +269,13 @@ const importData = async () => {
   } catch (error) {
     console.error('Failed to import debug data:', error)
 
-    const errorMessage = formatApiErrorDetail(error, 'Failed to import debug data')
+    const errorMessage = formatApiErrorDetail(error, t('data.debugImport.importFailedFallback'))
 
     importError.value = errorMessage
 
     toast.add({
       severity: 'error',
-      summary: 'Import Failed',
+      summary: t('data.debugImport.importFailedLabel'),
       detail: errorMessage,
       life: 5000
     })

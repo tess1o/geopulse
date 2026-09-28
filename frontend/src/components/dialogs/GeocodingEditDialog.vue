@@ -1,7 +1,7 @@
 <template>
   <Dialog
     :visible="visible"
-    :header="'Edit Geocoding Result'"
+    :header="t('favoritesGeocodingDialogs.geocodingEdit.header')"
     :modal="true"
     :closable="true"
     @update:visible="$emit('close')"
@@ -10,7 +10,7 @@
     <div class="dialog-content">
       <!-- Map Section -->
       <div class="map-section">
-        <label class="field-label">Location Map</label>
+        <label class="field-label">{{ t('favoritesGeocodingDialogs.geocodingEdit.mapLabel') }}</label>
         <MapContainer
           :map-id="`geocoding-edit-map-${mapId}`"
           :center="mapCenter"
@@ -21,56 +21,56 @@
           width="100%"
           @map-ready="handleMapReady"
         />
-        <small class="field-hint">Read-only map showing the geocoding location</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.geocodingEdit.mapHint') }}</small>
       </div>
 
       <!-- Display Name -->
       <div class="form-field">
         <label for="displayName" class="field-label">
-          Display Name <span class="required">*</span>
+          {{ t('favoritesGeocodingDialogs.geocodingEdit.displayNameLabel') }} <span class="required">*</span>
         </label>
         <InputText
           id="displayName"
           v-model="formData.displayName"
-          placeholder="Enter location display name"
+          :placeholder="t('favoritesGeocodingDialogs.geocodingEdit.displayNamePlaceholder')"
           class="field-input"
           :invalid="!formData.displayName || formData.displayName.trim() === ''"
         />
-        <small class="field-hint">The main display name shown for this location</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.geocodingEdit.displayNameHint') }}</small>
       </div>
 
       <!-- City -->
       <div class="form-field">
-        <label for="city" class="field-label">City</label>
+        <label for="city" class="field-label">{{ t('favoritesGeocodingDialogs.geocodingEdit.cityLabel') }}</label>
         <InputText
           id="city"
           v-model="formData.city"
-          placeholder="Enter city name"
+          :placeholder="t('favoritesGeocodingDialogs.geocodingEdit.cityPlaceholder')"
           class="field-input"
         />
-        <small class="field-hint">Optional city name</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.geocodingEdit.cityHint') }}</small>
       </div>
 
       <!-- Country -->
       <div class="form-field">
-        <label for="country" class="field-label">Country</label>
+        <label for="country" class="field-label">{{ t('favoritesGeocodingDialogs.geocodingEdit.countryLabel') }}</label>
         <InputText
           id="country"
           v-model="formData.country"
-          placeholder="Enter country name"
+          :placeholder="t('favoritesGeocodingDialogs.geocodingEdit.countryPlaceholder')"
           class="field-input"
         />
-        <small class="field-hint">Optional country name</small>
+        <small class="field-hint">{{ t('favoritesGeocodingDialogs.geocodingEdit.countryHint') }}</small>
       </div>
 
       <!-- Read-only Info -->
       <div class="info-section">
         <div class="info-row">
-          <span class="info-label">Provider:</span>
+          <span class="info-label">{{ t('favoritesGeocodingDialogs.geocodingEdit.providerLabel') }}</span>
           <Tag :value="geocodingResult?.providerName" severity="info" />
         </div>
         <div class="info-row">
-          <span class="info-label">Coordinates:</span>
+          <span class="info-label">{{ t('favoritesGeocodingDialogs.geocodingEdit.coordinatesLabel') }}</span>
           <span class="info-value">
             {{ geocodingResult?.latitude?.toFixed(6) }}, {{ geocodingResult?.longitude?.toFixed(6) }}
           </span>
@@ -83,7 +83,7 @@
           <i class="pi pi-exclamation-triangle"></i>
         </template>
         <div class="warning-content">
-          <strong>Note:</strong> Changes will be synchronized across all timeline stays using this geocoding result.
+          <strong>{{ t('favoritesGeocodingDialogs.geocodingEdit.noteLabel') }}</strong> {{ t('favoritesGeocodingDialogs.geocodingEdit.syncNoteMessage') }}
         </div>
       </Message>
     </div>
@@ -91,13 +91,13 @@
     <template #footer>
       <div class="dialog-footer">
         <Button
-          label="Cancel"
+          :label="t('common.cancel')"
           severity="secondary"
           @click="$emit('close')"
           :disabled="saving"
         />
         <Button
-          label="Save Changes"
+          :label="t('favoritesGeocodingDialogs.geocodingEdit.saveChanges')"
           severity="primary"
           @click="handleSave"
           :loading="saving"
@@ -110,6 +110,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
@@ -119,6 +120,8 @@ import { MapContainer } from '@/components/maps'
 import L from 'leaflet'
 import maplibregl from 'maplibre-gl'
 import { MAP_RENDER_MODES, resolveMapEngineModeFromInstance } from '@/maps/contracts/mapContracts'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: {

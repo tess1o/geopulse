@@ -165,7 +165,7 @@ public class StreamingTimelineGenerationService {
         String result = "success";
 
         // Step 1: Acquiring lock (5%)
-        updateProgress(jobId, "Acquiring timeline lock", 1, 5, null);
+        updateProgress(jobId, "acquiringLock", "Acquiring timeline lock", 1, 5, null);
 
         long stageStart = metricsStart();
         if (!acquireLock(userId)) {
@@ -181,7 +181,7 @@ public class StreamingTimelineGenerationService {
 
         try {
             // Step 2: Cleaning up old data (10%)
-            updateProgress(jobId, "Cleaning up old timeline data", 2, 10, null);
+            updateProgress(jobId, "cleaningUp", "Cleaning up old timeline data", 2, 10, null);
 
             // Find latest stay before the affected timestamp and clean up from that point
             stageStart = metricsStart();
@@ -193,7 +193,7 @@ public class StreamingTimelineGenerationService {
             recordTimelineStage(stageStart, trigger, "config", "success");
 
             // Step 3: Prepare GPS data processing (check count and create streaming iterator)
-            updateProgress(jobId, "Preparing GPS data processing", 3, 25, null);
+            updateProgress(jobId, "preparingGpsProcessing", "Preparing GPS data processing", 3, 25, null);
 
             stageStart = metricsStart();
             Long estimatedCount = gpsPointRepository.estimatePointCount(userId, regenerationStartTime);
@@ -202,7 +202,7 @@ public class StreamingTimelineGenerationService {
             if (estimatedCount == null || estimatedCount == 0) {
                 result = "no_points";
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
-                updateProgress(jobId, "No GPS data to process", 9, 100, null);
+                updateProgress(jobId, "noGpsData", "No GPS data to process", 9, 100, null);
                 completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
@@ -225,11 +225,11 @@ public class StreamingTimelineGenerationService {
                     environmentDatasetVersion
             );
 
-            updateProgress(jobId, "Ready to process " + estimatedCount + " GPS points", 3, 35,
+            updateProgress(jobId, "readyToProcess", "Ready to process " + estimatedCount + " GPS points", 3, 35,
                     Map.of("totalGpsPoints", estimatedCount));
 
             // Step 4: Process GPS points using streaming approach (loads and processes in chunks)
-            updateProgress(jobId, "Processing GPS points through state machine", 4, 40, null);
+            updateProgress(jobId, "processingStateMachine", "Processing GPS points through state machine", 4, 40, null);
 
             // Process points using streaming iterator - loads data lazily in 10K chunks
             long stateMachineStartNanos = System.nanoTime();
@@ -242,7 +242,7 @@ public class StreamingTimelineGenerationService {
             // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
 
             // Step 5: Post-processing trips (70%)
-            updateProgress(jobId, "Post-processing trips and validating detections", 5, 70, null);
+            updateProgress(jobId, "postProcessingTrips", "Post-processing trips and validating detections", 5, 70, null);
 
             long tripPostProcessingStartNanos = System.nanoTime();
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(
@@ -266,7 +266,7 @@ public class StreamingTimelineGenerationService {
                 // Apply optional merge pass on raw objects (includes same-location integrity merge behavior)
                 // when merge is enabled by configuration.
                 if (config.getIsMergeEnabled()) {
-                    updateProgress(jobId, "Merging timeline", 6, 75, null);
+                    updateProgress(jobId, "mergingTimeline", "Merging timeline", 6, 75, null);
                     stageStart = metricsStart();
                     rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
                     recordTimelineStage(stageStart, trigger, "merge", "success");
@@ -275,7 +275,7 @@ public class StreamingTimelineGenerationService {
                 generatedTimeline = rawTimeline;
 
                 // Step 7: Persisting timeline to database (80%)
-                updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
+                updateProgress(jobId, "persistingTimeline", "Persisting timeline events to database", 7, 80, null);
 
                 // Persist raw timeline with GPS statistics calculation
                 long persistenceStartNanos = System.nanoTime();
@@ -310,19 +310,19 @@ public class StreamingTimelineGenerationService {
             }
 
             // Step 8: Data gap detection (90%)
-            updateProgress(jobId, "Detecting data gaps", 8, 90, null);
+            updateProgress(jobId, "detectingDataGaps", "Detecting data gaps", 8, 90, null);
 
             stageStart = metricsStart();
             dataGapService.checkAndCreateOngoingDataGap(userId, config);
             recordTimelineStage(stageStart, trigger, "data_gap", "success");
 
             // Step 9: Finalizing (95%)
-            updateProgress(jobId, "Finalizing timeline generation", 9, 95, null);
+            updateProgress(jobId, "finalizing", "Finalizing timeline generation", 9, 95, null);
 
             if (autoApplyVisitMatchingOnRegeneration) {
                 stageStart = metricsStart();
                 try {
-                    updateProgress(jobId, "Auto-matching planned visits", 9, 97, null);
+                    updateProgress(jobId, "autoMatchingVisits", "Auto-matching planned visits", 9, 97, null);
                     tripVisitAutoMatchService.evaluateAllTrips(userId, true);
                     recordTimelineStage(stageStart, trigger, "visit_matching", "success");
                 } catch (Exception ex) {
@@ -365,7 +365,7 @@ public class StreamingTimelineGenerationService {
         // Badge recalculation and job completion must happen after transaction commits
         if (jobId != null) {
             try {
-                updateProgress(jobId, "Recalculating achievement badges", 9, 99, null);
+                updateProgress(jobId, "recalculatingBadges", "Recalculating achievement badges", 9, 99, null);
                 badgeRecalculationService.recalculateAllBadgesForUser(userId);
                 log.info("Triggered badge recalculation for user {} after timeline regeneration", userId);
             } catch (Exception e) {
@@ -375,7 +375,7 @@ public class StreamingTimelineGenerationService {
             }
 
             // Mark job as completed (100%)
-            updateProgress(jobId, "Timeline generation completed", 9, 100, null);
+            updateProgress(jobId, "completed", "Timeline generation completed", 9, 100, null);
             completeJob(jobId);
         }
 
@@ -473,15 +473,17 @@ public class StreamingTimelineGenerationService {
             return null;
         }
 
-        updateProgress(jobId, "Preparing Boat setup", 3, 25,
+        updateProgress(jobId, "preparingBoatSetup", "Preparing Boat setup", 3, 25,
                 Map.of("boatEvidenceAvailable", false));
         String environmentDatasetVersion = boatSetupService.ensureReadyForUser(
                 userId,
                 config,
-                (phase, percentage) -> updateProgress(jobId, phase, 3, percentage,
+                // `phase` comes from BoatSetupService as free-text (not yet a stable catalog key), so it
+                // is passed through as the fallback under a shared generic step key.
+                (phase, percentage) -> updateProgress(jobId, "boatEvidencePhase", phase, 3, percentage,
                         Map.of("boatEvidenceAvailable", true))
         );
-        updateProgress(jobId, "Boat water evidence ready", 3, 35,
+        updateProgress(jobId, "boatEvidenceReady", "Boat water evidence ready", 3, 35,
                 Map.of("boatEvidenceAvailable", true));
         log.info("Boat evidence preparation completed for user {} in {} ms (datasetVersionAvailable={})",
                 userId,
@@ -568,11 +570,16 @@ public class StreamingTimelineGenerationService {
     }
 
     /**
-     * Helper method to update job progress if job tracking is enabled
+     * Helper method to update job progress if job tracking is enabled.
+     *
+     * @param stepKey short suffix appended to the {@code timelineJobs.progressMessages.} catalog
+     *                namespace (see {@link TimelineJobProgressService#step})
+     * @param fallback English text shown when the active locale has no translation for {@code stepKey}
+     *                 yet; also used as interpolation source together with {@code details}
      */
-    private void updateProgress(UUID jobId, String step, int stepIndex, int percentage, Map<String, Object> details) {
+    private void updateProgress(UUID jobId, String stepKey, String fallback, int stepIndex, int percentage, Map<String, Object> details) {
         if (jobId != null) {
-            jobProgressService.updateProgress(jobId, step, stepIndex, percentage, details);
+            jobProgressService.updateProgress(jobId, TimelineJobProgressService.step(stepKey, fallback, details), stepIndex, percentage, details);
         }
     }
 

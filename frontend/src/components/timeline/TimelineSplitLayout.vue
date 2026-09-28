@@ -32,14 +32,14 @@
           <div
             v-if="showDateNavigation && dateLabel && sheetState !== 'collapsed'"
             class="timeline-sheet-date-nav"
-            aria-label="Timeline day navigation"
+            :aria-label="t('timeline.splitLayout.dayNavigationAriaLabel')"
             @pointerdown.stop
           >
             <button
               type="button"
               class="timeline-sheet-date-nav-button"
-              title="Previous day"
-              aria-label="Previous day"
+              :title="t('timeline.splitLayout.previousDay')"
+              :aria-label="t('timeline.splitLayout.previousDay')"
               @click="$emit('navigate-date', -1)"
             >
               <i class="pi pi-chevron-left"></i>
@@ -48,8 +48,8 @@
             <button
               type="button"
               class="timeline-sheet-date-nav-button"
-              title="Next day"
-              aria-label="Next day"
+              :title="t('timeline.splitLayout.nextDay')"
+              :aria-label="t('timeline.splitLayout.nextDay')"
               @click="$emit('navigate-date', 1)"
             >
               <i class="pi pi-chevron-right"></i>
@@ -65,6 +65,9 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   collapsible: {
@@ -82,11 +85,11 @@ const props = defineProps({
   },
   collapsedLabel: {
     type: String,
-    default: 'Timeline'
+    default: ''
   },
   expandedLabel: {
     type: String,
-    default: 'Movement Timeline'
+    default: ''
   },
   showDateNavigation: {
     type: Boolean,
@@ -280,16 +283,19 @@ const mainClasses = computed(() => ({
   'timeline-main--sheet-collapsed': props.collapsible && sheetState.value === 'collapsed'
 }))
 
+const effectiveCollapsedLabel = computed(() => props.collapsedLabel || t('timeline.splitLayout.defaultCollapsedLabel'))
+const effectiveExpandedLabel = computed(() => props.expandedLabel || t('timeline.splitLayout.defaultExpandedLabel'))
+
 const sheetLabel = computed(() => (
   sheetState.value === 'collapsed' && !isDragging.value
-    ? props.collapsedLabel
-    : props.expandedLabel
+    ? effectiveCollapsedLabel.value
+    : effectiveExpandedLabel.value
 ))
 
 const toggleLabel = computed(() => (
   sheetState.value === 'collapsed'
-    ? `Show ${props.expandedLabel.toLowerCase()}`
-    : `Collapse ${props.expandedLabel.toLowerCase()}`
+    ? t('timeline.splitLayout.show', { label: effectiveExpandedLabel.value.toLowerCase() })
+    : t('timeline.splitLayout.collapse', { label: effectiveExpandedLabel.value.toLowerCase() })
 ))
 
 const toggleIcon = computed(() => (

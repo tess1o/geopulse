@@ -6,13 +6,13 @@
       <div class="page-header">
         <div class="header-content">
           <div class="header-text">
-            <h1>System Settings</h1>
-            <p class="text-muted">Configure system-wide settings</p>
+            <h1>{{ t('admin.settingsPage.title') }}</h1>
+            <p class="text-muted">{{ t('admin.settingsPage.subtitle') }}</p>
           </div>
           <div class="header-actions">
             <SettingsSearchTrigger
               page-key="admin"
-              placeholder="Search system settings..."
+              :placeholder="t('admin.settingsPage.searchPlaceholder')"
               @navigate="handleSettingsSearchNavigate"
             />
           </div>
@@ -23,14 +23,14 @@
 
       <div class="settings-layout">
         <label class="mobile-settings-select">
-          <span>Settings section</span>
+          <span>{{ t('admin.settingsPage.sectionLabel') }}</span>
           <select :value="activeTab" @change="selectTab($event.target.value)">
             <optgroup v-for="group in settingsGroups" :key="group.label" :label="group.label">
               <option v-for="tab in group.items" :key="tab.key" :value="tab.key">{{ tab.label }}</option>
             </optgroup>
           </select>
         </label>
-        <nav class="settings-nav" aria-label="System settings sections">
+        <nav class="settings-nav" :aria-label="t('admin.settingsPage.navAriaLabel')">
           <section v-for="group in settingsGroups" :key="group.label" class="settings-nav-group">
             <h2>{{ group.label }}</h2>
             <button v-for="tab in group.items" :key="tab.key" type="button"
@@ -53,6 +53,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import Toast from 'primevue/toast'
 import { useToast } from 'primevue/usetoast'
@@ -76,6 +77,7 @@ import ExportSettingsTab from '@/components/admin/settings/tabs/ExportSettingsTa
 import NotificationsSettingsTab from '@/components/admin/settings/tabs/NotificationsSettingsTab.vue'
 import SystemSettingsTab from '@/components/admin/settings/tabs/SystemSettingsTab.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
@@ -85,35 +87,35 @@ const breadcrumbHome = ref({
   command: () => router.push('/')
 })
 
-const breadcrumbItems = ref([
+const breadcrumbItems = computed(() => [
   {
-    label: 'Administration',
+    label: t('admin.breadcrumb.administration'),
     command: () => router.push('/app/admin')
   },
-  { label: 'Settings' }
+  { label: t('admin.settingsPage.breadcrumbTitle') }
 ])
 
 // Tab configuration
 const activeTab = ref('authentication')
 
-const settingsGroups = ref([
-  { label: 'Access & Security', items: [
-    { label: 'Authentication', icon: 'pi pi-shield', key: 'authentication' },
-    { label: 'Notifications', icon: 'pi pi-bell', key: 'notifications' }
+const settingsGroups = computed(() => [
+  { label: t('admin.settingsPage.groups.accessSecurity'), items: [
+    { label: t('admin.settingsPage.tabs.authentication'), icon: 'pi pi-shield', key: 'authentication' },
+    { label: t('admin.settingsPage.tabs.notifications'), icon: 'pi pi-bell', key: 'notifications' }
   ] },
-  { label: 'Data Processing', items: [
-    { label: 'Import', icon: 'pi pi-upload', key: 'import' },
-    { label: 'Export', icon: 'pi pi-download', key: 'export' }
+  { label: t('admin.settingsPage.groups.dataProcessing'), items: [
+    { label: t('admin.settingsPage.tabs.import'), icon: 'pi pi-upload', key: 'import' },
+    { label: t('admin.settingsPage.tabs.export'), icon: 'pi pi-download', key: 'export' }
   ] },
-  { label: 'Integrations & Maps', items: [
-    { label: 'Geocoding', icon: 'pi pi-map-marker', key: 'geocoding' },
-    { label: 'Weather', icon: 'pi pi-cloud', key: 'weather' },
-    { label: 'Map Matching', icon: 'pi pi-map', key: 'map-matching' },
-    { label: 'Panoramax', icon: 'pi pi-images', key: 'panoramax' },
-    { label: 'Place discovery', icon: 'pi pi-compass', key: 'poi' },
-    { label: 'AI Assistant', icon: 'pi pi-sparkles', key: 'ai' }
+  { label: t('admin.settingsPage.groups.integrationsMaps'), items: [
+    { label: t('admin.settingsPage.tabs.geocoding'), icon: 'pi pi-map-marker', key: 'geocoding' },
+    { label: t('admin.settingsPage.tabs.weather'), icon: 'pi pi-cloud', key: 'weather' },
+    { label: t('admin.settingsPage.tabs.mapMatching'), icon: 'pi pi-map', key: 'map-matching' },
+    { label: t('admin.settingsPage.tabs.panoramax'), icon: 'pi pi-images', key: 'panoramax' },
+    { label: t('admin.settingsPage.tabs.poiDiscovery'), icon: 'pi pi-compass', key: 'poi' },
+    { label: t('admin.settingsPage.tabs.aiAssistant'), icon: 'pi pi-sparkles', key: 'ai' }
   ] },
-  { label: 'System', items: [{ label: 'System', icon: 'pi pi-server', key: 'system' }] }
+  { label: t('admin.settingsPage.groups.system'), items: [{ label: t('admin.settingsPage.tabs.system'), icon: 'pi pi-server', key: 'system' }] }
 ])
 
 const legacyTabAliases = {
@@ -157,8 +159,8 @@ const jumpToRouteSetting = async (settingKey, hintOverride = null) => {
     onMissing: () => {
       toast.add({
         severity: 'info',
-        summary: 'Setting not visible',
-        detail: hintOverride || 'This setting is not currently visible. Open the correct settings tab and try again.',
+        summary: t('admin.settingsPage.settingNotVisibleSummary'),
+        detail: hintOverride || t('admin.settingsPage.settingNotVisibleDetail'),
         life: 4000
       })
     }

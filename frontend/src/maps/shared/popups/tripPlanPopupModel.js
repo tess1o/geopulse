@@ -6,11 +6,11 @@
  * mounting a map.
  */
 
-const DEFAULT_STOP_TITLE = 'Planned stop'
+import { t } from '@/locales'
 
 const formatPlannedDay = (plannedDay, timezone) => {
   if (!plannedDay) {
-    return 'No day set'
+    return t('maps.popups.tripPlan.noDaySet')
   }
   if (timezone?.formatDateDisplay) {
     return timezone.formatDateDisplay(plannedDay)
@@ -20,25 +20,25 @@ const formatPlannedDay = (plannedDay, timezone) => {
 
 const resolveVisitState = (item) => {
   if (item?.manualOverrideState === 'REJECTED') {
-    return 'Not visited (manual)'
+    return t('maps.popups.tripPlan.notVisitedManual')
   }
   if (item?.isVisited) {
     const confidence = Number(item.visitConfidence)
     return Number.isFinite(confidence)
-      ? `Visited · ${Math.round(confidence * 100)}% confidence`
-      : 'Visited'
+      ? t('maps.popups.tripPlan.visitedWithConfidence', { confidence: Math.round(confidence * 100) })
+      : t('maps.popups.tripPlan.visited')
   }
-  return 'Not visited yet'
+  return t('maps.popups.tripPlan.notVisitedYet')
 }
 
 export const buildTripPlanItemPopupModel = (item, deps = {}) => {
   if (!item) {
-    return { title: DEFAULT_STOP_TITLE, variant: 'compact' }
+    return { title: t('maps.popups.tripPlan.plannedStop'), variant: 'compact' }
   }
 
   const isMust = String(item.priority || '').toUpperCase() === 'MUST'
   // Map markers carry the stop as `name`, while the plan records it as `title`.
-  const title = item.title || item.name || DEFAULT_STOP_TITLE
+  const title = item.title || item.name || t('maps.popups.tripPlan.plannedStop')
 
   return {
     title,
@@ -53,8 +53,8 @@ export const buildTripPlanItemPopupModel = (item, deps = {}) => {
     // No coordinates row: the marker is already at that position, so the numbers told
     // the user nothing and were the longest value in the card.
     rows: [
-      { label: 'Priority', value: isMust ? 'Must' : 'Optional' },
-      { label: 'Status', value: resolveVisitState(item) }
+      { label: t('maps.popups.tripPlan.priority'), value: isMust ? t('maps.popups.tripPlan.must') : t('maps.popups.tripPlan.optional') },
+      { label: t('maps.popups.common.status'), value: resolveVisitState(item) }
     ],
     variant: 'compact'
   }

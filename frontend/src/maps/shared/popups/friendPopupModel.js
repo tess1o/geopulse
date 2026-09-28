@@ -1,8 +1,9 @@
 import { buildGoogleMapsUrl } from '@/utils/googleMaps'
 import { formatDuration } from '@/utils/durationFormatter'
+import { t } from '@/locales'
 
 const getFriendName = (friend) => (
-  friend?.name || friend?.fullName || friend?.username || friend?.email || 'Friend'
+  friend?.name || friend?.fullName || friend?.username || friend?.email || t('maps.popups.friend.defaultName')
 )
 
 const getFriendUsername = (friend) => {
@@ -33,11 +34,11 @@ const formatActivity = (friend) => {
   }
 
   if (activityType === 'STAY') {
-    return `At current position for ${formatDuration(duration)}`
+    return t('maps.popups.friend.atCurrentPositionFor', { duration: formatDuration(duration) })
   }
 
   if (activityType === 'TRIP') {
-    return `Moving for ${formatDuration(duration)}`
+    return t('maps.popups.friend.movingFor', { duration: formatDuration(duration) })
   }
 
   return ''
@@ -59,31 +60,31 @@ export const buildFriendLocationPopupModel = (friend, { timezone } = {}) => {
   const rows = [
     friend?.status
       ? {
-          label: 'Status',
+          label: t('maps.popups.common.status'),
           value: friend.status
         }
       : null,
     lastSeen
       ? {
-          label: 'Last seen',
+          label: t('maps.popups.friend.lastSeen'),
           value: lastSeen
         }
       : null,
     friend?.address || friend?.location
       ? {
-          label: 'Location',
+          label: t('maps.popups.friend.location'),
           value: friend.address || friend.location
         }
       : null,
     activity
       ? {
-          label: 'Activity',
+          label: t('maps.popups.friend.activity'),
           value: activity
         }
       : null,
     battery
       ? {
-          label: 'Battery',
+          label: t('maps.popups.common.battery'),
           value: battery
         }
       : null
@@ -98,14 +99,14 @@ export const buildFriendLocationPopupModel = (friend, { timezone } = {}) => {
     title: getFriendName(friend),
     subtitle: getFriendUsername(friend),
     avatarUrl: getFriendAvatarUrl(friend),
-    avatarAlt: `${getFriendName(friend)} avatar`,
+    avatarAlt: t('maps.popups.friend.avatarAlt', { name: getFriendName(friend) }),
     iconClass: 'pi pi-user',
     rows,
     actions: googleMapsUrl
       ? [
           {
             key: 'open-google-maps',
-            label: 'Open in Google Maps',
+            label: t('maps.popups.friend.openInGoogleMaps'),
             iconClass: 'pi pi-external-link',
             href: googleMapsUrl,
             target: '_blank',

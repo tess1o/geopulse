@@ -8,7 +8,7 @@
     class="photo-viewer-dialog"
     :content-style="{ padding: '0' }"
     :dismissable-mask="true"
-    aria-label="Photo viewer"
+    :aria-label="t('photoViewer.dialogAriaLabel')"
     @update:visible="handleDialogVisibilityChange"
   >
     <div
@@ -36,7 +36,7 @@
           <img
             v-if="currentImageBlobUrl && !imageError"
             :src="currentImageBlobUrl"
-            :alt="currentPhoto?.originalFileName || 'Photo'"
+            :alt="currentPhoto?.originalFileName || t('photoViewer.fallbackName')"
             class="main-photo"
             draggable="false"
             @load="handleImageLoad"
@@ -45,12 +45,12 @@
 
           <div v-if="imageLoading" class="image-status image-loading" role="status">
             <ProgressSpinner class="image-spinner" />
-            <p>Loading photo…</p>
+            <p>{{ t('photoViewer.loading') }}</p>
           </div>
 
           <div v-else-if="imageError" class="image-status image-error" role="alert">
             <i class="pi pi-exclamation-triangle"></i>
-            <p>Failed to load photo thumbnail</p>
+            <p>{{ t('photoViewer.loadError') }}</p>
           </div>
         </div>
 
@@ -59,8 +59,8 @@
             <button
               type="button"
               class="viewer-icon-button"
-              aria-label="Close photo viewer"
-              title="Close"
+              :aria-label="t('photoViewer.closeAriaLabel')"
+              :title="t('photoViewer.close')"
               data-testid="photo-viewer-close"
               @pointerdown.stop
               @click.stop="handleClose"
@@ -74,7 +74,7 @@
           </div>
 
           <span v-if="hasMultiplePhotos" class="photo-counter" aria-live="polite">
-            {{ currentIndex + 1 }} / {{ photos.length }}
+            {{ t('photoViewer.counter', { current: currentIndex + 1, total: photos.length }) }}
           </span>
 
           <div class="viewer-toolbar-actions">
@@ -84,8 +84,8 @@
               class="viewer-icon-button desktop-toolbar-action"
               :class="{ 'is-loading': downloading }"
               :disabled="downloading"
-              aria-label="Download original photo"
-              title="Download original"
+              :aria-label="t('photoViewer.downloadAriaLabel')"
+              :title="t('photoViewer.download')"
               @pointerdown.stop
               @click.stop="downloadPhoto"
             >
@@ -96,8 +96,8 @@
               class="viewer-icon-button desktop-toolbar-action"
               :class="{ 'is-active': detailsOpen }"
               :aria-pressed="detailsOpen"
-              aria-label="Toggle photo details"
-              title="Photo details"
+              :aria-label="t('photoViewer.toggleDetailsAriaLabel')"
+              :title="t('photoViewer.details.heading')"
               @pointerdown.stop
               @click.stop="toggleDetails"
             >
@@ -111,7 +111,7 @@
             type="button"
             class="photo-nav-button photo-nav-previous viewer-chrome"
             :disabled="currentIndex === 0"
-            aria-label="Previous photo"
+            :aria-label="t('photoViewer.nav.previous')"
             @pointerdown.stop
             @click.stop="previousPhoto"
           >
@@ -121,7 +121,7 @@
             type="button"
             class="photo-nav-button photo-nav-next viewer-chrome"
             :disabled="currentIndex === photos.length - 1"
-            aria-label="Next photo"
+            :aria-label="t('photoViewer.nav.next')"
             @pointerdown.stop
             @click.stop="nextPhoto"
           >
@@ -133,7 +133,7 @@
           <button
             type="button"
             class="thumbnail-scroll-button"
-            aria-label="Scroll thumbnails left"
+            :aria-label="t('photoViewer.thumbnails.scrollLeft')"
             @pointerdown.stop
             @click.stop="scrollThumbnailRail(-1)"
           >
@@ -149,13 +149,13 @@
               :class="{ 'is-active': index === currentIndex }"
               :data-photo-index="index"
               :aria-current="index === currentIndex ? 'true' : undefined"
-              :aria-label="`Show photo ${index + 1}`"
+              :aria-label="t('photoViewer.thumbnails.showPhoto', { index: index + 1 })"
               @click="selectPhoto(index)"
             >
               <img
                 v-if="getPhotoBlobUrl(photo.id)"
                 :src="getPhotoBlobUrl(photo.id)"
-                :alt="photo.originalFileName || `Photo ${index + 1}`"
+                :alt="photo.originalFileName || t('photoViewer.thumbnails.altFallback', { index: index + 1 })"
                 class="thumbnail-image"
                 draggable="false"
               />
@@ -173,7 +173,7 @@
           <button
             type="button"
             class="thumbnail-scroll-button"
-            aria-label="Scroll thumbnails right"
+            :aria-label="t('photoViewer.thumbnails.scrollRight')"
             @pointerdown.stop
             @click.stop="scrollThumbnailRail(1)"
           >
@@ -182,19 +182,19 @@
         </div>
 
         <div v-if="currentPhoto" class="mobile-photo-summary viewer-chrome">
-          <strong>{{ currentPhoto.originalFileName || 'Photo' }}</strong>
+          <strong>{{ currentPhoto.originalFileName || t('photoViewer.fallbackName') }}</strong>
           <span v-if="currentPhoto.takenAt">{{ formatCompactDate(currentPhoto.takenAt) }}</span>
         </div>
       </main>
 
-      <aside v-if="currentPhoto" class="photo-details-panel" aria-label="Photo details">
+      <aside v-if="currentPhoto" class="photo-details-panel" :aria-label="t('photoViewer.details.heading')">
         <div class="details-panel-header">
-          <strong>Photo details</strong>
+          <strong>{{ t('photoViewer.details.heading') }}</strong>
           <button
             type="button"
             class="details-close-button"
-            aria-label="Close photo details"
-            title="Close details"
+            :aria-label="t('photoViewer.details.closeAriaLabel')"
+            :title="t('photoViewer.details.closeTitle')"
             @click="toggleDetails"
           >
             <i class="pi pi-times"></i>
@@ -205,14 +205,14 @@
           <div class="detail-item">
             <i class="pi pi-file"></i>
             <div>
-              <span>File</span>
-              <strong>{{ currentPhoto.originalFileName || 'Photo' }}</strong>
+              <span>{{ t('photoViewer.details.file') }}</span>
+              <strong>{{ currentPhoto.originalFileName || t('photoViewer.fallbackName') }}</strong>
             </div>
           </div>
           <div v-if="currentPhoto.takenAt" class="detail-item">
             <i class="pi pi-clock"></i>
             <div>
-              <span>Taken</span>
+              <span>{{ t('photoViewer.details.taken') }}</span>
               <strong>{{ formatDate(currentPhoto.takenAt) }}</strong>
             </div>
           </div>
@@ -221,7 +221,7 @@
             <div class="location-card-copy">
               <span class="location-icon"><i class="pi pi-map-marker"></i></span>
               <div>
-                <span>Location</span>
+                <span>{{ t('photoViewer.details.location') }}</span>
                 <strong>{{ preciseCoordinates }}</strong>
               </div>
             </div>
@@ -232,7 +232,7 @@
               @click="showOnMap"
             >
               <i class="pi pi-map"></i>
-              <span>Show on Map</span>
+              <span>{{ t('photoViewer.showOnMap') }}</span>
             </button>
           </div>
         </div>
@@ -241,7 +241,7 @@
       <section
         v-if="currentPhoto"
         class="mobile-details-sheet viewer-chrome"
-        :aria-label="detailsOpen ? 'Expanded photo details' : 'Photo details'"
+        :aria-label="detailsOpen ? t('photoViewer.details.expandedAriaLabel') : t('photoViewer.details.heading')"
       >
         <div class="mobile-sheet-bar">
           <button
@@ -253,7 +253,7 @@
           >
             <span class="mobile-sheet-grip"></span>
             <span class="mobile-sheet-copy">
-              <strong>Photo details</strong>
+              <strong>{{ t('photoViewer.details.heading') }}</strong>
               <small>{{ mobileDetailSummary }}</small>
             </span>
             <i :class="detailsOpen ? 'pi pi-chevron-down' : 'pi pi-chevron-up'"></i>
@@ -264,8 +264,8 @@
               v-if="hasCoordinates && allowShowOnMap"
               type="button"
               class="mobile-action-icon"
-              aria-label="Show photo on map"
-              title="Show on Map"
+              :aria-label="t('photoViewer.showOnMapAriaLabel')"
+              :title="t('photoViewer.showOnMap')"
               @pointerdown.stop
               @click.stop="showOnMap"
             >
@@ -276,8 +276,8 @@
               type="button"
               class="mobile-action-icon"
               :disabled="downloading"
-              aria-label="Download original photo"
-              title="Download original"
+              :aria-label="t('photoViewer.downloadAriaLabel')"
+              :title="t('photoViewer.download')"
               @pointerdown.stop
               @click.stop="downloadPhoto"
             >
@@ -289,15 +289,15 @@
         <div v-if="detailsOpen" class="mobile-sheet-content">
           <div class="detail-item">
             <i class="pi pi-file"></i>
-            <div><span>File</span><strong>{{ currentPhoto.originalFileName || 'Photo' }}</strong></div>
+            <div><span>{{ t('photoViewer.details.file') }}</span><strong>{{ currentPhoto.originalFileName || t('photoViewer.fallbackName') }}</strong></div>
           </div>
           <div v-if="currentPhoto.takenAt" class="detail-item">
             <i class="pi pi-clock"></i>
-            <div><span>Taken</span><strong>{{ formatDate(currentPhoto.takenAt) }}</strong></div>
+            <div><span>{{ t('photoViewer.details.taken') }}</span><strong>{{ formatDate(currentPhoto.takenAt) }}</strong></div>
           </div>
           <div v-if="hasCoordinates" class="detail-item">
             <i class="pi pi-map-marker"></i>
-            <div><span>Location</span><strong>{{ preciseCoordinates }}</strong></div>
+            <div><span>{{ t('photoViewer.details.location') }}</span><strong>{{ preciseCoordinates }}</strong></div>
           </div>
           <div class="mobile-sheet-actions">
             <button
@@ -306,7 +306,7 @@
               class="details-action-button"
               @click="showOnMap"
             >
-              <i class="pi pi-map"></i><span>Show on Map</span>
+              <i class="pi pi-map"></i><span>{{ t('photoViewer.showOnMap') }}</span>
             </button>
             <button
               v-if="currentPhoto.downloadUrl"
@@ -316,7 +316,7 @@
               @click="downloadPhoto"
             >
               <i :class="downloading ? 'pi pi-spin pi-spinner' : 'pi pi-download'"></i>
-              <span>{{ downloading ? 'Downloading…' : 'Download Original' }}</span>
+              <span>{{ downloading ? t('photoViewer.downloading') : t('photoViewer.downloadOriginal') }}</span>
             </button>
           </div>
         </div>
@@ -327,12 +327,14 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { imageService } from '@/utils/imageService'
 import { useTimezone } from '@/composables/useTimezone'
 
+const { t } = useI18n()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -396,13 +398,13 @@ const currentPhoto = computed(() => {
 const hasMultiplePhotos = computed(() => props.photos.length > 1)
 
 const dialogTitle = computed(() => {
-  if (!currentPhoto.value) return 'Photo Viewer'
+  if (!currentPhoto.value) return t('photoViewer.title.default')
 
   if (hasMultiplePhotos.value) {
-    return `Photos (${currentIndex.value + 1}/${props.photos.length})`
+    return t('photoViewer.title.multiple', { current: currentIndex.value + 1, total: props.photos.length })
   }
 
-  return currentPhoto.value.originalFileName || 'Photo'
+  return currentPhoto.value.originalFileName || t('photoViewer.fallbackName')
 })
 
 const hasCoordinates = computed(() => {
@@ -424,7 +426,7 @@ const mobileDetailSummary = computed(() => {
   if (currentPhoto.value?.takenAt) {
     return formatCompactDate(currentPhoto.value.takenAt)
   }
-  return currentPhoto.value?.originalFileName || 'Photo information'
+  return currentPhoto.value?.originalFileName || t('photoViewer.mobileSummary.fallbackInfo')
 })
 
 const toSafeIndex = (index) => {
@@ -968,16 +970,16 @@ const downloadPhoto = async () => {
     
     toast.add({
       severity: 'success',
-      summary: 'Download Started',
-      detail: 'Photo download has begun',
+      summary: t('photoViewer.toasts.downloadStarted.summary'),
+      detail: t('photoViewer.toasts.downloadStarted.detail'),
       life: 3000
     })
   } catch (error) {
     console.error('Failed to download photo:', error)
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Could not download photo',
+      summary: t('photoViewer.toasts.downloadFailed.summary'),
+      detail: t('photoViewer.toasts.downloadFailed.detail'),
       life: 5000
     })
   } finally {

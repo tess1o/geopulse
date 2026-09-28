@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Place discovery">
+    <SettingSection :title="t('admin.settingsPage.tabs.poiDiscovery')">
       <SettingItem v-for="setting in basicSettings" :key="setting.key" :setting="setting" @reset="resetSetting(setting)">
         <template #control="{ setting }">
           <InputSwitch
@@ -18,7 +18,7 @@
       </SettingItem>
 
       <div class="section-actions">
-        <Button label="Test endpoints" icon="pi pi-check" :loading="testing" @click="testEndpoints" />
+        <Button :label="t('adminSettings.poiTab.testEndpoints')" icon="pi pi-check" :loading="testing" @click="testEndpoints" />
       </div>
 
       <Message v-if="testMessage" :severity="testSuccess ? 'success' : 'error'">
@@ -27,11 +27,10 @@
     </SettingSection>
 
     <details class="advanced-settings">
-      <summary>Advanced settings</summary>
-      <SettingSection title="Endpoints, limits and caching">
+      <summary>{{ t('adminSettings.poiTab.advancedSettings') }}</summary>
+      <SettingSection :title="t('adminSettings.poiTab.endpointsLimitsCaching')">
         <p class="advanced-hint">
-          Endpoints can be pointed at self-hosted instances. Longer cache lifetimes mean fewer
-          requests to shared public infrastructure.
+          {{ t('adminSettings.poiTab.advancedHint') }}
         </p>
         <SettingItem v-for="setting in advancedSettings" :key="setting.key" :setting="setting" @reset="resetSetting(setting)">
           <template #control="{ setting }">
@@ -62,6 +61,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import InputSwitch from 'primevue/inputswitch'
@@ -73,6 +73,7 @@ import { useAdminSettings } from '@/composables/useAdminSettings'
 import { useAdminStore } from '@/stores/admin'
 import { formatApiErrorDetail } from '@/utils/apiErrorDetail'
 
+const { t } = useI18n()
 const { loadSettings, updateSetting, resetSetting } = useAdminSettings()
 const adminStore = useAdminStore()
 
@@ -111,12 +112,12 @@ const testEndpoints = async () => {
     // Report each endpoint separately: Wikidata can be down while Commons is fine, which
     // would mean places load without photos.
     const parts = []
-    parts.push(response.wikidataSuccess ? 'Wikidata OK' : `Wikidata failed: ${response.wikidataDetail}`)
-    parts.push(response.commonsSuccess ? 'Commons OK' : `Commons failed: ${response.commonsDetail}`)
+    parts.push(response.wikidataSuccess ? t('adminSettings.poiTab.wikidataOk') : t('adminSettings.poiTab.wikidataFailed', { detail: response.wikidataDetail }))
+    parts.push(response.commonsSuccess ? t('adminSettings.poiTab.commonsOk') : t('adminSettings.poiTab.commonsFailed', { detail: response.commonsDetail }))
     testMessage.value = parts.join(' · ')
   } catch (error) {
     testSuccess.value = false
-    testMessage.value = formatApiErrorDetail(error, 'Endpoint test failed')
+    testMessage.value = formatApiErrorDetail(error, t('adminSettings.poiTab.testFailedFallback'))
   } finally {
     testing.value = false
   }

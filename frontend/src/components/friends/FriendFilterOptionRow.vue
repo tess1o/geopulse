@@ -12,12 +12,16 @@
     <span
         class="friend-status-dot"
         :class="{ 'friend-status-dot--online': option.isOnline }"
-        :title="option.isOnline ? 'Online now' : 'Last seen recently'"
+        :title="option.isOnline ? t('friends.filters.onlineNow') : t('friends.filters.lastSeenRecently')"
     ></span>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 defineProps({
   option: {
     type: Object,

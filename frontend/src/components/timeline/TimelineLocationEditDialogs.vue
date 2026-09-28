@@ -2,7 +2,7 @@
   <EditFavoriteDialog
     v-if="selectedFavorite"
     :visible="favoriteVisible"
-    :header="'Edit Favorite Location'"
+    :header="t('timeline.locationEdit.editFavoriteHeader')"
     :favorite-location="selectedFavorite"
     @edit-favorite="$emit('save-favorite', $event)"
     @close="$emit('close-favorite')"
@@ -25,9 +25,12 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
+
+const { t } = useI18n()
 
 defineProps({
   favoriteVisible: {
