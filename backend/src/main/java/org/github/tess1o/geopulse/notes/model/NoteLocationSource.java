@@ -5,5 +5,6 @@ public enum NoteLocationSource {
     DERIVED_STAY,
     DERIVED_TRIP_GPS,
     DERIVED_TRIP_INTERPOLATED,
+    DERIVED_GAP_NEIGHBOR,
     NONE
 }

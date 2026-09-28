@@ -1,5 +1,5 @@
 export default {
-    // Live progress messages sent by the backend as a MessageDescriptor ({key, params, fallback}) via
+    // Live progress messages sent by the backend as a MessageDescriptor ({key, parameters, fallback}) via
     // `formatMessageDescriptor()`. Keys here are the `timelineJobs.progressMessages.*` suffixes the
     // backend appends (see TimelineJobProgressService.step()). Not every backend-recognized key has an
     // entry -- an unmapped key safely falls back to the backend's English `fallback` text.

@@ -45,9 +45,12 @@ const insights = {
     byUnknown: 0.4
   },
   timePatterns: {
-    mostActiveMonth: 'August',
-    busiestDayOfWeek: 'Saturday',
-    mostActiveTime: '3:30 PM'
+    mostActiveYearMonth: '2026-08',
+    monthlyComparison: { key: 'insights.patterns.monthlyComparison.faster', parameters: { percent: 12 }, fallback: '12% faster pace than your best month!' },
+    busiestDayOfWeek: 6, // ISO-8601: Saturday
+    dayInsight: { key: 'insights.patterns.dayInsight.weekend', parameters: {}, fallback: 'Perfect for weekend adventures!' },
+    mostActiveHour: 15,
+    timeInsight: { key: 'insights.patterns.timeInsight.evening', parameters: {}, fallback: 'Evening adventurer' }
   },
   achievements: {
     badges: [
@@ -114,6 +117,22 @@ describe('JourneyInsights', () => {
     expect(wrapper.text()).toContain('92%')
   })
 
+  it('formats time patterns from locale-neutral backend data and resolves their MessageDescriptor insight text', () => {
+    const wrapper = mountPage()
+
+    // mostActiveYearMonth ('2026-08') and busiestDayOfWeek (6, ISO-8601 Saturday) are locale-neutral
+    // so the frontend formats them via dayjs against the active locale, same as the rest of the app.
+    expect(wrapper.text()).toContain('August 2026')
+    expect(wrapper.text()).toContain('Saturday')
+    // mostActiveHour (15) plus the fixed :30 bucket, formatted per the test profile's 24h preference.
+    expect(wrapper.text()).toContain('15:30')
+    // monthlyComparison/dayInsight/timeInsight are MessageDescriptors; { percent: 12 } interpolates
+    // into the catalog's `{percent}` placeholder rather than the backend's pre-formatted fallback.
+    expect(wrapper.text()).toContain('12% faster pace than your best month!')
+    expect(wrapper.text()).toContain('Perfect for weekend adventures!')
+    expect(wrapper.text()).toContain('Evening adventurer')
+  })
+
   it('shows the empty state when insights have not loaded', () => {
     useJourneyInsightsStore().$patch({ insights: null, loading: false })
     useAuthStore().$patch({ user: { distanceUnit: 'KILOMETERS', temperatureUnit: 'CELSIUS' } })
@@ -154,14 +173,29 @@ describe('JourneyInsights', () => {
       expect(wrapper.text()).toContain('Серії активності')
     })
 
-    it('leaves badge titles and descriptions in English', () => {
+    it('formats and translates time patterns', () => {
       const wrapper = mountPage()
 
-      // The deliberate carve-out: badges are served and persisted by the backend, so with no catalog
-      // entry the te() guard keeps the API's own text rather than leaking a dotted key.
-      expect(wrapper.text()).toContain('Planet Circler')
-      expect(wrapper.text()).toContain('Travel 500,000+ km total')
-      expect(wrapper.text()).toContain('Daily Habit Starter')
+      // Month/weekday names come from dayjs's own uk locale (switched globally by setLocale), not
+      // from any catalog entry of ours.
+      expect(wrapper.text()).toContain('серпень 2026')
+      expect(wrapper.text()).toContain('субота')
+      // The MessageDescriptor keys resolve through locales/uk/insights.js's `patterns.*` catalog.
+      expect(wrapper.text()).toContain('На 12% швидший темп, ніж у вашому найкращому місяці!')
+      expect(wrapper.text()).toContain('Ідеально для вихідних пригод!')
+      expect(wrapper.text()).toContain('Вечірній мандрівник')
+    })
+
+    it('translates badge titles and descriptions from the badges catalog', () => {
+      const wrapper = mountPage()
+
+      // Badges are served and persisted by the backend in English, but the frontend keeps its own
+      // `badges.<id>.*` catalog (locales/uk/badges.js) keyed by the backend's locale-neutral badge id,
+      // so a badge with a catalog entry renders translated rather than leaking the API's English text.
+      expect(wrapper.text()).toContain('Володар планети')
+      expect(wrapper.text()).toContain('Подолайте 500 000+ км сумарно')
+      expect(wrapper.text()).toContain('Початок звички')
+      expect(wrapper.text()).not.toContain('Planet Circler')
       expect(wrapper.text()).not.toContain('badges.')
       // The surrounding status chip is chrome and does translate.
       expect(wrapper.text()).toContain('Отримано')

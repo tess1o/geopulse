@@ -132,6 +132,7 @@ public class MilestoneEvaluator {
                     description = String.format(threshold.descriptionTemplate(), value);
                 }
 
+                String periodType = isMonthly ? "monthly" : "yearly";
                 return Milestone.builder()
                         .id(threshold.id())
                         .title(new MessageDescriptor(
@@ -139,8 +140,8 @@ public class MilestoneEvaluator {
                                 Map.of(),
                                 threshold.title()))
                         .description(new MessageDescriptor(
-                                "digest.milestone." + threshold.id() + ".description",
-                                Map.of("value", value, "periodType", isMonthly ? "monthly" : "yearly"),
+                                "digest.milestone." + threshold.id() + ".description." + periodType,
+                                Map.of("value", Math.round(value)),
                                 description))
                         .icon(threshold.icon())
                         .tier(threshold.tier())

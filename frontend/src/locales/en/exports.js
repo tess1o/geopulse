@@ -1,5 +1,5 @@
 /**
- * Live progress messages sent by the backend as a MessageDescriptor ({key, params, fallback}) via
+ * Live progress messages sent by the backend as a MessageDescriptor ({key, parameters, fallback}) via
  * `formatMessageDescriptor()` for export jobs (CSV/GeoJSON/OwnTracks/GPX/full GeoPulse export). Keys
  * here are the `exports.progressMessages.*` suffixes the backend appends (see
  * `ExportJob.step()`/`ExportJob.STEP_KEY_PREFIX`). Not every backend-recognized key necessarily has an

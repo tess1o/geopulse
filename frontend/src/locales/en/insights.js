@@ -3,9 +3,10 @@
  *
  * EN values are verbatim from the previous literals -- the page's test asserts on this exact copy.
  *
- * Not included here: achievement badge titles and descriptions, which stay English for now. They are
- * served by the backend and persisted in `user_badges`, so they are translated by badge id at some
- * later point (see the lookup in JourneyInsights.vue) rather than through this file's page chrome.
+ * Not included here: achievement badge titles and descriptions. Those are served by the backend and
+ * persisted in `user_badges` with English text baked in, so they are translated separately, by badge
+ * id, in `./badges.js` (see the lookup in JourneyInsights.vue) rather than through this file's page
+ * chrome.
  */
 export default {
     page: {
@@ -53,7 +54,30 @@ export default {
         mostActiveMonthDetail: 'Your historical peak activity period',
         currentMonth: 'Current month',
         busiestDay: 'Busiest day',
-        mostActiveTime: 'Most active time'
+        mostActiveTime: 'Most active time',
+        // Resolved from a backend `MessageDescriptor` via `formatMessageDescriptor()` -- see
+        // TimePatternService.java for when each key is chosen.
+        monthlyComparison: {
+            earlyDays: 'Early days - keep exploring!',
+            noActivity: 'No activity recorded this month yet',
+            noBaseline: 'First month of tracking',
+            noRate: 'Building your activity history',
+            similar: 'Similar pace to your best month',
+            faster: '{percent}% faster pace than your best month!',
+            slower: '{percent}% slower pace than your best month'
+        },
+        dayInsight: {
+            noActivity: 'Keep exploring to find your pattern!',
+            weekend: 'Perfect for weekend adventures!',
+            friday: 'Ready for the weekend!',
+            monday: 'Starting the week strong!',
+            midweek: 'Making the most of midweek!'
+        },
+        timeInsight: {
+            noActivity: 'Keep exploring to find your pattern!',
+            earlyBird: 'Early bird explorer',
+            evening: 'Evening adventurer'
+        }
     },
     milestones: {
         title: 'Journey milestones',

@@ -77,6 +77,7 @@
 import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
+import dayjs from 'dayjs'
 import ProgressSpinner from 'primevue/progressspinner'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -86,9 +87,15 @@ import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useTimezone } from '@/composables/useTimezone'
 import { getCountryFlagClass } from '@/utils/countryFlags'
 import { formatDistanceRounded } from '@/utils/calculationsHelpers'
+import { formatMessageDescriptor } from '@/utils/messageDescriptor'
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
 import { useAuthStore } from '@/stores/auth'
 import { te } from '@/locales'
+
+// A known Monday, used only to turn an ISO-8601 day-of-week number (1=Monday..7=Sunday, as sent by
+// TimePatternService.java) into a weekday name via dayjs's active locale -- the actual date is
+// irrelevant, only its weekday.
+const REFERENCE_MONDAY = '2024-01-01'
 
 const ACHIEVEMENT_CATEGORIES = [
   // `matches` keys off the backend's locale-neutral badge ids and must stay untouched by translation;
@@ -136,21 +143,23 @@ const citiesCount = computed(() => geographic.value.cities?.length || 0)
 const formattedTotalDistance = computed(() => formatDistanceRounded((Number(distanceTraveled.value.total) || 0) * 1000))
 
 const localMostActiveTime = computed(() => {
-  const utcTime = timePatterns.value.mostActiveTime
-  if (!utcTime) return 'N/A'
-  try {
-    const time24 = utcTime.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (_, hours, minutes, period) => {
-      let hour = Number(hours)
-      if (period.toUpperCase() === 'PM' && hour !== 12) hour += 12
-      if (period.toUpperCase() === 'AM' && hour === 12) hour = 0
-      return `${String(hour).padStart(2, '0')}:${minutes}`
-    })
-    const [hours, minutes] = time24.split(':').map(Number)
-    return timezone.formatTime(timezone.now().startOf('day').utc().hour(hours).minute(minutes).toISOString())
-  } catch (error) {
-    console.error('Error converting time to local timezone:', error)
-    return utcTime
-  }
+  const hour = timePatterns.value.mostActiveHour
+  if (hour === null || hour === undefined) return 'N/A'
+  // Minute is fixed at :30 -- the backend only buckets activity by hour, so this reads as "somewhere
+  // in the {hour} o'clock hour" rather than an exact timestamp.
+  return timezone.formatTime(timezone.now().startOf('day').utc().hour(hour).minute(30).toISOString())
+})
+
+const mostActiveMonthDisplay = computed(() => {
+  const yearMonth = timePatterns.value.mostActiveYearMonth
+  if (!yearMonth) return 'N/A'
+  return timezone.create(`${yearMonth}-01`).format('MMMM YYYY')
+})
+
+const busiestDayDisplay = computed(() => {
+  const isoDayOfWeek = timePatterns.value.busiestDayOfWeek
+  if (!isoDayOfWeek) return 'N/A'
+  return dayjs(REFERENCE_MONDAY).add(isoDayOfWeek - 1, 'day').format('dddd')
 })
 
 const displayedCountries = computed(() => (geographic.value.countries || []).map((country) => ({ ...country, flagClass: getCountryFlagClass(country.name) })))
@@ -169,20 +178,20 @@ const movementModes = computed(() => {
   return MOVEMENT_MODES.map((mode) => ({ ...mode, label: t(`insights.movement.${mode.key}`), value: Number(distanceTraveled.value[mode.key]) || 0 })).filter((mode) => mode.value > 0).map((mode) => ({ ...mode, distance: formatDistanceRounded(mode.value * 1000), share: Math.max(1, Math.round((mode.value / total) * 100)) }))
 })
 const patternCards = computed(() => [
-  { icon: '📅', label: t('insights.patterns.mostActiveMonth'), value: timePatterns.value.mostActiveMonth || 'N/A', detail: t('insights.patterns.mostActiveMonthDetail') },
-  { icon: '📊', label: t('insights.patterns.currentMonth'), value: timezone.format(timezone.now(), 'MMMM YYYY'), detail: timePatterns.value.monthlyComparison },
-  { icon: '📍', label: t('insights.patterns.busiestDay'), value: timePatterns.value.busiestDayOfWeek || 'N/A', detail: timePatterns.value.dayInsight },
-  { icon: '🕐', label: t('insights.patterns.mostActiveTime'), value: localMostActiveTime.value, detail: timePatterns.value.timeInsight }
+  { icon: '📅', label: t('insights.patterns.mostActiveMonth'), value: mostActiveMonthDisplay.value, detail: t('insights.patterns.mostActiveMonthDetail') },
+  { icon: '📊', label: t('insights.patterns.currentMonth'), value: timezone.format(timezone.now(), 'MMMM YYYY'), detail: formatMessageDescriptor(timePatterns.value.monthlyComparison) },
+  { icon: '📍', label: t('insights.patterns.busiestDay'), value: busiestDayDisplay.value, detail: formatMessageDescriptor(timePatterns.value.dayInsight) },
+  { icon: '🕐', label: t('insights.patterns.mostActiveTime'), value: localMostActiveTime.value, detail: formatMessageDescriptor(timePatterns.value.timeInsight) }
 ])
 const fetchJourneyInsights = async () => {
   try { await journeyInsightsStore.fetchJourneyInsights() } catch (error) { console.error('Error fetching journey insights:', error); handleErrorWithRetry(error, fetchJourneyInsights) }
 }
 
-// Achievement badges stay English for now: the backend serves and persists their title/description in
-// `user_badges`, so there is no catalog entry for them. The lookup is keyed by the locale-neutral badge
-// id and guarded by te(), which means translating a badge later is a catalog addition -- no change
-// here. te() returns false when neither the active locale nor the fallback has the key, which is what
-// keeps the backend's English text in place instead of a raw dotted key.
+// The backend serves and persists badge title/description in `user_badges` as English text, so
+// translations live in the frontend catalog under `badges.<id>.*` (see locales/en/badges.js) keyed by
+// the locale-neutral badge id. te() returns false when neither the active locale nor the fallback has
+// the key, which keeps the backend's English text in place instead of a raw dotted key for any badge
+// a locale hasn't caught up on yet.
 const badgeText = (badge, field, fallback) => {
   const key = `badges.${badge.id}.${field}`
   return te(key) ? t(key) : fallback

@@ -190,10 +190,12 @@ describe('te() guard', () => {
     })
 
     it('reports false for keys with no catalog entry, so callers keep their English fallback', () => {
-        // These are exactly the backend-emitted keys this pilot deliberately leaves untranslated.
+        // A backend-emitted key this pilot deliberately leaves untranslated, plus badge/milestone ids
+        // that don't exist -- both `badges.*` and `digest.milestone.*` are otherwise populated (see
+        // en/badges.js, en/digest.js) since real backend-emitted ids resolve through them.
         expect(te('validation.notBlank')).toBe(false)
-        expect(te('badges.busy_bee.title')).toBe(false)
-        expect(te('digest.milestone.some_id.title')).toBe(false)
+        expect(te('badges.no_such_badge.title')).toBe(false)
+        expect(te('digest.milestone.no_such_id.title')).toBe(false)
     })
 
     it('is what stops an unmapped key leaking to the user', () => {

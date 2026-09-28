@@ -2,6 +2,7 @@ import nav from './nav.js'
 import common from './common.js'
 import errors from './errors.js'
 import insights from './insights.js'
+import badges from './badges.js'
 import movementTypes from './movementTypes.js'
 import profile from './profile/index.js'
 import settings from './settings.js'
@@ -17,6 +18,7 @@ import adminProviderSettings from './adminProviderSettings.js'
 import adminAuditInvitations from './adminAuditInvitations.js'
 import adminCampaignsAndUsers from './adminCampaignsAndUsers.js'
 import analytics from './analytics.js'
+import digest from './digest.js'
 import maps from './maps.js'
 import ui from './ui.js'
 import notifications from './notifications.js'
@@ -54,6 +56,7 @@ export default {
     common,
     errors,
     insights,
+    badges,
     movementTypes,
     profile,
     settings,
@@ -69,6 +72,7 @@ export default {
     adminAuditInvitations,
     adminCampaignsAndUsers,
     analytics,
+    digest,
     maps,
     ui,
     notifications,
