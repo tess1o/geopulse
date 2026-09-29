@@ -105,14 +105,16 @@ public class TimelineNoteLocationService {
             }
 
             // Note falls inside a GPS data gap (not covered by any stay or trip).
-            // Snap it to whichever adjacent stay/trip boundary is closest in time.
+            // Snap its displayed location to whichever adjacent stay/trip boundary is
+            // closest in time, purely for map placement - but do NOT anchor it there.
+            // The note's own eventTime still falls inside the gap, so it must remain
+            // timestamp-matchable to that gap's card rather than hijacked onto a
+            // neighbor's card whose time window doesn't actually contain it.
             AdjacentAnchor nearest = findNearestAdjacentAnchor(stays, trips, note.getEventTime());
             if (nearest != null) {
                 note.setLatitude(nearest.latitude());
                 note.setLongitude(nearest.longitude());
                 note.setLocationSource(NoteLocationSource.DERIVED_GAP_NEIGHBOR);
-                note.setAnchorType(nearest.type());
-                note.setAnchorId(nearest.id());
             }
         }
     }

@@ -180,15 +180,27 @@
               v-if="slotProps.item.type === 'dataGap' && isOvernightItem(slotProps.item)"
               :data-gap-item="slotProps.item"
               :current-date="dateGroup.date"
+              :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
+              @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
 
             <DataGapCard
               v-else-if="slotProps.item.type === 'dataGap'"
               :data-gap-item="slotProps.item"
+              :immich-photos="immichPhotosForCards"
+              :immich-photo-auth-token="props.photoAuthToken"
+              :notes="notesForCards"
+              :allow-note-creation="!isPublicView"
               @click="handleTimelineItemClick"
               @convert-to-stay="handleConvertDataGapToStay"
+              @photo-show-on-map="handlePhotoShowOnMap"
+              @note-saved="handleNoteSaved"
             />
             </div>
           </template>

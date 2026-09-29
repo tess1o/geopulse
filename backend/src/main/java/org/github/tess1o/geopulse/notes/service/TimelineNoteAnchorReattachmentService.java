@@ -8,8 +8,10 @@ import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
 import org.github.tess1o.geopulse.notes.model.TimelineNoteEntity;
 import org.github.tess1o.geopulse.notes.repository.TimelineNoteRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 
@@ -33,6 +35,9 @@ public class TimelineNoteAnchorReattachmentService {
 
     @Inject
     TimelineTripRepository tripRepository;
+
+    @Inject
+    TimelineDataGapRepository dataGapRepository;
 
     @Inject
     TimelineNoteLocationService locationService;
@@ -66,10 +71,18 @@ public class TimelineNoteAnchorReattachmentService {
                         .minusSeconds(maxTimestampDeltaSeconds),
                 Instant.now().plusSeconds(maxTimestampDeltaSeconds)
         );
+        List<TimelineDataGapEntity> gaps = findDataGapsCoveringNotes(userId, notes);
 
         int count = 0;
         Set<Long> matchedStayIds = new HashSet<>();
         for (TimelineNoteEntity note : notes) {
+            if (overlapsDataGap(note.getSourceItemStartTime(), gaps)) {
+                // The note's original stay was reprocessed into a data gap, not a new stay -
+                // leave it as a plain timestamp-anchored note rather than force-linking it to
+                // an unrelated nearby stay.
+                note.setAnchorType(NoteAnchorType.TIMESTAMP);
+                continue;
+            }
             TimelineStayEntity best = findBestStayMatch(note, candidates, matchedStayIds);
             if (best == null) {
                 continue;
@@ -88,9 +101,18 @@ public class TimelineNoteAnchorReattachmentService {
             return 0;
         }
         List<TimelineTripEntity> candidates = tripRepository.findByUser(userId);
+        List<TimelineDataGapEntity> gaps = findDataGapsCoveringNotes(userId, notes);
+
         int count = 0;
         Set<Long> matchedTripIds = new HashSet<>();
         for (TimelineNoteEntity note : notes) {
+            if (overlapsDataGap(note.getSourceItemStartTime(), gaps)) {
+                // The note's original trip was reprocessed into a data gap, not a new trip -
+                // leave it as a plain timestamp-anchored note rather than force-linking it to
+                // an unrelated nearby trip.
+                note.setAnchorType(NoteAnchorType.TIMESTAMP);
+                continue;
+            }
             TimelineTripEntity best = findBestTripMatch(note, candidates, matchedTripIds);
             if (best == null) {
                 continue;
@@ -178,5 +200,36 @@ public class TimelineNoteAnchorReattachmentService {
 
     private long nullToZero(Long value) {
         return value != null ? value : 0L;
+    }
+
+    private List<TimelineDataGapEntity> findDataGapsCoveringNotes(UUID userId, List<TimelineNoteEntity> notes) {
+        Instant minTime = notes.stream()
+                .map(TimelineNoteEntity::getSourceItemStartTime)
+                .filter(Objects::nonNull)
+                .min(Instant::compareTo)
+                .orElse(null);
+        Instant maxTime = notes.stream()
+                .map(TimelineNoteEntity::getSourceItemStartTime)
+                .filter(Objects::nonNull)
+                .max(Instant::compareTo)
+                .orElse(null);
+        if (minTime == null || maxTime == null) {
+            return List.of();
+        }
+        return dataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, minTime, maxTime);
+    }
+
+    private boolean overlapsDataGap(Instant sourceItemStartTime, List<TimelineDataGapEntity> gaps) {
+        if (sourceItemStartTime == null) {
+            return false;
+        }
+        for (TimelineDataGapEntity gap : gaps) {
+            if (gap.getStartTime() != null && gap.getEndTime() != null
+                    && !sourceItemStartTime.isBefore(gap.getStartTime())
+                    && sourceItemStartTime.isBefore(gap.getEndTime())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -1,12 +1,24 @@
 <template>
-  <Card 
+  <Card
     class="timeline-card timeline-card--overnight-data-gap"
+    v-bind="longPressBindings"
     @click="handleClick"
+    @contextmenu="showContextMenu"
   >
     <template #title>
-      <p class="timeline-timestamp">
-        🕐 {{ getTimestampText() }}
-      </p>
+      <div class="timeline-title-row">
+        <p class="timeline-timestamp">
+          🕐 {{ getTimestampText() }}
+        </p>
+        <div class="timeline-title-actions">
+          <TimelineNotePreviewTrigger ref="notePreviewTrigger" :notes="matchingNotes" :allow-management="allowNoteCreation" @note-changed="handleNoteSaved" />
+          <TimelinePhotoPreviewTrigger
+            :photos="matchingPhotos"
+            :auth-token="immichPhotoAuthToken"
+            @photo-show-on-map="handlePhotoShowOnMap"
+          />
+        </div>
+      </div>
     </template>
 
     <template #subtitle>
@@ -39,16 +51,37 @@
       </div>
     </template>
   </Card>
+
+  <ContextMenu ref="contextMenu" :model="contextMenuItems" :base-z-index="1200" />
+  <NoteEditorDialog
+    v-model:visible="noteEditorVisible"
+    anchor-type="TIMESTAMP"
+    :event-time="dataGapItem.startTime"
+    :memos-configured="notesStore.isMemosConfigured"
+    :default-destination="notesStore.defaultSaveDestination"
+    :default-visibility="notesStore.defaultVisibility"
+    @saved="handleNoteSaved"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ContextMenu from 'primevue/contextmenu'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart } from '@/utils/calculationsHelpers';
+import { useTimelineCardPhotoMatching } from '@/composables/useTimelineCardPhotoMatching'
+import { useTimelineCardNoteMatching } from '@/composables/useTimelineCardNoteMatching'
+import { useLongPressContextMenu } from '@/composables/useLongPressContextMenu'
+import { useExclusiveContextMenu } from '@/composables/useExclusiveContextMenu'
+import { useNotesStore } from '@/stores/notes'
 import DataGapHelpSection from './DataGapHelpSection.vue';
+import TimelinePhotoPreviewTrigger from './TimelinePhotoPreviewTrigger.vue'
+import TimelineNotePreviewTrigger from './TimelineNotePreviewTrigger.vue'
+import NoteEditorDialog from './NoteEditorDialog.vue'
 
 const { t } = useI18n()
+const notesStore = useNotesStore()
 
 const props = defineProps({
   dataGapItem: {
@@ -58,12 +91,108 @@ const props = defineProps({
   currentDate: {
     type: String,
     required: true
+  },
+  notes: {
+    type: Array,
+    default: () => []
+  },
+  immichPhotos: {
+    type: Array,
+    default: () => []
+  },
+  immichPhotoAuthToken: {
+    type: String,
+    default: null
+  },
+  allowNoteCreation: {
+    type: Boolean,
+    default: true
   }
 });
 
-const emit = defineEmits(['click', 'convert-to-stay']);
+const emit = defineEmits(['click', 'convert-to-stay', 'photo-show-on-map', 'note-saved']);
 
 const timezone = useTimezone();
+
+const contextMenu = ref(null)
+const notePreviewTrigger = ref(null)
+const noteEditorVisible = ref(false)
+const { show: showExclusiveContextMenu } = useExclusiveContextMenu(contextMenu, 'timeline-card')
+
+const openContextMenu = (event) => {
+  showExclusiveContextMenu(event)
+}
+
+const {
+  longPressBindings,
+  handleContextMenu: showContextMenu,
+  shouldSuppressClick
+} = useLongPressContextMenu({
+  open: openContextMenu
+})
+
+const { matchingPhotos } = useTimelineCardPhotoMatching({
+  itemRef: computed(() => props.dataGapItem),
+  immichPhotosRef: computed(() => props.immichPhotos),
+  durationField: 'durationSeconds',
+  currentDateRef: computed(() => props.currentDate),
+  clampToCurrentDay: true
+})
+
+const { matchingNotes } = useTimelineCardNoteMatching({
+  itemRef: computed(() => props.dataGapItem),
+  notesRef: computed(() => props.notes),
+  durationField: 'durationSeconds',
+  currentDateRef: computed(() => props.currentDate),
+  clampToCurrentDay: true
+})
+
+const canManageMatchingNotes = computed(() => {
+  return props.allowNoteCreation && matchingNotes.value.some((note) => (
+    note?.source === 'GEOPULSE' && note?.editable !== false && note?.id != null
+  ))
+})
+
+const getViewNotesLabel = () => {
+  if (canManageMatchingNotes.value) {
+    return matchingNotes.value.length === 1
+      ? t('timeline.card.manageNoteSingle')
+      : t('timeline.card.manageNotesMultiple', { count: matchingNotes.value.length })
+  }
+  return matchingNotes.value.length === 1
+    ? t('timeline.card.viewNoteSingle')
+    : t('timeline.card.viewNotesMultiple', { count: matchingNotes.value.length })
+}
+
+const openNotesViewer = () => {
+  notePreviewTrigger.value?.openNotes()
+}
+
+const contextMenuItems = computed(() => {
+  const items = []
+
+  if (matchingNotes.value.length > 0) {
+    items.push({
+      label: getViewNotesLabel(),
+      icon: 'pi pi-file-edit',
+      command: () => {
+        openNotesViewer()
+      }
+    })
+  }
+
+  if (props.allowNoteCreation) {
+    items.push({
+      label: t('timeline.card.addNote'),
+      icon: 'pi pi-file-edit',
+      command: () => {
+        noteEditorVisible.value = true
+      }
+    })
+  }
+
+  return items
+})
 
 // Computed properties
 const gapDurationSeconds = computed(() => {
@@ -88,13 +217,22 @@ const getOnThisDayText = () => {
   return timezone.getOvernightOnThisDayText(props.dataGapItem, props.currentDate)
 }
 
-const handleClick = () => {
+const handleClick = (event) => {
+  if (shouldSuppressClick(event)) return
   emit('click', props.dataGapItem);
 };
 
 const handleConvertToStay = () => {
   emit('convert-to-stay', props.dataGapItem);
 };
+
+const handlePhotoShowOnMap = (photo) => {
+  emit('photo-show-on-map', photo)
+}
+
+const handleNoteSaved = (note) => {
+  emit('note-saved', note)
+}
 </script>
 
 <style scoped>
@@ -151,6 +289,25 @@ const handleConvertToStay = () => {
   font-size: 0.95rem;
   margin: 0;
   line-height: 1.2;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.timeline-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+  flex-wrap: wrap;
+}
+
+.timeline-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .timeline-subtitle {
