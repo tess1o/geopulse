@@ -179,6 +179,17 @@ export default {
             stay: 'Stay',
             tripFallback: 'Trip',
             eventsAtLocation: '{count} events at this location',
+            itemsAtLocation: '{count} item at this location | {count} items at this location',
+            crossType: {
+                note: 'Note',
+                photoCount: '{count} photos',
+                photo: 'Photo',
+                sections: {
+                    timeline: 'Stays and trips',
+                    notes: 'Notes',
+                    photos: 'Photos'
+                }
+            },
             hoverTooltip: {
                 speedPrefix: 'Speed: {speed}',
                 exactGpsPoint: 'Exact GPS point',
@@ -201,7 +212,8 @@ export default {
             observed: 'Observed',
             temperature: 'Temperature',
             precipitation: 'Precipitation',
-            wind: 'Wind'
+            wind: 'Wind',
+            samplesHere: 'Weather: {count} reading | Weather: {count} readings'
         },
         notes: {
             loadFailed: 'Failed to load notes'

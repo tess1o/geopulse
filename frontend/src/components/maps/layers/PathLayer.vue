@@ -91,7 +91,10 @@ const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
 const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorPathLayer : RasterPathLayer)
 
+const getHighlightedEndpointObstacles = () => implRef.value?.getHighlightedEndpointObstacles?.() ?? []
+
 defineExpose({
-  implRef
+  implRef,
+  getHighlightedEndpointObstacles
 })
 </script>

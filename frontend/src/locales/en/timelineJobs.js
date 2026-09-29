@@ -25,6 +25,8 @@ export default {
         startingLocationResolution: 'Starting location resolution',
         allResolvedFromFavorites: 'All locations resolved from favorites',
         resolvedFromFavorites: 'Resolved {favoritesResolved} locations from favorites',
+        resolvedFromCache: 'Resolved {cachedResolved} from cache ({batchResolved} from batch, {individualResolved} from individual lookup)',
+        geocodingLocationProgress: 'Geocoding location {current}/{total}',
         geocodingComplete: 'Geocoding complete: {favoritesResolved} favorites, {cachedResolved} cached, {externalCompleted} external API calls'
     },
     listPage: {

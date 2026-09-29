@@ -35,7 +35,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['photo-click', 'cluster-click', 'photo-hover', 'error'])
+const emit = defineEmits(['photo-click', 'cluster-click', 'photo-hover', 'error', 'groups-change'])
 
 const immichStore = useImmichStore()
 const dateRangeStore = useDateRangeStore()
@@ -48,7 +48,10 @@ const isConfigured = computed(() => isExternallyProvided.value || immichStore.is
 
 const {
   clearPhotoMarkers: clearConsistentPhotoMarkers,
-  renderPhotoMarkers: renderConsistentPhotoMarkers
+  renderPhotoMarkers: renderConsistentPhotoMarkers,
+  getCurrentGroups,
+  getRenderedEntities,
+  setExcludedGroupIndices
 } = usePhotoMapMarkersVector({
   emit: (eventName, payload) => {
     if (eventName === 'photo-click') {
@@ -65,6 +68,7 @@ const renderPhotoMarkers = () => {
 
   clearConsistentPhotoMarkers()
   renderConsistentPhotoMarkers(props.map, (isExternallyProvided.value ? props.photos : immichStore.photos) || [])
+  emit('groups-change')
 }
 
 const fetchAndRenderPhotos = async () => {
@@ -125,6 +129,7 @@ const refreshPhotos = async () => {
 
 const clearPhotoMarkers = () => {
   clearConsistentPhotoMarkers()
+  emit('groups-change')
 }
 
 watch(
@@ -230,6 +235,9 @@ defineExpose({
   baseLayerRef: readonly(baseLayerRef),
   refreshPhotos,
   clearPhotoMarkers,
+  getCurrentGroups,
+  getRenderedEntities,
+  setExcludedGroupIndices,
   isLoading: readonly(loading)
 })
 </script>

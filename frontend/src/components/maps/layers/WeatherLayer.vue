@@ -6,6 +6,7 @@
     :samples="samples"
     :visible="visible"
     :highlighted-item="highlightedItem"
+    v-bind="vectorOnlyBindings"
   />
 </template>
 
@@ -31,14 +32,31 @@ const props = defineProps({
   highlightedItem: {
     type: Object,
     default: null
+  },
+  // Vector only: let the cross-type pass place (group/hide) weather markers.
+  managed: {
+    type: Boolean,
+    default: false
   }
 })
+
+const emit = defineEmits(['groups-change'])
 
 const implRef = ref(null)
 const mapMode = computed(() => resolveMapEngineModeFromInstance(props.map, MAP_RENDER_MODES.RASTER))
 const activeComponent = computed(() => mapMode.value === MAP_RENDER_MODES.VECTOR ? VectorWeatherLayer : RasterWeatherLayer)
+const vectorOnlyBindings = computed(() => (
+  mapMode.value === MAP_RENDER_MODES.VECTOR
+    ? { managed: props.managed, onGroupsChange: () => emit('groups-change') }
+    : {}
+))
+
+const getPlacementInput = () => implRef.value?.getPlacementInput?.() ?? { samples: [], highlightedIndices: new Set() }
+const setPlacedGroups = (groups) => implRef.value?.setPlacedGroups?.(groups)
 
 defineExpose({
-  implRef
+  implRef,
+  getPlacementInput,
+  setPlacedGroups
 })
 </script>

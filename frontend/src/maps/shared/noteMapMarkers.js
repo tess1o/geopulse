@@ -1,11 +1,12 @@
+import { groupItemsByProximity } from './nearbyPointGrouping'
+
+// Violet keeps notes distinct from the teal Stay/Trip stack markers.
+export const NOTE_MARKER_COLOR = '#7c3aed'
+
 const toFiniteNumber = (value) => {
   const numberValue = Number(value)
   return Number.isFinite(numberValue) ? numberValue : null
 }
-
-const getCoordinateKey = (latitude, longitude) => (
-  `${latitude.toFixed(6)}|${longitude.toFixed(6)}`
-)
 
 export const getRenderableNotes = (notes) => (
   Array.isArray(notes)
@@ -19,23 +20,13 @@ export const getRenderableNotes = (notes) => (
     : []
 )
 
-export const groupNotesByCoordinate = (notes) => {
-  const grouped = new Map()
-
-  getRenderableNotes(notes).forEach((note) => {
-    const key = getCoordinateKey(note.latitude, note.longitude)
-    if (!grouped.has(key)) {
-      grouped.set(key, {
-        latitude: note.latitude,
-        longitude: note.longitude,
-        notes: []
-      })
-    }
-    grouped.get(key).notes.push(note)
-  })
-
-  return Array.from(grouped.values())
-}
+export const groupNotesByCoordinate = (notes) => (
+  groupItemsByProximity(getRenderableNotes(notes)).map((group) => ({
+    latitude: group.latitude,
+    longitude: group.longitude,
+    notes: group.items
+  }))
+)
 
 export const getNoteIdentityKey = (note) => (
   `${note?.source || 'note'}-${note?.id || note?.externalId || note?.eventTime || note?.createdAt || ''}`

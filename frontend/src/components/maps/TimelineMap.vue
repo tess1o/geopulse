@@ -149,8 +149,10 @@
           :timeline-data="processedTimelineData"
           :highlighted-item="activeTimelineHighlight"
           :visible="timelineLayerVisible"
+          :item-weather="stayWeatherByTimelineIndex"
           @marker-click="handleTimelineMarkerClick"
           @marker-contextmenu="handleTimelineMarkerContextMenu"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <!-- Favorites Layer -->
@@ -186,6 +188,7 @@
           @photo-click="handlePhotoClick"
           @photo-hover="handlePhotoHover"
           @error="handleImmichError"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <!-- Notes Layer -->
@@ -198,14 +201,30 @@
           :load-notes="!props.isPublicView"
           :can-manage-notes="!props.isPublicView"
           @error="handleNotesError"
+          @groups-change="requestCrossTypeCompute"
+        />
+
+        <!-- Combo markers for Stays/Trips, Notes and Photos that overlap each other (vector maps only). -->
+        <VectorCrossTypeCollisionLayer
+          v-if="map && isReady && isVectorMapMode"
+          ref="crossTypeLayerRef"
+          :map="map"
+          :get-sources="getCrossTypeSources"
+          :item-weather="stayWeatherByTimelineIndex"
+          @select-timeline="handleTimelineMarkerClick"
+          @select-notes="handleCrossTypeNotesSelect"
+          @select-photos="openPhotoViewerFromPayload"
         />
 
         <WeatherLayer
           v-if="map && isReady && !props.isPublicView"
+          ref="weatherLayerRef"
           :map="map"
-          :samples="weatherSamples"
+          :samples="weatherLayerSamples"
           :visible="showWeather"
           :highlighted-item="activeTimelineHighlight"
+          :managed="isVectorMapMode"
+          @groups-change="requestCrossTypeCompute"
         />
 
         <VectorPanoramaxLayer
@@ -396,11 +415,13 @@ import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculation
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
+import { partitionWeatherSamplesByStay } from '@/maps/shared/stayWeather'
 import { haversineDistanceMetersFromCoordinates } from '@/utils/geoDistance'
 import { showDemoModeToast } from '@/utils/demoMode'
 
 // Map components
 import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, NotesLayer, TripPlanLayer, RawGpsPointsLayer, WeatherLayer} from '@/components/maps'
+import VectorCrossTypeCollisionLayer from '@/maps/vector/layers/VectorCrossTypeCollisionLayer.vue'
 import VectorPanoramaxLayer from '@/maps/vector/layers/VectorPanoramaxLayer.vue'
 import PanoramaxViewerDialog from '@/components/maps/dialogs/PanoramaxViewerDialog.vue'
 import TripReplayControls from '@/components/maps/TripReplayControls.vue'
@@ -692,6 +713,8 @@ const favoritesLayerRef = ref(null)
 const tripPlanLayerRef = ref(null)
 const immichLayerRef = ref(null)
 const notesLayerRef = ref(null)
+const crossTypeLayerRef = ref(null)
+const weatherLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
 const stayContextMenuRef = ref(null)
@@ -802,14 +825,24 @@ const photoViewerIndex = ref(0)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
 const addAreaShowDialog = computed(() => dialogState.value.addAreaVisible)
 
-// Map configuration - start with null to avoid showing default location before data loads
-const mapCenter = computed(() => {
-  // Return first available data point, or null if no data yet
-  if (dataBounds.value && dataBounds.value.length > 0) {
-    return dataBounds.value[0]
-  }
-  return props.defaultCenterWhenEmpty
-})
+// Map configuration - start with null to avoid showing default location before data loads.
+//
+// `mapCenter` freezes to the first data point it sees (set by a watcher
+// further down, once `dataBounds` is declared) and stops tracking
+// `dataBounds` after that. It exists only to give the map a reasonable
+// initial position before any real "fit to data" has run - ongoing camera
+// updates as more data arrives are owned exclusively by the debounced
+// `applyTimelineDataViewport` watcher below (which does a proper
+// multi-point fitBounds, not just a single-point recenter).
+//
+// If this stayed reactive to `dataBounds`, it would independently re-fire
+// VectorMapHost's own `:center` prop watcher (which calls `jumpTo`) every
+// time `dataBounds` recomputes - and since timeline data and path data
+// resolve as two separate async fetches, that meant the camera would jump
+// to an intermediate center, then jump again once the final data arrived,
+// on top of (and independent from) the fitBounds watcher's own transition.
+const frozenMapCenter = ref(null)
+const mapCenter = computed(() => frozenMapCenter.value || props.defaultCenterWhenEmpty)
 const mapZoom = ref(13)
 
 const toFiniteMapCoordinate = (value) => {
@@ -1077,8 +1110,21 @@ const {
   autoShowControls: computed(() => props.autoShowTripReplayControls)
 })
 
+const getCrossTypeSources = () => ({
+  timeline: timelineLayerRef.value,
+  notes: notesLayerRef.value,
+  photos: immichLayerRef.value,
+  weather: weatherLayerRef.value,
+  // The highlighted trip's start/end markers: nothing may hide under them.
+  getFocusObstacles: () => pathLayerRef.value?.getHighlightedEndpointObstacles?.() ?? []
+})
+const requestCrossTypeCompute = () => crossTypeLayerRef.value?.requestCompute?.()
+const handleCrossTypeNotesSelect = (notes) => notesLayerRef.value?.openNotes?.(notes)
+
 const hideTimelineMarkersForReplay = computed(() => showTripReplayBar.value && isReplayPlaying.value)
 const timelineLayerVisible = computed(() => showTimeline.value && !hideTimelineMarkersForReplay.value)
+
+watch([timelineLayerVisible, showImmich, showNotesLayer, activeTimelineHighlight], () => requestCrossTypeCompute())
 
 const showReadOnlyToast = () => {
   showDemoModeToast(toast)
@@ -2038,6 +2084,17 @@ const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
 
+// On vector maps a stay's weather is a badge on the stay marker (its samples sit
+// exactly on the stay), so only the remaining trip samples get their own markers.
+const stayWeatherPartition = computed(() => {
+  if (!isVectorMapMode.value || !showWeather.value || props.isPublicView) {
+    return null
+  }
+  return partitionWeatherSamplesByStay(processedTimelineData.value, props.weatherSamples)
+})
+const stayWeatherByTimelineIndex = computed(() => stayWeatherPartition.value?.weatherByTimelineIndex ?? null)
+const weatherLayerSamples = computed(() => stayWeatherPartition.value?.remainingSamples ?? props.weatherSamples)
+
 const {
   routeDisplayMode,
   routeDisplayModeControlAvailable,
@@ -2135,8 +2192,16 @@ const dataBounds = computed(() => {
   return bounds.length > 0 ? bounds : null
 })
 
+// Sets the one-time initial map center (see `frozenMapCenter` declaration above).
+watch(dataBounds, (newBounds) => {
+  if (!frozenMapCenter.value && newBounds && newBounds.length > 0) {
+    frozenMapCenter.value = newBounds[0]
+  }
+}, { immediate: true })
+
 // Watch for data bounds changes and update map view
 let lastBoundsString = ''
+let pendingFitTimeoutId = null
 watch(dataBounds, (newBounds) => {
   if (map.value && newBounds && hasAnyData.value) {
     const boundsString = JSON.stringify(newBounds)
@@ -2145,8 +2210,18 @@ watch(dataBounds, (newBounds) => {
       lastBoundsString = boundsString
       if (!shouldFitBounds) return
       nextTick(() => {
-        // Delay fitBounds to let initial tiles load
-        setTimeout(() => {
+        // Debounced: cancel any fit still pending from an earlier bounds
+        // change so staggered data arrival (e.g. timeline data and path
+        // data resolving as two separate async fetches) coalesces into a
+        // single fit using the latest bounds, instead of the camera
+        // visibly jumping to an intermediate view and then again to the
+        // final one.
+        if (pendingFitTimeoutId !== null) {
+          clearTimeout(pendingFitTimeoutId)
+        }
+
+        pendingFitTimeoutId = setTimeout(() => {
+          pendingFitTimeoutId = null
           if (map.value) {
             applyTimelineDataViewport(newBounds, {
               animate: false // Disable animation to prevent tile issues

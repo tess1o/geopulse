@@ -12,13 +12,12 @@ import { ref, watch, computed, readonly, onBeforeUnmount } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import L from 'leaflet'
-import 'leaflet.markercluster'
-import 'leaflet.markercluster/dist/MarkerCluster.css'
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import BaseLayer from '@/components/maps/layers/BaseLayer.vue'
 import { createTimelineIcon, createHighlightedTimelineIcon } from '@/utils/mapHelpers'
 import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
+import { createMarkerClusterGroup } from '@/maps/raster/utils/createMarkerClusterGroup'
+import { groupItemsByProximity } from '@/maps/shared/nearbyPointGrouping'
 import '@/maps/shared/styles/mapPopupContent.css'
 import { escapeHtml } from '@/maps/shared/popupContentBuilders'
 import { buildTimelineStackItems } from '@/maps/shared/timelineStackContent'
@@ -75,8 +74,6 @@ const hasValidCoordinates = (item) => (
   isFiniteCoordinate(item.latitude) &&
   isFiniteCoordinate(item.longitude)
 )
-
-const getCoordinateKey = (latitude, longitude) => `${latitude}|${longitude}`
 
 const isStayWithPlaceDetails = (item) => Boolean(
   item?.type === 'stay' &&
@@ -199,20 +196,14 @@ const createStackPopupElement = (marker, markerItems) => {
 }
 
 const groupTimelineItemsByCoordinates = () => {
-  const groupedItems = new Map()
+  const candidates = props.timelineData
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => hasValidCoordinates(item))
 
-  props.timelineData.forEach((item, index) => {
-    if (!hasValidCoordinates(item)) return
-
-    const key = getCoordinateKey(item.latitude, item.longitude)
-    if (!groupedItems.has(key)) {
-      groupedItems.set(key, [])
-    }
-
-    groupedItems.get(key).push({ item, index })
+  return groupItemsByProximity(candidates, {
+    getLatitude: ({ item }) => item.latitude,
+    getLongitude: ({ item }) => item.longitude
   })
-
-  return Array.from(groupedItems.values())
 }
 
 const getClusterSizeClass = (count) => {
@@ -254,37 +245,15 @@ const createClusterTimelineIcon = (cluster) => {
 }
 
 // Layer management
-const handleLayerReady = (layerGroup) => {
-  // Only use clustering if we have many markers (50+)
-  // For smaller datasets, clustering adds complexity without benefit
-  const shouldUseClustering = props.timelineData && props.timelineData.length >= 50
+const handleLayerReady = () => {
+  // Always cluster, matching Photos' behavior - no marker-count threshold.
+  markerClusterGroup.value = createMarkerClusterGroup({
+    maxClusterRadius: 50, // Pixels - smaller radius means less aggressive clustering
+    iconCreateFunction: createClusterTimelineIcon
+  })
 
-  if (shouldUseClustering) {
-    // Initialize marker cluster group with custom options
-    markerClusterGroup.value = L.markerClusterGroup({
-      maxClusterRadius: 50, // Pixels - smaller radius means less aggressive clustering
-      spiderfyOnMaxZoom: false, // Disable spiderfy - it causes markers to fly around
-      spiderfyOnEveryZoom: false, // Don't spiderfy on zoom changes
-      showCoverageOnHover: false, // Don't show cluster coverage polygon on hover
-      zoomToBoundsOnClick: true, // Zoom into cluster on click instead of spiderfying
-      disableClusteringAtZoom: 16, // Disable clustering when zoomed in close
-      chunkedLoading: true, // Better performance for large datasets
-      chunkInterval: 200, // ms between processing chunks
-      chunkDelay: 50, // ms delay before processing next chunk
-      animate: false, // Disable all cluster animations to prevent markers flying around
-      animateAddingMarkers: false, // Disable animation when adding markers
-      removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for better performance
-      iconCreateFunction: createClusterTimelineIcon
-    })
-
-    // Add cluster group to the map
-    if (props.map) {
-      props.map.addLayer(markerClusterGroup.value)
-    }
-
-    console.log(`TimelineLayer: Clustering enabled (${props.timelineData.length} markers)`)
-  } else {
-    console.log(`TimelineLayer: Clustering disabled (${props.timelineData?.length || 0} markers - threshold is 50)`)
+  if (markerClusterGroup.value && props.map) {
+    props.map.addLayer(markerClusterGroup.value)
   }
 
   if (hasTimelineData.value) {
@@ -301,9 +270,10 @@ const renderTimelineMarkers = () => {
 
   if (!hasTimelineData.value) return
 
-  const groupedItems = groupTimelineItemsByCoordinates()
+  const groups = groupTimelineItemsByCoordinates()
   const hasActiveHighlight = Boolean(props.highlightedItem)
-  groupedItems.forEach((markerItems) => {
+  groups.forEach((group) => {
+    const markerItems = group.items
     const [{ item: primaryItem, index: primaryIndex }] = markerItems
     const isStack = markerItems.length > 1
     const highlightedItem = markerItems.find(({ item }) => isSameTimelineItem(props.highlightedItem, item))
@@ -314,7 +284,7 @@ const renderTimelineMarkers = () => {
       ? createStackTimelineIcon(markerItems.length, isHighlighted, isDimmed)
       : (isHighlighted ? createHighlightedTimelineIcon(primaryItem) : createTimelineIcon(primaryItem, { dimmed: isDimmed }))
 
-    const marker = L.marker([primaryItem.latitude, primaryItem.longitude], {
+    const marker = L.marker([group.latitude, group.longitude], {
       icon,
       timelineItem: primaryItem,
       timelineItems: markerItems.map(({ item }) => item),
@@ -435,48 +405,6 @@ const clearTimelineMarkers = () => {
   timelineMarkers.value = []
 }
 
-const reinitializeLayer = (shouldUseClustering) => {
-  // Clear existing markers first
-  clearTimelineMarkers()
-
-  // Remove existing cluster group if present
-  if (markerClusterGroup.value && props.map) {
-    props.map.removeLayer(markerClusterGroup.value)
-    markerClusterGroup.value.clearLayers()
-    markerClusterGroup.value = null
-  }
-
-  // Create cluster group if needed
-  if (shouldUseClustering) {
-    markerClusterGroup.value = L.markerClusterGroup({
-      maxClusterRadius: 50,
-      spiderfyOnMaxZoom: false, // Disable spiderfy - it causes markers to fly around
-      spiderfyOnEveryZoom: false, // Don't spiderfy on zoom changes
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true, // Zoom into cluster on click instead of spiderfying
-      disableClusteringAtZoom: 16,
-      chunkedLoading: true,
-      chunkInterval: 200,
-      chunkDelay: 50,
-      animate: false, // Disable all cluster animations to prevent markers flying around
-      animateAddingMarkers: false, // Disable animation when adding markers
-      removeOutsideVisibleBounds: true, // Remove markers outside visible bounds for better performance
-      iconCreateFunction: createClusterTimelineIcon
-    })
-
-    if (props.map) {
-      props.map.addLayer(markerClusterGroup.value)
-    }
-
-    console.log(`TimelineLayer: Clustering enabled (${props.timelineData.length} markers)`)
-  } else {
-    console.log(`TimelineLayer: Clustering disabled (${props.timelineData?.length || 0} markers)`)
-  }
-
-  // Render markers with new configuration
-  renderTimelineMarkers()
-}
-
 const updateHighlightedMarker = () => {
   timelineMarkers.value.forEach(({ marker, items, isHighlighted, isDimmed, isStack }, index) => {
     const shouldBeHighlighted = Boolean(
@@ -560,21 +488,9 @@ const focusOnMarker = (timelineItem) => {
 }
 
 // Watch for data changes
-watch(() => props.timelineData, (newData, oldData) => {
+watch(() => props.timelineData, () => {
   if (baseLayerRef.value?.isReady) {
-    // Check if we need to toggle clustering based on data size
-    const newDataLength = newData?.length || 0
-    const oldDataLength = oldData?.length || 0
-    const oldShouldCluster = oldDataLength >= 50
-    const newShouldCluster = newDataLength >= 50
-
-    // If clustering requirement has changed, reinitialize the layer
-    if (oldShouldCluster !== newShouldCluster) {
-      console.log(`TimelineLayer: Clustering requirement changed (${oldDataLength} -> ${newDataLength} markers)`)
-      reinitializeLayer(newShouldCluster)
-    } else {
-      renderTimelineMarkers()
-    }
+    renderTimelineMarkers()
   }
 }, { deep: true })
 

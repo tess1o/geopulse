@@ -13,6 +13,11 @@ import {
   setLayerVisibility
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import {
+  applyGroupExclusionFilters,
+  createNativeClusterMirror,
+  MIN_GROUP_INDEX_CLUSTER_PROPERTY
+} from '@/maps/vector/utils/nativeClusterMirror'
+import {
   buildPhotoGroupsFromPhotos,
   buildPhotoMarkerClickPayload,
   getPhotoMarkerCount,
@@ -63,6 +68,7 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
     styleLoadHandler: null,
     boundMap: null,
     groups: [],
+    excludedIndices: new Set(),
     groupsByFeatureId: new Map(),
     thumbnailImageDataById: new Map(),
     thumbnailImageRequests: new Map(),
@@ -210,14 +216,15 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
 
   const buildCollection = (mapInstance, groups) => {
     state.groupsByFeatureId = new Map()
-    const features = groups.map((group, index) => {
+    const features = []
+    groups.forEach((group, index) => {
       const featureId = `photo-${index}`
       const count = getPhotoMarkerCount(group)
       const thumbnailImageId = getThumbnailImageIdForGroup(group)
       const hasThumbnail = isThumbnailImageAvailable(mapInstance, thumbnailImageId)
       state.groupsByFeatureId.set(featureId, group)
 
-      return {
+      features.push({
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -226,11 +233,12 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
         properties: {
           featureId,
           markerKey: group.markerKey || `${group.latitude},${group.longitude}`,
+          groupIndex: index,
           photoCount: count,
           thumbnailImageId: hasThumbnail ? thumbnailImageId : '',
           hasThumbnail
         }
-      }
+      })
     })
 
     return createFeatureCollection(features)
@@ -498,6 +506,19 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
     })
   }
 
+  const applyExclusionFilters = (mapInstance) => {
+    const clusterFilter = ['has', 'point_count']
+    const pointFilter = ['!', ['has', 'point_count']]
+    applyGroupExclusionFilters(mapInstance, {
+      [state.clusterLayerId]: clusterFilter,
+      [state.clusterIconLayerId]: clusterFilter,
+      [state.clusterCountLayerId]: clusterFilter,
+      [state.pointLayerId]: pointFilter,
+      [state.pointIconLayerId]: pointFilter,
+      [state.pointCountLayerId]: ['all', pointFilter, ['>', ['get', 'photoCount'], 1]]
+    }, state.excludedIndices)
+  }
+
   const renderLayers = (mapInstance) => {
     if (!isMapLibreMap(mapInstance)) {
       return
@@ -508,7 +529,8 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
       clusterRadius: PHOTO_CLUSTER_RADIUS,
       clusterMaxZoom: PHOTO_CLUSTER_MAX_ZOOM,
       clusterProperties: {
-        photo_count: ['+', ['get', 'photoCount']]
+        photo_count: ['+', ['get', 'photoCount']],
+        ...MIN_GROUP_INDEX_CLUSTER_PROPERTY
       }
     })
     const hasCameraImage = ensureCameraImage(mapInstance)
@@ -637,6 +659,7 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
     }
 
     setLayerVisibility(mapInstance, layerIds, state.visible)
+    applyExclusionFilters(mapInstance)
 
     unregisterEvents()
     registerEvents(mapInstance)
@@ -719,12 +742,44 @@ export function usePhotoMapMarkersVector({ emit, getThumbnailHeaders = () => ({}
     mapInstance.easeTo({ center: [photo.longitude, photo.latitude], zoom: targetZoom, duration: 300 })
   }
 
+  // Synchronous access to the pre-cluster groups (for the cross-type overlap pass).
+  const getCurrentGroups = () => state.groups
+
+  // Hides groups (by index into getCurrentGroups()) that a cross-type combo marker now represents.
+  const setExcludedGroupIndices = (indices) => {
+    const next = new Set(indices || [])
+    if (next.size === state.excludedIndices.size && [...next].every((index) => state.excludedIndices.has(index))) {
+      return
+    }
+
+    state.excludedIndices = next
+    if (isMapLibreMap(state.boundMap)) {
+      applyExclusionFilters(state.boundMap)
+    }
+  }
+
+  const clusterMirror = createNativeClusterMirror({
+    clusterRadius: PHOTO_CLUSTER_RADIUS,
+    clusterMaxZoom: PHOTO_CLUSTER_MAX_ZOOM
+  })
+
+  // Synchronous replica of what the native clustered source shows right now
+  // (standalone groups and clusters), for the cross-type overlap pass.
+  const getRenderedEntities = () => (
+    isMapLibreMap(state.boundMap)
+      ? clusterMirror.getRenderedEntities(state.groups, state.boundMap.getZoom())
+      : []
+  )
+
   return {
     clearPhotoMarkers,
     clearFocusMarker,
     renderPhotoMarkers,
     renderPhotoMarkerGroups,
     focusOnCoordinates,
-    focusOnPhoto
+    focusOnPhoto,
+    getCurrentGroups,
+    getRenderedEntities,
+    setExcludedGroupIndices
   }
 }

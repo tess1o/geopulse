@@ -30,6 +30,7 @@
     "primeicons": "latest",
     "primelocale": "2.5.0",
     "primevue": "4.3.4",
+    "supercluster": "^8.0.1",
     "tailwindcss": "^3",
     "tailwindcss-primeui": "latest",
     "unplugin-vue-components": "latest",

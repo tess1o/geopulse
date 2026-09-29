@@ -26,6 +26,8 @@ export default {
         startingLocationResolution: 'Початок визначення місцезнаходжень',
         allResolvedFromFavorites: 'Усі місцезнаходження визначено з обраного',
         resolvedFromFavorites: 'Визначено {favoritesResolved} місцезнаходжень з обраного',
+        resolvedFromCache: 'Визначено {cachedResolved} з кешу ({batchResolved} пакетно, {individualResolved} окремим пошуком)',
+        geocodingLocationProgress: 'Геокодування місця {current}/{total}',
         geocodingComplete: 'Геокодування завершено: {favoritesResolved} з обраного, {cachedResolved} з кешу, {externalCompleted} зовнішніх запитів'
     },
     listPage: {

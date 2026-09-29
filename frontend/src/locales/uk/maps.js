@@ -178,6 +178,17 @@ export default {
             stay: 'Зупинка',
             tripFallback: 'Поїздка',
             eventsAtLocation: '{count} подій у цьому місці',
+            itemsAtLocation: '{count} елемент у цьому місці | {count} елементи у цьому місці | {count} елементів у цьому місці',
+            crossType: {
+                note: 'Нотатка',
+                photoCount: '{count} фото',
+                photo: 'Фото',
+                sections: {
+                    timeline: 'Зупинки та поїздки',
+                    notes: 'Нотатки',
+                    photos: 'Фото'
+                }
+            },
             hoverTooltip: {
                 speedPrefix: 'Швидкість: {speed}',
                 exactGpsPoint: 'Точна GPS-точка',
@@ -200,7 +211,8 @@ export default {
             observed: 'Спостережено',
             temperature: 'Температура',
             precipitation: 'Опади',
-            wind: 'Вітер'
+            wind: 'Вітер',
+            samplesHere: 'Погода: {count} вимір | Погода: {count} виміри | Погода: {count} вимірів'
         },
         notes: {
             loadFailed: 'Не вдалося завантажити нотатки'

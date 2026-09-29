@@ -12,12 +12,12 @@
 <script setup>
 import { computed, onMounted, onUnmounted, readonly, ref, watch } from 'vue'
 import { t } from '@/locales'
-import maplibregl from 'maplibre-gl'
 import NotesViewerDialog from '@/components/timeline/NotesViewerDialog.vue'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useNotesStore } from '@/stores/notes'
 import { isMapLibreMap } from '@/maps/vector/utils/maplibreLayerUtils'
-import { createNoteMarkerHtml, getNoteIdentityKey, groupNotesByCoordinate } from '@/maps/shared/noteMapMarkers'
+import { useNoteMapMarkersVector } from '@/maps/vector/composables/useNoteMapMarkersVector'
+import { getNoteIdentityKey, groupNotesByCoordinate } from '@/maps/shared/noteMapMarkers'
 import '@/styles/note-map-markers.css'
 
 const props = defineProps({
@@ -43,14 +43,13 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['error'])
+const emit = defineEmits(['error', 'groups-change'])
 
 const notesStore = useNotesStore()
 const dateRangeStore = useDateRangeStore()
 const loading = ref(false)
 const selectedNotes = ref([])
 const notesViewerVisible = ref(false)
-const markers = []
 
 const effectiveNotes = computed(() => (
   Array.isArray(props.notes) ? props.notes : notesStore.notes
@@ -58,11 +57,19 @@ const effectiveNotes = computed(() => (
 
 const canFetchNotes = computed(() => props.loadNotes && !Array.isArray(props.notes))
 
+const {
+  clearNoteMarkers: clearNoteMarkersImpl,
+  renderNoteGroups,
+  getCurrentGroups,
+  getRenderedEntities,
+  setExcludedGroupIndices
+} = useNoteMapMarkersVector({
+  onGroupClick: (group) => openNotesViewer(group.notes)
+})
+
 const clearNoteMarkers = () => {
-  while (markers.length > 0) {
-    const marker = markers.pop()
-    marker?.remove?.()
-  }
+  clearNoteMarkersImpl()
+  emit('groups-change')
 }
 
 const openNotesViewer = (notes) => {
@@ -89,29 +96,12 @@ const syncSelectedNotes = (selectedKeys = selectedNotes.value.map(getNoteIdentit
 
 const renderNoteMarkers = () => {
   if (!isMapLibreMap(props.map) || !props.visible) {
+    clearNoteMarkers()
     return
   }
 
-  clearNoteMarkers()
-
-  groupNotesByCoordinate(effectiveNotes.value).forEach((group) => {
-    const element = document.createElement('div')
-    element.className = 'gp-note-marker-wrapper'
-    element.innerHTML = createNoteMarkerHtml(group.notes.length)
-    element.addEventListener('click', (event) => {
-      event.stopPropagation()
-      openNotesViewer(group.notes)
-    })
-
-    const marker = new maplibregl.Marker({
-      element,
-      anchor: 'center'
-    })
-      .setLngLat([group.longitude, group.latitude])
-      .addTo(props.map)
-
-    markers.push(marker)
-  })
+  renderNoteGroups(props.map, groupNotesByCoordinate(effectiveNotes.value))
+  emit('groups-change')
 }
 
 const fetchAndRenderNotes = async (forceRefresh = false) => {
@@ -211,6 +201,10 @@ onUnmounted(() => {
 defineExpose({
   refreshNotes: () => fetchAndRenderNotes(true),
   clearNoteMarkers,
+  openNotes: openNotesViewer,
+  getCurrentGroups,
+  getRenderedEntities,
+  setExcludedGroupIndices,
   isLoading: readonly(loading)
 })
 </script>

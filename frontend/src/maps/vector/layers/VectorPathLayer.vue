@@ -27,7 +27,7 @@ import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH
 } from '@/maps/shared/popups/mapPopupOptions'
-import { createTripEndpointMarkerElement } from '@/maps/shared/tripEndpointMarkerBuilder'
+import { createTripEndpointMarkerElement, TRIP_ENDPOINT_MARKER_SIZE } from '@/maps/shared/tripEndpointMarkerBuilder'
 import {
   buildHighlightedData,
   buildPathCollection,
@@ -116,6 +116,7 @@ const state = {
   highlightedHitLayerId: '',
   highlightedStartEndpointMarker: null,
   highlightedEndEndpointMarker: null,
+  highlightedEndpoints: [],
   listeners: [],
   styleLoadHandler: null,
   boundMap: null,
@@ -238,6 +239,7 @@ const removeHighlightedEndpointMarkers = () => {
     markerEntry.cleanup?.()
     state[markerKey] = null
   })
+  state.highlightedEndpoints = []
 }
 
 const createHighlightedEndpointMarker = ({
@@ -348,8 +350,21 @@ const syncHighlightedEndpointMarkers = (endpointMarkers) => {
     } else if (endpointMarker.markerType === 'end') {
       state.highlightedEndEndpointMarker = markerEntry
     }
+    state.highlightedEndpoints.push(endpointMarker)
   })
 }
+
+// Where the highlighted trip's start/end markers are drawn, so the cross-type
+// pass can keep other markers from hiding under them.
+const getHighlightedEndpointObstacles = () => state.highlightedEndpoints.map((endpoint) => {
+  const offsetX = Number.parseFloat(/translateX\((-?[\d.]+)px\)/.exec(endpoint.styleOverrides?.transform || '')?.[1]) || 0
+  return {
+    latitude: endpoint.latitude,
+    longitude: endpoint.longitude,
+    offsetX,
+    size: TRIP_ENDPOINT_MARKER_SIZE
+  }
+})
 
 const fitHighlightedTripBounds = (lineCoordinates) => {
   if (!isMapLibreMap(props.map) || lineCoordinates.length < 2) {
@@ -865,5 +880,9 @@ watch(
 
 onBeforeUnmount(() => {
   clearLayer()
+})
+
+defineExpose({
+  getHighlightedEndpointObstacles
 })
 </script>
