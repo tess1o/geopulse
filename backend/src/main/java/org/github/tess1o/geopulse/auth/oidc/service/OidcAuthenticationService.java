@@ -427,8 +427,7 @@ public class OidcAuthenticationService {
                 .isActive(true)
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
-                .distanceUnit(userService.getDefaultDistanceUnit())
-                .temperatureUnit(userService.getDefaultTemperatureUnit())
+                .uiPreferences(userService.initialUiPreferences(null))
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 

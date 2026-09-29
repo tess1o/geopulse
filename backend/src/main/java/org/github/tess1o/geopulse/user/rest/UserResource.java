@@ -223,43 +223,39 @@ public class UserResource {
      * These settings affect ONLY how timelines are rendered in the UI.
      * Changing these settings does NOT trigger timeline regeneration.
      *
-     * @param request the display preferences update request
-     * @return 204 No Content on success
+     * @param patch the preferences to change; null fields are left unchanged, empty strings reset to default
+     * @return the effective settings after the update
      */
     @PUT
     @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline-display")
-    @APIResponseSchema(value = TimelineDisplayPreferences.class, responseCode = "200",
-            responseDescription = "Updated timeline display preferences")
-    public Response updateTimelineDisplayPreferences(@Valid UpdateTimelineDisplayPreferencesRequest request) {
+    @APIResponseSchema(value = TimelineDisplaySettings.class, responseCode = "200",
+            responseDescription = "Updated timeline display settings")
+    public Response updateTimelineDisplayPreferences(@Valid TimelineDisplayPreferences patch) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline display preferences for user {}", userId);
-        log.debug("Updating timeline display preferences");
 
         try {
-            userService.updateTimelineDisplayPreferences(userId, request);
+            userService.updateTimelineDisplayPreferences(userId, patch);
         } catch (IllegalArgumentException e) {
             throw new GeoPulseException(INVALID_TIMELINE_PREFERENCES, INVALID_TIMELINE_PREFERENCES.title(), e);
         }
 
-        TimelineDisplayPreferences updatedPreferences = userService.getTimelineDisplayPreferences(userId);
-        return Response.ok(updatedPreferences).build();
+        return Response.ok(userService.getTimelineDisplaySettings(userId)).build();
     }
 
     /**
-     * Get timeline display preferences for the current user.
+     * Get timeline display settings for the current user.
      *
-     * @return the user's timeline display preferences
+     * @return the user's preferences with defaults applied, plus server capabilities
      */
     @GET
     @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline-display")
-    public TimelineDisplayPreferences getTimelineDisplayPreferences() {
+    public TimelineDisplaySettings getTimelineDisplayPreferences() {
         UUID userId = currentUserService.getCurrentUserId();
         log.debug("Getting timeline display preferences for user {}", userId);
-
-        TimelineDisplayPreferences preferences = userService.getTimelineDisplayPreferences(userId);
-        return preferences;
+        return userService.getTimelineDisplaySettings(userId);
     }
 
     /**

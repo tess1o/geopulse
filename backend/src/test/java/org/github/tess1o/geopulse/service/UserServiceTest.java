@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.service;
 
+import org.github.tess1o.geopulse.user.model.UserUiPreferences;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -50,7 +51,7 @@ public class UserServiceTest {
         assertTrue(user.getCreatedAt().isAfter(startOfTheTest));
         assertNull(user.getUpdatedAt());
         assertTrue(passwordUtils.isPasswordValid("test", user.getPasswordHash()));
-        assertEquals(MapRenderMode.VECTOR, user.getMapRenderMode());
+        assertEquals(MapRenderMode.VECTOR, user.getTimelineDisplayPreferences().withDefaults().getMapRenderMode());
     }
 
     @Test
@@ -63,8 +64,8 @@ public class UserServiceTest {
             String email = TestIds.uniqueEmail("user-service-default-unit");
             UserEntity user = userService.registerUser(email, "test", "test", "Europe/Kyiv");
 
-            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
-            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
+            assertEquals(DistanceUnit.MILES, user.getUiPreferences().getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getUiPreferences().getTemperatureUnit());
         } finally {
             systemSettingsService.resetToDefault("system.user.default-distance-unit");
             systemSettingsService.resetToDefault("system.user.default-temperature-unit");
@@ -87,8 +88,8 @@ public class UserServiceTest {
                     "Europe/Kyiv"
             );
 
-            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
-            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
+            assertEquals(DistanceUnit.MILES, user.getUiPreferences().getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getUiPreferences().getTemperatureUnit());
         } finally {
             systemSettingsService.resetToDefault("system.user.default-distance-unit");
             systemSettingsService.resetToDefault("system.user.default-temperature-unit");
@@ -181,15 +182,15 @@ public class UserServiceTest {
 
         UpdateProfileRequest updateTo12h = new UpdateProfileRequest();
         updateTo12h.setFullName("Test User");
-        updateTo12h.setTimeFormat("12h");
+        updateTo12h.setUiPreferences(UserUiPreferences.builder().timeFormat("12h").build());
         assertDoesNotThrow(() -> userService.updateProfile(user.getId(), updateTo12h));
-        assertEquals("12h", userRepository.findById(user.getId()).getTimeFormat());
+        assertEquals("12h", userRepository.findById(user.getId()).getUiPreferences().getTimeFormat());
 
         UpdateProfileRequest updateTo24h = new UpdateProfileRequest();
         updateTo24h.setFullName("Test User");
-        updateTo24h.setTimeFormat("24h");
+        updateTo24h.setUiPreferences(UserUiPreferences.builder().timeFormat("24h").build());
         assertDoesNotThrow(() -> userService.updateProfile(user.getId(), updateTo24h));
-        assertEquals("24h", userRepository.findById(user.getId()).getTimeFormat());
+        assertEquals("24h", userRepository.findById(user.getId()).getUiPreferences().getTimeFormat());
     }
 
     @Test
@@ -200,7 +201,7 @@ public class UserServiceTest {
 
         UpdateProfileRequest invalidRequest = new UpdateProfileRequest();
         invalidRequest.setFullName("Test User");
-        invalidRequest.setTimeFormat("AMPM");
+        invalidRequest.setUiPreferences(UserUiPreferences.builder().timeFormat("AMPM").build());
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.updateProfile(user.getId(), invalidRequest));

@@ -130,7 +130,7 @@ public class TimelineNoteLocationService {
             Instant end = start.plusSeconds(Math.max(0L, stay.getStayDuration()));
             double lat = stay.getLocation().getY();
             double lon = stay.getLocation().getX();
-            best = closerAnchor(best, adjacentCandidate(NoteAnchorType.STAY, stay.getId(), start, end, lat, lon, lat, lon, eventTime));
+            best = closerAnchor(best, adjacentCandidate(start, end, lat, lon, lat, lon, eventTime));
         }
 
         for (TimelineTripEntity trip : trips) {
@@ -139,7 +139,7 @@ public class TimelineNoteLocationService {
             }
             Instant start = trip.getTimestamp();
             Instant end = start.plusSeconds(Math.max(0L, trip.getTripDuration()));
-            best = closerAnchor(best, adjacentCandidate(NoteAnchorType.TRIP, trip.getId(), start, end,
+            best = closerAnchor(best, adjacentCandidate(start, end,
                     trip.getStartPoint().getY(), trip.getStartPoint().getX(),
                     trip.getEndPoint().getY(), trip.getEndPoint().getX(), eventTime));
         }
@@ -147,16 +147,16 @@ public class TimelineNoteLocationService {
         return best;
     }
 
-    private AdjacentAnchor adjacentCandidate(NoteAnchorType type, Long id, Instant start, Instant end,
-                                              double startLat, double startLon, double endLat, double endLon,
-                                              Instant eventTime) {
+    private AdjacentAnchor adjacentCandidate(Instant start, Instant end,
+                                             double startLat, double startLon, double endLat, double endLon,
+                                             Instant eventTime) {
         if (eventTime.isBefore(start)) {
-            return new AdjacentAnchor(type, id, startLat, startLon, Duration.between(eventTime, start).getSeconds());
+            return new AdjacentAnchor(startLat, startLon, Duration.between(eventTime, start).getSeconds());
         }
         if (eventTime.isAfter(end)) {
-            return new AdjacentAnchor(type, id, endLat, endLon, Duration.between(end, eventTime).getSeconds());
+            return new AdjacentAnchor(endLat, endLon, Duration.between(end, eventTime).getSeconds());
         }
-        return new AdjacentAnchor(type, id, startLat, startLon, 0L);
+        return new AdjacentAnchor(startLat, startLon, 0L);
     }
 
     private AdjacentAnchor closerAnchor(AdjacentAnchor current, AdjacentAnchor candidate) {
@@ -166,7 +166,7 @@ public class TimelineNoteLocationService {
         return current;
     }
 
-    private record AdjacentAnchor(NoteAnchorType type, Long id, double latitude, double longitude, long distanceSeconds) {
+    private record AdjacentAnchor(double latitude, double longitude, long distanceSeconds) {
     }
 
     TimelineNoteResolvedLocation resolveCreateRequestLocation(UUID userId, CreateNoteRequest request, Instant eventTime) {

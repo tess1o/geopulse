@@ -158,8 +158,8 @@ public class OidcAutoLinkAccountsTest {
             OidcAuthenticationService oidcService = ClientProxy.unwrap(oidcAuthenticationService);
             UserEntity user = (UserEntity) method.invoke(oidcService, userInfo, "google");
 
-            assertEquals(DistanceUnit.MILES, user.getDistanceUnit());
-            assertEquals(TemperatureUnit.FAHRENHEIT, user.getTemperatureUnit());
+            assertEquals(DistanceUnit.MILES, user.getUiPreferences().getDistanceUnit());
+            assertEquals(TemperatureUnit.FAHRENHEIT, user.getUiPreferences().getTemperatureUnit());
             assertEquals(1, connectionRepository.findByUserId(user.getId()).size());
         } finally {
             systemSettingsService.resetToDefault("system.user.default-distance-unit");

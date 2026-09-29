@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.digest.service;
 
+import org.github.tess1o.geopulse.user.model.UserUiPreferences;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.github.tess1o.geopulse.digest.model.ActivityChartData;
@@ -48,7 +49,7 @@ class DigestPdfServiceTest {
                         "WALK", new BarChartData(new String[]{"Week 1", "Week 2"}, new double[]{4, 12})
                 )).build())
                 .build();
-        UserEntity user = UserEntity.builder().id(UUID.randomUUID()).timezone("Europe/Kyiv").distanceUnit(DistanceUnit.KILOMETERS).build();
+        UserEntity user = UserEntity.builder().id(UUID.randomUUID()).timezone("Europe/Kyiv").uiPreferences(UserUiPreferences.builder().distanceUnit(DistanceUnit.KILOMETERS).build()).build();
 
         byte[] report = new DigestPdfService().generate(digest, user, false);
 
@@ -62,7 +63,7 @@ class DigestPdfServiceTest {
     @Test
     void embedsImmichPreviewImages() throws Exception {
         UUID userId = UUID.randomUUID();
-        UserEntity user = UserEntity.builder().id(userId).timezone("Europe/Kyiv").distanceUnit(DistanceUnit.KILOMETERS).build();
+        UserEntity user = UserEntity.builder().id(userId).timezone("Europe/Kyiv").uiPreferences(UserUiPreferences.builder().distanceUnit(DistanceUnit.KILOMETERS).build()).build();
         TimeDigest digest = TimeDigest.builder()
                 .period(PeriodInfo.builder().year(2025).month(7).build())
                 .metrics(DigestMetrics.builder().totalDistance(1_000).build())

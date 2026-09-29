@@ -77,7 +77,7 @@ class GeofenceEvaluationServiceDateFormatTest {
     void shouldUseMdyFallbackWhenDateFormatMissing() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");
-        owner.setDateFormat(null);
+        owner.getUiPreferences().setDateFormat(null);
 
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 
@@ -88,7 +88,7 @@ class GeofenceEvaluationServiceDateFormatTest {
     void shouldSupportLegacyUsAliasForDateFormat() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");
-        owner.setDateFormat("MM/DD/YYYY");
+        owner.getUiPreferences().setDateFormat("MM/DD/YYYY");
 
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 
@@ -99,7 +99,7 @@ class GeofenceEvaluationServiceDateFormatTest {
     void shouldRenderDmyWhenConfigured() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");
-        owner.setDateFormat("DMY");
+        owner.getUiPreferences().setDateFormat("DMY");
 
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 
@@ -110,8 +110,8 @@ class GeofenceEvaluationServiceDateFormatTest {
     void shouldRender12HourTimeWhenConfigured() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");
-        owner.setDateFormat("YMD");
-        owner.setTimeFormat("12h");
+        owner.getUiPreferences().setDateFormat("YMD");
+        owner.getUiPreferences().setTimeFormat("12h");
 
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 
@@ -122,8 +122,8 @@ class GeofenceEvaluationServiceDateFormatTest {
     void shouldFallbackTo24HourTimeWhenTimeFormatInvalid() throws Exception {
         UserEntity owner = new UserEntity();
         owner.setTimezone("Europe/Kyiv");
-        owner.setDateFormat("YMD");
-        owner.setTimeFormat("unexpected");
+        owner.getUiPreferences().setDateFormat("YMD");
+        owner.getUiPreferences().setTimeFormat("unexpected");
 
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 

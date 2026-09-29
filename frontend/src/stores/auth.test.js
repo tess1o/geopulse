@@ -35,6 +35,7 @@ vi.mock('../utils/apiService', () => ({
     refreshToken: vi.fn(),
     get: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
     clearAuthData: vi.fn(),
     handleError: vi.fn()
   }
@@ -70,6 +71,22 @@ const user = (overrides = {}) => ({
   ...overrides
 })
 
+// /users/me and login payloads nest preferences; the store and cached profile keep them flat.
+const serverUser = ({ uiPreferences = {}, preferences = {}, capabilities = {}, ...overrides } = {}) => ({
+  userId: 'user-1',
+  fullName: 'Regular User',
+  email: 'regular@example.com',
+  timezone: 'UTC',
+  hasPassword: true,
+  role: 'USER',
+  uiPreferences: { distanceUnit: 'KILOMETERS', temperatureUnit: 'CELSIUS', timeFormat: '24h', language: 'en', ...uiPreferences },
+  timelineDisplay: {
+    preferences: { mapRenderMode: 'VECTOR', mapMatchingEnabled: false, mapMatchingExcludedMovementTypes: [], ...preferences },
+    capabilities: { mapMatchingAvailable: false, panoramaxAvailable: false, ...capabilities }
+  },
+  ...overrides
+})
+
 const storeCachedProfile = (cachedProfile) => {
   localStorage.setItem('userInfo', JSON.stringify(cachedProfile))
 }
@@ -95,7 +112,7 @@ describe('auth store cached profile reconciliation', () => {
       email: 'demo@example.com',
       demoMode: true
     }))
-    apiService.get.mockResolvedValue(user({ demoMode: false }))
+    apiService.get.mockResolvedValue(serverUser({ demoMode: false }))
 
     const authStore = useAuthStore()
     await authStore.checkAuth()
@@ -112,11 +129,10 @@ describe('auth store cached profile reconciliation', () => {
       mapRenderMode: 'RASTER',
       mapMatchingAvailable: false
     }))
-    apiService.get.mockResolvedValue(user({
+    apiService.get.mockResolvedValue(serverUser({
       timezone: 'Europe/London',
-      mapRenderMode: 'VECTOR',
-      mapMatchingExcludedMovementTypes: ['WALK'],
-      mapMatchingAvailable: true
+      preferences: { mapRenderMode: 'VECTOR', mapMatchingExcludedMovementTypes: ['WALK'] },
+      capabilities: { mapMatchingAvailable: true }
     }))
 
     const authStore = useAuthStore()
@@ -138,18 +154,78 @@ describe('auth store cached profile reconciliation', () => {
     const authStore = useAuthStore()
     authStore.setUser(user())
     apiService.put.mockResolvedValue({
-      mapMatchingEnabled: true,
-      mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE'],
-      mapMatchingAvailable: true
+      preferences: {
+        mapMatchingEnabled: true,
+        mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE']
+      },
+      capabilities: { mapMatchingAvailable: true, panoramaxAvailable: false }
     })
 
-    await authStore.updateTimelineDisplayPreferences({
+    const saved = await authStore.updateTimelineDisplayPreferences({
       mapMatchingEnabled: true,
       mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE']
     })
 
+    expect(saved).toMatchObject({
+      mapMatchingEnabled: true,
+      mapMatchingExcludedMovementTypes: ['WALK', 'BICYCLE'],
+      mapMatchingAvailable: true
+    })
     expect(authStore.mapMatchingExcludedMovementTypes).toEqual(['WALK', 'BICYCLE'])
     expect(readCachedProfile().mapMatchingExcludedMovementTypes).toEqual(['WALK', 'BICYCLE'])
+  })
+
+  it('resets a display preference the server no longer returns back to its default', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(user({ defaultPathColor: '#112233' }))
+    // Unset values are omitted from the response, so an absent key means "back to default".
+    apiService.put.mockResolvedValue({ preferences: { mapRenderMode: 'VECTOR' }, capabilities: {} })
+
+    await authStore.updateTimelineDisplayPreferences({ defaultPathColor: '' })
+
+    expect(authStore.defaultPathColor).toBe('')
+  })
+
+  it('sends UI preferences nested and flattens the updated profile', async () => {
+    const authStore = useAuthStore()
+    authStore.setUser(user())
+    apiService.patch.mockResolvedValue(serverUser({
+      fullName: 'Renamed',
+      uiPreferences: { distanceUnit: 'MILES', dateFormat: 'DMY' }
+    }))
+
+    await authStore.updateProfile({
+      fullName: 'Renamed',
+      avatar: null,
+      timezone: 'UTC',
+      distanceUnit: 'MILES',
+      dateFormat: 'DMY'
+    })
+
+    expect(apiService.patch).toHaveBeenCalledWith('/users/me', {
+      fullName: 'Renamed',
+      avatar: null,
+      timezone: 'UTC',
+      uiPreferences: { distanceUnit: 'MILES', dateFormat: 'DMY' }
+    })
+    expect(authStore.userName).toBe('Renamed')
+    expect(authStore.distanceUnit).toBe('MILES')
+    expect(authStore.dateFormat).toBe('DMY')
+    expect(readCachedProfile()).toMatchObject({ distanceUnit: 'MILES', dateFormat: 'DMY' })
+  })
+
+  it('flattens fetched timeline display settings for callers', async () => {
+    const authStore = useAuthStore()
+    apiService.get.mockResolvedValue({
+      preferences: { pathSimplificationTolerance: 15 },
+      capabilities: { panoramaxAvailable: true, panoramaxEndpoint: 'https://example.com/api' }
+    })
+
+    await expect(authStore.fetchTimelineDisplayPreferences()).resolves.toEqual({
+      pathSimplificationTolerance: 15,
+      panoramaxAvailable: true,
+      panoramaxEndpoint: 'https://example.com/api'
+    })
   })
 
   it('refreshes an expired cookie session before reconciling the cached profile', async () => {
@@ -201,7 +277,7 @@ describe('auth store cached profile reconciliation', () => {
   it('falls back to the guest locale choice on sign-out, not hardcoded English', async () => {
     storeCachedProfile(user({ language: 'uk' }))
     localStorage.setItem('guestLocale', 'uk')
-    apiService.get.mockResolvedValue(user({ language: 'uk' }))
+    apiService.get.mockResolvedValue(serverUser({ uiPreferences: { language: 'uk' } }))
 
     const { i18n } = await import('@/locales')
 

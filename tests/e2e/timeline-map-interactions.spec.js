@@ -207,7 +207,7 @@ const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCur
 
   await dbManager.client.query(`
     UPDATE users
-    SET timeline_display_show_current_location_telemetry = $2
+    SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{showCurrentLocationTelemetry}', to_jsonb($2::boolean))
     WHERE id = $1
   `, [userId, showCurrentLocationTelemetry]);
 };
@@ -249,7 +249,7 @@ const insertStayPopupTelemetryScenario = async (dbManager, userId, showCurrentLo
 
   await dbManager.client.query(`
     UPDATE users
-    SET timeline_display_show_current_location_telemetry = $2
+    SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{showCurrentLocationTelemetry}', to_jsonb($2::boolean))
     WHERE id = $1
   `, [userId, showCurrentLocationTelemetry]);
 };

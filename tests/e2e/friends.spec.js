@@ -1030,7 +1030,7 @@ test.describe('Friends Page', () => {
     test('should display friend timeline data with date range selection', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
         await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
-      await dbManager.client.query('UPDATE users SET date_format = $1 WHERE id = $2', [DateFormatValues.DMY, user.id]);
+      await dbManager.client.query("UPDATE users SET ui_preferences = jsonb_set(ui_preferences, '{dateFormat}', to_jsonb($1::text)) WHERE id = $2", [DateFormatValues.DMY, user.id]);
 
       // Create friendships with timeline permissions BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id, {

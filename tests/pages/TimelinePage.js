@@ -69,7 +69,7 @@ export class TimelinePage {
     await UserFactory.createUser(this.page, testUser);
     if (dbManager && mapMode) {
       await dbManager.client.query(
-        'UPDATE users SET map_render_mode = $2 WHERE email = $1',
+        "UPDATE users SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{mapRenderMode}', to_jsonb($2::text)) WHERE email = $1",
         [testUser.email, mapMode]
       );
     }
@@ -91,7 +91,7 @@ export class TimelinePage {
     if (mapMode) {
       const normalizedMode = String(mapMode).toUpperCase() === 'VECTOR' ? 'VECTOR' : 'RASTER';
       await dbManager.client.query(
-        'UPDATE users SET map_render_mode = $2 WHERE email = $1',
+        "UPDATE users SET timeline_display_preferences = jsonb_set(timeline_display_preferences, '{mapRenderMode}', to_jsonb($2::text)) WHERE email = $1",
         [testUser.email, normalizedMode]
       );
     }

@@ -229,7 +229,7 @@ public class MapMatchingService {
         }
 
         if (requireDisplayPreference && (user == null
-                || !Boolean.TRUE.equals(user.getTimelineDisplayMapMatchingEnabled()))) {
+                || !Boolean.TRUE.equals(user.getTimelineDisplayPreferences().getMapMatchingEnabled()))) {
             return status(trip.getId(), MapMatchingResolutionStatus.UNAVAILABLE, null, null, null);
         }
         if (trip.getTripDuration() > Math.max(1, configuration.getMaxTripDurationHours()) * 3600L) {
@@ -267,7 +267,7 @@ public class MapMatchingService {
 
     private boolean isDisplayEnabled(UUID userId) {
         UserEntity user = userRepository.findById(userId);
-        return user != null && Boolean.TRUE.equals(user.getTimelineDisplayMapMatchingEnabled());
+        return user != null && Boolean.TRUE.equals(user.getTimelineDisplayPreferences().getMapMatchingEnabled());
     }
 
     private boolean isUserEnabled(UUID userId) {

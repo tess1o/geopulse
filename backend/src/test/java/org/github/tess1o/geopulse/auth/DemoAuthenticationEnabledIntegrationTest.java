@@ -106,10 +106,10 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .statusCode(200)
                 .body("user.email", equalTo("new-york@demo.geopulse.cc"))
                 .body("user.demoMode", equalTo(true))
-                .body("user.distanceUnit", equalTo("MILES"))
-                .body("user.temperatureUnit", equalTo("FAHRENHEIT"))
-                .body("user.dateFormat", equalTo("MDY"))
-                .body("user.timeFormat", equalTo("12h"))
+                .body("user.uiPreferences.distanceUnit", equalTo("MILES"))
+                .body("user.uiPreferences.temperatureUnit", equalTo("FAHRENHEIT"))
+                .body("user.uiPreferences.dateFormat", equalTo("MDY"))
+                .body("user.uiPreferences.timeFormat", equalTo("12h"))
                 .cookie("access_token", notNullValue())
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());
@@ -130,10 +130,10 @@ class DemoAuthenticationEnabledIntegrationTest {
                 .statusCode(200)
                 .body("user.email", equalTo("kyiv@demo.geopulse.cc"))
                 .body("user.demoMode", equalTo(true))
-                .body("user.distanceUnit", equalTo("KILOMETERS"))
-                .body("user.temperatureUnit", equalTo("CELSIUS"))
-                .body("user.dateFormat", equalTo("DMY"))
-                .body("user.timeFormat", equalTo("24h"))
+                .body("user.uiPreferences.distanceUnit", equalTo("KILOMETERS"))
+                .body("user.uiPreferences.temperatureUnit", equalTo("CELSIUS"))
+                .body("user.uiPreferences.dateFormat", equalTo("DMY"))
+                .body("user.uiPreferences.timeFormat", equalTo("24h"))
                 .cookie("access_token", notNullValue())
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());
@@ -267,10 +267,12 @@ class DemoAuthenticationEnabledIntegrationTest {
 
         user.setFullName(fullName);
         user.setTimezone(timezone);
-        user.setDistanceUnit(distanceUnit);
-        user.setTemperatureUnit(temperatureUnit);
-        user.setDateFormat(dateFormat);
-        user.setTimeFormat(timeFormat);
+        user.setUiPreferences(user.getUiPreferences().toBuilder()
+                .distanceUnit(distanceUnit)
+                .temperatureUnit(temperatureUnit)
+                .dateFormat(dateFormat)
+                .timeFormat(timeFormat)
+                .build());
         user.setActive(true);
         user.setRole(Role.USER);
     }

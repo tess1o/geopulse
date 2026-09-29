@@ -10,40 +10,9 @@ export function readCachedUserProfile() {
     }
 }
 
+// Expects the store's normalized, flat user (see normalizeUser in stores/auth.js).
 export function writeCachedUserProfile(user) {
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify({
-        id: user.id,
-        userId: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        avatar: user.avatar,
-        timezone: user.timezone,
-        createdAt: user.createdAt,
-        hasPassword: user.hasPassword,
-        customMapTileUrl: user.customMapTileUrl,
-        customMapStyleUrl: user.customMapStyleUrl,
-        mapRenderMode: user.mapRenderMode || 'VECTOR',
-        distanceUnit: user.distanceUnit,
-        temperatureUnit: user.temperatureUnit,
-        defaultRedirectUrl: user.defaultRedirectUrl,
-        dateFormat: user.dateFormat,
-        timeFormat: user.timeFormat,
-        language: user.language,
-        defaultDateRangePreset: user.defaultDateRangePreset,
-        autoShowTripReplayControls: user.autoShowTripReplayControls ?? true,
-        enable3dBuildingsByDefault: user.enable3dBuildingsByDefault ?? false,
-        mapMatchingEnabled: user.mapMatchingEnabled ?? false,
-        mapMatchingExcludedMovementTypes: Array.isArray(user.mapMatchingExcludedMovementTypes)
-            ? user.mapMatchingExcludedMovementTypes
-            : [],
-        mapMatchingAvailable: user.mapMatchingAvailable ?? false,
-        defaultPathColor: user.defaultPathColor || '',
-        activePathColor: user.activePathColor || '',
-        demoMode: !!user.demoMode,
-        canViewAdmin: !!user.canViewAdmin || user.role === 'ADMIN',
-        adminReadOnly: !!user.adminReadOnly,
-        role: user.role
-    }))
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(user))
 }
 
 export function clearCachedUserProfile() {

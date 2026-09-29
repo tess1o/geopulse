@@ -18,8 +18,10 @@ import org.github.tess1o.geopulse.user.model.*;
         UserRegistrationRequest.class,
         UserResponse.class,
         UserSearchDTO.class,
-        UpdateTimelineDisplayPreferencesRequest.class,
         TimelineDisplayPreferences.class,
+        TimelineDisplayCapabilities.class,
+        TimelineDisplaySettings.class,
+        UserUiPreferences.class,
         RefreshTokenResponse.class,
         DistanceUnit.class,
         TemperatureUnit.class,
@@ -32,6 +34,8 @@ public class UserNativeConfig {
 
 @RegisterForReflection(serialization = true, targets = {
         TimelinePreferences.class,
+        TimelineDisplayPreferences.class,
+        UserUiPreferences.class,
         ImmichPreferences.class,
         MemosPreferences.class,
         NotificationPreferences.class

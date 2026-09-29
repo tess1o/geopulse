@@ -24,6 +24,49 @@ function shouldPreserveCachedProfile(error) {
     return typeof status === 'number' && status >= 500
 }
 
+// Preference values mirrored flat onto the in-memory user and the cached profile. The API nests them
+// (uiPreferences, timelineDisplay.preferences, timelineDisplay.capabilities) and already applies defaults;
+// these defaults cover partial payloads and cached profiles written by older builds.
+const UI_PREFERENCE_DEFAULTS = {
+    distanceUnit: 'KILOMETERS',
+    temperatureUnit: 'CELSIUS',
+    defaultRedirectUrl: '',
+    dateFormat: 'MDY',
+    timeFormat: '24h',
+    language: 'en'
+}
+
+const TIMELINE_DISPLAY_PREFERENCE_DEFAULTS = {
+    customMapTileUrl: '',
+    customMapStyleUrl: '',
+    mapRenderMode: 'VECTOR',
+    defaultDateRangePreset: '',
+    showCurrentLocationTelemetry: true,
+    autoShowTripReplayControls: true,
+    enable3dBuildingsByDefault: false,
+    mapMatchingEnabled: false,
+    mapMatchingExcludedMovementTypes: [],
+    defaultPathColor: '',
+    activePathColor: ''
+}
+
+const TIMELINE_DISPLAY_CAPABILITY_DEFAULTS = {
+    mapMatchingAvailable: false
+}
+
+// Picks the keys of `defaults` from `source`, falling back to the default for missing, null or empty values.
+function withDefaults(defaults, source) {
+    return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => {
+        const value = source?.[key]
+        const resolved = value === undefined || value === null || value === '' ? fallback : value
+        return [key, Array.isArray(resolved) ? [...resolved] : resolved]
+    }))
+}
+
+function flattenTimelineDisplaySettings(settings) {
+    return settings ? {...settings.preferences, ...settings.capabilities} : settings
+}
+
 function normalizeUser(source) {
     if (!source) {
         return null
@@ -35,6 +78,9 @@ function normalizeUser(source) {
         return null
     }
 
+    // API payloads nest preferences; the cached profile and patched in-memory user are already flat.
+    const timelineDisplay = raw.timelineDisplay || {}
+
     return {
         id,
         userId: id,
@@ -44,25 +90,9 @@ function normalizeUser(source) {
         timezone: raw.timezone || 'UTC',
         createdAt: raw.createdAt || null,
         hasPassword: !!raw.hasPassword,
-        customMapTileUrl: raw.customMapTileUrl || '',
-        customMapStyleUrl: raw.customMapStyleUrl || '',
-        mapRenderMode: raw.mapRenderMode || 'VECTOR',
-        distanceUnit: raw.distanceUnit || 'KILOMETERS',
-        temperatureUnit: raw.temperatureUnit || 'CELSIUS',
-        defaultRedirectUrl: raw.defaultRedirectUrl || '',
-        dateFormat: raw.dateFormat || 'MDY',
-        timeFormat: raw.timeFormat || '24h',
-        language: raw.language || 'en',
-        defaultDateRangePreset: raw.defaultDateRangePreset || '',
-        autoShowTripReplayControls: raw.autoShowTripReplayControls ?? true,
-        enable3dBuildingsByDefault: raw.enable3dBuildingsByDefault ?? false,
-        mapMatchingEnabled: raw.mapMatchingEnabled ?? false,
-        mapMatchingExcludedMovementTypes: Array.isArray(raw.mapMatchingExcludedMovementTypes)
-            ? [...raw.mapMatchingExcludedMovementTypes]
-            : [],
-        mapMatchingAvailable: raw.mapMatchingAvailable ?? false,
-        defaultPathColor: raw.defaultPathColor || '',
-        activePathColor: raw.activePathColor || '',
+        ...withDefaults(UI_PREFERENCE_DEFAULTS, raw.uiPreferences || raw),
+        ...withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, timelineDisplay.preferences || raw),
+        ...withDefaults(TIMELINE_DISPLAY_CAPABILITY_DEFAULTS, timelineDisplay.capabilities || raw),
         demoMode: !!raw.demoMode,
         canViewAdmin: !!raw.canViewAdmin || raw.role === 'ADMIN',
         adminReadOnly: !!raw.adminReadOnly,
@@ -249,23 +279,18 @@ export const useAuthStore = defineStore('auth', {
 
         async fetchTimelineDisplayPreferences() {
             try {
-                return await apiService.get('/preferences/timeline-display')
+                return flattenTimelineDisplaySettings(await apiService.get('/preferences/timeline-display'))
             } catch (error) {
                 throw this.fail(error, 'Failed to load timeline display preferences')
             }
         },
 
-        async updateProfile({fullName, avatar, timezone, distanceUnit, temperatureUnit, defaultRedirectUrl, dateFormat, timeFormat, language}) {
+        async updateProfile({fullName, avatar, timezone, ...uiPreferences}) {
             const response = await apiService.patch('/users/me', {
                 fullName,
                 avatar,
                 timezone,
-                distanceUnit,
-                temperatureUnit,
-                defaultRedirectUrl,
-                dateFormat,
-                timeFormat,
-                language
+                uiPreferences
             })
 
             const updatedUser = response
@@ -297,54 +322,16 @@ export const useAuthStore = defineStore('auth', {
 
         async updateTimelineDisplayPreferences(displayPreferences) {
             const response = await apiService.put('/preferences/timeline-display', displayPreferences)
-            const updatedPreferences = response || null
-
-            if (updatedPreferences) {
-                const userPatch = {}
-
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
-                    userPatch.customMapTileUrl = updatedPreferences.customMapTileUrl || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapStyleUrl')) {
-                    userPatch.customMapStyleUrl = updatedPreferences.customMapStyleUrl || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapRenderMode')) {
-                    userPatch.mapRenderMode = updatedPreferences.mapRenderMode || 'VECTOR'
-                }
-
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultDateRangePreset')) {
-                    userPatch.defaultDateRangePreset = updatedPreferences.defaultDateRangePreset || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'autoShowTripReplayControls')) {
-                    userPatch.autoShowTripReplayControls = updatedPreferences.autoShowTripReplayControls ?? true
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'enable3dBuildingsByDefault')) {
-                    userPatch.enable3dBuildingsByDefault = updatedPreferences.enable3dBuildingsByDefault ?? false
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingEnabled')) {
-                    userPatch.mapMatchingEnabled = updatedPreferences.mapMatchingEnabled ?? false
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingExcludedMovementTypes')) {
-                    userPatch.mapMatchingExcludedMovementTypes = Array.isArray(updatedPreferences.mapMatchingExcludedMovementTypes)
-                        ? [...updatedPreferences.mapMatchingExcludedMovementTypes]
-                        : []
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultPathColor')) {
-                    userPatch.defaultPathColor = updatedPreferences.defaultPathColor || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'activePathColor')) {
-                    userPatch.activePathColor = updatedPreferences.activePathColor || ''
-                }
-                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'mapMatchingAvailable')) {
-                    userPatch.mapMatchingAvailable = updatedPreferences.mapMatchingAvailable ?? false
-                }
-
-                if (Object.keys(userPatch).length > 0) {
-                    this.patchCurrentUser(userPatch)
-                }
+            if (!response) {
+                return null
             }
 
-            return updatedPreferences
+            this.patchCurrentUser({
+                ...withDefaults(TIMELINE_DISPLAY_PREFERENCE_DEFAULTS, response.preferences),
+                ...withDefaults(TIMELINE_DISPLAY_CAPABILITY_DEFAULTS, response.capabilities)
+            })
+
+            return flattenTimelineDisplaySettings(response)
         },
 
         updateUserTimezone(timezone) {

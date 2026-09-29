@@ -1,13 +1,10 @@
 package org.github.tess1o.geopulse.auth.model;
 
 import lombok.*;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
-import org.github.tess1o.geopulse.streaming.model.shared.TripType;
-import org.github.tess1o.geopulse.user.model.DistanceUnit;
-import org.github.tess1o.geopulse.user.model.TemperatureUnit;
+import org.github.tess1o.geopulse.user.model.TimelineDisplaySettings;
+import org.github.tess1o.geopulse.user.model.UserUiPreferences;
 
 import java.time.Instant;
-import java.util.List;
 
 /**
  * Response DTO for authentication containing JWT tokens.
@@ -32,21 +29,8 @@ public class AuthResponse {
     private long expiresIn;
     private Instant createdAt;
     private boolean hasPassword;
-    private String customMapTileUrl;
-    private String customMapStyleUrl;
-    private MapRenderMode mapRenderMode;
-    private DistanceUnit distanceUnit;
-    private TemperatureUnit temperatureUnit;
-    private String defaultRedirectUrl;
-    private String dateFormat;
-    private String timeFormat;
-    private String language;
-    private String defaultDateRangePreset;
-    private Boolean autoShowTripReplayControls;
-    private Boolean enable3dBuildingsByDefault;
-    private Boolean mapMatchingEnabled;
-    private List<TripType> mapMatchingExcludedMovementTypes;
-    private Boolean mapMatchingAvailable;
-    private String defaultPathColor;
-    private String activePathColor;
+    /** UI preferences with defaults applied. */
+    private UserUiPreferences uiPreferences;
+    /** Timeline display preferences with defaults applied, plus server capabilities. */
+    private TimelineDisplaySettings timelineDisplay;
 }

@@ -12,16 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class UpdateProfileRequestLanguageTest {
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
+    private static UpdateProfileRequest withLanguage(String language) {
+        UpdateProfileRequest request = new UpdateProfileRequest();
+        request.setUiPreferences(UserUiPreferences.builder().language(language).build());
+        return request;
+    }
+
     private boolean hasLanguageViolation(UpdateProfileRequest request) {
         return validator.validate(request).stream()
-                .anyMatch(violation -> "language".equals(violation.getPropertyPath().toString()));
+                .anyMatch(violation -> "uiPreferences.language".equals(violation.getPropertyPath().toString()));
     }
 
     @Test
     void acceptsEachSupportedLanguage() {
         for (SupportedLanguages language : SupportedLanguages.values()) {
-            UpdateProfileRequest request = new UpdateProfileRequest();
-            request.setLanguage(language.getCode());
+            UpdateProfileRequest request = withLanguage(language.getCode());
             assertTrue(validator.validate(request).isEmpty(),
                     "Expected '" + language.getCode() + "' to be accepted");
         }
@@ -29,8 +34,7 @@ class UpdateProfileRequestLanguageTest {
 
     @Test
     void rejectsUnsupportedLanguages() {
-        UpdateProfileRequest request = new UpdateProfileRequest();
-        request.setLanguage("de");
+        UpdateProfileRequest request = withLanguage("de");
         assertTrue(hasLanguageViolation(request));
     }
 
@@ -38,19 +42,16 @@ class UpdateProfileRequestLanguageTest {
     void rejectsACodeDifferingOnlyByCase() {
         // The stored value is used verbatim as a vue-i18n locale and an <html lang>, so a stray "UK"
         // must be rejected by the boundary rather than normalized into something the client cannot map.
-        UpdateProfileRequest request = new UpdateProfileRequest();
-        request.setLanguage("UK");
+        UpdateProfileRequest request = withLanguage("UK");
         assertTrue(hasLanguageViolation(request));
     }
 
     @Test
     void rejectsBlankAndOversizedValues() {
-        UpdateProfileRequest blank = new UpdateProfileRequest();
-        blank.setLanguage("");
+        UpdateProfileRequest blank = withLanguage("");
         assertTrue(hasLanguageViolation(blank));
 
-        UpdateProfileRequest oversized = new UpdateProfileRequest();
-        oversized.setLanguage("x".repeat(17));
+        UpdateProfileRequest oversized = withLanguage("x".repeat(17));
         assertTrue(hasLanguageViolation(oversized));
     }
 
@@ -65,6 +66,6 @@ class UpdateProfileRequestLanguageTest {
 
     @Test
     void defaultsAnEntityToEnglish() {
-        assertEquals("en", UserEntity.builder().build().getLanguage());
+        assertEquals("en", UserEntity.builder().build().getUiPreferences().withDefaults().getLanguage());
     }
 }

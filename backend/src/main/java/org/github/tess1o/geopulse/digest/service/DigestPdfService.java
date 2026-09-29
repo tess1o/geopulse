@@ -77,10 +77,10 @@ public class DigestPdfService {
         try (PDPageContentStream stream = new PDPageContentStream(document, firstPage)) {
             float width = firstPage.getMediaBox().getWidth();
             drawHeader(stream, digest, user, fonts, width);
-            drawMetricCards(stream, digest.getMetrics(), user.getDistanceUnit(), fonts, width);
+            drawMetricCards(stream, digest.getMetrics(), user.getUiPreferences().getDistanceUnit(), fonts, width);
             drawHighlights(stream, digest.getHighlights(), user, fonts, width);
-            drawMovementMix(stream, digest.getMetrics(), user.getDistanceUnit(), fonts, width);
-            drawTrend(stream, digest.getActivityChart(), user.getDistanceUnit(), fonts, width);
+            drawMovementMix(stream, digest.getMetrics(), user.getUiPreferences().getDistanceUnit(), fonts, width);
+            drawTrend(stream, digest.getActivityChart(), user.getUiPreferences().getDistanceUnit(), fonts, width);
             drawFooter(stream, fonts, width, 1);
         }
 
@@ -108,7 +108,7 @@ public class DigestPdfService {
         stream.fill();
         text(stream, "GEOPULSE REWIND", PAGE_MARGIN, pageHeight - 58, 10, fonts.bold, new Color(219, 234, 254));
         text(stream, periodLabel(digest), PAGE_MARGIN, pageHeight - 98, 28, fonts.bold, Color.WHITE);
-        String subtitle = formatDistance(digest.getMetrics().getTotalDistance(), user.getDistanceUnit()) + "  ·  "
+        String subtitle = formatDistance(digest.getMetrics().getTotalDistance(), user.getUiPreferences().getDistanceUnit()) + "  ·  "
                 + digest.getMetrics().getTripCount() + " trips  ·  " + digest.getMetrics().getActiveDays() + " active days";
         text(stream, subtitle, PAGE_MARGIN, pageHeight - 123, 11, fonts.regular, new Color(219, 234, 254));
     }
@@ -143,7 +143,7 @@ public class DigestPdfService {
         float y = 542;
         text(stream, "Standout moments", PAGE_MARGIN, y, 14, fonts.bold, INK);
         List<String[]> items = new ArrayList<>();
-        if (highlights != null && highlights.getLongestTrip() != null) items.add(new String[]{ "Longest trip", formatDistance(highlights.getLongestTrip().getDistance(), user.getDistanceUnit()) + " · " + formatDate(highlights.getLongestTrip().getDate(), user) });
+        if (highlights != null && highlights.getLongestTrip() != null) items.add(new String[]{ "Longest trip", formatDistance(highlights.getLongestTrip().getDistance(), user.getUiPreferences().getDistanceUnit()) + " · " + formatDate(highlights.getLongestTrip().getDate(), user) });
         if (highlights != null && highlights.getMostVisited() != null) items.add(new String[]{ "Most visited", safe(highlights.getMostVisited().getName()) + " · " + highlights.getMostVisited().getVisits() + " visits" });
         if (highlights != null && highlights.getBusiestDay() != null) items.add(new String[]{ "Busiest day", highlights.getBusiestDay().getTrips() + " trips · " + formatDate(highlights.getBusiestDay().getDate(), user) });
         if (items.isEmpty()) {
@@ -497,7 +497,7 @@ public class DigestPdfService {
     }
     private String formatDate(Instant instant, UserEntity user) {
         if (instant == null) return "";
-        String pattern = switch (safe(user.getDateFormat()).toUpperCase(Locale.ROOT)) {
+        String pattern = switch (safe(user.getUiPreferences().getDateFormat()).toUpperCase(Locale.ROOT)) {
             case "DMY" -> "dd/MM/yyyy";
             case "YMD" -> "yyyy-MM-dd";
             default -> "MM/dd/yyyy";

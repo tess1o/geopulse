@@ -3,11 +3,9 @@ package org.github.tess1o.geopulse.user.mapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.auth.service.DemoModeService;
-import org.github.tess1o.geopulse.mapmatching.service.MapMatchingConfiguration;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
-import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserResponse;
+import org.github.tess1o.geopulse.user.service.UserService;
 
 /**
  * Mapper for converting between User entities and DTOs.
@@ -19,7 +17,7 @@ public class UserMapper {
     DemoModeService demoModeService;
 
     @Inject
-    MapMatchingConfiguration mapMatchingConfiguration;
+    UserService userService;
 
     /**
      * Convert a UserEntity to a UserResponse DTO.
@@ -32,8 +30,6 @@ public class UserMapper {
             return null;
         }
 
-        boolean mapMatchingAvailable = mapMatchingConfiguration != null && mapMatchingConfiguration.isAvailable();
-
         return UserResponse.builder()
                 .userId(entity.getId())
                 .email(entity.getEmail())
@@ -45,26 +41,8 @@ public class UserMapper {
                 .adminReadOnly(demoModeService.isAdminReadOnly(entity))
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
-                .customMapTileUrl(entity.getCustomMapTileUrl())
-                .customMapStyleUrl(entity.getCustomMapStyleUrl())
-                .mapRenderMode(entity.getMapRenderMode() != null ? entity.getMapRenderMode() : MapRenderMode.VECTOR)
-                .distanceUnit(entity.getDistanceUnit())
-                .temperatureUnit(entity.getTemperatureUnit())
-                .defaultRedirectUrl(entity.getDefaultRedirectUrl())
-                .dateFormat(entity.getDateFormat())
-                .timeFormat(entity.getTimeFormat())
-                .language(SupportedLanguages.normalizeOrDefault(entity.getLanguage()))
-                .defaultDateRangePreset(entity.getDefaultDateRangePreset())
-                .autoShowTripReplayControls(entity.getTimelineDisplayAutoShowTripReplayControls() != null
-                        ? entity.getTimelineDisplayAutoShowTripReplayControls() : true)
-                .enable3dBuildingsByDefault(Boolean.TRUE.equals(entity.getTimelineDisplayEnable3dBuildingsByDefault()))
-                .mapMatchingEnabled(mapMatchingAvailable
-                        && Boolean.TRUE.equals(entity.getTimelineDisplayMapMatchingEnabled()))
-                .mapMatchingExcludedMovementTypes(entity.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
-                        ? java.util.List.of() : entity.getTimelineDisplayMapMatchingExcludedMovementTypes())
-                .mapMatchingAvailable(mapMatchingAvailable)
-                .defaultPathColor(entity.getTimelineDisplayDefaultPathColor())
-                .activePathColor(entity.getTimelineDisplayActivePathColor())
+                .uiPreferences(entity.getUiPreferences().withDefaults())
+                .timelineDisplay(userService.getTimelineDisplaySettings(entity))
                 .build();
     }
 }

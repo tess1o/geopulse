@@ -13,16 +13,13 @@ import org.github.tess1o.geopulse.admin.service.AdminBootstrapService;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.user.model.RefreshTokenResponse;
-import org.github.tess1o.geopulse.user.model.SupportedLanguages;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -145,25 +142,8 @@ public class AuthenticationService {
                 .createdAt(user.getCreatedAt())
                 .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
-                .customMapTileUrl(user.getCustomMapTileUrl())
-                .customMapStyleUrl(user.getCustomMapStyleUrl())
-                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
-                .defaultRedirectUrl(user.getDefaultRedirectUrl())
-                .distanceUnit(user.getDistanceUnit())
-                .temperatureUnit(user.getTemperatureUnit())
-                .dateFormat(user.getDateFormat())
-                .timeFormat(user.getTimeFormat())
-                .language(SupportedLanguages.normalizeOrDefault(user.getLanguage()))
-                .defaultDateRangePreset(user.getDefaultDateRangePreset())
-                .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
-                        ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
-                .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
-                .mapMatchingEnabled(userService.isTimelineDisplayMapMatchingEnabled(user))
-                .mapMatchingExcludedMovementTypes(user.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
-                        ? List.of() : user.getTimelineDisplayMapMatchingExcludedMovementTypes())
-                .mapMatchingAvailable(userService.isMapMatchingAvailable())
-                .defaultPathColor(user.getTimelineDisplayDefaultPathColor())
-                .activePathColor(user.getTimelineDisplayActivePathColor())
+                .uiPreferences(user.getUiPreferences().withDefaults())
+                .timelineDisplay(userService.getTimelineDisplaySettings(user))
                 .build();
     }
 

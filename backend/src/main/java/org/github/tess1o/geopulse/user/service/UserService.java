@@ -18,7 +18,6 @@ import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEv
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserAvatarRepository;
@@ -152,10 +151,8 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .distanceUnit(getDefaultDistanceUnit())
-                .temperatureUnit(getDefaultTemperatureUnit())
+                .uiPreferences(initialUiPreferences(language))
                 .coverageEnabled(coverageEnabledByDefault)
-                .language(SupportedLanguages.normalizeOrDefault(language))
                 .build();
 
         persist(user);
@@ -204,10 +201,8 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
-                .distanceUnit(getDefaultDistanceUnit())
-                .temperatureUnit(getDefaultTemperatureUnit())
+                .uiPreferences(initialUiPreferences(language))
                 .coverageEnabled(coverageEnabledByDefault)
-                .language(SupportedLanguages.normalizeOrDefault(language))
                 .build();
 
         persist(user);
@@ -235,12 +230,16 @@ public class UserService {
         }
     }
 
-    public DistanceUnit getDefaultDistanceUnit() {
-        return systemSettingsService.getDefaultDistanceUnit();
-    }
-
-    public TemperatureUnit getDefaultTemperatureUnit() {
-        return systemSettingsService.getDefaultTemperatureUnit();
+    /**
+     * UI preferences for a newly created user. Units are stored explicitly because their defaults are
+     * admin-configurable: a later change of the system default must not silently switch existing users.
+     */
+    public UserUiPreferences initialUiPreferences(String language) {
+        return UserUiPreferences.builder()
+                .distanceUnit(systemSettingsService.getDefaultDistanceUnit())
+                .temperatureUnit(systemSettingsService.getDefaultTemperatureUnit())
+                .language(SupportedLanguages.normalizeOrDefault(language))
+                .build();
     }
 
     /**
@@ -667,35 +666,14 @@ public class UserService {
             log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
         }
 
-        if (request.getDistanceUnit() != null) {
-            user.setDistanceUnit(request.getDistanceUnit());
-            log.debug("Updated distance unit for user {}", user.getId());
-        }
-
-        if (request.getTemperatureUnit() != null) {
-            user.setTemperatureUnit(request.getTemperatureUnit());
-            log.debug("Updated temperature unit for user {}", user.getId());
-        }
-
-        if (request.getDefaultRedirectUrl() != null) {
-            validateDefaultRedirectUrl(request.getDefaultRedirectUrl());
-            user.setDefaultRedirectUrl(request.getDefaultRedirectUrl().trim().isEmpty() ? null : request.getDefaultRedirectUrl().trim());
-            log.debug("Updated default redirect URL for user {}", user.getId());
-        }
-
-        if (request.getDateFormat() != null) {
-            user.setDateFormat(validateDateFormat(request.getDateFormat()));
-            log.debug("Updated date format for user {}", user.getId());
-        }
-
-        if (request.getTimeFormat() != null) {
-            user.setTimeFormat(validateTimeFormat(request.getTimeFormat()));
-            log.debug("Updated time format for user {}", user.getId());
-        }
-
-        if (request.getLanguage() != null) {
-            user.setLanguage(validateLanguage(request.getLanguage()));
-            log.debug("Updated language for user {}", user.getId());
+        if (request.getUiPreferences() != null) {
+            UserUiPreferences merged = PreferencePatches.apply(user.getUiPreferences(), request.getUiPreferences());
+            validateDefaultRedirectUrl(merged.getDefaultRedirectUrl());
+            merged.setDateFormat(validateDateFormat(merged.getDateFormat()));
+            merged.setTimeFormat(validateTimeFormat(merged.getTimeFormat()));
+            merged.setLanguage(validateLanguage(merged.getLanguage()));
+            user.setUiPreferences(merged);
+            log.debug("Updated UI preferences for user {}", user.getId());
         }
 
         return user;
@@ -884,134 +862,80 @@ public class UserService {
      * These settings affect ONLY how timelines are rendered in the UI.
      * Changing these settings does NOT trigger timeline regeneration.
      *
+     * <p>Null fields in {@code patch} are left unchanged; see {@link PreferencePatches} for the full semantics.
+     *
      * @param userId the user ID
-     * @param request the display preferences update request
+     * @param patch  the preferences to change
      */
     @Transactional
-    public void updateTimelineDisplayPreferences(UUID userId, UpdateTimelineDisplayPreferencesRequest request) {
+    public void updateTimelineDisplayPreferences(UUID userId, TimelineDisplayPreferences patch) {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }
 
-        // Update custom map tile URL if provided
-        if (request.getCustomMapTileUrl() != null) {
-            validateCustomMapTileUrl(request.getCustomMapTileUrl());
-            user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
-            log.debug("Updated custom map tile URL for user {}", userId);
-        }
-        if (request.getCustomMapStyleUrl() != null) {
-            validateCustomMapStyleUrl(request.getCustomMapStyleUrl());
-            user.setCustomMapStyleUrl(request.getCustomMapStyleUrl().trim().isEmpty() ? null : request.getCustomMapStyleUrl().trim());
-            log.debug("Updated custom map style URL for user {}", userId);
-        }
-        if (request.getMapRenderMode() != null) {
-            user.setMapRenderMode(request.getMapRenderMode());
-            log.debug("Updated map render mode for user {} to {}", userId, request.getMapRenderMode());
+        // Only an opt-in is rejected: a user who enabled map matching before an administrator turned it off
+        // must still be able to save their other display preferences.
+        if (Boolean.TRUE.equals(patch.getMapMatchingEnabled()) && !isMapMatchingAvailable()) {
+            throw new IllegalArgumentException("Map matching is disabled or not configured by an administrator");
         }
 
-        // Update display preference columns (no event firing, no regeneration)
-        if (request.getPathSimplificationEnabled() != null) {
-            user.setTimelineDisplayPathSimplificationEnabled(request.getPathSimplificationEnabled());
+        TimelineDisplayPreferences merged = PreferencePatches.apply(user.getTimelineDisplayPreferences(), patch);
+        validateCustomMapTileUrl(merged.getCustomMapTileUrl());
+        validateCustomMapStyleUrl(merged.getCustomMapStyleUrl());
+        merged.setDefaultDateRangePreset(validateDefaultDateRangePreset(merged.getDefaultDateRangePreset()));
+        if (merged.getMapMatchingExcludedMovementTypes() != null) {
+            merged.setMapMatchingExcludedMovementTypes(
+                    validateMapMatchingExcludedMovementTypes(merged.getMapMatchingExcludedMovementTypes()));
         }
-        if (request.getPathSimplificationTolerance() != null) {
-            user.setTimelineDisplayPathSimplificationTolerance(request.getPathSimplificationTolerance());
-        }
-        if (request.getPathMaxPoints() != null) {
-            user.setTimelineDisplayPathMaxPoints(request.getPathMaxPoints());
-        }
-        if (request.getPathAdaptiveSimplification() != null) {
-            user.setTimelineDisplayPathAdaptiveSimplification(request.getPathAdaptiveSimplification());
-        }
-        if (request.getDefaultDateRangePreset() != null) {
-            user.setDefaultDateRangePreset(validateDefaultDateRangePreset(request.getDefaultDateRangePreset()));
-        }
-        if (request.getShowCurrentLocationTelemetry() != null) {
-            user.setTimelineDisplayShowCurrentLocationTelemetry(request.getShowCurrentLocationTelemetry());
-        }
-        if (request.getAutoShowTripReplayControls() != null) {
-            user.setTimelineDisplayAutoShowTripReplayControls(request.getAutoShowTripReplayControls());
-        }
-        if (request.getEnable3dBuildingsByDefault() != null) {
-            user.setTimelineDisplayEnable3dBuildingsByDefault(request.getEnable3dBuildingsByDefault());
-        }
-        if (request.getMapMatchingEnabled() != null) {
-            if (Boolean.TRUE.equals(request.getMapMatchingEnabled()) && !isMapMatchingAvailable()) {
-                throw new IllegalArgumentException("Map matching is disabled or not configured by an administrator");
-            }
-            user.setTimelineDisplayMapMatchingEnabled(request.getMapMatchingEnabled());
-        }
-        if (request.getMapMatchingExcludedMovementTypes() != null) {
-            user.setTimelineDisplayMapMatchingExcludedMovementTypes(
-                    validateMapMatchingExcludedMovementTypes(request.getMapMatchingExcludedMovementTypes()));
-        }
-        if (request.getDefaultPathColor() != null) {
-            user.setTimelineDisplayDefaultPathColor(request.getDefaultPathColor().trim().isEmpty() ? null : request.getDefaultPathColor().trim());
-        }
-        if (request.getActivePathColor() != null) {
-            user.setTimelineDisplayActivePathColor(request.getActivePathColor().trim().isEmpty() ? null : request.getActivePathColor().trim());
-        }
+        user.setTimelineDisplayPreferences(merged);
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
 
     /**
-     * Get timeline display preferences for a user.
+     * Get effective timeline display settings for a user.
      *
      * @param userId the user ID
-     * @return the user's timeline display preferences with defaults applied for null values
+     * @return the user's preferences with defaults applied, plus server capabilities
      */
-    public TimelineDisplayPreferences getTimelineDisplayPreferences(UUID userId) {
+    public TimelineDisplaySettings getTimelineDisplaySettings(UUID userId) {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }
+        return getTimelineDisplaySettings(user);
+    }
 
-        boolean mapMatchingAvailable = isMapMatchingAvailable();
-        boolean panoramaxAvailable = isPanoramaxAvailable();
-
-        return TimelineDisplayPreferences.builder()
-                .customMapTileUrl(user.getCustomMapTileUrl())
-                .customMapStyleUrl(user.getCustomMapStyleUrl())
-                .mapRenderMode(user.getMapRenderMode() != null ? user.getMapRenderMode() : MapRenderMode.VECTOR)
-                .pathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled() != null
-                        ? user.getTimelineDisplayPathSimplificationEnabled() : true)
-                .pathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance() != null
-                        ? user.getTimelineDisplayPathSimplificationTolerance() : 15.0)
-                .pathMaxPoints(user.getTimelineDisplayPathMaxPoints() != null
-                        ? user.getTimelineDisplayPathMaxPoints() : 0)
-                .pathAdaptiveSimplification(user.getTimelineDisplayPathAdaptiveSimplification() != null
-                        ? user.getTimelineDisplayPathAdaptiveSimplification() : true)
-                .defaultDateRangePreset(user.getDefaultDateRangePreset())
-                .showCurrentLocationTelemetry(user.getTimelineDisplayShowCurrentLocationTelemetry() != null
-                        ? user.getTimelineDisplayShowCurrentLocationTelemetry() : true)
-                .autoShowTripReplayControls(user.getTimelineDisplayAutoShowTripReplayControls() != null
-                        ? user.getTimelineDisplayAutoShowTripReplayControls() : true)
-                .enable3dBuildingsByDefault(Boolean.TRUE.equals(user.getTimelineDisplayEnable3dBuildingsByDefault()))
-                .mapMatchingEnabled(isTimelineDisplayMapMatchingEnabled(user, mapMatchingAvailable))
-                .mapMatchingExcludedMovementTypes(user.getTimelineDisplayMapMatchingExcludedMovementTypes() == null
-                        ? List.of() : user.getTimelineDisplayMapMatchingExcludedMovementTypes())
-                .mapMatchingAvailable(mapMatchingAvailable)
-                .panoramaxAvailable(panoramaxAvailable)
-                .panoramaxEndpoint(panoramaxAvailable ? systemSettingsService.getString("panoramax.endpoint").trim() : null)
-                .defaultPathColor(user.getTimelineDisplayDefaultPathColor())
-                .activePathColor(user.getTimelineDisplayActivePathColor())
+    public TimelineDisplaySettings getTimelineDisplaySettings(UserEntity user) {
+        TimelineDisplayCapabilities capabilities = getTimelineDisplayCapabilities();
+        TimelineDisplayPreferences preferences = user.getTimelineDisplayPreferences().withDefaults();
+        if (!capabilities.isMapMatchingAvailable()) {
+            preferences.setMapMatchingEnabled(false);
+        }
+        return TimelineDisplaySettings.builder()
+                .preferences(preferences)
+                .capabilities(capabilities)
                 .build();
     }
 
-    private List<TripType> validateMapMatchingExcludedMovementTypes(List<String> values) {
-        EnumSet<TripType> selected = EnumSet.noneOf(TripType.class);
-        Set<String> allowed = MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES.stream()
-                .map(Enum::name)
-                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    public TimelineDisplayCapabilities getTimelineDisplayCapabilities() {
+        boolean panoramaxAvailable = isPanoramaxAvailable();
+        return TimelineDisplayCapabilities.builder()
+                .mapMatchingAvailable(isMapMatchingAvailable())
+                .panoramaxAvailable(panoramaxAvailable)
+                .panoramaxEndpoint(panoramaxAvailable ? systemSettingsService.getString("panoramax.endpoint").trim() : null)
+                .build();
+    }
 
-        for (String value : values) {
-            String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-            if (!allowed.contains(normalized)) {
+    private List<TripType> validateMapMatchingExcludedMovementTypes(List<TripType> values) {
+        EnumSet<TripType> selected = EnumSet.noneOf(TripType.class);
+        for (TripType value : values) {
+            if (!MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES.contains(value)) {
                 throw new IllegalArgumentException("Invalid map-matching excluded movement type: " + value
-                        + ". Allowed values: " + String.join(", ", allowed));
+                        + ". Allowed values: " + MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES);
             }
-            selected.add(TripType.valueOf(normalized));
+            selected.add(value);
         }
 
         return MAP_MATCHING_EXCLUDABLE_MOVEMENT_TYPES.stream()
@@ -1026,15 +950,5 @@ public class UserService {
 
     public boolean isMapMatchingAvailable() {
         return mapMatchingConfiguration != null && mapMatchingConfiguration.isAvailable();
-    }
-
-    public boolean isTimelineDisplayMapMatchingEnabled(UserEntity user) {
-        return isTimelineDisplayMapMatchingEnabled(user, isMapMatchingAvailable());
-    }
-
-    private boolean isTimelineDisplayMapMatchingEnabled(UserEntity user, boolean mapMatchingAvailable) {
-        return mapMatchingAvailable
-                && user != null
-                && Boolean.TRUE.equals(user.getTimelineDisplayMapMatchingEnabled());
     }
 }

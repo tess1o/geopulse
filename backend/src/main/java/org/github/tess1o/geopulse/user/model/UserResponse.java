@@ -4,10 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.github.tess1o.geopulse.shared.map.MapRenderMode;
-import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,22 +25,9 @@ public class UserResponse {
     private String timezone;
     private String avatar;
     private boolean hasPassword;
-    private String customMapTileUrl;
-    private String customMapStyleUrl;
-    private MapRenderMode mapRenderMode;
-    private DistanceUnit distanceUnit;
-    private TemperatureUnit temperatureUnit;
-    private String defaultRedirectUrl;
-    private String dateFormat;
-    private String timeFormat;
-    private String language;
-    private String defaultDateRangePreset;
-    private Boolean autoShowTripReplayControls;
-    private Boolean enable3dBuildingsByDefault;
-    private Boolean mapMatchingEnabled;
-    private List<TripType> mapMatchingExcludedMovementTypes;
-    private Boolean mapMatchingAvailable;
-    private String defaultPathColor;
-    private String activePathColor;
+    /** UI preferences with defaults applied. */
+    private UserUiPreferences uiPreferences;
+    /** Timeline display preferences with defaults applied, plus server capabilities. */
+    private TimelineDisplaySettings timelineDisplay;
     // Don't include passwordHash in responses
 }

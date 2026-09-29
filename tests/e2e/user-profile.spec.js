@@ -285,7 +285,7 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getDateFormatFromLocalStorage()).toBe(DateFormatValues.DMY);
 
       const dbUser = await dbManager.getUserByEmail(testUser.email);
-      expect(dbUser.date_format).toBe(DateFormatValues.DMY);
+      expect(dbUser.ui_preferences?.dateFormat).toBe(DateFormatValues.DMY);
 
       await page.reload();
       await profilePage.waitForPageLoad();
@@ -310,7 +310,7 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getTimeFormatFromLocalStorage()).toBe('12h');
 
       const dbUser = await dbManager.getUserByEmail(testUser.email);
-      expect(dbUser.time_format).toBe('12h');
+      expect(dbUser.ui_preferences?.timeFormat).toBe('12h');
 
       await page.reload();
       await profilePage.waitForPageLoad();
@@ -745,10 +745,10 @@ test.describe('User Profile Management', () => {
         await profilePage.waitForSuccessToast();
         await profilePage.waitForToastToDisappear();
 
-        // Verify persistence in DB first (empty input is stored as NULL)
+        // Verify persistence in DB first (empty input removes the key)
         await expect.poll(async () => {
           const dbUser = await dbManager.getUserByEmail(testUser.email);
-          return dbUser?.custom_map_tile_url ?? null;
+          return dbUser?.timeline_display_preferences?.customMapTileUrl ?? null;
         }).toBe(null);
 
         // Reload to avoid transient form state and verify URL is cleared in UI

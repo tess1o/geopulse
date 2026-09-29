@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.mapmatching.service;
 
+import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -120,7 +121,8 @@ class MapMatchingServiceFailureHandlingTest {
         when(configuration.getMaxTripDurationHours()).thenReturn(24);
         when(configuration.configHashSource()).thenReturn("algorithm=v4|valhalla");
         when(userRepository.findById(userId)).thenReturn(user);
-        when(user.getTimelineDisplayMapMatchingEnabled()).thenReturn(true);
+        when(user.getTimelineDisplayPreferences())
+                .thenReturn(TimelineDisplayPreferences.builder().mapMatchingEnabled(true).build());
         when(user.getId()).thenReturn(userId);
         when(timelineConfigurationProvider.getConfigurationForUser(userId))
                 .thenReturn(TimelineConfig.builder().useVelocityAccuracy(false).build());

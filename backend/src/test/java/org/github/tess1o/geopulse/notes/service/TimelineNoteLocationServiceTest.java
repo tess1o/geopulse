@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.notes.service;
 
-import org.github.tess1o.geopulse.notes.model.NoteAnchorType;
 import org.github.tess1o.geopulse.notes.model.NoteDto;
 import org.github.tess1o.geopulse.notes.model.NoteLocationSource;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -73,8 +72,10 @@ class TimelineNoteLocationServiceTest {
 
         service.resolveTimelineLocations(USER_ID, RANGE_START, RANGE_END, List.of(gapNote));
 
-        assertEquals(NoteAnchorType.STAY, gapNote.getAnchorType());
-        assertEquals(1L, gapNote.getAnchorId());
+        // Gap notes borrow a neighbor's location for map placement but stay unanchored,
+        // so they remain matched to the data gap card by eventTime.
+        assertNull(gapNote.getAnchorType());
+        assertNull(gapNote.getAnchorId());
         assertEquals(NoteLocationSource.DERIVED_GAP_NEIGHBOR, gapNote.getLocationSource());
         assertEquals(20.0, gapNote.getLatitude());
         assertEquals(10.0, gapNote.getLongitude());
@@ -107,8 +108,10 @@ class TimelineNoteLocationServiceTest {
 
         service.resolveTimelineLocations(USER_ID, RANGE_START, RANGE_END, List.of(gapNote));
 
-        assertEquals(NoteAnchorType.STAY, gapNote.getAnchorType());
-        assertEquals(2L, gapNote.getAnchorId());
+        // Gap notes borrow a neighbor's location for map placement but stay unanchored,
+        // so they remain matched to the data gap card by eventTime.
+        assertNull(gapNote.getAnchorType());
+        assertNull(gapNote.getAnchorId());
         assertEquals(NoteLocationSource.DERIVED_GAP_NEIGHBOR, gapNote.getLocationSource());
         assertEquals(40.0, gapNote.getLatitude());
         assertEquals(30.0, gapNote.getLongitude());
@@ -135,8 +138,10 @@ class TimelineNoteLocationServiceTest {
 
         service.resolveTimelineLocations(USER_ID, RANGE_START, RANGE_END, List.of(gapNote));
 
-        assertEquals(NoteAnchorType.TRIP, gapNote.getAnchorType());
-        assertEquals(5L, gapNote.getAnchorId());
+        // Gap notes borrow a neighbor's location for map placement but stay unanchored,
+        // so they remain matched to the data gap card by eventTime.
+        assertNull(gapNote.getAnchorType());
+        assertNull(gapNote.getAnchorId());
         assertEquals(NoteLocationSource.DERIVED_GAP_NEIGHBOR, gapNote.getLocationSource());
         assertEquals(4.0, gapNote.getLatitude());
         assertEquals(3.0, gapNote.getLongitude());

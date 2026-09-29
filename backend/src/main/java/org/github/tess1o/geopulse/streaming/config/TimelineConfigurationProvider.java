@@ -7,6 +7,7 @@ import jakarta.persistence.NoResultException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.mapper.TimelinePreferencesMapper;
+import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -45,9 +46,9 @@ public class TimelineConfigurationProvider {
      * Get the effective timeline configuration for a user.
      * Merges global defaults with user-specific preferences.
      *
-     * NOTE: Path simplification settings are now read from dedicated user columns
-     * (timeline_display_path_*) instead of timeline_preferences JSONB, as they are
-     * display-only settings that don't affect timeline generation.
+     * NOTE: Path simplification settings are read from the timeline_display_preferences
+     * JSONB instead of timeline_preferences, as they are display-only settings that
+     * don't affect timeline generation.
      *
      * @param userId the user identifier
      * @return effective timeline configuration
@@ -66,19 +67,19 @@ public class TimelineConfigurationProvider {
             fieldRegistry.getRegistry().mergeUserPreferences(baseConfig, userPrefsAsConfig);
         }
 
-        // Override path simplification settings from dedicated display preference columns
-        // These are display-only settings stored outside of timeline_preferences JSONB
-        if (user.getTimelineDisplayPathSimplificationEnabled() != null) {
-            baseConfig.setPathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled());
+        // Override path simplification settings from the display preferences; unset ones keep the global default
+        TimelineDisplayPreferences display = user.getTimelineDisplayPreferences();
+        if (display.getPathSimplificationEnabled() != null) {
+            baseConfig.setPathSimplificationEnabled(display.getPathSimplificationEnabled());
         }
-        if (user.getTimelineDisplayPathSimplificationTolerance() != null) {
-            baseConfig.setPathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance());
+        if (display.getPathSimplificationTolerance() != null) {
+            baseConfig.setPathSimplificationTolerance(display.getPathSimplificationTolerance());
         }
-        if (user.getTimelineDisplayPathMaxPoints() != null) {
-            baseConfig.setPathMaxPoints(user.getTimelineDisplayPathMaxPoints());
+        if (display.getPathMaxPoints() != null) {
+            baseConfig.setPathMaxPoints(display.getPathMaxPoints());
         }
-        if (user.getTimelineDisplayPathAdaptiveSimplification() != null) {
-            baseConfig.setPathAdaptiveSimplification(user.getTimelineDisplayPathAdaptiveSimplification());
+        if (display.getPathAdaptiveSimplification() != null) {
+            baseConfig.setPathAdaptiveSimplification(display.getPathAdaptiveSimplification());
         }
 
         return baseConfig;

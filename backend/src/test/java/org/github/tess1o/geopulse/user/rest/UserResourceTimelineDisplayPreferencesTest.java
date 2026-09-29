@@ -4,7 +4,8 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.GeoPulseException;
 import org.github.tess1o.geopulse.streaming.service.boat.BoatSetupService;
 import org.github.tess1o.geopulse.user.mapper.UserMapper;
-import org.github.tess1o.geopulse.user.model.UpdateTimelineDisplayPreferencesRequest;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.user.model.TimelineDisplayPreferences;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -27,8 +28,8 @@ class UserResourceTimelineDisplayPreferencesTest {
         UserService userService = mock(UserService.class);
         CurrentUserService currentUserService = mock(CurrentUserService.class);
         UUID userId = UUID.randomUUID();
-        UpdateTimelineDisplayPreferencesRequest request = UpdateTimelineDisplayPreferencesRequest.builder()
-                .mapMatchingExcludedMovementTypes(List.of("TRAIN"))
+        TimelineDisplayPreferences request = TimelineDisplayPreferences.builder()
+                .mapMatchingExcludedMovementTypes(List.of(TripType.TRAIN))
                 .build();
         when(currentUserService.getCurrentUserId()).thenReturn(userId);
         doThrow(new IllegalArgumentException("unsupported"))

@@ -406,7 +406,7 @@ public class GpsPointResource {
             }
 
             StreamingOutput stream = output -> csvExportService.generateCsvExport(
-                    output, user.getId(), filters, user.getDistanceUnit());
+                    output, user.getId(), filters, user.getUiPreferences().withDefaults().getDistanceUnit());
 
             String filename = String.format("gps-points-export-%s.csv",
                     startTime != null && endTime != null ? startTime + "_" + endTime : "all");
