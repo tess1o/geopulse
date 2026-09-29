@@ -8,6 +8,13 @@
       @touchstart.stop
       @click.stop
     >
+      <!-- The highlighted trip's summary, so the map shows one card, not a pill stacked on the bar. -->
+      <div v-if="summary" class="trip-replay-summary">
+        <span class="trip-replay-summary-icon"><i :class="summary.iconClass"></i></span>
+        <span class="trip-replay-summary-title">{{ summary.title }}</span>
+        <span class="trip-replay-summary-meta">{{ summary.metaItems.join(' · ') }}</span>
+      </div>
+
       <div class="trip-replay-bar-main">
         <button
           type="button"
@@ -167,6 +174,11 @@ defineProps({
   compact: {
     type: Boolean,
     default: false
+  },
+  // { iconClass, title, metaItems: string[] } of the highlighted trip, shown as the bar's header.
+  summary: {
+    type: Object,
+    default: null
   }
 })
 
@@ -231,6 +243,55 @@ defineEmits([
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(2px);
+}
+
+.trip-replay-summary {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: var(--trip-replay-btn-size);
+  color: #0f172a;
+}
+
+.trip-replay-summary-icon {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gp-primary, #1a56db);
+  color: #ffffff;
+  font-size: 0.78rem;
+}
+
+.trip-replay-summary-title {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.trip-replay-summary-meta {
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-dark .trip-replay-summary {
+  color: rgba(248, 250, 252, 0.96);
+}
+
+.p-dark .trip-replay-summary-meta {
+  color: rgba(203, 213, 225, 0.88);
 }
 
 .trip-replay-bar-main {
@@ -373,23 +434,23 @@ defineEmits([
   --trip-replay-restore-font-size: 0.72rem;
 }
 
-:global(.p-dark) .trip-replay-bar {
+.p-dark .trip-replay-bar {
   border-color: rgba(100, 116, 139, 0.6);
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.92));
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.58);
 }
 
-:global(.p-dark) .trip-replay-btn,
-:global(.p-dark) .trip-replay-speed-btn,
-:global(.p-dark) .trip-replay-toggle-btn {
+.p-dark .trip-replay-btn,
+.p-dark .trip-replay-speed-btn,
+.p-dark .trip-replay-toggle-btn {
   border-color: rgba(100, 116, 139, 0.62);
   background: rgba(30, 41, 59, 0.94);
   color: rgba(226, 232, 240, 0.97);
 }
 
-:global(.p-dark) .trip-replay-btn:hover,
-:global(.p-dark) .trip-replay-speed-btn:hover,
-:global(.p-dark) .trip-replay-toggle-btn:hover {
+.p-dark .trip-replay-btn:hover,
+.p-dark .trip-replay-speed-btn:hover,
+.p-dark .trip-replay-toggle-btn:hover {
   background: rgba(51, 65, 85, 0.95);
 }
 
@@ -400,29 +461,29 @@ defineEmits([
   color: #ffffff;
 }
 
-:global(.p-dark) .trip-replay-speed-btn.active,
-:global(.p-dark) .trip-replay-toggle-btn.active {
+.p-dark .trip-replay-speed-btn.active,
+.p-dark .trip-replay-toggle-btn.active {
   border-color: rgba(56, 189, 248, 0.98) !important;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.99), rgba(14, 165, 233, 0.97)) !important;
   color: #ffffff !important;
   box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.45), 0 6px 16px rgba(14, 116, 144, 0.45);
 }
 
-:global(.p-dark) .trip-replay-speed-btn.active:hover,
-:global(.p-dark) .trip-replay-toggle-btn.active:hover,
-:global(.p-dark) .trip-replay-speed-btn.active:focus-visible,
-:global(.p-dark) .trip-replay-toggle-btn.active:focus-visible {
+.p-dark .trip-replay-speed-btn.active:hover,
+.p-dark .trip-replay-toggle-btn.active:hover,
+.p-dark .trip-replay-speed-btn.active:focus-visible,
+.p-dark .trip-replay-toggle-btn.active:focus-visible {
   border-color: rgba(125, 211, 252, 1) !important;
   background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(6, 182, 212, 0.98)) !important;
   color: #ffffff !important;
   box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.5), 0 8px 18px rgba(14, 116, 144, 0.5);
 }
 
-:global(.p-dark) .trip-replay-time {
+.p-dark .trip-replay-time {
   color: rgba(226, 232, 240, 0.93);
 }
 
-:global(.p-dark) .trip-replay-restore-btn {
+.p-dark .trip-replay-restore-btn {
   border-color: rgba(100, 116, 139, 0.62);
   background: rgba(30, 41, 59, 0.94);
   color: rgba(226, 232, 240, 0.97);

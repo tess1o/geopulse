@@ -19,10 +19,7 @@ import {
 } from '@/maps/vector/utils/maplibreLayerUtils'
 import MapInfoPopup from '@/maps/shared/popups/MapInfoPopup.vue'
 import { mountMapPopup } from '@/maps/shared/popups/mountMapPopup'
-import {
-  buildHighlightedTripPopupModel,
-  buildTripEndpointPopupModel
-} from '@/maps/shared/popups/timelinePopupModels'
+import { buildTripEndpointPopupModel } from '@/maps/shared/popups/timelinePopupModels'
 import {
   getMapPopupVariantClassName,
   MAP_POPUP_COMPACT_MAX_WIDTH
@@ -31,8 +28,7 @@ import { createTripEndpointMarkerElement, TRIP_ENDPOINT_MARKER_SIZE } from '@/ma
 import {
   buildHighlightedData,
   buildPathCollection,
-  highlightedLineColorExpression,
-  resolvePopupAnchorCoordinate
+  highlightedLineColorExpression
 } from '@/maps/vector/layers/vectorPathLayer/dataBuilders'
 import { createVectorPathHoverController } from '@/maps/vector/layers/vectorPathLayer/hoverController'
 import { createVectorPathReplayController } from '@/maps/vector/layers/vectorPathLayer/replayController'
@@ -120,11 +116,7 @@ const state = {
   listeners: [],
   styleLoadHandler: null,
   boundMap: null,
-  highlightedTripPopup: null,
-  highlightedTripPopupMount: null,
-  highlightedTripPopupKey: '',
-  highlightedTripPopupTimeoutId: null,
-  highlightedTripPopupAutoHideTimeoutId: null,
+  focusedTripKey: '',
   lastReplayEmissionKey: '',
   highlightedTouchInspecting: false,
   highlightedTouchMoveHandler: null,
@@ -150,8 +142,6 @@ const replayController = createVectorPathReplayController({
   getMap: () => props.map
 })
 
-const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS = 10000
-const HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS = 5000
 const HIGHLIGHTED_TRIP_NON_CAR_DASH = [0.6, 1.8]
 const HIGHLIGHTED_TRIP_CAR_SOLID_DASH = [1, 0]
 
@@ -176,55 +166,9 @@ const hasFocusedHighlightedTrip = () => (
   && isTripItem(props.highlightedTrip)
 )
 
-const resolveHighlightedTripPopupAutoHideMs = () => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
-  }
-
-  const isMobileViewport = window.matchMedia('(max-width: 768px)').matches
-  const isTouchPrimary = window.matchMedia('(pointer: coarse)').matches
-
-  return (isMobileViewport || isTouchPrimary)
-    ? HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_MOBILE_MS
-    : HIGHLIGHTED_TRIP_POPUP_AUTO_HIDE_DESKTOP_MS
-}
-
-const clearHighlightedTripPopupAutoHideTimeout = () => {
-  if (state.highlightedTripPopupAutoHideTimeoutId !== null) {
-    clearTimeout(state.highlightedTripPopupAutoHideTimeoutId)
-    state.highlightedTripPopupAutoHideTimeoutId = null
-  }
-}
-
-const scheduleHighlightedTripPopupAutoHide = (tripKey) => {
-  clearHighlightedTripPopupAutoHideTimeout()
-
-  state.highlightedTripPopupAutoHideTimeoutId = setTimeout(() => {
-    state.highlightedTripPopupAutoHideTimeoutId = null
-
-    if (state.highlightedTripPopupKey !== tripKey) {
-      return
-    }
-
-    closeHighlightedTripPopup()
-  }, resolveHighlightedTripPopupAutoHideMs())
-}
-
-const closeHighlightedTripPopup = () => {
-  if (state.highlightedTripPopupTimeoutId !== null) {
-    clearTimeout(state.highlightedTripPopupTimeoutId)
-    state.highlightedTripPopupTimeoutId = null
-  }
-  clearHighlightedTripPopupAutoHideTimeout()
-
-  if (state.highlightedTripPopup) {
-    state.highlightedTripPopup.remove()
-    state.highlightedTripPopup = null
-  }
-  state.highlightedTripPopupMount?.unmount?.()
-  state.highlightedTripPopupMount = null
-
-  state.highlightedTripPopupKey = ''
+// Forget the focused trip so the next highlight fits the camera again.
+const resetHighlightedTripFocus = () => {
+  state.focusedTripKey = ''
 }
 
 const removeHighlightedEndpointMarkers = () => {
@@ -377,78 +321,42 @@ const fitHighlightedTripBounds = (lineCoordinates) => {
   })
 
   props.map.fitBounds(bounds, {
-    padding: 20,
+    // Extra room at the bottom keeps the route clear of the docked trip summary
+    // and the replay bar (this fit only runs on desktop).
+    padding: { top: 40, right: 40, bottom: 150, left: 40 },
     maxZoom: 16,
     animate: false
   })
 }
 
-const syncHighlightedTripPopup = (lineCoordinates) => {
+// The trip's details live in TimelineMap's docked trip summary, not in a popup
+// on the route (it covered the very route it asked you to hover). What remains
+// is fitting the camera once per newly highlighted trip. On vector,
+// `showHighlightedTripPopup` now only gates that fit (it is false on mobile,
+// which never fitted here); the prop keeps its name because raster shares it.
+const syncHighlightedTripFocus = (lineCoordinates) => {
   if (!props.showHighlightedTripPopup || props.replayState?.suppressTripPopup) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
   if (!isMapLibreMap(props.map) || !isTripItem(props.highlightedTrip) || !props.visible || lineCoordinates.length < 2) {
-    closeHighlightedTripPopup()
-    return
-  }
-
-  const popupCoordinate = resolvePopupAnchorCoordinate(lineCoordinates)
-  if (!popupCoordinate) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
   const tripKey = getHighlightedTripKey(props.highlightedTrip)
   if (!tripKey) {
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     return
   }
 
-  if (state.highlightedTripPopup && state.highlightedTripPopupKey === tripKey) {
-    state.highlightedTripPopup.setLngLat(popupCoordinate)
-    state.highlightedTripPopupMount?.updateProps?.(
-      buildHighlightedTripPopupModel(props.highlightedTrip, {
-        formatDateTimeDisplay,
-        unit: distanceUnit.value
-      })
-    )
-    scheduleHighlightedTripPopupAutoHide(tripKey)
+  if (state.focusedTripKey === tripKey) {
     return
   }
 
-  closeHighlightedTripPopup()
-  state.highlightedTripPopupKey = tripKey
+  state.focusedTripKey = tripKey
   fitHighlightedTripBounds(lineCoordinates)
-
-  state.highlightedTripPopupTimeoutId = setTimeout(() => {
-    state.highlightedTripPopupTimeoutId = null
-
-    if (!isMapLibreMap(props.map) || state.highlightedTripPopupKey !== tripKey) {
-      return
-    }
-
-    state.highlightedTripPopupMount = mountMapPopup(
-      MapInfoPopup,
-      buildHighlightedTripPopupModel(props.highlightedTrip, {
-        formatDateTimeDisplay,
-        unit: distanceUnit.value
-      })
-    )
-    state.highlightedTripPopup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      closeOnMove: false,
-      maxWidth: MAP_POPUP_COMPACT_MAX_WIDTH,
-      className: getMapPopupVariantClassName('compact', 'gp-trip-popup-container')
-    })
-      .setLngLat(popupCoordinate)
-      .setDOMContent(state.highlightedTripPopupMount.element)
-      .addTo(props.map)
-
-    scheduleHighlightedTripPopupAutoHide(tripKey)
-  }, 120)
 }
 
 const emitReplayPathData = (highlightedData) => {
@@ -472,7 +380,7 @@ const syncReplayMarker = () => {
     highlightedTrip: props.highlightedTrip,
     replayState: props.replayState,
     onReplayPlaying: () => {
-      closeHighlightedTripPopup()
+      resetHighlightedTripFocus()
       hoverController.hideTripHoverTooltip()
     }
   })
@@ -549,12 +457,19 @@ const registerEvents = () => {
       return
     }
 
+    // MapLibre still fires layer mousemove through DOM markers sitting on the
+    // line (trip start/end, stays, chips). Those show their own card, so the
+    // GPS-point tooltip must not open on top of it.
+    if (event?.originalEvent?.target?.closest?.('.maplibregl-marker')) {
+      hoverController.hideTripHoverTooltip()
+      return
+    }
+
     props.map.getCanvas().style.cursor = 'pointer'
 
     hoverController.handleHighlightedLineMouseMove({
       event,
       trip: isTripItem(props.highlightedTrip) ? props.highlightedTrip : null,
-      onBeforeTooltipUpdate: closeHighlightedTripPopup
     })
   }
 
@@ -577,7 +492,6 @@ const registerEvents = () => {
     hoverController.handleHighlightedLineMouseMove({
       event,
       trip: props.highlightedTrip,
-      onBeforeTooltipUpdate: closeHighlightedTripPopup
     })
 
     if (!state.highlightedTouchMoveHandler) {
@@ -592,7 +506,6 @@ const registerEvents = () => {
         hoverController.handleHighlightedLineMouseMove({
           event: moveEvent,
           trip: props.highlightedTrip,
-          onBeforeTooltipUpdate: closeHighlightedTripPopup
         })
       }
       props.map.on('touchmove', state.highlightedTouchMoveHandler)
@@ -734,7 +647,7 @@ const renderLayer = () => {
 
   if (!hasHighlightedTrip) {
     unregisterEvents()
-    closeHighlightedTripPopup()
+    resetHighlightedTripFocus()
     removeHighlightedEndpointMarkers()
     removeLayers(props.map, [state.highlightedHitLayerId, state.highlightedLineLayerId])
     removeSources(props.map, [state.highlightedSourceId])
@@ -796,7 +709,7 @@ const renderLayer = () => {
 
   syncReplayFocusLayerVisibility()
 
-  syncHighlightedTripPopup(highlightedLineCoordinates)
+  syncHighlightedTripFocus(highlightedLineCoordinates)
   syncHighlightedEndpointMarkers(highlighted.endpointMarkers)
   hoverController.syncTripHoverContext(highlightedTrip, highlighted.hoverPathPoints)
   emitReplayPathData(highlighted)
@@ -809,7 +722,7 @@ const renderLayer = () => {
 const clearLayer = () => {
   unregisterEvents()
   hoverController.clearTripHoverState()
-  closeHighlightedTripPopup()
+  resetHighlightedTripFocus()
   removeHighlightedEndpointMarkers()
   replayController.cleanupReplay()
 

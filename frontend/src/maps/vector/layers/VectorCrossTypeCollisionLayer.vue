@@ -209,6 +209,20 @@ const openPopup = (collision) => {
     .addTo(props.map)
 }
 
+// Every layer stops clustering above zoom 16 (CLUSTER_MAX_ZOOM / *_CLUSTER_MAX_ZOOM),
+// so fitting to members at most this far always splits the clusters apart.
+const EXPAND_MAX_ZOOM = 18
+
+// Same as a same-type cluster click: zoom until the members separate.
+const zoomToMembers = (collision) => {
+  const bounds = collision.members.reduce((box, { group }) => ([
+    [Math.min(box[0][0], group.longitude), Math.min(box[0][1], group.latitude)],
+    [Math.max(box[1][0], group.longitude), Math.max(box[1][1], group.latitude)]
+  ]), [[collision.longitude, collision.latitude], [collision.longitude, collision.latitude]])
+
+  props.map.fitBounds(bounds, { padding: 60, maxZoom: EXPAND_MAX_ZOOM, duration: 280 })
+}
+
 const createComboElement = (collision, focusActive) => {
   const element = document.createElement('div')
   element.className = 'gp-cross-type-marker'
@@ -248,6 +262,12 @@ const renderCollisionMarker = (collision, focusActive) => {
   const handleClick = (domEvent) => {
     domEvent.preventDefault()
     domEvent.stopPropagation()
+    // A chip holding a cluster may stand for hundreds of items - zoom in instead of listing them.
+    if (collision.hasCluster && props.map.getZoom() < EXPAND_MAX_ZOOM) {
+      closePopup()
+      zoomToMembers(collision)
+      return
+    }
     openPopup(collision)
   }
   const handleEnter = () => { props.map.getCanvas().style.cursor = 'pointer' }
@@ -401,7 +421,8 @@ defineExpose({ requestCompute })
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.32);
+  /* Hairline ring (a shadow, so the chip size estimate is unchanged) keeps it readable over pale tiles. */
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08), 0 2px 10px rgba(0, 0, 0, 0.32);
   white-space: nowrap;
   cursor: pointer;
 }

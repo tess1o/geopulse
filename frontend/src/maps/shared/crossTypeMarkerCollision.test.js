@@ -77,6 +77,20 @@ describe('computeCrossTypeCollisions', () => {
 
     expect(collisions).toHaveLength(1)
     expect([...excluded.photos].sort()).toEqual([0, 1, 2])
+    expect(collisions[0].hasCluster).toBe(true)
+  })
+
+  it('marks collisions of standalone markers only as not holding a cluster', () => {
+    const { collisions } = computeCrossTypeCollisions({
+      sources: {
+        timeline: source([entity([0], 0)], () => ({ items: [{}] })),
+        photos: source([entity([0], 0.01)], () => ({ count: 1 }))
+      },
+      mapInstance: makeMap()
+    })
+
+    expect(collisions).toHaveLength(1)
+    expect(collisions[0].hasCluster).toBe(false)
   })
 
   it('absorbs a marker the wide chip covers even beyond the collision radius', () => {

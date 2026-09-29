@@ -315,6 +315,6 @@ describe('map popup models', () => {
       unit: 'MILES'
     })
 
-    expect(rows[0].meta).toBe('Duration: 1 hour | Distance: 7.46 mi')
+    expect(rows[0].meta).toBe('Duration: 1 hour · Distance: 7.46 mi')
   })
 })

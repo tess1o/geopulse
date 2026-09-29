@@ -144,7 +144,7 @@ const createStackPopupElement = (marker, markerItems) => {
     button.className = `timeline-stack-select ${row.typeClass}`
     button.dataset.stackItemIndex = String(stackIndex)
     button.innerHTML = `
-      <div class="stack-item-time">🕐 ${escapeHtml(row.dateStr)}</div>
+      <div class="stack-item-time">${escapeHtml(row.dateStr)}</div>
       <div class="stack-item-title">${escapeHtml(row.title)}</div>
       ${row.subtitle ? `<div class="stack-item-subtitle">${escapeHtml(row.subtitle)}</div>` : ''}
       ${row.meta ? `<div class="stack-item-meta">${escapeHtml(row.meta)}</div>` : ''}

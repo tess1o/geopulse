@@ -66,7 +66,7 @@ export const getStackItemMeta = (item, deps = {}) => {
     const distance = distanceValue
       ? `${t('timeline.trip.distanceLabel')} ${formatDistanceForUnit(distanceValue, { unit: deps.unit })}`
       : null
-    return [duration, distance].filter(Boolean).join(' | ')
+    return [duration, distance].filter(Boolean).join(' · ')
   }
 
   return ''
@@ -104,7 +104,7 @@ export const buildStackRowHtml = (row) => {
     : ''
 
   return `
-    <div class="stack-item-time"><span>🕐 ${escapeHtml(row.dateStr)}</span>${weather}</div>
+    <div class="stack-item-time"><span>${escapeHtml(row.dateStr)}</span>${weather}</div>
     <div class="stack-item-title">${escapeHtml(row.title)}</div>
     ${row.subtitle ? `<div class="stack-item-subtitle">${escapeHtml(row.subtitle)}</div>` : ''}
     ${row.meta ? `<div class="stack-item-meta">${escapeHtml(row.meta)}</div>` : ''}
@@ -170,7 +170,7 @@ export const buildCrossTypeStackItems = (members, deps = {}) => {
           notes: [note],
           typeClass: 'stack-item--note',
           dateStr: timestamp ? formatDateTime(timestamp, deps) : t('maps.popups.common.unknownTime'),
-          title: normalizeNoteText(note?.title) || t('maps.popups.timeline.crossType.note'),
+          title: `📝 ${normalizeNoteText(note?.title) || t('maps.popups.timeline.crossType.note')}`,
           subtitle: normalizeNoteText(note?.snippet || note?.contentMarkdown).slice(0, 80),
           meta: ''
         })
@@ -186,7 +186,7 @@ export const buildCrossTypeStackItems = (members, deps = {}) => {
         group,
         typeClass: 'stack-item--photo',
         dateStr: formatPhotoTimeRange(group.photos, deps),
-        title: count > 1 ? t('maps.popups.timeline.crossType.photoCount', { count }) : t('maps.popups.timeline.crossType.photo'),
+        title: `📷 ${count > 1 ? t('maps.popups.timeline.crossType.photoCount', { count }) : t('maps.popups.timeline.crossType.photo')}`,
         subtitle: '',
         meta: ''
       })

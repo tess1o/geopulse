@@ -265,7 +265,9 @@ export const computeCrossTypeCollisions = ({
       latitude: chip.latitude,
       longitude: chip.longitude,
       offset: chip.offset || null,
-      members
+      members,
+      // A same-type cluster can stand for many items: the chip zooms in instead of listing them.
+      hasCluster: chip.entities.some((entity) => entity.isCluster)
     }
   })
 

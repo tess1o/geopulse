@@ -337,33 +337,44 @@
       <span>{{ mapMatchingStatusText }}</span>
     </div>
 
+    <!-- Docked summary of the highlighted trip (all viewports): kept off the route itself. -->
+    <!-- While the replay bar is open, the summary is its header row instead (see TripReplayControls). -->
     <div
-      v-if="showMobileTripSummary"
-      class="mobile-trip-summary"
-      :class="{
-        'mobile-trip-summary--above-replay': showTripReplayBar,
-        'mobile-trip-summary--above-restore': showTripReplayRestoreButton && !showTripReplayBar
-      }"
+      v-if="showTripSummary && !showTripReplayBar"
+      class="trip-summary"
       @mousedown.stop
       @touchstart.stop
       @click.stop
     >
-      <div class="mobile-trip-summary-icon">
-        <i :class="mobileTripSummary.iconClass"></i>
+      <div class="trip-summary-icon">
+        <i :class="tripSummary.iconClass"></i>
       </div>
-      <div class="mobile-trip-summary-content">
-        <div class="mobile-trip-summary-title">{{ mobileTripSummary.title }}</div>
-        <div class="mobile-trip-summary-meta">
-          <span>{{ mobileTripSummary.duration }}</span>
-          <span class="mobile-trip-summary-dot"></span>
-          <span>{{ mobileTripSummary.distance }}</span>
-          <span v-if="mobileTripSummary.averageSpeed" class="mobile-trip-summary-dot"></span>
-          <span v-if="mobileTripSummary.averageSpeed">{{ mobileTripSummary.averageSpeed }}</span>
+      <div class="trip-summary-content">
+        <div class="trip-summary-title">{{ tripSummary.title }}</div>
+        <div class="trip-summary-meta">
+          <template v-for="(item, index) in tripSummary.metaItems" :key="index">
+            <span v-if="index > 0" class="trip-summary-dot"></span>
+            <span>{{ item }}</span>
+          </template>
+        </div>
+        <div v-if="!isMobileTripSelectionViewport" class="trip-summary-hint">
+          {{ t('maps.timelineMap.tripSummaryHoverHint') }}
         </div>
       </div>
+      <!-- Replaces the separate floating "Replay" button once the replay bar is dismissed. -->
+      <button
+        v-if="showTripReplayRestoreButton"
+        type="button"
+        class="trip-summary-replay"
+        :title="t('maps.tripReplay.showControls')"
+        @click="restoreTripReplayControls"
+      >
+        <i class="pi pi-play-circle"></i>
+        {{ t('maps.tripReplay.replay') }}
+      </button>
       <button
         type="button"
-        class="mobile-trip-summary-close"
+        class="trip-summary-close"
         :title="t('maps.timelineMap.clearTripSelection')"
         :aria-label="t('maps.timelineMap.clearTripSelection')"
         @click="clearAllMapHighlights"
@@ -374,7 +385,8 @@
 
     <TripReplayControls
       :show-bar="showTripReplayBar"
-      :show-restore-button="showTripReplayRestoreButton"
+      :show-restore-button="showTripReplayRestoreButton && !showTripSummary"
+      :summary="tripSummary"
       :is-playing="isReplayPlaying"
       :elapsed-label="replayElapsedLabel"
       :duration-label="replayDurationLabel"
@@ -412,6 +424,7 @@ import { setMapTilerBuildings3dEnabled, supportsMapTilerBuildings3d } from '@/ma
 import { useTripReplayControls } from '@/composables/useTripReplayControls'
 import { useMapMatchingComparison } from '@/composables/useMapMatchingComparison'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 import { getStayPlaceDetailsRoute } from '@/maps/shared/timelinePlaceRoute'
 import { resolveAverageTripSpeedKmh } from '@/maps/shared/tripSpeed'
@@ -723,6 +736,7 @@ const isMobileTripSelectionViewport = ref(false)
 
 const confirm = useConfirm()
 const toast = useToast()
+const timezone = useTimezone()
 
 // Local state
 const map = shallowRef(null)
@@ -1061,7 +1075,21 @@ const formatTripMovementTitle = (movementType) => {
   return t('maps.popups.timeline.movementTrip', { movementType: label })
 }
 
-const mobileTripSummary = computed(() => {
+// "19:35 → 20:10", or with the end date when the trip ends on another day.
+const formatTripTimeRange = (trip) => {
+  const startMs = Date.parse(trip?.timestamp)
+  if (!Number.isFinite(startMs)) return null
+
+  const start = new Date(startMs).toISOString()
+  const end = new Date(startMs + Math.max(Number(trip.tripDuration) || 0, 0) * 1000).toISOString()
+  const endText = timezone.isSameDay(start, end)
+    ? timezone.formatTime(end)
+    : `${timezone.formatDateDisplay(end)} ${timezone.formatTime(end)}`
+
+  return `${timezone.formatTime(start)} → ${endText}`
+}
+
+const tripSummary = computed(() => {
   const trip = activeHighlightedTrip.value
   if (!trip) return null
 
@@ -1070,16 +1098,16 @@ const mobileTripSummary = computed(() => {
   return {
     iconClass: getTripMovementIconClass(trip.movementType),
     title: formatTripMovementTitle(trip.movementType),
-    duration: formatDuration(Number(trip.tripDuration) || 0),
-    distance: formatDistance(Number(trip.distanceMeters) || 0),
-    averageSpeed: Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
+    metaItems: [
+      formatTripTimeRange(trip),
+      formatDuration(Number(trip.tripDuration) || 0),
+      formatDistance(Number(trip.distanceMeters) || 0),
+      Number.isFinite(averageSpeedKmh) ? formatSpeed(averageSpeedKmh) : null
+    ].filter(Boolean)
   }
 })
 
-const showMobileTripSummary = computed(() => (
-  isMobileTripSelectionViewport.value
-  && Boolean(mobileTripSummary.value)
-))
+const showTripSummary = computed(() => Boolean(tripSummary.value))
 const {
   showTripReplayBar,
   showTripReplayRestoreButton,
@@ -2392,41 +2420,30 @@ defineExpose({
   50% { opacity: 1; transform: rotate(12deg); }
 }
 
-.mobile-trip-summary {
+/* Desktop: docked bottom-centre, where the replay bar also lives. */
+.trip-summary {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
+  bottom: calc(2.35rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 940;
-  width: min(22rem, calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  width: min(30rem, calc(100% - 2rem));
   display: flex;
   align-items: center;
   gap: 0.65rem;
   padding: 0.55rem 0.6rem;
-  border: 1px solid rgba(148, 163, 184, 0.58);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.98);
+  /* Same card as the replay bar it stands in for (TripReplayControls .trip-replay-bar). */
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.95);
   color: #0f172a;
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(4px);
   pointer-events: auto;
 }
 
-.p-dark .mobile-trip-summary {
-  border-color: var(--gp-border-medium);
-  background: var(--gp-surface-dark);
-  color: var(--gp-text-primary);
-}
 
-.mobile-trip-summary--above-replay {
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 9rem + env(safe-area-inset-bottom));
-}
-
-.mobile-trip-summary--above-restore {
-  bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 5.75rem + env(safe-area-inset-bottom));
-}
-
-.mobile-trip-summary-icon {
+.trip-summary-icon {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
@@ -2439,12 +2456,12 @@ defineExpose({
   font-size: 0.9rem;
 }
 
-.mobile-trip-summary-content {
+.trip-summary-content {
   flex: 1 1 auto;
   min-width: 0;
 }
 
-.mobile-trip-summary-title {
+.trip-summary-title {
   overflow: hidden;
   color: #0f172a;
   font-size: 0.88rem;
@@ -2454,7 +2471,7 @@ defineExpose({
   white-space: nowrap;
 }
 
-.mobile-trip-summary-meta {
+.trip-summary-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -2467,7 +2484,18 @@ defineExpose({
   white-space: normal;
 }
 
-.mobile-trip-summary-dot {
+.trip-summary-hint {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-summary-dot {
   flex: 0 0 4px;
   width: 4px;
   height: 4px;
@@ -2475,7 +2503,7 @@ defineExpose({
   background: rgba(100, 116, 139, 0.7);
 }
 
-.mobile-trip-summary-close {
+.trip-summary-close {
   flex: 0 0 2rem;
   width: 2rem;
   height: 2rem;
@@ -2490,29 +2518,53 @@ defineExpose({
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.mobile-trip-summary-close:hover,
-.mobile-trip-summary-close:focus-visible {
+.trip-summary-replay {
+  flex: 0 0 auto;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(248, 250, 252, 0.98);
+  color: #0f172a;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.trip-summary-replay:hover,
+.trip-summary-replay:focus-visible,
+.trip-summary-close:hover,
+.trip-summary-close:focus-visible {
   border-color: var(--gp-primary-light, #60a5fa);
   background: rgba(239, 246, 255, 0.98);
   color: var(--gp-primary, #1a56db);
 }
 
-:global(.p-dark) .mobile-trip-summary {
+.p-dark .trip-summary {
   border-color: rgba(100, 116, 139, 0.65);
   background: rgba(15, 23, 42, 0.94);
   color: rgba(248, 250, 252, 0.96);
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.48);
 }
 
-:global(.p-dark) .mobile-trip-summary-title {
+.p-dark .trip-summary-title {
   color: rgba(248, 250, 252, 0.96);
 }
 
-:global(.p-dark) .mobile-trip-summary-meta {
+.p-dark .trip-summary-meta {
   color: rgba(203, 213, 225, 0.88);
 }
 
-:global(.p-dark) .mobile-trip-summary-close {
+.p-dark .trip-summary-hint {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.p-dark .trip-summary-replay,
+.p-dark .trip-summary-close {
   border-color: rgba(100, 116, 139, 0.65);
   background: rgba(30, 41, 59, 0.95);
   color: rgba(203, 213, 225, 0.92);
@@ -2563,7 +2615,8 @@ defineExpose({
     white-space: nowrap;
   }
 
-  .mobile-trip-summary {
+  .trip-summary {
+    bottom: calc(var(--timeline-mobile-sheet-height, 44px) + 3.25rem + env(safe-area-inset-bottom));
     width: calc(100% - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     max-width: 22rem;
   }

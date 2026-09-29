@@ -75,6 +75,7 @@ export default {
             areaHeader: 'Add Area To Favorites'
         },
         clearTripSelection: 'Clear trip selection',
+        tripSummaryHoverHint: 'Hover the route to see the time and speed at any point',
         zoomControl: {
             currentLocation: 'Zoom to Current Location',
             data: 'Zoom to Data'

@@ -74,6 +74,7 @@ export default {
             areaHeader: 'Додати зону до обраного'
         },
         clearTripSelection: 'Очистити вибір поїздки',
+        tripSummaryHoverHint: 'Наведіть на маршрут, щоб побачити час і швидкість у будь-якій точці',
         zoomControl: {
             currentLocation: 'Наблизити до поточного місцезнаходження',
             data: 'Наблизити до даних'

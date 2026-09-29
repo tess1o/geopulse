@@ -19,6 +19,7 @@ import {
   getTimelineItemWeatherDisplay
 } from '@/maps/shared/stayWeather'
 import {
+  createTimelineGroupMarkerElement,
   createTimelineMarkerElement,
   createTimelineStackMarkerElement
 } from '@/maps/shared/timelineMarkerBuilder'
@@ -544,7 +545,7 @@ const renderStandaloneMarker = (group, hasActiveHighlight) => {
   const isDimmed = hasActiveHighlight && !isHighlighted
 
   const markerSpec = isStack
-    ? createTimelineStackMarkerElement({ count: markerItems.length, highlighted: isHighlighted, dimmed: isDimmed })
+    ? createTimelineGroupMarkerElement({ items: markerItems, highlighted: isHighlighted, dimmed: isDimmed })
     : createTimelineMarkerElement({ item: primaryItem, highlighted: isHighlighted, dimmed: isDimmed })
 
   markerSpec.element.style.zIndex = isHighlighted ? '340' : (isDimmed ? '300' : '320')
@@ -907,6 +908,7 @@ defineExpose({
 </script>
 
 <style>
+/* Zoom cluster (click zooms in). White ring + shadow like every other map marker. */
 .timeline-stack-marker {
   width: 30px;
   height: 30px;
@@ -915,11 +917,11 @@ defineExpose({
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
-  border: 2px solid #134e4a;
+  border: 2px solid #ffffff;
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 700;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.32);
   box-sizing: border-box;
 }
 
@@ -927,7 +929,6 @@ defineExpose({
   width: 34px;
   height: 34px;
   background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-  border-color: #9a3412;
 }
 
 .timeline-stack-marker-dimmed {
@@ -937,11 +938,37 @@ defineExpose({
 
 .p-dark .timeline-stack-marker {
   background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-  border-color: #134e4a;
 }
 
 .p-dark .timeline-stack-marker-highlighted {
   background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
-  border-color: #c2410c;
+}
+
+/* Same-location group (click lists the items): count on the dominant item's marker. */
+.timeline-marker-count-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #0f172a;
+  border: 1.5px solid #ffffff;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.p-dark .timeline-marker-count-badge {
+  background: #f8fafc;
+  border-color: #0f172a;
+  color: #0f172a;
 }
 </style>
