@@ -246,7 +246,8 @@ public class LocationPointResolver {
         updateGeocodingProgress(jobId, "resolvedFromCache",
             String.format("Resolved %d from cache (%d from batch, %d from individual lookup)",
                 cachedResolved, cachedResults.size(), batchCacheMisses),
-            totalLocations, favoritesResolved, cachedResolved, stillNeedExternal.size(), 0, results.size());
+            totalLocations, favoritesResolved, cachedResolved, stillNeedExternal.size(), 0, results.size(),
+            Map.of("batchResolved", cachedResults.size(), "individualResolved", batchCacheMisses));
 
         // Step 4: Process truly external geocoding with rate limiting (1 req/sec max)
         long step3StartTime = System.currentTimeMillis();
@@ -320,7 +321,8 @@ public class LocationPointResolver {
                 int currentExternalCompleted = results.size() - favoritesResolved - cachedResolved;
                 updateGeocodingProgress(jobId, "geocodingLocationProgress",
                     String.format("Geocoding location %d/%d", i + 1, coordinates.size()),
-                    totalLocations, favoritesResolved, cachedResolved, remaining, currentExternalCompleted, results.size());
+                    totalLocations, favoritesResolved, cachedResolved, remaining, currentExternalCompleted, results.size(),
+                    Map.of("current", i + 1, "total", coordinates.size()));
 
                 FormattableGeocodingResult geocodingResult;
                 try {
@@ -372,6 +374,14 @@ public class LocationPointResolver {
     private void updateGeocodingProgress(UUID jobId, String stepKey, String fallback, int totalLocations,
                                         int favoritesResolved, int cachedResolved,
                                         int externalPending, int externalCompleted, int totalResolved) {
+        updateGeocodingProgress(jobId, stepKey, fallback, totalLocations, favoritesResolved, cachedResolved,
+                externalPending, externalCompleted, totalResolved, Map.of());
+    }
+
+    private void updateGeocodingProgress(UUID jobId, String stepKey, String fallback, int totalLocations,
+                                        int favoritesResolved, int cachedResolved,
+                                        int externalPending, int externalCompleted, int totalResolved,
+                                        Map<String, Object> stepExtras) {
         if (jobId != null) {
             // Progress from 55% to 70% during geocoding, after GPS state-machine processing.
             int progress = 55 + (int)((double)totalResolved / totalLocations * 15);
@@ -384,7 +394,10 @@ public class LocationPointResolver {
             details.put("externalCompleted", Math.max(0, externalCompleted));
             details.put("totalResolved", totalResolved);
 
-            jobProgressService.updateProgress(jobId, TimelineJobProgressService.step(stepKey, fallback, details), 4, progress, details);
+            Map<String, Object> stepParams = new java.util.HashMap<>(details);
+            stepParams.putAll(stepExtras);
+
+            jobProgressService.updateProgress(jobId, TimelineJobProgressService.step(stepKey, fallback, stepParams), 4, progress, details);
         }
     }
 

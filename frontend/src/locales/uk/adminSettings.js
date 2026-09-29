@@ -100,7 +100,7 @@ export default {
                     },
                     'auth-token': {
                         label: 'Токен API Apprise',
-                        description: 'Необов\'язковий токен/ключ API для автентифікації з Apprise (зашифровано)'
+                        description: 'Токен/ключ API для автентифікації з Apprise (необов\'язково, зашифровано)'
                     },
                     'timeout-ms': {
                         label: 'Тайм-аут Apprise (мс)',
@@ -129,7 +129,7 @@ export default {
             registration: {
                 enabled: {
                     label: 'Реєстрацію увімкнено',
-                    description: 'Дозволити новим користувачам реєструватися'
+                    description: 'Дозволити новим користувачам реєструватися (головний перемикач)'
                 }
             },
             'password-registration': {
@@ -194,7 +194,7 @@ export default {
             },
             'guest-root-redirect-to-login': {
                 enabled: {
-                    label: 'Переспрямування гостей з кореня',
+                    label: 'Перенаправлення гостей з головної сторінки',
                     description: 'Переспрямовувати неавторизованих користувачів з "/" на "/login" замість показу Головної'
                 }
             }
@@ -438,7 +438,7 @@ export default {
                     description: 'Максимальна кількість запитів до провайдера за добу UTC'
                 },
                 'ongoing-reserve': {
-                    label: 'Резерв поточної погоди',
+                    label: 'Резерв запитів',
                     description: 'Запити, зарезервовані щодня для зразків поточної погоди'
                 }
             },
@@ -448,8 +448,8 @@ export default {
             },
             'failed-target-retry': {
                 enabled: {
-                    label: 'Повторювати невдалі цілі',
-                    description: 'Повторювати застарілі невдалі цілі погоди після періоду очікування'
+                    label: 'Повторювати невдалі запити',
+                    description: 'Повторювати застарілі невдалі запити погоди після періоду очікування'
                 },
                 'cooldown-hours': {
                     label: 'Період очікування повтору',
@@ -564,7 +564,7 @@ export default {
             },
             'user-agent': {
                 label: 'User-Agent',
-                description: 'Надсилається до Wikidata та Commons. Тримайте його ідентифікованим: анонімний клієнт — це той, кого обмежують чи блокують'
+                description: 'Надсилається до Wikidata та Commons. Вказуйте інформативне значення: анонімних клієнтів частіше обмежують або блокують'
             },
             language: {
                 label: 'Бажана мова',
@@ -573,7 +573,7 @@ export default {
             attribution: {
                 enabled: {
                     label: 'Показувати атрибуцію',
-                    description: 'Показувати авторство фото та атрибуцію даних. Вимагається ліцензіями Wikimedia'
+                    description: 'Показувати авторство фото та атрибуцію даних. Цього вимагають ліцензії Wikimedia'
                 }
             },
             wikidata: {
@@ -836,7 +836,7 @@ export default {
                 description: 'Мінімальний поріг точності GPS для обробки'
             },
             batchSize: {
-                name: 'Розмір пакету',
+                name: 'Розмір пакета',
                 description: 'Кількість точок GPS, що обробляються в одному пакеті'
             },
             distanceThresholds: {
